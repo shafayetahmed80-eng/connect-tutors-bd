@@ -39,10 +39,18 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // `SameSite=None` requires `Secure`, which browsers refuse over plain http
+  // (local development). Fall back to `Lax` there — it is same-origin on
+  // localhost so the session cookie still rides along. HTTPS requests keep
+  // `None; Secure` for the cross-site preview/iframe scenario.
+  if (!isSecureRequest(req)) {
+    return { httpOnly: true, path: "/", sameSite: "lax", secure: false };
+  }
+
   return {
     httpOnly: true,
     path: "/",
     sameSite: "none",
-    secure: isSecureRequest(req),
+    secure: true,
   };
 }

@@ -59,6 +59,9 @@ export default function AdminLogin() {
     setFormError(null);
     try {
       const result = await loginAdmin.mutateAsync({ userId, password });
+      // The page-load `auth.me` cached `null`; invalidate so this reads the
+      // post-login session instead of the still-fresh cached value.
+      await utils.auth.me.invalidate();
       const authenticatedUser = await utils.auth.me.fetch();
       if (result.user.role !== "admin" || authenticatedUser?.role !== "admin") {
         throw new Error("This account does not have Admin access.");
