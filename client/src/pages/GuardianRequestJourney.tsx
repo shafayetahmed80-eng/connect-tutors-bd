@@ -404,10 +404,6 @@ const ghostButton = `${button} bg-[#eef5f9] text-[#365d7d] hover:bg-[#e1eff7]`;
 const fieldLabel = "block text-[13px] font-semibold text-j-ink-soft";
 const filledField = "h-12 w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 const filledArea = "w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 text-sm leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
-
-function TrustStrip({ children }: { children: ReactNode }) {
-  return <div className="mt-6 flex items-center gap-2 rounded-xl border border-[#d7e9fb] bg-j-accent-wash px-3 py-2.5 text-xs font-semibold leading-5 text-[#1257a8]"><ShieldCheck size={15} className="shrink-0" aria-hidden="true" />{children}</div>;
-}
 const stageSteps = [
   { label: "Verify phone", description: "A secure starting point" },
   { label: "Create account", description: "Private Guardian access" },
@@ -793,8 +789,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
   const valid = LOCAL_PHONE.test(phone);
   return <div className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-    <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="We do not use OTP here. Your number supports a secure handoff if we match you with a Tutor." />
-    <TrustStrip>Your number stays private — it is never shown on public Tutor profiles.</TrustStrip>
+    <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="No OTP. Your number stays private and only supports a secure handoff if we match you with a Tutor." />
     <label className="mt-7 block max-w-md" htmlFor="guardian-phone">
       <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
       <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
@@ -821,17 +816,20 @@ export type GuardianAccountStageProps = {
 };
 
 export function getGuardianPasswordStrength(password: string) {
-  if (!password) return { score: 0, label: "Getting started", hint: "Use at least 8 characters. For stronger security, mix uppercase, lowercase, a number, and a symbol.", color: "bg-[#b9cbd8]" };
+  if (!password) return { score: 0, label: "Getting started", hint: "Use at least 8 characters.", color: "bg-[#b9cbd8]" };
   const score = [password.length >= 8, /[a-z]/.test(password) && /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
-  if (score <= 1) return { score, label: "Weak", hint: "Add uppercase and lowercase letters, a number, and a symbol.", color: "bg-[#dc5b5b]" };
-  if (score === 2) return { score, label: "Fair", hint: "Add another character type to make this password stronger.", color: "bg-[#df9a1d]" };
-  if (score === 3) return { score, label: "Strong", hint: "Good choice. A longer, unique password is even safer.", color: "bg-[#188f73]" };
-  return { score, label: "Excellent", hint: "Excellent. Keep this password unique and private.", color: "bg-[#167ddd]" };
+  if (score <= 1) return { score, label: "Weak", hint: "Add mixed case, a number, and a symbol.", color: "bg-[#dc5b5b]" };
+  if (score === 2) return { score, label: "Fair", hint: "Add one more character type.", color: "bg-[#df9a1d]" };
+  if (score === 3) return { score, label: "Strong", hint: "Longer is even better.", color: "bg-[#188f73]" };
+  return { score, label: "Excellent", hint: "", color: "bg-[#167ddd]" };
 }
 
 function GuardianPasswordStrength({ password }: { password: string }) {
   const strength = getGuardianPasswordStrength(password);
-  return <div className="mt-3 rounded-xl border border-j-border bg-j-surface-sunken px-3 py-3"><div className="flex items-center justify-between gap-3"><p id="guardian-password-strength" role="status" aria-live="polite" aria-label={`Password strength: ${strength.label}. ${strength.hint}`} className="text-xs font-semibold leading-5 text-[#496981]">Password strength: <span className="font-extrabold text-j-ink-strong">{strength.label}</span>. {strength.hint}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-extrabold text-white ${strength.color}`}>{strength.label}</span></div><div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} className="mt-3 flex gap-1.5">{[0, 1, 2, 3].map((segment) => <span key={segment} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none ${segment < strength.score ? strength.color : "bg-[#dceaf2]"}`} />)}</div></div>;
+  return <div className="mt-2.5">
+    <div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} className="flex gap-1.5">{[0, 1, 2, 3].map((segment) => <span key={segment} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none ${segment < strength.score ? strength.color : "bg-[#dceaf2]"}`} />)}</div>
+    <p id="guardian-password-strength" role="status" aria-live="polite" aria-label={`Password strength: ${strength.label}.${strength.hint ? ` ${strength.hint}` : ""}`} className="mt-2 text-xs font-medium leading-5 text-[#6c8295]"><span className="font-bold text-j-ink-strong">{strength.label}</span>{strength.hint ? ` — ${strength.hint}` : ""}</p>
+  </div>;
 }
 
 function getGuardianPasswordMatch(password: string, confirmPassword: string) {
@@ -843,11 +841,11 @@ function getGuardianPasswordMatch(password: string, confirmPassword: string) {
 function GuardianPasswordMatch({ password, confirmPassword }: { password: string; confirmPassword: string }) {
   const match = getGuardianPasswordMatch(password, confirmPassword);
   if (!match) return null;
-  return <p id="guardian-password-match" role="status" aria-live="polite" className={`mt-2 flex items-center gap-2 text-xs font-semibold leading-5 ${match.matches ? "text-j-ok" : match.color}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${match.matches ? "bg-j-ok" : match.dotColor}`} /><span><span className="font-extrabold">{match.label}</span>. {match.hint}</span></p>;
+  return <p id="guardian-password-match" role="status" aria-live="polite" className={`mt-2 flex items-center gap-2 text-xs font-semibold leading-5 ${match.matches ? "text-j-ok" : match.color}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${match.matches ? "bg-j-ok" : match.dotColor}`} />{match.label}</p>;
 }
 
 function GuardianPasswordManagerHint() {
-  return <div role="note" aria-label="Password manager guidance" className="mt-3 flex flex-wrap items-start gap-2 rounded-xl border border-j-border bg-j-surface-sunken px-3 py-3 text-xs font-semibold leading-5 text-[#496981]"><KeyRound className="mt-0.5 shrink-0 text-j-accent" size={16} aria-hidden="true" /><p>You may use a trusted browser or device password manager to generate and save a strong password.</p></div>;
+  return <p role="note" aria-label="Password manager guidance" className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium leading-5 text-[#8496a6]"><KeyRound className="shrink-0 text-[#a9bccc]" size={13} aria-hidden="true" />A browser or device password manager can generate and save a strong one.</p>;
 }
 
 export function getGuardianLocationSelectionState(cityId: string, locationId: string, cityLabel: string, locationLabel: string) {
@@ -867,11 +865,9 @@ export function AccountStage(props: GuardianAccountStageProps) {
   const star = <span className="text-[#d74545]">*</span>;
   const confirmBorder = passwordMatch?.matches ? "border-j-ok focus:border-j-ok" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : "";
   return <section className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
-    <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access. Your contact details are never displayed on public Tutor profiles." />
-    <TrustStrip>Your phone, email, and student details never appear on public Tutor profiles.</TrustStrip>
-    <p className="mt-4 text-xs font-semibold text-[#71889b]">{star} Required to create your account</p>
+    <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access — you will sign in with it later." />
 
-    <div className="mt-5 grid gap-x-7 gap-y-5 md:grid-cols-2">
+    <div className="mt-6 grid gap-x-7 gap-y-5 md:grid-cols-2">
       <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
 
       <fieldset>

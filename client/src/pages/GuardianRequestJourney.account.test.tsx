@@ -79,11 +79,11 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByText(/Use at least 8 characters/).textContent).toContain("Use at least 8 characters");
 
     fireEvent.change(passwordInput, { target: { value: "guardian" } });
-    expect(screen.getByRole("status", { name: /Password strength: Weak/ }).textContent).toContain("Password strength");
+    expect(screen.getByRole("status", { name: /Password strength: Weak/ }).textContent).toContain("Weak");
     expect(passwordInput.type).toBe("password");
 
     fireEvent.change(passwordInput, { target: { value: "GuardianPass2026!" } });
-    expect(screen.getByRole("status", { name: /Password strength: Excellent/ }).textContent).toContain("Password strength");
+    expect(screen.getByRole("status", { name: /Password strength: Excellent/ }).textContent).toContain("Excellent");
     expect(screen.getByRole("progressbar", { name: "Password strength" }).getAttribute("aria-valuenow")).toBe("4");
   });
 
