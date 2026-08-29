@@ -725,13 +725,17 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   return <div className={presentation.rootClassName}>
     {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
     <main className={embedded ? "py-0" : "px-4 py-10 sm:px-6 lg:py-16"}><div className={embedded ? "max-w-none" : "mx-auto max-w-6xl"}><div className="grid gap-7 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
-      <aside className="rounded-[2rem] bg-j-rail p-7 text-white shadow-[0_18px_46px_rgba(13,93,157,.2)] sm:p-10">
-        <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[.16em] text-[#c5edff]"><ShieldCheck size={14} aria-hidden="true" /> Guided Tutor matching</p>
-        <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-.055em] sm:text-4xl">Find the right Tutor with confidence.</h1>
-        <p className="mt-5 leading-7 text-[#d7efff]">Share your learning needs, schedule, and budget. Our team will manually match you with suitable Tutors.</p>
-        <div className="mt-8 space-y-4 rounded-2xl border border-white/15 bg-j-rail-panel p-5 text-sm leading-6 text-[#e0f4ff]">
-          <p className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Your phone, email, student name, and notes stay private from public profiles and Tutor inboxes.</p>
-          <p className="flex gap-3"><Phone className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Questions before you begin? Call +880 1516 131411.</p>
+      <aside className="relative overflow-hidden rounded-[2rem] bg-j-rail p-7 text-white shadow-[0_18px_46px_rgba(13,93,157,.2)] sm:p-10">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
+        <div className="relative">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[.16em] text-[#c5edff]"><ShieldCheck size={14} aria-hidden="true" /> Guided Tutor matching</p>
+          <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-.045em] sm:text-4xl">Find the right Tutor with confidence.</h1>
+          <p className="mt-5 leading-7 text-[#d7efff]">Share your learning needs, schedule, and budget. Our team will manually match you with suitable Tutors.</p>
+          <div className="mt-8 space-y-4 rounded-2xl border border-white/15 bg-j-rail-panel/80 p-5 text-sm leading-6 text-[#e0f4ff] backdrop-blur-sm">
+            <p className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Your phone, email, student name, and notes stay private from public profiles and Tutor inboxes.</p>
+            <p className="flex gap-3"><Phone className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Questions before you begin? Call +880 1516 131411.</p>
+          </div>
         </div>
       </aside>
       <section className="rounded-[2rem] border border-j-border bg-white p-5 shadow-[0_18px_55px_rgba(28,101,148,.1)] sm:p-9">
@@ -787,7 +791,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
   const valid = LOCAL_PHONE.test(phone);
-  return <div className="mt-8">
+  return <div className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
     <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="We do not use OTP here. Your number supports a secure handoff if we match you with a Tutor." />
     <TrustStrip>Your number stays private — it is never shown on public Tutor profiles.</TrustStrip>
     <label className="mt-7 block max-w-md" htmlFor="guardian-phone">
@@ -861,7 +865,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
   const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
   const star = <span className="text-[#d74545]">*</span>;
   const confirmBorder = passwordMatch?.matches ? "border-j-ok focus:border-j-ok" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : "";
-  return <section className="mt-8" aria-label="Guardian account details">
+  return <section className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access. Your contact details are never displayed on public Tutor profiles." />
     <TrustStrip>Your phone, email, and student details never appear on public Tutor profiles.</TrustStrip>
     <p className="mt-4 text-xs font-semibold text-[#71889b]">{star} Required to create your account</p>
@@ -924,7 +928,7 @@ export function RequestStage(props: RequestStageProps) {
   const availableSubjects = getGuardianSubjectsForLearningNeed(input.category, input.classCourse);
   const locationSelection = getGuardianLocationSelectionState(input.tuitionCityLocationId, input.tuitionLocationId, props.tuitionCityLabel, props.tuitionLocationLabel);
   const onEditStep = props.onEditStep ?? (() => undefined);
-  return <form className="mt-8" onSubmit={props.onSubmit}>
+  return <form className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" onSubmit={props.onSubmit}>
     <Eyebrow step="Step 3 of 3" title="Tell us about the learning needs" copy="Choose the curriculum, level, and every subject you need help with. Nothing is pre-selected on your behalf." />
     <ol className="mt-7 grid gap-2 sm:grid-cols-3" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
       const isActive = props.step === index + 1;
@@ -959,7 +963,7 @@ export function SuccessState({ requestId }: { requestId: number | null }) {
 function Eyebrow({ step, title, copy }: { step: string; title: string; copy: string }) { return <div className="border-b border-[#e6eef4] pb-5"><p className="text-xs font-extrabold uppercase tracking-[.16em] text-j-warn">{step}</p><h2 className="mt-2 text-2xl font-extrabold tracking-[-.045em] text-j-ink">{title}</h2><p className="mt-2 text-sm leading-6 text-[#617e96]">{copy}</p></div>; }
 function InputField({ label, value, onChange, type = "text", autoComplete, helper, optional, maxLength, inputMode }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; helper?: string; optional?: boolean; maxLength?: number; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-[#315b79]">{label} {!optional ? <span className="text-[#d74545]">*</span> : null}{helper ? <span className="ml-1 text-xs font-normal text-[#71889b]">{helper}</span> : null}<input className="form-input mt-2" type={type} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
 function SelectField({ label, value, onChange, options, placeholder, formatOption, helper, optional }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; helper?: string; optional?: boolean }) { return <label className="text-sm font-extrabold text-[#315b79]">{label} {!optional ? <span className="text-[#d74545]">*</span> : null}{helper ? <span className="ml-1 text-xs font-normal text-[#71889b]">{helper}</span> : null}<select className="form-input mt-2" value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></label>; }
-function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd] focus-visible:ring-offset-2 ${selected ? "border-[#167ddd] bg-[#eaf6ff] text-[#126ea9] shadow-[0_4px_12px_rgba(22,125,221,.08)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:border-[#9bcdf4] hover:bg-[#f8fcff]"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
+function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }
 function formatPreferredGender(value: string) { return value === "any" ? "No preference" : value === "female" ? "Female" : value === "male" ? "Male" : value; }
