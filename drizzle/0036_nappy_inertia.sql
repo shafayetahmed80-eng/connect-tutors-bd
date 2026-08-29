@@ -1,1 +1,0 @@
-ALTER TABLE `users` ADD `isOwner` int DEFAULT 0 NOT NULL;
