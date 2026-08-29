@@ -68,14 +68,14 @@ describe("Guardian request embedded dashboard mode", () => {
   it("removes public chrome when the journey is rendered inside the Guardian panel", () => {
     expect(getGuardianRequestJourneyPresentation({ embedded: true })).toEqual({
       showPublicChrome: false,
-      rootClassName: "bg-transparent text-[#173b60]",
+      rootClassName: "bg-transparent text-j-ink",
     });
   });
 
   it("keeps the public visitor journey wrapped in its site shell", () => {
     expect(getGuardianRequestJourneyPresentation({ embedded: false })).toEqual({
       showPublicChrome: true,
-      rootClassName: "site-page min-h-screen bg-[#f5f8ff] text-[#173b60]",
+      rootClassName: "site-page min-h-screen bg-j-page text-j-ink",
     });
   });
 
