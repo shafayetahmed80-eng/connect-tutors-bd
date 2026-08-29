@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { JourneyProgress } from "@/components/JourneyProgress";
+import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
@@ -398,12 +399,6 @@ type RequestInput = {
   budgetMaximum: string;
 };
 
-const button = "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
-const primaryButton = `${button} bg-j-accent text-white shadow-[0_10px_20px_rgba(22,125,221,.24)] hover:-translate-y-0.5 hover:bg-j-accent-hover`;
-const ghostButton = `${button} bg-[#eef5f9] text-[#365d7d] hover:bg-[#e1eff7]`;
-const fieldLabel = "block text-[13px] font-semibold text-j-ink-soft";
-const filledField = "h-12 w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
-const filledArea = "w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 text-sm leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 const stageSteps = [
   { label: "Verify phone", description: "A secure starting point" },
   { label: "Create account", description: "Private Guardian access" },
