@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { VitePWA } from "vite-plugin-pwa";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -203,7 +204,49 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+  vitePluginStorageProxy(),
+  VitePWA({
+    registerType: "autoUpdate",
+    injectRegister: "inline",
+    includeAssets: ["favicon.ico", "apple-touch-icon-180x180.png"],
+    // The service worker is emitted by `vite build` and served as a static file
+    // in production; the dev server runs Vite in Express middleware mode, where
+    // the transformed dev SW does not resolve reliably. The manifest + icons are
+    // still present in dev for inspection.
+    devOptions: { enabled: false },
+    manifest: {
+      name: "Connect Tutors BD",
+      short_name: "Connect Tutors",
+      description: "Coordinator-matched tutors for students and guardians in Bangladesh.",
+      id: "/",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      orientation: "portrait",
+      background_color: "#f5f8ff",
+      theme_color: "#1677E8",
+      icons: [
+        { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
+        { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+        { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
+        { src: "maskable-icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ],
+    },
+    workbox: {
+      globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      navigateFallbackDenylist: [/^\/api\//, /^\/storage/, /^\/oauth/],
+      cleanupOutdatedCaches: true,
+      inlineWorkboxRuntime: true,
+      maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+    },
+  }),
+];
 
 export default defineConfig({
   plugins,
