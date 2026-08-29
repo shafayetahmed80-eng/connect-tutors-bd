@@ -717,20 +717,20 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   return <div className={presentation.rootClassName}>
     {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
     <main className={embedded ? "py-0" : "px-4 py-10 sm:px-6 lg:py-16"}><div className={embedded ? "max-w-none" : "mx-auto max-w-5xl"}><div className="grid gap-7 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
-      <aside className="relative overflow-hidden rounded-[2rem] bg-j-rail p-7 text-white shadow-[0_18px_46px_rgba(13,93,157,.2)] sm:p-10 lg:sticky lg:top-8 lg:self-start">
+      <aside className="relative order-2 overflow-hidden rounded-[2rem] bg-j-rail p-7 text-white shadow-[0_18px_46px_rgba(13,93,157,.2)] sm:p-10 lg:sticky lg:top-8 lg:order-1 lg:self-start">
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
         <div className="relative">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[.16em] text-[#c5edff]"><ShieldCheck size={14} aria-hidden="true" /> Guided Tutor matching</p>
-          <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-.045em] sm:text-4xl">Find the right Tutor with confidence.</h1>
-          <p className="mt-5 leading-7 text-[#d7efff]">Share your learning needs, schedule, and budget. Our team will manually match you with suitable Tutors.</p>
-          <div className="mt-8 space-y-4 rounded-2xl border border-white/15 bg-j-rail-panel/80 p-5 text-sm leading-6 text-[#e0f4ff] backdrop-blur-sm">
+          <h1 className="mt-5 hidden text-3xl font-extrabold leading-tight tracking-[-.045em] sm:text-4xl lg:block">Find the right Tutor with confidence.</h1>
+          <p className="mt-5 hidden leading-7 text-[#d7efff] lg:block">Share your learning needs, schedule, and budget. Our team will manually match you with suitable Tutors.</p>
+          <div className="mt-6 space-y-4 rounded-2xl border border-white/15 bg-j-rail-panel/80 p-5 text-sm leading-6 text-[#e0f4ff] backdrop-blur-sm lg:mt-8">
             <p className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Your phone, email, student name, and notes stay private from public profiles and Tutor inboxes.</p>
             <p className="flex gap-3"><Phone className="mt-0.5 shrink-0 text-[#ffd37a]" size={18} /> Questions before you begin? Call +880 1516 131411.</p>
           </div>
         </div>
       </aside>
-      <section className="rounded-[2rem] border border-j-border bg-white p-5 shadow-[0_18px_55px_rgba(28,101,148,.1)] sm:p-9">
+      <section className="order-1 rounded-[2rem] border border-j-border bg-white p-5 shadow-[0_18px_55px_rgba(28,101,148,.1)] sm:p-9 lg:order-2">
         <JourneyProgress activeStep={stageProgress} ariaLabel="Tutor request journey progress" steps={stageSteps} />
         {stage !== "success" && journeyError ? <p role="alert" className="mt-6 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {stage === "success" ? <SuccessState requestId={requestId} /> : null}

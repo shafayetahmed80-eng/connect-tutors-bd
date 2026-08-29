@@ -175,7 +175,7 @@ export default function JoinTutor() {
         <JourneyProgress activeStep={activeStep} ariaLabel="Tutor registration progress" steps={tutorRegistrationSteps} />
 
         <form noValidate onSubmit={submitRegistration} className="mx-auto mt-5 rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-8">
-          {activeStep === 1 ? <section aria-labelledby="tutor-account-step-title">
+          {activeStep === 1 ? <section aria-labelledby="tutor-account-step-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
             <div className="mb-7 border-b border-[#e6eef4] pb-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-j-accent">Step 1 of 2</p>
               <h2 id="tutor-account-step-title" className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-j-ink">Create your secure account</h2>
@@ -193,7 +193,7 @@ export default function JoinTutor() {
               <p className="text-sm text-[#59748b]">Already registered? <Link href={TUTOR_SIGN_IN_HREF} className="font-extrabold text-j-accent underline underline-offset-2">Sign in with email or mobile</Link></p>
               <button type="button" onClick={continueToLocation} className={primaryButton}>Continue to location <ArrowRight size={17} /></button>
             </div>
-          </section> : <section aria-labelledby="tutor-location-step-title">
+          </section> : <section aria-labelledby="tutor-location-step-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
             <div className="mb-7 border-b border-[#e6eef4] pb-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-j-accent">Step 2 of 2</p>
               <h2 id="tutor-location-step-title" className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-j-ink">Choose where you want to teach</h2>
