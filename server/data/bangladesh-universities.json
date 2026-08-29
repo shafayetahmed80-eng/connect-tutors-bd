@@ -1,0 +1,5186 @@
+{
+  "meta": {
+    "country": "Bangladesh",
+    "hierarchy": "University > Faculty/School > Department/Subject",
+    "total_universities": 171,
+    "public_universities": 63,
+    "private_universities": 106,
+    "public_with_full_data": 48,
+    "private_with_full_data": 44,
+    "generated_by": "Manus AI",
+    "notes": "Non-functional institutions flagged. Name-only entries need official-site verification."
+  },
+  "public_universities": [
+    {
+      "name": "Aviation and Aerospace University, Bangladesh (formerly Bangabandhu Sheikh Mujibur Rahman Aviation and Aerospace University)",
+      "location": "Tejgaon, Dhaka (permanent campus: Lalmonirhat)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering (Aviation and Aerospace)",
+          "departments": [
+            "B.Sc. in Aerospace Engineering",
+            "B.Sc. in Avionics Engineering",
+            "B.Sc. in Aircraft Maintenance Engineering (Aerospace)",
+            "B.Sc. in Aircraft Maintenance Engineering (Avionics)"
+          ]
+        },
+        {
+          "name": "Postgraduate Programs",
+          "departments": [
+            "MBA in Aviation Management",
+            "M.Sc. in Aviation Safety and Accident Investigation",
+            "LLM in International Air and Space Law",
+            "M.Sc./M.Engg. in Space System Engineering",
+            "M.Sc./M.Engg. in Satellite Communication Engineering"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh Agricultural University",
+      "location": "Mymensingh",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agricultural Chemistry",
+            "Department of Agricultural Extension Education",
+            "Department of Agroforestry",
+            "Department of Agrometeorology",
+            "Department of Agronomy",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Biotechnology",
+            "Department of Crop Botany",
+            "Department of Entomology",
+            "Department of Environmental Science",
+            "Department of Genetics and Plant Breeding",
+            "Department of Horticulture",
+            "Department of Languages",
+            "Department of Physics",
+            "Department of Plant Pathology",
+            "Department of Seed Science and Technology",
+            "Department of Soil Science"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Economics and Rural Sociology",
+          "departments": [
+            "Department of Agribusiness and Marketing",
+            "Department of Agricultural Economics",
+            "Department of Agricultural Finance and Banking",
+            "Department of Agricultural and Applied Statistics",
+            "Department of Rural Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Mathematics",
+            "Department of Farm Power and Machinery",
+            "Department of Farm Structure and Environmental Engineering",
+            "Department of Food Technology and Rural Industries",
+            "Department of Irrigation and Water Management"
+          ]
+        },
+        {
+          "name": "Faculty of Animal Husbandry",
+          "departments": [
+            "Department of Animal Breeding and Genetics",
+            "Department of Animal Nutrition",
+            "Department of Animal Science",
+            "Department of Dairy Science",
+            "Department of Poultry Science"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Aquaculture",
+            "Department of Fisheries Biology and Genetics",
+            "Department of Fisheries Management",
+            "Department of Fisheries Technology",
+            "Department of Marine Fisheries Science"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary Science",
+          "departments": [
+            "Department of Anatomy and Histology",
+            "Department of Medicine",
+            "Department of Microbiology and Hygiene",
+            "Department of Parasitology",
+            "Department of Pathology",
+            "Department of Pharmacology",
+            "Department of Physiology",
+            "Department of Surgery and Obstetrics"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh Maritime University (formerly Bangabandhu Sheikh Mujibur Rahman Maritime University)",
+      "location": "Mirpur-12, Dhaka (Permanent: Hamidchar, Chittagong)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Earth and Ocean Science",
+          "departments": [
+            "BSc (Hons) in Oceanography",
+            "BSc (Hons) in Marine Fisheries and Aquaculture"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "BSc in Naval Architecture and Offshore Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Shipping Administration",
+          "departments": [
+            "BBA in Port Management and Logistics"
+          ]
+        },
+        {
+          "name": "Faculty of Maritime Governance and Policy",
+          "departments": [
+            "LLB in Maritime Law"
+          ]
+        },
+        {
+          "name": "Faculty of Computer Science and Informatics",
+          "departments": [
+            "Maritime Informatics Programs (Postgraduate)"
+          ]
+        },
+        {
+          "name": "Faculty of Maritime Business Studies",
+          "departments": [
+            "Maritime Business Programs (Postgraduate)"
+          ]
+        },
+        {
+          "name": "Faculty of General Studies",
+          "departments": [
+            "General Studies Programs (Postgraduate)"
+          ]
+        },
+        {
+          "name": "Bachelor of Marine Science",
+          "departments": [
+            "Bachelor of Marine Science (Marine Officer Cadets, Bangladesh Navy)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh Medical University (formerly Bangabandhu Sheikh Mujib Medical University, BSMMU)",
+      "location": "Shahbag, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Postgraduate Medicine Programs (MD, M.Phil., PhD)"
+          ]
+        },
+        {
+          "name": "Faculty of Surgery",
+          "departments": [
+            "Postgraduate Surgery Programs (MS, M.Phil., PhD)"
+          ]
+        },
+        {
+          "name": "Faculty of Basic Science and Para-Clinical Science",
+          "departments": [
+            "Basic and Para-Clinical Science Programs (M.Phil., PhD)"
+          ]
+        },
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "Postgraduate Dentistry Programs (MDS, M.Phil., PhD)"
+          ]
+        },
+        {
+          "name": "Faculty of Paediatrics",
+          "departments": [
+            "Postgraduate Paediatrics Programs (MD, FCPS)"
+          ]
+        },
+        {
+          "name": "Faculty of Medical Technology",
+          "departments": [
+            "Medical Technology Programs (M.Med.Tech., M.Phil.)"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing",
+          "departments": [
+            "Nursing Programs (BSN, MSN)"
+          ]
+        },
+        {
+          "name": "Faculty of Preventive and Social Medicine",
+          "departments": [
+            "Preventive and Social Medicine Programs (MPH, PhD)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh Open University (BOU)",
+      "location": "Board Bazar, Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Education",
+          "departments": [
+            "Bachelor of Education (BEd)",
+            "Master of Education (MEd)",
+            "Certificate in Education (CEd)"
+          ]
+        },
+        {
+          "name": "School of Social Science, Humanities & Languages",
+          "departments": [
+            "Bangla",
+            "Political Science",
+            "Economics",
+            "Sociology",
+            "English Language and Literature",
+            "History",
+            "Islamic History and Culture",
+            "Bachelor of Law (LLB Honours)",
+            "Bachelor of English Language Teaching (BELT)"
+          ]
+        },
+        {
+          "name": "School of Business",
+          "departments": [
+            "Bachelor of Business Administration (BBA)",
+            "Master of Business Administration (MBA)",
+            "Professional MBA (PMBA)",
+            "Commonwealth Executive MBA (CEMBA)",
+            "Commonwealth Executive MPA (CEMPA)",
+            "Post Graduate Diploma in Management (PGDM)",
+            "Certificate in Management (CIM)"
+          ]
+        },
+        {
+          "name": "School of Agriculture & Rural Development",
+          "departments": [
+            "Bachelor of Agricultural Education (B.Ag.Ed)",
+            "Agronomy",
+            "Entomology",
+            "Soil Science",
+            "Irrigation and Water Management",
+            "Aquaculture",
+            "Poultry Science",
+            "Diploma in Youth in Development Work",
+            "Certificate in Livestock & Poultry"
+          ]
+        },
+        {
+          "name": "School of Science & Technology",
+          "departments": [
+            "Bachelor of Science in Mathematics",
+            "Master of Science (various subjects)",
+            "Graduate Diploma programmes"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University of Engineering and Technology (BUET)",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Chemical Engineering",
+            "Department of Materials and Metallurgical Engineering",
+            "Department of Nanomaterials and Ceramic Engineering",
+            "Department of Civil Engineering",
+            "Department of Water Resources Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Naval Architecture and Marine Engineering",
+            "Department of Industrial and Production Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Biomedical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Architecture and Planning",
+          "departments": [
+            "Department of Architecture",
+            "Department of Urban and Regional Planning"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University of Professionals",
+      "location": "Mirpur Cantonment, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business Studies (FBS)",
+          "departments": [
+            "Department of Business Administration General",
+            "Department of Accounting and Information Systems (AIS)",
+            "Department of Finance and Banking",
+            "Department of Management Studies",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Social Sciences (FASS)",
+          "departments": [
+            "Department of Sociology",
+            "Department of English",
+            "Department of Economics",
+            "Department of Development Studies",
+            "Department of Public Administration",
+            "Department of Disaster Management and Resilience"
+          ]
+        },
+        {
+          "name": "Faculty of Security and Strategic Studies (FSSS)",
+          "departments": [
+            "Department of Law",
+            "Department of International Relations",
+            "Department of Mass Communication and Journalism",
+            "Department of Peace, Conflict and Human Rights"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Technology (FST)",
+          "departments": [
+            "Department of Information and Communication Engineering (ICE)",
+            "Department of Environmental Science",
+            "Department of Computer Science and Engineering (CSE)"
+          ]
+        },
+        {
+          "name": "Faculty of Medical Studies (FMS)",
+          "departments": [
+            "Department of Public Health and Informatics",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Business and Social Sciences (FBSS) - Bangladesh Military Academy",
+          "departments": [
+            "Department of International Relations (BMA)",
+            "Department of Business Administration (BMA)",
+            "Department of Economics (BMA)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University of Textiles",
+      "location": "Tejgaon Industrial Area, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Textile Technology and Engineering",
+          "departments": [
+            "Department of Textile Engineering",
+            "Department of Apparel Engineering",
+            "Department of Textile and Fashion Merchandising",
+            "Department of Industrial and Production Engineering",
+            "Department of Business Administration",
+            "Department of Marketing",
+            "Department of Mathematics and Physical Sciences"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Begum Rokeya University, Rangpur",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bangla",
+            "Department of English",
+            "Department of History and Archaeology"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Sociology",
+            "Department of Political Science",
+            "Department of Gender and Development Studies",
+            "Department of Mass Communication and Journalism",
+            "Department of Public Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Management Studies",
+            "Department of Marketing",
+            "Department of Finance and Banking",
+            "Department of Management Information Systems"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Statistics",
+            "Department of Physics",
+            "Department of Chemistry"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Life and Earth Sciences",
+          "departments": [
+            "Department of Geography and Environmental Science",
+            "Department of Disaster Management"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bogura Science and Technology University",
+      "location": "Bogura",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Chandpur Science and Technology University (CSTU)",
+      "location": "Chandpur (temporary campus), Chattogram Division",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Information and Communication Technology",
+            "Department of Electrical and Electronics Engineering (Proposed)",
+            "Department of Naval Architecture and Marine Engineering (Proposed)",
+            "Department of Textile Engineering (Proposed)",
+            "Department of Civil Engineering (Proposed)",
+            "Department of Mechanical Engineering (Proposed)",
+            "Department of Georesource Engineering (Proposed)",
+            "Department of Architecture (Proposed)"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chattogram Veterinary and Animal Sciences University",
+      "location": "Khulshi, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Veterinary Medicine",
+          "departments": [
+            "Department of Anatomy and Histology",
+            "Department of Physiology Biochemistry and Pharmacology",
+            "Department of Animal Science and Nutrition",
+            "Department of Microbiology and Veterinary Public Health",
+            "Department of Pathology and Parasitology",
+            "Department of Genetics and Animal Breeding",
+            "Department of Dairy and Poultry Science",
+            "Department of Agricultural Economics and Social Science",
+            "Department of Medicine and Surgery"
+          ]
+        },
+        {
+          "name": "Faculty of Food Science and Technology",
+          "departments": [
+            "Department of Physical and Mathematical Sciences",
+            "Department of Applied Chemistry and Chemical Technology",
+            "Department of Applied Food Science and Nutrition",
+            "Department of Food Processing and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Fish Biology and Biotechnology",
+            "Department of Aquaculture",
+            "Department of Marine Bioresource Science",
+            "Department of Fisheries Resource Management",
+            "Department of Fishing and Post-Harvest Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Biotechnology and Genetic Engineering",
+          "departments": [
+            "Department of Cellular and Molecular Biology",
+            "Department of Industrial Biotechnology",
+            "Department of Environmental Biotechnology",
+            "Department of Bioprocess and Genetic Engineering",
+            "Department of Genomics and Bioinformatics"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "One Health Institute",
+            "Institute of Food Safety and Nutrition (IFSN)",
+            "Poultry Research and Training Centre (PRTC)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chittagong Medical University",
+      "location": "Faujdarhat, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Medicine",
+            "Department of Dental Science"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing & Institute of Health Technology (IHT)",
+          "departments": [
+            "Department of Nursing",
+            "Department of Health Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chittagong University of Engineering and Technology",
+      "location": "Raozan, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Electrical and Computer Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electronic and Telecommunication Engineering",
+            "Department of Biomedical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Civil and Environmental Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Water Resources Engineering",
+            "Department of Disaster Engineering and Management"
+          ]
+        },
+        {
+          "name": "Faculty of Mechanical and Manufacturing Engineering",
+          "departments": [
+            "Department of Mechanical Engineering",
+            "Department of Petroleum and Mining Engineering",
+            "Department of Mechatronics and Industrial Engineering",
+            "Department of Materials and Metallurgical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Architecture and Planning",
+          "departments": [
+            "Department of Architecture",
+            "Department of Urban and Regional Planning",
+            "Department of Humanities"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Department of Physics (Postgraduate)",
+            "Department of Mathematics (Postgraduate)",
+            "Department of Chemistry (Postgraduate)",
+            "Department of Nuclear Engineering (Postgraduate)"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "Institute of Information and Communication Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Comilla University",
+      "location": "Kotbari, Cumilla",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Information and Communication Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Statistics",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Arts Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Department of Bangla",
+            "Department of English"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Mass Communication and Journalism",
+            "Department of Public Administration",
+            "Department of Archaeology",
+            "Department of Anthropology"
+          ]
+        },
+        {
+          "name": "Faculty of Business",
+          "departments": [
+            "Department of Management Studies",
+            "Department of Marketing",
+            "Department of Accounting and Information Systems",
+            "Department of Finance and Banking"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dhaka Central University (DCU)",
+      "location": "Sher-e-Bangla Nagar, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Dhaka University of Engineering and Technology (DUET)",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Civil Engineering",
+          "departments": [
+            "Department of Civil Engineering (CE)",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Electrical and Electronic Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering (EEE)",
+            "Department of Computer Science and Engineering (CSE)",
+            "Department of Biomedical Engineering (BME)",
+            "Department of Electronic and Communication Engineering (ECE)"
+          ]
+        },
+        {
+          "name": "Faculty of Mechanical Engineering",
+          "departments": [
+            "Department of Mechanical Engineering (ME)",
+            "Department of Textile Engineering (TE)",
+            "Department of Food Engineering (FE)",
+            "Department of Chemical Engineering (ChE)",
+            "Department of Industrial and Production Engineering (IPE)",
+            "Department of Materials and Metallurgical Engineering (MME)"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Humanities and Social Sciences"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gazipur Agricultural University (GAU, formerly BSMRAU)",
+      "location": "South Salna, Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agricultural Extension and Rural Development",
+            "Department of Agroforestry and Environment",
+            "Department of Agronomy",
+            "Department of Agro-processing",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Environmental Science",
+            "Department of Biotechnology",
+            "Department of Computer Science and Information Technology",
+            "Department of Crop Botany",
+            "Department of Entomology",
+            "Department of Genetics and Plant Breeding",
+            "Department of Horticulture",
+            "Department of Plant Pathology",
+            "Department of Soil Science",
+            "Department of Seed Science and Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Aquaculture",
+            "Department of Fisheries Biology and Aquatic Environment",
+            "Department of Fisheries Management",
+            "Department of Fisheries Technology",
+            "Department of Genetics and Fish Breeding"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary Medicine and Animal Science",
+          "departments": [
+            "Department of Anatomy & Histology",
+            "Department of Animal Breeding & Genetics",
+            "Department of Animal Science & Nutrition",
+            "Department of Dairy & Poultry Science",
+            "Department of Gynecology, Obstetrics & Reproductive Health",
+            "Department of Medicine",
+            "Department of Microbiology & Public Health",
+            "Department of Pathobiology",
+            "Department of Physiology & Pharmacology",
+            "Department of Surgery & Radiology"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Economics and Rural Development",
+          "departments": [
+            "Department of Agricultural Economics",
+            "Department of Agribusiness",
+            "Department of Agricultural Finance & Cooperatives",
+            "Department of Rural Development",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural and Bioresources Engineering",
+          "departments": [
+            "Department of Farm Machinery and Precision Engineering",
+            "Department of Irrigation and Water Resources Management",
+            "Department of Structures and Environmental Engineering",
+            "Department of Computer Science and Information Technology",
+            "Department of Food Engineering"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gopalganj Science and Technology University (formerly Bangabandhu Sheikh Mujibur Rahman Science and Technology University)",
+      "location": "Gopalganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Applied Chemistry and Chemical Engineering",
+            "Department of Civil Engineering",
+            "Department of Food Engineering",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Statistics",
+            "Department of Environmental Science and Disaster Management"
+          ]
+        },
+        {
+          "name": "Faculty of Life Science",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Biotechnology and Genetic Engineering",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Botany",
+            "Department of Psychology"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agriculture",
+            "Department of Fisheries and Marine Bioscience"
+          ]
+        },
+        {
+          "name": "Faculty of Animal Science and Veterinary Medicine",
+          "departments": [
+            "Department of Animal Science and Veterinary Medicine"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of English",
+            "Department of Bangla",
+            "Department of History"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Sociology",
+            "Department of Public Administration",
+            "Department of International Relations",
+            "Department of Political Science"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Management Studies",
+            "Department of Accounting and Information System",
+            "Department of Marketing",
+            "Department of Finance and Banking",
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gopalganj Science and Technology University (Gopalganj STU)",
+      "location": "Gopalganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Habiganj Agricultural University (HAU)",
+      "location": "Vadoi, Habiganj Sadar, Habiganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Soil Science",
+            "Agricultural Chemistry",
+            "Agronomy",
+            "Horticulture",
+            "Agroforestry",
+            "Entomology",
+            "Plant Pathology",
+            "Genetics and Plant Breeding",
+            "Agricultural Botany",
+            "Agricultural Extension",
+            "Environmental Science"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Computer Science",
+            "Language Science",
+            "Biochemistry and Molecular Biology",
+            "Genetics and Biotechnology",
+            "Statistics",
+            "Mathematics",
+            "Data Science",
+            "Spatial Informatics"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary Medicine and Animal Science",
+          "departments": [
+            "Anatomy",
+            "Physiology",
+            "Veterinary Surgery",
+            "Epidemiology and Population Veterinary Medicine",
+            "Clinical Veterinary Medicine",
+            "Theriogenology",
+            "Animal Nutrition and Feed Technology",
+            "Animal Science",
+            "Genetics and Animal Breeding",
+            "Parasitology",
+            "Microbiology and Public Health",
+            "Pathology",
+            "Pharmacology",
+            "Meat Production",
+            "Poultry Production",
+            "Dairy Production"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Aquaculture Technology and Nutrition",
+            "Aquaculture",
+            "Aquatic Animal Health Management",
+            "Fish Pathogens and Pathology",
+            "Inland Aquatic Resource Management",
+            "Coastal and Marine Fisheries Management",
+            "Fisheries Technology",
+            "Aquatic Product Development and Quality Control",
+            "Fisheries Genetics and Breeding",
+            "Fisheries Biology and Biodiversity"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hajee Mohammad Danesh Science and Technology University",
+      "location": "Dinajpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agriculture"
+          ]
+        },
+        {
+          "name": "Faculty of Computer Science and Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electronics and Communication Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting",
+            "Department of Marketing",
+            "Department of Management",
+            "Department of Finance and Banking"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Fisheries"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary and Animal Science",
+          "departments": [
+            "Department of Veterinary Medicine",
+            "Department of Medicine, Surgery and Obstetrics"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Food and Process Engineering",
+            "Department of Agricultural Engineering",
+            "Department of Architecture",
+            "Department of Civil Engineering",
+            "Department of Mechanical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science and Humanities",
+          "departments": [
+            "Department of English",
+            "Department of Economics",
+            "Department of Sociology",
+            "Department of Development Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Postgraduate Studies",
+          "departments": [
+            "Postgraduate Programs (PhD, MA, MS, MBA)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Islamic Arabic University (IAU)",
+      "location": "Mohammadpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Special Structure - Madrasah Supervision",
+          "departments": [
+            "Fazil (Bachelor of Islamic Arabic Studies)",
+            "Kamil (Master of Islamic Arabic Studies)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Islamic University, Bangladesh",
+      "location": "Kushtia-Jhenaidah",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Theology and Islamic Studies",
+          "departments": [
+            "Department of Al-Quran and Islamic Studies",
+            "Department of Al-Hadith and Islamic Studies",
+            "Department of Comparative Tafsir",
+            "Department of As-Sirah An-Nabawiyyah"
+          ]
+        },
+        {
+          "name": "Faculty of Islamic and Comparative Religion",
+          "departments": [
+            "Department of Arabic Language and Literature",
+            "Department of Bengali",
+            "Department of English",
+            "Department of Islamic History and Culture",
+            "Department of Fine Arts"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Applied Chemistry and Chemical Engineering",
+            "Department of Information and Communication Technology",
+            "Department of Biomedical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Sciences",
+          "departments": [
+            "Department of Biotechnology and Genetic Engineering",
+            "Department of Applied Nutrition and Food Technology",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Sciences",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Statistics and Data Science",
+            "Department of Environmental Science and Geography",
+            "Department of Physical Education and Sports Science"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Management",
+            "Department of Finance and Banking",
+            "Department of Marketing",
+            "Department of Human Resources Management",
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bengali",
+            "Department of English",
+            "Department of Islamic History and Culture",
+            "Department of Fine Arts"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Economics",
+            "Department of Public Administration",
+            "Department of Political Science",
+            "Department of Folklore and Social Studies",
+            "Department of Development Studies",
+            "Department of Social Welfare",
+            "Department of Communication and Multimedia Journalism"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law",
+            "Department of Al-Fiqh and Law",
+            "Department of Law and Land Administration"
+          ]
+        },
+        {
+          "name": "Institute of Islamic Education and Research",
+          "departments": [
+            "Institute of Islamic Education and Research"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jagannath University",
+      "location": "Sadarghat, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Life and Earth Sciences",
+          "departments": [
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Microbiology",
+            "Department of Pharmacy",
+            "Department of Zoology",
+            "Department of Botany",
+            "Department of Psychology",
+            "Department of Geography and Environment",
+            "Department of Genetic Engineering and Biotechnology"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Computer Science and Engineering (CSE)",
+            "Department of Mathematics",
+            "Department of Chemistry",
+            "Department of Physics",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Finance",
+            "Department of Management Studies",
+            "Department of Marketing",
+            "Department of Accounting and Information Systems"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bengali",
+            "Department of English",
+            "Department of History",
+            "Department of Philosophy",
+            "Department of Islamic History and Culture",
+            "Department of Islamic Studies",
+            "Department of Theatre",
+            "Institute of Education Research",
+            "Institute of Modern Languages"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law",
+            "Department of Law and Land Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Sociology",
+            "Department of Anthropology",
+            "Department of Economics",
+            "Department of Political Science",
+            "Department of Public Administration",
+            "Department of Social Work",
+            "Department of Mass Communication and Journalism",
+            "Department of Film and Television"
+          ]
+        },
+        {
+          "name": "Faculty of Fine Arts",
+          "departments": [
+            "Department of Fine Arts",
+            "Department of Drama and Dramatics",
+            "Department of Music"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jahangirnagar University",
+      "location": "Savar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Mathematical and Physical Sciences",
+          "departments": [
+            "Department of Chemistry",
+            "Department of Computer Science and Engineering",
+            "Department of Environmental Sciences",
+            "Department of Geological Sciences",
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Statistics and Data Science"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Anthropology",
+            "Department of Economics",
+            "Department of Geography and Environment",
+            "Department of Government and Politics",
+            "Department of Public Administration",
+            "Department of Urban and Regional Planning"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Department of Archaeology",
+            "Department of Bangla",
+            "Department of English",
+            "Department of Drama and Dramatics",
+            "Department of Fine Arts",
+            "Department of History",
+            "Department of International Relations",
+            "Department of Journalism and Media Studies",
+            "Department of Philosophy"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Sciences",
+          "departments": [
+            "Department of Botany",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Biotechnology and Genetic Engineering",
+            "Department of Microbiology",
+            "Department of Pharmacy",
+            "Department of Public Health and Informatics",
+            "Department of Zoology"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Finance and Banking",
+            "Department of Marketing",
+            "Department of Management Studies",
+            "Institute of Business Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law and Justice"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jamalpur Science and Technology University",
+      "location": "Jamalpur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Jashore University of Science and Technology",
+      "location": "Jashore",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Chemical Engineering",
+            "Department of Biomedical Engineering",
+            "Department of Textile Engineering",
+            "Department of Petroleum and Mining Engineering",
+            "Department of Industrial and Production Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Applied Science and Technology",
+          "departments": [
+            "Department of Environmental Science and Technology",
+            "Department of Nutrition and Food Technology",
+            "Department of Agro Product Processing Technology",
+            "Department of Climate and Disaster Management"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Science and Technology",
+          "departments": [
+            "Department of Microbiology",
+            "Department of Fisheries and Marine Bioscience",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Pharmacy",
+            "Department of Biochemistry and Molecular Biology"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Social Science",
+          "departments": [
+            "Department of English"
+          ]
+        },
+        {
+          "name": "Faculty of Health Science",
+          "departments": [
+            "Department of Physiotherapy and Rehabilitation",
+            "Department of Nursing and Health Science",
+            "Department of Physical Education and Sports Science"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Applied Statistics and Data Science"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Finance and Banking",
+            "Department of Management",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary Medicine and Animal Sciences",
+          "departments": [
+            "Department of Veterinary Science and Animal Husbandry"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jatiya Kabi Kazi Nazrul Islam University",
+      "location": "Trishal, Mymensingh",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Environmental Science and Engineering",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bangla Language and Literature",
+            "Department of English Language and Literature",
+            "Department of Theatre and Performance Studies",
+            "Department of Music",
+            "Department of Film and Media Studies",
+            "Department of Philosophy",
+            "Department of History"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Finance and Banking",
+            "Department of Human Resource Management",
+            "Department of Management",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Public Administration and Governance Studies",
+            "Department of Local Government and Urban Development",
+            "Department of Folklore",
+            "Department of Anthropology",
+            "Department of Population Sciences",
+            "Department of Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Fine Arts",
+          "departments": [
+            "Department of Fine Arts"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law and Justice"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna Agricultural University (KAU)",
+      "location": "Deana, Daulatpur, Khulna (temporary); Arangghata, Khulna (permanent)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Veterinary, Animal and Biomedical Sciences",
+          "departments": [
+            "Department of Anatomy and Histology",
+            "Department of Physiology",
+            "Department of Pharmacology and Toxicology",
+            "Department of Microbiology and Public Health",
+            "Department of Livestock Production and Management",
+            "Department of Pathology",
+            "Department of Parasitology",
+            "Department of Genetics and Animal Breeding",
+            "Department of Dairy Science",
+            "Department of Poultry Science",
+            "Department of Epidemiology and Preventive Medicine",
+            "Department of Animal Nutrition",
+            "Department of Medicine",
+            "Department of Surgery",
+            "Department of Theriogenology"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agronomy",
+            "Department of Soil Science",
+            "Department of Entomology",
+            "Department of Horticulture",
+            "Department of Plant Pathology",
+            "Department of Crop Botany",
+            "Department of Plant Genetics and Biotechnology",
+            "Department of Agricultural Extension and Information Systems",
+            "Department of Agroforestry",
+            "Department of Agricultural Chemistry",
+            "Department of Biochemistry and Molecular Biology"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries and Ocean Sciences",
+          "departments": [
+            "Department of Fishery Biology and Genetics",
+            "Department of Aquaculture",
+            "Department of Fishery Resources Conservation and Management",
+            "Department of Fisheries Technology and Quality Control",
+            "Department of Oceanography",
+            "Department of Fish Health Management"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Economics and Agribusiness Studies",
+          "departments": [
+            "Department of Agricultural Economics",
+            "Department of Sociology and Rural Development",
+            "Department of Agribusiness and Marketing",
+            "Department of Agricultural Statistics and Bioinformatics",
+            "Department of Agricultural Finance, Co-operative and Banking",
+            "Department of Language and Communication Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Engineering and Technology",
+          "departments": [
+            "Department of Farm Structure",
+            "Department of Farm Power and Machinery",
+            "Department of Irrigation and Water Management",
+            "Department of Computer Science and Engineering",
+            "Department of Mathematics and Physics"
+          ]
+        },
+        {
+          "name": "Faculty of Food Sciences and Safety",
+          "departments": [
+            "Department of Food Engineering and Technology",
+            "Department of Food Nutrition",
+            "Department of Quality Control and Safety Management",
+            "Department of Bioprocess Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Environment, Disaster Risks and Agro-Climatic Studies",
+          "departments": [
+            "Department of Environment and Agroclimatic Studies",
+            "Department of Forestry and Mangrove Studies",
+            "Department of Wildlife Ecology",
+            "Department of Disaster Risk Management"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna Medical University (KMU)",
+      "location": "Nirala, Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Medicine",
+            "Department of Dental Science"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing & Institute of Health Technology (IHT)",
+          "departments": [
+            "Department of Nursing",
+            "Department of Health Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna University",
+      "location": "Gollamari, Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Science, Engineering and Technology",
+          "departments": [
+            "Discipline of Architecture",
+            "Discipline of Chemistry",
+            "Discipline of Computer Science and Engineering",
+            "Discipline of Electronics and Communication Engineering",
+            "Discipline of Mathematics",
+            "Discipline of Physics",
+            "Discipline of Statistics",
+            "Discipline of Urban and Rural Planning"
+          ]
+        },
+        {
+          "name": "School of Life Science",
+          "departments": [
+            "Discipline of Agrotechnology",
+            "Discipline of Biotechnology and Genetic Engineering",
+            "Discipline of Environmental Science",
+            "Discipline of Fisheries and Marine Resources Technology",
+            "Discipline of Forestry and Wood Technology",
+            "Discipline of Pharmacy",
+            "Discipline of Soil, Water and Environment"
+          ]
+        },
+        {
+          "name": "School of Management and Business Administration",
+          "departments": [
+            "Discipline of Business Administration",
+            "Discipline of Human Resource Management"
+          ]
+        },
+        {
+          "name": "School of Social Science",
+          "departments": [
+            "Discipline of Economics",
+            "Discipline of Sociology",
+            "Discipline of Development Studies",
+            "Discipline of Mass Communication and Journalism"
+          ]
+        },
+        {
+          "name": "School of Arts and Humanities",
+          "departments": [
+            "Discipline of Bangla",
+            "Discipline of English"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": [
+            "Discipline of Law"
+          ]
+        },
+        {
+          "name": "School of Fine Arts",
+          "departments": [
+            "Fine Arts (BFA, MFA)"
+          ]
+        },
+        {
+          "name": "School of Education",
+          "departments": [
+            "Institute of Education and Research"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna University of Engineering and Technology",
+      "location": "Teligati, Fulbarigate, Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Civil Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Urban and Regional Planning",
+            "Department of Architecture",
+            "Department of Building Engineering and Construction Management"
+          ]
+        },
+        {
+          "name": "Faculty of Electrical and Electronic Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electronics and Communication Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Mechanical Engineering",
+          "departments": [
+            "Department of Mechanical Engineering",
+            "Department of Industrial Engineering and Management (Industrial and Production Engineering)",
+            "Department of Mechatronics Engineering",
+            "Department of Materials Science and Engineering",
+            "Department of Chemical Engineering",
+            "Department of Energy Science and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Humanities",
+          "departments": [
+            "Department of Biomedical Engineering",
+            "Department of Leather Engineering",
+            "Department of Textile Engineering"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "Institute of Information and Communication Technology (IICT)",
+            "Institute of Disaster Management (IDM)",
+            "Institute of Environment and Power Technology (IEPT)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kishoreganj University",
+      "location": "Kishoreganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Kurigram Agriculture University",
+      "location": "Kurigram",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Lakshmipur Science and Technology University (LSTU)",
+      "location": "Charshahi, Chandragonj, Lakshmipur Sadar, Lakshmipur",
+      "status": "In establishment",
+      "faculties": []
+    },
+    {
+      "name": "Mawlana Bhashani Science and Technology University",
+      "location": "Santosh, Tangail (Sirajganj Campus also)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Information and Communication Technology",
+            "Department of Textile Engineering",
+            "Department of Mechanical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Life Science",
+          "departments": [
+            "Department of Environmental Science and Resource Management",
+            "Department of Criminology and Police Science",
+            "Department of Food Technology and Nutrition Science",
+            "Department of Biotechnology and Genetic Engineering",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Pharmacy",
+            "Department of Physiotherapy and Rehabilitation"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Statistics and Data Science"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting",
+            "Department of Management"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of English"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary Medicine and Animal Sciences",
+          "departments": [
+            "Department of Veterinary Science and Animal Husbandry"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Meherpur University",
+      "location": "Meherpur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Military Institute of Science and Technology",
+      "location": "Mirpur Cantonment, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Civil Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Civil, Environmental, Water Resources and Coastal Engineering",
+            "Department of Petroleum and Mining Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Electrical and Computer Engineering",
+          "departments": [
+            "Department of Electrical, Electronic and Communication Engineering",
+            "Department of Computer Science and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Mechanical Engineering",
+          "departments": [
+            "Department of Mechanical Engineering",
+            "Department of Aeronautical Engineering",
+            "Department of Naval Architecture and Marine Engineering",
+            "Department of Industrial and Production Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Biomedical and Nuclear Engineering",
+          "departments": [
+            "Department of Nuclear Science and Engineering",
+            "Department of Biomedical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Architecture and Planning",
+          "departments": [
+            "Department of Architecture",
+            "Department of Urban and Regional Planning (URP)"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Humanities",
+          "departments": [
+            "Department of Mathematics and Data Science",
+            "Department of Chemistry and Nanoscience",
+            "Department of Science and Humanities"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Naogaon University",
+      "location": "Naogaon (Baludanga temporary campus), Rajshahi Division",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Narayanganj Science and Technology University",
+      "location": "Narayanganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "National University",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Arabic",
+            "Department of Bengali",
+            "Department of English",
+            "Department of Pali",
+            "Department of Sanskrit",
+            "Department of History",
+            "Department of Islamic History & Culture",
+            "Department of Islamic Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Fine Arts",
+          "departments": [
+            "Faculty of Fine Arts (Professional)"
+          ]
+        },
+        {
+          "name": "Faculty of Education",
+          "departments": [
+            "Department of Education"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Aviation Management",
+            "Department of Accounting",
+            "Department of Finance & Banking",
+            "Department of Management",
+            "Department of Marketing",
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Aeronautical and Aviation Science and Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electronics and Communication Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Life & Earth Science",
+          "departments": [
+            "Department of Psychology",
+            "Department of Botany",
+            "Department of Zoology",
+            "Department of Geography & Environment Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Computer Science",
+            "Department of Bio-Chemistry",
+            "Department of Chemistry",
+            "Department of Physics",
+            "Department of Mathematics",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Political Science",
+            "Department of Sociology",
+            "Department of Social Work",
+            "Department of Anthropology",
+            "Department of Public Administration",
+            "Department of Home Economics",
+            "Department of Information Science and Library Management"
+          ]
+        },
+        {
+          "name": "Faculty of Textile Technology",
+          "departments": [
+            "Department of Textile Science and Technology",
+            "Department of Fashion Design & Technology",
+            "Department of Apparel Manufacture & Technology",
+            "Department of Knitwear Manufacture & Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Netrokona University (formerly Sheikh Hasina University)",
+      "location": "Netrokona, Mymensingh Division",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bangla",
+            "Department of English",
+            "Department of History and Archeology"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of International Relations",
+            "Department of Development Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering & Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Accounting and Information System"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Noakhali Science and Technology University",
+      "location": "Sonapur, Noakhali",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Telecommunication Engineering",
+            "Department of Applied Chemistry and Chemical Engineering",
+            "Department of Information and Communication Engineering",
+            "Department of Electrical and Electronics Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Applied Mathematics",
+            "Department of Statistics",
+            "Department of Oceanography",
+            "Department of Chemistry",
+            "Department of Physics",
+            "Department of Environmental Science and Disaster Management"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Science",
+          "departments": [
+            "Department of Fisheries and Marine Science",
+            "Department of Pharmacy",
+            "Department of Microbiology",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Food Technology and Nutrition Science",
+            "Department of Biotechnology and Genetic Engineering",
+            "Department of Agriculture",
+            "Department of Soil, Water and Environmental Sciences",
+            "Department of Zoology"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences and Humanities",
+          "departments": [
+            "Department of English",
+            "Department of Economics",
+            "Department of Political Sciences",
+            "Department of Bangla",
+            "Department of Sociology",
+            "Department of Social Work"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Tourism and Hospitality Management",
+            "Department of Management Information Systems"
+          ]
+        },
+        {
+          "name": "Faculty of Education Sciences",
+          "departments": [
+            "Department of Education",
+            "Department of Educational Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "Institute of Information Technology (Software Engineering)",
+            "Institute of Information Sciences (Information Sciences and Library Management)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pabna University of Science and Technology (PUST)",
+      "location": "Sukantapally, Pabna",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Patuakhali Science and Technology University",
+      "location": "Dumki, Patuakhali",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agriculture (B.Sc. Agriculture Hons.)"
+          ]
+        },
+        {
+          "name": "Faculty of Computer Science and Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Animal Science and Veterinary Medicine",
+          "departments": [
+            "Department of Animal Science (B.Sc. Animal Husbandry)",
+            "Department of Veterinary Medicine (DVM)",
+            "Department of General Animal Science and Veterinary Medicine"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Fisheries (B.Sc. Fisheries Hons.)"
+          ]
+        },
+        {
+          "name": "Faculty of Environmental Science and Disaster Management",
+          "departments": [
+            "Department of Environmental Science and Disaster Management"
+          ]
+        },
+        {
+          "name": "Faculty of Nutrition and Food Science",
+          "departments": [
+            "Department of Nutrition and Food Science"
+          ]
+        },
+        {
+          "name": "Faculty of Law and Land Administration",
+          "departments": [
+            "Department of Law and Land Administration (LLB)"
+          ]
+        },
+        {
+          "name": "Faculty of Postgraduate Studies",
+          "departments": [
+            "Postgraduate Programs (Masters and PhD)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pirojpur Science and Technology University (PrSTU)",
+      "location": "Pirojpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Mathematics",
+            "Department of Statistics",
+            "Department of Psychology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rajshahi Medical University (RMU)",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Medicine",
+            "Department of Dental Science"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing & Institute of Health Technology (IHT)",
+          "departments": [
+            "Department of Nursing",
+            "Department of Health Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rajshahi University of Engineering and Technology",
+      "location": "Kazla, Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Civil Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Urban and Regional Planning",
+            "Department of Architecture",
+            "Department of Building Engineering and Construction Management"
+          ]
+        },
+        {
+          "name": "Faculty of Mechanical Engineering",
+          "departments": [
+            "Department of Industrial and Production Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Ceramics and Metallurgical Engineering",
+            "Department of Mechatronics",
+            "Department of Materials Science and Engineering",
+            "Department of Chemical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Electrical and Computer Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Computer Engineering",
+            "Department of Electronic and Telecommunication Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Applied Science and Humanities",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Humanities"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rangamati Science and Technology University (RMSTU)",
+      "location": "Jhagrabil, Rangamati",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science, Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture and Biological Science",
+          "departments": [
+            "Department of Forestry and Environmental Science",
+            "Department of Fisheries and Marine Resources Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Management",
+            "Department of Tourism and Hospitality Management"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Satkhira University of Science and Technology (SSTU)",
+      "location": "Satkhira, Khulna Division",
+      "status": "In establishment",
+      "faculties": []
+    },
+    {
+      "name": "Shahjalal University of Science and Technology",
+      "location": "Kumargaon, Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Agriculture and Mineral Sciences",
+          "departments": [
+            "Department of Forestry and Environmental Science",
+            "Department of Petroleum and Mining Engineering"
+          ]
+        },
+        {
+          "name": "School of Applied Sciences and Technology",
+          "departments": [
+            "Department of Architecture",
+            "Department of Civil Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Information and Communication Engineering",
+            "Department of Industrial and Production Engineering",
+            "Department of Food Engineering and Tea Technology"
+          ]
+        },
+        {
+          "name": "School of Life Sciences",
+          "departments": [
+            "Department of Bio-Chemistry and Molecular Biology",
+            "Department of Genetic Engineering and Biotechnology"
+          ]
+        },
+        {
+          "name": "School of Management and Business Administration",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        },
+        {
+          "name": "School of Medical Sciences",
+          "departments": [
+            "M.A.G. Osmani Medical College (affiliated)",
+            "Jalalabad Ragib-Rabeya Medical College (affiliated)",
+            "North East Medical College (affiliated)",
+            "Sylhet Women's Medical College (affiliated)",
+            "Durre Samad Rahman Women's Red Crescent Medical College (affiliated)"
+          ]
+        },
+        {
+          "name": "School of Physical Sciences",
+          "departments": [
+            "Department of Chemistry",
+            "Department of Geography and Environment",
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Statistics"
+          ]
+        },
+        {
+          "name": "School of Social Sciences",
+          "departments": [
+            "Department of Anthropology",
+            "Department of Economics",
+            "Department of English"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shariatpur Agriculture University",
+      "location": "Shariatpur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Sher-e-Bangla Agricultural University",
+      "location": "Sher-e-Bangla Nagar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agricultural Botany",
+            "Department of Agricultural Chemistry",
+            "Department of Agricultural Extension and Information System",
+            "Department of Agroforestry and Environmental Science",
+            "Department of Agronomy",
+            "Department of Agricultural Engineering",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Biotechnology",
+            "Department of Language",
+            "Department of Entomology",
+            "Department of Genetics and Plant Breeding",
+            "Department of Horticulture",
+            "Department of Plant Pathology",
+            "Department of Soil Science"
+          ]
+        },
+        {
+          "name": "Faculty of Agribusiness Management",
+          "departments": [
+            "Department of Agricultural Economics",
+            "Department of Development and Poverty Studies",
+            "Department of Agricultural Statistics",
+            "Department of Agricultural Finance and Management",
+            "Department of Agribusiness and Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Animal Science and Veterinary Medicine",
+          "departments": [
+            "Department of Anatomy, Histology and Physiology",
+            "Department of Animal Nutrition, Genetics and Breeding",
+            "Department of Animal Production and Management",
+            "Department of Dairy Science",
+            "Department of Medicine and Public Health",
+            "Department of Microbiology and Parasitology",
+            "Department of Pathology",
+            "Department of Pharmacology and Toxicology",
+            "Department of Poultry Science",
+            "Department of Surgery and Theriogenology"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries, Aquaculture and Marine Science",
+          "departments": [
+            "Department of Fisheries Biology and Genetics",
+            "Department of Aquaculture",
+            "Department of Fishing and Postharvest Technology",
+            "Department of Aquatic Animal Health Management",
+            "Department of Aquatic Environment and Resource Management",
+            "Department of Marine Fisheries and Oceanography"
+          ]
+        },
+        {
+          "name": "Faculty of Post Graduate Studies",
+          "departments": [
+            "MS in Food Safety",
+            "MS in Agricultural Journalism"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "Institute of Seed Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sunamganj Science and Technology University",
+      "location": "Sunamganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Sylhet Agricultural University",
+      "location": "Tilagor, Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Veterinary, Animal and Biomedical Sciences",
+          "departments": [
+            "Department of Anatomy and Histology",
+            "Department of Physiology, Biochemistry and Pharmacology",
+            "Department of Medicine",
+            "Department of Surgery and Theriogenology",
+            "Department of Pathology and Parasitology",
+            "Department of Microbiology and Hygiene",
+            "Department of Animal Nutrition and Production",
+            "Department of Genetics and Animal Breeding",
+            "Department of Poultry Science"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agronomy",
+            "Department of Soil Science",
+            "Department of Agricultural Chemistry",
+            "Department of Agricultural Botany",
+            "Department of Agricultural Extension and Rural Development",
+            "Department of Agricultural Economics",
+            "Department of Entomology",
+            "Department of Crop Science",
+            "Department of Plant Pathology",
+            "Department of Horticulture and Landscape Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Fish Biology and Fisheries Management",
+            "Department of Aquaculture",
+            "Department of Fisheries Resource and Oceanography",
+            "Department of Fisheries Technology and Quality Control"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Economics and Business Studies",
+          "departments": [
+            "Department of Agricultural Economics",
+            "Department of Agricultural Business and Management",
+            "Department of Rural Development",
+            "Department of Statistics",
+            "Department of Finance"
+          ]
+        },
+        {
+          "name": "Faculty of Agricultural Engineering and Technology",
+          "departments": [
+            "Department of Farm Power and Machinery",
+            "Department of Irrigation and Water Management",
+            "Department of Agricultural Structures and Environmental Engineering",
+            "Department of Food and Dairy Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Biotechnology and Genetic Engineering",
+          "departments": [
+            "Department of Biotechnology",
+            "Department of Genetic Engineering",
+            "Department of Biochemistry"
+          ]
+        },
+        {
+          "name": "Faculty of Postgraduate Studies",
+          "departments": [
+            "MSc and PhD Programs in All Disciplines"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sylhet Medical University (SMU)",
+      "location": "Mollargaon, Dakshin Surma, Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Medicine",
+            "Department of Dental Science"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing & Institute of Health Technology (IHT)",
+          "departments": [
+            "Department of Nursing",
+            "Department of Health Technology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Thakurgaon University",
+      "location": "Thakurgaon",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Barishal",
+      "location": "Barishal",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Engineering",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Geology and Mining",
+            "Department of Statistics and Data Science"
+          ]
+        },
+        {
+          "name": "Faculty of Bio-Sciences",
+          "departments": [
+            "Department of Soil and Environmental Sciences",
+            "Department of Botany",
+            "Department of Coastal Studies and Disaster Management",
+            "Department of Biochemistry and Biotechnology"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting and Information System",
+            "Department of Finance and Banking",
+            "Department of Marketing",
+            "Department of Management Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Department of English",
+            "Department of Bangla",
+            "Department of Philosophy",
+            "Department of History and Civilization"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Sociology",
+            "Department of Public Administration",
+            "Department of Political Science",
+            "Department of Mass Communication & Journalism",
+            "Department of Social Work"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Chittagong",
+      "location": "Hathazari, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Department of Bengali",
+            "Department of English",
+            "Department of History",
+            "Department of Philosophy",
+            "Department of Islamic History and Culture",
+            "Department of Arabic",
+            "Department of Islamic Studies",
+            "Department of Drama",
+            "Department of Persian Language and Literature",
+            "Department of Pali",
+            "Department of Sanskrit",
+            "Department of Music",
+            "Department of Bangladesh Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Statistics",
+            "Department of Applied Chemistry and Chemical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Management",
+            "Department of Finance",
+            "Department of Marketing",
+            "Department of Human Resource Management",
+            "Department of Banking and Insurance"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Economics",
+            "Department of Political Science",
+            "Department of Sociology",
+            "Department of Public Administration",
+            "Department of Anthropology",
+            "Department of International Relations",
+            "Department of Communication and Journalism",
+            "Department of Criminology and Police Science",
+            "Department of Development Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Sciences",
+          "departments": [
+            "Department of Zoology",
+            "Department of Botany",
+            "Department of Geography and Environmental Studies",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Microbiology",
+            "Department of Soil Science",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Psychology",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Education",
+          "departments": [
+            "Department of Physical Education and Sports Science",
+            "Institute of Education and Research"
+          ]
+        },
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Pediatrics",
+            "Department of Community Ophthalmology"
+          ]
+        },
+        {
+          "name": "Faculty of Marine Sciences and Fisheries",
+          "departments": [
+            "Department of Marine Science",
+            "Department of Oceanography",
+            "Department of Fisheries"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Dhaka",
+      "location": "Shahbagh, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Bangla",
+            "Department of English",
+            "Department of Arabic",
+            "Department of Persian Language and Literature",
+            "Department of Urdu",
+            "Department of Sanskrit",
+            "Department of Pali",
+            "Department of Buddhist Studies",
+            "Department of Linguistics",
+            "Department of Philosophy",
+            "Department of History",
+            "Department of Islamic Studies",
+            "Department of Islamic History and Culture",
+            "Department of Information Science and Library Management",
+            "Department of World Religions and Culture",
+            "Department of Theatre and Performance Studies",
+            "Department of Music",
+            "Department of Dance"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Economics",
+            "Department of Political Science",
+            "Department of International Relations",
+            "Department of Anthropology",
+            "Department of Public Administration",
+            "Department of Mass Communication and Journalism",
+            "Department of Communication Disorders",
+            "Department of Printing and Publication Studies",
+            "Department of Television, Film and Photography",
+            "Department of Sociology",
+            "Department of Development Studies",
+            "Department of Criminology",
+            "Department of Japanese Studies",
+            "Department of Women and Gender Studies",
+            "Department of Peace and Conflict Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Fine Arts",
+          "departments": [
+            "Department of Ceramics",
+            "Department of Craft",
+            "Department of Drawing and Painting",
+            "Department of Graphic Design",
+            "Department of Oriental Art",
+            "Department of Printmaking",
+            "Department of Sculpture",
+            "Department of History of Art"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting and Information Systems",
+            "Department of Management",
+            "Department of Marketing",
+            "Department of Finance",
+            "Department of Banking and Insurance",
+            "Department of Management Information Systems",
+            "Department of Tourism and Hospitality Management",
+            "Department of International Business",
+            "Department of Organization Strategy and Leadership"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Applied Mathematics",
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Statistics",
+            "Department of Biomedical Physics and Technology",
+            "Department of Theoretical Physics",
+            "Department of Theoretical and Computational Chemistry"
+          ]
+        },
+        {
+          "name": "Faculty of Pharmacy",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Clinical Pharmacy and Pharmacology",
+            "Department of Pharmaceutical Chemistry",
+            "Department of Pharmaceutical Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Biological Sciences",
+          "departments": [
+            "Department of Botany",
+            "Department of Zoology",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Microbiology",
+            "Department of Psychology",
+            "Department of Clinical Psychology",
+            "Department of Educational Psychology",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Soil, Water and Environment",
+            "Department of Fisheries"
+          ]
+        },
+        {
+          "name": "Faculty of Earth and Environmental Sciences",
+          "departments": [
+            "Department of Geography and Environment",
+            "Department of Geology",
+            "Department of Oceanography",
+            "Department of Disaster Science and Climate Resilience",
+            "Department of Meteorology"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Applied Chemistry and Chemical Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Nuclear Engineering",
+            "Department of Robotics and Mechatronics Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Education",
+          "departments": [
+            "Department of Education"
+          ]
+        },
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "Department of Medicine and Surgery"
+          ]
+        },
+        {
+          "name": "Faculty of Postgraduate Medical Sciences and Research",
+          "departments": [
+            "Department of Virology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Frontier Technology Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Rajshahi",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Life Sciences",
+          "departments": [
+            "Department of Botany",
+            "Department of Zoology",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Microbiology",
+            "Department of Clinical Psychology",
+            "Department of Psychology"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of Philosophy",
+            "Department of History",
+            "Department of English",
+            "Department of Bengali",
+            "Department of Islamic History and Culture",
+            "Department of Arabic",
+            "Department of Islamic Studies",
+            "Department of Music",
+            "Department of Theatre",
+            "Department of Persian Language and Literature",
+            "Department of Urdu",
+            "Department of Sanskrit"
+          ]
+        },
+        {
+          "name": "Faculty of Fine Arts",
+          "departments": [
+            "Department of Graphic Design, Crafts and History of Art",
+            "Department of Painting, Printmaking and Oriental Art",
+            "Department of Ceramics and Sculpture"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law",
+            "Department of Law and Land Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Information and Communication Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Applied Chemistry and Chemical Engineering",
+            "Department of Materials Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of Political Science",
+            "Department of Social Work",
+            "Department of Sociology",
+            "Department of Mass Communication and Journalism",
+            "Department of Information Science and Library Management",
+            "Department of Public Administration",
+            "Department of Anthropology",
+            "Department of Folklore",
+            "Department of International Relations"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Finance",
+            "Department of Accounting and Information Systems",
+            "Department of Marketing",
+            "Department of Management Studies",
+            "Department of Banking and Insurance",
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Statistics",
+            "Department of Biochemistry and Molecular Biology",
+            "Department of Pharmacy",
+            "Department of Population Science and Human Resource Development",
+            "Department of Applied Mathematics",
+            "Department of Physical Education and Sports Sciences"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agronomy and Agricultural Extension",
+            "Department of Crop Science and Technology"
+          ]
+        },
+        {
+          "name": "Faculty of Earth Sciences",
+          "departments": [
+            "Department of Geography and Environmental Studies",
+            "Department of Geology and Mining"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary and Animal Sciences",
+          "departments": [
+            "Department of Veterinary and Animal Sciences"
+          ]
+        },
+        {
+          "name": "Faculty of Fisheries",
+          "departments": [
+            "Department of Fisheries"
+          ]
+        }
+      ]
+    }
+  ],
+  "private_universities": [
+    {
+      "name": "Ahsania Mission University of Science and Technology",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Ahsanullah University of Science and Technology (AUST)",
+      "location": "141 & 142 Love Road, Tejgaon Industrial Area, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Architecture and Planning",
+          "departments": [
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical & Electronics Engineering",
+            "Department of Civil Engineering",
+            "Department of Mechanical & Production Engineering",
+            "Department of Textile Engineering",
+            "Department of Arts & Science"
+          ]
+        },
+        {
+          "name": "Faculty of Business and Social Science",
+          "departments": [
+            "School of Business (BBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Education",
+          "departments": [
+            "Department of Education"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "America Bangladesh University",
+      "location": "Dhaka",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "American International University-Bangladesh (AIUB)",
+      "location": "408/1 Kuratoli, Kuril, Khilkhet, Dhaka (permanent campus since 2017)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Media Studies and Journalism",
+            "Department of Bangla",
+            "Department of Economics",
+            "Department of Political Science and Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Accounting",
+            "Department of Finance",
+            "Department of Management",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Computer Science",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Civil Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Biomedical Engineering",
+            "Department of Software Engineering",
+            "Department of Petroleum and Mining Engineering",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Department of Biology",
+            "Department of Chemistry",
+            "Department of Information Technology",
+            "Department of Mathematics",
+            "Department of Pharmacy",
+            "Department of Health Informatics",
+            "Department of Physics"
+          ]
+        },
+        {
+          "name": "Faculty of Health and Life Sciences",
+          "departments": [
+            "Department of Nursing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Anwer Khan Modern University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "ASA University Bangladesh (ASAUB)",
+      "location": "Shyamoli, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB, LLM)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Applied Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Pharmacy (B Pharm)",
+            "Department of Public Health (MPH)"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Pharmacy"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Asian University of Bangladesh (AUB)",
+      "location": "Ashulia (permanent campus), Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Social Sciences",
+          "departments": [
+            "Department of Sociology and Anthropology",
+            "Department of Social Work",
+            "Department of Economics",
+            "Department of Information Science and Library Management",
+            "Department of Government and Politics"
+          ]
+        },
+        {
+          "name": "School of Sciences and Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Computer Science"
+          ]
+        },
+        {
+          "name": "School of Arts",
+          "departments": [
+            "Department of English",
+            "Department of Bengali",
+            "Department of Islamic Studies",
+            "Department of Islamic History and Civilization"
+          ]
+        },
+        {
+          "name": "School of Education and Training",
+          "departments": [
+            "Department of Education and Training"
+          ]
+        },
+        {
+          "name": "School of Business and Administration",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Atish Dipankar University of Science & Technology (ADUST)",
+      "location": "Plot 209, Khantek, Sector 15, Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Social Science",
+          "departments": [
+            "Department of English Language",
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA, EMBA)",
+            "Department of Agribusiness (MBA Agribusiness)"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Computer Science",
+            "Department of Computer Engineering",
+            "Department of Electronic and Telecommunication Engineering (ETE)",
+            "Department of Electrical and Electronic Engineering (EEE)",
+            "Department of Textile Engineering",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "School of Public Health",
+          "departments": [
+            "Department of Public Health (MPH)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bandarban University",
+      "location": "Bandarban",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Bangladesh Army International University of Science & Technology (BAIUST)",
+      "location": "Comilla",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Bangladesh Army University of Engineering & Technology Qadirabad (BAUET)",
+      "location": "Natore",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Bangladesh Army University of Science & Technology Saidpur (BAUST)",
+      "location": "Saidpur, Nilphamari",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Bangladesh Army University of Science and Technology Khulna (BAUST Khulna)",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Bangladesh Islami University",
+      "location": "Green Model Town, Block B, Road 03, Manda, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Islamic Studies & Arabic",
+          "departments": [
+            "Department of Islamic Studies",
+            "Department of Arabic Language & Literature"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Economics",
+            "Department of English"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB, LLM)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University (BU)",
+      "location": "5/B Beribandh Main Road, Adabar, Mohammadpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business Administration & Economics",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Science, Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Architecture",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Mathematics",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Arts, Social Science & Law",
+          "departments": [
+            "Department of English",
+            "Department of Law",
+            "Department of Sociology"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University of Business and Technology (BUBT)",
+      "location": "Plot 77-78, Road 9, Rupnagar R/A, Mirpur-2, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA, EMBA, MBM)"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering & Applied Sciences",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Civil Engineering",
+            "Department of Textile Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Humanities",
+          "departments": [
+            "Department of English (BA Hons, MA)"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB, LLM)"
+          ]
+        },
+        {
+          "name": "Faculty of Mathematical & Physical Science",
+          "departments": [
+            "Department of Mathematics"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BGC Trust University Bangladesh",
+      "location": "Patenga, Chattogram",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "BRAC University (BRACU)",
+      "location": "Merul Badda (Pragati Sarani), Dhaka; Residential campus at Savar",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "BRAC Business School",
+          "departments": []
+        },
+        {
+          "name": "BSRM School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "James P Grant School of Public Health",
+          "departments": []
+        },
+        {
+          "name": "School of Architecture and Design",
+          "departments": [
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "School of Data and Sciences",
+          "departments": [
+            "Department of Mathematics and Natural Sciences"
+          ]
+        },
+        {
+          "name": "School of General Education",
+          "departments": []
+        },
+        {
+          "name": "School of Humanities and Social Sciences",
+          "departments": [
+            "Department of English and Humanities",
+            "Department of Economics and Social Sciences"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": []
+        },
+        {
+          "name": "School of Life Sciences",
+          "departments": [
+            "Department of Biotechnology",
+            "Department of Microbiology"
+          ]
+        },
+        {
+          "name": "School of Pharmacy",
+          "departments": []
+        }
+      ]
+    },
+    {
+      "name": "Brahmaputra International University",
+      "location": "Bogura",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Britannia University",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Canadian University of Bangladesh (CUB)",
+      "location": "City campus: RL Square, Kha 201/1, Bir Uttam Rafiqul Islam Avenue, Merul Badda, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Civil Engineering"
+          ]
+        },
+        {
+          "name": "School of Arts & Humanities",
+          "departments": [
+            "Department of English"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": [
+            "Department of Law (LLB)"
+          ]
+        },
+        {
+          "name": "School of Health Sciences",
+          "departments": [
+            "Department of Pharmacy"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CCN University of Science & Technology",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Central University of Science and Technology",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Chattogram BGMEA University of Fashion & Technology (CBUFT)",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "City University (Bangladesh)",
+      "location": "Khagan, Birulia, Savar, Dhaka (permanent campus; formerly Banani)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Textile Engineering",
+            "Department of Electrical and Electronics Engineering",
+            "Department of Civil Engineering",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Business & Economics",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Social Science",
+          "departments": [
+            "Department of English",
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agriculture"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cox's Bazar International University",
+      "location": "Cox's Bazar",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Daffodil International University (DIU)",
+      "location": "Daffodil Smart City, Birulia, Savar, Dhaka (city campus formerly Siddeshwari)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Information Technology",
+          "departments": [
+            "Department of Computer Science and Engineering (CSE)",
+            "Department of Software Engineering (SWE)",
+            "Department of Multimedia and Creative Technology (MCT)",
+            "Department of Computing and Information Systems (CIS)",
+            "Department of Information Technology and Management (ITM)"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering (EEE)",
+            "Department of Textile Engineering (TE)",
+            "Department of Civil Engineering (CE)",
+            "Department of Information and Communication Engineering (ICE)",
+            "Department of Architecture",
+            "Department of Robotics and Mechatronics Engineering (RME)"
+          ]
+        },
+        {
+          "name": "Faculty of Business & Entrepreneurship",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Management",
+            "Department of Real Estate",
+            "Department of Tourism & Hospitality Management",
+            "Department of Innovation & Entrepreneurship",
+            "Department of Accounting"
+          ]
+        },
+        {
+          "name": "Faculty of Humanities & Social Science",
+          "departments": [
+            "Department of English",
+            "Department of Law",
+            "Department of Journalism, Media and Communication",
+            "Department of International Relations",
+            "Department of Bangla"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Microbiology",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Public Health"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dhaka International University (DIU)",
+      "location": "Satarkul, Badda, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Electrical & Electronics Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Pharmacy",
+            "Department of Microbiology",
+            "Department of Biochemistry and Molecular Biology"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Social Science",
+          "departments": [
+            "Department of English",
+            "Department of Political Science",
+            "Department of Sociology",
+            "Department of Economics",
+            "Department of Development Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Business Administration (BBA, RMBA, EMBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLM)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dr. Momtaz Begum University of Science and Technology (MUST)",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "East West University (EWU)",
+      "location": "A/2, Jahurul Islam Avenue, Aftab Nagar, Dhaka (founded at Mohakhali)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Genetic Engineering and Biotechnology",
+            "Department of Civil Engineering",
+            "Department of Mathematical and Physical Sciences",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Liberal Arts & Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Law",
+            "Department of Social Relations",
+            "Department of Information Studies",
+            "Department of Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Business & Economics",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Economics"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eastern University (EU)",
+      "location": "Road 6, Block B, Ashulia Model Town, Khagan, Birulia, Savar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Arts",
+          "departments": [
+            "Department of English (BA Hons, MA, M ELT)"
+          ]
+        },
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA, EMBA)"
+          ]
+        },
+        {
+          "name": "School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Civil Engineering",
+            "Department of Textile Engineering (UGC approval under consideration)"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": [
+            "Department of Law (LLB Hons, LLM)"
+          ]
+        },
+        {
+          "name": "School of Life Sciences",
+          "departments": [
+            "Department of Pharmacy"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "European University of Bangladesh (EUB)",
+      "location": "2/4 Gabtoli, Dhaka 1216",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Civil Engineering (CE)",
+            "Department of Electrical and Electronic Engineering (EEE)",
+            "Department of Computer Science and Engineering (CSE)",
+            "Department of Industrial and Production Engineering (IPE)",
+            "Department of Textile Engineering (TE)"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration & Industrial Management",
+          "departments": [
+            "Department of Business Administration (BBA, MBA Regular & Executive)",
+            "Department of Tourism and Hospitality Management (BTHM)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Social Science",
+          "departments": [
+            "Department of Economics (BSS Hons, MSS)",
+            "Department of English (BA Hons, MA)",
+            "Department of Governance and Development Studies (MSS)",
+            "Department of Law (LLB 2yr/4yr, LLM)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Exim Bank Agricultural University",
+      "location": "Chapainawabganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Fareast International University (FIU)",
+      "location": "House 87, Road 06, Block-C, Banani, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA incl. Project Monitoring & Evaluation)",
+            "Department of Tourism & Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Electrical & Electronic Engineering (EEE)",
+            "Department of Computer Science & Engineering (CSE)",
+            "Department of Civil & Environmental Engineering (CEE)",
+            "Department of Textile Engineering",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Physics",
+            "Department of Chemistry",
+            "Department of Mathematics",
+            "Department of Soil, Water & Environment (SWE)",
+            "Department of Public Health"
+          ]
+        },
+        {
+          "name": "Faculty of Liberal Arts & Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Islamic Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law & Justice"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Feni University",
+      "location": "Feni",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "First Capital University of Bangladesh",
+      "location": "Comilla",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "German University Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Global University Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Gono Bishwabidyalay (Gono University / GB)",
+      "location": "Nolam, Mirzanagar, Savar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Health Sciences",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Public Health",
+            "Department of Healthcare Management"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Social Sciences",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Biochemistry and Molecular Biology"
+          ]
+        },
+        {
+          "name": "Faculty of Veterinary and Animal Sciences",
+          "departments": [
+            "Department of Veterinary Science",
+            "Department of Animal Production"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agricultural Science",
+            "Department of Environment and Climate Change"
+          ]
+        },
+        {
+          "name": "Faculty of Postgraduate Studies",
+          "departments": [
+            "MBA",
+            "MPH",
+            "M Phil and PhD programs"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grameen University (GrameenU)",
+      "location": "06 Main Road, Diabari South, Turag, Uttara, Dhaka",
+      "status": "Newly approved (academic activities starting)",
+      "faculties": [
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Data Science and Machine Learning Techniques",
+            "Department of Health Science and Technology"
+          ]
+        },
+        {
+          "name": "School of Humanities & Social Sciences",
+          "departments": [
+            "Department of English"
+          ]
+        },
+        {
+          "name": "School of Sciences",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Healthcare Management",
+            "Department of Molecular Biology",
+            "Department of Physics and Chemistry"
+          ]
+        },
+        {
+          "name": "School of Social Business",
+          "departments": [
+            "Department of Social Business Management",
+            "Department of Entrepreneurship",
+            "Master of Microfinance"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Green University of Bangladesh (GUB)",
+      "location": "Purbachal American City, Kanchan, Rupganj, Narayanganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Engineering (FSE)",
+          "departments": [
+            "Department of Artificial Intelligence and Data Science",
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronics Engineering",
+            "Department of Software Engineering",
+            "Department of Textile Engineering",
+            "Department of Civil Engineering",
+            "Department of Robotics and Intelligence Systems"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies (FBS)",
+          "departments": [
+            "Department of Business Administration (BBA, MBA, EMBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Social Sciences (FASS)",
+          "departments": [
+            "Department of English",
+            "Department of Journalism & Media Communication",
+            "Department of Sociology"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LL.B., LL.M.)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hamdard University Bangladesh (HUB)",
+      "location": "Hamdard, Gazaria Upazila, Munshiganj District",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science, Engineering & Technology",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (Marketing, Management, Finance, Accounting majors; MBA, EMBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Social Science",
+          "departments": [
+            "Department of English",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Unani and Ayurvedic Medicine",
+          "departments": [
+            "Department of Unani Medicine (BUMS)",
+            "Department of Ayurvedic Medicine (BAMS)"
+          ]
+        },
+        {
+          "name": "Faculty of Health Sciences",
+          "departments": [
+            "Department of Public Health (MPH)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IBAIS University",
+      "location": "Dhaka",
+      "status": "NON-FUNCTIONAL — UGC notice 28 Nov 2024: no legal basis for operations; no approved campus or legitimate authorities",
+      "faculties": [
+        {
+          "name": "Faculty of Humanities & Law",
+          "departments": [
+            "Department of English",
+            "Department of Tourism & Hotel Management",
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "Faculty of Business & Economics",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Electrical & Electronic Engineering",
+            "Department of Electrical, Electronics & Telecommunication Engineering",
+            "Department of Electrical Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Civil and Environmental Engineering"
+          ]
+        },
+        {
+          "name": "Institutes",
+          "departments": [
+            "Center for Research & Training"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Independent University, Bangladesh (IUB)",
+      "location": "Bashundhara Residential Area, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business and Entrepreneurship (SBE)",
+          "departments": [
+            "Department of Accounting",
+            "Department of Economics",
+            "Department of Finance",
+            "Department of General Management",
+            "Department of Human Resource Management",
+            "Department of International Business",
+            "Department of Management Information Systems",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "School of Engineering, Technology, and Sciences (SETS)",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Physical Sciences"
+          ]
+        },
+        {
+          "name": "School of Environment and Life Sciences (SELS)",
+          "departments": [
+            "Department of Environmental Science and Management",
+            "Department of Life Sciences"
+          ]
+        },
+        {
+          "name": "School of Liberal Arts and Social Sciences (SLASS)",
+          "departments": [
+            "Department of English and Modern Languages",
+            "Department of Media and Communication",
+            "Department of Political Science and Law",
+            "Department of History and Philosophy"
+          ]
+        },
+        {
+          "name": "School of Pharmacy and Public Health (SPPH)",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Public Health"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "International Islami University of Science and Technology Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "International Islamic University Chittagong (IIUC)",
+      "location": "Kumira, Sitakunda, Chattogram (40-acre campus on Dhaka-Chattogram highway)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science & Engineering",
+          "departments": [
+            "Department of Computer Science & Engineering (CSE)",
+            "Department of Electrical and Electronic Engineering (EEE)",
+            "Department of Computer & Communication Engineering (CCE)",
+            "Department of Electronic and Telecommunication Engineering (ETE)",
+            "Department of Civil Engineering (CE)",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Business Administration (BBA, MBA Regular & Executive, MBM)"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB Hons, LLM)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Humanities",
+          "departments": [
+            "Department of English Language and Literature (ELL)",
+            "Department of Arabic Language and Literature (ALL)"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Department of Economics & Banking",
+            "Department of Library & Information Science"
+          ]
+        },
+        {
+          "name": "Faculty of Shari'ah & Islamic Studies",
+          "departments": [
+            "Department of Qur'anic Sciences and Islamic Studies (QSIS)",
+            "Department of Da'wah and Islamic Studies (DIS)",
+            "Department of Sciences of Hadith and Islamic Studies (SHIS)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "International Standard University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "International University of Business Agriculture and Technology (IUBAT)",
+      "location": "4 Embankment Drive Road, Sector-10, Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Civil Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Mechanical Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Agriculture",
+          "departments": [
+            "Department of Agriculture"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "Faculty of Nursing",
+          "departments": [
+            "Department of Nursing"
+          ]
+        },
+        {
+          "name": "Faculty of Public Health",
+          "departments": [
+            "Department of Public Health (MPH)"
+          ]
+        },
+        {
+          "name": "Faculty of Tourism and Hospitality Management",
+          "departments": [
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Science",
+          "departments": [
+            "Department of Economics",
+            "Department of English"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Justice Abu Zafar Siddiquie Science and Technology University",
+      "location": "Kushtia",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "Khulna Khan Bahadur Ahsanullah University",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Khwaja Yunus Ali University",
+      "location": "Sirajganj",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Lalon University of Science and Arts",
+      "location": "Kushtia",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Leading University (LU)",
+      "location": "Ragib Nagar, Kamal Bazar, South Surma, Sylhet",
+      "status": "Active (UGC committee formed July 2023 to investigate financial irregularity allegations)",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Architecture",
+            "Department of Civil Engineering",
+            "Department of Computer Science & Engineering",
+            "Department of Electrical & Electronic Engineering",
+            "Department of Public Health"
+          ]
+        },
+        {
+          "name": "Faculty of Business Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of Tourism and Hospitality Management"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science",
+          "departments": [
+            "Department of Law",
+            "Department of Islamic Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Modern Language",
+          "departments": [
+            "Department of English",
+            "Department of Bangla"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Manarat International University (MIU)",
+      "location": "Main campus: Gulshan 2, Dhaka; Permanent campus: Ashulia Model Town, Savar",
+      "status": "Active (UGC ordered restriction to permanent campus for new admissions in 2023)",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Department of English",
+            "Department of Journalism and Media Studies",
+            "Department of Islamic Studies"
+          ]
+        },
+        {
+          "name": "Faculty of Business and Law",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of Law (LLB)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Microland University of Science and Technology",
+      "location": "Dhaka",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "North Bengal International University",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "North East University Bangladesh",
+      "location": "Comilla",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "North South University (NSU)",
+      "location": "Bashundhara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business and Economics (SBE)",
+          "departments": [
+            "Department of Accounting & Finance",
+            "Department of Economics",
+            "Department of Management",
+            "Department of Marketing & International Business"
+          ]
+        },
+        {
+          "name": "School of Engineering & Physical Sciences (SEPS)",
+          "departments": [
+            "Department of Architecture",
+            "Department of Civil and Environmental Engineering",
+            "Department of Electrical and Computer Engineering",
+            "Department of Mathematics and Physics"
+          ]
+        },
+        {
+          "name": "School of Humanities & Social Sciences (SHSS)",
+          "departments": [
+            "Department of English & Modern Languages",
+            "Department of Law",
+            "Department of History & Philosophy",
+            "Department of Political Science & Sociology"
+          ]
+        },
+        {
+          "name": "School of Health & Life Sciences (SHLS)",
+          "departments": [
+            "Department of Biochemistry & Microbiology",
+            "Department of Environmental Science and Management",
+            "Department of Pharmaceutical Sciences",
+            "Department of Public Health"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "North Western University",
+      "location": "Kushtia",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Northern University Bangladesh (NUB)",
+      "location": "111/2 Kawlar Jame Masjid Road, Ashkona (Near Hajj Camp), Dakshinkhan, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of Supply Chain Management (MSCM)"
+          ]
+        },
+        {
+          "name": "Faculty of Health Science",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Public Health"
+          ]
+        },
+        {
+          "name": "Faculty of Humanities & Social Science",
+          "departments": [
+            "Department of Bangla",
+            "Department of English (ELL, ELT)"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LL.B., LL.M.)"
+          ]
+        },
+        {
+          "name": "Faculty of Science and Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Electronics and Communication Engineering",
+            "Department of Mechanical Engineering",
+            "Department of Textile Engineering"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Northern University of Business & Technology Khulna",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Notre Dame University Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "NPI University of Bangladesh",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "People's University of Bangladesh (PUB)",
+      "location": "3/4 Asad Avenue, Mohammadpur, Dhaka (main campus); secondary campus at Sristighar, Shibpur, Narsingdi",
+      "status": "Active (with UGC red notice issued 2018)",
+      "faculties": [
+        {
+          "name": "School of Business & Social Studies",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of Sociology & Social Work (BSS)",
+            "Department of Tourism & Hospitality Management (THM)"
+          ]
+        },
+        {
+          "name": "School of Applied Science",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Textile Engineering",
+            "Department of Electronics & Telecommunication Engineering",
+            "Department of Physiotherapy (BSPT, DPT)"
+          ]
+        },
+        {
+          "name": "School of Arts",
+          "departments": [
+            "Department of English (BA Hons, MA)",
+            "Department of Islamic Studies & Culture (BA Hons, MA)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Port City International University (PCIU)",
+      "location": "7-14 Nikunja Housing Society, South Khulshi, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science and Engineering",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Civil Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Textile Engineering",
+            "Department of Fashion Design and Technology",
+            "Department of Natural Science (Mathematics, Statistics, Physics, Chemistry, History)"
+          ]
+        },
+        {
+          "name": "Faculty of Humanities, Social Sciences & Law",
+          "departments": [
+            "Department of English",
+            "Department of Law (LLB, LLM)",
+            "Department of Broadcast & Print Journalism"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies and Administration",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of Economics"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Premier University",
+      "location": "541 O.R. Nizam Road, Panchlaish, Chattogram (permanent campus)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Department of Accounting",
+            "Department of Finance",
+            "Department of Human Resource Management",
+            "Department of Management",
+            "Department of Marketing"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB, LLM)"
+          ]
+        },
+        {
+          "name": "Faculty of Engineering",
+          "departments": [
+            "Department of Architecture",
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Arts",
+          "departments": [
+            "Department of English",
+            "Department of Bengali Language and Literature",
+            "Department of Fashion Design and Technology",
+            "Department of Information Science and Library Management"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Department of Mathematics",
+            "Department of Public Health",
+            "Department of Chemistry",
+            "Department of Health Science"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Presidency University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Primeasia University (PaU)",
+      "location": "Star Tower, 12 Kemal Ataturk Avenue, Banani, Dhaka",
+      "status": "Active (enrollment restriction imposed by UGC in January 2023 pending permanent campus; permanent campus construction stalled as of 2025)",
+      "faculties": [
+        {
+          "name": "School of Science & Engineering",
+          "departments": [
+            "Department of Textile Engineering",
+            "Department of Computer Science & Engineering",
+            "Department of Electrical and Electronics Engineering",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)",
+            "Department of International Tourism & Hospitality Management"
+          ]
+        },
+        {
+          "name": "School of Science",
+          "departments": [
+            "Department of Microbiology",
+            "Department of Biochemistry & Molecular Biology",
+            "Department of Public Health Nutrition",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": [
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "School of Arts",
+          "departments": [
+            "Department of English"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pundra University of Science & Technology (PUB)",
+      "location": "Rangpur Road, Gokul, Bogura",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Engineering & Technology",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Civil Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Business & Social Sciences",
+          "departments": [
+            "Department of Business Administration",
+            "Department of English"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Queens University",
+      "location": "Dhaka",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "Rabindra Maitree University",
+      "location": "Kushtia",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Rabindra Paitar University (RP Shaha University)",
+      "location": "Kushtia",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Rajshahi Science and Technology University",
+      "location": "Natore",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Royal University of Dhaka",
+      "location": "Bashundhara, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "RTM Al-Kabir Technical University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Rupayan Akbar-ur-Rahman Shamsuzzoha University",
+      "location": "Chattogram",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "Shah Makhdum Management University",
+      "location": "Rajshahi",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "Shanto-Mariam University of Creative Technology",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Sonargaon University",
+      "location": "Khilkhet, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Southeast University (Bangladesh)",
+      "location": "251/A & 252 Tejgaon Industrial Area, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Science & Engineering",
+          "departments": [
+            "Department of Architecture",
+            "Department of Computer Science & Engineering",
+            "Department of Electrical and Electronics Engineering",
+            "Department of Textile Engineering",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "School of Business Studies",
+          "departments": [
+            "Department of Business Administration (BBA, MBA)"
+          ]
+        },
+        {
+          "name": "School of Arts and Social Science",
+          "departments": [
+            "Department of Law (LL.B., LL.M.)",
+            "Department of English",
+            "Department of Islamic Studies",
+            "Department of Bangla Studies",
+            "Department of Economics",
+            "Department of Development Studies"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stamford University Bangladesh",
+      "location": "51 Siddeswari Road (Ramna), Dhaka",
+      "status": "Active (enrollment restriction imposed by UGC in 2023 for not shifting to permanent campus; verify current status)",
+      "faculties": [
+        {
+          "name": "Engineering & Architecture",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "Business & Economics",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "Sciences",
+          "departments": [
+            "Department of Computer Science",
+            "Department of Microbiology",
+            "Department of Pharmacy",
+            "Department of Environmental Science"
+          ]
+        },
+        {
+          "name": "Humanities & Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Law",
+            "Department of Public Administration",
+            "Department of Journalism Media Studies",
+            "Department of Film and Media"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "State University of Bangladesh (SUB)",
+      "location": "696 Kendua, Kanchan, Rupganj, Narayanganj, Dhaka (3.65-acre campus)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business and Social Sciences",
+          "departments": [
+            "Department of Business Studies",
+            "Department of English Studies",
+            "Department of Journalism, Communication & Media Studies",
+            "Department of Law"
+          ]
+        },
+        {
+          "name": "School of Health Sciences",
+          "departments": [
+            "Department of Public Health"
+          ]
+        },
+        {
+          "name": "School of Pharmaceutical Sciences",
+          "departments": [
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "School of Science and Technology",
+          "departments": [
+            "Department of Architecture",
+            "Department of Computer Science & Engineering",
+            "Department of Environmental Science",
+            "Department of Food Engineering & Nutrition Science"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sylhet International University",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Tagore University of Creative Arts (Uttara)",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Teesta University",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "The Millennium University (TMU)",
+      "location": "Momenbagh, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA Regular & Executive)"
+          ]
+        },
+        {
+          "name": "Faculty of Science & Technology",
+          "departments": [
+            "Department of Information and Communication Technology (BSc, MSc)",
+            "Department of Computer Science and Engineering"
+          ]
+        },
+        {
+          "name": "Faculty of Pharmacy",
+          "departments": [
+            "Department of Pharmacy (BPharm)"
+          ]
+        },
+        {
+          "name": "Faculty of Arts & Humanities",
+          "departments": [
+            "Department of English (BA, MA)"
+          ]
+        },
+        {
+          "name": "Faculty of Law",
+          "departments": [
+            "Department of Law (LLB, LLM)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Times University Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Trust University",
+      "location": "Barishal",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "United International University (UIU)",
+      "location": "United City, Madani Avenue, Badda, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Science & Engineering (SoSE)",
+          "departments": [
+            "Department of Electrical & Electronic Engineering (EEE)",
+            "Department of Computer Science and Engineering (CSE)",
+            "Department of Civil Engineering (CE)",
+            "Department of Data Science (DS)"
+          ]
+        },
+        {
+          "name": "School of Life Sciences",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Biotechnology and Genetic Engineering"
+          ]
+        },
+        {
+          "name": "School of Business and Economics (SoBE)",
+          "departments": [
+            "Department of Business Administration (BBA)",
+            "Department of Accounting & Information Systems (AIS)",
+            "Department of Economics"
+          ]
+        },
+        {
+          "name": "School of Humanities and Social Science (SoHSS)",
+          "departments": [
+            "Department of Environment and Development Studies",
+            "Department of Media Studies and Journalism",
+            "Department of English"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Asia Pacific (UAP)",
+      "location": "74/A Green Road, Farmgate, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Civil Engineering",
+            "Department of Electrical and Electronic Engineering"
+          ]
+        },
+        {
+          "name": "School of Environmental Science and Design",
+          "departments": [
+            "Department of Architecture"
+          ]
+        },
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        },
+        {
+          "name": "School of Humanities and Social Science",
+          "departments": [
+            "Department of English"
+          ]
+        },
+        {
+          "name": "School of Law",
+          "departments": [
+            "Department of Law and Human Rights"
+          ]
+        },
+        {
+          "name": "School of Medicine",
+          "departments": [
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "School of Science",
+          "departments": [
+            "Department of Basic Sciences and Humanities"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Brahmanbaria",
+      "location": "Brahmanbaria",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Comilla",
+      "location": "Comilla",
+      "status": "Non-functional",
+      "faculties": []
+    },
+    {
+      "name": "University of Creative Technology Chattogram",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Development Alternative (UODA)",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Global Village",
+      "location": "Barishal",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Information Technology & Sciences (UITS)",
+      "location": "Bashundhara, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Liberal Arts Bangladesh (ULAB)",
+      "location": "688 Beribadh Road, Mohammadpur, Dhaka (research building in Dhanmondi)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration (BBA, MBA, EMBA)"
+          ]
+        },
+        {
+          "name": "School of Science and Engineering",
+          "departments": [
+            "Department of Electrical and Electronic Engineering",
+            "Department of Computer Science and Engineering",
+            "Department of Electronics and Telecommunication Engineering"
+          ]
+        },
+        {
+          "name": "School of Social Sciences",
+          "departments": [
+            "Department of Media Studies and Journalism"
+          ]
+        },
+        {
+          "name": "School of Arts and Humanities",
+          "departments": [
+            "Department of English and Humanities",
+            "Department of Bangla Language and Literature"
+          ]
+        },
+        {
+          "name": "General Education Program",
+          "departments": []
+        }
+      ]
+    },
+    {
+      "name": "University of Scholars",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of Science & Technology Chittagong (USTC)",
+      "location": "Chattogram (Kumira, Chittagong)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Science, Engineering & Technology (FSET)",
+          "departments": [
+            "Department of Computer Science & Engineering",
+            "Department of Electrical & Electronics Engineering",
+            "Department of Electric & Telecommunication Engineering",
+            "Department of Allied Science"
+          ]
+        },
+        {
+          "name": "Faculty of Basic Medical and Pharmaceutical Sciences",
+          "departments": [
+            "Department of Medicine (MBBS)",
+            "Department of Pharmacy"
+          ]
+        },
+        {
+          "name": "Faculty of Life Sciences",
+          "departments": [
+            "Department of Public Health",
+            "Department of Biochemistry and Biotechnology"
+          ]
+        },
+        {
+          "name": "Faculty of Business and Entrepreneurial Sciences (FBES)",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Finance and Banking"
+          ]
+        },
+        {
+          "name": "Faculty of Social Science and Humanities",
+          "departments": [
+            "Department of English Language & Literature"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University of Skill Enrichment and Technology",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "University of South Asia (USA)",
+      "location": "Bashundhara, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "Uttara University (UU)",
+      "location": "Holding 77, Beribadh Road, Turag, Uttara, Dhaka (near Uttara North metro station)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Business",
+          "departments": [
+            "Department of Business Administration"
+          ]
+        },
+        {
+          "name": "School of Science and Engineering",
+          "departments": [
+            "Department of Civil Engineering",
+            "Department of Computer Science & Engineering",
+            "Department of Electrical & Electronic Engineering",
+            "Department of Mathematics",
+            "Department of Physics",
+            "Department of Textile Engineering"
+          ]
+        },
+        {
+          "name": "School of Civil, Environment & Industrial Engineering",
+          "departments": [
+            "Department of Fashion Design & Merchandising Technology",
+            "Department of Textile Engineering"
+          ]
+        },
+        {
+          "name": "School of Arts and Social Sciences",
+          "departments": [
+            "Department of English",
+            "Department of Law",
+            "Department of Islamic Studies",
+            "Department of Bengali Language"
+          ]
+        },
+        {
+          "name": "School of Education and Physical Education",
+          "departments": [
+            "Department of Education",
+            "Department of Physical Education"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Varendra University (VU)",
+      "location": "Rajshahi (permanent campus at Chandrima, Paba, Rajshahi)",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "School of Engineering",
+          "departments": [
+            "Department of Computer Science and Engineering",
+            "Department of Electrical and Electronic Engineering",
+            "Department of Nutrition and Food Engineering"
+          ]
+        },
+        {
+          "name": "School of Science and Technology",
+          "departments": [
+            "Department of Pharmacy",
+            "Department of Public Health"
+          ]
+        },
+        {
+          "name": "School of Business and Law",
+          "departments": [
+            "Department of Business Administration",
+            "Department of Law & Human Rights"
+          ]
+        },
+        {
+          "name": "School of Arts and Social Science",
+          "departments": [
+            "Department of English",
+            "Department of Economics",
+            "Department of Sociology",
+            "Department of Journalism, Communication and Media Studies",
+            "Department of Political Science",
+            "Department of Islamic History and Culture"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Victoria University of Bangladesh",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "World University of Bangladesh",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    },
+    {
+      "name": "ZNRF University of Management Sciences",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": []
+    }
+  ]
+}

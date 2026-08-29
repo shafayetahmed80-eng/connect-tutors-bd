@@ -1,0 +1,2 @@
+ALTER TABLE `tutor_request_publication_events` MODIFY COLUMN `action` enum('verify','edit','guardian_confirmed','guardian_reconfirmed','request_changes','approve','publish','extend_expiry','unpublish','close') NOT NULL;--> statement-breakpoint
+ALTER TABLE `tutor_requests` ADD `guardianReconfirmedAt` timestamp;

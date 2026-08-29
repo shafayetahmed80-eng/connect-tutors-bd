@@ -1,0 +1,1 @@
+ALTER TABLE `locations` MODIFY COLUMN `type` enum('country','city','division','district','thana','upazila','subdivision','area') NOT NULL;

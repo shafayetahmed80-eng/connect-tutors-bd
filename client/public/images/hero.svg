@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 480" fill="none">
+  <rect width="600" height="480" fill="#EBF5FF"/>
+  <!-- Desk -->
+  <rect x="100" y="310" width="400" height="18" rx="6" fill="#BFDBFE"/>
+  <rect x="160" y="328" width="16" height="80" rx="4" fill="#93C5FD"/>
+  <rect x="420" y="328" width="16" height="80" rx="4" fill="#93C5FD"/>
+  <!-- Open book -->
+  <rect x="220" y="265" width="80" height="50" rx="4" fill="white" stroke="#93C5FD" stroke-width="2"/>
+  <rect x="260" y="265" width="2" height="50" fill="#BFDBFE"/>
+  <line x1="230" y1="280" x2="258" y2="280" stroke="#BFDBFE" stroke-width="2"/>
+  <line x1="230" y1="290" x2="258" y2="290" stroke="#BFDBFE" stroke-width="2"/>
+  <line x1="263" y1="280" x2="292" y2="280" stroke="#BFDBFE" stroke-width="2"/>
+  <line x1="263" y1="290" x2="292" y2="290" stroke="#BFDBFE" stroke-width="2"/>
+  <!-- Laptop screen -->
+  <rect x="310" y="250" width="110" height="68" rx="6" fill="white" stroke="#93C5FD" stroke-width="2"/>
+  <rect x="305" y="316" width="120" height="8" rx="3" fill="#BFDBFE"/>
+  <!-- Screen content -->
+  <rect x="318" y="258" width="60" height="6" rx="2" fill="#BFDBFE"/>
+  <rect x="318" y="268" width="88" height="4" rx="2" fill="#DBEAFE"/>
+  <rect x="318" y="276" width="72" height="4" rx="2" fill="#DBEAFE"/>
+  <rect x="318" y="288" width="40" height="18" rx="4" fill="#1D4ED8"/>
+  <!-- Student -->
+  <circle cx="195" cy="230" r="36" fill="#FDE68A"/>
+  <circle cx="195" cy="218" r="22" fill="#FDE68A"/>
+  <rect x="165" y="260" width="60" height="60" rx="14" fill="#1677E8"/>
+  <!-- Tutor -->
+  <circle cx="390" cy="225" r="36" fill="#FCD34D"/>
+  <circle cx="390" cy="213" r="22" fill="#FCD34D"/>
+  <rect x="360" y="255" width="60" height="65" rx="14" fill="#0EA5E9"/>
+  <!-- Stars / celebration -->
+  <circle cx="480" cy="120" r="8" fill="#FDE68A"/>
+  <circle cx="500" cy="160" r="5" fill="#A78BFA"/>
+  <circle cx="460" cy="155" r="4" fill="#34D399"/>
+  <circle cx="110" cy="140" r="6" fill="#FB923C"/>
+  <circle cx="130" cy="100" r="4" fill="#FDE68A"/>
+  <!-- Checkmark badge -->
+  <circle cx="295" cy="170" r="28" fill="#1677E8"/>
+  <path d="M282 170 l10 11 20-21" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

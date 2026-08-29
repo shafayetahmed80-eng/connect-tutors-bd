@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_requests` ADD `groupCapacity` int;

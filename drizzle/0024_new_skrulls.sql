@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_requests` ADD `curriculumType` varchar(32);

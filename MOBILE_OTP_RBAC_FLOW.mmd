@@ -1,0 +1,38 @@
+flowchart TD
+    A[Visitor opens Login/Register] --> B[Select Guardian or Tutor]
+    B --> C[Enter mobile number]
+    C --> D{Valid phone format?}
+    D -- No --> E[Show validation error]
+    E --> C
+    D -- Yes --> F[Rate-limit check]
+    F --> G{Too many requests?}
+    G -- Yes --> H[Show retry-after message]
+    G -- No --> I[Generate random OTP]
+    I --> J[Hash OTP server-side]
+    J --> K[Save hash, expiry, attempts, purpose]
+    K --> L[Send OTP through SMS provider]
+    L --> M[Show OTP verification screen]
+    M --> N[User enters OTP]
+    N --> O{Valid, unused, unexpired?}
+    O -- No --> P[Increment failed attempts]
+    P --> Q{Attempts exceeded?}
+    Q -- Yes --> R[Temporary lock]
+    Q -- No --> S[Show invalid OTP message]
+    S --> N
+    O -- Yes --> T[Mark OTP consumed]
+    T --> U{Existing user?}
+    U -- No --> V[Create user with selected role]
+    U -- Yes --> W[Load existing user and role]
+    V --> X[Create secure session]
+    W --> Y{Role compatible?}
+    Y -- No --> Z[Ask user to continue with existing role]
+    Y -- Yes --> X
+    X --> AA[Redirect to role dashboard]
+
+    AA --> AB[Incoming protected tRPC request]
+    AB --> AC{Valid signed session?}
+    AC -- No --> AD[401 UNAUTHORIZED]
+    AC -- Yes --> AE[Attach user and role to context]
+    AE --> AF{Required role matches?}
+    AF -- No --> AG[403 FORBIDDEN]
+    AF -- Yes --> AH[Execute protected procedure]

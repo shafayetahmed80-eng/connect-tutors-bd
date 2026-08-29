@@ -1,0 +1,1 @@
+-- Intentionally no-op: migration 0036 was corrected before application to avoid a redundant unique index.

@@ -1,0 +1,279 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786903791618,
+      "tag": "0000_yummy_marvel_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786940302949,
+      "tag": "0001_kind_thunderbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786940394123,
+      "tag": "0002_orange_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786940600000,
+      "tag": "0003_tutor_registration_locations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786948583245,
+      "tag": "0004_gifted_pyro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786948612209,
+      "tag": "0005_happy_rachel_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786952629833,
+      "tag": "0006_brainy_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787058133301,
+      "tag": "0007_awesome_imperial_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787058655841,
+      "tag": "0008_stiff_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787121208389,
+      "tag": "0009_awesome_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1787123760031,
+      "tag": "0010_silly_millenium_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1787136726229,
+      "tag": "0011_yielding_wallop",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1787197921853,
+      "tag": "0012_huge_lady_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1787226889263,
+      "tag": "0013_useful_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1787233738127,
+      "tag": "0014_hesitant_queen_noir",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1787236603396,
+      "tag": "0015_wealthy_squadron_sinister",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1787256648499,
+      "tag": "0016_superb_puck",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1787300602410,
+      "tag": "0017_reflective_major_mapleleaf",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1787314534760,
+      "tag": "0018_sloppy_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1787317869241,
+      "tag": "0019_fluffy_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1787318327430,
+      "tag": "0020_fixed_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1787324246269,
+      "tag": "0021_stormy_network",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1787325106833,
+      "tag": "0022_normal_iron_lad",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1787326727328,
+      "tag": "0023_old_cable",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787393728907,
+      "tag": "0024_new_skrulls",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1787403860216,
+      "tag": "0025_blushing_the_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1787407823792,
+      "tag": "0026_rainy_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1787414069133,
+      "tag": "0027_wandering_stephen_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1787450272566,
+      "tag": "0028_small_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1787474033901,
+      "tag": "0029_aberrant_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1787482266895,
+      "tag": "0030_ancient_shooting_star",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1787482657570,
+      "tag": "0031_curvy_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1787483793817,
+      "tag": "0032_left_fantastic_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1787485413622,
+      "tag": "0033_lonely_harry_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1787487934707,
+      "tag": "0034_luxuriant_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1787567779288,
+      "tag": "0035_salty_joseph",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1787650516662,
+      "tag": "0036_violet_zarda",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1787650540204,
+      "tag": "0037_even_jackal",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1787739266418,
+      "tag": "0038_spicy_ironclad",
+      "breakpoints": true
+    }
+  ]
+}

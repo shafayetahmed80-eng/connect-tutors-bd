@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none">
+  <rect width="480" height="360" fill="#F0FDF4"/>
+  <!-- Monitor -->
+  <rect x="110" y="80" width="260" height="180" rx="12" fill="white" stroke="#86EFAC" stroke-width="3"/>
+  <rect x="105" y="258" width="270" height="14" rx="5" fill="#BBF7D0"/>
+  <rect x="210" y="272" width="60" height="20" rx="4" fill="#86EFAC"/>
+  <!-- Screen content: video call grid -->
+  <rect x="120" y="92" width="115" height="90" rx="6" fill="#DBEAFE"/>
+  <circle cx="178" cy="127" r="24" fill="#93C5FD"/>
+  <rect x="154" y="155" width="48" height="20" rx="4" fill="#BFDBFE"/>
+  <rect x="245" y="92" width="115" height="90" rx="6" fill="#FEF9C3"/>
+  <circle cx="303" cy="127" r="24" fill="#FDE68A"/>
+  <rect x="279" y="155" width="48" height="20" rx="4" fill="#FEF08A"/>
+  <!-- Chat panel -->
+  <rect x="120" y="193" width="240" height="54" rx="6" fill="#F0FDF4"/>
+  <rect x="128" y="201" width="100" height="10" rx="3" fill="#86EFAC"/>
+  <rect x="128" y="216" width="140" height="10" rx="3" fill="#BBF7D0"/>
+  <rect x="128" y="231" width="80" height="10" rx="3" fill="#BBF7D0"/>
+  <!-- Student at desk (below screen) -->
+  <rect x="170" y="296" width="140" height="10" rx="4" fill="#86EFAC" opacity="0.5"/>
+  <circle cx="240" cy="320" r="22" fill="#FDE68A"/>
+  <!-- Wifi waves -->
+  <path d="M420 80 Q450 60 480 80" stroke="#86EFAC" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M430 100 Q450 85 470 100" stroke="#86EFAC" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <circle cx="450" cy="115" r="5" fill="#22C55E"/>
+  <!-- Stars -->
+  <circle cx="60" cy="80" r="6" fill="#FDE68A"/>
+  <circle cx="40" cy="120" r="4" fill="#A78BFA"/>
+  <circle cx="440" cy="200" r="5" fill="#FCD34D"/>
+</svg>

@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_requests` ADD `tutorId` varchar(32);

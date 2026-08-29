@@ -1,0 +1,67 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+
+> connect-tutors-bd@1.0.0 db:push C:\Projects\connect-tutors-bd
+> drizzle-kit generate && drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Projects\connect-tutors-bd\drizzle.config.ts'
+Reading schema files:
+C:\Projects\connect-tutors-bd\drizzle\schema.ts
+
+51 tables
+academic_faculties 8 columns 2 indexes 1 fks
+admin_credentials 4 columns 0 indexes 1 fks
+admin_invitations 11 columns 3 indexes 2 fks
+admin_login_audit_logs 6 columns 2 indexes 1 fks
+admin_matching_default_saved_views 4 columns 1 indexes 2 fks
+admin_matching_saved_views 6 columns 2 indexes 1 fks
+admin_two_factor_recovery_codes 5 columns 2 indexes 1 fks
+admin_two_factor_settings 6 columns 0 indexes 1 fks
+class_levels 7 columns 2 indexes 0 fks
+confirmation_letters 19 columns 4 indexes 5 fks
+curricula 7 columns 2 indexes 0 fks
+degree_majors 8 columns 2 indexes 1 fks
+faculty_departments 9 columns 3 indexes 2 fks
+guardian_contact_access_events 6 columns 3 indexes 3 fks
+guardian_phone_intakes 9 columns 2 indexes 0 fks
+guardian_profile_photo_events 8 columns 2 indexes 2 fks
+guardian_profile_photos 10 columns 2 indexes 2 fks
+guardian_profile_update_events 3 columns 1 indexes 1 fks
+guardian_profiles 9 columns 3 indexes 3 fks
+guardian_request_notifications 11 columns 3 indexes 2 fks
+languages_catalog 7 columns 2 indexes 0 fks
+locations 7 columns 0 indexes 0 fks
+student_types 7 columns 2 indexes 0 fks
+subjects_catalog 7 columns 2 indexes 0 fks
+tutor_academic_profiles 10 columns 4 indexes 5 fks
+tutor_class_levels 3 columns 1 indexes 2 fks
+tutor_communication_preferences 3 columns 0 indexes 1 fks
+tutor_confirmation_letter_notifications 9 columns 2 indexes 2 fks
+tutor_curricula 3 columns 1 indexes 2 fks
+tutor_education_records 15 columns 1 indexes 1 fks
+tutor_job_interests 6 columns 3 indexes 2 fks
+tutor_jobs 25 columns 3 indexes 1 fks
+tutor_portal_sessions 7 columns 2 indexes 1 fks
+tutor_preferred_class_sizes 3 columns 0 indexes 1 fks
+tutor_preferred_teaching_days 3 columns 0 indexes 1 fks
+tutor_preferred_time_slots 3 columns 0 indexes 1 fks
+tutor_private_profiles 17 columns 0 indexes 1 fks
+tutor_profile_moderation_events 7 columns 2 indexes 2 fks
+tutor_registrations 4 columns 0 indexes 0 fks
+tutor_request_assignment_notes 6 columns 2 indexes 2 fks
+tutor_request_operation_events 7 columns 2 indexes 3 fks
+tutor_request_publication_events 10 columns 2 indexes 2 fks
+tutor_requests 34 columns 4 indexes 2 fks
+tutor_student_types 3 columns 1 indexes 2 fks
+tutor_subjects 4 columns 1 indexes 2 fks
+tutor_teaching_areas 3 columns 1 indexes 2 fks
+tutor_teaching_languages 3 columns 1 indexes 2 fks
+tutor_university_id_documents 6 columns 0 indexes 1 fks
+tutors 38 columns 0 indexes 0 fks
+universities 7 columns 2 indexes 0 fks
+users 12 columns 1 indexes 0 fks
+
+No schema changes, nothing to migrate 😴
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Projects\connect-tutors-bd\drizzle.config.ts'
+[⣷] applying migrations...[2K[1G[⣷] applying migrations... ELIFECYCLE  Command failed with exit code 1.

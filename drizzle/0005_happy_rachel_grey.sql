@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_registrations` MODIFY COLUMN `tutorNumber` int;

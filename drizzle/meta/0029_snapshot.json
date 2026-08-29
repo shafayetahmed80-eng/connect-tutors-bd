@@ -1,0 +1,4427 @@
+{
+  "version": "5",
+  "dialect": "mysql",
+  "id": "06811485-2eb1-4f05-b6a9-22858c112d53",
+  "prevId": "8e03b7bf-5e01-4a67-aace-049580ae23ab",
+  "tables": {
+    "academic_faculties": {
+      "name": "academic_faculties",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "universityId": {
+          "name": "universityId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "academic_faculties_university_normalized_unique": {
+          "name": "academic_faculties_university_normalized_unique",
+          "columns": [
+            "universityId",
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "academic_faculties_parent_active_sort_idx": {
+          "name": "academic_faculties_parent_active_sort_idx",
+          "columns": [
+            "universityId",
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "academic_faculties_universityId_universities_id_fk": {
+          "name": "academic_faculties_universityId_universities_id_fk",
+          "tableFrom": "academic_faculties",
+          "tableTo": "universities",
+          "columnsFrom": [
+            "universityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "academic_faculties_id": {
+          "name": "academic_faculties_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "admin_invitations": {
+      "name": "admin_invitations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tokenHash": {
+          "name": "tokenHash",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','accepted','revoked','expired')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "acceptedByUserId": {
+          "name": "acceptedByUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "acceptedAt": {
+          "name": "acceptedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revokedAt": {
+          "name": "revokedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "admin_invitations_token_hash_unique": {
+          "name": "admin_invitations_token_hash_unique",
+          "columns": [
+            "tokenHash"
+          ],
+          "isUnique": true
+        },
+        "admin_invitations_email_status_idx": {
+          "name": "admin_invitations_email_status_idx",
+          "columns": [
+            "email",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "admin_invitations_status_expiry_idx": {
+          "name": "admin_invitations_status_expiry_idx",
+          "columns": [
+            "status",
+            "expiresAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "admin_invitations_createdByUserId_users_id_fk": {
+          "name": "admin_invitations_createdByUserId_users_id_fk",
+          "tableFrom": "admin_invitations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "createdByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "admin_invitations_acceptedByUserId_users_id_fk": {
+          "name": "admin_invitations_acceptedByUserId_users_id_fk",
+          "tableFrom": "admin_invitations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "acceptedByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "admin_invitations_id": {
+          "name": "admin_invitations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "admin_login_audit_logs": {
+      "name": "admin_login_audit_logs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "event": {
+          "name": "event",
+          "type": "enum('login_success','login_failure','two_factor_required','two_factor_success','two_factor_failure','recovery_code_used','invitation_created','invitation_accepted','invitation_revoked','two_factor_reset')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "admin_login_audit_logs_user_created_idx": {
+          "name": "admin_login_audit_logs_user_created_idx",
+          "columns": [
+            "userId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "admin_login_audit_logs_event_created_idx": {
+          "name": "admin_login_audit_logs_event_created_idx",
+          "columns": [
+            "event",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "admin_login_audit_logs_userId_users_id_fk": {
+          "name": "admin_login_audit_logs_userId_users_id_fk",
+          "tableFrom": "admin_login_audit_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "admin_login_audit_logs_id": {
+          "name": "admin_login_audit_logs_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "admin_two_factor_recovery_codes": {
+      "name": "admin_two_factor_recovery_codes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "codeHash": {
+          "name": "codeHash",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "usedAt": {
+          "name": "usedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "admin_2fa_recovery_codes_hash_unique": {
+          "name": "admin_2fa_recovery_codes_hash_unique",
+          "columns": [
+            "codeHash"
+          ],
+          "isUnique": true
+        },
+        "admin_2fa_recovery_codes_user_used_idx": {
+          "name": "admin_2fa_recovery_codes_user_used_idx",
+          "columns": [
+            "userId",
+            "usedAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "admin_two_factor_recovery_codes_userId_users_id_fk": {
+          "name": "admin_two_factor_recovery_codes_userId_users_id_fk",
+          "tableFrom": "admin_two_factor_recovery_codes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "admin_two_factor_recovery_codes_id": {
+          "name": "admin_two_factor_recovery_codes_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "admin_two_factor_settings": {
+      "name": "admin_two_factor_settings",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "secretCiphertext": {
+          "name": "secretCiphertext",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "enabledAt": {
+          "name": "enabledAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastVerifiedAt": {
+          "name": "lastVerifiedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "admin_two_factor_settings_userId_users_id_fk": {
+          "name": "admin_two_factor_settings_userId_users_id_fk",
+          "tableFrom": "admin_two_factor_settings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "admin_two_factor_settings_userId": {
+          "name": "admin_two_factor_settings_userId",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "class_levels": {
+      "name": "class_levels",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "class_levels_normalized_name_unique": {
+          "name": "class_levels_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "class_levels_active_sort_idx": {
+          "name": "class_levels_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "class_levels_id": {
+          "name": "class_levels_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "curricula": {
+      "name": "curricula",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "curricula_normalized_name_unique": {
+          "name": "curricula_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "curricula_active_sort_idx": {
+          "name": "curricula_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "curricula_id": {
+          "name": "curricula_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "degree_majors": {
+      "name": "degree_majors",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "facultyDepartmentId": {
+          "name": "facultyDepartmentId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "degree_majors_faculty_normalized_unique": {
+          "name": "degree_majors_faculty_normalized_unique",
+          "columns": [
+            "facultyDepartmentId",
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "degree_majors_parent_active_sort_idx": {
+          "name": "degree_majors_parent_active_sort_idx",
+          "columns": [
+            "facultyDepartmentId",
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "degree_majors_facultyDepartmentId_faculty_departments_id_fk": {
+          "name": "degree_majors_facultyDepartmentId_faculty_departments_id_fk",
+          "tableFrom": "degree_majors",
+          "tableTo": "faculty_departments",
+          "columnsFrom": [
+            "facultyDepartmentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "degree_majors_id": {
+          "name": "degree_majors_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "faculty_departments": {
+      "name": "faculty_departments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "universityId": {
+          "name": "universityId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "facultyId": {
+          "name": "facultyId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "faculty_departments_university_faculty_normalized_unique": {
+          "name": "faculty_departments_university_faculty_normalized_unique",
+          "columns": [
+            "universityId",
+            "facultyId",
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "faculty_departments_parent_active_sort_idx": {
+          "name": "faculty_departments_parent_active_sort_idx",
+          "columns": [
+            "universityId",
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        },
+        "faculty_departments_faculty_active_sort_idx": {
+          "name": "faculty_departments_faculty_active_sort_idx",
+          "columns": [
+            "facultyId",
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "faculty_departments_universityId_universities_id_fk": {
+          "name": "faculty_departments_universityId_universities_id_fk",
+          "tableFrom": "faculty_departments",
+          "tableTo": "universities",
+          "columnsFrom": [
+            "universityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "faculty_departments_facultyId_academic_faculties_id_fk": {
+          "name": "faculty_departments_facultyId_academic_faculties_id_fk",
+          "tableFrom": "faculty_departments",
+          "tableTo": "academic_faculties",
+          "columnsFrom": [
+            "facultyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "faculty_departments_id": {
+          "name": "faculty_departments_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_contact_access_events": {
+      "name": "guardian_contact_access_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "adminUserId": {
+          "name": "adminUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tutorRequestId": {
+          "name": "tutorRequestId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "context": {
+          "name": "context",
+          "type": "enum('guardian_request')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_contact_access_events_guardian_created_idx": {
+          "name": "guardian_contact_access_events_guardian_created_idx",
+          "columns": [
+            "guardianUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "guardian_contact_access_events_admin_created_idx": {
+          "name": "guardian_contact_access_events_admin_created_idx",
+          "columns": [
+            "adminUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "guardian_contact_access_events_request_created_idx": {
+          "name": "guardian_contact_access_events_request_created_idx",
+          "columns": [
+            "tutorRequestId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "guardian_contact_access_events_guardianUserId_users_id_fk": {
+          "name": "guardian_contact_access_events_guardianUserId_users_id_fk",
+          "tableFrom": "guardian_contact_access_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "guardianUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_contact_access_events_adminUserId_users_id_fk": {
+          "name": "guardian_contact_access_events_adminUserId_users_id_fk",
+          "tableFrom": "guardian_contact_access_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "adminUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_contact_access_events_tutorRequestId_tutor_requests_id_fk": {
+          "name": "guardian_contact_access_events_tutorRequestId_tutor_requests_id_fk",
+          "tableFrom": "guardian_contact_access_events",
+          "tableTo": "tutor_requests",
+          "columnsFrom": [
+            "tutorRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "guardian_contact_access_events_id": {
+          "name": "guardian_contact_access_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_phone_intakes": {
+      "name": "guardian_phone_intakes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','completed','expired')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "handoffTokenHash": {
+          "name": "handoffTokenHash",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "handoffExpiresAt": {
+          "name": "handoffExpiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phoneVerifiedAt": {
+          "name": "phoneVerifiedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_phone_intakes_phone_unique": {
+          "name": "guardian_phone_intakes_phone_unique",
+          "columns": [
+            "phone"
+          ],
+          "isUnique": true
+        },
+        "guardian_phone_intakes_status_expiry_idx": {
+          "name": "guardian_phone_intakes_status_expiry_idx",
+          "columns": [
+            "status",
+            "handoffExpiresAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "guardian_phone_intakes_id": {
+          "name": "guardian_phone_intakes_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_profile_photo_events": {
+      "name": "guardian_profile_photo_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actorUserId": {
+          "name": "actorUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "enum('submitted','replaced','removed','approved','rejected')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "previousStatus": {
+          "name": "previousStatus",
+          "type": "enum('pending_review','approved','rejected')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "nextStatus": {
+          "name": "nextStatus",
+          "type": "enum('pending_review','approved','rejected')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rejectionReason": {
+          "name": "rejectionReason",
+          "type": "enum('not_clear_guardian_portrait','contains_child_or_sensitive_personal_data','contains_contact_or_promotional_content','inappropriate_or_unsafe_content','low_quality_or_unrelated_image')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_photo_events_guardian_created_idx": {
+          "name": "guardian_photo_events_guardian_created_idx",
+          "columns": [
+            "guardianUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "guardian_photo_events_actor_created_idx": {
+          "name": "guardian_photo_events_actor_created_idx",
+          "columns": [
+            "actorUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "guardian_profile_photo_events_guardianUserId_users_id_fk": {
+          "name": "guardian_profile_photo_events_guardianUserId_users_id_fk",
+          "tableFrom": "guardian_profile_photo_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "guardianUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_profile_photo_events_actorUserId_users_id_fk": {
+          "name": "guardian_profile_photo_events_actorUserId_users_id_fk",
+          "tableFrom": "guardian_profile_photo_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actorUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "guardian_profile_photo_events_id": {
+          "name": "guardian_profile_photo_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_profile_photos": {
+      "name": "guardian_profile_photos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "storageKey": {
+          "name": "storageKey",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending_review','approved','rejected')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending_review'"
+        },
+        "rejectionReason": {
+          "name": "rejectionReason",
+          "type": "enum('not_clear_guardian_portrait','contains_child_or_sensitive_personal_data','contains_contact_or_promotional_content','inappropriate_or_unsafe_content','low_quality_or_unrelated_image')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "moderationNote": {
+          "name": "moderationNote",
+          "type": "varchar(280)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "moderatedByAdminId": {
+          "name": "moderatedByAdminId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "moderatedAt": {
+          "name": "moderatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_profile_photos_guardian_unique": {
+          "name": "guardian_profile_photos_guardian_unique",
+          "columns": [
+            "guardianUserId"
+          ],
+          "isUnique": true
+        },
+        "guardian_profile_photos_status_updated_idx": {
+          "name": "guardian_profile_photos_status_updated_idx",
+          "columns": [
+            "status",
+            "updatedAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "guardian_profile_photos_guardianUserId_users_id_fk": {
+          "name": "guardian_profile_photos_guardianUserId_users_id_fk",
+          "tableFrom": "guardian_profile_photos",
+          "tableTo": "users",
+          "columnsFrom": [
+            "guardianUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_profile_photos_moderatedByAdminId_users_id_fk": {
+          "name": "guardian_profile_photos_moderatedByAdminId_users_id_fk",
+          "tableFrom": "guardian_profile_photos",
+          "tableTo": "users",
+          "columnsFrom": [
+            "moderatedByAdminId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "guardian_profile_photos_id": {
+          "name": "guardian_profile_photos_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_profile_update_events": {
+      "name": "guardian_profile_update_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_profile_update_events_guardian_created_idx": {
+          "name": "guardian_profile_update_events_guardian_created_idx",
+          "columns": [
+            "guardianUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "guardian_profile_update_events_guardianUserId_users_id_fk": {
+          "name": "guardian_profile_update_events_guardianUserId_users_id_fk",
+          "tableFrom": "guardian_profile_update_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "guardianUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "guardian_profile_update_events_id": {
+          "name": "guardian_profile_update_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "guardian_profiles": {
+      "name": "guardian_profiles",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "guardianId": {
+          "name": "guardianId",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "enum('male','female')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cityLocationId": {
+          "name": "cityLocationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "termsVersion": {
+          "name": "termsVersion",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "guardian_profiles_guardian_id_unique": {
+          "name": "guardian_profiles_guardian_id_unique",
+          "columns": [
+            "guardianId"
+          ],
+          "isUnique": true
+        },
+        "guardian_profiles_phone_unique": {
+          "name": "guardian_profiles_phone_unique",
+          "columns": [
+            "phone"
+          ],
+          "isUnique": true
+        },
+        "guardian_profiles_location_idx": {
+          "name": "guardian_profiles_location_idx",
+          "columns": [
+            "cityLocationId",
+            "locationId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "guardian_profiles_userId_users_id_fk": {
+          "name": "guardian_profiles_userId_users_id_fk",
+          "tableFrom": "guardian_profiles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_profiles_cityLocationId_locations_id_fk": {
+          "name": "guardian_profiles_cityLocationId_locations_id_fk",
+          "tableFrom": "guardian_profiles",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "cityLocationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "guardian_profiles_locationId_locations_id_fk": {
+          "name": "guardian_profiles_locationId_locations_id_fk",
+          "tableFrom": "guardian_profiles",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "locationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "guardian_profiles_userId": {
+          "name": "guardian_profiles_userId",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "languages_catalog": {
+      "name": "languages_catalog",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "languages_catalog_normalized_name_unique": {
+          "name": "languages_catalog_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "languages_catalog_active_sort_idx": {
+          "name": "languages_catalog_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "languages_catalog_id": {
+          "name": "languages_catalog_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "locations": {
+      "name": "locations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum('country','city','division','district','thana','upazila','subdivision','area')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parentId": {
+          "name": "parentId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "locations_id": {
+          "name": "locations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "student_types": {
+      "name": "student_types",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "student_types_normalized_name_unique": {
+          "name": "student_types_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "student_types_active_sort_idx": {
+          "name": "student_types_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "student_types_id": {
+          "name": "student_types_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "subjects_catalog": {
+      "name": "subjects_catalog",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "subjects_catalog_normalized_name_unique": {
+          "name": "subjects_catalog_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "subjects_catalog_active_sort_idx": {
+          "name": "subjects_catalog_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "subjects_catalog_id": {
+          "name": "subjects_catalog_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_academic_profiles": {
+      "name": "tutor_academic_profiles",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "highestEducation": {
+          "name": "highestEducation",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "universityId": {
+          "name": "universityId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "facultyId": {
+          "name": "facultyId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "facultyDepartmentId": {
+          "name": "facultyDepartmentId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "degreeMajorId": {
+          "name": "degreeMajorId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "currentStudyStatus": {
+          "name": "currentStudyStatus",
+          "type": "enum('studying','graduated','professional')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "graduationYear": {
+          "name": "graduationYear",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_academic_profiles_university_idx": {
+          "name": "tutor_academic_profiles_university_idx",
+          "columns": [
+            "universityId"
+          ],
+          "isUnique": false
+        },
+        "tutor_academic_profiles_faculty_parent_idx": {
+          "name": "tutor_academic_profiles_faculty_parent_idx",
+          "columns": [
+            "facultyId"
+          ],
+          "isUnique": false
+        },
+        "tutor_academic_profiles_faculty_idx": {
+          "name": "tutor_academic_profiles_faculty_idx",
+          "columns": [
+            "facultyDepartmentId"
+          ],
+          "isUnique": false
+        },
+        "tutor_academic_profiles_degree_idx": {
+          "name": "tutor_academic_profiles_degree_idx",
+          "columns": [
+            "degreeMajorId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_academic_profiles_tutorId_tutors_id_fk": {
+          "name": "tutor_academic_profiles_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_academic_profiles",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_academic_profiles_universityId_universities_id_fk": {
+          "name": "tutor_academic_profiles_universityId_universities_id_fk",
+          "tableFrom": "tutor_academic_profiles",
+          "tableTo": "universities",
+          "columnsFrom": [
+            "universityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_academic_profiles_facultyId_academic_faculties_id_fk": {
+          "name": "tutor_academic_profiles_facultyId_academic_faculties_id_fk",
+          "tableFrom": "tutor_academic_profiles",
+          "tableTo": "academic_faculties",
+          "columnsFrom": [
+            "facultyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_academic_profiles_degreeMajorId_degree_majors_id_fk": {
+          "name": "tutor_academic_profiles_degreeMajorId_degree_majors_id_fk",
+          "tableFrom": "tutor_academic_profiles",
+          "tableTo": "degree_majors",
+          "columnsFrom": [
+            "degreeMajorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tap_faculty_department_fk": {
+          "name": "tap_faculty_department_fk",
+          "tableFrom": "tutor_academic_profiles",
+          "tableTo": "faculty_departments",
+          "columnsFrom": [
+            "facultyDepartmentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_academic_profiles_tutorId": {
+          "name": "tutor_academic_profiles_tutorId",
+          "columns": [
+            "tutorId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_class_levels": {
+      "name": "tutor_class_levels",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "classLevelId": {
+          "name": "classLevelId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_class_levels_catalog_idx": {
+          "name": "tutor_class_levels_catalog_idx",
+          "columns": [
+            "classLevelId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_class_levels_tutorId_tutors_id_fk": {
+          "name": "tutor_class_levels_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_class_levels",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_class_levels_classLevelId_class_levels_id_fk": {
+          "name": "tutor_class_levels_classLevelId_class_levels_id_fk",
+          "tableFrom": "tutor_class_levels",
+          "tableTo": "class_levels",
+          "columnsFrom": [
+            "classLevelId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_class_levels_tutorId_classLevelId_pk": {
+          "name": "tutor_class_levels_tutorId_classLevelId_pk",
+          "columns": [
+            "tutorId",
+            "classLevelId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_communication_preferences": {
+      "name": "tutor_communication_preferences",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "channel": {
+          "name": "channel",
+          "type": "enum('phone','whatsapp','platform_message')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tutor_communication_preferences_tutorId_tutors_id_fk": {
+          "name": "tutor_communication_preferences_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_communication_preferences",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_communication_preferences_tutorId_channel_pk": {
+          "name": "tutor_communication_preferences_tutorId_channel_pk",
+          "columns": [
+            "tutorId",
+            "channel"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_curricula": {
+      "name": "tutor_curricula",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "curriculumId": {
+          "name": "curriculumId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_curricula_catalog_idx": {
+          "name": "tutor_curricula_catalog_idx",
+          "columns": [
+            "curriculumId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_curricula_tutorId_tutors_id_fk": {
+          "name": "tutor_curricula_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_curricula",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_curricula_curriculumId_curricula_id_fk": {
+          "name": "tutor_curricula_curriculumId_curricula_id_fk",
+          "tableFrom": "tutor_curricula",
+          "tableTo": "curricula",
+          "columnsFrom": [
+            "curriculumId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_curricula_tutorId_curriculumId_pk": {
+          "name": "tutor_curricula_tutorId_curriculumId_pk",
+          "columns": [
+            "tutorId",
+            "curriculumId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_job_interests": {
+      "name": "tutor_job_interests",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorJobId": {
+          "name": "tutorJobId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('interested','shortlisted','declined','matched','withdrawn')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'interested'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_job_interests_job_tutor_unique": {
+          "name": "tutor_job_interests_job_tutor_unique",
+          "columns": [
+            "tutorJobId",
+            "tutorId"
+          ],
+          "isUnique": true
+        },
+        "tutor_job_interests_job_status_idx": {
+          "name": "tutor_job_interests_job_status_idx",
+          "columns": [
+            "tutorJobId",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "tutor_job_interests_tutor_status_idx": {
+          "name": "tutor_job_interests_tutor_status_idx",
+          "columns": [
+            "tutorId",
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_job_interests_tutorJobId_tutor_jobs_id_fk": {
+          "name": "tutor_job_interests_tutorJobId_tutor_jobs_id_fk",
+          "tableFrom": "tutor_job_interests",
+          "tableTo": "tutor_jobs",
+          "columnsFrom": [
+            "tutorJobId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_job_interests_tutorId_tutors_id_fk": {
+          "name": "tutor_job_interests_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_job_interests",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_job_interests_id": {
+          "name": "tutor_job_interests_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_jobs": {
+      "name": "tutor_jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorRequestId": {
+          "name": "tutorRequestId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "publicJobId": {
+          "name": "publicJobId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "publicationStatus": {
+          "name": "publicationStatus",
+          "type": "enum('published','unpublished','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'published'"
+        },
+        "tuitionType": {
+          "name": "tuitionType",
+          "type": "enum('home','online','both','group','package')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "classCourse": {
+          "name": "classCourse",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subjects": {
+          "name": "subjects",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "studentCount": {
+          "name": "studentCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "studentGender": {
+          "name": "studentGender",
+          "type": "enum('male','female','any')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "preferredTutorGender": {
+          "name": "preferredTutorGender",
+          "type": "enum('male','female','any')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'any'"
+        },
+        "daysPerWeek": {
+          "name": "daysPerWeek",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "budgetMode": {
+          "name": "budgetMode",
+          "type": "enum('range','discuss')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "budgetMinimum": {
+          "name": "budgetMinimum",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budgetMaximum": {
+          "name": "budgetMaximum",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Bangladesh'"
+        },
+        "cityLocationId": {
+          "name": "cityLocationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "locationLabel": {
+          "name": "locationLabel",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "directionLabel": {
+          "name": "directionLabel",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "publishedAt": {
+          "name": "publishedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deactivatedAt": {
+          "name": "deactivatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_jobs_publication_expiry_idx": {
+          "name": "tutor_jobs_publication_expiry_idx",
+          "columns": [
+            "publicationStatus",
+            "expiresAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_jobs_city_expiry_idx": {
+          "name": "tutor_jobs_city_expiry_idx",
+          "columns": [
+            "cityLocationId",
+            "expiresAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_jobs_location_expiry_idx": {
+          "name": "tutor_jobs_location_expiry_idx",
+          "columns": [
+            "locationId",
+            "expiresAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_jobs_tutorRequestId_tutor_requests_id_fk": {
+          "name": "tutor_jobs_tutorRequestId_tutor_requests_id_fk",
+          "tableFrom": "tutor_jobs",
+          "tableTo": "tutor_requests",
+          "columnsFrom": [
+            "tutorRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_jobs_id": {
+          "name": "tutor_jobs_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "tutor_jobs_tutorRequestId_unique": {
+          "name": "tutor_jobs_tutorRequestId_unique",
+          "columns": [
+            "tutorRequestId"
+          ]
+        },
+        "tutor_jobs_publicJobId_unique": {
+          "name": "tutor_jobs_publicJobId_unique",
+          "columns": [
+            "publicJobId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "tutor_preferred_class_sizes": {
+      "name": "tutor_preferred_class_sizes",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "classSize": {
+          "name": "classSize",
+          "type": "enum('one_to_one','small_group','group')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tutor_preferred_class_sizes_tutorId_tutors_id_fk": {
+          "name": "tutor_preferred_class_sizes_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_preferred_class_sizes",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_preferred_class_sizes_tutorId_classSize_pk": {
+          "name": "tutor_preferred_class_sizes_tutorId_classSize_pk",
+          "columns": [
+            "tutorId",
+            "classSize"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_preferred_teaching_days": {
+      "name": "tutor_preferred_teaching_days",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dayOfWeek": {
+          "name": "dayOfWeek",
+          "type": "enum('saturday','sunday','monday','tuesday','wednesday','thursday','friday')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tutor_preferred_teaching_days_tutorId_tutors_id_fk": {
+          "name": "tutor_preferred_teaching_days_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_preferred_teaching_days",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_preferred_teaching_days_tutorId_dayOfWeek_pk": {
+          "name": "tutor_preferred_teaching_days_tutorId_dayOfWeek_pk",
+          "columns": [
+            "tutorId",
+            "dayOfWeek"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_preferred_time_slots": {
+      "name": "tutor_preferred_time_slots",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timeSlot": {
+          "name": "timeSlot",
+          "type": "enum('morning','afternoon','evening','flexible')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tutor_preferred_time_slots_tutorId_tutors_id_fk": {
+          "name": "tutor_preferred_time_slots_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_preferred_time_slots",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_preferred_time_slots_tutorId_timeSlot_pk": {
+          "name": "tutor_preferred_time_slots_tutorId_timeSlot_pk",
+          "columns": [
+            "tutorId",
+            "timeSlot"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_profile_moderation_events": {
+      "name": "tutor_profile_moderation_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "adminUserId": {
+          "name": "adminUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "previousStatus": {
+          "name": "previousStatus",
+          "type": "enum('draft','pending','changes_requested','approved','suspended')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nextStatus": {
+          "name": "nextStatus",
+          "type": "enum('draft','pending','changes_requested','approved','suspended')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_profile_moderation_events_tutor_created_idx": {
+          "name": "tutor_profile_moderation_events_tutor_created_idx",
+          "columns": [
+            "tutorId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_profile_moderation_events_admin_created_idx": {
+          "name": "tutor_profile_moderation_events_admin_created_idx",
+          "columns": [
+            "adminUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_profile_moderation_events_tutorId_tutors_id_fk": {
+          "name": "tutor_profile_moderation_events_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_profile_moderation_events",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_profile_moderation_events_adminUserId_users_id_fk": {
+          "name": "tutor_profile_moderation_events_adminUserId_users_id_fk",
+          "tableFrom": "tutor_profile_moderation_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "adminUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_profile_moderation_events_id": {
+          "name": "tutor_profile_moderation_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_registrations": {
+      "name": "tutor_registrations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorNumber": {
+          "name": "tutorNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registeredAt": {
+          "name": "registeredAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "tutor_registrations_id": {
+          "name": "tutor_registrations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "tutor_registrations_tutorNumber_unique": {
+          "name": "tutor_registrations_tutorNumber_unique",
+          "columns": [
+            "tutorNumber"
+          ]
+        },
+        "tutor_registrations_userId_unique": {
+          "name": "tutor_registrations_userId_unique",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "tutor_request_operation_events": {
+      "name": "tutor_request_operation_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorRequestId": {
+          "name": "tutorRequestId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actorUserId": {
+          "name": "actorUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "enum('guardian_updated','admin_confirmed','admin_cancelled')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "changedFields": {
+          "name": "changedFields",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_request_operation_events_request_created_idx": {
+          "name": "tutor_request_operation_events_request_created_idx",
+          "columns": [
+            "tutorRequestId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_request_operation_events_guardian_created_idx": {
+          "name": "tutor_request_operation_events_guardian_created_idx",
+          "columns": [
+            "guardianUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tr_op_event_request_fk": {
+          "name": "tr_op_event_request_fk",
+          "tableFrom": "tutor_request_operation_events",
+          "tableTo": "tutor_requests",
+          "columnsFrom": [
+            "tutorRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tr_op_event_guardian_fk": {
+          "name": "tr_op_event_guardian_fk",
+          "tableFrom": "tutor_request_operation_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "guardianUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tr_op_event_actor_fk": {
+          "name": "tr_op_event_actor_fk",
+          "tableFrom": "tutor_request_operation_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actorUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_request_operation_events_id": {
+          "name": "tutor_request_operation_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_request_publication_events": {
+      "name": "tutor_request_publication_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "tutorRequestId": {
+          "name": "tutorRequestId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "adminUserId": {
+          "name": "adminUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "enum('verify','edit','guardian_confirmed','guardian_reconfirmed','request_changes','approve','publish','extend_expiry','unpublish','close')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "previousState": {
+          "name": "previousState",
+          "type": "enum('submitted','reviewing','changes_requested','approved','unpublished','published','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nextState": {
+          "name": "nextState",
+          "type": "enum('submitted','reviewing','changes_requested','approved','unpublished','published','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(1000)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "beforeSnapshot": {
+          "name": "beforeSnapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "afterSnapshot": {
+          "name": "afterSnapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_request_publication_events_request_created_idx": {
+          "name": "tutor_request_publication_events_request_created_idx",
+          "columns": [
+            "tutorRequestId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_request_publication_events_admin_created_idx": {
+          "name": "tutor_request_publication_events_admin_created_idx",
+          "columns": [
+            "adminUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_request_publication_events_tutorRequestId_tutor_requests_id_fk": {
+          "name": "tutor_request_publication_events_tutorRequestId_tutor_requests_id_fk",
+          "tableFrom": "tutor_request_publication_events",
+          "tableTo": "tutor_requests",
+          "columnsFrom": [
+            "tutorRequestId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_request_publication_events_adminUserId_users_id_fk": {
+          "name": "tutor_request_publication_events_adminUserId_users_id_fk",
+          "tableFrom": "tutor_request_publication_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "adminUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_request_publication_events_id": {
+          "name": "tutor_request_publication_events_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_requests": {
+      "name": "tutor_requests",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "guardianUserId": {
+          "name": "guardianUserId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tuitionType": {
+          "name": "tuitionType",
+          "type": "enum('home','online','both','group','package')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "curriculumType": {
+          "name": "curriculumType",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "classCourse": {
+          "name": "classCourse",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subjects": {
+          "name": "subjects",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "groupCapacity": {
+          "name": "groupCapacity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "packageDurationMonths": {
+          "name": "packageDurationMonths",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "studentCount": {
+          "name": "studentCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "daysPerWeek": {
+          "name": "daysPerWeek",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preferredGender": {
+          "name": "preferredGender",
+          "type": "enum('male','female','any')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'any'"
+        },
+        "studentFirstName": {
+          "name": "studentFirstName",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "studentGender": {
+          "name": "studentGender",
+          "type": "enum('male','female')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "addressDetails": {
+          "name": "addressDetails",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tuitionCityLocationId": {
+          "name": "tuitionCityLocationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tuitionLocationId": {
+          "name": "tuitionLocationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tuitionLocationLabel": {
+          "name": "tuitionLocationLabel",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budgetMode": {
+          "name": "budgetMode",
+          "type": "enum('range','discuss')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budgetMinimum": {
+          "name": "budgetMinimum",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "budgetMaximum": {
+          "name": "budgetMaximum",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contactConsent": {
+          "name": "contactConsent",
+          "type": "enum('not_required','pending','approved','declined')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'not_required'"
+        },
+        "monthlyBudget": {
+          "name": "monthlyBudget",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "locationText": {
+          "name": "locationText",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('new','reviewing','matched','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'new'"
+        },
+        "publicationState": {
+          "name": "publicationState",
+          "type": "enum('submitted','reviewing','changes_requested','approved','unpublished','published','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'submitted'"
+        },
+        "guardianConfirmedAt": {
+          "name": "guardianConfirmedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "guardianReconfirmedAt": {
+          "name": "guardianReconfirmedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "appointmentConfirmedAt": {
+          "name": "appointmentConfirmedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cancellationReason": {
+          "name": "cancellationReason",
+          "type": "varchar(280)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_requests_guardian_created_idx": {
+          "name": "tutor_requests_guardian_created_idx",
+          "columns": [
+            "guardianUserId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "tutor_requests_status_consent_idx": {
+          "name": "tutor_requests_status_consent_idx",
+          "columns": [
+            "status",
+            "contactConsent"
+          ],
+          "isUnique": false
+        },
+        "tutor_requests_publication_state_idx": {
+          "name": "tutor_requests_publication_state_idx",
+          "columns": [
+            "publicationState",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_requests_tuitionCityLocationId_locations_id_fk": {
+          "name": "tutor_requests_tuitionCityLocationId_locations_id_fk",
+          "tableFrom": "tutor_requests",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "tuitionCityLocationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_requests_tuitionLocationId_locations_id_fk": {
+          "name": "tutor_requests_tuitionLocationId_locations_id_fk",
+          "tableFrom": "tutor_requests",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "tuitionLocationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_requests_id": {
+          "name": "tutor_requests_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_student_types": {
+      "name": "tutor_student_types",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "studentTypeId": {
+          "name": "studentTypeId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_student_types_catalog_idx": {
+          "name": "tutor_student_types_catalog_idx",
+          "columns": [
+            "studentTypeId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_student_types_tutorId_tutors_id_fk": {
+          "name": "tutor_student_types_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_student_types",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_student_types_studentTypeId_student_types_id_fk": {
+          "name": "tutor_student_types_studentTypeId_student_types_id_fk",
+          "tableFrom": "tutor_student_types",
+          "tableTo": "student_types",
+          "columnsFrom": [
+            "studentTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_student_types_tutorId_studentTypeId_pk": {
+          "name": "tutor_student_types_tutorId_studentTypeId_pk",
+          "columns": [
+            "tutorId",
+            "studentTypeId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_subjects": {
+      "name": "tutor_subjects",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subjectId": {
+          "name": "subjectId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "selectionType": {
+          "name": "selectionType",
+          "type": "enum('primary','additional')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_subjects_subject_idx": {
+          "name": "tutor_subjects_subject_idx",
+          "columns": [
+            "subjectId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_subjects_tutorId_tutors_id_fk": {
+          "name": "tutor_subjects_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_subjects",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_subjects_subjectId_subjects_catalog_id_fk": {
+          "name": "tutor_subjects_subjectId_subjects_catalog_id_fk",
+          "tableFrom": "tutor_subjects",
+          "tableTo": "subjects_catalog",
+          "columnsFrom": [
+            "subjectId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_subjects_tutorId_subjectId_selectionType_pk": {
+          "name": "tutor_subjects_tutorId_subjectId_selectionType_pk",
+          "columns": [
+            "tutorId",
+            "subjectId",
+            "selectionType"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_teaching_areas": {
+      "name": "tutor_teaching_areas",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_teaching_areas_location_idx": {
+          "name": "tutor_teaching_areas_location_idx",
+          "columns": [
+            "locationId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_teaching_areas_tutorId_tutors_id_fk": {
+          "name": "tutor_teaching_areas_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_teaching_areas",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_teaching_areas_locationId_locations_id_fk": {
+          "name": "tutor_teaching_areas_locationId_locations_id_fk",
+          "tableFrom": "tutor_teaching_areas",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "locationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_teaching_areas_tutorId_locationId_pk": {
+          "name": "tutor_teaching_areas_tutorId_locationId_pk",
+          "columns": [
+            "tutorId",
+            "locationId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutor_teaching_languages": {
+      "name": "tutor_teaching_languages",
+      "columns": {
+        "tutorId": {
+          "name": "tutorId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "languageId": {
+          "name": "languageId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "tutor_teaching_languages_catalog_idx": {
+          "name": "tutor_teaching_languages_catalog_idx",
+          "columns": [
+            "languageId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "tutor_teaching_languages_tutorId_tutors_id_fk": {
+          "name": "tutor_teaching_languages_tutorId_tutors_id_fk",
+          "tableFrom": "tutor_teaching_languages",
+          "tableTo": "tutors",
+          "columnsFrom": [
+            "tutorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tutor_teaching_languages_languageId_languages_catalog_id_fk": {
+          "name": "tutor_teaching_languages_languageId_languages_catalog_id_fk",
+          "tableFrom": "tutor_teaching_languages",
+          "tableTo": "languages_catalog",
+          "columnsFrom": [
+            "languageId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tutor_teaching_languages_tutorId_languageId_pk": {
+          "name": "tutor_teaching_languages_tutorId_languageId_pk",
+          "columns": [
+            "tutorId",
+            "languageId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "tutors": {
+      "name": "tutors",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contactEmail": {
+          "name": "contactEmail",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "initials": {
+          "name": "initials",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "accent": {
+          "name": "accent",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "headline": {
+          "name": "headline",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "profilePhotoKey": {
+          "name": "profilePhotoKey",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dateOfBirth": {
+          "name": "dateOfBirth",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "nationwideAvailability": {
+          "name": "nationwideAvailability",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "institution": {
+          "name": "institution",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "education": {
+          "name": "education",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "subjects": {
+          "name": "subjects",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "levels": {
+          "name": "levels",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "experience": {
+          "name": "experience",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "teachingExperienceYears": {
+          "name": "teachingExperienceYears",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "priorTeachingExperience": {
+          "name": "priorTeachingExperience",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "specialExpertise": {
+          "name": "specialExpertise",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "academicAchievement": {
+          "name": "academicAchievement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fee": {
+          "name": "fee",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "monthlyFeeMin": {
+          "name": "monthlyFeeMin",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "monthlyFeeMax": {
+          "name": "monthlyFeeMax",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "travelDistanceKm": {
+          "name": "travelDistanceKm",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "enum('male','female')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mode": {
+          "name": "mode",
+          "type": "enum('home','online','both')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "preferredStudentGender": {
+          "name": "preferredStudentGender",
+          "type": "enum('male','female','both')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "locationId": {
+          "name": "locationId",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "availability": {
+          "name": "availability",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "profileStatus": {
+          "name": "profileStatus",
+          "type": "enum('draft','pending','changes_requested','approved','suspended')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "verified": {
+          "name": "verified",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "languages": {
+          "name": "languages",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "about": {
+          "name": "about",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "teachingApproach": {
+          "name": "teachingApproach",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "whyChooseMe": {
+          "name": "whyChooseMe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "additionalNotes": {
+          "name": "additionalNotes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "tutors_id": {
+          "name": "tutors_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "tutors_userId_unique": {
+          "name": "tutors_userId_unique",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "universities": {
+      "name": "universities",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalizedName": {
+          "name": "normalizedName",
+          "type": "varchar(240)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "universities_normalized_name_unique": {
+          "name": "universities_normalized_name_unique",
+          "columns": [
+            "normalizedName"
+          ],
+          "isUnique": true
+        },
+        "universities_active_sort_idx": {
+          "name": "universities_active_sort_idx",
+          "columns": [
+            "active",
+            "sortOrder"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "universities_id": {
+          "name": "universities_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "openId": {
+          "name": "openId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "loginPhone": {
+          "name": "loginPhone",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "loginMethod": {
+          "name": "loginMethod",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "enum('guardian','tutor','admin','user')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'guardian'"
+        },
+        "accountStatus": {
+          "name": "accountStatus",
+          "type": "enum('active','suspended','closed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        },
+        "lastSignedIn": {
+          "name": "lastSignedIn",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "users_role_login_phone_unique": {
+          "name": "users_role_login_phone_unique",
+          "columns": [
+            "role",
+            "loginPhone"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "users_id": {
+          "name": "users_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "users_openId_unique": {
+          "name": "users_openId_unique",
+          "columns": [
+            "openId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {},
+    "indexes": {}
+  }
+}

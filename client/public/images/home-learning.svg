@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none">
+  <rect width="480" height="360" fill="#F0F9FF"/>
+  <!-- Room suggestion -->
+  <rect x="0" y="260" width="480" height="100" fill="#E0F2FE"/>
+  <!-- Table -->
+  <rect x="80" y="220" width="320" height="16" rx="5" fill="#BAE6FD"/>
+  <rect x="110" y="236" width="14" height="60" rx="3" fill="#7DD3FC"/>
+  <rect x="356" y="236" width="14" height="60" rx="3" fill="#7DD3FC"/>
+  <!-- Books and notes -->
+  <rect x="100" y="190" width="50" height="32" rx="3" fill="#FCA5A5"/>
+  <rect x="108" y="190" width="6" height="32" fill="#F87171"/>
+  <rect x="160" y="185" width="45" height="37" rx="3" fill="#A7F3D0"/>
+  <rect x="168" y="185" width="5" height="37" fill="#6EE7B7"/>
+  <!-- Student -->
+  <circle cx="290" cy="175" r="30" fill="#FDE68A"/>
+  <circle cx="290" cy="163" r="19" fill="#FDE68A"/>
+  <rect x="265" y="200" width="50" height="55" rx="12" fill="#6366F1"/>
+  <!-- Tutor (smaller, beside) -->
+  <circle cx="390" cy="180" r="24" fill="#FCD34D"/>
+  <circle cx="390" cy="169" r="16" fill="#FCD34D"/>
+  <rect x="369" y="200" width="42" height="50" rx="10" fill="#0EA5E9"/>
+  <!-- Pencil pointer from tutor to book -->
+  <line x1="370" y1="210" x2="210" y2="200" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 3"/>
+  <circle cx="210" cy="200" r="4" fill="#1677E8"/>
+  <!-- Stars -->
+  <circle cx="420" cy="100" r="7" fill="#FDE68A"/>
+  <circle cx="440" cy="135" r="4" fill="#C4B5FD"/>
+  <circle cx="55" cy="120" r="5" fill="#34D399"/>
+  <circle cx="75" cy="80" r="4" fill="#FDE68A"/>
+</svg>
