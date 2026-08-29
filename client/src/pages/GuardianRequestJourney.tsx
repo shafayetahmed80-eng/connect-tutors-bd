@@ -398,7 +398,15 @@ type RequestInput = {
   budgetMaximum: string;
 };
 
-const button = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
+const button = "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
+const primaryButton = `${button} bg-j-accent text-white shadow-[0_10px_20px_rgba(22,125,221,.24)] hover:-translate-y-0.5 hover:bg-j-accent-hover`;
+const ghostButton = `${button} bg-[#eef5f9] text-[#365d7d] hover:bg-[#e1eff7]`;
+const fieldLabel = "block text-[13px] font-semibold text-j-ink-soft";
+const filledField = "h-12 w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
+
+function TrustStrip({ children }: { children: ReactNode }) {
+  return <div className="mt-6 flex items-center gap-2 rounded-xl border border-[#d7e9fb] bg-j-accent-wash px-3 py-2.5 text-xs font-semibold leading-5 text-[#1257a8]"><ShieldCheck size={15} className="shrink-0" aria-hidden="true" />{children}</div>;
+}
 const stageSteps = [
   { label: "Verify phone", description: "A secure starting point" },
   { label: "Create account", description: "Private Guardian access" },
@@ -778,7 +786,24 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 }
 
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
-  return <div className="mt-8"><Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="We do not use OTP here. Your number supports a secure handoff if we match you with a Tutor." /><label className="mt-8 block text-sm font-extrabold text-j-ink-soft" htmlFor="guardian-phone">Bangladesh mobile number <span className="text-[#d74545]">*</span><span className="mt-2 flex rounded-xl border border-[#cfe2ed] bg-j-surface-sunken focus-within:border-j-accent focus-within:ring-4 focus-within:ring-j-accent/10"><span className="border-r border-j-border px-4 py-4 font-extrabold text-[#39779e]">+880</span><input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-4 py-4 text-base outline-none placeholder:text-[#94aabd]" value={phone} onChange={(event) => onPhoneChange(event.target.value)} placeholder="01712345678" inputMode="numeric" autoComplete="tel" /></span></label><button type="button" className={`${button} mt-6 w-full bg-j-accent text-white shadow-[0_9px_18px_rgba(22,125,221,.2)] hover:-translate-y-0.5 hover:bg-j-accent-hover`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} Continue securely <ArrowRight size={18} /></button></div>;
+  const valid = LOCAL_PHONE.test(phone);
+  return <div className="mt-8">
+    <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="We do not use OTP here. Your number supports a secure handoff if we match you with a Tutor." />
+    <TrustStrip>Your number stays private — it is never shown on public Tutor profiles.</TrustStrip>
+    <label className="mt-7 block max-w-md" htmlFor="guardian-phone">
+      <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
+      <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
+        <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
+        <input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-3.5 py-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb]" value={phone} onChange={(event) => onPhoneChange(event.target.value)} placeholder="01712345678" inputMode="numeric" autoComplete="tel" />
+        {valid ? <span className="flex items-center pr-3.5 text-j-ok" aria-hidden="true"><Check size={18} /></span> : null}
+      </span>
+      {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
+    </label>
+    <div className="mt-6 flex max-w-md flex-col gap-3">
+      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} Continue securely <ArrowRight size={18} /></button>
+      <p className="text-center text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
+    </div>
+  </div>;
 }
 
 export type GuardianAccountStageProps = {
@@ -801,7 +826,7 @@ export function getGuardianPasswordStrength(password: string) {
 
 function GuardianPasswordStrength({ password }: { password: string }) {
   const strength = getGuardianPasswordStrength(password);
-  return <div className="mt-3 rounded-xl border border-[#dceaf2] bg-[#f8fcff] px-3 py-3"><div className="flex items-center justify-between gap-3"><p id="guardian-password-strength" role="status" aria-live="polite" aria-label={`Password strength: ${strength.label}. ${strength.hint}`} className="text-xs font-semibold leading-5 text-[#496981]">Password strength: <span className="font-extrabold text-[#234b6d]">{strength.label}</span>. {strength.hint}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-extrabold text-white ${strength.color}`}>{strength.label}</span></div><div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#dceaf2]"><div className={`h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none ${strength.color}`} style={{ width: `${strength.score * 25}%` }} /></div></div>;
+  return <div className="mt-3 rounded-xl border border-j-border bg-j-surface-sunken px-3 py-3"><div className="flex items-center justify-between gap-3"><p id="guardian-password-strength" role="status" aria-live="polite" aria-label={`Password strength: ${strength.label}. ${strength.hint}`} className="text-xs font-semibold leading-5 text-[#496981]">Password strength: <span className="font-extrabold text-j-ink-strong">{strength.label}</span>. {strength.hint}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-extrabold text-white ${strength.color}`}>{strength.label}</span></div><div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} className="mt-3 flex gap-1.5">{[0, 1, 2, 3].map((segment) => <span key={segment} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none ${segment < strength.score ? strength.color : "bg-[#dceaf2]"}`} />)}</div></div>;
 }
 
 function getGuardianPasswordMatch(password: string, confirmPassword: string) {
@@ -813,11 +838,11 @@ function getGuardianPasswordMatch(password: string, confirmPassword: string) {
 function GuardianPasswordMatch({ password, confirmPassword }: { password: string; confirmPassword: string }) {
   const match = getGuardianPasswordMatch(password, confirmPassword);
   if (!match) return null;
-  return <p id="guardian-password-match" role="status" aria-live="polite" className={`mt-2 flex items-center gap-2 text-xs font-semibold leading-5 ${match.color}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${match.dotColor}`} /><span><span className="font-extrabold">{match.label}</span>. {match.hint}</span></p>;
+  return <p id="guardian-password-match" role="status" aria-live="polite" className={`mt-2 flex items-center gap-2 text-xs font-semibold leading-5 ${match.matches ? "text-j-ok" : match.color}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${match.matches ? "bg-j-ok" : match.dotColor}`} /><span><span className="font-extrabold">{match.label}</span>. {match.hint}</span></p>;
 }
 
 function GuardianPasswordManagerHint() {
-  return <div role="note" aria-label="Password manager guidance" className="mt-3 flex flex-wrap items-start gap-2 rounded-xl border border-[#dceaf2] bg-[#f8fcff] px-3 py-3 text-xs font-semibold leading-5 text-[#496981]"><KeyRound className="mt-0.5 shrink-0 text-[#167ddd]" size={16} aria-hidden="true" /><p>You may use a trusted browser or device password manager to generate and save a strong password.</p></div>;
+  return <div role="note" aria-label="Password manager guidance" className="mt-3 flex flex-wrap items-start gap-2 rounded-xl border border-j-border bg-j-surface-sunken px-3 py-3 text-xs font-semibold leading-5 text-[#496981]"><KeyRound className="mt-0.5 shrink-0 text-j-accent" size={16} aria-hidden="true" /><p>You may use a trusted browser or device password manager to generate and save a strong password.</p></div>;
 }
 
 export function getGuardianLocationSelectionState(cityId: string, locationId: string, cityLabel: string, locationLabel: string) {
@@ -825,10 +850,61 @@ export function getGuardianLocationSelectionState(cityId: string, locationId: st
   return { complete: true as const, cityLabel, locationLabel };
 }
 
+function GenderSegment({ value, current, onSelect }: { value: "female" | "male"; current: "female" | "male"; onSelect: (value: "female" | "male") => void }) {
+  const label = value === "female" ? "Female" : "Male";
+  return <label className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition ${current === value ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}>
+    <input type="radio" name="guardian-gender" className="sr-only" checked={current === value} onChange={() => onSelect(value)} />{label}
+  </label>;
+}
+
 export function AccountStage(props: GuardianAccountStageProps) {
-  const accountInputClass = "mt-2 w-full border-0 border-b border-j-field-border bg-transparent px-0 pb-2 text-sm text-j-ink outline-none transition placeholder:text-[#a4afba] focus:border-j-accent focus:ring-0";
   const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
-  return <section className="mt-8" aria-label="Guardian account details"><Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access. Your contact details are never displayed on public Tutor profiles." /><p className="mt-5 text-xs font-semibold text-[#71889b]"><span className="font-extrabold text-[#d74545]">*</span> Required to create your account</p><div className="mt-6 grid gap-x-7 gap-y-6 md:grid-cols-2"><label className="block text-sm font-semibold text-[#315b79]" htmlFor="guardian-full-name">Full name <span className="text-[#d74545]">*</span><input id="guardian-full-name" className={accountInputClass} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label><fieldset><legend className="text-sm font-semibold text-[#315b79]">Gender <span className="text-[#d74545]">*</span></legend><div className="mt-3 flex gap-6 text-sm text-[#4e6174]"><label className="flex items-center gap-2"><input checked={props.gender === "female"} onChange={() => props.onGender("female")} type="radio" name="guardian-gender" /> Female</label><label className="flex items-center gap-2"><input checked={props.gender === "male"} onChange={() => props.onGender("male")} type="radio" name="guardian-gender" /> Male</label></div></fieldset><label className="block text-sm font-semibold text-[#315b79]" htmlFor="guardian-email">Email <span className="text-[#d74545]">*</span><input id="guardian-email" className={accountInputClass} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label><label className="block text-sm font-semibold text-[#315b79]" htmlFor="guardian-password">Password <span className="text-[#d74545]">*</span><span className="relative block"><input id="guardian-password" aria-describedby="guardian-password-strength" className={`${accountInputClass} pr-20`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" /><button type="button" className="absolute right-0 top-2 inline-flex items-center gap-1 rounded-md px-1 text-xs font-bold text-[#167ddd] focus:outline-none focus:ring-2 focus:ring-[#167ddd]/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button></span><GuardianPasswordStrength password={props.password} /><GuardianPasswordManagerHint /></label><label className="block text-sm font-semibold text-[#315b79]" htmlFor="guardian-confirm-password">Confirm password <span className="text-[#d74545]">*</span><input id="guardian-confirm-password" aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${accountInputClass} ${passwordMatch?.matches ? "border-[#188f73] focus:border-[#188f73]" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : ""}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label><SearchableLocationSelect label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} /><SearchableLocationSelect label="Thana / Upazila / Area / Sub-area" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} /></div><label className="mt-7 flex max-w-xl items-start gap-3 rounded-2xl border border-[#e3edf4] bg-[#f8fcff] p-4 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-[#147fc0]" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-[#167ddd] underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-[#167ddd] underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label><div className="mt-8 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5"><button type="button" className={`${button} bg-[#eef5f9] text-[#365d7d] hover:bg-[#e1eff7]`} onClick={props.onBack}><ArrowLeft size={17} /> Back to phone</button><p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p></div><button type="button" className={`${button} shrink-0 bg-[#167ddd] text-white shadow-[0_9px_18px_rgba(22,125,221,.2)] hover:-translate-y-0.5 hover:bg-[#0b6db0]`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} Create Guardian account <ArrowRight size={18} /></button></div></section>;
+  const star = <span className="text-[#d74545]">*</span>;
+  const confirmBorder = passwordMatch?.matches ? "border-j-ok focus:border-j-ok" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : "";
+  return <section className="mt-8" aria-label="Guardian account details">
+    <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access. Your contact details are never displayed on public Tutor profiles." />
+    <TrustStrip>Your phone, email, and student details never appear on public Tutor profiles.</TrustStrip>
+    <p className="mt-4 text-xs font-semibold text-[#71889b]">{star} Required to create your account</p>
+
+    <div className="mt-5 grid gap-x-7 gap-y-5 md:grid-cols-2">
+      <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+
+      <fieldset>
+        <legend className={fieldLabel}>Gender {star}</legend>
+        <div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">
+          <GenderSegment value="female" current={props.gender} onSelect={props.onGender} />
+          <GenderSegment value="male" current={props.gender} onSelect={props.onGender} />
+        </div>
+      </fieldset>
+
+      <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" className={`${filledField} mt-2`} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
+
+      <label className="block" htmlFor="guardian-password">
+        <span className={fieldLabel}>Password {star}</span>
+        <span className="relative mt-2 block">
+          <input id="guardian-password" aria-describedby="guardian-password-strength" className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
+          <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
+        </span>
+        <GuardianPasswordStrength password={props.password} />
+        <GuardianPasswordManagerHint />
+      </label>
+
+      <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+
+      <SearchableLocationSelect label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
+      <SearchableLocationSelect label="Thana / Upazila / Area / Sub-area" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+    </div>
+
+    <label className="mt-6 flex max-w-xl items-start gap-3 rounded-2xl border border-[#e3edf4] bg-j-surface-sunken p-4 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
+
+    <div className="mt-8 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+        <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back to phone</button>
+        <p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
+      </div>
+      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} Create Guardian account <ArrowRight size={18} /></button>
+    </div>
+  </section>;
 }
 
 type RequestStageProps = {
