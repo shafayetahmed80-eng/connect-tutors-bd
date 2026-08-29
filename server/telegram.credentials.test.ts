@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-describe("Telegram notification credentials", () => {
+const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_CHAT_ID);
+
+// Telegram is optional. Only assert the credential shape when at least one of
+// the variables is present (CI / a configured deployment); skip on a bare
+// local checkout where notifications are simply not wired up.
+describe.skipIf(!telegramConfigured)("Telegram notification credentials", () => {
   it("validates the configured credential shape without requiring network access", async () => {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
