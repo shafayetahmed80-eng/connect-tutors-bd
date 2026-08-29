@@ -10,9 +10,43 @@
 
 @theme inline {
   --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px);
+
+  /* Guardian journey (`j-*`) — semantic tokens for the phone/account/request flow.
+     Phase 1 values equal the previous hard-coded hex, so this change is visual-noop. */
+  --color-j-page: var(--j-page); --color-j-surface: var(--j-surface); --color-j-surface-sunken: var(--j-surface-sunken);
+  --color-j-rail: var(--j-rail); --color-j-rail-panel: var(--j-rail-panel);
+  --color-j-border: var(--j-border); --color-j-field-border: var(--j-field-border);
+  --color-j-ink: var(--j-ink); --color-j-ink-strong: var(--j-ink-strong); --color-j-ink-soft: var(--j-ink-soft);
+  --color-j-accent: var(--j-accent); --color-j-accent-hover: var(--j-accent-hover); --color-j-accent-wash: var(--j-accent-wash);
+  --color-j-ok: var(--j-ok); --color-j-ok-wash: var(--j-ok-wash); --color-j-ok-border: var(--j-ok-border);
+  --color-j-warn: var(--j-warn);
+  --color-j-err: var(--j-err); --color-j-err-wash: var(--j-err-wash); --color-j-err-border: var(--j-err-border);
 }
 
 :root { --background: #fffefa; --foreground: #102849; --card: #ffffff; --card-foreground: #102849; --popover: #ffffff; --popover-foreground: #102849; --primary: #1677e8; --primary-foreground: #ffffff; --secondary: #eaf5ff; --secondary-foreground: #102849; --muted: #f4f8fb; --muted-foreground: #68809d; --accent: #eaf5ff; --accent-foreground: #102849; --destructive: #dc4c4c; --destructive-foreground: #fff; --border: #dce8f1; --input: #dce8f1; --ring: #1677e8; --sidebar: #ffffff; --sidebar-foreground: #102849; --sidebar-border: #d9e5ed; --sidebar-accent: #eaf7ff; --sidebar-accent-foreground: #116fc4; --radius: 1rem; }
+
+:root {
+  --j-page: #f5f8ff;
+  --j-surface: #ffffff;
+  --j-surface-sunken: #f8fcff;
+  --j-rail: #0d5d9d;
+  --j-rail-panel: #0b518a;
+  --j-border: #dcecf5;
+  --j-field-border: #b7c6d1;
+  --j-ink: #173b60;
+  --j-ink-strong: #234b6d;
+  --j-ink-soft: #315b79;
+  --j-accent: #167ddd;
+  --j-accent-hover: #0b6db0;
+  --j-accent-wash: #eaf6ff;
+  --j-ok: #188f73;
+  --j-ok-wash: #f1fbf5;
+  --j-ok-border: #bfe5cf;
+  --j-warn: #df9a1d;
+  --j-err: #a43232;
+  --j-err-wash: #fff5f5;
+  --j-err-border: #f2c4c4;
+}
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
