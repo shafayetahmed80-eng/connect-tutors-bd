@@ -172,13 +172,14 @@ export default function AuthPage() {
         clearCurrentTutorPortalToken();
         clearCurrentTutorPortalLoginHandoff();
       }
-      // A suspended or closed account (FORBIDDEN) gets an honest, actionable
-      // message from the server; anything else stays the generic credentials hint.
-      const suspendedOrClosed =
-        cause instanceof TRPCClientError && cause.data?.code === "FORBIDDEN" && typeof cause.message === "string" && cause.message.trim()
+      // A suspended/closed account (FORBIDDEN) or a rate-limit block
+      // (TOO_MANY_REQUESTS) carries an honest, actionable server message; show
+      // it verbatim. Only UNAUTHORIZED (wrong credentials) keeps the generic hint.
+      const actionableServerMessage =
+        cause instanceof TRPCClientError && cause.data?.code !== "UNAUTHORIZED" && typeof cause.message === "string" && cause.message.trim()
           ? cause.message
           : null;
-      setFormError(suspendedOrClosed ?? "Email/mobile number or password is not correct. Choose the account type you used when registering.");
+      setFormError(actionableServerMessage ?? "Email/mobile number or password is not correct. Choose the account type you used when registering.");
     }
   };
 

@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import { cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { TRPCClientError } from "@trpc/client";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mutateAsync = vi.fn();
 const fetchAuthenticatedUser = vi.fn();
+
+function trpcErrorWithCode(message: string, code: string): TRPCClientError<never> {
+  const error = new TRPCClientError(message);
+  Object.defineProperty(error, "data", { value: { code }, configurable: true });
+  return error as TRPCClientError<never>;
+}
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -145,6 +152,53 @@ describe("Public Guardian and Tutor account access", () => {
   });
 });
 
+
+describe("sign-in error messages", () => {
+  it("shows a rate-limit block message verbatim instead of the wrong-password hint", async () => {
+    const user = userEvent.setup({ document: window.document });
+    mutateAsync.mockRejectedValue(
+      trpcErrorWithCode("Too many sign-in attempts. Please wait 5 minutes and try again.", "TOO_MANY_REQUESTS"),
+    );
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
+    await user.type(screen.getByLabelText("Password"), "whatever");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Too many sign-in attempts. Please wait 5 minutes and try again.");
+  });
+
+  it("shows a suspended-account (FORBIDDEN) message verbatim", async () => {
+    const user = userEvent.setup({ document: window.document });
+    mutateAsync.mockRejectedValue(
+      trpcErrorWithCode("This account has been closed. Contact support on WhatsApp to reopen it.", "FORBIDDEN"),
+    );
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
+    await user.type(screen.getByLabelText("Password"), "correct-password");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("This account has been closed. Contact support on WhatsApp to reopen it.");
+  });
+
+  it("keeps the generic hint for wrong credentials (UNAUTHORIZED)", async () => {
+    const user = userEvent.setup({ document: window.document });
+    mutateAsync.mockRejectedValue(trpcErrorWithCode("Invalid credentials.", "UNAUTHORIZED"));
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
+    await user.type(screen.getByLabelText("Password"), "wrong-password");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Email/mobile number or password is not correct. Choose the account type you used when registering.",
+    );
+  });
+});
 
 describe("post-login destinations", () => {
   it("shows an accessible Tutor workspace transition while the secure post-login hand-off is pending", async () => {

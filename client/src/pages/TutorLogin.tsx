@@ -15,16 +15,17 @@ const fieldRow = "mt-2 flex items-center gap-2 rounded-xl border border-j-field-
 const fieldInput = "min-w-0 flex-1 bg-transparent py-3 text-sm text-j-ink outline-none placeholder:text-[#9aabbb]";
 
 /**
- * A suspended or closed account (FORBIDDEN) carries an actionable server
- * message, so show it verbatim instead of the generic credentials error —
- * otherwise the Tutor is left thinking their password is wrong.
+ * UNAUTHORIZED means wrong credentials — keep the generic hint. Every other
+ * coded error (FORBIDDEN for suspended/closed, TOO_MANY_REQUESTS for a rate
+ * block) carries an actionable server message, so show it verbatim — otherwise
+ * the Tutor is left thinking their password is wrong and keeps retrying.
  */
 export function getTutorSignInErrorMessage(cause: unknown): string {
-  if (cause instanceof TRPCClientError && cause.data?.code === "FORBIDDEN" && typeof cause.message === "string" && cause.message.trim()) {
-    return cause.message;
-  }
   if (cause instanceof TRPCClientError && cause.data?.code === "UNAUTHORIZED") {
     return "The email/mobile number or password is incorrect.";
+  }
+  if (cause instanceof TRPCClientError && typeof cause.message === "string" && cause.message.trim()) {
+    return cause.message;
   }
   return "We could not sign you in. Please check your details and try again.";
 }

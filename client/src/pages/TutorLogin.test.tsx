@@ -2,6 +2,7 @@
 
 import { cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { TRPCClientError } from "@trpc/client";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -38,12 +39,56 @@ vi.mock("@/components/SiteHeader", () => ({
   default: () => null,
 }));
 
-import TutorLogin from "./TutorLogin";
+import TutorLogin, { getTutorSignInErrorMessage } from "./TutorLogin";
 
 afterEach(() => {
   cleanup();
   loginAccount.mockReset();
   completeTutorLoginHandoff.mockReset();
+});
+
+function trpcErrorWithCode(message: string, code: string): TRPCClientError<never> {
+  const error = new TRPCClientError(message);
+  Object.defineProperty(error, "data", { value: { code }, configurable: true });
+  return error as TRPCClientError<never>;
+}
+
+describe("getTutorSignInErrorMessage", () => {
+  it("keeps the generic hint for wrong credentials (UNAUTHORIZED)", () => {
+    const message = getTutorSignInErrorMessage(
+      trpcErrorWithCode("Invalid credentials.", "UNAUTHORIZED"),
+    );
+
+    expect(message).toBe("The email/mobile number or password is incorrect.");
+  });
+
+  it("shows the rate-limit server message verbatim (TOO_MANY_REQUESTS)", () => {
+    const message = getTutorSignInErrorMessage(
+      trpcErrorWithCode("Too many sign-in attempts. Please wait 5 minutes and try again.", "TOO_MANY_REQUESTS"),
+    );
+
+    expect(message).toBe("Too many sign-in attempts. Please wait 5 minutes and try again.");
+  });
+
+  it("shows the suspended-account server message verbatim (FORBIDDEN)", () => {
+    const message = getTutorSignInErrorMessage(
+      trpcErrorWithCode("This account has been suspended. Contact support on WhatsApp.", "FORBIDDEN"),
+    );
+
+    expect(message).toBe("This account has been suspended. Contact support on WhatsApp.");
+  });
+
+  it("falls back to the generic message for a non-tRPC failure", () => {
+    expect(getTutorSignInErrorMessage(new Error("network down"))).toBe(
+      "We could not sign you in. Please check your details and try again.",
+    );
+  });
+
+  it("falls back to the generic message when a coded error carries no message", () => {
+    expect(getTutorSignInErrorMessage(trpcErrorWithCode("   ", "INTERNAL_SERVER_ERROR"))).toBe(
+      "We could not sign you in. Please check your details and try again.",
+    );
+  });
 });
 
 describe("Tutor sign-in transition", () => {

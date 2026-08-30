@@ -107,6 +107,7 @@ export default function JoinTutor() {
       return;
     }
 
+    let accountCreated = false;
     try {
       const result = await registerTutor.mutateAsync({
         name: form.name.trim(),
@@ -118,6 +119,7 @@ export default function JoinTutor() {
         cityId: form.cityId,
         locationId: form.locationId,
       });
+      accountCreated = true;
       // Only persist the profile pre-fill once the account actually exists — a
       // failed attempt must not leave a draft that resurfaces in a later session.
       saveTutorOnboardingDraft({
@@ -140,6 +142,15 @@ export default function JoinTutor() {
       });
       toast.success("Tutor account created. Welcome to the Job Board.");
     } catch (cause) {
+      // The account already exists server-side; a failure past this point is a
+      // sign-in hand-off problem, not a registration one. Don't tell the user to
+      // retype and resubmit (that just hits CONFLICT) — send them to sign in.
+      if (accountCreated) {
+        setSubmitError("Your Tutor account was created. Please sign in to open your dashboard.");
+        navigate(TUTOR_SIGN_IN_HREF);
+        return;
+      }
+
       const trpcError = cause instanceof TRPCClientError ? cause : null;
       const serverMessage = typeof trpcError?.message === "string" && trpcError.message.trim() ? trpcError.message : null;
       const zodFieldErrors = (trpcError?.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors;
@@ -183,6 +194,13 @@ export default function JoinTutor() {
         setFieldErrors(current => ({ ...current, [clashingField]: serverMessage }));
         setSubmitError(serverMessage);
         focusFirstError({ [clashingField]: serverMessage });
+        return;
+      }
+
+      // Rate limiting carries an actionable "please wait" message; show it
+      // verbatim so the user does not read it as a details problem and retry.
+      if (trpcError?.data?.code === "TOO_MANY_REQUESTS" && serverMessage) {
+        setSubmitError(serverMessage);
         return;
       }
 
