@@ -10,6 +10,7 @@ afterEach(() => cleanup());
 const accountStageProps = {
   name: "",
   email: "",
+  phone: "01712345678",
   gender: "female" as const,
   password: "",
   confirmPassword: "",
@@ -61,14 +62,24 @@ describe("Guardian private-account presentation", () => {
   it("uses the Tutor-style account controls, recovery actions, and accessible password affordance", () => {
     render(<AccountStage {...accountStageProps} />);
 
-    expect(screen.getByText("Step 2 of 3")).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Create your private Guardian account" })).not.toBeNull();
+    expect(screen.queryByText("Step 2 of 3")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Create your Guardian account" })).not.toBeNull();
+    const phoneField = screen.getByDisplayValue("1712345678") as HTMLInputElement;
+    expect(phoneField.readOnly).toBe(true);
     expect((screen.getByRole("radio", { name: "Female" }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole("radio", { name: "Male" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Show password" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
     expect(screen.getByRole("link", { name: "Sign in with email or mobile" }).getAttribute("href")).toBe("/auth?role=guardian");
     expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
+  });
+
+  it("surfaces per-field server-side account errors inline like the Tutor panel", () => {
+    render(<AccountStage {...accountStageProps} fieldErrors={{ email: "Enter a valid email address.", terms: "Accept the Terms of Use and Privacy Policy to create your account." }} />);
+
+    expect(screen.getByText("Enter a valid email address.")).not.toBeNull();
+    expect(screen.getByText("Accept the Terms of Use and Privacy Policy to create your account.")).not.toBeNull();
+    expect((screen.getByLabelText(/Email/) as HTMLInputElement).getAttribute("aria-invalid")).toBe("true");
   });
 
   it("provides real-time, accessible password-strength guidance without changing the password field", () => {

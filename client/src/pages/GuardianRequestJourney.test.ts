@@ -4,7 +4,6 @@ import {
   getGuardianRequestStepValidation,
   getGuardianRequestSuccessDestination,
   guardianAccountPolicyLinks,
-  guardianJourneySteps,
   guardianRequestSteps,
 } from "./GuardianRequestJourney";
 
@@ -24,8 +23,7 @@ const completeLearningInput = {
 };
 
 describe("Guardian request validation feedback", () => {
-  it("uses English-first named stages for the guided Guardian journey", () => {
-    expect(guardianJourneySteps.map((step) => step.label)).toEqual(["Verify phone", "Create account", "Request a Tutor"]);
+  it("uses English-first named request sub-steps for the guided Guardian journey", () => {
     expect(guardianRequestSteps).toEqual(["Learning needs", "Tuition preferences", "Review & submit"]);
   });
 

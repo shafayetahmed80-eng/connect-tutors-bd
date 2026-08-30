@@ -1,11 +1,10 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link as WouterLink, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Phone, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { JourneyProgress } from "@/components/JourneyProgress";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
@@ -399,11 +398,6 @@ type RequestInput = {
   budgetMaximum: string;
 };
 
-const stageSteps = [
-  { label: "Verify phone", description: "A secure starting point" },
-  { label: "Create account", description: "Private Guardian access" },
-  { label: "Request a Tutor", description: "Tell us what you need" },
-] as const;
 const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
 
 /**
@@ -420,7 +414,68 @@ export function guardianAuthErrorMessage(error: { message: string; data?: unknow
   return error.message;
 }
 
-export const guardianJourneySteps = stageSteps;
+export type GuardianAccountFieldErrors = Partial<
+  Record<"name" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
+>;
+
+const guardianAccountErrorFieldIds: Record<keyof GuardianAccountFieldErrors, string> = {
+  name: "guardian-full-name",
+  email: "guardian-email",
+  password: "guardian-password",
+  confirmPassword: "guardian-confirm-password",
+  cityLocationId: "guardian-account-city",
+  locationId: "guardian-account-location",
+  terms: "guardian-terms",
+};
+
+/**
+ * Mirrors `guardianRegistrationSchema` so a value that passes here is not bounced
+ * back with a stringified server error. Same shape as `validateTutorRegistration`.
+ */
+export function validateGuardianRegistration(
+  values: { name: string; email: string; password: string; confirmPassword: string; accountCityId: string; accountLocationId: string },
+  termsAccepted: boolean,
+): GuardianAccountFieldErrors {
+  const errors: GuardianAccountFieldErrors = {};
+  const name = values.name.trim();
+  if (name.length < 2) errors.name = "Enter your full name.";
+  else if (name.length > 160) errors.name = "Full name must be 160 characters or fewer.";
+  const email = values.email.trim();
+  if (!email) errors.email = "Enter your email address.";
+  else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Enter a valid email address.";
+  else if (email.length > 320) errors.email = "Email address must be 320 characters or fewer.";
+  if (!values.password) errors.password = "Create a password with at least 8 characters.";
+  else if (values.password.length < 8) errors.password = "Password must be at least 8 characters.";
+  else if (values.password.length > 128) errors.password = "Password must be 128 characters or fewer.";
+  if (!values.confirmPassword) errors.confirmPassword = "Confirm your password.";
+  else if (values.password !== values.confirmPassword) errors.confirmPassword = "Passwords do not match.";
+  if (!values.accountCityId) errors.cityLocationId = "Choose your City to continue.";
+  if (!values.accountLocationId) errors.locationId = "Choose your Location to continue.";
+  if (!termsAccepted) errors.terms = "Accept the Terms of Use and Privacy Policy to create your account.";
+  return errors;
+}
+
+/** Maps the server's per-field `zodFieldErrors` keys onto the account form's field-error keys. */
+export function mapGuardianRegistrationServerErrors(zodFieldErrors: Record<string, string[]> | undefined): GuardianAccountFieldErrors {
+  if (!zodFieldErrors) return {};
+  const byServerField: Record<string, keyof GuardianAccountFieldErrors> = {
+    name: "name", email: "email", password: "password", confirmPassword: "confirmPassword",
+    cityLocationId: "cityLocationId", locationId: "locationId", termsAccepted: "terms",
+  };
+  const mapped: GuardianAccountFieldErrors = {};
+  for (const [field, messages] of Object.entries(zodFieldErrors)) {
+    const key = byServerField[field];
+    if (key && messages[0]) mapped[key] = messages[0];
+  }
+  return mapped;
+}
+
+function focusFirstGuardianAccountError(errors: GuardianAccountFieldErrors) {
+  const firstKey = (Object.keys(guardianAccountErrorFieldIds) as Array<keyof GuardianAccountFieldErrors>).find((key) => errors[key]);
+  if (!firstKey) return;
+  window.requestAnimationFrame(() => document.getElementById(guardianAccountErrorFieldIds[firstKey])?.focus());
+}
+
 export const guardianRequestSteps = requestSteps;
 export const guardianAccountPolicyLinks = [
   { label: "Terms of Use", href: "/terms-conditions" },
@@ -486,7 +541,7 @@ export function getGuardianRequestSuccessDestination({ embedded, isEditMode }: {
 }
 
 export default function GuardianRequestJourney({ embedded = false }: { embedded?: boolean }) {
-  const [, navigate] = useLocation();
+  const [routePath, navigate] = useLocation();
   const editRequestId = getGuardianPendingEditId(window.location.search);
   const isEditMode = editRequestId !== null;
   const presentation = getGuardianRequestJourneyPresentation({ embedded });
@@ -504,6 +559,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   const [accountCityId, setAccountCityId] = useState("");
   const [accountLocationId, setAccountLocationId] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [accountFieldErrors, setAccountFieldErrors] = useState<GuardianAccountFieldErrors>({});
   const [category, setCategory] = useState("");
   const [curriculumType, setCurriculumType] = useState("");
   const [classCourse, setClassCourse] = useState("");
@@ -539,8 +595,29 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     onError: (error) => { setJourneyError(error.message); toast.error(error.message); },
   });
   const registrationMutation = trpc.guardianAuth.register.useMutation({
-    onSuccess: () => { setJourneyError(""); void authQuery.refetch(); setStage("request"); },
-    onError: (error) => { const message = guardianAuthErrorMessage(error); setJourneyError(message); toast.error(message); },
+    onSuccess: () => {
+      setJourneyError("");
+      setAccountFieldErrors({});
+      void utils.auth.me.invalidate();
+      toast.success("Guardian account created.");
+      navigate("/guardian/dashboard/hire");
+    },
+    onError: (error) => {
+      const data = error.data as { zodFieldErrors?: Record<string, string[]>; code?: string } | null | undefined;
+      const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
+      if (Object.keys(mapped).length) {
+        setAccountFieldErrors((current) => ({ ...current, ...mapped }));
+        setJourneyError("Please fix the highlighted field and try again.");
+        focusFirstGuardianAccountError(mapped);
+        return;
+      }
+      if (data?.code === "BAD_REQUEST" && error.message) {
+        setAccountFieldErrors((current) => ({ ...current, cityLocationId: error.message }));
+      }
+      const message = guardianAuthErrorMessage(error);
+      setJourneyError(message);
+      toast.error(message);
+    },
   });
 
   const draftOwnerId = authQuery.data?.role === "guardian" ? authQuery.data.id : null;
@@ -590,12 +667,14 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const stageProgress = stage === "phone" ? 1 : stage === "register" ? 2 : 3;
   const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, budgetKind, budgetMinimum, budgetMaximum }), [addressDetails, budgetKind, budgetMaximum, budgetMinimum, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
-    if (authQuery.data?.role === "guardian" && stage === "phone") setStage("request");
-  }, [authQuery.data?.role, stage]);
+    if (embedded || isEditMode || routePath !== "/request-tutor") return;
+    if (authQuery.data?.role === "guardian" && (stage === "phone" || stage === "register")) {
+      navigate("/guardian/dashboard/hire");
+    }
+  }, [authQuery.data?.role, embedded, isEditMode, navigate, routePath, stage]);
 
   useEffect(() => {
     if (!editRequestId || authQuery.isLoading) return;
@@ -671,6 +750,15 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   }, [draftOwnerId, draftRestoredFor, isEditMode, notes, requestId, requestInput, stage, step]);
 
   const clearJourneyError = () => setJourneyError("");
+  const clearAccountFieldError = (...keys: Array<keyof GuardianAccountFieldErrors>) => {
+    setJourneyError("");
+    setAccountFieldErrors((current) => {
+      if (!keys.some((key) => current[key])) return current;
+      const next = { ...current };
+      for (const key of keys) delete next[key];
+      return next;
+    });
+  };
   const toggleSubject = (subject: string) => {
     clearJourneyError();
     setSelectedSubjects((current) => current.includes(subject) ? current.filter((item) => item !== subject) : [...current, subject]);
@@ -714,40 +802,32 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     else submit({ ...common, tuitionType: "both", tuitionCityLocationId, tuitionLocationId });
   };
   const register = () => {
-    // These bounds mirror `guardianRegistrationSchema` so a value that passes
-    // here is not bounced back with a stringified server error.
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    if (trimmedName.length < 2) { setJourneyError("Enter your full name to continue."); return; }
-    if (trimmedName.length > 160) { setJourneyError("Full name must be 160 characters or fewer."); return; }
-    if (!trimmedEmail || !/^\S+@\S+\.\S+$/.test(trimmedEmail)) { setJourneyError("Enter a valid email address to continue."); return; }
-    if (trimmedEmail.length > 320) { setJourneyError("Email address must be 320 characters or fewer."); return; }
-    if (password.length < 8) { setJourneyError("Create a password with at least 8 characters."); return; }
-    if (password.length > 128) { setJourneyError("Password must be 128 characters or fewer."); return; }
-    if (password !== confirmPassword) { setJourneyError("Your passwords do not match."); return; }
-    if (!accountCityId || !accountLocationId) { setJourneyError("Choose your City and location to continue."); return; }
-    if (!termsAccepted) { setJourneyError("Accept the Terms of Use and Privacy Policy to create your account."); return; }
+    const errors = validateGuardianRegistration(
+      { name, email, password, confirmPassword, accountCityId, accountLocationId },
+      termsAccepted,
+    );
+    setAccountFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setJourneyError("");
+      focusFirstGuardianAccountError(errors);
+      return;
+    }
     clearJourneyError();
-    registrationMutation.mutate({ name: trimmedName, gender, email: trimmedEmail, password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+    registrationMutation.mutate({ name: name.trim(), gender, email: email.trim(), password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
   };
 
   return <div className={presentation.rootClassName}>
     {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
-    <main className={embedded ? "py-0" : "px-4 py-10 sm:px-6 lg:py-14"}><div className={embedded ? "max-w-none" : "mx-auto max-w-2xl"}>
-      {!embedded ? <p className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs font-semibold text-j-ink-soft">
-        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="shrink-0 text-j-accent" aria-hidden="true" />Your phone, email, and notes stay private</span>
-        <span className="inline-flex items-center gap-1.5"><Phone size={14} className="shrink-0 text-j-accent" aria-hidden="true" />Help: +880 1516 131411</span>
-      </p> : null}
-      <section className={embedded ? "" : "rounded-2xl border border-j-border bg-white p-5 shadow-[0_10px_30px_rgba(28,101,148,.06)] sm:p-7"}>
-        <JourneyProgress activeStep={stageProgress} ariaLabel="Tutor request journey progress" steps={stageSteps} />
-        {stage !== "success" && journeyError ? <p role="alert" className="mt-6 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
+    <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
+      <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
+        {stage !== "success" && journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {stage === "success" ? <SuccessState requestId={requestId} /> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
           intakeMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
         }} /> : null}
-        {stage === "register" ? <AccountStage name={name} email={email} gender={gender} password={password} confirmPassword={confirmPassword} showPassword={showPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} pending={registrationMutation.isPending} onName={(value) => { clearJourneyError(); setName(value); }} onEmail={(value) => { clearJourneyError(); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearJourneyError(); setPassword(value); }} onConfirmPassword={(value) => { clearJourneyError(); setConfirmPassword(value); }} onTogglePassword={() => setShowPassword((current) => !current)} onCity={(value) => { clearJourneyError(); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearJourneyError(); setAccountLocationId(value); }} onTerms={(value) => { clearJourneyError(); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setStage("phone"); }} onCreate={register} /> : null}
+        {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} showPassword={showPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onTogglePassword={() => setShowPassword((current) => !current)} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
         {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-2xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><Loader2 className="mx-auto mb-3 animate-spin text-j-accent" size={22} />Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
           step={step}
@@ -789,9 +869,9 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
   const valid = LOCAL_PHONE.test(phone);
-  return <div className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-    <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="No OTP. Your number stays private and only supports a secure handoff if we match you with a Tutor." />
-    <label className="mt-7 block max-w-md" htmlFor="guardian-phone">
+  return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Start with your phone number</h1>
+    <label className="mt-6 block max-w-md" htmlFor="guardian-phone">
       <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
       <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
         <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
@@ -808,9 +888,10 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
 }
 
 export type GuardianAccountStageProps = {
-  name: string; email: string; gender: "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
+  name: string; email: string; phone: string; gender: "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
   cities: Array<{ id: string; label: string }>; accountCityId: string; accountLocations: Array<{ id: string; label: string }>;
   accountLocationId: string; accountCityLabel: string; termsAccepted: boolean; pending: boolean;
+  fieldErrors?: GuardianAccountFieldErrors;
   onName: (value: string) => void; onEmail: (value: string) => void; onGender: (value: "male" | "female") => void;
   onPassword: (value: string) => void; onConfirmPassword: (value: string) => void; onTogglePassword: () => void;
   onCity: (value: string) => void; onLocation: (value: string) => void; onTerms: (value: boolean) => void; onBack: () => void; onCreate: () => void;
@@ -861,15 +942,29 @@ function GenderSegment({ value, current, onSelect }: { value: "female" | "male";
   </label>;
 }
 
+function FieldError({ id, message, children }: { id: string; message?: string; children: ReactNode }) {
+  return <div>{children}{message ? <p id={id} role="alert" className="mt-1.5 text-xs font-semibold text-[#bd3535]">{message}</p> : null}</div>;
+}
+
 export function AccountStage(props: GuardianAccountStageProps) {
+  const errors = props.fieldErrors ?? {};
   const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
   const star = <span className="text-[#d74545]">*</span>;
-  const confirmBorder = passwordMatch?.matches ? "border-j-ok focus:border-j-ok" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : "";
-  return <section className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
-    <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access — you will sign in with it later." />
+  const confirmBorder = errors.confirmPassword
+    ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
+    : passwordMatch?.matches
+      ? "border-j-ok focus:border-j-ok"
+      : passwordMatch
+        ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
+        : "";
+  const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
+  return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Create your Guardian account</h1>
 
-    <div className="mt-6 grid gap-x-7 gap-y-5 md:grid-cols-2">
-      <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+    <div className="mt-6 grid gap-x-7 gap-y-4 md:grid-cols-2">
+      <FieldError id="guardian-full-name-error" message={errors.name}>
+        <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+      </FieldError>
 
       <fieldset>
         <legend className={fieldLabel}>Gender {star}</legend>
@@ -879,27 +974,48 @@ export function AccountStage(props: GuardianAccountStageProps) {
         </div>
       </fieldset>
 
-      <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" maxLength={320} className={`${filledField} mt-2`} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
-
-      <label className="block" htmlFor="guardian-password">
-        <span className={fieldLabel}>Password {star}</span>
-        <span className="relative mt-2 block">
-          <input id="guardian-password" minLength={8} maxLength={128} aria-describedby="guardian-password-strength" className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
-          <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
+      <label className="block" htmlFor="guardian-phone">
+        <span className={fieldLabel}>Phone number {star}</span>
+        <span className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-[#eef3f8]">
+          <span className="flex items-center border-r border-j-border px-3.5 text-sm font-bold text-j-ink-soft">+880</span>
+          <input id="guardian-phone" readOnly aria-readonly="true" tabIndex={-1} value={displayPhone} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-sm text-j-ink-soft outline-none" />
         </span>
-        <GuardianPasswordStrength password={props.password} />
-        <GuardianPasswordManagerHint />
+        <span className="mt-1.5 block text-xs font-medium text-[#8496a6]">Taken from the previous step. Use “Back to phone” to change it.</span>
       </label>
 
-      <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" maxLength={128} aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+      <FieldError id="guardian-email-error" message={errors.email}>
+        <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
+      </FieldError>
 
-      <SearchableLocationSelect label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
-      <SearchableLocationSelect label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+      <FieldError id="guardian-password-error" message={errors.password}>
+        <label className="block" htmlFor="guardian-password">
+          <span className={fieldLabel}>Password {star}</span>
+          <span className="relative mt-2 block">
+            <input id="guardian-password" minLength={8} maxLength={128} aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? "guardian-password-error" : "guardian-password-strength"} className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
+            <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
+          </span>
+          <GuardianPasswordStrength password={props.password} />
+          <GuardianPasswordManagerHint />
+        </label>
+      </FieldError>
+
+      <FieldError id="guardian-confirm-password-error" message={errors.confirmPassword}>
+        <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" maxLength={128} aria-describedby={errors.confirmPassword ? "guardian-confirm-password-error" : passwordMatch ? "guardian-password-match" : undefined} aria-invalid={errors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+      </FieldError>
+
+      <FieldError id="guardian-account-city-error" message={errors.cityLocationId}>
+        <SearchableLocationSelect triggerId="guardian-account-city" label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
+      </FieldError>
+      <FieldError id="guardian-account-location-error" message={errors.locationId}>
+        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+      </FieldError>
     </div>
 
-    <label className="mt-6 flex max-w-xl items-start gap-3 rounded-2xl border border-[#e3edf4] bg-j-surface-sunken p-4 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
+    <FieldError id="guardian-terms-error" message={errors.terms}>
+      <label className="mt-5 flex items-start gap-2.5 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
+    </FieldError>
 
-    <div className="mt-8 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-6 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
         <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back to phone</button>
         <p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
