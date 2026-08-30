@@ -133,6 +133,27 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("discards unsaved popup edits when the section editor is closed without saving", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    expect(screen.getByText(/Experienced Mathematics Tutor/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    let dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Discarded headline" } });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    // The typed value must not survive Cancel into the shared form / read view.
+    expect(screen.queryByText(/Discarded headline/)).toBeNull();
+    expect(screen.getByText(/Experienced Mathematics Tutor/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByDisplayValue("Experienced Mathematics Tutor")).toBeTruthy();
+    expect(within(dialog).queryByDisplayValue("Discarded headline")).toBeNull();
+  });
+
   it("shows National ID as a security-gated mandatory field without rendering an editable NID value", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

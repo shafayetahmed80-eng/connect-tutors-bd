@@ -169,6 +169,9 @@ export function TutorProfileWorkspace({
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
   const universityIdInputRef = useRef<HTMLInputElement>(null);
+  // Snapshot of `form` taken when a section popup opens, restored if it is
+  // closed without saving so Cancel/Escape/X discard the in-popup edits.
+  const formBeforeSectionEditRef = useRef<TeachingProfileState | null>(null);
   const utils = trpc.useUtils();
   const saveDraftMutation = trpc.tutor.saveProfileDraft.useMutation();
   const submitProfileMutation = trpc.tutor.submitProfile.useMutation();
@@ -285,13 +288,16 @@ export function TutorProfileWorkspace({
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
 
   const readoutResolvers = useMemo<TutorProfileReadoutResolvers>(() => {
+    // An id with no catalog match (page still loading, or the value sits past the
+    // 50-row search cap) resolves to "" so the read view shows "Not given"
+    // rather than leaking a raw numeric id.
     const byName = (rows?: ReadonlyArray<{ id: number | string; name: string }>) => {
       const map = new Map((rows ?? []).map(entry => [String(entry.id), entry.name] as const));
-      return (id: string) => map.get(id) ?? id;
+      return (id: string) => map.get(id) ?? "";
     };
     const byLabel = (rows?: ReadonlyArray<{ id: number | string; label: string }>) => {
       const map = new Map((rows ?? []).map(entry => [String(entry.id), entry.label] as const));
-      return (id: string) => map.get(id) ?? id;
+      return (id: string) => map.get(id) ?? "";
     };
     return {
       subject: byName(subjects.data),
@@ -423,6 +429,7 @@ export function TutorProfileWorkspace({
     } catch (error) {
       if (recoverServerValidationErrors(error)) {
         setViewMode("edit");
+        formBeforeSectionEditRef.current = null;
         setEditingSection(null);
       } else {
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
@@ -447,10 +454,44 @@ export function TutorProfileWorkspace({
     }
   };
 
+  // The section popup edits the shared `form` directly. Reset any catalog search
+  // typed inside it on close, otherwise `*.data` stays narrowed to the last
+  // search and the read view shows raw ids for names that fell out of it.
+  const resetSectionEditorSearch = () => {
+    setUniversityQuery("");
+    setFacultyQuery("");
+    setDepartmentQuery("");
+    setCurrentLocationQuery("");
+    setTeachingAreaQuery("");
+    setAcademicMessage("");
+  };
+
+  const openSectionEditor = (sectionId: TutorProfileSectionId) => {
+    formBeforeSectionEditRef.current = form;
+    setFeedback(null);
+    setEditingSection(sectionId);
+  };
+
+  // Close without saving: put the pre-edit values back.
+  const closeSectionEditor = () => {
+    if (formBeforeSectionEditRef.current) setForm(formBeforeSectionEditRef.current);
+    formBeforeSectionEditRef.current = null;
+    setEditingSection(null);
+    setFeedback(null);
+    resetSectionEditorSearch();
+  };
+
+  // Close after a successful save (or a recovery flow): keep the edits.
+  const finishSectionEditor = () => {
+    formBeforeSectionEditRef.current = null;
+    setEditingSection(null);
+    resetSectionEditorSearch();
+  };
+
   const submitSectionModal = async () => {
     if (!editingSection) return;
     const saved = await saveSectionDraft(editingSection);
-    if (saved) setEditingSection(null);
+    if (saved) finishSectionEditor();
   };
 
   const submitForReview = async () => {
@@ -461,7 +502,7 @@ export function TutorProfileWorkspace({
       setViewMode("edit");
       if (target) {
         setActiveTab(target);
-        setEditingSection(target);
+        openSectionEditor(target);
       }
       setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
       window.requestAnimationFrame(() => {
@@ -499,7 +540,7 @@ export function TutorProfileWorkspace({
     setViewMode("edit");
     if (target) {
       setActiveTab(target);
-      setEditingSection(target);
+      openSectionEditor(target);
     }
     setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
     window.requestAnimationFrame(() => {
@@ -617,8 +658,7 @@ export function TutorProfileWorkspace({
     }
   };
 
-  // The editable fields for one section. Shared by the accordion (below), the
-  // per-section popup card, and the tab editor — one source per field group.
+  // The editable fields for one section, rendered inside the per-section popup card.
   const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
     if (sectionId === "a") return <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
       <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
@@ -756,7 +796,7 @@ export function TutorProfileWorkspace({
       title={sectionTitles[editingSection]}
       submitting={saveDraftMutation.isPending}
       notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
-      onClose={() => { setEditingSection(null); setFeedback(null); }}
+      onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
     <div className="flex items-start gap-3 rounded-2xl border border-[#bfe4f6] bg-[#f0faff] p-4 text-sm leading-6 text-[#46728e]">
@@ -788,13 +828,13 @@ export function TutorProfileWorkspace({
     {viewMode === "read" ? <TutorProfileReadView
       sections={readoutSections}
       photoUrl={form.profilePhotoUrl}
-      onEditSection={sectionId => { setFeedback(null); setEditingSection(sectionId); }}
+      onEditSection={openSectionEditor}
       onEditAll={() => setViewMode("edit")}
     /> : <TutorProfileTabEditor
       sections={readoutSections}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      onEditSection={sectionId => { setFeedback(null); setEditingSection(sectionId); }}
+      onEditSection={openSectionEditor}
       onBackToOverview={() => setViewMode("read")}
     />}
 
