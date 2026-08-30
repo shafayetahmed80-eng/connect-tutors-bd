@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "1da4b1ff-eb02-4d70-88d5-f5f3095c2112",
-  "prevId": "df237d78-25eb-4e0b-9d5d-640d592602b7",
+  "id": "87b5f055-0921-46c0-af9f-4ae42f51637b",
+  "prevId": "1da4b1ff-eb02-4d70-88d5-f5f3095c2112",
   "tables": {
     "academic_faculties": {
       "name": "academic_faculties",
@@ -2489,7 +2489,17 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "locations_parent_type_label_unique": {
+          "name": "locations_parent_type_label_unique",
+          "columns": [
+            "parentId",
+            "type",
+            "label"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "locations_id": {
