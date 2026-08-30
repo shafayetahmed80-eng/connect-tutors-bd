@@ -11,6 +11,7 @@ import {
   adminMatchingSavedViews,
   adminTwoFactorRecoveryCodes,
   adminTwoFactorSettings,
+  authEvents,
   academicFaculties,
   classLevels,
   confirmationLetters,
@@ -57,6 +58,7 @@ import {
   users,
   type InsertTutorRequest,
   type AdminAuditEvent,
+  type AuthEventType,
   type GuardianProfilePhotoRejectionReason,
   type GuardianProfilePhotoStatus,
   type TutorRequestPublicationAction,
@@ -3443,6 +3445,63 @@ export async function listAdminAuditLogPage(filters: AdminAuditLogFilters) {
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+}
+
+export type AuthEventRole = "tutor" | "guardian" | "admin";
+
+/**
+ * Durable counterpart to the `[auth-audit]` stdout line for public (non-Admin)
+ * auth flows. Never receives raw identifiers or credential material — callers
+ * pass an already-masked identifier. Failures here must not break the request,
+ * so callers invoke this best-effort (`void ...catch()`).
+ */
+export async function recordAuthEvent(input: {
+  event: AuthEventType;
+  role?: AuthEventRole;
+  ip?: string | null;
+  identifierMasked?: string | null;
+  reason?: string | null;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.insert(authEvents).values({
+    event: input.event,
+    role: input.role ?? null,
+    ip: input.ip?.slice(0, 64) ?? null,
+    identifierMasked: input.identifierMasked?.slice(0, 128) ?? null,
+    reason: input.reason?.slice(0, 120) ?? null,
+  });
+  return { id: Number(result[0].insertId) } as const;
+}
+
+/** Recent public auth events, newest first. Owner/Admin-facing; no credentials stored. */
+export async function listRecentAuthEvents(filters: {
+  event?: AuthEventType;
+  role?: AuthEventRole;
+  ip?: string;
+  limit?: number;
+} = {}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500);
+  const conditions: SQL[] = [];
+  if (filters.event) conditions.push(eq(authEvents.event, filters.event));
+  if (filters.role) conditions.push(eq(authEvents.role, filters.role));
+  if (filters.ip?.trim()) conditions.push(eq(authEvents.ip, filters.ip.trim()));
+  const query = database
+    .select({
+      id: authEvents.id,
+      event: authEvents.event,
+      role: authEvents.role,
+      ip: authEvents.ip,
+      identifierMasked: authEvents.identifierMasked,
+      reason: authEvents.reason,
+      createdAt: authEvents.createdAt,
+    })
+    .from(authEvents);
+  return conditions.length
+    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(limit)
+    : await query.orderBy(desc(authEvents.createdAt)).limit(limit);
 }
 
 /**

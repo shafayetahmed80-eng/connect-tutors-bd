@@ -9,6 +9,7 @@ vi.mock("./db", async importOriginal => {
   return {
     ...actual,
     createOrResumeGuardianPhoneIntake: guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake,
+    recordAuthEvent: vi.fn(async () => ({ id: 0 })),
   };
 });
 

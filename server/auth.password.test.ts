@@ -51,6 +51,7 @@ function createContext(
 beforeEach(() => {
   __resetAuthRateLimitsForTests();
   vi.spyOn(console, "info").mockImplementation(() => {}); // silence [auth-audit] lines
+  vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 0 }); // keep the durable audit write off the real DB
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -127,6 +128,38 @@ describe("Tutor password authentication", () => {
     expect(cookies[0]).toMatchObject({ name: COOKIE_NAME, value: "signed-password-session" });
     expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "none", path: "/" });
     expect(cookies[0]?.options).not.toHaveProperty("maxAge");
+  });
+
+  it("persists a durable auth_events row with a masked identifier on a successful sign-in", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user });
+    vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-password-session");
+    const recordAuthEvent = vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 1 });
+
+    await appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
+      password: "strong-pass-123",
+    });
+
+    expect(recordAuthEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "login_success", role: "tutor", identifierMasked: "tu***@example.com" }),
+    );
+  });
+
+  it("keeps a sign-in succeeding even when the durable auth_events write fails", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user });
+    vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-password-session");
+    vi.spyOn(db, "recordAuthEvent").mockRejectedValue(new Error("db unavailable"));
+
+    const result = await appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
+      password: "strong-pass-123",
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("rejects invalid Tutor credentials without creating a session", async () => {

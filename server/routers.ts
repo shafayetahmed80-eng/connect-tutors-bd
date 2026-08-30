@@ -27,7 +27,7 @@ import {
   hashTutorPortalToken,
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
-import { recordAuthAudit } from "./auth-audit";
+import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -345,6 +345,26 @@ function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string
   return { ipKey: `ip:${ip}`, pairKey: `pair:${ip}:${role}:${normalized}` };
 }
 
+/**
+ * One call, two sinks: the immediate `[auth-audit]` stdout line (collected by the
+ * log pipeline) and a durable `auth_events` row (Owner/Admin-queryable, the
+ * counterpart to `db.logAdminAuditEvent`). The row is written best-effort — a
+ * logging failure must never turn a successful sign-in or registration into an
+ * error — and only ever stores the masked identifier.
+ */
+function auditAuth(event: AuthAuditEvent, fields: AuthAuditFields = {}) {
+  recordAuthAudit(event, fields);
+  void db
+    .recordAuthEvent({
+      event,
+      role: fields.role,
+      ip: fields.ip,
+      identifierMasked: fields.identifier?.trim() ? maskIdentifier(fields.identifier) : undefined,
+      reason: fields.reason,
+    })
+    .catch(() => {});
+}
+
 const ownerAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user.openId !== ENV.ownerOpenId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner can manage Admin security." });
@@ -473,7 +493,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const ip = getRequestIp(ctx);
         if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
-          recordAuthAudit("phone_intake_blocked", { role: "guardian", ip, identifier: input.phone });
+          auditAuth("phone_intake_blocked", { role: "guardian", ip, identifier: input.phone });
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
         }
         ipRegistrationRateLimiter.record(`reg:${ip}`);
@@ -509,7 +529,7 @@ export const appRouter = router({
           maxAge: GUARDIAN_INTAKE_HANDOFF_TTL_MS,
         });
 
-        recordAuthAudit("phone_intake", { role: "guardian", ip, identifier: phone });
+        auditAuth("phone_intake", { role: "guardian", ip, identifier: phone });
         return { success: true } as const;
       }),
   }),
@@ -517,7 +537,7 @@ export const appRouter = router({
     register: publicProcedure.input(guardianRegistrationSchema).mutation(async ({ ctx, input }) => {
       const ip = getRequestIp(ctx);
       if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
-        recordAuthAudit("registration_blocked", { role: "guardian", ip, identifier: input.email });
+        auditAuth("registration_blocked", { role: "guardian", ip, identifier: input.email });
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
       }
       ipRegistrationRateLimiter.record(`reg:${ip}`);
@@ -529,7 +549,7 @@ export const appRouter = router({
         const { confirmPassword: _confirmPassword, termsAccepted: _termsAccepted, ...registration } = input;
         result = await db.registerGuardianFromIntake({ ...registration, phone: input.phone ?? "", termsVersion: GUARDIAN_TERMS_VERSION, handoffTokenHash: handoff.tokenHash });
       } catch (error) {
-        recordAuthAudit("registration_rejected", { role: "guardian", ip, identifier: input.email, reason: error instanceof GuardianRegistrationError ? error.reason : "error" });
+        auditAuth("registration_rejected", { role: "guardian", ip, identifier: input.email, reason: error instanceof GuardianRegistrationError ? error.reason : "error" });
         if (error instanceof GuardianRegistrationError) {
           if (error.reason === "duplicate") throw new TRPCError({ code: "CONFLICT", message: "এই তথ্য দিয়ে নিবন্ধন সম্পন্ন করা যাচ্ছে না। অনুগ্রহ করে সাইন ইন করুন অথবা অন্য তথ্য দিয়ে চেষ্টা করুন।" });
           if (error.reason === "invalid-location") throw new TRPCError({ code: "BAD_REQUEST", message: "নির্বাচিত লোকেশনটি শহরের মধ্যে বৈধ নয়।" });
@@ -539,7 +559,7 @@ export const appRouter = router({
       }
       await setPasswordSession(ctx, result.user);
       ctx.res.clearCookie("guardian-intake-handoff", { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
-      recordAuthAudit("registration_success", { role: "guardian", ip, identifier: input.email });
+      auditAuth("registration_success", { role: "guardian", ip, identifier: input.email });
       return { success: true, next: "request-details" as const, user: { id: result.user.id, name: result.user.name, email: result.user.email, role: result.user.role, accountStatus: "active" as const } };
     }),
   }),
@@ -599,14 +619,14 @@ export const appRouter = router({
     registerTutor: publicProcedure.input(tutorAuthInputSchema).mutation(async ({ ctx, input }) => {
       const ip = getRequestIp(ctx);
       if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
-        recordAuthAudit("registration_blocked", { role: "tutor", ip, identifier: input.email });
+        auditAuth("registration_blocked", { role: "tutor", ip, identifier: input.email });
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
       }
       ipRegistrationRateLimiter.record(`reg:${ip}`);
 
       const result = await db.registerPasswordTutor(input);
       if (!result.created) {
-        recordAuthAudit("registration_rejected", { role: "tutor", ip, identifier: input.email, reason: result.reason });
+        auditAuth("registration_rejected", { role: "tutor", ip, identifier: input.email, reason: result.reason });
         if (result.reason === "invalid-location") {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -623,7 +643,7 @@ export const appRouter = router({
       }
       await setPasswordSession(ctx, result.user);
       const tutorPortalToken = await issueTutorPortalSession(result.user.id);
-      recordAuthAudit("registration_success", { role: "tutor", ip, identifier: input.email });
+      auditAuth("registration_success", { role: "tutor", ip, identifier: input.email });
       return {
         success: true,
         user: toClientAuthIdentity(result.user),
@@ -635,7 +655,7 @@ export const appRouter = router({
       const ip = getRequestIp(ctx);
       const { ipKey, pairKey } = passwordLoginRateLimitKeys(ip, input.role, input.identifier);
       if (ipLoginRateLimiter.check(ipKey).blocked || pairLoginRateLimiter.check(pairKey).blocked) {
-        recordAuthAudit("login_blocked", { role: input.role, ip, identifier: input.identifier });
+        auditAuth("login_blocked", { role: input.role, ip, identifier: input.identifier });
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: LOGIN_RATE_LIMITED_MESSAGE });
       }
 
@@ -643,7 +663,7 @@ export const appRouter = router({
       if (outcome.status !== "ok") {
         ipLoginRateLimiter.record(ipKey);
         pairLoginRateLimiter.record(pairKey);
-        recordAuthAudit(
+        auditAuth(
           outcome.status === "suspended" ? "login_account_suspended" : outcome.status === "closed" ? "login_account_closed" : "login_failure",
           { role: input.role, ip, identifier: input.identifier, reason: outcome.status },
         );
@@ -655,7 +675,7 @@ export const appRouter = router({
       const user = outcome.user;
       await setPasswordSession(ctx, user);
       const tutorPortalToken = user.role === "tutor" ? await issueTutorPortalSession(user.id) : undefined;
-      recordAuthAudit("login_success", { role: input.role, ip, identifier: input.identifier });
+      auditAuth("login_success", { role: input.role, ip, identifier: input.identifier });
       return { success: true, user: toClientAuthIdentity(user), tutorPortalToken } as const;
     }),
     loginAdmin: publicProcedure.input(adminPasswordLoginInputSchema).mutation(async ({ ctx, input }) => {

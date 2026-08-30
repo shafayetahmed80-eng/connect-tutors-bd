@@ -14,6 +14,7 @@ vi.mock("./db", async importOriginal => {
     registerGuardianFromIntake: guardianAuthDbMocks.registerGuardianFromIntake,
     getGuardianProfileByUserId: guardianAuthDbMocks.getGuardianProfileByUserId,
     verifyGuardianPassword: guardianAuthDbMocks.verifyGuardianPassword,
+    recordAuthEvent: vi.fn(async () => ({ id: 0 })),
   };
 });
 

@@ -255,6 +255,47 @@ export const adminLoginAuditLogs = mysqlTable(
   ]
 );
 
+/**
+ * Kept in sync with `AuthAuditEvent` in `server/auth-audit.ts` — same string set,
+ * duplicated here because `drizzle/` cannot import from `server/`.
+ */
+export const authEventTypeValues = [
+  "login_success",
+  "login_failure",
+  "login_blocked",
+  "login_account_suspended",
+  "login_account_closed",
+  "registration_success",
+  "registration_rejected",
+  "registration_blocked",
+  "phone_intake",
+  "phone_intake_blocked",
+] as const;
+export type AuthEventType = (typeof authEventTypeValues)[number];
+
+/**
+ * Durable, queryable history of public (non-Admin) authentication events. No
+ * credential material and no raw identifier — `identifierMasked` mirrors the
+ * masked value written to the stdout audit line.
+ */
+export const authEvents = mysqlTable(
+  "auth_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    event: mysqlEnum("event", authEventTypeValues).notNull(),
+    role: mysqlEnum("role", ["tutor", "guardian", "admin"]),
+    ip: varchar("ip", { length: 64 }),
+    identifierMasked: varchar("identifierMasked", { length: 128 }),
+    reason: varchar("reason", { length: 120 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("auth_events_event_created_idx").on(table.event, table.createdAt),
+    index("auth_events_ip_created_idx").on(table.ip, table.createdAt),
+  ]
+);
+export type AuthEvent = typeof authEvents.$inferSelect;
+
 /** Encrypted TOTP seed and enrollment metadata for one Admin account. */
 export const adminTwoFactorSettings = mysqlTable("admin_two_factor_settings", {
   userId: int("userId").primaryKey().references(() => users.id),
@@ -434,24 +475,38 @@ export const guardianProfilePhotoEvents = mysqlTable(
   ],
 );
 
-export const locations = mysqlTable("locations", {
-  id: varchar("id", { length: 80 }).primaryKey(),
-  label: varchar("label", { length: 160 }).notNull(),
-  type: mysqlEnum("type", [
-    "country",
-    "city",
-    "division",
-    "district",
-    "thana",
-    "upazila",
-    "subdivision",
-    "area",
-  ]).notNull(),
-  country: varchar("country", { length: 120 }).notNull(),
-  parentId: varchar("parentId", { length: 80 }),
-  enabled: int("enabled").default(1).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const locations = mysqlTable(
+  "locations",
+  {
+    id: varchar("id", { length: 80 }).primaryKey(),
+    label: varchar("label", { length: 160 }).notNull(),
+    type: mysqlEnum("type", [
+      "country",
+      "city",
+      "division",
+      "district",
+      "thana",
+      "upazila",
+      "subdivision",
+      "area",
+    ]).notNull(),
+    country: varchar("country", { length: 120 }).notNull(),
+    parentId: varchar("parentId", { length: 80 }),
+    enabled: int("enabled").default(1).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    // One catalog option per (parent, type, label). Blocks the re-introduction
+    // of the duplicate rows cleaned up in scripts/cleanup-duplicate-locations.mjs.
+    // MySQL treats NULL parentId rows as distinct, so top-level entries (the
+    // country root) are unaffected.
+    uniqueIndex("locations_parent_type_label_unique").on(
+      table.parentId,
+      table.type,
+      table.label,
+    ),
+  ],
+);
 
 export const tutors = mysqlTable("tutors", {
   id: varchar("id", { length: 32 }).primaryKey(),
