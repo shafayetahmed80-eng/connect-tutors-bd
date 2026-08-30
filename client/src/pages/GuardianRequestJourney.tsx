@@ -406,6 +406,20 @@ const stageSteps = [
 ] as const;
 const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
 
+/**
+ * Prefers the server's per-field Zod messages (now on `data.zodFieldErrors`) over
+ * the raw stringified error, so a rejected registration reads as guidance rather
+ * than a JSON blob when the client checks were looser.
+ */
+export function guardianAuthErrorMessage(error: { message: string; data?: unknown }): string {
+  const fieldErrors = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors;
+  if (fieldErrors) {
+    const parts = Object.values(fieldErrors).map(messages => messages[0]).filter(Boolean);
+    if (parts.length) return parts.join(" ");
+  }
+  return error.message;
+}
+
 export const guardianJourneySteps = stageSteps;
 export const guardianRequestSteps = requestSteps;
 export const guardianAccountPolicyLinks = [
@@ -526,7 +540,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   });
   const registrationMutation = trpc.guardianAuth.register.useMutation({
     onSuccess: () => { setJourneyError(""); void authQuery.refetch(); setStage("request"); },
-    onError: (error) => { setJourneyError(error.message); toast.error(error.message); },
+    onError: (error) => { const message = guardianAuthErrorMessage(error); setJourneyError(message); toast.error(message); },
   });
 
   const draftOwnerId = authQuery.data?.role === "guardian" ? authQuery.data.id : null;
@@ -700,14 +714,21 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     else submit({ ...common, tuitionType: "both", tuitionCityLocationId, tuitionLocationId });
   };
   const register = () => {
-    if (!name.trim()) { setJourneyError("Enter your full name to continue."); return; }
-    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) { setJourneyError("Enter a valid email address to continue."); return; }
+    // These bounds mirror `guardianRegistrationSchema` so a value that passes
+    // here is not bounced back with a stringified server error.
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    if (trimmedName.length < 2) { setJourneyError("Enter your full name to continue."); return; }
+    if (trimmedName.length > 160) { setJourneyError("Full name must be 160 characters or fewer."); return; }
+    if (!trimmedEmail || !/^\S+@\S+\.\S+$/.test(trimmedEmail)) { setJourneyError("Enter a valid email address to continue."); return; }
+    if (trimmedEmail.length > 320) { setJourneyError("Email address must be 320 characters or fewer."); return; }
     if (password.length < 8) { setJourneyError("Create a password with at least 8 characters."); return; }
+    if (password.length > 128) { setJourneyError("Password must be 128 characters or fewer."); return; }
     if (password !== confirmPassword) { setJourneyError("Your passwords do not match."); return; }
     if (!accountCityId || !accountLocationId) { setJourneyError("Choose your City and location to continue."); return; }
     if (!termsAccepted) { setJourneyError("Accept the Terms of Use and Privacy Policy to create your account."); return; }
     clearJourneyError();
-    registrationMutation.mutate({ name, gender, email, password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+    registrationMutation.mutate({ name: trimmedName, gender, email: trimmedEmail, password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
   };
 
   return <div className={presentation.rootClassName}>
@@ -848,7 +869,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
     <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access — you will sign in with it later." />
 
     <div className="mt-6 grid gap-x-7 gap-y-5 md:grid-cols-2">
-      <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+      <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
 
       <fieldset>
         <legend className={fieldLabel}>Gender {star}</legend>
@@ -858,19 +879,19 @@ export function AccountStage(props: GuardianAccountStageProps) {
         </div>
       </fieldset>
 
-      <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" className={`${filledField} mt-2`} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
+      <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" maxLength={320} className={`${filledField} mt-2`} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
 
       <label className="block" htmlFor="guardian-password">
         <span className={fieldLabel}>Password {star}</span>
         <span className="relative mt-2 block">
-          <input id="guardian-password" aria-describedby="guardian-password-strength" className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
+          <input id="guardian-password" minLength={8} maxLength={128} aria-describedby="guardian-password-strength" className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
           <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
         </span>
         <GuardianPasswordStrength password={props.password} />
         <GuardianPasswordManagerHint />
       </label>
 
-      <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+      <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" maxLength={128} aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
 
       <SearchableLocationSelect label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
       <SearchableLocationSelect label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
