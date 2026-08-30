@@ -26,6 +26,8 @@ import {
   getTutorPortalTokenFromHeaders,
   hashTutorPortalToken,
 } from "./tutor-portal-session";
+import { createAuthRateLimiter } from "./auth-rate-limit";
+import { recordAuthAudit } from "./auth-audit";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -42,16 +44,26 @@ const tutorAuthInputSchema = z.object({
   message: "Passwords do not match.",
   path: ["confirmPassword"],
 });
-const tutorLoginInputSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address.").max(320),
-  password: z.string().min(1, "Enter your password.").max(128),
-});
 const passwordAccountLoginInputSchema = z.object({
   role: z.enum(["guardian", "tutor"]),
   identifier: z.string().trim().min(1, "Enter your email or mobile number.").max(320),
   password: z.string().min(1, "Enter your password.").max(128),
 });
 const PASSWORD_ACCOUNT_LOGIN_ERROR = "Email/mobile number or password is not correct.";
+const PASSWORD_ACCOUNT_SUSPENDED_ERROR = "This account has been suspended. Contact Connect Tutors BD support on WhatsApp to restore access.";
+const PASSWORD_ACCOUNT_CLOSED_ERROR = "This account has been closed. Contact Connect Tutors BD support on WhatsApp if you believe this is a mistake.";
+
+/**
+ * Raises the TRPCError that matches a non-`ok` password sign-in outcome. A wrong
+ * password stays a generic UNAUTHORIZED; a correct password on a suspended/closed
+ * account gets an honest FORBIDDEN so the person is not left guessing at their
+ * own password.
+ */
+function throwPasswordAccountSignInError(status: "invalid-credentials" | "suspended" | "closed"): never {
+  if (status === "suspended") throw new TRPCError({ code: "FORBIDDEN", message: PASSWORD_ACCOUNT_SUSPENDED_ERROR });
+  if (status === "closed") throw new TRPCError({ code: "FORBIDDEN", message: PASSWORD_ACCOUNT_CLOSED_ERROR });
+  throw new TRPCError({ code: "UNAUTHORIZED", message: PASSWORD_ACCOUNT_LOGIN_ERROR });
+}
 const adminPasswordLoginInputSchema = z.object({
   userId: z.string().trim().min(1, "Enter your User ID.").max(64),
   password: z.string().min(1, "Enter your password.").max(128),
@@ -309,6 +321,30 @@ function getRequestIp(ctx: { req: { headers: Record<string, string | string[] | 
   return forwardedValue?.split(",")[0]?.trim() || ctx.req.ip || "unknown";
 }
 
+// --- Public authentication abuse controls (in-process; see auth-rate-limit.ts) ---
+const AUTH_WINDOW_MS = 15 * 60_000;
+const REGISTRATION_WINDOW_MS = 60 * 60_000;
+/** A spraying source: generous so a shared office/NAT address is not caught by ordinary use. */
+const ipLoginRateLimiter = createAuthRateLimiter({ windowMs: AUTH_WINDOW_MS, maxAttempts: 25, blockMs: AUTH_WINDOW_MS });
+/** Focused guessing at one identifier — keyed by IP + account so it cannot lock a victim out globally. */
+const pairLoginRateLimiter = createAuthRateLimiter({ windowMs: AUTH_WINDOW_MS, maxAttempts: 8, blockMs: AUTH_WINDOW_MS });
+/** Account farming / signup spam — every registration or phone-intake try counts. */
+const ipRegistrationRateLimiter = createAuthRateLimiter({ windowMs: REGISTRATION_WINDOW_MS, maxAttempts: 15, blockMs: REGISTRATION_WINDOW_MS });
+const LOGIN_RATE_LIMITED_MESSAGE = "Too many sign-in attempts from this connection. Please wait a few minutes and try again.";
+const REGISTRATION_RATE_LIMITED_MESSAGE = "Too many attempts from this connection. Please wait a while and try again.";
+
+/** Clears every public-auth limiter. Test hook only. */
+export function __resetAuthRateLimitsForTests() {
+  ipLoginRateLimiter.clear();
+  pairLoginRateLimiter.clear();
+  ipRegistrationRateLimiter.clear();
+}
+
+function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string) {
+  const normalized = db.normalizePasswordAccountIdentifier(identifier)?.value ?? identifier.trim().toLowerCase();
+  return { ipKey: `ip:${ip}`, pairKey: `pair:${ip}:${role}:${normalized}` };
+}
+
 const ownerAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user.openId !== ENV.ownerOpenId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner can manage Admin security." });
@@ -435,6 +471,13 @@ export const appRouter = router({
     capturePhone: publicProcedure
       .input(z.object({ phone: z.string().trim().min(1).max(32) }))
       .mutation(async ({ ctx, input }) => {
+        const ip = getRequestIp(ctx);
+        if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
+          recordAuthAudit("phone_intake_blocked", { role: "guardian", ip, identifier: input.phone });
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+        }
+        ipRegistrationRateLimiter.record(`reg:${ip}`);
+
         let phone: string;
         try {
           phone = normalizeBangladeshMobile(input.phone);
@@ -466,11 +509,19 @@ export const appRouter = router({
           maxAge: GUARDIAN_INTAKE_HANDOFF_TTL_MS,
         });
 
+        recordAuthAudit("phone_intake", { role: "guardian", ip, identifier: phone });
         return { success: true } as const;
       }),
   }),
   guardianAuth: router({
     register: publicProcedure.input(guardianRegistrationSchema).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
+        recordAuthAudit("registration_blocked", { role: "guardian", ip, identifier: input.email });
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+      }
+      ipRegistrationRateLimiter.record(`reg:${ip}`);
+
       const handoff = verifyGuardianIntakeHandoff(parseCookieHeader(ctx.req.headers.cookie ?? "")["guardian-intake-handoff"], { secret: ENV.cookieSecret });
       if (!handoff) throw new TRPCError({ code: "UNAUTHORIZED", message: "আপনার নিবন্ধন সেশনটি আর সক্রিয় নেই। ফোন নম্বর দিয়ে আবার শুরু করুন।" });
       let result: Awaited<ReturnType<typeof db.registerGuardianFromIntake>>;
@@ -478,6 +529,7 @@ export const appRouter = router({
         const { confirmPassword: _confirmPassword, termsAccepted: _termsAccepted, ...registration } = input;
         result = await db.registerGuardianFromIntake({ ...registration, phone: input.phone ?? "", termsVersion: GUARDIAN_TERMS_VERSION, handoffTokenHash: handoff.tokenHash });
       } catch (error) {
+        recordAuthAudit("registration_rejected", { role: "guardian", ip, identifier: input.email, reason: error instanceof GuardianRegistrationError ? error.reason : "error" });
         if (error instanceof GuardianRegistrationError) {
           if (error.reason === "duplicate") throw new TRPCError({ code: "CONFLICT", message: "এই তথ্য দিয়ে নিবন্ধন সম্পন্ন করা যাচ্ছে না। অনুগ্রহ করে সাইন ইন করুন অথবা অন্য তথ্য দিয়ে চেষ্টা করুন।" });
           if (error.reason === "invalid-location") throw new TRPCError({ code: "BAD_REQUEST", message: "নির্বাচিত লোকেশনটি শহরের মধ্যে বৈধ নয়।" });
@@ -487,6 +539,7 @@ export const appRouter = router({
       }
       await setPasswordSession(ctx, result.user);
       ctx.res.clearCookie("guardian-intake-handoff", { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+      recordAuthAudit("registration_success", { role: "guardian", ip, identifier: input.email });
       return { success: true, next: "request-details" as const, user: { id: result.user.id, name: result.user.name, email: result.user.email, role: result.user.role, accountStatus: "active" as const } };
     }),
   }),
@@ -544,12 +597,33 @@ export const appRouter = router({
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
     registerTutor: publicProcedure.input(tutorAuthInputSchema).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
+        recordAuthAudit("registration_blocked", { role: "tutor", ip, identifier: input.email });
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+      }
+      ipRegistrationRateLimiter.record(`reg:${ip}`);
+
       const result = await db.registerPasswordTutor(input);
       if (!result.created) {
-        throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists." });
+        recordAuthAudit("registration_rejected", { role: "tutor", ip, identifier: input.email, reason: result.reason });
+        if (result.reason === "invalid-location") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Choose your City, then a Thana, Upazila, Area, or Sub-area inside it from the lists.",
+          });
+        }
+        const conflictMessage =
+          result.reason === "phone"
+            ? "This mobile number is already registered to a Tutor account. Sign in instead, or use a different number."
+            : result.reason === "email-other-role"
+              ? "This email is already used for a different Connect Tutors BD account. Use another email to register as a Tutor."
+              : "An account with this email already exists. Please sign in instead.";
+        throw new TRPCError({ code: "CONFLICT", message: conflictMessage });
       }
       await setPasswordSession(ctx, result.user);
       const tutorPortalToken = await issueTutorPortalSession(result.user.id);
+      recordAuthAudit("registration_success", { role: "tutor", ip, identifier: input.email });
       return {
         success: true,
         user: toClientAuthIdentity(result.user),
@@ -557,39 +631,64 @@ export const appRouter = router({
         tutorPortalToken,
       } as const;
     }),
-    loginTutor: publicProcedure.input(tutorLoginInputSchema).mutation(async ({ ctx, input }) => {
-      const user = await db.verifyTutorPassword(input.email, input.password);
-      if (!user) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: PASSWORD_ACCOUNT_LOGIN_ERROR });
-      }
-      await setPasswordSession(ctx, user);
-      const tutorPortalToken = await issueTutorPortalSession(user.id);
-      return { success: true, user: toClientAuthIdentity(user), tutorPortalToken } as const;
-    }),
     loginAccount: publicProcedure.input(passwordAccountLoginInputSchema).mutation(async ({ ctx, input }) => {
-      const user = await db.verifyPasswordAccount(input);
-      if (!user) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: PASSWORD_ACCOUNT_LOGIN_ERROR });
+      const ip = getRequestIp(ctx);
+      const { ipKey, pairKey } = passwordLoginRateLimitKeys(ip, input.role, input.identifier);
+      if (ipLoginRateLimiter.check(ipKey).blocked || pairLoginRateLimiter.check(pairKey).blocked) {
+        recordAuthAudit("login_blocked", { role: input.role, ip, identifier: input.identifier });
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: LOGIN_RATE_LIMITED_MESSAGE });
       }
+
+      const outcome = await db.verifyPasswordAccount(input);
+      if (outcome.status !== "ok") {
+        ipLoginRateLimiter.record(ipKey);
+        pairLoginRateLimiter.record(pairKey);
+        recordAuthAudit(
+          outcome.status === "suspended" ? "login_account_suspended" : outcome.status === "closed" ? "login_account_closed" : "login_failure",
+          { role: input.role, ip, identifier: input.identifier, reason: outcome.status },
+        );
+        throwPasswordAccountSignInError(outcome.status);
+      }
+
+      ipLoginRateLimiter.reset(ipKey);
+      pairLoginRateLimiter.reset(pairKey);
+      const user = outcome.user;
       await setPasswordSession(ctx, user);
       const tutorPortalToken = user.role === "tutor" ? await issueTutorPortalSession(user.id) : undefined;
+      recordAuthAudit("login_success", { role: input.role, ip, identifier: input.identifier });
       return { success: true, user: toClientAuthIdentity(user), tutorPortalToken } as const;
     }),
     loginAdmin: publicProcedure.input(adminPasswordLoginInputSchema).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      const ipKey = `ip:${ip}`;
+      const pairKey = `pair:${ip}:admin:${input.userId.trim().toLowerCase()}`;
+      if (ipLoginRateLimiter.check(ipKey).blocked || pairLoginRateLimiter.check(pairKey).blocked) {
+        try {
+          await db.logAdminAuditEvent({ event: "login_failure", metadata: { ipAddress: ip, reason: "rate-limited" } });
+        } catch {
+          // Preserve the generic authentication failure if audit storage is unavailable.
+        }
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: LOGIN_RATE_LIMITED_MESSAGE });
+      }
+
       const user = await db.verifyAdminPassword(input);
       if (!user) {
+        ipLoginRateLimiter.record(ipKey);
+        pairLoginRateLimiter.record(pairKey);
         try {
-          await db.logAdminAuditEvent({ event: "login_failure", metadata: { ipAddress: getRequestIp(ctx), reason: "invalid-password-credentials" } });
+          await db.logAdminAuditEvent({ event: "login_failure", metadata: { ipAddress: ip, reason: "invalid-password-credentials" } });
         } catch {
           // Preserve the generic authentication failure if audit storage is unavailable.
         }
         throw new TRPCError({ code: "UNAUTHORIZED", message: ADMIN_PASSWORD_LOGIN_ERROR });
       }
+      ipLoginRateLimiter.reset(ipKey);
+      pairLoginRateLimiter.reset(pairKey);
       await db.logAdminAuditEvent({
         userId: user.id,
         email: user.email ?? undefined,
         event: "login_success",
-        metadata: { ipAddress: getRequestIp(ctx), reason: "password-login" },
+        metadata: { ipAddress: ip, reason: "password-login" },
       });
       await setPasswordSession(ctx, user);
       return { success: true, user: toClientAuthIdentity(user) } as const;

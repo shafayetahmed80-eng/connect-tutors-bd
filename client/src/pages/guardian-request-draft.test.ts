@@ -29,7 +29,6 @@ const validDraft = {
     budgetMinimum: "8000",
     budgetMaximum: "12000",
   },
-  studentName: "Ayesha",
   notes: "Evening preferred",
 };
 

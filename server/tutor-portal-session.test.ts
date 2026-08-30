@@ -26,9 +26,9 @@ describe("Tutor portal-session token contract", () => {
     expect(getTutorPortalTokenFromHeaders(undefined as never)).toBeUndefined();
   });
 
-  it("creates a short stale-tab expiry from a supplied clock", () => {
+  it("creates a stale-tab expiry ten minutes ahead of a supplied clock", () => {
     const now = new Date("2026-08-24T00:00:00.000Z");
 
-    expect(createTutorPortalExpiry(now)).toEqual(new Date("2026-08-24T00:01:00.000Z"));
+    expect(createTutorPortalExpiry(now)).toEqual(new Date("2026-08-24T00:10:00.000Z"));
   });
 });

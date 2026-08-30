@@ -22,7 +22,6 @@ export type GuardianRequestDraft = {
     budgetMinimum: string;
     budgetMaximum: string;
   };
-  studentName: string;
   notes: string;
 };
 
@@ -67,7 +66,6 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
   const budgetKind = asOneOf(request.budgetKind, ["range", "discuss", ""] as const);
   const budgetMinimum = asString(request.budgetMinimum);
   const budgetMaximum = asString(request.budgetMaximum);
-  const studentName = asString(value.studentName);
   const notes = asString(value.notes);
 
   if (
@@ -88,7 +86,6 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
     budgetKind === null ||
     budgetMinimum === null ||
     budgetMaximum === null ||
-    studentName === null ||
     notes === null
   ) {
     return null;
@@ -116,7 +113,6 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
       budgetMinimum,
       budgetMaximum,
     },
-    studentName,
     notes,
   };
 }

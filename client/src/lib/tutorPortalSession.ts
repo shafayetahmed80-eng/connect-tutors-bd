@@ -2,6 +2,7 @@ export const TUTOR_PORTAL_SESSION_STORAGE_KEY = "connect-tutors:tutor-portal-ses
 export const TUTOR_PORTAL_GLOBAL_LOGOUT_EVENT_KEY = "connect-tutors:tutor-portal-logout";
 export const TUTOR_PORTAL_LOGOUT_EVENT_KEY = TUTOR_PORTAL_GLOBAL_LOGOUT_EVENT_KEY;
 export const TUTOR_PORTAL_SIGNED_OUT_NOTICE_KEY = "connect-tutors:tutor-signed-out-notice";
+export const TUTOR_PORTAL_REAUTH_NOTICE_KEY = "connect-tutors:tutor-portal-reauth-notice";
 export const TUTOR_PORTAL_LOGIN_HANDOFF_KEY = "connect-tutors:tutor-login-handoff";
 const TUTOR_PORTAL_RENEWAL_INTERVAL_MS = 20_000;
 
@@ -69,6 +70,17 @@ export function consumeTutorSignedOutNotice(storage: Pick<Storage, "getItem" | "
   return shouldShowNotice;
 }
 
+/** Set when a Tutor lands on a protected route in a tab that has no portal proof yet. */
+export function markTutorPortalReauthNotice(storage: Pick<Storage, "setItem">) {
+  storage.setItem(TUTOR_PORTAL_REAUTH_NOTICE_KEY, "1");
+}
+
+export function consumeTutorPortalReauthNotice(storage: Pick<Storage, "getItem" | "removeItem">) {
+  const shouldShowNotice = storage.getItem(TUTOR_PORTAL_REAUTH_NOTICE_KEY) === "1";
+  storage.removeItem(TUTOR_PORTAL_REAUTH_NOTICE_KEY);
+  return shouldShowNotice;
+}
+
 export function getCurrentTutorPortalToken() {
   if (typeof window === "undefined") return null;
   return getTutorPortalToken(window.sessionStorage);
@@ -107,6 +119,16 @@ export function markCurrentTutorSignedOutNotice() {
 export function consumeCurrentTutorSignedOutNotice() {
   if (typeof window === "undefined") return false;
   return consumeTutorSignedOutNotice(window.sessionStorage);
+}
+
+export function markCurrentTutorPortalReauthNotice() {
+  if (typeof window === "undefined") return;
+  markTutorPortalReauthNotice(window.sessionStorage);
+}
+
+export function consumeCurrentTutorPortalReauthNotice() {
+  if (typeof window === "undefined") return false;
+  return consumeTutorPortalReauthNotice(window.sessionStorage);
 }
 
 export function broadcastTutorPortalLogout() {

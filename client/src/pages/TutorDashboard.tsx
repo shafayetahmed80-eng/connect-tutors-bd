@@ -8,6 +8,7 @@ import {
   clearCurrentTutorPortalToken,
   getCurrentTutorPortalToken,
   getTutorPortalRenewalIntervalMs,
+  markCurrentTutorPortalReauthNotice,
   markCurrentTutorSignedOutNotice,
   shouldRequireTutorPortalSignIn,
   subscribeToTutorPortalGlobalLogout,
@@ -225,6 +226,9 @@ export default function TutorDashboard() {
 
   useEffect(() => {
     if (authLoading || !shouldRequireTutorPortalSignIn(user?.role, tutorPortalToken)) return;
+    // The account cookie is valid but this tab holds no portal proof (a fresh
+    // tab, a restored session). Explain why sign-in is needed again here.
+    markCurrentTutorPortalReauthNotice();
     navigate("/tutor/login");
   }, [authLoading, navigate, tutorPortalToken, user?.role]);
 
@@ -243,13 +247,25 @@ export default function TutorDashboard() {
     const renewTutorPortalSession = async () => {
       const result = await statsQuery.refetch();
       if (!result.error) return;
+      // A transient network or server error must not sign the Tutor out
+      // mid-session — the next tick simply retries. Only an expired tab proof
+      // (UNAUTHORIZED) or an account that is no longer active (FORBIDDEN) ends
+      // the session; on FORBIDDEN the sign-in screen surfaces the real reason.
+      const code = result.error.data?.code;
+      if (code !== "UNAUTHORIZED" && code !== "FORBIDDEN") return;
+      if (
+        hasUnsavedProfileChanges &&
+        !window.confirm("আপনার Tutor সেশনের মেয়াদ শেষ হয়েছে। আবার sign in করলে এই পেজে সংরক্ষণ না করা পরিবর্তনগুলো হারিয়ে যাবে। এখনই sign in করবেন?")
+      ) {
+        return;
+      }
       clearCurrentTutorPortalToken();
       setTutorPortalToken(null);
       navigate("/tutor/login");
     };
     const renewalTimer = window.setInterval(() => { void renewTutorPortalSession(); }, getTutorPortalRenewalIntervalMs());
     return () => window.clearInterval(renewalTimer);
-  }, [navigate, statsQuery.refetch, tutorPortalToken, user?.role]);
+  }, [hasUnsavedProfileChanges, navigate, statsQuery.refetch, tutorPortalToken, user?.role]);
 
   if (authLoading || !user || user.role !== "tutor" || shouldRequireTutorPortalSignIn(user.role, tutorPortalToken)) return <main className="min-h-screen bg-[#f4f8fb] p-8 text-center text-sm text-[#5b7287]">Checking Tutor account access…</main>;
 

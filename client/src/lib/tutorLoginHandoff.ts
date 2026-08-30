@@ -13,6 +13,8 @@ type TutorLoginHandoffOptions = {
   clearPortalLoginHandoff: () => void;
   fetchAuthenticatedUser: () => Promise<FreshTutorAuthIdentity>;
   navigate: (destination: string) => void;
+  /** Where to land inside the Tutor portal once the hand-off succeeds. */
+  destination?: string;
 };
 
 /** Establishes tab proof and fresh shared identity before entering the protected Tutor route. */
@@ -24,6 +26,7 @@ export async function completeTutorLoginHandoff({
   clearPortalLoginHandoff,
   fetchAuthenticatedUser,
   navigate,
+  destination = "/tutor/dashboard",
 }: TutorLoginHandoffOptions) {
   storeTutorPortalToken(tutorPortalToken);
   markPortalLoginHandoff();
@@ -33,7 +36,7 @@ export async function completeTutorLoginHandoff({
     if (authenticatedUser?.role !== "tutor") {
       throw new Error("This account is not a Tutor account.");
     }
-    navigate("/tutor/dashboard");
+    navigate(destination);
   } catch (error) {
     clearTutorPortalToken();
     clearPortalLoginHandoff();

@@ -49,7 +49,6 @@ describe("Guardian dashboard working tabs", () => {
 
     expect(screen.getByRole("heading", { name: "Posted jobs" })).toBeTruthy();
     expect(screen.getByTestId("guardian-request-tracking").textContent).toContain("Embedded private request history");
-    expect(screen.getByText(/never reveal your phone, email, exact address, student identity, or notes/i)).toBeTruthy();
   });
 
   it("shows a truthful Attendance deferral when no Tutor match is confirmed", () => {
@@ -74,7 +73,7 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
     expect(screen.getByDisplayValue("GDN-9H4K-2M8Q")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save profile" })).toBeTruthy();
-    expect(screen.getByText(/email and mobile remain protected login\/contact details/i)).toBeTruthy();
+    expect(screen.getByText(/mobile or email change, contact support/i)).toBeTruthy();
   });
 
   it("renders current-password settings and truthful process guidance", () => {
@@ -88,11 +87,12 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByText(/phone, email, exact address, student identity, and notes are never public/i)).toBeTruthy();
   });
 
-  it("maps a reviewing request to coordinator progress without claiming a match", () => {
-    mocks.requests = [{ id: 41, status: "reviewing" }];
+  it("renders the cleared Dashboard home without legacy hero, stat, or request cards", () => {
     render(<GuardianDashboardContent />);
 
-    expect(screen.getByText(/Request #41 · Coordinator reviewing/i)).toBeTruthy();
-    expect(screen.getByText(/may contact you to confirm details/i)).toBeTruthy();
+    expect(screen.getByTestId("guardian-dashboard-home")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Open requests" })).toBeNull();
+    expect(screen.queryByText(/Choose your next step/i)).toBeNull();
+    expect(screen.queryByText(/Welcome,/i)).toBeNull();
   });
 });

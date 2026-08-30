@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
+import { TRPCClientError } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
 import { getSafeTutorApplyReturnPath, getTutorApplyPostLoginPath, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
@@ -165,13 +166,19 @@ export default function AuthPage() {
         }
       }
       navigate(getPostLoginPath(result.user.role, tutorApplyReturnPath, tutorProfileStatus));
-    } catch {
+    } catch (cause) {
       setIsEnteringTutorWorkspace(false);
       if (tutorPortalHandoffEstablished) {
         clearCurrentTutorPortalToken();
         clearCurrentTutorPortalLoginHandoff();
       }
-      setFormError("Email/mobile number or password is not correct. Choose the account type you used when registering.");
+      // A suspended or closed account (FORBIDDEN) gets an honest, actionable
+      // message from the server; anything else stays the generic credentials hint.
+      const suspendedOrClosed =
+        cause instanceof TRPCClientError && cause.data?.code === "FORBIDDEN" && typeof cause.message === "string" && cause.message.trim()
+          ? cause.message
+          : null;
+      setFormError(suspendedOrClosed ?? "Email/mobile number or password is not correct. Choose the account type you used when registering.");
     }
   };
 
