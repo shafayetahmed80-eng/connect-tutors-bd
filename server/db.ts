@@ -3485,20 +3485,27 @@ export async function recordAuthEvent(input: {
   return { id: Number(result[0].insertId) } as const;
 }
 
-/** Recent public auth events, newest first. Owner/Admin-facing; no credentials stored. */
-export async function listRecentAuthEvents(filters: {
-  event?: AuthEventType;
-  role?: AuthEventRole;
+export type AuthEventFilters = {
+  event?: AuthEventType | "all";
+  role?: AuthEventRole | "all";
   ip?: string;
-  limit?: number;
-} = {}) {
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Owner-facing, paginated history of public (non-Admin) auth events, newest
+ * first. Mirrors `listAdminAuditLogPage`; stores no credential material and only
+ * the pre-masked identifier.
+ */
+export async function listAuthEventsPage(filters: AuthEventFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500);
   const conditions: SQL[] = [];
-  if (filters.event) conditions.push(eq(authEvents.event, filters.event));
-  if (filters.role) conditions.push(eq(authEvents.role, filters.role));
+  if (filters.event && filters.event !== "all") conditions.push(eq(authEvents.event, filters.event));
+  if (filters.role && filters.role !== "all") conditions.push(eq(authEvents.role, filters.role));
   if (filters.ip?.trim()) conditions.push(eq(authEvents.ip, filters.ip.trim()));
+  const offset = (filters.page - 1) * filters.pageSize;
   const query = database
     .select({
       id: authEvents.id,
@@ -3510,9 +3517,13 @@ export async function listRecentAuthEvents(filters: {
       createdAt: authEvents.createdAt,
     })
     .from(authEvents);
-  return conditions.length
-    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(limit)
-    : await query.orderBy(desc(authEvents.createdAt)).limit(limit);
+  const items = conditions.length
+    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(filters.pageSize).offset(offset)
+    : await query.orderBy(desc(authEvents.createdAt)).limit(filters.pageSize).offset(offset);
+  const totalQuery = database.select({ value: count() }).from(authEvents);
+  const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
+  const total = Number(totals[0]?.value ?? 0);
+  return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
 /**

@@ -6,6 +6,7 @@ const securityDbMocks = vi.hoisted(() => ({
   getActiveAdminInvitationByTokenHash: vi.fn(),
   getGuardianContactForAdmin: vi.fn(),
   getOwnerAdminActivityReport: vi.fn(),
+  listAuthEventsPage: vi.fn(),
   listPublishedTutorJobs: vi.fn(),
   listTutorRequestMatchingPage: vi.fn(),
   logAdminAuditEvent: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("./db", async importOriginal => {
 
 import { ENV } from "./_core/env";
 import { appRouter } from "./routers";
+import { authEventTypeValues } from "../drizzle/schema";
 
 const adminUser = {
   id: 42,
@@ -123,6 +125,35 @@ describe("Admin role and Owner authorization", () => {
 
     await expect(adminCaller.getActivityReport({ windowDays: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(securityDbMocks.getOwnerAdminActivityReport).not.toHaveBeenCalled();
+  });
+
+  it("returns the paginated public auth-events log only to the Owner, forwarding normalized filters", async () => {
+    securityDbMocks.listAuthEventsPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const owner = createCaller().caller.admin as unknown as { getAuthEvents: (input: unknown) => Promise<{ total: number }> };
+
+    await expect(owner.getAuthEvents({ event: "login_failure", role: "tutor", ip: " 203.0.113.9 ", page: 2 })).resolves.toMatchObject({ total: 0 });
+    expect(securityDbMocks.listAuthEventsPage).toHaveBeenCalledWith({ event: "login_failure", role: "tutor", ip: "203.0.113.9", page: 2, pageSize: 20 });
+
+    securityDbMocks.listAuthEventsPage.mockClear();
+    await expect(owner.getAuthEvents({})).resolves.toMatchObject({ total: 0 });
+    expect(securityDbMocks.listAuthEventsPage).toHaveBeenCalledWith({ event: "all", role: "all", ip: undefined, page: 1, pageSize: 20 });
+  });
+
+  it("accepts every persisted auth-event type as a filter", async () => {
+    securityDbMocks.listAuthEventsPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const owner = createCaller().caller.admin as unknown as { getAuthEvents: (input: unknown) => Promise<unknown> };
+
+    for (const event of authEventTypeValues) {
+      await expect(owner.getAuthEvents({ event })).resolves.toBeDefined();
+    }
+  });
+
+  it("does not expose the public auth-events log to a non-Owner Admin", async () => {
+    const anotherAdmin = { ...adminUser, id: 74, openId: "admin:74", email: "admin2@example.com" };
+    const caller = createCaller(anotherAdmin).caller.admin as unknown as { getAuthEvents: (input: unknown) => Promise<unknown> };
+
+    await expect(caller.getAuthEvents({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(securityDbMocks.listAuthEventsPage).not.toHaveBeenCalled();
   });
 
   it("lets an invited signed-in account accept its email-bound invitation before it is promoted", async () => {
