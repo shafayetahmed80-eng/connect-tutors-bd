@@ -2,7 +2,7 @@ import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } fr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Save, Trash2, UserRound } from "lucide-react";
+import { ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileSystemInfo } from "@/components/TutorProfileSystemInfo";
@@ -10,10 +10,9 @@ import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfile
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
-import { getTutorProfileWizardStepForErrors, scrollToTutorProfileSection, tutorProfileWizardSteps } from "./TutorProfileWizard";
+import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
 import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
-import { tutorProfileSectionCopy } from "./TutorProfileSectionCopy";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { createTutorProfileSectionDraftPayload, tutorProfileSectionDefinitions, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
@@ -21,6 +20,7 @@ import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./Tuto
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileReadView } from "./TutorProfileReadView";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
+import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
 const fieldClassName = "mt-2 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 py-2.5 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
@@ -30,14 +30,6 @@ const sectionTitles: Record<TutorProfileSectionId, string> = {
   c: "Education and teaching expertise",
   d: "Tuition, location and communication",
   e: "Introduction and review",
-};
-
-const sectionCopyKeys: Record<TutorProfileSectionId, keyof typeof tutorProfileSectionCopy> = {
-  a: "identity",
-  b: "family",
-  c: "education",
-  d: "teaching",
-  e: "introduction",
 };
 
 type CatalogOption = { id: number | string; name: string };
@@ -174,7 +166,6 @@ export function TutorProfileWorkspace({
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
-  const [activeMobileStep, setActiveMobileStep] = useState(0);
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
   const universityIdInputRef = useRef<HTMLInputElement>(null);
@@ -289,9 +280,8 @@ export function TutorProfileWorkspace({
   const completionSummary = getTutorProfileCompletionSummary(form);
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
-  const [editingSections, setEditingSections] = useState<Set<TutorProfileSectionId>>(() => new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<TutorProfileSectionId>>(() => new Set());
   const [viewMode, setViewMode] = useState<"read" | "edit">("read");
+  const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
 
   const readoutResolvers = useMemo<TutorProfileReadoutResolvers>(() => {
@@ -318,7 +308,12 @@ export function TutorProfileWorkspace({
   }, [subjects.data, classLevels.data, curricula.data, studentTypes.data, languages.data, universities.data, academicFaculties.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers), [form, readoutResolvers]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
-  const currentWizardStep = tutorProfileWizardSteps[activeMobileStep];
+  const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
+    const step = getTutorProfileWizardStepForErrors(errors);
+    if (step === null) return null;
+    const raw = tutorProfileWizardSteps[step]?.sectionIds[0]?.replace("profile-section-", "");
+    return raw ? (raw as TutorProfileSectionId) : null;
+  };
   const statusCard = getTutorProfileStatusCard({
     profileStatus: profile?.profileStatus,
     completionPercentage,
@@ -375,44 +370,6 @@ export function TutorProfileWorkspace({
     return () => onDirtyChange?.(false);
   }, [isDraftDirty, onDirtyChange]);
 
-  const goToWizardStep = (stepIndex: number) => {
-    const nextStep = tutorProfileWizardSteps[stepIndex];
-    if (!nextStep) return;
-    setActiveMobileStep(stepIndex);
-    window.requestAnimationFrame(() => {
-      document.getElementById(nextStep.sectionIds[0])?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  const revealSections = (sectionIds: TutorProfileSectionId[]) => {
-    setExpandedSections(current => {
-      const next = new Set(current);
-      sectionIds.forEach(sectionId => next.add(sectionId));
-      return next;
-    });
-  };
-
-  const revealWizardStep = (stepIndex: number | null) => {
-    if (stepIndex === null) return;
-    const sectionIds = tutorProfileWizardSteps[stepIndex]?.sectionIds ?? [];
-    revealSections(sectionIds.map(sectionId => sectionId.replace("profile-section-", "") as TutorProfileSectionId));
-  };
-
-  const toggleSection = (sectionId: TutorProfileSectionId) => {
-    setExpandedSections(current => {
-      const next = new Set(current);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
-
-  const scrollToDesktopSection = (sectionId: TutorProfileSectionId) => {
-    revealSections([sectionId]);
-    window.requestAnimationFrame(() => {
-      scrollToTutorProfileSection(`profile-section-${sectionId}`);
-    });
-  };
   const buildDraftInput = () => {
     const experience = form.teachingExperienceYears ? Number(form.teachingExperienceYears) : undefined;
     const selectedIds = (values: string[]) => values.map(Number).filter(Number.isInteger);
@@ -440,9 +397,6 @@ export function TutorProfileWorkspace({
     if (Object.keys(serverErrors).length === 0) return false;
 
     setFieldErrors(serverErrors);
-    const firstInvalidStep = getTutorProfileWizardStepForErrors(serverErrors);
-    if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
-    revealWizardStep(firstInvalidStep);
     setFeedback({ type: "error", message: "Review the highlighted details and try again." });
     window.requestAnimationFrame(() => {
       const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -476,23 +430,12 @@ export function TutorProfileWorkspace({
     }
   };
 
-  const editSection = (sectionId: TutorProfileSectionId) => {
-    revealSections([sectionId]);
-    setEditingSections(current => new Set(current).add(sectionId));
-    setFeedback(null);
-  };
-
   const saveSectionDraft = async (sectionId: TutorProfileSectionId): Promise<boolean> => {
     setFeedback(null);
     try {
       await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(sectionId, form));
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
-      setEditingSections(current => {
-        const next = new Set(current);
-        next.delete(sectionId);
-        return next;
-      });
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
       setFeedback({ type: "success", message: `${sectionTitles[sectionId]} saved. Continue with the next section when ready.` });
       return true;
@@ -514,11 +457,12 @@ export function TutorProfileWorkspace({
     const submissionErrors = getTutorProfileSubmissionErrors(form);
     if (Object.keys(submissionErrors).length > 0) {
       setFieldErrors(submissionErrors);
-      const firstInvalidStep = getTutorProfileWizardStepForErrors(submissionErrors);
-      if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
+      const target = firstErroredSection(submissionErrors);
       setViewMode("edit");
-      setEditingSection(null);
-      setExpandedSections(new Set(tutorProfileSectionDefinitions.map(section => section.id)));
+      if (target) {
+        setActiveTab(target);
+        setEditingSection(target);
+      }
       setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
       window.requestAnimationFrame(() => {
         const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -551,11 +495,12 @@ export function TutorProfileWorkspace({
   const completeProfile = () => {
     const submissionErrors = getTutorProfileSubmissionErrors(form);
     setFieldErrors(submissionErrors);
-    const firstInvalidStep = getTutorProfileWizardStepForErrors(submissionErrors);
-    if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
+    const target = firstErroredSection(submissionErrors);
     setViewMode("edit");
-    setEditingSection(null);
-    setExpandedSections(new Set(tutorProfileSectionDefinitions.map(section => section.id)));
+    if (target) {
+      setActiveTab(target);
+      setEditingSection(target);
+    }
     setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
     window.requestAnimationFrame(() => {
       const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -805,7 +750,7 @@ export function TutorProfileWorkspace({
     </div>;
   };
 
-  return <form onSubmit={event => { event.preventDefault(); void saveProfileDraft(); }} className={tutorProfileResponsiveClasses.workspace}>
+  return <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
     {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
     {editingSection ? <TutorProfileSectionModal
       title={sectionTitles[editingSection]}
@@ -843,30 +788,15 @@ export function TutorProfileWorkspace({
     {viewMode === "read" ? <TutorProfileReadView
       sections={readoutSections}
       photoUrl={form.profilePhotoUrl}
-      onEditSection={sectionId => { setFeedback(null); setFieldErrors({}); setEditingSection(sectionId); }}
+      onEditSection={sectionId => { setFeedback(null); setEditingSection(sectionId); }}
       onEditAll={() => setViewMode("edit")}
-    /> : <>
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setViewMode("read")} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-bold text-[#167ddd] transition hover:bg-[#f0faff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd]"><ChevronLeft size={16} /> Back to overview</button>
-      </div>
-
-      <nav aria-label="Tutor Profile desktop sections" className="sticky top-[8.5rem] z-10 hidden rounded-2xl border border-[#dce8f0] bg-white/95 p-2 shadow-sm backdrop-blur lg:flex lg:items-center lg:justify-between lg:gap-2">
-        {tutorProfileSectionDefinitions.map((section, index) => <button key={section.id} type="button" onClick={() => scrollToDesktopSection(section.id)} className="flex-1 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-[#4d6d84] transition hover:bg-[#f0faff] hover:text-[#167ddd] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd]">
-          <span className="mr-1.5 text-[#167ddd]">{String.fromCharCode(65 + index)}.</span>{section.label}
-        </button>)}
-      </nav>
-
-      <nav aria-label="Tutor Profile mobile sections" className="rounded-2xl border border-[#dce8f0] bg-white p-3 shadow-sm lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1680c2]">All profile sections</p>
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-          {tutorProfileSectionDefinitions.map((section, index) => <button key={section.id} type="button" onClick={() => scrollToDesktopSection(section.id)} className="shrink-0 rounded-lg border border-[#dce8f0] px-3 py-2 text-xs font-bold text-[#4d6d84] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd]">{String.fromCharCode(65 + index)}</button>)}
-        </div>
-      </nav>
-
-      {tutorProfileSectionDefinitions.map(section => <ProfileSection key={section.id} id={`profile-section-${section.id}`} sectionId={section.id} eyebrow={`Section ${section.id.toUpperCase()}`} title={sectionTitles[section.id]} description={tutorProfileSectionCopy[sectionCopyKeys[section.id]]} isExpanded={expandedSections.has(section.id)} isEditing={editingSections.has(section.id)} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-        {renderSectionFields(section.id)}
-      </ProfileSection>)}
-    </>}
+    /> : <TutorProfileTabEditor
+      sections={readoutSections}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onEditSection={sectionId => { setFeedback(null); setEditingSection(sectionId); }}
+      onBackToOverview={() => setViewMode("read")}
+    />}
 
     <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -883,10 +813,4 @@ export function TutorProfileWorkspace({
     </section>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
-}
-
-function ProfileSection({ id, sectionId, eyebrow, title, description, children, isExpanded, isEditing, isSaving, onToggle, onEdit, onSave, reviewAction = false }: { id: string; sectionId: TutorProfileSectionId; eyebrow: string; title: string; description: string; children: React.ReactNode; isExpanded: boolean; isEditing: boolean; isSaving: boolean; onToggle: (sectionId: TutorProfileSectionId) => void; onEdit: (sectionId: TutorProfileSectionId) => void; onSave: (sectionId: TutorProfileSectionId) => void; reviewAction?: boolean }) {
-  const actionLabel = reviewAction ? "Submit profile for review" : isEditing ? "Save section" : "Edit Information";
-  const detailsId = `${id}-details`;
-  return <section id={id} className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}><button type="button" aria-expanded={isExpanded} aria-controls={detailsId} aria-label={`${isExpanded ? "Hide" : "Show"} details for ${title}`} onClick={() => onToggle(sectionId)} className="flex w-full items-start justify-between gap-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd] focus-visible:ring-offset-2"><span><span className="block text-xs font-bold uppercase tracking-[0.18em] text-[#1680c2]">{eyebrow}</span><span className="mt-2 block text-xl font-bold tracking-[-0.025em] text-[#173b60]">{title}</span><span className="mt-2 block max-w-3xl text-sm leading-6 text-[#647f93]">{description}</span></span><ChevronDown aria-hidden="true" className={`mt-1 shrink-0 text-[#167ddd] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} size={22} /></button>{isExpanded ? <div id={detailsId} className="mt-6 border-t border-[#e6eff4] pt-5"><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-end"><Button type="button" disabled={isSaving} onClick={() => reviewAction ? onEdit(sectionId) : isEditing ? onSave(sectionId) : onEdit(sectionId)} className="shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]">{reviewAction ? <LockKeyhole size={16} /> : isEditing ? <Save size={16} /> : <PencilLine size={16} />}{isSaving ? reviewAction ? "Submitting…" : "Saving…" : actionLabel}</Button></div><fieldset disabled={!isEditing && !reviewAction} aria-label={`${title} fields`} className={isEditing || reviewAction ? "" : "pointer-events-none opacity-70"}>{children}</fieldset></div> : null}</section>;
 }

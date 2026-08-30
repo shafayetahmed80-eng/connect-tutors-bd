@@ -206,9 +206,18 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     await user.click(screen.getByRole("button", { name: "Complete profile" }));
 
-    expect(await screen.findByText("Enter a valid Bangladesh mobile number.")).toBeTruthy();
-    expect(screen.getByText("Select your current location.")).toBeTruthy();
-    expect(screen.getByText("Select at least one teaching area.")).toBeTruthy();
+    // The first incomplete section opens in its popup card with the inline error.
+    const identityDialog = await screen.findByRole("dialog");
+    expect(within(identityDialog).getByRole("heading", { name: "Edit Identity and contact" })).toBeTruthy();
+    expect(within(identityDialog).getByText("Enter a valid Bangladesh mobile number.")).toBeTruthy();
+    await user.click(within(identityDialog).getByRole("button", { name: "Cancel" }));
+
+    // The remaining incomplete section surfaces its errors when opened from its tab.
+    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    const teachingDialog = screen.getByRole("dialog");
+    expect(within(teachingDialog).getByText("Select your current location.")).toBeTruthy();
+    expect(within(teachingDialog).getByText("Select at least one teaching area.")).toBeTruthy();
   });
 
   it("keeps the popup card open and shows a safe temporary-failure message without raw server text", async () => {
