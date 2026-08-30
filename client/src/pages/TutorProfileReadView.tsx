@@ -11,7 +11,7 @@ type TutorProfileReadViewProps = {
   onEditAll: () => void;
 };
 
-/** Read-only overview of the whole profile. Empty required values read "Not given". */
+/** Read-only overview of the whole profile. Empty required values read "Not given" in red; empty optional values read "—". */
 export function TutorProfileReadView({ sections, photoUrl, onEditSection, onEditAll }: TutorProfileReadViewProps) {
   return <div className="space-y-5">
     <div className="flex flex-col gap-4 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -51,7 +51,7 @@ export function TutorProfileReadView({ sections, photoUrl, onEditSection, onEdit
           <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
             {group.rows.map(rowItem => <div key={rowItem.label} className="flex flex-wrap gap-x-2 text-sm leading-6">
               <dt className="text-[#6b8497]">{rowItem.label}</dt>
-              <dd className={`font-semibold ${rowItem.missing ? "text-[#d0493f]" : "text-[#274d6d]"}`}>: {rowItem.value}</dd>
+              <dd className={`font-semibold ${rowItem.missing && !rowItem.optional ? "text-[#d0493f]" : rowItem.missing ? "text-[#93a4b3]" : "text-[#274d6d]"}`}>: {rowItem.value}</dd>
             </div>)}
           </dl>
         </div>)}

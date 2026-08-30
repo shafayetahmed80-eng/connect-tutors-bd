@@ -31,11 +31,18 @@ export type TutorProfileReadoutResolvers = {
   area: (id: string) => string;
 };
 
-export type TutorProfileReadoutRow = { label: string; value: string; missing: boolean };
+/**
+ * `optional` rows are ones the server does not require for submission
+ * (`submissionRequiredKeys` in server/tutor-profile.validation.ts). They still
+ * show when empty, but read "—" in the normal colour and are left out of the
+ * per-section filled/total count instead of being flagged red as "Not given".
+ */
+export type TutorProfileReadoutRow = { label: string; value: string; missing: boolean; optional?: boolean };
 export type TutorProfileReadoutGroup = { heading?: string; rows: TutorProfileReadoutRow[] };
 export type TutorProfileReadoutSection = { id: TutorProfileSectionId; title: string; groups: TutorProfileReadoutGroup[] };
 
 const NOT_GIVEN = "Not given";
+const NOT_PROVIDED = "—";
 
 function text(value: string | null | undefined): TutorProfileReadoutRow["value"] {
   const trimmed = (value ?? "").trim();
@@ -46,8 +53,10 @@ function list(ids: readonly string[], resolve: (id: string) => string): string {
   return ids.map(resolve).filter(Boolean).join(", ");
 }
 
-function row(label: string, value: string): TutorProfileReadoutRow {
-  return { label, value: value || NOT_GIVEN, missing: value.trim().length === 0 };
+function row(label: string, value: string, optional = false): TutorProfileReadoutRow {
+  const missing = value.trim().length === 0;
+  const base: TutorProfileReadoutRow = { label, value: value || (optional ? NOT_PROVIDED : NOT_GIVEN), missing };
+  return optional ? { ...base, optional: true } : base;
 }
 
 function fromMap<K extends string>(map: Record<K, string>, key: string): string {
@@ -85,8 +94,8 @@ export function getTutorProfileReadoutSections(
             row("Permanent address", text(pd.permanentAddress)),
             row("Nationality", text(pd.nationality)),
             row("Religion", text(pd.religion)),
-            row("Additional phone", text(pd.additionalPhone)),
-            row("Social profile links", text(pd.socialProfileLinks)),
+            row("Additional phone", text(pd.additionalPhone), true),
+            row("Social profile links", text(pd.socialProfileLinks), true),
           ],
         },
       ],
@@ -99,12 +108,12 @@ export function getTutorProfileReadoutSections(
           rows: [
             row("Father's name", text(pd.fatherName)),
             row("Father's phone number", text(pd.fatherPhone)),
-            row("Mother's name", text(pd.motherName)),
-            row("Mother's phone number", text(pd.motherPhone)),
-            row("Emergency contact name", text(pd.emergencyContactName)),
-            row("Emergency contact relation", text(pd.emergencyContactRelation)),
-            row("Emergency contact phone", text(pd.emergencyContactPhone)),
-            row("Emergency contact address", text(pd.emergencyContactAddress)),
+            row("Mother's name", text(pd.motherName), true),
+            row("Mother's phone number", text(pd.motherPhone), true),
+            row("Emergency contact name", text(pd.emergencyContactName), true),
+            row("Emergency contact relation", text(pd.emergencyContactRelation), true),
+            row("Emergency contact phone", text(pd.emergencyContactPhone), true),
+            row("Emergency contact address", text(pd.emergencyContactAddress), true),
           ],
         },
       ],
@@ -116,12 +125,12 @@ export function getTutorProfileReadoutSections(
         {
           heading: "Education",
           rows: [
-            row("Highest education", text(form.highestEducation)),
+            row("Highest education", text(form.highestEducation), true),
             row("Current study status", fromMap(staticLabels.studyStatus, form.studyStatus)),
             row("Institute", form.universityId ? resolve.university(form.universityId) : ""),
             row("Related faculty", form.facultyId ? resolve.faculty(form.facultyId) : ""),
             row("Related department / subject", form.facultyDepartmentId ? resolve.department(form.facultyDepartmentId) : ""),
-            row("Graduation year", text(form.graduationYear)),
+            row("Graduation year", text(form.graduationYear), true),
             row("Qualification history", educationSummary(form)),
             row("University ID card", form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : ""),
           ],
@@ -130,14 +139,14 @@ export function getTutorProfileReadoutSections(
           heading: "Teaching expertise",
           rows: [
             row("Primary subjects", list(form.primarySubjectIds, resolve.subject)),
-            row("Additional subjects", list(form.additionalSubjectIds, resolve.subject)),
+            row("Additional subjects", list(form.additionalSubjectIds, resolve.subject), true),
             row("Class / level", list(form.classLevelIds, resolve.classLevel)),
             row("Curriculum", list(form.curriculumIds, resolve.curriculum)),
             row("Teaching experience (years)", text(form.teachingExperienceYears)),
             row("Student types", list(form.studentTypeIds, resolve.studentType)),
-            row("Prior teaching experience", text(form.priorTeachingExperience)),
-            row("Special expertise", text(form.specialExpertise)),
-            row("Academic achievement", text(form.academicAchievement)),
+            row("Prior teaching experience", text(form.priorTeachingExperience), true),
+            row("Special expertise", text(form.specialExpertise), true),
+            row("Academic achievement", text(form.academicAchievement), true),
           ],
         },
       ],
@@ -164,7 +173,7 @@ export function getTutorProfileReadoutSections(
             row("Teaching areas", list(form.teachingAreaIds, resolve.area)),
             row("Minimum monthly fee", text(form.feeMin)),
             row("Maximum monthly fee", text(form.feeMax)),
-            row("Travel distance (km)", text(form.travelDistanceKm)),
+            row("Travel distance (km)", text(form.travelDistanceKm), true),
           ],
         },
         {
@@ -182,10 +191,10 @@ export function getTutorProfileReadoutSections(
       groups: [
         {
           rows: [
-            row("About me", text(form.aboutMe)),
-            row("Teaching approach", text(form.teachingApproach)),
-            row("Why choose me", text(form.whyChooseMe)),
-            row("Additional notes", text(form.additionalNotes)),
+            row("About me", text(form.aboutMe), true),
+            row("Teaching approach", text(form.teachingApproach), true),
+            row("Why choose me", text(form.whyChooseMe), true),
+            row("Additional notes", text(form.additionalNotes), true),
           ],
         },
       ],

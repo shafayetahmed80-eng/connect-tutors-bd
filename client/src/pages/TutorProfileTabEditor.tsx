@@ -35,7 +35,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
 
     <div role="tablist" aria-label="Profile sections" className="flex gap-1 overflow-x-auto rounded-2xl border border-[#dce8f0] bg-white p-1.5 shadow-sm">
       {sections.map(section => {
-        const rows = section.groups.flatMap(group => group.rows);
+        const rows = section.groups.flatMap(group => group.rows).filter(row => !row.optional);
         const filled = rows.filter(row => !row.missing).length;
         const isActive = section.id === activeTab;
         return <button
@@ -56,16 +56,17 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
     <div role="tabpanel" aria-label={active.title} className="space-y-4">
       {active.groups.map((group, groupIndex) => {
         const heading = group.heading ?? active.title;
-        const filled = group.rows.filter(row => !row.missing).length;
+        const countableRows = group.rows.filter(row => !row.optional);
+        const filled = countableRows.filter(row => !row.missing).length;
         return <section key={groupIndex} className="rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h3 className="text-base font-bold tracking-[-0.02em] text-[#173b60]">{heading}</h3>
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex gap-1" aria-hidden="true">
-                  {group.rows.map((row, rowIndex) => <span key={rowIndex} className={`h-1.5 w-6 rounded-full ${row.missing ? "bg-[#e6eef4]" : "bg-[#22a06b]"}`} />)}
+                  {countableRows.map((row, rowIndex) => <span key={rowIndex} className={`h-1.5 w-6 rounded-full ${row.missing ? "bg-[#e6eef4]" : "bg-[#22a06b]"}`} />)}
                 </div>
-                <span className="text-xs font-semibold text-[#8496a6]">{filled}/{group.rows.length}</span>
+                <span className="text-xs font-semibold text-[#8496a6]">{filled}/{countableRows.length}</span>
               </div>
             </div>
             <button
@@ -80,7 +81,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
           <dl className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
             {group.rows.map(row => <div key={row.label} className="flex flex-wrap gap-x-2 text-sm leading-6">
               <dt className="text-[#6b8497]">{row.label}</dt>
-              <dd className={`font-semibold ${row.missing ? "text-[#d0493f]" : "text-[#274d6d]"}`}>: {row.value}</dd>
+              <dd className={`font-semibold ${row.missing && !row.optional ? "text-[#d0493f]" : row.missing ? "text-[#93a4b3]" : "text-[#274d6d]"}`}>: {row.value}</dd>
             </div>)}
           </dl>
         </section>;

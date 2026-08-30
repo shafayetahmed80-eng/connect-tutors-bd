@@ -53,6 +53,32 @@ describe("getTutorProfileReadoutSections", () => {
     expect(nameRow).toEqual({ label: "Full name", value: "Not given", missing: true });
   });
 
+  it("marks an empty optional value as optional and shows an em dash, not a red 'Not given'", () => {
+    const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
+    const rows = sections.flatMap(section => section.groups.flatMap(group => group.rows));
+
+    const additionalPhone = rows.find(row => row.label === "Additional phone");
+    expect(additionalPhone).toEqual({ label: "Additional phone", value: "—", missing: true, optional: true });
+
+    // Every Section E field is optional for submission.
+    const sectionE = sections[4].groups.flatMap(group => group.rows);
+    expect(sectionE.every(row => row.optional === true)).toBe(true);
+    expect(sectionE.map(row => row.value)).toEqual(["—", "—", "—", "—"]);
+
+    // Required rows keep the plain shape with no `optional` flag.
+    expect(rows.find(row => row.label === "Father's name")).toEqual({ label: "Father's name", value: "Not given", missing: true });
+  });
+
+  it("falls back to 'Not given' rather than a raw id when a catalog value does not resolve", () => {
+    const sections = getTutorProfileReadoutSections(
+      baseForm({ name: "Rahim", universityId: "999", primarySubjectIds: ["1", "404"] }),
+      { ...resolvers, university: () => "", subject: id => (id === "1" ? "Mathematics" : "") },
+    );
+    const education = sections[2].groups.flatMap(group => group.rows);
+    expect(education.find(row => row.label === "Institute")).toEqual({ label: "Institute", value: "Not given", missing: true });
+    expect(education.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics");
+  });
+
   it("resolves id lists and enum codes to human labels", () => {
     const sections = getTutorProfileReadoutSections(
       baseForm({
