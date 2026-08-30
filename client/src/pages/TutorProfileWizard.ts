@@ -1,7 +1,7 @@
 import type { TutorProfileSubmissionErrorKey, TutorProfileSubmissionErrors } from "./TutorProfileUx";
 
 export type TutorProfileWizardStep = {
-  id: "identity" | "location" | "education" | "preferences" | "review";
+  id: "identity" | "family" | "education" | "teaching" | "introduction";
   title: string;
   shortTitle: string;
   sectionIds: string[];
@@ -10,14 +10,14 @@ export type TutorProfileWizardStep = {
 export const tutorProfileWizardSteps: TutorProfileWizardStep[] = [
   {
     id: "identity",
-    title: "Identity and photo",
+    title: "Identity and contact",
     shortTitle: "Identity",
     sectionIds: ["profile-section-a"],
   },
   {
-    id: "location",
-    title: "Location",
-    shortTitle: "Location",
+    id: "family",
+    title: "Family and emergency contact",
+    shortTitle: "Family",
     sectionIds: ["profile-section-b"],
   },
   {
@@ -27,16 +27,16 @@ export const tutorProfileWizardSteps: TutorProfileWizardStep[] = [
     sectionIds: ["profile-section-c"],
   },
   {
-    id: "preferences",
-    title: "Tuition preferences and fee",
-    shortTitle: "Preferences",
-    sectionIds: ["profile-section-d", "profile-section-e"],
+    id: "teaching",
+    title: "Tuition, location and communication",
+    shortTitle: "Teaching",
+    sectionIds: ["profile-section-d"],
   },
   {
-    id: "review",
-    title: "Communication, profile, and review",
+    id: "introduction",
+    title: "Introduction and review",
     shortTitle: "Review",
-    sectionIds: ["profile-section-f", "profile-section-g", "profile-section-h"],
+    sectionIds: ["profile-section-e"],
   },
 ];
 
@@ -48,9 +48,6 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   headline: 0,
   phone: 0,
   contactEmail: 0,
-  currentLocationId: 1,
-  teachingAreaIds: 1,
-  availableNationwide: 1,
   universityId: 2,
   facultyId: 2,
   facultyDepartmentId: 2,
@@ -61,6 +58,9 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   curriculumIds: 2,
   teachingExperienceYears: 2,
   studentTypeIds: 2,
+  currentLocationId: 3,
+  teachingAreaIds: 3,
+  availableNationwide: 3,
   tuitionType: 3,
   preferredStudentGender: 3,
   preferredClassSizes: 3,
@@ -68,8 +68,8 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   preferredTimeSlots: 3,
   feeMin: 3,
   feeMax: 3,
-  teachingLanguageIds: 4,
-  communicationPreferences: 4,
+  teachingLanguageIds: 3,
+  communicationPreferences: 3,
 };
 
 /** Returns the earliest wizard step containing an inline submission error. */

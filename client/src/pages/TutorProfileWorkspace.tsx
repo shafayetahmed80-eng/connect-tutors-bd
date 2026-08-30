@@ -350,7 +350,7 @@ export function TutorProfileWorkspace({
   const revealWizardStep = (stepIndex: number | null) => {
     if (stepIndex === null) return;
     const sectionIds = tutorProfileWizardSteps[stepIndex]?.sectionIds ?? [];
-    revealSections(sectionIds.map(sectionId => sectionId === "profile-section-review" ? "h" : sectionId.replace("profile-section-", "") as TutorProfileSectionId));
+    revealSections(sectionIds.map(sectionId => sectionId.replace("profile-section-", "") as TutorProfileSectionId));
   };
 
   const toggleSection = (sectionId: TutorProfileSectionId) => {
@@ -365,7 +365,7 @@ export function TutorProfileWorkspace({
   const scrollToDesktopSection = (sectionId: TutorProfileSectionId) => {
     revealSections([sectionId]);
     window.requestAnimationFrame(() => {
-      scrollToTutorProfileSection(`profile-section-${sectionId === "h" ? "review" : sectionId}`);
+      scrollToTutorProfileSection(`profile-section-${sectionId}`);
     });
   };
   const buildDraftInput = () => {
@@ -435,7 +435,6 @@ export function TutorProfileWorkspace({
   };
 
   const saveSectionDraft = async (sectionId: TutorProfileSectionId) => {
-    if (sectionId === "h") return;
     setFeedback(null);
     try {
       await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(sectionId, form));
@@ -701,7 +700,7 @@ export function TutorProfileWorkspace({
       </div>
     </ProfileSection>
 
-    <ProfileSection id="profile-section-c" sectionId="c" eyebrow="Section C" title="Education and teaching expertise" description={tutorProfileSectionCopy.expertise} isExpanded={expandedSections.has("c")} isEditing={editingSections.has("c")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
+    <ProfileSection id="profile-section-c" sectionId="c" eyebrow="Section C" title="Education and teaching expertise" description={tutorProfileSectionCopy.education} isExpanded={expandedSections.has("c")} isEditing={editingSections.has("c")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
       <div className="grid gap-5 md:grid-cols-2">
         <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
         <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
@@ -737,7 +736,7 @@ export function TutorProfileWorkspace({
       </div>
     </ProfileSection>
 
-    <ProfileSection id="profile-section-d" sectionId="d" eyebrow="Section D" title="Tuition format and learner preferences" description={tutorProfileSectionCopy.tuition} isExpanded={expandedSections.has("d")} isEditing={editingSections.has("d")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
+    <ProfileSection id="profile-section-d" sectionId="d" eyebrow="Section D" title="Tuition, location and communication" description={tutorProfileSectionCopy.teaching} isExpanded={expandedSections.has("d")} isEditing={editingSections.has("d")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
       <div className="grid gap-5 lg:grid-cols-2">
         <fieldset className="rounded-2xl border border-[#dce8f0] p-4">
           <legend className="px-1 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.tuitionType} <span className="text-[#d84a4a]">*</span></legend>
@@ -759,26 +758,28 @@ export function TutorProfileWorkspace({
         <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
         <span><strong className="block text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</strong><span className="mt-1 block leading-5">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
       </label>
-    </ProfileSection>
-
-    <ProfileSection id="profile-section-e" sectionId="e" eyebrow="Section E" title="Location, fee and travel preferences" description="Your teaching coverage, expected fee range, and travel distance." isExpanded={expandedSections.has("e")} isEditing={editingSections.has("e")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="mt-8 border-t border-[#e6eff4] pt-6">
+        <h3 className="text-sm font-bold text-[#244a6a]">Location, fee and travel</h3>
+        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching coverage, expected fee range, and travel distance.</p>
+      </div>
+      <div className="mt-4 grid gap-5 md:grid-cols-3">
         <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
         <FormInput label={tutorProfileCopy.fields.feeMin} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />
         <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
         <FormInput label="Travel Distance (km) (Optional)" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
       </div>
-    </ProfileSection>
-
-    <ProfileSection id="profile-section-f" sectionId="f" eyebrow="Section F" title="Teaching language and communication" description={tutorProfileSectionCopy.communication} isExpanded={expandedSections.has("f")} isEditing={editingSections.has("f")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="mt-8 border-t border-[#e6eff4] pt-6">
+        <h3 className="text-sm font-bold text-[#244a6a]">Teaching language and communication</h3>
+        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching and contact preferences.</p>
+      </div>
+      <div className="mt-4 grid gap-5 md:grid-cols-2">
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
       </div>
     </ProfileSection>
 
-    <ProfileSection id="profile-section-g" sectionId="g" eyebrow="Section G" title="About your teaching" description={tutorProfileSectionCopy.about} isExpanded={expandedSections.has("g")} isEditing={editingSections.has("g")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
+    <ProfileSection id="profile-section-e" sectionId="e" eyebrow="Section E" title="Introduction and review" description={tutorProfileSectionCopy.introduction} isExpanded={expandedSections.has("e")} isEditing={editingSections.has("e")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
       <div className="grid gap-5 md:grid-cols-2">
         <FormTextArea label="About Me" maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />
         <FormTextArea label="Teaching Approach" maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />
@@ -787,9 +788,19 @@ export function TutorProfileWorkspace({
       </div>
     </ProfileSection>
 
-    <ProfileSection id="profile-section-review" sectionId="h" eyebrow="Section H" title="Profile review" description="Review the saved sections, then submit the complete profile once for moderation." isExpanded={expandedSections.has("h")} isEditing={false} isSaving={submitProfileMutation.isPending} onToggle={toggleSection} onEdit={() => void submitForReview()} onSave={() => undefined} reviewAction>
-      {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className="rounded-xl bg-[#f6fbfe] p-4 text-sm text-[#5e7a90]">Save your profile sections first. The final review status will appear here.</p>}
-    </ProfileSection>
+    <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#1680c2]">Review</p>
+          <h2 className="mt-2 text-xl font-bold tracking-[-0.025em] text-[#173b60]">Profile review</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#647f93]">Review the saved sections, then submit the complete profile once for moderation.</p>
+        </div>
+        <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className="shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]"><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
+      </div>
+      <div className="mt-6 border-t border-[#e6eff4] pt-5">
+        {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className="rounded-xl bg-[#f6fbfe] p-4 text-sm text-[#5e7a90]">Save your profile sections first. The final review status will appear here.</p>}
+      </div>
+    </section>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
 }

@@ -199,11 +199,11 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.queryByText("Enter 0 if you have no minimum fee.")).toBeNull();
     expect(screen.queryByText("Select every format you can teach comfortably.")).toBeNull();
     const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
+    const locationSection = screen.getByText("Section D", { exact: true }).closest("section");
     expect(identitySection).toBeTruthy();
     expect(locationSection).toBeTruthy();
     await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
+    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Tuition, location and communication" }));
     const phoneField = screen.getByRole("textbox", { name: /Mobile Number/ });
     expect(phoneField.closest("label")?.textContent).toContain("Mobile Number *");
     expect(phoneField.getAttribute("aria-required")).toBe("true");
@@ -352,9 +352,9 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
+    const locationSection = screen.getByText("Section D", { exact: true }).closest("section");
     expect(locationSection).toBeTruthy();
-    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
+    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Tuition, location and communication" }));
     await user.click(within(locationSection!).getByRole("button", { name: "Edit Information" }));
     const currentLocationSearch = within(locationSection!).getByRole("combobox", { hidden: true });
     await user.type(currentLocationSearch, "Uttara");
@@ -382,9 +382,9 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
 
     render(<TutorProfileWorkspace profile={hierarchyProfile} onboardingFallback={null} />);
 
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
+    const locationSection = screen.getByText("Section D", { exact: true }).closest("section");
     expect(locationSection).toBeTruthy();
-    fireEvent.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
+    fireEvent.click(within(locationSection!).getByRole("button", { name: "Show details for Tuition, location and communication" }));
 
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({
       query: "",
