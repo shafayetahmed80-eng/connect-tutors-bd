@@ -11,6 +11,7 @@ import {
   adminMatchingSavedViews,
   adminTwoFactorRecoveryCodes,
   adminTwoFactorSettings,
+  authEvents,
   academicFaculties,
   classLevels,
   confirmationLetters,
@@ -57,12 +58,14 @@ import {
   users,
   type InsertTutorRequest,
   type AdminAuditEvent,
+  type AuthEventType,
   type GuardianProfilePhotoRejectionReason,
   type GuardianProfilePhotoStatus,
   type TutorRequestPublicationAction,
   type GuardianRequestFollowUpKind,
   type TutorRequestAssignmentNoteCategory,
   type TutorProfileStatus,
+  type User,
   type UserRole,
 } from "../drizzle/schema";
 import { getGuardianRequestLifecycle } from "./tutor-request-lifecycle";
@@ -438,72 +441,95 @@ export async function registerPasswordTutor(input: TutorRegistrationInput) {
   const loginPhone = normalizeBangladeshMobile(input.phone);
   const passwordHash = await hashPassword(input.password);
 
-  return withTutorNumberAllocationRetry(() => withTutorNumberAllocationLock(() => db.transaction(async tx => {
-    const city = (await tx.select().from(locations).where(eq(locations.id, input.cityId)).limit(1))[0];
-    const selectedLocation = (await tx.select().from(locations).where(eq(locations.id, input.locationId)).limit(1))[0];
-    if (!city || !selectedLocation || city.type !== "city" || city.country !== "Bangladesh" || city.enabled !== 1 || selectedLocation.country !== "Bangladesh" || selectedLocation.enabled !== 1) {
-      throw new Error("Select a valid Bangladesh City and location.");
-    }
-    let cursor = selectedLocation;
-    const visited = new Set<string>();
-    let belongsToSelectedCity = false;
-    while (cursor.parentId) {
-      if (visited.has(cursor.id)) break;
-      visited.add(cursor.id);
-      if (cursor.parentId === city.id) {
-        belongsToSelectedCity = true;
-        break;
+  return withTutorNumberAllocationRetry(() => withTutorNumberAllocationLock(async () => {
+    try {
+      return await db.transaction(async tx => {
+        const city = (await tx.select().from(locations).where(eq(locations.id, input.cityId)).limit(1))[0];
+        const selectedLocation = (await tx.select().from(locations).where(eq(locations.id, input.locationId)).limit(1))[0];
+        if (!city || !selectedLocation || city.type !== "city" || city.country !== "Bangladesh" || city.enabled !== 1 || selectedLocation.country !== "Bangladesh" || selectedLocation.enabled !== 1) {
+          return { created: false as const, reason: "invalid-location" as const };
+        }
+        let cursor = selectedLocation;
+        const visited = new Set<string>();
+        let belongsToSelectedCity = false;
+        while (cursor.parentId) {
+          if (visited.has(cursor.id)) break;
+          visited.add(cursor.id);
+          if (cursor.parentId === city.id) {
+            belongsToSelectedCity = true;
+            break;
+          }
+          const parent = (await tx.select().from(locations).where(eq(locations.id, cursor.parentId)).limit(1))[0];
+          if (!parent) break;
+          cursor = parent;
+        }
+        if (!belongsToSelectedCity) return { created: false as const, reason: "invalid-location" as const };
+
+        const existing = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+        if (existing[0]) {
+          // A Tutor account with this email → "sign in instead" is correct. Any
+          // other role (Guardian/Admin) → signing in as a Tutor would fail, so
+          // tell them to use a different email rather than a dead-end hint.
+          return existing[0].role === "tutor"
+            ? { created: false as const, reason: "email" as const }
+            : { created: false as const, reason: "email-other-role" as const };
+        }
+        const existingPhone = await tx
+          .select()
+          .from(users)
+          .where(and(eq(users.role, "tutor"), eq(users.loginPhone, loginPhone)))
+          .limit(1);
+        if (existingPhone[0]) return { created: false as const, reason: "phone" as const };
+
+        const createdUser = await tx.insert(users).values({
+          openId: passwordOpenId(email),
+          name: input.name.trim(),
+          email,
+          loginPhone,
+          passwordHash,
+          loginMethod: "password",
+          role: "tutor",
+          lastSignedIn: new Date(),
+        });
+        const userId = Number(createdUser[0].insertId);
+        const user = (await tx.select().from(users).where(eq(users.id, userId)).limit(1))[0];
+        if (!user) throw new Error("Tutor account could not be created");
+
+        const createdRegistration = await tx.insert(tutorRegistrations).values({ userId: user.id });
+        const registrationId = Number(createdRegistration[0].insertId);
+        const allocatedRegistrations = await tx
+          .select({ tutorNumber: tutorRegistrations.tutorNumber })
+          .from(tutorRegistrations)
+          .where(gte(tutorRegistrations.tutorNumber, 777))
+          .orderBy(asc(tutorRegistrations.tutorNumber))
+          .for("update");
+        const tutorNumber = getNextAvailableTutorNumber(allocatedRegistrations.map(registration => registration.tutorNumber));
+        await tx.update(tutorRegistrations).set({ tutorNumber }).where(eq(tutorRegistrations.id, registrationId));
+        const registration = (await tx.select().from(tutorRegistrations).where(eq(tutorRegistrations.id, registrationId)).limit(1))[0];
+        if (!registration) throw new Error("Tutor registration identity could not be created");
+
+        await tx.insert(tutors).values({
+          id: `tutor-${user.id}`,
+          userId: user.id,
+          ...createTutorProfileDefaults(input),
+        });
+
+        return { created: true as const, user, registration };
+      });
+    } catch (error) {
+      // A concurrent registration can win the race between the duplicate checks
+      // above and these inserts. Report it as the same conflict the checks would
+      // have, not an opaque 500. Tutor-number collisions stay thrown so the
+      // outer retry can recompute the allocation.
+      if (isUniqueConstraintError(error, ["users_role_login_phone_unique"])) {
+        return { created: false as const, reason: "phone" as const };
       }
-      const parent = (await tx.select().from(locations).where(eq(locations.id, cursor.parentId)).limit(1))[0];
-      if (!parent) break;
-      cursor = parent;
+      if (isUniqueConstraintError(error, ["users_openId_unique"])) {
+        return { created: false as const, reason: "email" as const };
+      }
+      throw error;
     }
-    if (!belongsToSelectedCity) throw new Error("Select a location within your chosen City.");
-
-    const existing = await tx.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existing[0]) return { created: false as const, user: existing[0] };
-    const existingPhone = await tx
-      .select()
-      .from(users)
-      .where(and(eq(users.role, "tutor"), eq(users.loginPhone, loginPhone)))
-      .limit(1);
-    if (existingPhone[0]) return { created: false as const, user: existingPhone[0] };
-
-    const createdUser = await tx.insert(users).values({
-      openId: passwordOpenId(email),
-      name: input.name.trim(),
-      email,
-      loginPhone,
-      passwordHash,
-      loginMethod: "password",
-      role: "tutor",
-      lastSignedIn: new Date(),
-    });
-    const userId = Number(createdUser[0].insertId);
-    const user = (await tx.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-    if (!user) throw new Error("Tutor account could not be created");
-
-    const createdRegistration = await tx.insert(tutorRegistrations).values({ userId: user.id });
-    const registrationId = Number(createdRegistration[0].insertId);
-    const allocatedRegistrations = await tx
-      .select({ tutorNumber: tutorRegistrations.tutorNumber })
-      .from(tutorRegistrations)
-      .where(gte(tutorRegistrations.tutorNumber, 777))
-      .orderBy(asc(tutorRegistrations.tutorNumber))
-      .for("update");
-    const tutorNumber = getNextAvailableTutorNumber(allocatedRegistrations.map(registration => registration.tutorNumber));
-    await tx.update(tutorRegistrations).set({ tutorNumber }).where(eq(tutorRegistrations.id, registrationId));
-    const registration = (await tx.select().from(tutorRegistrations).where(eq(tutorRegistrations.id, registrationId)).limit(1))[0];
-    if (!registration) throw new Error("Tutor registration identity could not be created");
-
-    await tx.insert(tutors).values({
-      id: `tutor-${user.id}`,
-      userId: user.id,
-      ...createTutorProfileDefaults(input),
-    });
-
-    return { created: true as const, user, registration };
-  })));
+  }));
 }
 
 export type GuardianRegistrationTransactionInput = {
@@ -873,22 +899,36 @@ export async function getTutorRequestLocation(input: {
   };
 }
 
+/**
+ * Outcome of a public-account password sign-in. Account status is reported only
+ * once the password matches, so a wrong password stays indistinguishable from an
+ * unknown identifier and cannot be used to enumerate suspended accounts.
+ */
+export type PasswordAccountSignIn =
+  | { status: "ok"; user: User }
+  | { status: "invalid-credentials" }
+  | { status: "suspended" }
+  | { status: "closed" };
+
 /** Resolves one selected public account role without revealing identifier existence. */
 export async function verifyPasswordAccount(input: {
   identifier: string;
   password: string;
   role: PasswordAccountRole;
-}) {
+}): Promise<PasswordAccountSignIn> {
   const identifier = normalizePasswordAccountIdentifier(input.identifier);
-  if (!identifier) return undefined;
+  if (!identifier) return { status: "invalid-credentials" };
   const database = await getDb();
-  if (!database) return undefined;
+  if (!database) return { status: "invalid-credentials" };
   const condition = identifier.kind === "email"
     ? and(eq(users.role, input.role), eq(users.email, identifier.value))
     : and(eq(users.role, input.role), eq(users.loginPhone, identifier.value));
   const user = (await database.select().from(users).where(condition).limit(1))[0];
-  if (!user?.passwordHash || user.accountStatus !== "active") return undefined;
-  return (await verifyPassword(input.password, user.passwordHash)) ? user : undefined;
+  if (!user?.passwordHash) return { status: "invalid-credentials" };
+  if (!(await verifyPassword(input.password, user.passwordHash))) return { status: "invalid-credentials" };
+  if (user.accountStatus === "suspended") return { status: "suspended" };
+  if (user.accountStatus === "closed") return { status: "closed" };
+  return { status: "ok", user };
 }
 
 export async function verifyGuardianPassword(email: string, password: string) {
@@ -3405,6 +3445,63 @@ export async function listAdminAuditLogPage(filters: AdminAuditLogFilters) {
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+}
+
+export type AuthEventRole = "tutor" | "guardian" | "admin";
+
+/**
+ * Durable counterpart to the `[auth-audit]` stdout line for public (non-Admin)
+ * auth flows. Never receives raw identifiers or credential material — callers
+ * pass an already-masked identifier. Failures here must not break the request,
+ * so callers invoke this best-effort (`void ...catch()`).
+ */
+export async function recordAuthEvent(input: {
+  event: AuthEventType;
+  role?: AuthEventRole;
+  ip?: string | null;
+  identifierMasked?: string | null;
+  reason?: string | null;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.insert(authEvents).values({
+    event: input.event,
+    role: input.role ?? null,
+    ip: input.ip?.slice(0, 64) ?? null,
+    identifierMasked: input.identifierMasked?.slice(0, 128) ?? null,
+    reason: input.reason?.slice(0, 120) ?? null,
+  });
+  return { id: Number(result[0].insertId) } as const;
+}
+
+/** Recent public auth events, newest first. Owner/Admin-facing; no credentials stored. */
+export async function listRecentAuthEvents(filters: {
+  event?: AuthEventType;
+  role?: AuthEventRole;
+  ip?: string;
+  limit?: number;
+} = {}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500);
+  const conditions: SQL[] = [];
+  if (filters.event) conditions.push(eq(authEvents.event, filters.event));
+  if (filters.role) conditions.push(eq(authEvents.role, filters.role));
+  if (filters.ip?.trim()) conditions.push(eq(authEvents.ip, filters.ip.trim()));
+  const query = database
+    .select({
+      id: authEvents.id,
+      event: authEvents.event,
+      role: authEvents.role,
+      ip: authEvents.ip,
+      identifierMasked: authEvents.identifierMasked,
+      reason: authEvents.reason,
+      createdAt: authEvents.createdAt,
+    })
+    .from(authEvents);
+  return conditions.length
+    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(limit)
+    : await query.orderBy(desc(authEvents.createdAt)).limit(limit);
 }
 
 /**

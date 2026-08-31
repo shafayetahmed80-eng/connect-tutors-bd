@@ -1,11 +1,10 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link as WouterLink, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Phone, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { JourneyProgress } from "@/components/JourneyProgress";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
@@ -399,14 +398,84 @@ type RequestInput = {
   budgetMaximum: string;
 };
 
-const stageSteps = [
-  { label: "Verify phone", description: "A secure starting point" },
-  { label: "Create account", description: "Private Guardian access" },
-  { label: "Request a Tutor", description: "Tell us what you need" },
-] as const;
 const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
 
-export const guardianJourneySteps = stageSteps;
+/**
+ * Prefers the server's per-field Zod messages (now on `data.zodFieldErrors`) over
+ * the raw stringified error, so a rejected registration reads as guidance rather
+ * than a JSON blob when the client checks were looser.
+ */
+export function guardianAuthErrorMessage(error: { message: string; data?: unknown }): string {
+  const fieldErrors = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors;
+  if (fieldErrors) {
+    const parts = Object.values(fieldErrors).map(messages => messages[0]).filter(Boolean);
+    if (parts.length) return parts.join(" ");
+  }
+  return error.message;
+}
+
+export type GuardianAccountFieldErrors = Partial<
+  Record<"name" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
+>;
+
+const guardianAccountErrorFieldIds: Record<keyof GuardianAccountFieldErrors, string> = {
+  name: "guardian-full-name",
+  email: "guardian-email",
+  password: "guardian-password",
+  confirmPassword: "guardian-confirm-password",
+  cityLocationId: "guardian-account-city",
+  locationId: "guardian-account-location",
+  terms: "guardian-terms",
+};
+
+/**
+ * Mirrors `guardianRegistrationSchema` so a value that passes here is not bounced
+ * back with a stringified server error. Same shape as `validateTutorRegistration`.
+ */
+export function validateGuardianRegistration(
+  values: { name: string; email: string; password: string; confirmPassword: string; accountCityId: string; accountLocationId: string },
+  termsAccepted: boolean,
+): GuardianAccountFieldErrors {
+  const errors: GuardianAccountFieldErrors = {};
+  const name = values.name.trim();
+  if (name.length < 2) errors.name = "Enter your full name.";
+  else if (name.length > 160) errors.name = "Full name must be 160 characters or fewer.";
+  const email = values.email.trim();
+  if (!email) errors.email = "Enter your email address.";
+  else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Enter a valid email address.";
+  else if (email.length > 320) errors.email = "Email address must be 320 characters or fewer.";
+  if (!values.password) errors.password = "Create a password with at least 8 characters.";
+  else if (values.password.length < 8) errors.password = "Password must be at least 8 characters.";
+  else if (values.password.length > 128) errors.password = "Password must be 128 characters or fewer.";
+  if (!values.confirmPassword) errors.confirmPassword = "Confirm your password.";
+  else if (values.password !== values.confirmPassword) errors.confirmPassword = "Passwords do not match.";
+  if (!values.accountCityId) errors.cityLocationId = "Choose your City to continue.";
+  if (!values.accountLocationId) errors.locationId = "Choose your Location to continue.";
+  if (!termsAccepted) errors.terms = "Accept the Terms of Use and Privacy Policy to create your account.";
+  return errors;
+}
+
+/** Maps the server's per-field `zodFieldErrors` keys onto the account form's field-error keys. */
+export function mapGuardianRegistrationServerErrors(zodFieldErrors: Record<string, string[]> | undefined): GuardianAccountFieldErrors {
+  if (!zodFieldErrors) return {};
+  const byServerField: Record<string, keyof GuardianAccountFieldErrors> = {
+    name: "name", email: "email", password: "password", confirmPassword: "confirmPassword",
+    cityLocationId: "cityLocationId", locationId: "locationId", termsAccepted: "terms",
+  };
+  const mapped: GuardianAccountFieldErrors = {};
+  for (const [field, messages] of Object.entries(zodFieldErrors)) {
+    const key = byServerField[field];
+    if (key && messages[0]) mapped[key] = messages[0];
+  }
+  return mapped;
+}
+
+function focusFirstGuardianAccountError(errors: GuardianAccountFieldErrors) {
+  const firstKey = (Object.keys(guardianAccountErrorFieldIds) as Array<keyof GuardianAccountFieldErrors>).find((key) => errors[key]);
+  if (!firstKey) return;
+  window.requestAnimationFrame(() => document.getElementById(guardianAccountErrorFieldIds[firstKey])?.focus());
+}
+
 export const guardianRequestSteps = requestSteps;
 export const guardianAccountPolicyLinks = [
   { label: "Terms of Use", href: "/terms-conditions" },
@@ -472,7 +541,7 @@ export function getGuardianRequestSuccessDestination({ embedded, isEditMode }: {
 }
 
 export default function GuardianRequestJourney({ embedded = false }: { embedded?: boolean }) {
-  const [, navigate] = useLocation();
+  const [routePath, navigate] = useLocation();
   const editRequestId = getGuardianPendingEditId(window.location.search);
   const isEditMode = editRequestId !== null;
   const presentation = getGuardianRequestJourneyPresentation({ embedded });
@@ -490,7 +559,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   const [accountCityId, setAccountCityId] = useState("");
   const [accountLocationId, setAccountLocationId] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [studentName, setStudentName] = useState("");
+  const [accountFieldErrors, setAccountFieldErrors] = useState<GuardianAccountFieldErrors>({});
   const [category, setCategory] = useState("");
   const [curriculumType, setCurriculumType] = useState("");
   const [classCourse, setClassCourse] = useState("");
@@ -526,8 +595,29 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     onError: (error) => { setJourneyError(error.message); toast.error(error.message); },
   });
   const registrationMutation = trpc.guardianAuth.register.useMutation({
-    onSuccess: () => { setJourneyError(""); void authQuery.refetch(); setStage("request"); },
-    onError: (error) => { setJourneyError(error.message); toast.error(error.message); },
+    onSuccess: () => {
+      setJourneyError("");
+      setAccountFieldErrors({});
+      void utils.auth.me.invalidate();
+      toast.success("Guardian account created.");
+      navigate("/guardian/dashboard/hire");
+    },
+    onError: (error) => {
+      const data = error.data as { zodFieldErrors?: Record<string, string[]>; code?: string } | null | undefined;
+      const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
+      if (Object.keys(mapped).length) {
+        setAccountFieldErrors((current) => ({ ...current, ...mapped }));
+        setJourneyError("Please fix the highlighted field and try again.");
+        focusFirstGuardianAccountError(mapped);
+        return;
+      }
+      if (data?.code === "BAD_REQUEST" && error.message) {
+        setAccountFieldErrors((current) => ({ ...current, cityLocationId: error.message }));
+      }
+      const message = guardianAuthErrorMessage(error);
+      setJourneyError(message);
+      toast.error(message);
+    },
   });
 
   const draftOwnerId = authQuery.data?.role === "guardian" ? authQuery.data.id : null;
@@ -577,12 +667,14 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const stageProgress = stage === "phone" ? 1 : stage === "register" ? 2 : 3;
   const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, budgetKind, budgetMinimum, budgetMaximum }), [addressDetails, budgetKind, budgetMaximum, budgetMinimum, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
-    if (authQuery.data?.role === "guardian" && stage === "phone") setStage("request");
-  }, [authQuery.data?.role, stage]);
+    if (embedded || isEditMode || routePath !== "/request-tutor") return;
+    if (authQuery.data?.role === "guardian" && (stage === "phone" || stage === "register")) {
+      navigate("/guardian/dashboard/hire");
+    }
+  }, [authQuery.data?.role, embedded, isEditMode, navigate, routePath, stage]);
 
   useEffect(() => {
     if (!editRequestId || authQuery.isLoading) return;
@@ -618,7 +710,6 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     setBudgetKind(request.budgetMode === "discuss" ? "discuss" : "range");
     setBudgetMinimum(request.budgetMinimum?.toString() ?? "");
     setBudgetMaximum(request.budgetMaximum?.toString() ?? "");
-    setStudentName(request.studentFirstName ?? "");
     setNotes(request.notes ?? "");
     setLoadedEditRequestId(editRequestId);
   }, [authQuery.data?.role, authQuery.isLoading, editRequestId, guardianRequestsQuery.data, guardianRequestsQuery.isLoading, loadedEditRequestId, navigate]);
@@ -647,7 +738,6 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
       setBudgetKind(draft.request.budgetKind);
       setBudgetMinimum(draft.request.budgetMinimum);
       setBudgetMaximum(draft.request.budgetMaximum);
-      setStudentName(draft.studentName);
       setNotes(draft.notes);
     }
     setDraftRestoredFor(draftOwnerId);
@@ -656,10 +746,19 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
   useEffect(() => {
     if (isEditMode) return;
     if (stage !== "request" || !draftOwnerId || draftRestoredFor !== draftOwnerId || requestId) return;
-    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serializeGuardianRequestDraft({ version: 1, step, request: requestInput, studentName, notes }));
-  }, [draftOwnerId, draftRestoredFor, isEditMode, notes, requestId, requestInput, stage, step, studentName]);
+    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serializeGuardianRequestDraft({ version: 1, step, request: requestInput, notes }));
+  }, [draftOwnerId, draftRestoredFor, isEditMode, notes, requestId, requestInput, stage, step]);
 
   const clearJourneyError = () => setJourneyError("");
+  const clearAccountFieldError = (...keys: Array<keyof GuardianAccountFieldErrors>) => {
+    setJourneyError("");
+    setAccountFieldErrors((current) => {
+      if (!keys.some((key) => current[key])) return current;
+      const next = { ...current };
+      for (const key of keys) delete next[key];
+      return next;
+    });
+  };
   const toggleSubject = (subject: string) => {
     clearJourneyError();
     setSelectedSubjects((current) => current.includes(subject) ? current.filter((item) => item !== subject) : [...current, subject]);
@@ -687,7 +786,6 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
       subjects: selectedSubjects,
       daysPerWeek: Number(daysPerWeek),
       preferredGender: preferredGender as Exclude<PreferredGender, "">,
-      studentFirstName: studentName.trim() || undefined,
       studentGender: studentGender || undefined,
       addressDetails: addressDetails.trim() || undefined,
       budget: budgetKind === "discuss" ? { kind: "discuss" as const } : { kind: "range" as const, minimum: Number(budgetMinimum), maximum: Number(budgetMaximum) },
@@ -704,38 +802,36 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
     else submit({ ...common, tuitionType: "both", tuitionCityLocationId, tuitionLocationId });
   };
   const register = () => {
-    if (!name.trim()) { setJourneyError("Enter your full name to continue."); return; }
-    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) { setJourneyError("Enter a valid email address to continue."); return; }
-    if (password.length < 8) { setJourneyError("Create a password with at least 8 characters."); return; }
-    if (password !== confirmPassword) { setJourneyError("Your passwords do not match."); return; }
-    if (!accountCityId || !accountLocationId) { setJourneyError("Choose your City and location to continue."); return; }
-    if (!termsAccepted) { setJourneyError("Accept the Terms of Use and Privacy Policy to create your account."); return; }
+    const errors = validateGuardianRegistration(
+      { name, email, password, confirmPassword, accountCityId, accountLocationId },
+      termsAccepted,
+    );
+    setAccountFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setJourneyError("");
+      focusFirstGuardianAccountError(errors);
+      return;
+    }
     clearJourneyError();
-    registrationMutation.mutate({ name, gender, email, password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+    registrationMutation.mutate({ name: name.trim(), gender, email: email.trim(), password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
   };
 
   return <div className={presentation.rootClassName}>
     {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
-    <main className={embedded ? "py-0" : "px-4 py-10 sm:px-6 lg:py-14"}><div className={embedded ? "max-w-none" : "mx-auto max-w-2xl"}>
-      {!embedded ? <p className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs font-semibold text-j-ink-soft">
-        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="shrink-0 text-j-accent" aria-hidden="true" />Your phone, email, and notes stay private</span>
-        <span className="inline-flex items-center gap-1.5"><Phone size={14} className="shrink-0 text-j-accent" aria-hidden="true" />Help: +880 1516 131411</span>
-      </p> : null}
-      <section className={embedded ? "" : "rounded-2xl border border-j-border bg-white p-5 shadow-[0_10px_30px_rgba(28,101,148,.06)] sm:p-7"}>
-        <JourneyProgress activeStep={stageProgress} ariaLabel="Tutor request journey progress" steps={stageSteps} />
-        {stage !== "success" && journeyError ? <p role="alert" className="mt-6 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
+    <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
+      <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
+        {stage !== "success" && journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {stage === "success" ? <SuccessState requestId={requestId} /> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
           intakeMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
         }} /> : null}
-        {stage === "register" ? <AccountStage name={name} email={email} gender={gender} password={password} confirmPassword={confirmPassword} showPassword={showPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} pending={registrationMutation.isPending} onName={(value) => { clearJourneyError(); setName(value); }} onEmail={(value) => { clearJourneyError(); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearJourneyError(); setPassword(value); }} onConfirmPassword={(value) => { clearJourneyError(); setConfirmPassword(value); }} onTogglePassword={() => setShowPassword((current) => !current)} onCity={(value) => { clearJourneyError(); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearJourneyError(); setAccountLocationId(value); }} onTerms={(value) => { clearJourneyError(); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setStage("phone"); }} onCreate={register} /> : null}
+        {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} showPassword={showPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onTogglePassword={() => setShowPassword((current) => !current)} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
         {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-2xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><Loader2 className="mx-auto mb-3 animate-spin text-j-accent" size={22} />Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
           step={step}
           requestInput={requestInput}
-          studentName={studentName}
           notes={notes}
           cities={cities}
           tuitionLocations={tuitionLocations}
@@ -745,7 +841,6 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
           onSetCategory={(value) => { clearJourneyError(); const nextClassCourse = getGuardianLevelsForCurriculum(value).includes(classCourse) ? classCourse : ""; setCategory(value); setCurriculumType((current) => getGuardianCurriculumTypeForCategoryChange(current, value)); setClassCourse(nextClassCourse); setSelectedSubjects((current) => getGuardianSelectedSubjectsForLearningNeed(current, value, nextClassCourse)); }}
           onSetCurriculumType={(value) => { clearJourneyError(); setCurriculumType(value); }}
           onSetClassCourse={(value) => { clearJourneyError(); setClassCourse(value); setSelectedSubjects((current) => getGuardianSelectedSubjectsForLearningNeed(current, category, value)); }}
-          onSetStudentName={(value) => { clearJourneyError(); setStudentName(value); }}
           onSetStudentGender={(value) => { clearJourneyError(); setStudentGender(value); }}
           onSetAddressDetails={(value) => { clearJourneyError(); setAddressDetails(value); }}
           onToggleSubject={toggleSubject}
@@ -774,9 +869,9 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
   const valid = LOCAL_PHONE.test(phone);
-  return <div className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-    <Eyebrow step="Step 1 of 3" title="Start with your phone number" copy="No OTP. Your number stays private and only supports a secure handoff if we match you with a Tutor." />
-    <label className="mt-7 block max-w-md" htmlFor="guardian-phone">
+  return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Start with your phone number</h1>
+    <label className="mt-6 block max-w-md" htmlFor="guardian-phone">
       <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
       <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
         <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
@@ -793,9 +888,10 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
 }
 
 export type GuardianAccountStageProps = {
-  name: string; email: string; gender: "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
+  name: string; email: string; phone: string; gender: "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
   cities: Array<{ id: string; label: string }>; accountCityId: string; accountLocations: Array<{ id: string; label: string }>;
   accountLocationId: string; accountCityLabel: string; termsAccepted: boolean; pending: boolean;
+  fieldErrors?: GuardianAccountFieldErrors;
   onName: (value: string) => void; onEmail: (value: string) => void; onGender: (value: "male" | "female") => void;
   onPassword: (value: string) => void; onConfirmPassword: (value: string) => void; onTogglePassword: () => void;
   onCity: (value: string) => void; onLocation: (value: string) => void; onTerms: (value: boolean) => void; onBack: () => void; onCreate: () => void;
@@ -846,15 +942,29 @@ function GenderSegment({ value, current, onSelect }: { value: "female" | "male";
   </label>;
 }
 
+function FieldError({ id, message, children }: { id: string; message?: string; children: ReactNode }) {
+  return <div>{children}{message ? <p id={id} role="alert" className="mt-1.5 text-xs font-semibold text-[#bd3535]">{message}</p> : null}</div>;
+}
+
 export function AccountStage(props: GuardianAccountStageProps) {
+  const errors = props.fieldErrors ?? {};
   const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
   const star = <span className="text-[#d74545]">*</span>;
-  const confirmBorder = passwordMatch?.matches ? "border-j-ok focus:border-j-ok" : passwordMatch ? "border-[#dc5b5b] focus:border-[#dc5b5b]" : "";
-  return <section className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
-    <Eyebrow step="Step 2 of 3" title="Create your private Guardian account" copy="Use an email you can access — you will sign in with it later." />
+  const confirmBorder = errors.confirmPassword
+    ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
+    : passwordMatch?.matches
+      ? "border-j-ok focus:border-j-ok"
+      : passwordMatch
+        ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
+        : "";
+  const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
+  return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Create your Guardian account</h1>
 
-    <div className="mt-6 grid gap-x-7 gap-y-5 md:grid-cols-2">
-      <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+    <div className="mt-6 grid gap-x-7 gap-y-4 md:grid-cols-2">
+      <FieldError id="guardian-full-name-error" message={errors.name}>
+        <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+      </FieldError>
 
       <fieldset>
         <legend className={fieldLabel}>Gender {star}</legend>
@@ -864,27 +974,48 @@ export function AccountStage(props: GuardianAccountStageProps) {
         </div>
       </fieldset>
 
-      <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" className={`${filledField} mt-2`} type="email" value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
-
-      <label className="block" htmlFor="guardian-password">
-        <span className={fieldLabel}>Password {star}</span>
-        <span className="relative mt-2 block">
-          <input id="guardian-password" aria-describedby="guardian-password-strength" className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
-          <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
+      <label className="block" htmlFor="guardian-phone">
+        <span className={fieldLabel}>Phone number {star}</span>
+        <span className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-[#eef3f8]">
+          <span className="flex items-center border-r border-j-border px-3.5 text-sm font-bold text-j-ink-soft">+880</span>
+          <input id="guardian-phone" readOnly aria-readonly="true" tabIndex={-1} value={displayPhone} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-sm text-j-ink-soft outline-none" />
         </span>
-        <GuardianPasswordStrength password={props.password} />
-        <GuardianPasswordManagerHint />
+        <span className="mt-1.5 block text-xs font-medium text-[#8496a6]">Taken from the previous step. Use “Back to phone” to change it.</span>
       </label>
 
-      <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" aria-describedby={passwordMatch ? "guardian-password-match" : undefined} aria-invalid={passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+      <FieldError id="guardian-email-error" message={errors.email}>
+        <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>Email {star}</span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
+      </FieldError>
 
-      <SearchableLocationSelect label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
-      <SearchableLocationSelect label="Thana / Upazila / Area / Sub-area" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+      <FieldError id="guardian-password-error" message={errors.password}>
+        <label className="block" htmlFor="guardian-password">
+          <span className={fieldLabel}>Password {star}</span>
+          <span className="relative mt-2 block">
+            <input id="guardian-password" minLength={8} maxLength={128} aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? "guardian-password-error" : "guardian-password-strength"} className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
+            <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-md px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
+          </span>
+          <GuardianPasswordStrength password={props.password} />
+          <GuardianPasswordManagerHint />
+        </label>
+      </FieldError>
+
+      <FieldError id="guardian-confirm-password-error" message={errors.confirmPassword}>
+        <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>Confirm password {star}</span><input id="guardian-confirm-password" maxLength={128} aria-describedby={errors.confirmPassword ? "guardian-confirm-password-error" : passwordMatch ? "guardian-password-match" : undefined} aria-invalid={errors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
+      </FieldError>
+
+      <FieldError id="guardian-account-city-error" message={errors.cityLocationId}>
+        <SearchableLocationSelect triggerId="guardian-account-city" label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
+      </FieldError>
+      <FieldError id="guardian-account-location-error" message={errors.locationId}>
+        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+      </FieldError>
     </div>
 
-    <label className="mt-6 flex max-w-xl items-start gap-3 rounded-2xl border border-[#e3edf4] bg-j-surface-sunken p-4 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
+    <FieldError id="guardian-terms-error" message={errors.terms}>
+      <label className="mt-5 flex items-start gap-2.5 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
+    </FieldError>
 
-    <div className="mt-8 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-6 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
         <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back to phone</button>
         <p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
@@ -895,10 +1026,10 @@ export function AccountStage(props: GuardianAccountStageProps) {
 }
 
 type RequestStageProps = {
-  step: 1 | 2 | 3; requestInput: RequestInput; studentName: string; notes: string;
+  step: 1 | 2 | 3; requestInput: RequestInput; notes: string;
   cities: Array<{ id: string; label: string }>; tuitionLocations: Array<{ id: string; label: string }>;
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
-  onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentName: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void;
+  onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
   onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetBudgetKind: (value: BudgetKind) => void;
   onSetBudgetMinimum: (value: string) => void; onSetBudgetMaximum: (value: string) => void; onSetNotes: (value: string) => void;
@@ -918,26 +1049,26 @@ export function RequestStage(props: RequestStageProps) {
       const isComplete = index + 1 < props.step;
       return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
     })}</ol>
-    {props.step === 1 ? <div className="mt-6 space-y-6"><fieldset><legend className="text-sm font-extrabold text-j-ink-strong">Learning details</legend><p className="mt-1 text-xs leading-5 text-[#71889b]">Start with the student’s curriculum and current level.</p><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><InputField label="Student first name" optional helper="Optional — visible only to your coordinator" value={props.studentName} onChange={props.onSetStudentName} maxLength={80} /><SelectField label="Student gender" optional helper="Optional — shown on the Job Board only when selected" value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details">Address Details <span className="font-normal text-[#71889b]">(optional)</span><span id="address-details-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">A landmark or access note for you, the coordinator, and your formally assigned Tutor only. It is never shown on the Job Board.</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} aria-describedby="address-details-hint" /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong">Subject selection <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-between gap-3"><p className="max-w-md text-xs leading-5 text-[#617e96]">Choose every subject for which you need a Tutor. You can select more than one.</p><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} subject${input.selectedSubjects.length === 1 ? "" : "s"} selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} subject{input.selectedSubjects.length === 1 ? "" : "s"} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
+    {props.step === 1 ? <div className="mt-6 space-y-6"><fieldset><legend className="text-sm font-extrabold text-j-ink-strong">Learning details</legend><p className="mt-1 text-xs leading-5 text-[#71889b]">Start with the student’s curriculum and current level.</p><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><SelectField label="Student gender" optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details">Address Details <span className="font-normal text-[#71889b]">(optional)</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong">Subject selection <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-between gap-3"><p className="max-w-md text-xs leading-5 text-[#617e96]">Choose every subject for which you need a Tutor. You can select more than one.</p><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} subject${input.selectedSubjects.length === 1 ? "" : "s"} selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} subject{input.selectedSubjects.length === 1 ? "" : "s"} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
     {props.step === 2 ? <div className="mt-7 space-y-6">
       <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Tuition type <span className="text-[#d74545]">*</span></legend><p className="mt-1 text-xs leading-5 text-[#71889b]">City and location are required for Home, Group, and Package Tutoring.</p><div className="mt-3 flex flex-wrap gap-2">{(["home", "online", "group", "package"] as const).map((value) => <ChoiceButton key={value} selected={input.tuitionType === value} onClick={() => props.onSetTuitionType(value)}>{formatTuitionType(value)}</ChoiceButton>)}</div></fieldset>
       {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="student-count">Number of students <span className="text-[#d74545]">*</span><span id="student-count-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the number of students for this request (1–100).</span><input id="student-count" className={`${filledField} mt-2`}type="number" min={1} max={100} step={1} inputMode="numeric" aria-describedby="student-count-hint" value={input.studentCount} onChange={(event) => props.onSetStudentCount(event.target.value)} /></label> : null}
-      {input.tuitionType !== "online" ? <><div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /><SearchableLocationSelect label="Thana / Upazila / Area / Sub-area" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required countContext={props.tuitionCityLabel} onChange={props.onSetTuitionLocation} /></div>{locationSelection ? <div role="status" aria-label="Location selected" className="mt-4 flex flex-wrap items-start gap-3 rounded-xl border border-j-ok-border bg-j-ok-wash px-4 py-3 text-sm leading-6 text-[#286b49]"><Check className="mt-1 shrink-0 text-j-ok" size={17} aria-hidden="true" /><p className="min-w-0 flex-1"><span className="font-extrabold">Location selected.</span> {locationSelection.cityLabel} — {locationSelection.locationLabel}</p><button type="button" className="min-h-11 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-[#2377bd] underline decoration-[#8bc8a5] underline-offset-4 transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2" aria-label="Change selected location" onClick={() => props.onSetTuitionLocation("")}>Change location</button></div> : null}</> : <p className="rounded-xl border border-j-border bg-j-surface-sunken px-4 py-3 text-sm leading-6 text-[#58758a]">Exact physical location is not needed for Online Tutoring.</p>}
+      {input.tuitionType !== "online" ? <><div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /><SearchableLocationSelect label="Location" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required countContext={props.tuitionCityLabel} onChange={props.onSetTuitionLocation} /></div>{locationSelection ? <div role="status" aria-label="Location selected" className="mt-4 flex flex-wrap items-start gap-3 rounded-xl border border-j-ok-border bg-j-ok-wash px-4 py-3 text-sm leading-6 text-[#286b49]"><Check className="mt-1 shrink-0 text-j-ok" size={17} aria-hidden="true" /><p className="min-w-0 flex-1"><span className="font-extrabold">Location selected.</span> {locationSelection.cityLabel} — {locationSelection.locationLabel}</p><button type="button" className="min-h-11 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-[#2377bd] underline decoration-[#8bc8a5] underline-offset-4 transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2" aria-label="Change selected location" onClick={() => props.onSetTuitionLocation("")}>Change location</button></div> : null}</> : <p className="rounded-xl border border-j-border bg-j-surface-sunken px-4 py-3 text-sm leading-6 text-[#58758a]">Exact physical location is not needed for Online Tutoring.</p>}
       {input.tuitionType === "group" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="group-capacity">Maximum students <span className="text-[#d74545]">*</span><span id="group-capacity-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the maximum number of students in this Group Tutoring request (2–100).</span><input id="group-capacity" className={`${filledField} mt-2`}type="number" min={2} max={100} step={1} inputMode="numeric" aria-describedby="group-capacity-hint" value={input.groupCapacity} onChange={(event) => props.onSetGroupCapacity(event.target.value)} /></label> : null}
       {input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="package-duration-months">Package duration (months) <span className="text-[#d74545]">*</span><span id="package-duration-months-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the full Package Tutoring duration in months (1–24).</span><input id="package-duration-months" className={`${filledField} mt-2`}type="number" min={1} max={24} step={1} inputMode="numeric" aria-describedby="package-duration-months-hint" value={input.packageDurationMonths} onChange={(event) => props.onSetPackageDurationMonths(event.target.value)} /></label> : null}
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Days per week" value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} /><SelectField label="Preferred Tutor gender" value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} /></div>
       <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly budget <span className="text-[#d74545]">*</span></legend><div className="mt-3 flex flex-wrap gap-2"><ChoiceButton selected={input.budgetKind === "range"} onClick={() => props.onSetBudgetKind("range")}>Budget range</ChoiceButton><ChoiceButton selected={input.budgetKind === "discuss"} onClick={() => props.onSetBudgetKind("discuss")}>Discuss with coordinator</ChoiceButton></div>{input.budgetKind === "range" ? <div className="mt-4 grid gap-4 sm:grid-cols-2"><InputField label="Minimum (BDT)" value={input.budgetMinimum} onChange={props.onSetBudgetMinimum} inputMode="numeric" /><InputField label="Maximum (BDT)" value={input.budgetMaximum} onChange={props.onSetBudgetMaximum} inputMode="numeric" /></div> : null}</fieldset>
       <label className="block text-sm font-extrabold text-j-ink-soft">Additional notes <span className="font-normal text-[#71889b]">(optional)</span><textarea className={`${filledArea} mt-2 min-h-28`} value={props.notes} onChange={(event) => props.onSetNotes(event.target.value)} maxLength={2000} /></label>
     </div> : null}
-    {props.step === 3 ? <RequestPreview input={input} studentName={props.studentName} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onEditStep={onEditStep} /> : null}
+    {props.step === 3 ? <RequestPreview input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onEditStep={onEditStep} /> : null}
     <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back</button> : <span className="hidden sm:block" />}{props.step < 3 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}>Continue <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={props.pending ? "Sending request" : "Send request"}>{props.pending && <Loader2 className="animate-spin" size={18} />}{props.pending ? "Sending request" : "Send request"} <ArrowRight size={17} /></button>}</div>
   </form>;
 }
 
-function RequestPreview({ input, studentName, notes, tuitionCityLabel, tuitionLocationLabel, onEditStep }: { input: RequestInput; studentName: string; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string; onEditStep: (step: 1 | 2) => void }) {
+function RequestPreview({ input, notes, tuitionCityLabel, tuitionLocationLabel, onEditStep }: { input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string; onEditStep: (step: 1 | 2) => void }) {
   const location = input.tuitionType === "online" ? "Online Tuition" : `${tuitionCityLabel} — ${tuitionLocationLabel}`;
   const editLink = "min-h-11 rounded-lg px-3 text-xs font-extrabold text-j-accent underline underline-offset-4 transition hover:bg-j-accent-wash focus:outline-none focus:ring-2 focus:ring-j-accent/30";
-  return <div className="mt-7 space-y-5"><div className="rounded-2xl border border-j-border bg-j-surface-sunken p-5 text-sm leading-7 text-[#385e79]"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-extrabold text-j-ink">Review your request</h3><p className="mt-1 text-xs leading-5 text-[#607d92]">Check the details below. You can return to either section without losing your entries.</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-[#2a739f] ring-1 ring-inset ring-j-border">Private review</span></div><section className="mt-5 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-learning-needs"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-learning-needs" className="font-extrabold text-j-ink-strong">Learning needs</h4><button type="button" className={editLink} onClick={() => onEditStep(1)}>Edit learning needs</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Category" value={input.category} />{input.curriculumType ? <ReviewItem label="Curriculum Type" value={input.curriculumType} /> : null}<ReviewItem label="Class / level" value={input.classCourse} /><ReviewItem label="Subjects" value={input.selectedSubjects.join(", ")} />{studentName ? <ReviewItem label="Student first name" value={studentName} /> : null}{input.studentGender ? <ReviewItem label="Student gender" value={formatStudentGender(input.studentGender)} /> : null}{input.addressDetails ? <ReviewItem label="Address Details" value={input.addressDetails} /> : null}</dl></section><section className="mt-4 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-tuition-preferences"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-tuition-preferences" className="font-extrabold text-j-ink-strong">Tuition preferences</h4><button type="button" className={editLink} onClick={() => onEditStep(2)}>Edit tuition preferences</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Tuition type" value={formatTuitionType(input.tuitionType)} />{input.tuitionType === "group" ? <ReviewItem label="Maximum students" value={`${input.groupCapacity} students`} /> : null}{input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <ReviewItem label="Number of students" value={`${input.studentCount} student${input.studentCount === "1" ? "" : "s"}`} /> : null}{input.tuitionType === "package" ? <ReviewItem label="Package duration" value={`${input.packageDurationMonths} month${input.packageDurationMonths === "1" ? "" : "s"}`} /> : null}<ReviewItem label="Location" value={location} /><ReviewItem label="Days per week" value={`${input.daysPerWeek} day${input.daysPerWeek === "1" ? "" : "s"}`} /><ReviewItem label="Preferred Tutor gender" value={formatPreferredGender(input.preferredGender)} /><ReviewItem label="Budget" value={formatBudget(input)} />{notes ? <ReviewItem label="Additional notes" value={notes} /> : null}</dl></section></div><p className="rounded-xl border border-[#ead8a8] bg-[#fffbf0] px-4 py-3 text-sm leading-6 text-[#6f5b2a]">After you send this request, a coordinator will review it and will confirm any change with you before a job is published. Contact details and exact addresses stay private.</p></div>;
+  return <div className="mt-7 space-y-5"><div className="rounded-2xl border border-j-border bg-j-surface-sunken p-5 text-sm leading-7 text-[#385e79]"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-extrabold text-j-ink">Review your request</h3><p className="mt-1 text-xs leading-5 text-[#607d92]">Check the details below. You can return to either section without losing your entries.</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-[#2a739f] ring-1 ring-inset ring-j-border">Private review</span></div><section className="mt-5 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-learning-needs"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-learning-needs" className="font-extrabold text-j-ink-strong">Learning needs</h4><button type="button" className={editLink} onClick={() => onEditStep(1)}>Edit learning needs</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Category" value={input.category} />{input.curriculumType ? <ReviewItem label="Curriculum Type" value={input.curriculumType} /> : null}<ReviewItem label="Class / level" value={input.classCourse} /><ReviewItem label="Subjects" value={input.selectedSubjects.join(", ")} />{input.studentGender ? <ReviewItem label="Student gender" value={formatStudentGender(input.studentGender)} /> : null}{input.addressDetails ? <ReviewItem label="Address Details" value={input.addressDetails} /> : null}</dl></section><section className="mt-4 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-tuition-preferences"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-tuition-preferences" className="font-extrabold text-j-ink-strong">Tuition preferences</h4><button type="button" className={editLink} onClick={() => onEditStep(2)}>Edit tuition preferences</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Tuition type" value={formatTuitionType(input.tuitionType)} />{input.tuitionType === "group" ? <ReviewItem label="Maximum students" value={`${input.groupCapacity} students`} /> : null}{input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <ReviewItem label="Number of students" value={`${input.studentCount} student${input.studentCount === "1" ? "" : "s"}`} /> : null}{input.tuitionType === "package" ? <ReviewItem label="Package duration" value={`${input.packageDurationMonths} month${input.packageDurationMonths === "1" ? "" : "s"}`} /> : null}<ReviewItem label="Location" value={location} /><ReviewItem label="Days per week" value={`${input.daysPerWeek} day${input.daysPerWeek === "1" ? "" : "s"}`} /><ReviewItem label="Preferred Tutor gender" value={formatPreferredGender(input.preferredGender)} /><ReviewItem label="Budget" value={formatBudget(input)} />{notes ? <ReviewItem label="Additional notes" value={notes} /> : null}</dl></section></div><p className="rounded-xl border border-[#ead8a8] bg-[#fffbf0] px-4 py-3 text-sm leading-6 text-[#6f5b2a]">After you send this request, a coordinator will review it and will confirm any change with you before a job is published. Contact details and exact addresses stay private.</p></div>;
 }
 
 export function SuccessState({ requestId }: { requestId: number | null }) {
@@ -945,8 +1076,8 @@ export function SuccessState({ requestId }: { requestId: number | null }) {
 }
 
 function Eyebrow({ step, title, copy }: { step: string; title: string; copy: string }) { return <div className="border-b border-[#e6eef4] pb-4"><p className="text-[11px] font-extrabold uppercase tracking-[.16em] text-j-accent">{step}</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.02em] text-j-ink">{title}</h2><p className="mt-1.5 text-[13px] leading-6 text-[#617e96]">{copy}</p></div>; }
-function InputField({ label, value, onChange, type = "text", autoComplete, helper, optional, maxLength, inputMode }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; helper?: string; optional?: boolean; maxLength?: number; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft">{label} {!optional ? <span className="text-[#d74545]">*</span> : null}{helper ? <span className="ml-1 text-xs font-normal text-[#71889b]">{helper}</span> : null}<input className={`${filledField} mt-2`}type={type} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
-function SelectField({ label, value, onChange, options, placeholder, formatOption, helper, optional }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; helper?: string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {!optional ? <span className="text-[#d74545]">*</span> : null}{helper ? <span className="ml-1 text-xs font-normal text-[#71889b]">{helper}</span> : null}<select className={`${filledField} mt-2`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></label>; }
+function InputField({ label, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<input className={`${filledField} mt-2`}type={type} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
+function SelectField({ label, value, onChange, options, placeholder, formatOption, optional }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<select className={`${filledField} mt-2`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></label>; }
 function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }

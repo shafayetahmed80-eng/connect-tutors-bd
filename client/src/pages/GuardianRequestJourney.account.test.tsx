@@ -10,6 +10,7 @@ afterEach(() => cleanup());
 const accountStageProps = {
   name: "",
   email: "",
+  phone: "01712345678",
   gender: "female" as const,
   password: "",
   confirmPassword: "",
@@ -48,28 +49,37 @@ function PasswordMatchHarness() {
 const requestStageProps = {
   step: 3 as const,
   requestInput: { category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5", selectedSubjects: ["English", "Mathematics"], tuitionType: "home" as const, groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "" as const, addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", preferredGender: "female" as const, budgetKind: "range" as const, budgetMinimum: "5000", budgetMaximum: "7000" },
-  studentName: "Amina",
   notes: "Weekday afternoons preferred.",
   cities: [{ id: "dhaka", label: "Dhaka" }],
   tuitionLocations: [{ id: "mirpur-10", label: "Mirpur 10" }],
   tuitionCityLabel: "Dhaka",
   tuitionLocationLabel: "Mirpur 10",
   pending: false,
-  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentName: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetBudgetKind: vi.fn(), onSetBudgetMinimum: vi.fn(), onSetBudgetMaximum: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
+  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetBudgetKind: vi.fn(), onSetBudgetMinimum: vi.fn(), onSetBudgetMaximum: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
 };
 
 describe("Guardian private-account presentation", () => {
   it("uses the Tutor-style account controls, recovery actions, and accessible password affordance", () => {
     render(<AccountStage {...accountStageProps} />);
 
-    expect(screen.getByText("Step 2 of 3")).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Create your private Guardian account" })).not.toBeNull();
+    expect(screen.queryByText("Step 2 of 3")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Create your Guardian account" })).not.toBeNull();
+    const phoneField = screen.getByDisplayValue("1712345678") as HTMLInputElement;
+    expect(phoneField.readOnly).toBe(true);
     expect((screen.getByRole("radio", { name: "Female" }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole("radio", { name: "Male" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Show password" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
     expect(screen.getByRole("link", { name: "Sign in with email or mobile" }).getAttribute("href")).toBe("/auth?role=guardian");
     expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
+  });
+
+  it("surfaces per-field server-side account errors inline like the Tutor panel", () => {
+    render(<AccountStage {...accountStageProps} fieldErrors={{ email: "Enter a valid email address.", terms: "Accept the Terms of Use and Privacy Policy to create your account." }} />);
+
+    expect(screen.getByText("Enter a valid email address.")).not.toBeNull();
+    expect(screen.getByText("Accept the Terms of Use and Privacy Policy to create your account.")).not.toBeNull();
+    expect((screen.getByLabelText(/Email/) as HTMLInputElement).getAttribute("aria-invalid")).toBe("true");
   });
 
   it("provides real-time, accessible password-strength guidance without changing the password field", () => {
@@ -139,7 +149,7 @@ describe("Guardian private-account presentation", () => {
 
   it("offers a keyboard-reachable location edit action that clears only the selected area", async () => {
     const onSetTuitionLocation = vi.fn();
-    render(<RequestStage step={2} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", budgetKind: "discuss", budgetMinimum: "", budgetMaximum: "" }} studentName="" notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentName={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetBudgetKind={vi.fn()} onSetBudgetMinimum={vi.fn()} onSetBudgetMaximum={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
+    render(<RequestStage step={2} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", budgetKind: "discuss", budgetMinimum: "", budgetMaximum: "" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetBudgetKind={vi.fn()} onSetBudgetMinimum={vi.fn()} onSetBudgetMaximum={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
     const editButton = screen.getByRole("button", { name: "Change selected location" });
     expect(editButton.className).toContain("min-h-11");
@@ -198,19 +208,17 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByText("6 months")).not.toBeNull();
   });
 
-  it("offers optional Student Gender and private Address Details directly after Student first name", () => {
+  it("offers optional Student Gender directly before the private Address Details field, with no Student name input", () => {
     const onSetStudentGender = vi.fn();
     const onSetAddressDetails = vi.fn();
     render(<RequestStage {...requestStageProps} step={1} onSetStudentGender={onSetStudentGender} onSetAddressDetails={onSetAddressDetails} />);
 
-    const studentName = screen.getByRole("textbox", { name: /Student first name/ });
+    expect(screen.queryByRole("textbox", { name: /Student first name/ })).toBeNull();
     const studentGender = screen.getByRole("combobox", { name: /Student gender/ }) as HTMLSelectElement;
     const addressDetails = screen.getByRole("textbox", { name: /Address Details/ });
     expect(Array.from(studentGender.options).map(option => option.value)).toEqual(["", "female", "male"]);
     expect(studentGender.value).toBe("");
-    expect(studentName.compareDocumentPosition(studentGender) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(studentGender.compareDocumentPosition(addressDetails) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText(/formally assigned Tutor only/)).not.toBeNull();
     fireEvent.change(studentGender, { target: { value: "male" } });
     fireEvent.change(addressDetails, { target: { value: "Use the west entrance" } });
     expect(onSetStudentGender).toHaveBeenCalledWith("male");

@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
-import { appRouter } from "./routers";
+import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
 
@@ -9,6 +9,7 @@ const user = {
   id: 44,
   openId: "password:tutor:tutor@example.com",
   email: "tutor@example.com",
+  loginPhone: null,
   name: "Test Tutor",
   passwordHash: null,
   loginMethod: "password",
@@ -23,6 +24,7 @@ const adminUser = {
   id: 46,
   openId: "password:admin:admin",
   email: null,
+  loginPhone: null,
   name: "Project Owner",
   passwordHash: null,
   loginMethod: "password",
@@ -46,6 +48,11 @@ function createContext(
   };
 }
 
+beforeEach(() => {
+  __resetAuthRateLimitsForTests();
+  vi.spyOn(console, "info").mockImplementation(() => {}); // silence [auth-audit] lines
+  vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 0 }); // keep the durable audit write off the real DB
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe("Password account identifier normalization", () => {
@@ -100,17 +107,19 @@ describe("Tutor password authentication", () => {
     await expect(db.verifyPassword("wrong-pass", encoded)).resolves.toBe(false);
   });
 
-  it("logs in a Tutor and sets the shared app session cookie", async () => {
+  it("logs a Tutor in through the unified account endpoint and issues a portal proof", async () => {
     const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
-    vi.spyOn(db, "verifyTutorPassword").mockResolvedValue(user);
+    const verifyPasswordAccount = vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user });
     vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
     vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-password-session");
 
-    const result = await appRouter.createCaller(createContext(cookies)).auth.loginTutor({
-      email: "Tutor@Example.com",
+    const result = await appRouter.createCaller(createContext(cookies)).auth.loginAccount({
+      role: "tutor",
+      identifier: "01712345678",
       password: "strong-pass-123",
     });
 
+    expect(verifyPasswordAccount).toHaveBeenCalledWith({ role: "tutor", identifier: "01712345678", password: "strong-pass-123" });
     expect(result.success).toBe(true);
     expect(result.user).not.toHaveProperty("email");
     expect(result.user).not.toHaveProperty("loginPhone");
@@ -121,14 +130,59 @@ describe("Tutor password authentication", () => {
     expect(cookies[0]?.options).not.toHaveProperty("maxAge");
   });
 
+  it("persists a durable auth_events row with a masked identifier on a successful sign-in", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user });
+    vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-password-session");
+    const recordAuthEvent = vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 1 });
+
+    await appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
+      password: "strong-pass-123",
+    });
+
+    expect(recordAuthEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "login_success", role: "tutor", identifierMasked: "tu***@example.com" }),
+    );
+  });
+
+  it("keeps a sign-in succeeding even when the durable auth_events write fails", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user });
+    vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-password-session");
+    vi.spyOn(db, "recordAuthEvent").mockRejectedValue(new Error("db unavailable"));
+
+    const result = await appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
+      password: "strong-pass-123",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects invalid Tutor credentials without creating a session", async () => {
     const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
-    vi.spyOn(db, "verifyTutorPassword").mockResolvedValue(undefined);
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "invalid-credentials" });
 
-    await expect(appRouter.createCaller(createContext(cookies)).auth.loginTutor({
-      email: "tutor@example.com",
+    await expect(appRouter.createCaller(createContext(cookies)).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
       password: "wrong-pass",
     })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(cookies).toHaveLength(0);
+  });
+
+  it("tells a Tutor with the correct password that a suspended account is suspended, not wrong", async () => {
+    const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "suspended" });
+
+    await expect(appRouter.createCaller(createContext(cookies)).auth.loginAccount({
+      role: "tutor",
+      identifier: "tutor@example.com",
+      password: "correct-pass",
+    })).rejects.toMatchObject({ code: "FORBIDDEN", message: /suspended/i });
     expect(cookies).toHaveLength(0);
   });
 
@@ -175,16 +229,75 @@ describe("Tutor password authentication", () => {
     expect(result.tutorPortalToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(cookies[0]?.name).toBe(COOKIE_NAME);
   });
+
+  const sampleRegistrationInput = {
+    name: "Test Tutor",
+    email: "tutor@example.com",
+    password: "strong-pass-123",
+    confirmPassword: "strong-pass-123",
+    phone: "+8801712345678",
+    gender: "male",
+    cityId: "dhaka-city",
+    locationId: "uttara-sector-7",
+  } as const;
+
+  it("reports an invalid City/location combination as a fixable BAD_REQUEST, not a 500", async () => {
+    const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+    vi.spyOn(db, "registerPasswordTutor").mockResolvedValue({ created: false, reason: "invalid-location" });
+
+    await expect(appRouter.createCaller(createContext(cookies)).auth.registerTutor(sampleRegistrationInput)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: /City/i,
+    });
+    expect(cookies).toHaveLength(0);
+  });
+
+  it("names the mobile number, not the email, when the number is already taken", async () => {
+    const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+    vi.spyOn(db, "registerPasswordTutor").mockResolvedValue({ created: false, reason: "phone" });
+
+    await expect(appRouter.createCaller(createContext(cookies)).auth.registerTutor(sampleRegistrationInput)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: /mobile number/i,
+    });
+    expect(cookies).toHaveLength(0);
+  });
+
+  it("keeps the email conflict message when the email is already registered", async () => {
+    const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+    vi.spyOn(db, "registerPasswordTutor").mockResolvedValue({ created: false, reason: "email" });
+
+    await expect(appRouter.createCaller(createContext(cookies)).auth.registerTutor(sampleRegistrationInput)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: /email already exists/i,
+    });
+    expect(cookies).toHaveLength(0);
+  });
+
+  it("tells the person to use a different email when it belongs to a non-Tutor account", async () => {
+    vi.spyOn(db, "registerPasswordTutor").mockResolvedValue({ created: false, reason: "email-other-role" });
+
+    await expect(appRouter.createCaller(createContext([])).auth.registerTutor(sampleRegistrationInput)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: /use another email to register as a tutor/i,
+    });
+  });
+
+  it("rejects a registration that fails the shared input schema before the resolver runs", async () => {
+    const registerPasswordTutor = vi.spyOn(db, "registerPasswordTutor");
+
+    await expect(
+      appRouter.createCaller(createContext([])).auth.registerTutor({ ...sampleRegistrationInput, name: "A" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(registerPasswordTutor).not.toHaveBeenCalled();
+  });
 });
 
 describe("Guardian and Tutor account authentication", () => {
   it("accepts a Bangladesh mobile identifier only for the selected Guardian role", async () => {
     const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
     const guardian = { ...user, id: 45, email: "guardian@example.com", role: "guardian" as const };
-    const accountDb = db as typeof db & {
-      verifyPasswordAccount: (input: { identifier: string; password: string; role: "guardian" | "tutor" }) => Promise<typeof guardian | undefined>;
-    };
-    const verifyPasswordAccount = vi.spyOn(accountDb, "verifyPasswordAccount").mockResolvedValue(guardian);
+    const verifyPasswordAccount = vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "ok", user: guardian });
     vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-guardian-session");
 
     const result = await appRouter.createCaller(createContext(cookies)).auth.loginAccount({
@@ -207,10 +320,7 @@ describe("Guardian and Tutor account authentication", () => {
 
   it("returns the same generic failure for invalid credentials or a role mismatch", async () => {
     const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
-    const accountDb = db as typeof db & {
-      verifyPasswordAccount: (input: { identifier: string; password: string; role: "guardian" | "tutor" }) => Promise<typeof user | undefined>;
-    };
-    vi.spyOn(accountDb, "verifyPasswordAccount").mockResolvedValue(undefined);
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "invalid-credentials" });
 
     await expect(appRouter.createCaller(createContext(cookies)).auth.loginAccount({
       role: "tutor",
@@ -221,6 +331,44 @@ describe("Guardian and Tutor account authentication", () => {
       message: "Email/mobile number or password is not correct.",
     });
     expect(cookies).toHaveLength(0);
+  });
+
+  it("locks out repeated failed sign-ins from one connection with TOO_MANY_REQUESTS", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "invalid-credentials" });
+    const attempt = () => appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "victim@example.com",
+      password: "guess",
+    });
+
+    for (let i = 0; i < 8; i += 1) {
+      await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    await expect(attempt()).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+  });
+
+  it("clears the failed-attempt counter after a successful sign-in", async () => {
+    const verify = vi.spyOn(db, "verifyPasswordAccount");
+    vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-session");
+    const attempt = () => appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "tutor",
+      identifier: "comeback@example.com",
+      password: "x",
+    });
+
+    verify.mockResolvedValue({ status: "invalid-credentials" });
+    for (let i = 0; i < 7; i += 1) {
+      await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
+
+    verify.mockResolvedValue({ status: "ok", user });
+    await expect(attempt()).resolves.toMatchObject({ success: true });
+
+    verify.mockResolvedValue({ status: "invalid-credentials" });
+    for (let i = 0; i < 7; i += 1) {
+      await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
   });
 });
 

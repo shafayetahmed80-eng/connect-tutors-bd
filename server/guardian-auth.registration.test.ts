@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 const guardianAuthDbMocks = vi.hoisted(() => ({
@@ -14,6 +14,7 @@ vi.mock("./db", async importOriginal => {
     registerGuardianFromIntake: guardianAuthDbMocks.registerGuardianFromIntake,
     getGuardianProfileByUserId: guardianAuthDbMocks.getGuardianProfileByUserId,
     verifyGuardianPassword: guardianAuthDbMocks.verifyGuardianPassword,
+    recordAuthEvent: vi.fn(async () => ({ id: 0 })),
   };
 });
 
@@ -22,7 +23,7 @@ import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff } from "./guardian-intake-handoff";
 import { GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
-import { appRouter } from "./routers";
+import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 
 type CookieCall = { name: string; value: string; options: Record<string, unknown> };
 type ClearCookieCall = { name: string; options: Record<string, unknown> };
@@ -80,6 +81,7 @@ function createValidHandoffCookie() {
   }).cookieValue;
 }
 
+beforeEach(() => __resetAuthRateLimitsForTests());
 afterEach(() => vi.restoreAllMocks());
 
 describe("guardianAuth.register", () => {

@@ -9,10 +9,11 @@ vi.mock("./db", async importOriginal => {
   return {
     ...actual,
     createOrResumeGuardianPhoneIntake: guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake,
+    recordAuthEvent: vi.fn(async () => ({ id: 0 })),
   };
 });
 
-import { appRouter } from "./routers";
+import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 
 type CookieCall = {
   name: string;
@@ -39,6 +40,7 @@ function createPublicCaller() {
 describe("guardianIntake.capturePhone", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetAuthRateLimitsForTests();
     guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake.mockResolvedValue({ id: 41 });
   });
 

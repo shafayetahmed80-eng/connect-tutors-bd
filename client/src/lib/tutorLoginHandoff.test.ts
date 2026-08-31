@@ -27,6 +27,23 @@ describe("Tutor login hand-off", () => {
     ]);
   });
 
+  it("navigates to a caller-supplied destination when one is given", async () => {
+    const navigate = vi.fn();
+
+    await completeTutorLoginHandoff({
+      tutorPortalToken: "new-tab-proof",
+      storeTutorPortalToken: vi.fn(),
+      markPortalLoginHandoff: vi.fn(),
+      clearTutorPortalToken: vi.fn(),
+      clearPortalLoginHandoff: vi.fn(),
+      fetchAuthenticatedUser: async () => ({ id: 44, name: "Test Tutor", role: "tutor", accountStatus: "active" }),
+      navigate,
+      destination: "/tutor/dashboard/jobs",
+    });
+
+    expect(navigate).toHaveBeenCalledWith("/tutor/dashboard/jobs");
+  });
+
   it("does not navigate when the freshly fetched identity is not a Tutor", async () => {
     const navigate = vi.fn();
     const clearTutorPortalToken = vi.fn();

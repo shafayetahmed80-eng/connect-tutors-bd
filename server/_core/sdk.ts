@@ -311,14 +311,19 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt,
-    });
+    // `lastSignedIn` is a coarse "last seen" marker, not a per-request counter.
+    // Refresh it at most once an hour so an authenticated session does not write
+    // to `users` on every tRPC call (auth.me polling, the 20s portal renew, …).
+    const lastSignedInAt = user.lastSignedIn ? new Date(user.lastSignedIn).getTime() : 0;
+    if (signedInAt.getTime() - lastSignedInAt > LAST_SIGNED_IN_REFRESH_MS) {
+      await db.upsertUser({ openId: user.openId, lastSignedIn: signedInAt });
+    }
 
     return user;
   }
 }
+
+const LAST_SIGNED_IN_REFRESH_MS = 60 * 60_000;
 
 const CRON_OPEN_ID_PREFIX = "cron_";
 

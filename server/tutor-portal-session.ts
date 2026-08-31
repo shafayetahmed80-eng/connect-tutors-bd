@@ -1,7 +1,15 @@
 import { createHash, randomBytes } from "node:crypto";
 
 export const TUTOR_PORTAL_SESSION_HEADER = "x-connect-tutor-portal-session";
-export const TUTOR_PORTAL_SESSION_TTL_MS = 60_000;
+/**
+ * How long one Tutor Dashboard tab's proof stays valid without a renewing
+ * request. The client renews every 20s while the tab is focused, but browsers
+ * throttle (and eventually freeze) background timers, and a short laptop sleep
+ * pauses them entirely. A 10-minute window lets a briefly-backgrounded tab
+ * recover instead of bouncing the Tutor to sign-in mid-session, while still
+ * keeping a leaked session cookie useless without a live tab hand-off.
+ */
+export const TUTOR_PORTAL_SESSION_TTL_MS = 10 * 60_000;
 
 type HeaderValue = string | string[] | undefined;
 

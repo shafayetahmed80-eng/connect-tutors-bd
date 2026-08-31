@@ -45,4 +45,45 @@ describe("buildCombinedCityLocationOptions", () => {
       { id: "bay-terminal", label: "Bay Terminal", type: "area", parentId: "ctg-city" },
     ]);
   });
+
+  it("keeps a single entry when two direct locations resolve to the same visible label", () => {
+    const rows = [
+      { id: "dhaka-city", label: "Dhaka City", type: "city", parentId: null },
+      { id: "adabor-thana", label: "Adabor", type: "thana", parentId: "dhaka-city" },
+      { id: "adabor-upazila", label: "Adabor", type: "upazila", parentId: "dhaka-city" },
+      { id: "adabor-subdiv", label: "Adabor", type: "subdivision", parentId: "dhaka-city" },
+    ] as const;
+
+    expect(buildCombinedCityLocationOptions("dhaka-city", rows)).toEqual([
+      { id: "adabor-thana", label: "Adabor", type: "thana", parentId: "dhaka-city" },
+    ]);
+  });
+
+  it("folds a child that carries its own parent's name into the parent instead of showing 'Name — Name'", () => {
+    const rows = [
+      { id: "dhaka-city", label: "Dhaka City", type: "city", parentId: null },
+      { id: "adabor-thana", label: "Adabor", type: "thana", parentId: "dhaka-city" },
+      { id: "adabor-area", label: "Adabor", type: "area", parentId: "adabor-thana" },
+    ] as const;
+
+    expect(buildCombinedCityLocationOptions("dhaka-city", rows)).toEqual([
+      { id: "adabor-thana", label: "Adabor", type: "thana", parentId: "dhaka-city" },
+    ]);
+  });
+
+  it("collapses a genuine duplicate seed row and never emits a repeated id or label", () => {
+    const rows = [
+      { id: "dhaka-city", label: "Dhaka City", type: "city", parentId: null },
+      { id: "mohammadpur", label: "Mohammadpur", type: "thana", parentId: "dhaka-city" },
+      { id: "mohammadpur", label: "Mohammadpur", type: "thana", parentId: "dhaka-city" },
+      { id: "mohammadpur-dup", label: "Mohammadpur", type: "thana", parentId: "dhaka-city" },
+    ] as const;
+
+    const options = buildCombinedCityLocationOptions("dhaka-city", rows);
+    expect(options).toEqual([
+      { id: "mohammadpur", label: "Mohammadpur", type: "thana", parentId: "dhaka-city" },
+    ]);
+    expect(new Set(options.map(option => option.id)).size).toBe(options.length);
+    expect(new Set(options.map(option => option.label.toLocaleLowerCase())).size).toBe(options.length);
+  });
 });

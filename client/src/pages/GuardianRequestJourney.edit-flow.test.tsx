@@ -75,7 +75,7 @@ describe("GuardianRequestJourney Pending edit flow", () => {
     await waitFor(() => expect(screen.getByText("Tell us about the learning needs")).toBeTruthy());
     expect((screen.getByDisplayValue("English Medium") as HTMLSelectElement).value).toBe("English Medium");
     expect((screen.getByDisplayValue("Standard 1") as HTMLSelectElement).value).toBe("Standard 1");
-    expect((screen.getByDisplayValue("Amina") as HTMLInputElement).value).toBe("Amina");
+    expect(screen.queryByRole("textbox", { name: /Student first name/ })).toBeNull();
     expect((screen.getByDisplayValue("Private access note") as HTMLTextAreaElement).value).toBe("Private access note");
 
     fireEvent.click(screen.getByRole("button", { name: "Continue to tuition preferences" }));
@@ -89,7 +89,6 @@ describe("GuardianRequestJourney Pending edit flow", () => {
       curriculumType: "Cambridge",
       classCourse: "Standard 1",
       subjects: ["English"],
-      studentFirstName: "Amina",
       studentGender: "female",
       addressDetails: "Private access note",
       notes: "Weekday afternoons",

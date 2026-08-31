@@ -14,17 +14,41 @@ function getValidationIssuesFromCause(cause: unknown) {
   return Array.isArray(candidate.issues) ? candidate.issues : [];
 }
 
+/**
+ * Flattens a failed Zod input parse into `{ field: [messages] }` so a client can
+ * point the user at the exact field the server rejected, instead of falling back
+ * to a generic "something was wrong" message when its own checks were looser.
+ */
+export function getZodFieldErrorsFromCause(cause: unknown): Record<string, string[]> | undefined {
+  const issues = getValidationIssuesFromCause(cause);
+  if (!issues.length) return undefined;
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of issues) {
+    if (!issue || typeof issue !== "object") continue;
+    const { path, message } = issue as { path?: unknown; message?: unknown };
+    if (typeof message !== "string") continue;
+    const field = Array.isArray(path) && typeof path[0] === "string" ? path[0] : "_form";
+    (fieldErrors[field] ??= []).push(message);
+  }
+  return Object.keys(fieldErrors).length ? fieldErrors : undefined;
+}
+
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error, path }) {
-    if (!path || !tutorProfileValidationPaths.has(path)) return shape;
-    const tutorProfileFieldIssues = getSafeTutorProfileFieldIssues(getValidationIssuesFromCause(error.cause));
-    if (tutorProfileFieldIssues.length === 0) return shape;
+    const zodFieldErrors = error.code === "BAD_REQUEST" ? getZodFieldErrorsFromCause(error.cause) : undefined;
+    const tutorProfileFieldIssues = path && tutorProfileValidationPaths.has(path)
+      ? getSafeTutorProfileFieldIssues(getValidationIssuesFromCause(error.cause))
+      : [];
+
+    if (!zodFieldErrors && tutorProfileFieldIssues.length === 0) return shape;
+
     return {
       ...shape,
       data: {
         ...shape.data,
-        tutorProfileFieldIssues,
+        ...(zodFieldErrors ? { zodFieldErrors } : {}),
+        ...(tutorProfileFieldIssues.length ? { tutorProfileFieldIssues } : {}),
       },
     };
   },
