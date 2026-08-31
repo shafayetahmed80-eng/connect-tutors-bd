@@ -33,9 +33,12 @@ describe("public conversion journey navigation", () => {
 });
 
 describe("public marketing account navigation", () => {
-  it("keeps signed-in roles on one neutral Account recovery link without exposing role labels or logout controls", () => {
+  it("sends a signed-in visitor straight to their workspace under a neutral label, and everyone else to sign-in", () => {
     expect(getPublicAccountNavigation(null)).toEqual({ href: "/login", label: "Sign in" });
-    expect(getPublicAccountNavigation({ role: "admin" })).toEqual({ href: "/account", label: "Account" });
-    expect(getPublicAccountNavigation({ role: "tutor" })).toEqual({ href: "/account", label: "Account" });
+    expect(getPublicAccountNavigation({ role: "tutor" })).toEqual({ href: "/tutor/dashboard/jobs", label: "Account" });
+    expect(getPublicAccountNavigation({ role: "admin" })).toEqual({ href: "/admin/matching", label: "Account" });
+    expect(getPublicAccountNavigation({ role: "guardian" })).toEqual({ href: "/guardian/dashboard/posted-jobs", label: "Account" });
+    expect(getPublicAccountNavigation({ role: "user" })).toEqual({ href: "/guardian/dashboard/posted-jobs", label: "Account" });
+    expect(getPublicAccountNavigation({ role: "moderator" })).toEqual({ href: "/account", label: "Account" });
   });
 });

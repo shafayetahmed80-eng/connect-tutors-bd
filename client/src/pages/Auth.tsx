@@ -23,7 +23,7 @@ type AuthMode = "login" | "register";
 
 export function getPostLoginPath(role: string, returnTo?: string | null, tutorProfileStatus?: string | null): string {
   if (role === "tutor") return getTutorApplyPostLoginPath(tutorProfileStatus, returnTo);
-  return role === "guardian" || role === "user" ? "/guardian/dashboard/posted-jobs" : "/account";
+  return role === "guardian" || role === "user" ? "/guardian/dashboard/posted-jobs" : "/";
 }
 
 function getTutorApplyReturnFromLocation(location: string) {
