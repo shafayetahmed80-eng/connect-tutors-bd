@@ -16,6 +16,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    // The heavier jsdom component tests (full Tutor Profile workspace render with
+    // many mocked queries + several userEvent steps) run close to the 5s default
+    // and tip over under load; give every test more headroom. A genuinely broken
+    // test still fails fast with an assertion error, not a timeout.
+    testTimeout: 20000,
+    hookTimeout: 20000,
     // Deterministic secrets so crypto-dependent server tests (guardian intake
     // handoff signing, admin invite/2FA key material) run without a sourced .env.
     env: {

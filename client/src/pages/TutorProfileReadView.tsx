@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { Check, ChevronDown, GraduationCap, MapPinned, MessageSquareText, PencilLine, User, Users } from "lucide-react";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
+import { getTutorProfileSectionGroups, type TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
 type TutorProfileReadViewProps = {
   sections: TutorProfileReadoutSection[];
-  onEditSection: (sectionId: TutorProfileSectionId) => void;
+  onEditSection: (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => void;
 };
 
 const SECTION_ICON: Record<TutorProfileSectionId, typeof User> = {
@@ -38,7 +39,9 @@ function sectionPreview(section: TutorProfileReadoutSection): string {
 /**
  * Read-only overview. One collapsible card per section (Identity open by
  * default); each card header carries a filled/required chip and a pencil that
- * opens the section's popup editor. Empty required values read "Not given" in
+ * opens the section's popup editor. A section that is split into sub-groups
+ * (only "Education and teaching expertise") shows a pencil per group heading
+ * instead of one on the card header. Empty required values read "Not given" in
  * red, empty optional values read "—".
  */
 export function TutorProfileReadView({ sections, onEditSection }: TutorProfileReadViewProps) {
@@ -57,6 +60,7 @@ export function TutorProfileReadView({ sections, onEditSection }: TutorProfileRe
       const { filled, total, complete } = sectionProgress(section);
       const Icon = SECTION_ICON[section.id];
       const preview = sectionPreview(section);
+      const groupTargets = getTutorProfileSectionGroups(section.id);
       return <section
         key={section.id}
         aria-labelledby={`readout-${section.id}`}
@@ -82,21 +86,34 @@ export function TutorProfileReadView({ sections, onEditSection }: TutorProfileRe
             </span>
             <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
           </button>
-          <button
+          {groupTargets ? null : <button
             type="button"
             aria-label={`Edit ${section.title}`}
             onClick={() => onEditSection(section.id)}
             className={`shrink-0 ${tp.ghostIconButton}`}
           >
             <PencilLine size={16} />
-          </button>
+          </button>}
         </div>
 
         {isOpen ? <div className="space-y-4 border-t border-j-border px-4 py-4 sm:px-5">
-          {section.groups.map((group, groupIndex) => <div key={groupIndex}>
-            {group.heading ? <p className={`mb-2 ${tp.eyebrow}`}>{group.heading}</p> : null}
-            <TutorProfileReadoutRows rows={group.rows} />
-          </div>)}
+          {section.groups.map((group, groupIndex) => {
+            const groupTarget = groupTargets?.[groupIndex];
+            return <div key={groupIndex}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                {group.heading ? <p className={tp.eyebrow}>{group.heading}</p> : <span />}
+                {groupTarget ? <button
+                  type="button"
+                  aria-label={`Edit ${groupTarget.label}`}
+                  onClick={() => onEditSection(section.id, groupTarget.id)}
+                  className={`shrink-0 ${tp.ghostIconButton}`}
+                >
+                  <PencilLine size={15} />
+                </button> : null}
+              </div>
+              <TutorProfileReadoutRows rows={group.rows} />
+            </div>;
+          })}
         </div> : null}
       </section>;
     })}

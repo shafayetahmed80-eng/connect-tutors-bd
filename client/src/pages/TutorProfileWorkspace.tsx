@@ -2,7 +2,7 @@ import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } fr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileSystemInfo } from "@/components/TutorProfileSystemInfo";
@@ -16,7 +16,7 @@ import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
-import { createTutorProfileSectionDraftPayload, tutorProfileSectionDefinitions, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
+import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileReadView } from "./TutorProfileReadView";
@@ -32,6 +32,15 @@ const sectionTitles: Record<TutorProfileSectionId, string> = {
   d: "Tuition, location and communication",
   e: "Introduction and review",
 };
+
+const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
+  "c-education": "Education",
+  "c-teaching": "Teaching expertise",
+};
+
+function editTargetTitle(target: TutorProfileEditTarget): string {
+  return editTargetTitles[target as TutorProfileSectionGroupId] ?? sectionTitles[target as TutorProfileSectionId];
+}
 
 type CatalogOption = { id: number | string; name: string };
 
@@ -263,8 +272,35 @@ export function TutorProfileWorkspace({
   const updateEducationRecord = (index: number, key: keyof TeachingProfileState["educationRecords"][number], value: string | boolean) => {
     setForm(current => ({ ...current, educationRecords: current.educationRecords.map((record, recordIndex) => recordIndex === index ? { ...record, [key]: value } : record) }));
   };
-  const addEducationRecord = () => setForm(current => ({ ...current, educationRecords: [...current.educationRecords, { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }));
-  const removeEducationRecord = (index: number) => setForm(current => ({ ...current, educationRecords: current.educationRecords.length === 1 ? current.educationRecords : current.educationRecords.filter((_, recordIndex) => recordIndex !== index) }));
+  // Which Qualification history cards are expanded. Filled records collapse to a
+  // one-line summary so a tutor with several qualifications keeps a short form.
+  const [openQualificationIndices, setOpenQualificationIndices] = useState<Set<number>>(() => new Set([0]));
+  const toggleQualification = (index: number) => setOpenQualificationIndices(current => {
+    const next = new Set(current);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    return next;
+  });
+  const addEducationRecord = () => {
+    const newIndex = form.educationRecords.length;
+    setForm(current => ({ ...current, educationRecords: [...current.educationRecords, { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }));
+    setOpenQualificationIndices(current => {
+      const next = new Set(current);
+      next.add(newIndex);
+      return next;
+    });
+  };
+  const removeEducationRecord = (index: number) => {
+    setForm(current => ({ ...current, educationRecords: current.educationRecords.length === 1 ? current.educationRecords : current.educationRecords.filter((_, recordIndex) => recordIndex !== index) }));
+    setOpenQualificationIndices(current => {
+      const next = new Set<number>();
+      current.forEach(openIndex => {
+        if (openIndex < index) next.add(openIndex);
+        else if (openIndex > index) next.add(openIndex - 1);
+      });
+      return next;
+    });
+  };
   const updateUniversity = (id: string) => {
     const reset = resetAcademicSelection("university", form, id);
     setForm(current => ({ ...current, ...reset }));
@@ -287,6 +323,28 @@ export function TutorProfileWorkspace({
   const [viewMode, setViewMode] = useState<"read" | "edit">("read");
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
+  // When set, the section popup shows only this sub-group (Section C is split so
+  // its editor opens Education or Teaching expertise, not the whole thing).
+  const [editingGroupId, setEditingGroupId] = useState<TutorProfileSectionGroupId | null>(null);
+
+  // When the Education editor opens, expand only the qualifications that still
+  // need work (and always at least the first), so gaps and errors stay visible
+  // while completed entries stay collapsed.
+  useEffect(() => {
+    if (editingSection !== "c") return;
+    const isComplete = (record: TeachingProfileState["educationRecords"][number]) =>
+      Boolean(record.qualificationLevel && record.instituteName && record.degreeExamTitle && record.majorGroup && record.studyStartDate
+        && (record.currentlyStudying || (record.studyEndDate && record.passingYear)));
+    setOpenQualificationIndices(() => {
+      const next = new Set<number>();
+      form.educationRecords.forEach((record, index) => {
+        if (!isComplete(record)) next.add(index);
+      });
+      if (next.size === 0) next.add(0);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- snapshot on open only
+  }, [editingSection]);
 
   const readoutResolvers = useMemo<TutorProfileReadoutResolvers>(() => {
     // An id with no catalog match (page still loading, or the value sits past the
@@ -432,20 +490,21 @@ export function TutorProfileWorkspace({
         setViewMode("edit");
         formBeforeSectionEditRef.current = null;
         setEditingSection(null);
+        setEditingGroupId(null);
       } else {
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
     }
   };
 
-  const saveSectionDraft = async (sectionId: TutorProfileSectionId): Promise<boolean> => {
+  const saveSectionDraft = async (target: TutorProfileEditTarget): Promise<boolean> => {
     setFeedback(null);
     try {
-      await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(sectionId, form));
+      await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(target, form));
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: `${sectionTitles[sectionId]} saved. Continue with the next section when ready.` });
+      setFeedback({ type: "success", message: `${editTargetTitle(target)} saved. Continue with the next section when ready.` });
       return true;
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
@@ -467,9 +526,10 @@ export function TutorProfileWorkspace({
     setAcademicMessage("");
   };
 
-  const openSectionEditor = (sectionId: TutorProfileSectionId) => {
+  const openSectionEditor = (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => {
     formBeforeSectionEditRef.current = form;
     setFeedback(null);
+    setEditingGroupId(groupId ?? null);
     setEditingSection(sectionId);
   };
 
@@ -478,6 +538,7 @@ export function TutorProfileWorkspace({
     if (formBeforeSectionEditRef.current) setForm(formBeforeSectionEditRef.current);
     formBeforeSectionEditRef.current = null;
     setEditingSection(null);
+    setEditingGroupId(null);
     setFeedback(null);
     resetSectionEditorSearch();
   };
@@ -486,12 +547,13 @@ export function TutorProfileWorkspace({
   const finishSectionEditor = () => {
     formBeforeSectionEditRef.current = null;
     setEditingSection(null);
+    setEditingGroupId(null);
     resetSectionEditorSearch();
   };
 
   const submitSectionModal = async () => {
     if (!editingSection) return;
-    const saved = await saveSectionDraft(editingSection);
+    const saved = await saveSectionDraft(editingGroupId ?? editingSection);
     if (saved) finishSectionEditor();
   };
 
@@ -659,6 +721,61 @@ export function TutorProfileWorkspace({
     }
   };
 
+  // Section C ("Education and teaching expertise") is split into two sub-groups
+  // so its popup can be opened one half at a time — see getTutorProfileSectionGroups.
+  const renderEducationFields = (): React.ReactNode => <>
+    <div className="grid gap-5 md:grid-cols-2">
+      <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
+      <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
+      <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={updateUniversity} required error={fieldErrors.universityId} />
+      <CatalogSearchField label="Related Faculty" query={facultyQuery} onQueryChange={setFacultyQuery} options={academicFaculties.data} selectedId={form.facultyId} onSelectedIdChange={updateFaculty} disabled={!form.universityId} required error={fieldErrors.facultyId} />
+      <CatalogSearchField label="Related Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} disabled={!form.facultyId} required error={fieldErrors.facultyDepartmentId} />
+      <FormInput label="Graduation Year" type="number" min="1950" max="2100" value={form.graduationYear} onChange={event => update("graduationYear", event.target.value)} />
+    </div>
+    {academicMessage ? <p role="status" aria-live="polite" className="mt-4 flex items-start gap-2 rounded-xl bg-[#eef9ff] px-3 py-2 text-xs leading-5 text-[#17668f]"><Info size={15} className="mt-0.5 shrink-0" />{academicMessage}</p> : null}
+    <div className="mt-5 space-y-4">
+      <div><h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3><p className="mt-1 text-xs leading-5 text-[#72889a]">Private review details. Add your current or most relevant qualification first.</p></div>
+      {form.educationRecords.map((record, index) => {
+        const isOpen = openQualificationIndices.has(index);
+        const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.passingYear].filter(Boolean).join(" · ");
+        return <div key={index} className="overflow-hidden rounded-2xl border border-j-border bg-j-surface-sunken">
+          <div className="flex items-center gap-2 p-3 sm:px-4">
+            <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
+              <span className="min-w-0 flex-1">
+                <span className={`block text-sm font-bold ${tp.heading}`}>Qualification {index + 1}</span>
+                {!isOpen && summary ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{summary}</span> : null}
+              </span>
+              <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
+            </button>
+            {form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button> : null}
+          </div>
+          {isOpen ? <div className="border-t border-j-border p-4"><div className="grid gap-5 md:grid-cols-2"><FormInput label="Qualification Level" required value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} placeholder="e.g. Bachelor’s" /><FormInput label="Institute Name" required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} /><FormInput label="Degree / Exam Title" required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} /><FormInput label="Subject / Group" required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} /><FormInput label="Study Start Date" required type="date" value={record.studyStartDate} onChange={event => updateEducationRecord(index, "studyStartDate", event.target.value)} /><FormInput label="Result / GPA (Optional)" value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} /><FormInput label="Curriculum (Optional)" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} /><label className="flex items-center gap-2 self-end rounded-xl border border-[#dce8f0] px-3 py-3 text-sm font-semibold text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>{!record.currentlyStudying ? <><FormInput label="Study End Date" required type="date" value={record.studyEndDate} onChange={event => updateEducationRecord(index, "studyEndDate", event.target.value)} /><FormInput label="Passing Year" required type="number" min="1950" max="2100" value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", event.target.value)} /></> : null}<FormInput label="Institute ID Card Number (Optional)" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} /></div></div> : null}
+        </div>;
+      })}
+      <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
+    </div>
+    <div className="mt-5 rounded-2xl border border-[#dce8f0] bg-[#f7fbfd] p-4">
+      <div className="flex items-start gap-3">
+        <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
+        <div className="min-w-0"><p className="text-sm font-bold text-[#244a6a]">University ID card <span aria-hidden="true" className="text-[#d84a4a]">*</span></p><p id="university-id-upload-help" className="mt-1 text-xs leading-5 text-[#72889a]">Private verification only. This image is never displayed to Guardians or on public Tutor profiles. JPEG, PNG, or WebP; up to 5 MB.</p></div>
+      </div>
+      <input ref={universityIdInputRef} id="tutor-university-id-document" className="sr-only" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload University ID card" aria-describedby="university-id-upload-help" aria-required="true" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadUniversityIdDocument(file); }} />
+      <div className="mt-3 flex flex-wrap items-center gap-3"><Button type="button" variant="outline" disabled={uploadingUniversityId} aria-busy={uploadingUniversityId} onClick={() => universityIdInputRef.current?.click()} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploadingUniversityId ? "Uploading…" : form.universityIdDocumentStatus === "uploaded" ? "Replace University ID image" : "Upload University ID image"}</Button>{form.universityIdDocumentStatus === "uploaded" ? <span className="rounded-full bg-[#e7f7ed] px-2.5 py-1 text-xs font-bold text-[#20734c]">Uploaded for private review</span> : <span className="rounded-full bg-[#fff1d5] px-2.5 py-1 text-xs font-bold text-[#926112]">Upload required before final review</span>}</div>
+    </div>
+  </>;
+
+  const renderTeachingExpertiseFields = (): React.ReactNode => <div className="grid gap-5 md:grid-cols-2">
+    <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
+    <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
+    <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
+    <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
+    <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
+    <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
+    <FormTextArea label="Prior Teaching Experience" value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." />
+    <FormTextArea label="Special Expertise" value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />
+    <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
+  </div>;
+
   // The editable fields for one section, rendered inside the per-section popup card.
   const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
     if (sectionId === "a") return <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
@@ -704,41 +821,7 @@ export function TutorProfileWorkspace({
       <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
     </div>;
 
-    if (sectionId === "c") return <>
-      <div className="grid gap-5 md:grid-cols-2">
-        <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
-        <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
-        <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={updateUniversity} required error={fieldErrors.universityId} />
-        <CatalogSearchField label="Related Faculty" query={facultyQuery} onQueryChange={setFacultyQuery} options={academicFaculties.data} selectedId={form.facultyId} onSelectedIdChange={updateFaculty} disabled={!form.universityId} required error={fieldErrors.facultyId} />
-        <CatalogSearchField label="Related Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} disabled={!form.facultyId} required error={fieldErrors.facultyDepartmentId} />
-        <FormInput label="Graduation Year" type="number" min="1950" max="2100" value={form.graduationYear} onChange={event => update("graduationYear", event.target.value)} />
-      </div>
-      {academicMessage ? <p role="status" aria-live="polite" className="mt-4 flex items-start gap-2 rounded-xl bg-[#eef9ff] px-3 py-2 text-xs leading-5 text-[#17668f]"><Info size={15} className="mt-0.5 shrink-0" />{academicMessage}</p> : null}
-      <div className="mt-5 space-y-4">
-        <div><h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3><p className="mt-1 text-xs leading-5 text-[#72889a]">Private review details. Add your current or most relevant qualification first.</p></div>
-        {form.educationRecords.map((record, index) => <div key={index} className="rounded-2xl border border-[#dce8f0] bg-[#fbfdff] p-4"><div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm font-bold text-[#244a6a]">Qualification {index + 1}</p>{form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button> : null}</div><div className="grid gap-5 md:grid-cols-2"><FormInput label="Qualification Level" required value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} placeholder="e.g. Bachelor’s" /><FormInput label="Institute Name" required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} /><FormInput label="Degree / Exam Title" required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} /><FormInput label="Subject / Group" required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} /><FormInput label="Study Start Date" required type="date" value={record.studyStartDate} onChange={event => updateEducationRecord(index, "studyStartDate", event.target.value)} /><FormInput label="Result / GPA (Optional)" value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} /><FormInput label="Curriculum (Optional)" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} /><label className="flex items-center gap-2 self-end rounded-xl border border-[#dce8f0] px-3 py-3 text-sm font-semibold text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>{!record.currentlyStudying ? <><FormInput label="Study End Date" required type="date" value={record.studyEndDate} onChange={event => updateEducationRecord(index, "studyEndDate", event.target.value)} /><FormInput label="Passing Year" required type="number" min="1950" max="2100" value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", event.target.value)} /></> : null}<FormInput label="Institute ID Card Number (Optional)" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} /></div></div>)}
-        <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
-      </div>
-      <div className="mt-5 rounded-2xl border border-[#dce8f0] bg-[#f7fbfd] p-4">
-        <div className="flex items-start gap-3">
-          <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
-          <div className="min-w-0"><p className="text-sm font-bold text-[#244a6a]">University ID card <span aria-hidden="true" className="text-[#d84a4a]">*</span></p><p id="university-id-upload-help" className="mt-1 text-xs leading-5 text-[#72889a]">Private verification only. This image is never displayed to Guardians or on public Tutor profiles. JPEG, PNG, or WebP; up to 5 MB.</p></div>
-        </div>
-        <input ref={universityIdInputRef} id="tutor-university-id-document" className="sr-only" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload University ID card" aria-describedby="university-id-upload-help" aria-required="true" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadUniversityIdDocument(file); }} />
-        <div className="mt-3 flex flex-wrap items-center gap-3"><Button type="button" variant="outline" disabled={uploadingUniversityId} aria-busy={uploadingUniversityId} onClick={() => universityIdInputRef.current?.click()} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploadingUniversityId ? "Uploading…" : form.universityIdDocumentStatus === "uploaded" ? "Replace University ID image" : "Upload University ID image"}</Button>{form.universityIdDocumentStatus === "uploaded" ? <span className="rounded-full bg-[#e7f7ed] px-2.5 py-1 text-xs font-bold text-[#20734c]">Uploaded for private review</span> : <span className="rounded-full bg-[#fff1d5] px-2.5 py-1 text-xs font-bold text-[#926112]">Upload required before final review</span>}</div>
-      </div>
-      <div className="mt-5 grid gap-5 md:grid-cols-2">
-        <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
-        <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
-        <FormTextArea label="Prior Teaching Experience" value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." />
-        <FormTextArea label="Special Expertise" value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />
-        <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
-      </div>
-    </>;
+    if (sectionId === "c") return <div className="space-y-5">{renderEducationFields()}{renderTeachingExpertiseFields()}</div>;
 
     if (sectionId === "d") return <>
       <div className="grid gap-5 lg:grid-cols-2">
@@ -794,12 +877,12 @@ export function TutorProfileWorkspace({
   return <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
     {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
     {editingSection ? <TutorProfileSectionModal
-      title={sectionTitles[editingSection]}
+      title={editTargetTitle(editingGroupId ?? editingSection)}
       submitting={saveDraftMutation.isPending}
       notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
-    >{renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
+    >{editingGroupId === "c-education" ? renderEducationFields() : editingGroupId === "c-teaching" ? renderTeachingExpertiseFields() : renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
     <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
         <div className="flex min-w-0 items-start gap-3">
