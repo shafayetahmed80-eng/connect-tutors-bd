@@ -120,4 +120,38 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload.privateDetails).not.toHaveProperty("presentAddress");
     expect(payload.privateDetails).not.toHaveProperty("nationality");
   });
+
+  it("saves only the academic half of Section C for the Education sub-group", () => {
+    const payload = createTutorProfileSectionDraftPayload("c-education", {
+      ...baseState,
+      highestEducation: "Bachelor of Science",
+      studyStatus: "graduated",
+      graduationYear: "2020",
+      primarySubjectIds: ["1", "2"],
+      teachingExperienceYears: "4",
+      academicAchievement: "Dean's list",
+    });
+
+    expect(payload).toMatchObject({ highestEducation: "Bachelor of Science", studyStatus: "graduated", graduationYear: 2020 });
+    expect(payload).not.toHaveProperty("primarySubjectIds");
+    expect(payload).not.toHaveProperty("teachingExperienceYears");
+    expect(payload).not.toHaveProperty("academicAchievement");
+  });
+
+  it("saves only the teaching half of Section C for the Teaching expertise sub-group", () => {
+    const payload = createTutorProfileSectionDraftPayload("c-teaching", {
+      ...baseState,
+      highestEducation: "Bachelor of Science",
+      studyStatus: "graduated",
+      primarySubjectIds: ["1", "2"],
+      additionalSubjectIds: ["3"],
+      teachingExperienceYears: "4",
+      priorTeachingExperience: "Two years of home tuition.",
+    });
+
+    expect(payload).toMatchObject({ primarySubjectIds: [1, 2], additionalSubjectIds: [3], teachingExperienceYears: 4, priorTeachingExperience: "Two years of home tuition." });
+    expect(payload).not.toHaveProperty("highestEducation");
+    expect(payload).not.toHaveProperty("studyStatus");
+    expect(payload).not.toHaveProperty("educationRecords");
+  });
 });

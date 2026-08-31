@@ -2,6 +2,7 @@ import React from "react";
 import { Check, ChevronLeft, GraduationCap, MapPinned, MessageSquareText, PencilLine, User, Users } from "lucide-react";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
+import { getTutorProfileSectionGroups, type TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
@@ -33,10 +34,11 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
   sections: TutorProfileReadoutSection[];
   activeTab: TutorProfileSectionId;
   onTabChange: (id: TutorProfileSectionId) => void;
-  onEditSection: (id: TutorProfileSectionId) => void;
+  onEditSection: (id: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => void;
   onBackToOverview: () => void;
 }) {
   const active = sections.find(section => section.id === activeTab) ?? sections[0];
+  const activeGroupTargets = getTutorProfileSectionGroups(active.id);
 
   return <div className={tp.stack}>
     <button
@@ -78,6 +80,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
         const heading = group.heading ?? active.title;
         const { filled, total, complete } = requiredCount(group.rows);
         const Icon = SECTION_ICON[active.id];
+        const groupTarget = activeGroupTargets?.[groupIndex];
         return <section key={groupIndex} className={`${tp.card} ${tp.cardPad}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -91,8 +94,8 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
             </div>
             <button
               type="button"
-              aria-label={`Edit ${heading}`}
-              onClick={() => onEditSection(active.id)}
+              aria-label={`Edit ${groupTarget?.label ?? heading}`}
+              onClick={() => onEditSection(active.id, groupTarget?.id)}
               className={`shrink-0 ${tp.ghostIconButton}`}
             >
               <PencilLine size={16} />

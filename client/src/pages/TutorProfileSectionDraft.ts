@@ -4,6 +4,28 @@ import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfil
 
 export type TutorProfileSectionId = "a" | "b" | "c" | "d" | "e";
 
+/** Section C is large, so its editor can be opened one sub-group at a time. */
+export type TutorProfileSectionGroupId = "c-education" | "c-teaching";
+export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
+
+const sectionCSubGroups = [
+  {
+    id: "c-education" as const,
+    label: "Education",
+    fieldKeys: ["highestEducation", "universityId", "facultyId", "facultyDepartmentId", "studyStatus", "graduationYear", "educationRecords"],
+  },
+  {
+    id: "c-teaching" as const,
+    label: "Teaching expertise",
+    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "studentTypeIds", "academicAchievement"],
+  },
+] as const;
+
+/** The sub-groups a section's read-out pencil can target, or null if it has none. */
+export function getTutorProfileSectionGroups(sectionId: TutorProfileSectionId) {
+  return sectionId === "c" ? sectionCSubGroups : null;
+}
+
 export type TutorProfileSectionFormState = TutorProfileFormState & {
   primarySubjectIds: string[];
   additionalSubjectIds: string[];
@@ -120,24 +142,27 @@ function createFullTutorProfileDraftPayload(form: TutorProfileSectionFormState) 
 type TutorProfileSectionDraftPayload = z.input<typeof tutorProfileEditableDraftSchema>;
 
 export function createTutorProfileSectionDraftPayload(
-  sectionId: TutorProfileSectionId,
+  target: TutorProfileEditTarget,
   form: TutorProfileSectionFormState,
 ) {
-  const definition = tutorProfileSectionDefinitions.find(section => section.id === sectionId);
-  if (!definition) throw new Error("Unknown Tutor Profile section.");
+  const subGroup = sectionCSubGroups.find(group => group.id === target);
+  const definition = tutorProfileSectionDefinitions.find(section => section.id === target);
+  const fieldKeys = subGroup?.fieldKeys ?? definition?.fieldKeys;
+  const privateDetailKeys = definition?.privateDetailKeys;
+  if (!fieldKeys) throw new Error("Unknown Tutor Profile section.");
 
   const completeDraft = createFullTutorProfileDraftPayload(form) as Record<string, unknown>;
   const sectionDraft = Object.fromEntries(
-    definition.fieldKeys
+    fieldKeys
       .filter(fieldKey => fieldKey !== "privateDetails")
       .filter(fieldKey => completeDraft[fieldKey] !== undefined)
       .map(fieldKey => [fieldKey, completeDraft[fieldKey]]),
   ) as TutorProfileSectionDraftPayload;
 
-  if (definition.privateDetailKeys) {
+  if (privateDetailKeys) {
     const privateDetails = completeDraft.privateDetails as TutorProfilePrivateDetails;
     sectionDraft.privateDetails = Object.fromEntries(
-      definition.privateDetailKeys.map(key => [key, privateDetails[key] ?? ""]),
+      privateDetailKeys.map(key => [key, privateDetails[key] ?? ""]),
     ) as TutorProfileSectionDraftPayload["privateDetails"];
   }
 

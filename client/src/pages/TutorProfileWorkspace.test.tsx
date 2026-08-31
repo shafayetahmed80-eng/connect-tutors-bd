@@ -166,12 +166,40 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).queryByLabelText(/^National ID \(NID\)/i)).toBeNull();
   });
 
+  it("collapses a completed qualification to a one-line summary and expands it on demand", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace
+      profile={{
+        ...completeProfile,
+        educationRecords: [
+          { qualificationLevel: "Bachelor’s", instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "", studyStartDate: "2016-01-01", studyEndDate: "2020-01-01", passingYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" },
+          { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "" },
+        ],
+      }}
+      onboardingFallback={null}
+    />);
+
+    await user.click(screen.getByRole("button", { name: /Education and teaching expertise/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    const dialog = screen.getByRole("dialog");
+
+    // The completed qualification is collapsed to its summary; its fields are not rendered.
+    expect(within(dialog).getByText("BSc Physics · Dhaka University · 2020")).toBeTruthy();
+    expect(within(dialog).queryByDisplayValue("BSc Physics")).toBeNull();
+    // The empty one stays open for editing.
+    expect(within(dialog).getAllByLabelText(/Qualification Level/).length).toBeGreaterThan(0);
+
+    await user.click(within(dialog).getByRole("button", { name: /Qualification 1/ }));
+    expect(within(dialog).getByDisplayValue("BSc Physics")).toBeTruthy();
+  });
+
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ universityIdDocumentStatus: "uploaded" }) }));
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("button", { name: "Edit Education and teaching expertise" }));
+    await user.click(screen.getByRole("button", { name: /Education and teaching expertise/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");
     expect(within(dialog).getByText(/Private verification only/)).toBeTruthy();
@@ -180,7 +208,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     fireEvent.change(input, { target: { files: [new File(["id"], "university-id.png", { type: "image/png" })] } });
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/tutor/university-id-document", expect.objectContaining({ method: "POST", credentials: "same-origin" })));
-    expect(await screen.findByText("Uploaded for private review")).toBeTruthy();
+    expect(await within(dialog).findByText("Uploaded for private review")).toBeTruthy();
   });
 
   it("shows one state-aware action in the Profile status card", () => {
