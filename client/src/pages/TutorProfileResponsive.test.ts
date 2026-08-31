@@ -9,17 +9,17 @@ describe("Tutor Profile mobile responsive layout contract", () => {
     expect(tutorProfileResponsiveClasses.completionActionButton).toContain("whitespace-normal");
   });
 
-  it("keeps the completion card in normal document flow (the sticky section nav is the pinned element)", () => {
-    expect(tutorProfileResponsiveClasses.completionCard.split(" ")).not.toContain("sticky");
-    expect(tutorProfileResponsiveClasses.completionCard).not.toContain("lg:sticky");
+  it("stacks the identity rail above the workspace on narrow screens and pins it only from lg up", () => {
+    expect(tutorProfileResponsiveClasses.workspaceShell).toContain("lg:grid-cols-[300px_minmax(0,1fr)]");
+    expect(tutorProfileResponsiveClasses.workspaceShell).toContain("min-w-0");
+    expect(tutorProfileResponsiveClasses.identityRail.split(" ")).not.toContain("sticky");
+    expect(tutorProfileResponsiveClasses.identityRail).toContain("lg:sticky");
+    expect(tutorProfileResponsiveClasses.identityRail).toContain("lg:top-16");
   });
 
-  it("bounds photo previews and keeps photo actions readable inside a narrow panel", () => {
-    expect(tutorProfileResponsiveClasses.photoPanel).toContain("min-w-0");
+  it("bounds the photo preview inside the narrow identity rail", () => {
     expect(tutorProfileResponsiveClasses.photoPreview).toContain("aspect-square");
     expect(tutorProfileResponsiveClasses.photoPreview).toContain("max-w-full");
-    expect(tutorProfileResponsiveClasses.photoActionButton).toContain("min-h-11");
-    expect(tutorProfileResponsiveClasses.photoActionButton).toContain("whitespace-normal");
   });
 
   it("keeps the crop editor within a portrait viewport and allows vertical access to its controls", () => {

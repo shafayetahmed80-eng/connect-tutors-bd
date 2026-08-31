@@ -34,7 +34,7 @@ describe("TutorProfileTabEditor", () => {
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
     expect(within(tabs[0]).getByText("1/3")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("tab", { name: /Education & expertise/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Education/ }));
     expect(onTabChange).toHaveBeenCalledWith("c");
   });
 

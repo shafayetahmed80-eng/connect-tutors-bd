@@ -2,10 +2,11 @@ import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } fr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { TutorProfileSystemInfo } from "@/components/TutorProfileSystemInfo";
+import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
+import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
@@ -22,7 +23,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-2 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 py-2.5 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "mt-1.5 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 py-2 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
@@ -116,7 +117,7 @@ function CatalogSearchField({
     const selection = options?.find(option => option.name === nextValue);
     if (selection) onSelectedIdChange(String(selection.id));
   };
-  return <label className={`block text-sm font-semibold text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
+  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
     <input
       className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}
@@ -139,11 +140,11 @@ function CatalogSearchField({
 }
 
 function FormInput({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`block text-sm font-semibold text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className={`block text-sm font-semibold text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<textarea {...props} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} min-h-28 resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<textarea {...props} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} min-h-28 resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 function InlineError({ message }: { message?: string }) {
@@ -321,6 +322,9 @@ export function TutorProfileWorkspace({
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
+  // "View Profile" swaps the tabbed editor for the read-only whole-profile
+  // preview; the rail's button becomes "Edit Information" to come back.
+  const [previewMode, setPreviewMode] = useState(false);
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
   // When set, the section popup shows only this sub-group (Section C is split so
   // its editor opens Education or Teaching expertise, not the whole thing).
@@ -470,31 +474,6 @@ export function TutorProfileWorkspace({
     return true;
   };
 
-  const saveProfileDraft = async () => {
-    const feedback = getProfileDraftFeedback(form);
-    if (feedback) {
-      setFeedback({ type: "error", message: feedback });
-      return;
-    }
-
-    setFeedback(null);
-    try {
-      await saveDraftMutation.mutateAsync(buildDraftInput());
-      clearTutorOnboardingDraft();
-      setSavedDraftFingerprint(getProfileDraftFingerprint(form));
-      await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: "Your private Tutor Profile draft has been saved." });
-    } catch (error) {
-      if (recoverServerValidationErrors(error)) {
-        formBeforeSectionEditRef.current = null;
-        setEditingSection(null);
-        setEditingGroupId(null);
-      } else {
-        setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
-      }
-    }
-  };
-
   const saveSectionDraft = async (target: TutorProfileEditTarget): Promise<boolean> => {
     setFeedback(null);
     try {
@@ -527,6 +506,8 @@ export function TutorProfileWorkspace({
   const openSectionEditor = (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => {
     formBeforeSectionEditRef.current = form;
     setFeedback(null);
+    // An editor always belongs with the tabbed panel, never over the preview.
+    setPreviewMode(false);
     setEditingGroupId(groupId ?? null);
     setEditingSection(sectionId);
   };
@@ -591,38 +572,6 @@ export function TutorProfileWorkspace({
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
     }
-  };
-
-  const completeProfile = () => {
-    const submissionErrors = getTutorProfileSubmissionErrors(form);
-    setFieldErrors(submissionErrors);
-    const target = firstErroredSection(submissionErrors);
-    if (target) {
-      setActiveTab(target);
-      openSectionEditor(target);
-    }
-    setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
-    window.requestAnimationFrame(() => {
-      const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
-      firstInvalidField?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-      firstInvalidField?.focus({ preventScroll: true });
-    });
-  };
-
-  const runStatusCardAction = () => {
-    if (statusCard.action === "complete") {
-      completeProfile();
-      return;
-    }
-    if (statusCard.action === "save") {
-      void saveProfileDraft();
-      return;
-    }
-    if (statusCard.action === "return") {
-      onReturnToSelectedJob?.();
-      return;
-    }
-    if (statusCard.action === "submit") void submitForReview();
   };
 
   const closePhotoEditor = () => {
@@ -720,21 +669,11 @@ export function TutorProfileWorkspace({
   // Sections "Personal Information" (a) and "Education and teaching expertise" (c)
   // are split into sub-groups so their popups open one part at a time — see
   // getTutorProfileSectionGroups.
-  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
-    <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
-      <div className={tutorProfileResponsiveClasses.photoPreview}>
-        {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
-      </div>
-      <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
-      <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
-      <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
-      <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
-      {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
-      <InlineError message={fieldErrors.profilePhotoUrl} />
-    </div>
+  // The profile photo is managed from the identity rail, not from this popup.
+  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5">
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
-      <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
+      <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
       <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
       <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
       <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
@@ -766,7 +705,7 @@ export function TutorProfileWorkspace({
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
-      <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
+      <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
       <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={updateUniversity} required error={fieldErrors.universityId} />
       <CatalogSearchField label="Related Faculty" query={facultyQuery} onQueryChange={setFacultyQuery} options={academicFaculties.data} selectedId={form.facultyId} onSelectedIdChange={updateFaculty} disabled={!form.universityId} required error={fieldErrors.facultyId} />
       <CatalogSearchField label="Related Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} disabled={!form.facultyId} required error={fieldErrors.facultyDepartmentId} />
@@ -852,10 +791,7 @@ export function TutorProfileWorkspace({
         <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
         <span><strong className="block text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</strong><span className="mt-1 block leading-5">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
       </label>
-      <div className="mt-8 border-t border-[#e6eff4] pt-6">
-        <h3 className="text-sm font-bold text-[#244a6a]">Location, fee and travel</h3>
-        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching coverage, expected fee range, and travel distance.</p>
-      </div>
+      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 text-sm font-bold text-[#244a6a]">Location, fee and travel</h3>
       <div className="mt-4 grid gap-5 md:grid-cols-3">
         <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
@@ -863,10 +799,7 @@ export function TutorProfileWorkspace({
         <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
         <FormInput label="Travel Distance (km) (Optional)" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
       </div>
-      <div className="mt-8 border-t border-[#e6eff4] pt-6">
-        <h3 className="text-sm font-bold text-[#244a6a]">Teaching language and communication</h3>
-        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching and contact preferences.</p>
-      </div>
+      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 text-sm font-bold text-[#244a6a]">Teaching language and communication</h3>
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
@@ -890,60 +823,46 @@ export function TutorProfileWorkspace({
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{editingGroupId ? renderGroupFields(editingGroupId) : renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
-    <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"}`}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/70 text-[#8fb0c4] ring-1 ring-j-border">
-            {form.profilePhotoUrl ? <img src={form.profilePhotoUrl} alt="Your Tutor profile photo" className="h-full w-full object-cover" /> : <UserRound size={22} aria-hidden="true" />}
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className={`font-bold ${tp.heading}`}>{statusCard.title}</p>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusCard.tone === "success" ? "bg-[#e5f8ed] text-[#16714a]" : statusCard.tone === "review" ? "bg-white text-j-accent" : "bg-[#fff0cf] text-[#9b6411]"}`}>{statusCard.tone === "success" ? "Approved" : statusCard.tone === "review" ? "Review" : "Action needed"}</span>
-            </div>
-            <p className={`mt-1 text-sm leading-6 ${tp.bodySoft}`}>{statusCard.description}</p>
-            {statusCard.showProgress ? <div className="mt-3">
-              <div className={`flex items-center justify-between gap-3 text-xs font-medium ${tp.bodySoft}`}><span>Profile completion</span><span>{completionPercentage}%</span></div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-j-border" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercentage}>
-                <div className="h-full rounded-full bg-j-accent transition-[width] duration-200" style={{ width: `${completionPercentage}%` }} />
-              </div>
-            </div> : null}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:flex-col sm:items-end">
-          {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className={tp.primaryButton}>
-            {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
-          </Button> : null}
-        </div>
+    <div className={tutorProfileResponsiveClasses.workspaceShell}>
+      <TutorProfileIdentityRail
+        name={form.name}
+        tutorNumber={profile?.tutorNumber}
+        photoUrl={form.profilePhotoUrl}
+        photoPreviewFailed={photoPreviewFailed}
+        photoError={fieldErrors.profilePhotoUrl}
+        uploadingPhoto={uploadingPhoto}
+        photoInputRef={photoInputRef}
+        onSelectPhoto={selectPhoto}
+        onRemovePhoto={() => void removePhoto()}
+        onPhotoPreviewError={() => setPhotoPreviewFailed(true)}
+        completionPercentage={completionPercentage}
+        universityName={form.universityId ? readoutResolvers.university(form.universityId) : ""}
+        subjectName={form.facultyDepartmentId ? readoutResolvers.department(form.facultyDepartmentId) : ""}
+        onReturnToSelectedJob={statusCard.action === "return" ? onReturnToSelectedJob : undefined}
+        previewMode={previewMode}
+        onTogglePreview={() => setPreviewMode(current => !current)}
+      />
+
+      <div className={`min-w-0 ${tp.stack}`}>
+        <p className="flex items-start gap-2 px-1 text-[11px] leading-5 text-j-ink-soft">
+          <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={12} />
+          <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
+        </p>
+
+        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
+
+        {previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
+          sections={readoutSections}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onEditSection={openSectionEditor}
+        />}
+
+        {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
+          <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton} sm:w-auto`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
+        </div> : null}
       </div>
-    </section>
-
-    <p className="flex items-start gap-2 px-1 text-xs leading-5 text-j-ink-soft">
-      <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={13} />
-      <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
-    </p>
-
-    {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
-
-    <TutorProfileTabEditor
-      sections={readoutSections}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onEditSection={openSectionEditor}
-    />
-
-    <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 ${tp.card} p-4 sm:px-5 ${tutorProfileResponsiveClasses.section}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className={`text-base ${tp.heading}`}>Profile review</h2>
-          <p className={`mt-1 text-sm leading-6 ${tp.bodySoft}`}>Review the saved sections, then submit the whole profile once for moderation.</p>
-        </div>
-        <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`shrink-0 ${tp.primaryButton}`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
-      </div>
-      <div className="mt-5 border-t border-j-border pt-5">
-        {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className={`rounded-xl bg-j-surface-sunken p-4 text-sm ${tp.bodySoft}`}>Save your profile sections first. The final review status will appear here.</p>}
-      </div>
-    </section>
+    </div>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
 }
