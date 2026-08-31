@@ -1,14 +1,18 @@
 {
   "meta": {
     "country": "Bangladesh",
-    "hierarchy": "University > Faculty/School > Department/Subject",
-    "total_universities": 171,
+    "hierarchy": "Institute > Faculty/School > Department/Subject",
+    "total_institutes": 311,
     "public_universities": 63,
-    "private_universities": 106,
-    "public_with_full_data": 48,
-    "private_with_full_data": 44,
-    "generated_by": "Manus AI",
-    "notes": "Non-functional institutions flagged. Name-only entries need official-site verification."
+    "private_universities": 115,
+    "government_medical_colleges": 37,
+    "army_medical_colleges": 7,
+    "private_medical_colleges": 68,
+    "dental_colleges": 13,
+    "affiliated_colleges": 7,
+    "other": 1,
+    "generated_by": "Manus AI; medical/dental/affiliated additions 2026-09-01 from UGC/BMDC/DGHS-sourced compilation",
+    "notes": "Non-functional universities flagged status!=Active (not selectable). Medical/dental colleges and the former DU seven colleges added as Institute options. 'Others' is the catch-all."
   },
   "public_universities": [
     {
@@ -462,7 +466,7 @@
       ]
     },
     {
-      "name": "Bogura Science and Technology University",
+      "name": "University of Bogura",
       "location": "Bogura",
       "status": "Active",
       "faculties": []
@@ -890,12 +894,6 @@
           ]
         }
       ]
-    },
-    {
-      "name": "Gopalganj Science and Technology University (Gopalganj STU)",
-      "location": "Gopalganj",
-      "status": "Active",
-      "faculties": []
     },
     {
       "name": "Habiganj Agricultural University (HAU)",
@@ -2974,6 +2972,26 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Rabindra University, Bangladesh",
+      "location": "Shahjadpur, Sirajganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Social Science",
+          "departments": [
+            "Bangla",
+            "English",
+            "Economics",
+            "Sociology",
+            "Music",
+            "Fine Arts",
+            "Theatre and Drama",
+            "Others"
+          ]
+        }
+      ]
     }
   ],
   "private_universities": [
@@ -3631,7 +3649,7 @@
     },
     {
       "name": "Dr. Momtaz Begum University of Science and Technology (MUST)",
-      "location": "Dhaka",
+      "location": "Kishoreganj",
       "status": "Active",
       "faculties": []
     },
@@ -3804,7 +3822,7 @@
     },
     {
       "name": "First Capital University of Bangladesh",
-      "location": "Comilla",
+      "location": "Chuadanga",
       "status": "Active",
       "faculties": []
     },
@@ -4625,8 +4643,8 @@
       "faculties": []
     },
     {
-      "name": "Rabindra Paitar University (RP Shaha University)",
-      "location": "Kushtia",
+      "name": "Ranada Prasad Shaha University (RP Shaha University)",
+      "location": "Narayanganj",
       "status": "Active",
       "faculties": []
     },
@@ -5181,6 +5199,2402 @@
       "location": "Dhaka",
       "status": "Active",
       "faculties": []
+    },
+    {
+      "name": "Central Women's University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "East Delta University",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chittagong Independent University",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Southern University, Bangladesh",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Metropolitan University",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prime University",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ishakha International University",
+      "location": "Kishoreganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ZH Sikder University of Science & Technology",
+      "location": "Bhedarganj, Shariatpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh University of Health Sciences (BUHS)",
+      "location": "Mirpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "government_medical_colleges": [
+    {
+      "name": "Dhaka Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sir Salimullah Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shaheed Suhrawardy Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mugda Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chittagong Medical College",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rajshahi Medical College",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mymensingh Medical College",
+      "location": "Mymensingh",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sylhet MAG Osmani Medical College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sher-e-Bangla Medical College",
+      "location": "Barishal",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rangpur Medical College",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cumilla Medical College",
+      "location": "Cumilla",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dinajpur Medical College (M Abdur Rahim Medical College)",
+      "location": "Dinajpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Faridpur Medical College",
+      "location": "Faridpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna Medical College",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shaheed Ziaur Rahman Medical College",
+      "location": "Bogura",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cox's Bazar Medical College",
+      "location": "Cox's Bazar",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Abdul Malek Ukil Medical College",
+      "location": "Noakhali",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pabna Medical College",
+      "location": "Pabna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jashore Medical College",
+      "location": "Jashore",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gopalganj Medical College (Sheikh Sayera Khatun Medical College)",
+      "location": "Gopalganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kushtia Medical College",
+      "location": "Kushtia",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Satkhira Medical College",
+      "location": "Satkhira",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahid Syed Nazrul Islam Medical College",
+      "location": "Kishoreganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shaheed Tajuddin Ahmad Medical College",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jamalpur Medical College",
+      "location": "Jamalpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Manikganj Medical College",
+      "location": "Manikganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Patuakhali Medical College",
+      "location": "Patuakhali",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rangamati Medical College",
+      "location": "Rangamati",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shaheed M Monsur Ali Medical College",
+      "location": "Sirajganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tangail Medical College",
+      "location": "Tangail",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Habiganj Medical College",
+      "location": "Habiganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chandpur Medical College",
+      "location": "Chandpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Magura Medical College",
+      "location": "Magura",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Naogaon Medical College",
+      "location": "Naogaon",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Netrokona Medical College",
+      "location": "Netrokona",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nilphamari Medical College",
+      "location": "Nilphamari",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sunamganj Medical College",
+      "location": "Sunamganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "army_medical_colleges": [
+    {
+      "name": "Armed Forces Medical College (AFMC)",
+      "location": "Dhaka Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Army Medical College, Bogura",
+      "location": "Bogura Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Army Medical College, Chattogram",
+      "location": "Chattogram Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Army Medical College, Cumilla",
+      "location": "Cumilla Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Army Medical College, Jashore",
+      "location": "Jashore Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Army Medical College, Rangpur",
+      "location": "Rangpur Cantonment",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Navy Medical College, Chattogram",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "private_medical_colleges": [
+    {
+      "name": "Bangladesh Medical College",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gonoshasthaya Samaj Vittik Medical College",
+      "location": "Savar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Institute of Applied Health Sciences (USTC)",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jahurul Islam Medical College",
+      "location": "Bajitpur, Kishoreganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Medical College for Women & Hospital",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Z.H. Sikder Women's Medical College",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dhaka National Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Community Based Medical College, Bangladesh",
+      "location": "Mymensingh",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jalalabad Ragib-Rabeya Medical College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shaheed Monsur Ali Medical College",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "North East Medical College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Holy Family Red Crescent Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "International Medical College",
+      "location": "Tongi, Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "North Bengal Medical College",
+      "location": "Sirajganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "East West Medical College",
+      "location": "Turag, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kumudini Women's Medical College",
+      "location": "Mirzapur, Tangail",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tairunnessa Memorial Medical College",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ibrahim Medical College",
+      "location": "Shahbag, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BGC Trust Medical College",
+      "location": "Chandanaish, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shahabuddin Medical College",
+      "location": "Gulshan, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Enam Medical College and Hospital",
+      "location": "Savar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Islami Bank Medical College",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ibn Sina Medical College",
+      "location": "Kallyanpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Central Medical College",
+      "location": "Cumilla",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eastern Medical College",
+      "location": "Cumilla",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khwaja Yunus Ali Medical College",
+      "location": "Enayetpur, Sirajganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chattagram Maa-O-Shishu Hospital Medical College",
+      "location": "Agrabad, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sylhet Women's Medical College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Southern Medical College",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Uttara Adhunik Medical College",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Delta Medical College",
+      "location": "Mirpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ad-din Women's Medical College",
+      "location": "Moghbazar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dhaka Community Medical College",
+      "location": "Moghbazar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TMSS Medical College",
+      "location": "Bogura",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Anwer Khan Modern Medical College",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prime Medical College",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rangpur Community Medical College",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Diabetic Association Medical College",
+      "location": "Faridpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Green Life Medical College",
+      "location": "Green Road, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Popular Medical College",
+      "location": "Dhanmondi, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MH Samorita Medical College",
+      "location": "Tejgaon, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Monno Medical College",
+      "location": "Manikganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dhaka Central International Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dr. Sirajul Islam Medical College",
+      "location": "Malibagh, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Marks Medical College",
+      "location": "Mirpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mainamoti Medical College",
+      "location": "Cumilla",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ad-din Sakina Medical College",
+      "location": "Jashore",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gazi Medical College",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Barind Medical College",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "City Medical College",
+      "location": "Gazipur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ashiyan Medical College",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Aichi Medical College",
+      "location": "Uttara, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bashundhara Ad-din Medical College",
+      "location": "Keraniganj, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "President Abdul Hamid Medical College",
+      "location": "Kishoreganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bikrampur Bhuiyan's Medical College",
+      "location": "Munshiganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Universal Medical College",
+      "location": "Mohakhali, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brahmanbaria Medical College",
+      "location": "Brahmanbaria",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Parkview Medical College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Marine City Medical College",
+      "location": "Anwara, Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chattagram International Medical College",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "US-Bangla Medical College",
+      "location": "Rupganj, Narayanganj",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ad-Din Akij Medical College",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Monowara Sikder Medical College",
+      "location": "Shariatpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Khulna City Medical College",
+      "location": "Khulna",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "United Medical College",
+      "location": "Gulshan, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "South Apollo Medical College",
+      "location": "Barishal",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ahsania Mission Medical College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Asgar Ali Medical College",
+      "location": "Gandaria, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Medicine",
+          "departments": [
+            "MBBS (Bachelor of Medicine, Bachelor of Surgery)",
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "dental_colleges": [
+    {
+      "name": "Dhaka Dental College",
+      "location": "Mirpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Update Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "University Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pioneer Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sapporo Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "City Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bangladesh Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Saphena Women's Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mandy Dental College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chattagram International Dental College",
+      "location": "Chattogram",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rangpur Dental College",
+      "location": "Rangpur",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Udayan Dental College",
+      "location": "Rajshahi",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sylhet Central Dental College",
+      "location": "Sylhet",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Dentistry",
+          "departments": [
+            "BDS (Bachelor of Dental Surgery)",
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "affiliated_colleges": [
+    {
+      "name": "Dhaka College",
+      "location": "Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Government Bangla College",
+      "location": "Mirpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Government Titumir College",
+      "location": "Mohakhali, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eden Mohila College",
+      "location": "Azimpur, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kabi Nazrul Government College",
+      "location": "Lalbagh, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Government Shaheed Suhrawardy College",
+      "location": "Lalbagh, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Begum Badrunnessa Government Girls' College",
+      "location": "Bakshibazar, Dhaka",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Faculty of Arts and Humanities",
+          "departments": [
+            "Bangla",
+            "English",
+            "Arabic",
+            "Islamic Studies",
+            "Islamic History and Culture",
+            "History",
+            "Philosophy",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Social Sciences",
+          "departments": [
+            "Economics",
+            "Political Science",
+            "Sociology",
+            "Social Work",
+            "Public Administration",
+            "Anthropology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Science",
+          "departments": [
+            "Physics",
+            "Chemistry",
+            "Mathematics",
+            "Statistics",
+            "Botany",
+            "Zoology",
+            "Geography and Environment",
+            "Psychology",
+            "Others"
+          ]
+        },
+        {
+          "name": "Faculty of Business Studies",
+          "departments": [
+            "Accounting",
+            "Management",
+            "Finance and Banking",
+            "Marketing",
+            "Others"
+          ]
+        }
+      ]
+    }
+  ],
+  "other": [
+    {
+      "name": "Others",
+      "location": "",
+      "status": "Active",
+      "faculties": [
+        {
+          "name": "Others",
+          "departments": [
+            "Others"
+          ]
+        }
+      ]
     }
   ]
 }

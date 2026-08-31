@@ -20,7 +20,7 @@ describe("Tutor Profile academic catalog seed plan", () => {
       university => university.normalizedName
     );
 
-    expect(plan.universities).toHaveLength(169);
+    expect(plan.universities).toHaveLength(311);
     expect(new Set(normalizedUniversities).size).toBe(plan.universities.length);
     expect(normalizedUniversities).toEqual(
       expect.arrayContaining([
@@ -28,8 +28,17 @@ describe("Tutor Profile academic catalog seed plan", () => {
         "north south university (nsu)",
         "brac university (bracu)",
         "east west university (ewu)",
+        // medical / dental colleges, the former DU seven colleges, and the catch-all
+        "dhaka medical college",
+        "armed forces medical college (afmc)",
+        "bangladesh medical college",
+        "dhaka dental college",
+        "government titumir college",
+        "others",
       ])
     );
+    // "Others" is spread first so it always sorts to the top of Institute search.
+    expect(normalizedUniversities[0]).toBe("others");
   });
 
   it("keeps Chittagong institution names canonical and distinct", () => {

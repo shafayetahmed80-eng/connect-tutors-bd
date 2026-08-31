@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import {
   academicFaculties,
@@ -205,7 +205,7 @@ export function buildTutorProfileCatalogSeedPlan(): TutorProfileCatalogSeedPlan 
   };
 }
 
-type SeedDatabase = Pick<MySql2Database, "insert" | "select">;
+type SeedDatabase = Pick<MySql2Database, "insert" | "select" | "update">;
 
 async function upsertOptions(
   db: SeedDatabase,
@@ -292,6 +292,23 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
         sortOrder: sql`VALUES(sortOrder)`,
       },
     });
+  }
+
+  // Renames and removed duplicates leave orphan rows under their old normalized
+  // name. Deactivate any Institute no longer in the supplied directory so it
+  // stops being offered; the row itself stays so existing tutor selections
+  // still resolve (and can be re-picked against the current name).
+  const planUniversityNormalizedNames = plan.universities.map(university => university.normalizedName);
+  if (planUniversityNormalizedNames.length > 0) {
+    await db
+      .update(universities)
+      .set({ active: 0 })
+      .where(
+        and(
+          eq(universities.active, 1),
+          notInArray(universities.normalizedName, planUniversityNormalizedNames),
+        ),
+      );
   }
 
   await Promise.all([
