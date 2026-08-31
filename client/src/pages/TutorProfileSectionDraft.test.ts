@@ -13,45 +13,66 @@ const onboardingFallback = {
 const baseState = hydrateTutorProfileForm(null, onboardingFallback);
 
 describe("Tutor Profile section draft payloads", () => {
-  it("defines the approved default-expanded A–H profile sequence", () => {
-    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual([
-      "a",
-      "b",
-      "c",
-      "d",
-      "e",
-      "f",
-      "g",
-      "h",
-    ]);
+  it("defines the five-section A–E profile sequence", () => {
+    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "b", "c", "d", "e"]);
   });
 
-  it("sends only Section E location, fee, and travel fields when saving that section", () => {
-    const payload = createTutorProfileSectionDraftPayload("e", {
+  it("sends the merged tuition, location, fee, and communication fields when saving Section D", () => {
+    const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       headline: "Experienced Mathematics Tutor for SSC Students",
+      tuitionType: "home",
+      preferredStudentGender: "both",
+      preferredClassSizes: ["one_to_one"],
+      preferredTeachingDays: ["monday"],
+      preferredTimeSlots: ["evening"],
       feeMin: "5000",
       feeMax: "8000",
       travelDistanceKm: "10",
+      communicationPreferences: ["phone"],
     });
 
-    expect(payload).toEqual({ currentLocationId: "dhaka-uttara", feeMin: 5000, feeMax: 8000, travelDistanceKm: 10 });
+    expect(payload).toMatchObject({
+      tuitionType: "home",
+      currentLocationId: "dhaka-uttara",
+      feeMin: 5000,
+      feeMax: 8000,
+      travelDistanceKm: 10,
+      communicationPreferences: ["phone"],
+    });
     expect(payload).not.toHaveProperty("headline");
     expect(payload).not.toHaveProperty("phone");
+    expect(payload).not.toHaveProperty("aboutMe");
   });
 
-  it("keeps the online/nationwide cross-field pair together in the tuition section", () => {
+  it("keeps the online/nationwide and fee cross-field pairs together in Section D", () => {
     const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       tuitionType: "online",
       availableNationwide: true,
+      feeMin: "4000",
+      feeMax: "9000",
       preferredStudentGender: "both",
       preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
       preferredTimeSlots: ["evening"],
     });
 
-    expect(payload).toMatchObject({ tuitionType: "online", availableNationwide: true });
+    expect(payload).toMatchObject({ tuitionType: "online", availableNationwide: true, feeMin: 4000, feeMax: 9000 });
+    expect(payload).not.toHaveProperty("aboutMe");
+  });
+
+  it("sends only the introduction fields when saving Section E", () => {
+    const payload = createTutorProfileSectionDraftPayload("e", {
+      ...baseState,
+      aboutMe: "I focus on exam technique.",
+      teachingApproach: "Weekly practice sets.",
+      feeMin: "5000",
+      feeMax: "8000",
+    });
+
+    expect(payload).toEqual({ aboutMe: "I focus on exam technique.", teachingApproach: "Weekly practice sets." });
+    expect(payload).not.toHaveProperty("feeMin");
     expect(payload).not.toHaveProperty("currentLocationId");
   });
 

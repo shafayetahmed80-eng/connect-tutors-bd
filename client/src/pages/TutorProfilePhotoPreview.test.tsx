@@ -107,11 +107,9 @@ describe("TutorProfileWorkspace photo preview", () => {
     });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    fireEvent.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    fireEvent.click(within(identitySection!).getByRole("button", { name: "Edit Information" }));
-    fireEvent.change(screen.getByLabelText("Upload Tutor profile photo"), {
+    fireEvent.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Upload Tutor profile photo"), {
       target: { files: [new File(["source"], "selected.png", { type: "image/png" })] },
     });
 

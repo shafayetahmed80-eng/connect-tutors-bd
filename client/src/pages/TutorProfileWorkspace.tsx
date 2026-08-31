@@ -2,7 +2,7 @@ import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } fr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Save, Trash2, UserRound } from "lucide-react";
+import { ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileSystemInfo } from "@/components/TutorProfileSystemInfo";
@@ -10,20 +10,31 @@ import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfile
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
-import { getTutorProfileWizardStepForErrors, scrollToTutorProfileSection, tutorProfileWizardSteps } from "./TutorProfileWizard";
+import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
 import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
-import { tutorProfileSectionCopy } from "./TutorProfileSectionCopy";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { createTutorProfileSectionDraftPayload, tutorProfileSectionDefinitions, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
+import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
+import { TutorProfileReadView } from "./TutorProfileReadView";
+import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
+import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
 const fieldClassName = "mt-2 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 py-2.5 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
+const sectionTitles: Record<TutorProfileSectionId, string> = {
+  a: "Identity and contact",
+  b: "Family and emergency contact",
+  c: "Education and teaching expertise",
+  d: "Tuition, location and communication",
+  e: "Introduction and review",
+};
+
 type CatalogOption = { id: number | string; name: string };
 
-type TeachingProfileState = TutorProfileFormState & {
+export type TeachingProfileState = TutorProfileFormState & {
   primarySubjectIds: string[];
   additionalSubjectIds: string[];
   classLevelIds: string[];
@@ -155,10 +166,12 @@ export function TutorProfileWorkspace({
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
-  const [activeMobileStep, setActiveMobileStep] = useState(0);
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
   const universityIdInputRef = useRef<HTMLInputElement>(null);
+  // Snapshot of `form` taken when a section popup opens, restored if it is
+  // closed without saving so Cancel/Escape/X discard the in-popup edits.
+  const formBeforeSectionEditRef = useRef<TeachingProfileState | null>(null);
   const utils = trpc.useUtils();
   const saveDraftMutation = trpc.tutor.saveProfileDraft.useMutation();
   const submitProfileMutation = trpc.tutor.submitProfile.useMutation();
@@ -270,10 +283,43 @@ export function TutorProfileWorkspace({
   const completionSummary = getTutorProfileCompletionSummary(form);
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
-  const [editingSections, setEditingSections] = useState<Set<TutorProfileSectionId>>(() => new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<TutorProfileSectionId>>(() => new Set());
+  const [viewMode, setViewMode] = useState<"read" | "edit">("read");
+  const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
+  const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
+
+  const readoutResolvers = useMemo<TutorProfileReadoutResolvers>(() => {
+    // An id with no catalog match (page still loading, or the value sits past the
+    // 50-row search cap) resolves to "" so the read view shows "Not given"
+    // rather than leaking a raw numeric id.
+    const byName = (rows?: ReadonlyArray<{ id: number | string; name: string }>) => {
+      const map = new Map((rows ?? []).map(entry => [String(entry.id), entry.name] as const));
+      return (id: string) => map.get(id) ?? "";
+    };
+    const byLabel = (rows?: ReadonlyArray<{ id: number | string; label: string }>) => {
+      const map = new Map((rows ?? []).map(entry => [String(entry.id), entry.label] as const));
+      return (id: string) => map.get(id) ?? "";
+    };
+    return {
+      subject: byName(subjects.data),
+      classLevel: byName(classLevels.data),
+      curriculum: byName(curricula.data),
+      studentType: byName(studentTypes.data),
+      language: byName(languages.data),
+      university: byName(universities.data),
+      faculty: byName(academicFaculties.data),
+      department: byName(facultyDepartments.data),
+      location: byLabel(currentBangladeshLocations.data),
+      area: byLabel(teachingAreaLocations.data),
+    };
+  }, [subjects.data, classLevels.data, curricula.data, studentTypes.data, languages.data, universities.data, academicFaculties.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
+  const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers), [form, readoutResolvers]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
-  const currentWizardStep = tutorProfileWizardSteps[activeMobileStep];
+  const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
+    const step = getTutorProfileWizardStepForErrors(errors);
+    if (step === null) return null;
+    const raw = tutorProfileWizardSteps[step]?.sectionIds[0]?.replace("profile-section-", "");
+    return raw ? (raw as TutorProfileSectionId) : null;
+  };
   const statusCard = getTutorProfileStatusCard({
     profileStatus: profile?.profileStatus,
     completionPercentage,
@@ -330,44 +376,6 @@ export function TutorProfileWorkspace({
     return () => onDirtyChange?.(false);
   }, [isDraftDirty, onDirtyChange]);
 
-  const goToWizardStep = (stepIndex: number) => {
-    const nextStep = tutorProfileWizardSteps[stepIndex];
-    if (!nextStep) return;
-    setActiveMobileStep(stepIndex);
-    window.requestAnimationFrame(() => {
-      document.getElementById(nextStep.sectionIds[0])?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  const revealSections = (sectionIds: TutorProfileSectionId[]) => {
-    setExpandedSections(current => {
-      const next = new Set(current);
-      sectionIds.forEach(sectionId => next.add(sectionId));
-      return next;
-    });
-  };
-
-  const revealWizardStep = (stepIndex: number | null) => {
-    if (stepIndex === null) return;
-    const sectionIds = tutorProfileWizardSteps[stepIndex]?.sectionIds ?? [];
-    revealSections(sectionIds.map(sectionId => sectionId === "profile-section-review" ? "h" : sectionId.replace("profile-section-", "") as TutorProfileSectionId));
-  };
-
-  const toggleSection = (sectionId: TutorProfileSectionId) => {
-    setExpandedSections(current => {
-      const next = new Set(current);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
-
-  const scrollToDesktopSection = (sectionId: TutorProfileSectionId) => {
-    revealSections([sectionId]);
-    window.requestAnimationFrame(() => {
-      scrollToTutorProfileSection(`profile-section-${sectionId === "h" ? "review" : sectionId}`);
-    });
-  };
   const buildDraftInput = () => {
     const experience = form.teachingExperienceYears ? Number(form.teachingExperienceYears) : undefined;
     const selectedIds = (values: string[]) => values.map(Number).filter(Number.isInteger);
@@ -395,9 +403,6 @@ export function TutorProfileWorkspace({
     if (Object.keys(serverErrors).length === 0) return false;
 
     setFieldErrors(serverErrors);
-    const firstInvalidStep = getTutorProfileWizardStepForErrors(serverErrors);
-    if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
-    revealWizardStep(firstInvalidStep);
     setFeedback({ type: "error", message: "Review the highlighted details and try again." });
     window.requestAnimationFrame(() => {
       const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -422,46 +427,83 @@ export function TutorProfileWorkspace({
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
       setFeedback({ type: "success", message: "Your private Tutor Profile draft has been saved." });
     } catch (error) {
-      if (!recoverServerValidationErrors(error)) {
+      if (recoverServerValidationErrors(error)) {
+        setViewMode("edit");
+        formBeforeSectionEditRef.current = null;
+        setEditingSection(null);
+      } else {
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
     }
   };
 
-  const editSection = (sectionId: TutorProfileSectionId) => {
-    revealSections([sectionId]);
-    setEditingSections(current => new Set(current).add(sectionId));
-    setFeedback(null);
-  };
-
-  const saveSectionDraft = async (sectionId: TutorProfileSectionId) => {
-    if (sectionId === "h") return;
+  const saveSectionDraft = async (sectionId: TutorProfileSectionId): Promise<boolean> => {
     setFeedback(null);
     try {
       await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(sectionId, form));
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
-      setEditingSections(current => {
-        const next = new Set(current);
-        next.delete(sectionId);
-        return next;
-      });
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: `Section ${sectionId.toUpperCase()} draft saved. Continue with the next section when ready.` });
+      setFeedback({ type: "success", message: `${sectionTitles[sectionId]} saved. Continue with the next section when ready.` });
+      return true;
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
+      return false;
     }
+  };
+
+  // The section popup edits the shared `form` directly. Reset any catalog search
+  // typed inside it on close, otherwise `*.data` stays narrowed to the last
+  // search and the read view shows raw ids for names that fell out of it.
+  const resetSectionEditorSearch = () => {
+    setUniversityQuery("");
+    setFacultyQuery("");
+    setDepartmentQuery("");
+    setCurrentLocationQuery("");
+    setTeachingAreaQuery("");
+    setAcademicMessage("");
+  };
+
+  const openSectionEditor = (sectionId: TutorProfileSectionId) => {
+    formBeforeSectionEditRef.current = form;
+    setFeedback(null);
+    setEditingSection(sectionId);
+  };
+
+  // Close without saving: put the pre-edit values back.
+  const closeSectionEditor = () => {
+    if (formBeforeSectionEditRef.current) setForm(formBeforeSectionEditRef.current);
+    formBeforeSectionEditRef.current = null;
+    setEditingSection(null);
+    setFeedback(null);
+    resetSectionEditorSearch();
+  };
+
+  // Close after a successful save (or a recovery flow): keep the edits.
+  const finishSectionEditor = () => {
+    formBeforeSectionEditRef.current = null;
+    setEditingSection(null);
+    resetSectionEditorSearch();
+  };
+
+  const submitSectionModal = async () => {
+    if (!editingSection) return;
+    const saved = await saveSectionDraft(editingSection);
+    if (saved) finishSectionEditor();
   };
 
   const submitForReview = async () => {
     const submissionErrors = getTutorProfileSubmissionErrors(form);
     if (Object.keys(submissionErrors).length > 0) {
       setFieldErrors(submissionErrors);
-      const firstInvalidStep = getTutorProfileWizardStepForErrors(submissionErrors);
-      if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
-      revealWizardStep(firstInvalidStep);
+      const target = firstErroredSection(submissionErrors);
+      setViewMode("edit");
+      if (target) {
+        setActiveTab(target);
+        openSectionEditor(target);
+      }
       setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
       window.requestAnimationFrame(() => {
         const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -494,9 +536,12 @@ export function TutorProfileWorkspace({
   const completeProfile = () => {
     const submissionErrors = getTutorProfileSubmissionErrors(form);
     setFieldErrors(submissionErrors);
-    const firstInvalidStep = getTutorProfileWizardStepForErrors(submissionErrors);
-    if (firstInvalidStep !== null) setActiveMobileStep(firstInvalidStep);
-    revealWizardStep(firstInvalidStep);
+    const target = firstErroredSection(submissionErrors);
+    setViewMode("edit");
+    if (target) {
+      setActiveTab(target);
+      openSectionEditor(target);
+    }
     setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
     window.requestAnimationFrame(() => {
       const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
@@ -613,95 +658,52 @@ export function TutorProfileWorkspace({
     }
   };
 
-  return <form onSubmit={event => { event.preventDefault(); void saveProfileDraft(); }} className={tutorProfileResponsiveClasses.workspace}>
-    {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
-    <div className="flex items-start gap-3 rounded-2xl border border-[#bfe4f6] bg-[#f0faff] p-4 text-sm leading-6 text-[#46728e]">
-      <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
-      <p><strong className="text-[#1b4c6d]">Private registration continuity:</strong> {profile ? "Your name, phone, email, gender, and Bangladesh location were loaded from your secure Tutor registration." : "For this historical Tutor account, review the available account details and add any missing required identity or Bangladesh location information."} Phone and email are used for review and are never shown in the public directory.</p>
-    </div>
-
-    <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"} sm:flex sm:items-center sm:justify-between sm:gap-5`}>
-      <div className="min-w-0">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <p className="font-bold text-[#244a6a]">{statusCard.title}</p>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusCard.tone === "success" ? "bg-[#e5f8ed] text-[#16714a]" : statusCard.tone === "review" ? "bg-[#e4f4fd] text-[#1670a8]" : "bg-[#fff0cf] text-[#9b6411]"}`}>{statusCard.tone === "success" ? "Approved" : statusCard.tone === "review" ? "Review" : "Action needed"}</span>
+  // The editable fields for one section, rendered inside the per-section popup card.
+  const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
+    if (sectionId === "a") return <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
+      <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
+        <div className={tutorProfileResponsiveClasses.photoPreview}>
+          {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
         </div>
-        <p className="mt-1 text-sm leading-6 text-[#5e7a90]">{statusCard.description}</p>
-        {statusCard.showProgress ? <div className="mt-3">
-          <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#5e7a90]"><span>Profile completion</span><span>{completionPercentage}%</span></div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#e9f1f5]" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercentage}>
-            <div className="h-full rounded-full bg-[#167ddd] transition-[width] duration-200" style={{ width: `${completionPercentage}%` }} />
-          </div>
-        </div> : null}
+        <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
+        <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
+        <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
+        <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
+        {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
+        <InlineError message={fieldErrors.profilePhotoUrl} />
       </div>
-      {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className="mt-4 shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2] sm:mt-0">
-        {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
-      </Button> : null}
-    </section>
-
-    <nav aria-label="Tutor Profile desktop sections" className="sticky top-[8.5rem] z-10 hidden rounded-2xl border border-[#dce8f0] bg-white/95 p-2 shadow-sm backdrop-blur lg:flex lg:items-center lg:justify-between lg:gap-2">
-      {tutorProfileSectionDefinitions.map((section, index) => <button key={section.id} type="button" onClick={() => scrollToDesktopSection(section.id)} className="flex-1 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-[#4d6d84] transition hover:bg-[#f0faff] hover:text-[#167ddd] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd]">
-        <span className="mr-1.5 text-[#167ddd]">{String.fromCharCode(65 + index)}.</span>{section.label}
-      </button>)}
-    </nav>
-
-    <nav aria-label="Tutor Profile mobile sections" className="rounded-2xl border border-[#dce8f0] bg-white p-3 shadow-sm lg:hidden">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1680c2]">All profile sections</p>
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-        {tutorProfileSectionDefinitions.map((section, index) => <button key={section.id} type="button" onClick={() => scrollToDesktopSection(section.id)} className="shrink-0 rounded-lg border border-[#dce8f0] px-3 py-2 text-xs font-bold text-[#4d6d84] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd]">{String.fromCharCode(65 + index)}</button>)}
-      </div>
-    </nav>
-
-    {feedback ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-[#f2c3c3] bg-[#fff6f6] text-[#a83b3b]"}`}>{feedback.message}</p> : null}
-
-    <ProfileSection id="profile-section-a" sectionId="a" eyebrow="Section A" title="Identity and contact" description={tutorProfileSectionCopy.identity} isExpanded={expandedSections.has("a")} isEditing={editingSections.has("a")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
-        <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
-          <div className={tutorProfileResponsiveClasses.photoPreview}>
-            {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
-          </div>
-          <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
-          <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
-          <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
-          <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
-          {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
-          <InlineError message={fieldErrors.profilePhotoUrl} />
-        </div>
-        <div className="grid gap-5 md:grid-cols-2">
-          <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
-          <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
-          <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
-          <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
-          <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
-          <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} hint="Private — never public." error={fieldErrors.contactEmail} />
-          <FormTextArea label="Present Address" required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} hint="Private — visible only to you and authorized review staff." />
-          <FormTextArea label="Permanent Address" required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} hint="Private — never shown to Guardians." />
-          <FormInput label="Nationality" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
-          <FormInput label="Religion" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
-          <div className="rounded-2xl border border-[#f0d594] bg-[#fffaf0] p-4 text-sm text-[#765417] md:col-span-2">
-            <p className="font-bold text-[#614711]">National ID (NID) <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
-            <p className="mt-1 leading-5">Secure collection is pending activation. Do not enter or upload NID information yet; this field will open only after encrypted storage and access controls are activated.</p>
-          </div>
-          <FormInput label="Additional Phone (Optional)" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
-          <FormInput label="Social Profile Links (Optional)" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
-        </div>
-      </div>
-    </ProfileSection>
-
-    <ProfileSection id="profile-section-b" sectionId="b" eyebrow="Section B" title="Family and emergency contact" description="Private verification details. These are not shown to Guardians or on your public profile." isExpanded={expandedSections.has("b")} isEditing={editingSections.has("b")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
       <div className="grid gap-5 md:grid-cols-2">
-        <FormInput label="Father’s Name" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
-        <FormInput label="Father’s Phone Number" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} hint="Private — used only for profile verification." />
-        <FormInput label="Mother’s Name (Optional)" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
-        <FormInput label="Mother’s Phone Number (Optional)" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
-        <FormInput label="Emergency Contact Name (Optional)" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
-        <FormInput label="Emergency Contact Relation (Optional)" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
-        <FormInput label="Emergency Contact Phone (Optional)" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
-        <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
+        <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
+        <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
+        <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
+        <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
+        <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
+        <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} hint="Private — never public." error={fieldErrors.contactEmail} />
+        <FormTextArea label="Present Address" required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} hint="Private — visible only to you and authorized review staff." />
+        <FormTextArea label="Permanent Address" required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} hint="Private — never shown to Guardians." />
+        <FormInput label="Nationality" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
+        <FormInput label="Religion" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
+        <div className="rounded-2xl border border-[#f0d594] bg-[#fffaf0] p-4 text-sm text-[#765417] md:col-span-2">
+          <p className="font-bold text-[#614711]">National ID (NID) <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
+          <p className="mt-1 leading-5">Secure collection is pending activation. Do not enter or upload NID information yet; this field will open only after encrypted storage and access controls are activated.</p>
+        </div>
+        <FormInput label="Additional Phone (Optional)" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
+        <FormInput label="Social Profile Links (Optional)" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
       </div>
-    </ProfileSection>
+    </div>;
 
-    <ProfileSection id="profile-section-c" sectionId="c" eyebrow="Section C" title="Education and teaching expertise" description={tutorProfileSectionCopy.expertise} isExpanded={expandedSections.has("c")} isEditing={editingSections.has("c")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
+    if (sectionId === "b") return <div className="grid gap-5 md:grid-cols-2">
+      <FormInput label="Father’s Name" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
+      <FormInput label="Father’s Phone Number" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} hint="Private — used only for profile verification." />
+      <FormInput label="Mother’s Name (Optional)" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
+      <FormInput label="Mother’s Phone Number (Optional)" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
+      <FormInput label="Emergency Contact Name (Optional)" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
+      <FormInput label="Emergency Contact Relation (Optional)" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
+      <FormInput label="Emergency Contact Phone (Optional)" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
+      <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
+    </div>;
+
+    if (sectionId === "c") return <>
       <div className="grid gap-5 md:grid-cols-2">
         <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
         <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
@@ -735,9 +737,9 @@ export function TutorProfileWorkspace({
         <FormTextArea label="Special Expertise" value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />
         <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
       </div>
-    </ProfileSection>
+    </>;
 
-    <ProfileSection id="profile-section-d" sectionId="d" eyebrow="Section D" title="Tuition format and learner preferences" description={tutorProfileSectionCopy.tuition} isExpanded={expandedSections.has("d")} isEditing={editingSections.has("d")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
+    if (sectionId === "d") return <>
       <div className="grid gap-5 lg:grid-cols-2">
         <fieldset className="rounded-2xl border border-[#dce8f0] p-4">
           <legend className="px-1 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.tuitionType} <span className="text-[#d84a4a]">*</span></legend>
@@ -759,43 +761,96 @@ export function TutorProfileWorkspace({
         <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
         <span><strong className="block text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</strong><span className="mt-1 block leading-5">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
       </label>
-    </ProfileSection>
-
-    <ProfileSection id="profile-section-e" sectionId="e" eyebrow="Section E" title="Location, fee and travel preferences" description="Your teaching coverage, expected fee range, and travel distance." isExpanded={expandedSections.has("e")} isEditing={editingSections.has("e")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="mt-8 border-t border-[#e6eff4] pt-6">
+        <h3 className="text-sm font-bold text-[#244a6a]">Location, fee and travel</h3>
+        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching coverage, expected fee range, and travel distance.</p>
+      </div>
+      <div className="mt-4 grid gap-5 md:grid-cols-3">
         <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
         <FormInput label={tutorProfileCopy.fields.feeMin} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />
         <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
         <FormInput label="Travel Distance (km) (Optional)" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
       </div>
-    </ProfileSection>
-
-    <ProfileSection id="profile-section-f" sectionId="f" eyebrow="Section F" title="Teaching language and communication" description={tutorProfileSectionCopy.communication} isExpanded={expandedSections.has("f")} isEditing={editingSections.has("f")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="mt-8 border-t border-[#e6eff4] pt-6">
+        <h3 className="text-sm font-bold text-[#244a6a]">Teaching language and communication</h3>
+        <p className="mt-1 text-xs leading-5 text-[#72889a]">Your teaching and contact preferences.</p>
+      </div>
+      <div className="mt-4 grid gap-5 md:grid-cols-2">
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
       </div>
-    </ProfileSection>
+    </>;
 
-    <ProfileSection id="profile-section-g" sectionId="g" eyebrow="Section G" title="About your teaching" description={tutorProfileSectionCopy.about} isExpanded={expandedSections.has("g")} isEditing={editingSections.has("g")} isSaving={saveDraftMutation.isPending} onToggle={toggleSection} onEdit={editSection} onSave={saveSectionDraft}>
-      <div className="grid gap-5 md:grid-cols-2">
-        <FormTextArea label="About Me" maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />
-        <FormTextArea label="Teaching Approach" maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />
-        <FormTextArea label="Why Choose Me" maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." hint={`${form.whyChooseMe.length}/2000 characters`} />
-        <FormTextArea label="Additional Notes (Optional)" maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." hint={`${form.additionalNotes.length}/2000 characters`} />
+    return <div className="grid gap-5 md:grid-cols-2">
+      <FormTextArea label="About Me" maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />
+      <FormTextArea label="Teaching Approach" maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />
+      <FormTextArea label="Why Choose Me" maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." hint={`${form.whyChooseMe.length}/2000 characters`} />
+      <FormTextArea label="Additional Notes (Optional)" maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." hint={`${form.additionalNotes.length}/2000 characters`} />
+    </div>;
+  };
+
+  return <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
+    {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
+    {editingSection ? <TutorProfileSectionModal
+      title={sectionTitles[editingSection]}
+      submitting={saveDraftMutation.isPending}
+      notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
+      onClose={closeSectionEditor}
+      onSubmit={() => void submitSectionModal()}
+    >{renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
+    <div className="flex items-start gap-3 rounded-2xl border border-[#bfe4f6] bg-[#f0faff] p-4 text-sm leading-6 text-[#46728e]">
+      <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
+      <p><strong className="text-[#1b4c6d]">Private registration continuity:</strong> {profile ? "Your name, phone, email, gender, and Bangladesh location were loaded from your secure Tutor registration." : "For this historical Tutor account, review the available account details and add any missing required identity or Bangladesh location information."} Phone and email are used for review and are never shown in the public directory.</p>
+    </div>
+
+    <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"} sm:flex sm:items-center sm:justify-between sm:gap-5`}>
+      <div className="min-w-0">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <p className="font-bold text-[#244a6a]">{statusCard.title}</p>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusCard.tone === "success" ? "bg-[#e5f8ed] text-[#16714a]" : statusCard.tone === "review" ? "bg-[#e4f4fd] text-[#1670a8]" : "bg-[#fff0cf] text-[#9b6411]"}`}>{statusCard.tone === "success" ? "Approved" : statusCard.tone === "review" ? "Review" : "Action needed"}</span>
+        </div>
+        <p className="mt-1 text-sm leading-6 text-[#5e7a90]">{statusCard.description}</p>
+        {statusCard.showProgress ? <div className="mt-3">
+          <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#5e7a90]"><span>Profile completion</span><span>{completionPercentage}%</span></div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#e9f1f5]" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercentage}>
+            <div className="h-full rounded-full bg-[#167ddd] transition-[width] duration-200" style={{ width: `${completionPercentage}%` }} />
+          </div>
+        </div> : null}
       </div>
-    </ProfileSection>
+      {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className="mt-4 shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2] sm:mt-0">
+        {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
+      </Button> : null}
+    </section>
 
-    <ProfileSection id="profile-section-review" sectionId="h" eyebrow="Section H" title="Profile review" description="Review the saved sections, then submit the complete profile once for moderation." isExpanded={expandedSections.has("h")} isEditing={false} isSaving={submitProfileMutation.isPending} onToggle={toggleSection} onEdit={() => void submitForReview()} onSave={() => undefined} reviewAction>
-      {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className="rounded-xl bg-[#f6fbfe] p-4 text-sm text-[#5e7a90]">Save your profile sections first. The final review status will appear here.</p>}
-    </ProfileSection>
+    {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-[#f2c3c3] bg-[#fff6f6] text-[#a83b3b]"}`}>{feedback.message}</p> : null}
+
+    {viewMode === "read" ? <TutorProfileReadView
+      sections={readoutSections}
+      photoUrl={form.profilePhotoUrl}
+      onEditSection={openSectionEditor}
+      onEditAll={() => setViewMode("edit")}
+    /> : <TutorProfileTabEditor
+      sections={readoutSections}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onEditSection={openSectionEditor}
+      onBackToOverview={() => setViewMode("read")}
+    />}
+
+    <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#1680c2]">Review</p>
+          <h2 className="mt-2 text-xl font-bold tracking-[-0.025em] text-[#173b60]">Profile review</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#647f93]">Review the saved sections, then submit the complete profile once for moderation.</p>
+        </div>
+        <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className="shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]"><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
+      </div>
+      <div className="mt-6 border-t border-[#e6eff4] pt-5">
+        {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className="rounded-xl bg-[#f6fbfe] p-4 text-sm text-[#5e7a90]">Save your profile sections first. The final review status will appear here.</p>}
+      </div>
+    </section>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
-}
-
-function ProfileSection({ id, sectionId, eyebrow, title, description, children, isExpanded, isEditing, isSaving, onToggle, onEdit, onSave, reviewAction = false }: { id: string; sectionId: TutorProfileSectionId; eyebrow: string; title: string; description: string; children: React.ReactNode; isExpanded: boolean; isEditing: boolean; isSaving: boolean; onToggle: (sectionId: TutorProfileSectionId) => void; onEdit: (sectionId: TutorProfileSectionId) => void; onSave: (sectionId: TutorProfileSectionId) => void; reviewAction?: boolean }) {
-  const actionLabel = reviewAction ? "Submit profile for review" : isEditing ? "Save section" : "Edit Information";
-  const detailsId = `${id}-details`;
-  return <section id={id} className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}><button type="button" aria-expanded={isExpanded} aria-controls={detailsId} aria-label={`${isExpanded ? "Hide" : "Show"} details for ${title}`} onClick={() => onToggle(sectionId)} className="flex w-full items-start justify-between gap-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd] focus-visible:ring-offset-2"><span><span className="block text-xs font-bold uppercase tracking-[0.18em] text-[#1680c2]">{eyebrow}</span><span className="mt-2 block text-xl font-bold tracking-[-0.025em] text-[#173b60]">{title}</span><span className="mt-2 block max-w-3xl text-sm leading-6 text-[#647f93]">{description}</span></span><ChevronDown aria-hidden="true" className={`mt-1 shrink-0 text-[#167ddd] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} size={22} /></button>{isExpanded ? <div id={detailsId} className="mt-6 border-t border-[#e6eff4] pt-5"><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-end"><Button type="button" disabled={isSaving} onClick={() => reviewAction ? onEdit(sectionId) : isEditing ? onSave(sectionId) : onEdit(sectionId)} className="shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]">{reviewAction ? <LockKeyhole size={16} /> : isEditing ? <Save size={16} /> : <PencilLine size={16} />}{isSaving ? reviewAction ? "Submitting…" : "Saving…" : actionLabel}</Button></div><fieldset disabled={!isEditing && !reviewAction} aria-label={`${title} fields`} className={isEditing || reviewAction ? "" : "pointer-events-none opacity-70"}>{children}</fieldset></div> : null}</section>;
 }

@@ -909,6 +909,16 @@ export const appRouter = router({
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(50).default(20),
     })).query(({ input }) => db.listAdminAuditLogPage(input)),
+    getAuthEvents: ownerAdminProcedure.input(z.object({
+      event: z.enum([
+        "all", "login_success", "login_failure", "login_blocked", "login_account_suspended", "login_account_closed",
+        "registration_success", "registration_rejected", "registration_blocked", "phone_intake", "phone_intake_blocked",
+      ]).default("all"),
+      role: z.enum(["all", "tutor", "guardian", "admin"]).default("all"),
+      ip: z.string().trim().max(64).default(""),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(50).default(20),
+    })).query(({ input }) => db.listAuthEventsPage({ ...input, ip: input.ip || undefined })),
     getActivityReport: ownerAdminProcedure
       .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30) }))
       .query(({ input }) => db.getOwnerAdminActivityReport(input)),
