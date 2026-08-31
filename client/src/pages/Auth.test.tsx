@@ -268,6 +268,6 @@ describe("post-login destinations", () => {
 
   it("keeps the unknown-role fallback outside either role-specific dashboard", async () => {
     const { getPostLoginPath } = await import("./Auth");
-    expect(getPostLoginPath("moderator")).toBe("/account");
+    expect(getPostLoginPath("moderator")).toBe("/");
   });
 });

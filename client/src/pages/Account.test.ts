@@ -1,24 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { getAccountPresentation } from "./Account";
+import { getAccountRedirectPath } from "./Account";
 
-describe("account presentation", () => {
-  it("keeps each established role on a factual and role-safe primary path", () => {
-    expect(getAccountPresentation("guardian")).toMatchObject({
-      roleLabel: "Guardian",
-      primaryAction: { href: "/guardian/dashboard", label: "Open Guardian Dashboard" },
-      secondaryAction: { href: "/request-tutor", label: "Create a tutor request" },
-    });
-    expect(getAccountPresentation("tutor")).toMatchObject({
-      roleLabel: "Tutor",
-      primaryAction: { href: "/tutor/dashboard", label: "Open Tutor Dashboard" },
-    });
-    expect(getAccountPresentation("admin")).toMatchObject({
-      roleLabel: "Admin",
-      primaryAction: { href: "/admin/matching", label: "Open Admin Matching" },
-    });
+describe("account redirect", () => {
+  it("sends each established role straight to its own workspace", () => {
+    expect(getAccountRedirectPath("tutor")).toBe("/tutor/dashboard/jobs");
+    expect(getAccountRedirectPath("guardian")).toBe("/guardian/dashboard/posted-jobs");
+    expect(getAccountRedirectPath("user")).toBe("/guardian/dashboard/posted-jobs");
+    expect(getAccountRedirectPath("admin")).toBe("/admin/matching");
   });
 
-  it("does not provide an internal destination for unknown roles", () => {
-    expect(getAccountPresentation("unknown")).toBeNull();
+  it("returns an unknown or missing role to the public site", () => {
+    expect(getAccountRedirectPath("moderator")).toBe("/");
+    expect(getAccountRedirectPath(null)).toBe("/");
+    expect(getAccountRedirectPath(undefined)).toBe("/");
   });
 });

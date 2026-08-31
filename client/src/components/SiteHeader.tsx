@@ -31,8 +31,14 @@ export function getJourneyNavigation(audience: JourneyAudience) {
   ] as const;
 }
 
+// A signed-in visitor goes straight to their own workspace (no `/account` stop);
+// the label stays a neutral "Account" so it never exposes the role in the header.
 export function getPublicAccountNavigation(user: { role?: string } | null | undefined) {
-  return user ? { href: "/account", label: "Account" } : { href: "/login", label: "Sign in" };
+  if (!user) return { href: "/login", label: "Sign in" };
+  if (user.role === "tutor") return { href: "/tutor/dashboard/jobs", label: "Account" };
+  if (user.role === "admin") return { href: "/admin/matching", label: "Account" };
+  if (user.role === "guardian" || user.role === "user") return { href: "/guardian/dashboard/posted-jobs", label: "Account" };
+  return { href: "/account", label: "Account" };
 }
 
 export function BrandLogo({ compact = false }: { compact?: boolean }) {

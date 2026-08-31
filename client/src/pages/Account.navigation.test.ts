@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { getAccountPresentation } from "./Account";
+import { getAccountRedirectPath } from "./Account";
 
 describe("signed-in account navigation", () => {
-  it("makes the Guardian Dashboard the primary Guardian destination", () => {
-    expect(getAccountPresentation("guardian")).toMatchObject({
-      roleLabel: "Guardian",
-      primaryAction: {
-        href: "/guardian/dashboard",
-        label: "Open Guardian Dashboard",
-      },
-    });
+  it("makes the Guardian Posted Jobs tab the Guardian destination", () => {
+    expect(getAccountRedirectPath("guardian")).toBe("/guardian/dashboard/posted-jobs");
   });
 
   it("keeps legacy user-role accounts on the Guardian workspace", () => {
-    expect(getAccountPresentation("user")?.primaryAction.href).toBe("/guardian/dashboard");
+    expect(getAccountRedirectPath("user")).toBe("/guardian/dashboard/posted-jobs");
+  });
+
+  it("sends a Tutor to the Job Board tab", () => {
+    expect(getAccountRedirectPath("tutor")).toBe("/tutor/dashboard/jobs");
   });
 });
