@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, Camera, Eye, GraduationCap, IdCard, PencilLine, SquareLibrary, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Eye, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
@@ -35,6 +35,9 @@ export function TutorProfileIdentityRail({
   onRemovePhoto,
   onPhotoPreviewError,
   completionPercentage,
+  email,
+  phone,
+  address,
   universityName,
   subjectName,
   onReturnToSelectedJob,
@@ -52,6 +55,9 @@ export function TutorProfileIdentityRail({
   onRemovePhoto: () => void;
   onPhotoPreviewError: () => void;
   completionPercentage: number;
+  email: string;
+  phone: string;
+  address: string;
   universityName: string;
   subjectName: string;
   /** Set only when the tutor arrived from a job "Apply Now" and is now approved. */
@@ -123,6 +129,9 @@ export function TutorProfileIdentityRail({
     </Button> : null}
 
     <div className="mt-4 space-y-3 text-left">
+      <MetaRow icon={Mail} label="Email" value={email} />
+      <MetaRow icon={Phone} label="Phone Number" value={phone} />
+      <MetaRow icon={MapPin} label="Address" value={address} />
       <MetaRow icon={GraduationCap} label="Institute" value={universityName} />
       <MetaRow icon={SquareLibrary} label="Department / subject" value={subjectName} />
     </div>

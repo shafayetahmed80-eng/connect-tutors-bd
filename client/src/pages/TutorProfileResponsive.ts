@@ -10,8 +10,11 @@ export const tutorProfileResponsiveClasses = {
   selectorChipText: "min-w-0 break-words",
   /** Two-column profile shell: identity rail beside the workspace from `lg` up. */
   workspaceShell: "grid min-w-0 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]",
-  /** The identity rail pins under the dashboard header on wide screens only. */
-  identityRail: "min-w-0 lg:sticky lg:top-16 lg:self-start",
+  /**
+   * The identity rail: a narrow centred card on phones, pinned under the
+   * dashboard header from `lg` up where it fills the grid's fixed column.
+   */
+  identityRail: "mx-auto w-full min-w-0 max-w-xs lg:mx-0 lg:max-w-none lg:sticky lg:top-16 lg:self-start",
   completionActions: "mt-3 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-2",
   completionActionButton: "min-h-11 w-full whitespace-normal text-center leading-5",
   photoPreview: "mx-auto flex aspect-square w-28 max-w-full items-center justify-center overflow-hidden rounded-full bg-[#dcefff] text-[#167ddd] ring-4 ring-white shadow-sm sm:w-32",

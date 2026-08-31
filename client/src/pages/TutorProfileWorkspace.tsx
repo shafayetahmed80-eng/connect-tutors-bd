@@ -836,6 +836,9 @@ export function TutorProfileWorkspace({
         onRemovePhoto={() => void removePhoto()}
         onPhotoPreviewError={() => setPhotoPreviewFailed(true)}
         completionPercentage={completionPercentage}
+        email={form.contactEmail}
+        phone={form.phone}
+        address={form.privateDetails.presentAddress ?? ""}
         universityName={form.universityId ? readoutResolvers.university(form.universityId) : ""}
         subjectName={form.facultyDepartmentId ? readoutResolvers.department(form.facultyDepartmentId) : ""}
         onReturnToSelectedJob={statusCard.action === "return" ? onReturnToSelectedJob : undefined}

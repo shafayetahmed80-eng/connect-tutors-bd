@@ -20,6 +20,9 @@ function renderRail(overrides: Partial<React.ComponentProps<typeof TutorProfileI
     onRemovePhoto: vi.fn(),
     onPhotoPreviewError: vi.fn(),
     completionPercentage: 48,
+    email: "tania@example.test",
+    phone: "+8801700000000",
+    address: "House 4, Dhanmondi, Dhaka",
     universityName: "Dhaka University",
     subjectName: "Physics",
     previewMode: false,
@@ -30,15 +33,24 @@ function renderRail(overrides: Partial<React.ComponentProps<typeof TutorProfileI
 }
 
 describe("TutorProfileIdentityRail", () => {
-  it("shows identity, Tutor ID, completion and the latest institute", () => {
+  it("shows identity, Tutor ID, completion, contact details and the latest institute", () => {
     renderRail();
     const rail = screen.getByRole("region", { name: "Profile summary" });
 
     expect(within(rail).getByRole("heading", { name: "Tania Sultana" })).toBeTruthy();
     expect(within(rail).getByText("Tutor ID: 565462")).toBeTruthy();
     expect(within(rail).getByText("Profile completed: 48%")).toBeTruthy();
-    expect(within(rail).getByText("Dhaka University")).toBeTruthy();
-    expect(within(rail).getByText("Physics")).toBeTruthy();
+
+    for (const [label, value] of [
+      ["Email", "tania@example.test"],
+      ["Phone Number", "+8801700000000"],
+      ["Address", "House 4, Dhanmondi, Dhaka"],
+      ["Institute", "Dhaka University"],
+      ["Department / subject", "Physics"],
+    ] as const) {
+      expect(within(rail).getByText(label)).toBeTruthy();
+      expect(within(rail).getByText(value)).toBeTruthy();
+    }
   });
 
   it("carries no completion action button — the rail is identity only", () => {
@@ -47,9 +59,9 @@ describe("TutorProfileIdentityRail", () => {
     expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
-  it("marks an unset institute and subject as missing", () => {
-    renderRail({ universityName: "", subjectName: "" });
-    expect(screen.getAllByText("Not given")).toHaveLength(2);
+  it("marks unset contact and education details as missing", () => {
+    renderRail({ email: "", phone: "", address: "", universityName: "", subjectName: "" });
+    expect(screen.getAllByText("Not given")).toHaveLength(5);
   });
 
   it("asks for a photo when none is set and offers replace or remove once it is", () => {
