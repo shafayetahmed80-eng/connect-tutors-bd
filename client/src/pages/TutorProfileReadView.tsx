@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, ChevronDown, GraduationCap, MapPinned, MessageSquareText, PencilLine, User, Users } from "lucide-react";
+import { Check, ChevronDown, GraduationCap, MapPinned, MessageSquareText, PencilLine, User } from "lucide-react";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
 import { getTutorProfileSectionGroups, type TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
@@ -13,7 +13,6 @@ type TutorProfileReadViewProps = {
 
 const SECTION_ICON: Record<TutorProfileSectionId, typeof User> = {
   a: User,
-  b: Users,
   c: GraduationCap,
   d: MapPinned,
   e: MessageSquareText,

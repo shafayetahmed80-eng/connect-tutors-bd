@@ -80,9 +80,10 @@ export function getTutorProfileReadoutSections(
   return [
     {
       id: "a",
-      title: "Identity and contact",
+      title: "Personal Information",
       groups: [
         {
+          heading: "Identity and contact",
           rows: [
             row("Full name", text(form.name)),
             row("Gender", fromMap(staticLabels.gender, form.gender)),
@@ -98,13 +99,8 @@ export function getTutorProfileReadoutSections(
             row("Social profile links", text(pd.socialProfileLinks), true),
           ],
         },
-      ],
-    },
-    {
-      id: "b",
-      title: "Family and emergency contact",
-      groups: [
         {
+          heading: "Family and emergency contact",
           rows: [
             row("Father's name", text(pd.fatherName)),
             row("Father's phone number", text(pd.fatherPhone)),

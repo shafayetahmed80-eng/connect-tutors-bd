@@ -26,14 +26,15 @@ import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 const fieldClassName = "mt-2 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 py-2.5 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
-  a: "Identity and contact",
-  b: "Family and emergency contact",
+  a: "Personal Information",
   c: "Education and teaching expertise",
   d: "Tuition, location and communication",
   e: "Introduction and review",
 };
 
 const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
+  "a-identity": "Identity and contact",
+  "a-family": "Family and emergency contact",
   "c-education": "Education",
   "c-teaching": "Teaching expertise",
 };
@@ -721,8 +722,52 @@ export function TutorProfileWorkspace({
     }
   };
 
-  // Section C ("Education and teaching expertise") is split into two sub-groups
-  // so its popup can be opened one half at a time — see getTutorProfileSectionGroups.
+  // Sections "Personal Information" (a) and "Education and teaching expertise" (c)
+  // are split into sub-groups so their popups open one part at a time — see
+  // getTutorProfileSectionGroups.
+  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
+    <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
+      <div className={tutorProfileResponsiveClasses.photoPreview}>
+        {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
+      </div>
+      <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
+      <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
+      <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
+      <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
+      {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
+      <InlineError message={fieldErrors.profilePhotoUrl} />
+    </div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
+      <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
+      <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
+      <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
+      <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
+      <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} hint="Private — never public." error={fieldErrors.contactEmail} />
+      <FormTextArea label="Present Address" required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} hint="Private — visible only to you and authorized review staff." />
+      <FormTextArea label="Permanent Address" required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} hint="Private — never shown to Guardians." />
+      <FormInput label="Nationality" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
+      <FormInput label="Religion" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
+      <div className="rounded-2xl border border-[#f0d594] bg-[#fffaf0] p-4 text-sm text-[#765417] md:col-span-2">
+        <p className="font-bold text-[#614711]">National ID (NID) <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
+        <p className="mt-1 leading-5">Secure collection is pending activation. Do not enter or upload NID information yet; this field will open only after encrypted storage and access controls are activated.</p>
+      </div>
+      <FormInput label="Additional Phone (Optional)" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
+      <FormInput label="Social Profile Links (Optional)" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
+    </div>
+  </div>;
+
+  const renderFamilyContactFields = (): React.ReactNode => <div className="grid gap-5 md:grid-cols-2">
+    <FormInput label="Father’s Name" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
+    <FormInput label="Father’s Phone Number" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} hint="Private — used only for profile verification." />
+    <FormInput label="Mother’s Name (Optional)" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
+    <FormInput label="Mother’s Phone Number (Optional)" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
+    <FormInput label="Emergency Contact Name (Optional)" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
+    <FormInput label="Emergency Contact Relation (Optional)" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
+    <FormInput label="Emergency Contact Phone (Optional)" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
+    <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
+  </div>;
+
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
@@ -776,50 +821,17 @@ export function TutorProfileWorkspace({
     <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
   </div>;
 
-  // The editable fields for one section, rendered inside the per-section popup card.
-  const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
-    if (sectionId === "a") return <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
-      <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
-        <div className={tutorProfileResponsiveClasses.photoPreview}>
-          {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
-        </div>
-        <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
-        <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
-        <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
-        <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
-        {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
-        <InlineError message={fieldErrors.profilePhotoUrl} />
-      </div>
-      <div className="grid gap-5 md:grid-cols-2">
-        <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
-        <label className="block text-sm font-semibold text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
-        <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
-        <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
-        <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
-        <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} hint="Private — never public." error={fieldErrors.contactEmail} />
-        <FormTextArea label="Present Address" required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} hint="Private — visible only to you and authorized review staff." />
-        <FormTextArea label="Permanent Address" required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} hint="Private — never shown to Guardians." />
-        <FormInput label="Nationality" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
-        <FormInput label="Religion" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
-        <div className="rounded-2xl border border-[#f0d594] bg-[#fffaf0] p-4 text-sm text-[#765417] md:col-span-2">
-          <p className="font-bold text-[#614711]">National ID (NID) <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
-          <p className="mt-1 leading-5">Secure collection is pending activation. Do not enter or upload NID information yet; this field will open only after encrypted storage and access controls are activated.</p>
-        </div>
-        <FormInput label="Additional Phone (Optional)" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
-        <FormInput label="Social Profile Links (Optional)" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
-      </div>
-    </div>;
+  const renderGroupFields = (groupId: TutorProfileSectionGroupId): React.ReactNode => {
+    if (groupId === "a-identity") return renderIdentityFields();
+    if (groupId === "a-family") return renderFamilyContactFields();
+    if (groupId === "c-education") return renderEducationFields();
+    return renderTeachingExpertiseFields();
+  };
 
-    if (sectionId === "b") return <div className="grid gap-5 md:grid-cols-2">
-      <FormInput label="Father’s Name" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
-      <FormInput label="Father’s Phone Number" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} hint="Private — used only for profile verification." />
-      <FormInput label="Mother’s Name (Optional)" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
-      <FormInput label="Mother’s Phone Number (Optional)" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
-      <FormInput label="Emergency Contact Name (Optional)" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
-      <FormInput label="Emergency Contact Relation (Optional)" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
-      <FormInput label="Emergency Contact Phone (Optional)" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
-      <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
-    </div>;
+  // The editable fields for a whole section, used only when the submit-for-review
+  // error path opens a section that is otherwise edited one sub-group at a time.
+  const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
+    if (sectionId === "a") return <div className="space-y-5">{renderIdentityFields()}{renderFamilyContactFields()}</div>;
 
     if (sectionId === "c") return <div className="space-y-5">{renderEducationFields()}{renderTeachingExpertiseFields()}</div>;
 
@@ -882,7 +894,7 @@ export function TutorProfileWorkspace({
       notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
-    >{editingGroupId === "c-education" ? renderEducationFields() : editingGroupId === "c-teaching" ? renderTeachingExpertiseFields() : renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
+    >{editingGroupId ? renderGroupFields(editingGroupId) : renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
     <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
         <div className="flex min-w-0 items-start gap-3">

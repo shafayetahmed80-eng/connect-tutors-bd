@@ -1,7 +1,7 @@
 import type { TutorProfileSubmissionErrorKey, TutorProfileSubmissionErrors } from "./TutorProfileUx";
 
 export type TutorProfileWizardStep = {
-  id: "identity" | "family" | "education" | "teaching" | "introduction";
+  id: "personal" | "education" | "teaching" | "introduction";
   title: string;
   shortTitle: string;
   sectionIds: string[];
@@ -9,16 +9,10 @@ export type TutorProfileWizardStep = {
 
 export const tutorProfileWizardSteps: TutorProfileWizardStep[] = [
   {
-    id: "identity",
-    title: "Identity and contact",
-    shortTitle: "Identity",
+    id: "personal",
+    title: "Personal Information",
+    shortTitle: "Personal",
     sectionIds: ["profile-section-a"],
-  },
-  {
-    id: "family",
-    title: "Family and emergency contact",
-    shortTitle: "Family",
-    sectionIds: ["profile-section-b"],
   },
   {
     id: "education",
@@ -48,28 +42,28 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   headline: 0,
   phone: 0,
   contactEmail: 0,
-  universityId: 2,
-  facultyId: 2,
-  facultyDepartmentId: 2,
-  studyStatus: 2,
-  primarySubjectIds: 2,
-  additionalSubjectIds: 2,
-  classLevelIds: 2,
-  curriculumIds: 2,
-  teachingExperienceYears: 2,
-  studentTypeIds: 2,
-  currentLocationId: 3,
-  teachingAreaIds: 3,
-  availableNationwide: 3,
-  tuitionType: 3,
-  preferredStudentGender: 3,
-  preferredClassSizes: 3,
-  preferredTeachingDays: 3,
-  preferredTimeSlots: 3,
-  feeMin: 3,
-  feeMax: 3,
-  teachingLanguageIds: 3,
-  communicationPreferences: 3,
+  universityId: 1,
+  facultyId: 1,
+  facultyDepartmentId: 1,
+  studyStatus: 1,
+  primarySubjectIds: 1,
+  additionalSubjectIds: 1,
+  classLevelIds: 1,
+  curriculumIds: 1,
+  teachingExperienceYears: 1,
+  studentTypeIds: 1,
+  currentLocationId: 2,
+  teachingAreaIds: 2,
+  availableNationwide: 2,
+  tuitionType: 2,
+  preferredStudentGender: 2,
+  preferredClassSizes: 2,
+  preferredTeachingDays: 2,
+  preferredTimeSlots: 2,
+  feeMin: 2,
+  feeMax: 2,
+  teachingLanguageIds: 2,
+  communicationPreferences: 2,
 };
 
 /** Returns the earliest wizard step containing an inline submission error. */
