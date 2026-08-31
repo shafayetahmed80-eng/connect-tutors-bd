@@ -118,7 +118,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    expect(screen.getByRole("tab", { name: /Personal Information/ })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Personal/ })).toBeTruthy();
     expect(screen.getByText("Identity and contact")).toBeTruthy();
     expect(screen.getByText("Family and emergency contact")).toBeTruthy();
     expect(screen.getByText(/Test Tutor/)).toBeTruthy();
@@ -143,7 +143,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.getByRole("tabpanel").getAttribute("aria-label")).toBe("Personal Information");
     expect(screen.queryByText("Highest education")).toBeNull();
 
-    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
 
     expect(screen.getByText("Highest education")).toBeTruthy();
     expect(screen.queryByText("Present address")).toBeNull();
@@ -195,7 +195,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
       onboardingFallback={null}
     />);
 
-    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
 
@@ -214,7 +214,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");
@@ -262,7 +262,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(phoneField.getAttribute("aria-required")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     dialog = screen.getByRole("dialog");
     const teachingAreas = within(dialog).getByRole("button", { name: /Teaching Areas/ });
@@ -279,7 +279,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(within(identityDialog).getByRole("button", { name: "Cancel" }));
 
     // The remaining incomplete section surfaces its errors when opened from its tab.
-    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const teachingDialog = screen.getByRole("dialog");
     expect(within(teachingDialog).getByText("Select your current location.")).toBeTruthy();
@@ -411,7 +411,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
     const currentLocationSearch = within(dialog).getAllByRole("combobox")[0];
@@ -450,7 +450,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       ids: ["dhaka-uttara-sector-1"],
     })));
 
-    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
