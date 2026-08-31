@@ -474,31 +474,6 @@ export function TutorProfileWorkspace({
     return true;
   };
 
-  const saveProfileDraft = async () => {
-    const feedback = getProfileDraftFeedback(form);
-    if (feedback) {
-      setFeedback({ type: "error", message: feedback });
-      return;
-    }
-
-    setFeedback(null);
-    try {
-      await saveDraftMutation.mutateAsync(buildDraftInput());
-      clearTutorOnboardingDraft();
-      setSavedDraftFingerprint(getProfileDraftFingerprint(form));
-      await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: "Your private Tutor Profile draft has been saved." });
-    } catch (error) {
-      if (recoverServerValidationErrors(error)) {
-        formBeforeSectionEditRef.current = null;
-        setEditingSection(null);
-        setEditingGroupId(null);
-      } else {
-        setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
-      }
-    }
-  };
-
   const saveSectionDraft = async (target: TutorProfileEditTarget): Promise<boolean> => {
     setFeedback(null);
     try {
@@ -597,38 +572,6 @@ export function TutorProfileWorkspace({
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
     }
-  };
-
-  const completeProfile = () => {
-    const submissionErrors = getTutorProfileSubmissionErrors(form);
-    setFieldErrors(submissionErrors);
-    const target = firstErroredSection(submissionErrors);
-    if (target) {
-      setActiveTab(target);
-      openSectionEditor(target);
-    }
-    setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
-    window.requestAnimationFrame(() => {
-      const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
-      firstInvalidField?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-      firstInvalidField?.focus({ preventScroll: true });
-    });
-  };
-
-  const runStatusCardAction = () => {
-    if (statusCard.action === "complete") {
-      completeProfile();
-      return;
-    }
-    if (statusCard.action === "save") {
-      void saveProfileDraft();
-      return;
-    }
-    if (statusCard.action === "return") {
-      onReturnToSelectedJob?.();
-      return;
-    }
-    if (statusCard.action === "submit") void submitForReview();
   };
 
   const closePhotoEditor = () => {
@@ -884,8 +827,6 @@ export function TutorProfileWorkspace({
       <TutorProfileIdentityRail
         name={form.name}
         tutorNumber={profile?.tutorNumber}
-        profileStatus={profile?.profileStatus}
-        lastUpdatedAt={profile?.lastUpdatedAt}
         photoUrl={form.profilePhotoUrl}
         photoPreviewFailed={photoPreviewFailed}
         photoError={fieldErrors.profilePhotoUrl}
@@ -895,12 +836,9 @@ export function TutorProfileWorkspace({
         onRemovePhoto={() => void removePhoto()}
         onPhotoPreviewError={() => setPhotoPreviewFailed(true)}
         completionPercentage={completionPercentage}
-        statusCard={statusCard}
-        actionPending={saveDraftMutation.isPending || submitProfileMutation.isPending}
-        submitting={isSavingProfile}
-        onAction={runStatusCardAction}
         universityName={form.universityId ? readoutResolvers.university(form.universityId) : ""}
         subjectName={form.facultyDepartmentId ? readoutResolvers.department(form.facultyDepartmentId) : ""}
+        onReturnToSelectedJob={statusCard.action === "return" ? onReturnToSelectedJob : undefined}
         previewMode={previewMode}
         onTogglePreview={() => setPreviewMode(current => !current)}
       />
@@ -920,7 +858,7 @@ export function TutorProfileWorkspace({
           onEditSection={openSectionEditor}
         />}
 
-        {statusCard.action === "submit" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
+        {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
           <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton} sm:w-auto`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
         </div> : null}
       </div>

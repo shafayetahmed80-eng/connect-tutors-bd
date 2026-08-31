@@ -1,31 +1,8 @@
 import React from "react";
-import { ArrowRight, Camera, Eye, GraduationCap, LockKeyhole, PencilLine, SquareLibrary, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Eye, GraduationCap, IdCard, PencilLine, SquareLibrary, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
-import type { TutorProfileStatusCard } from "./TutorProfileStatusCard";
-
-const PROFILE_STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
-  pending: "Pending review",
-  changes_requested: "Changes requested",
-  approved: "Approved",
-  suspended: "Suspended",
-};
-
-/** Completion band + bar tint, keyed off the status card's tone. */
-const TONE: Record<TutorProfileStatusCard["tone"], { band: string; bar: string }> = {
-  attention: { band: "border-[#f1dbaa] bg-[#fff9ed] text-[#9b6411]", bar: "bg-[#e6a23c]" },
-  review: { band: "border-[#bfe4f6] bg-[#f0faff] text-j-accent", bar: "bg-j-accent" },
-  success: { band: "border-[#c7e7d7] bg-[#f3fbf6] text-[#16714a]", bar: "bg-[#22a06b]" },
-};
-
-/** Local, human-readable "last saved" string — no timezone surprises in tests. */
-export function formatTutorProfileLastUpdated(value: Date | string | null | undefined) {
-  if (!value) return "not saved yet";
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? "not saved yet" : date.toLocaleString();
-}
 
 function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; label: string; value: string }) {
   return <div className="flex items-start gap-2.5">
@@ -39,8 +16,8 @@ function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; lab
 
 /**
  * The identity rail beside the profile workspace: photo, name, Tutor ID,
- * completion, the one state-aware action, the latest institute, and the toggle
- * between the editable tab panel and the read-only profile summary.
+ * completion, the latest institute, and the toggle between the editable tab
+ * panel and the read-only profile summary.
  *
  * The photo is managed here rather than inside a section popup. It is never
  * part of a draft payload (`profilePhotoUrl` is in no section's `fieldKeys`) —
@@ -49,8 +26,6 @@ function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; lab
 export function TutorProfileIdentityRail({
   name,
   tutorNumber,
-  profileStatus,
-  lastUpdatedAt,
   photoUrl,
   photoPreviewFailed,
   photoError,
@@ -60,19 +35,14 @@ export function TutorProfileIdentityRail({
   onRemovePhoto,
   onPhotoPreviewError,
   completionPercentage,
-  statusCard,
-  actionPending,
-  submitting,
-  onAction,
   universityName,
   subjectName,
+  onReturnToSelectedJob,
   previewMode,
   onTogglePreview,
 }: {
   name: string;
   tutorNumber: number | null | undefined;
-  profileStatus: string | null | undefined;
-  lastUpdatedAt: Date | string | null | undefined;
   photoUrl: string | null;
   photoPreviewFailed: boolean;
   photoError?: string;
@@ -82,17 +52,13 @@ export function TutorProfileIdentityRail({
   onRemovePhoto: () => void;
   onPhotoPreviewError: () => void;
   completionPercentage: number;
-  statusCard: TutorProfileStatusCard;
-  actionPending: boolean;
-  submitting: boolean;
-  onAction: () => void;
   universityName: string;
   subjectName: string;
+  /** Set only when the tutor arrived from a job "Apply Now" and is now approved. */
+  onReturnToSelectedJob?: () => void;
   previewMode: boolean;
   onTogglePreview: () => void;
 }) {
-  const tone = TONE[statusCard.tone];
-  const statusLabel = profileStatus ? PROFILE_STATUS_LABEL[profileStatus] ?? profileStatus : null;
   const hasPhoto = Boolean(photoUrl) && !photoPreviewFailed;
 
   return <section
@@ -121,7 +87,6 @@ export function TutorProfileIdentityRail({
       type="file"
       className="sr-only"
       aria-label="Upload Tutor profile photo"
-      aria-describedby="tutor-profile-photo-help"
       aria-invalid={Boolean(photoError)}
       aria-required="true"
       accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp"
@@ -139,39 +104,25 @@ export function TutorProfileIdentityRail({
     </p> : <p className="mt-2.5 text-[12px] font-semibold text-j-err">
       {uploadingPhoto ? "Uploading…" : "Add photo · required"}
     </p>}
-    <p id="tutor-profile-photo-help" className="mt-1 text-[11px] leading-4 text-[#8496a6]">Recent clear face photo · JPEG, PNG, or WebP.</p>
     {photoError ? <p role="alert" className="mt-1 text-[11px] font-medium leading-4 text-j-err">{photoError}</p> : null}
 
     <h2 className={`mt-3 break-words text-base ${tp.heading}`}>{name || "Your Tutor profile"}</h2>
-    <p className="mt-0.5 text-[11px] text-[#8496a6]">Tutor ID: {tutorNumber ?? "Preparing"}</p>
-    {statusLabel ? <p className="mt-0.5 text-[11px] text-[#8496a6]">{statusLabel} · saved {formatTutorProfileLastUpdated(lastUpdatedAt)}</p> : null}
+    <p className="mt-1 flex items-center justify-center gap-1.5 text-[12px] font-bold text-j-ink">
+      <IdCard size={15} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
+      Tutor ID: {tutorNumber ?? "Preparing"}
+    </p>
 
-    <div className={`mt-4 rounded-xl border px-3 py-2.5 ${tone.band}`}>
-      <p className="text-[12px] font-bold">Profile completed: {completionPercentage}%</p>
-      <span
-        className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-white/80"
-        role="progressbar"
-        aria-label="Profile completion"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={completionPercentage}
-      >
-        <span className={`block h-full rounded-full ${tone.bar} transition-[width] duration-200`} style={{ width: `${completionPercentage}%` }} />
-      </span>
-    </div>
+    <p className="mt-3 border-b border-j-border pb-3 text-[12px] font-bold text-j-ink">Profile completed: {completionPercentage}%</p>
 
-    {statusCard.action !== "none" ? <Button
+    {onReturnToSelectedJob ? <Button
       type="button"
-      disabled={submitting}
-      onClick={onAction}
+      onClick={onReturnToSelectedJob}
       className={`mt-3 ${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton}`}
     >
-      {statusCard.action === "submit" ? <LockKeyhole size={15} /> : null}
-      {actionPending ? (statusCard.action === "save" ? "Saving…" : "Submitting…") : statusCard.actionLabel}
-      {statusCard.action === "complete" ? <ArrowRight size={15} /> : null}
+      Return to selected tuition <ArrowRight size={15} />
     </Button> : null}
 
-    <div className="mt-4 space-y-3 border-t border-j-border pt-4 text-left">
+    <div className="mt-4 space-y-3 text-left">
       <MetaRow icon={GraduationCap} label="Institute" value={universityName} />
       <MetaRow icon={SquareLibrary} label="Department / subject" value={subjectName} />
     </div>

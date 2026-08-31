@@ -227,15 +227,16 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(await within(dialog).findByText("Uploaded for private review")).toBeTruthy();
   });
 
-  it("shows identity and one state-aware action in the profile rail", () => {
+  it("shows identity in the rail and keeps the submit action at the page end", () => {
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
     const rail = screen.getByRole("region", { name: "Profile summary" });
 
     expect(within(rail).getByRole("heading", { name: "Test Tutor" })).toBeTruthy();
     expect(within(rail).getByText("Tutor ID: 1504")).toBeTruthy();
     expect(within(rail).getByText("Profile completed: 100%")).toBeTruthy();
-    expect(within(rail).getByRole("button", { name: "Submit for review" })).toBeTruthy();
-    expect(within(rail).queryByRole("button", { name: /save draft/i })).toBeNull();
+    // The rail carries no completion CTA; the sole submit lives at the page end.
+    expect(within(rail).queryByRole("button", { name: /submit|complete profile|save/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Submit profile for review" })).toBeTruthy();
   });
 
   it("uses required markers and inline recovery instead of persistent generic field helper copy", async () => {
@@ -270,7 +271,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(teachingAreas.getAttribute("aria-required")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    await user.click(screen.getByRole("button", { name: "Complete profile" }));
+    await user.click(screen.getByRole("button", { name: "Submit profile for review" }));
 
     // The first incomplete section opens in its popup card with the inline error.
     const identityDialog = await screen.findByRole("dialog");
@@ -322,9 +323,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     const pendingWorkspace = render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "pending" }} onboardingFallback={null} tutorApplyReturnTo="/job-board?job=CT-JOB-000042" onReturnToSelectedJob={returnToSelectedJob} />);
 
-    // Under review the rail carries no action at all — no shortcut back to the job.
-    const pendingRail = screen.getByRole("region", { name: "Profile summary" });
-    expect(within(pendingRail).getByText("Pending review · saved 8/19/2026, 6:00:00 AM")).toBeTruthy();
+    // Under review there is no shortcut back to the job anywhere on the page.
+    expect(screen.getByRole("region", { name: "Profile summary" })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Selected tuition application" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Return to selected tuition" })).toBeNull();
     expect(returnToSelectedJob).not.toHaveBeenCalled();
