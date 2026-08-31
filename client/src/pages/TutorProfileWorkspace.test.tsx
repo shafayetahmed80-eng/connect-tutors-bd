@@ -114,42 +114,56 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(container.querySelector("form")?.textContent).not.toMatch(/[\u0980-\u09FF]/);
   });
 
-  it("starts all Tutor Profile sections collapsed and reveals one section with an accessible click or keyboard action", async () => {
+  it("shows a read-only overview and opens one section's editor in a popup card", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    const toggle = within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" });
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(within(identitySection!).queryByRole("button", { name: "Edit Information" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Identity and contact" })).toBeTruthy();
+    expect(screen.getByText(/Test Tutor/)).toBeTruthy();
     expect(screen.queryByDisplayValue("Test Tutor")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
 
-    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
 
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(within(identitySection!).getByRole("button", { name: "Edit Information" })).toBeTruthy();
-    expect(screen.getByDisplayValue("Test Tutor")).toBeTruthy();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Edit Identity and contact" })).toBeTruthy();
+    expect(within(dialog).getByDisplayValue("Test Tutor")).toBeTruthy();
 
-    toggle.focus();
-    await user.keyboard("{Enter}");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByDisplayValue("Test Tutor")).toBeNull();
+  it("discards unsaved popup edits when the section editor is closed without saving", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    expect(screen.getByText(/Experienced Mathematics Tutor/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    let dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Discarded headline" } });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    // The typed value must not survive Cancel into the shared form / read view.
+    expect(screen.queryByText(/Discarded headline/)).toBeNull();
+    expect(screen.getByText(/Experienced Mathematics Tutor/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByDisplayValue("Experienced Mathematics Tutor")).toBeTruthy();
+    expect(within(dialog).queryByDisplayValue("Discarded headline")).toBeNull();
   });
 
   it("shows National ID as a security-gated mandatory field without rendering an editable NID value", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    await user.click(within(identitySection!).getByRole("button", { name: "Edit Information" }));
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
 
-    expect(within(identitySection!).getByText(/^National ID \(NID\)/)).toBeTruthy();
-    expect(within(identitySection!).getByText(/Secure collection is pending activation/i)).toBeTruthy();
-    expect(within(identitySection!).queryByLabelText(/^National ID \(NID\)/i)).toBeNull();
+    expect(within(dialog).getByText(/^National ID \(NID\)/)).toBeTruthy();
+    expect(within(dialog).getByText(/Secure collection is pending activation/i)).toBeTruthy();
+    expect(within(dialog).queryByLabelText(/^National ID \(NID\)/i)).toBeNull();
   });
 
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {
@@ -157,12 +171,10 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const educationSection = screen.getByText("Section C", { exact: true }).closest("section");
-    expect(educationSection).toBeTruthy();
-    await user.click(within(educationSection!).getByRole("button", { name: "Show details for Education and teaching expertise" }));
-    await user.click(within(educationSection!).getByRole("button", { name: "Edit Information" }));
-    const input = screen.getByLabelText("Upload University ID card");
-    expect(screen.getByText(/Private verification only/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Edit Education and teaching expertise" }));
+    const dialog = screen.getByRole("dialog");
+    const input = within(dialog).getByLabelText("Upload University ID card");
+    expect(within(dialog).getByText(/Private verification only/)).toBeTruthy();
     expect(screen.queryByText(/Guardian.*University ID/i)).toBeNull();
 
     fireEvent.change(input, { target: { files: [new File(["id"], "university-id.png", { type: "image/png" })] } });
@@ -198,42 +210,51 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.queryByText("Search by the institute's official name.")).toBeNull();
     expect(screen.queryByText("Enter 0 if you have no minimum fee.")).toBeNull();
     expect(screen.queryByText("Select every format you can teach comfortably.")).toBeNull();
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    expect(locationSection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
-    const phoneField = screen.getByRole("textbox", { name: /Mobile Number/ });
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    let dialog = screen.getByRole("dialog");
+    const phoneField = within(dialog).getByRole("textbox", { name: /Mobile Number/ });
     expect(phoneField.closest("label")?.textContent).toContain("Mobile Number *");
     expect(phoneField.getAttribute("aria-required")).toBe("true");
-    const teachingAreas = screen.getByRole("button", { name: /Teaching Areas/ });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    dialog = screen.getByRole("dialog");
+    const teachingAreas = within(dialog).getByRole("button", { name: /Teaching Areas/ });
     expect(teachingAreas.parentElement?.textContent).toContain("Teaching Areas *");
     expect(teachingAreas.getAttribute("aria-required")).toBe("true");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     await user.click(screen.getByRole("button", { name: "Complete profile" }));
 
-    expect(await screen.findByText("Enter a valid Bangladesh mobile number.")).toBeTruthy();
-    expect(screen.getByText("Select your current location.")).toBeTruthy();
-    expect(screen.getByText("Select at least one teaching area.")).toBeTruthy();
+    // The first incomplete section opens in its popup card with the inline error.
+    const identityDialog = await screen.findByRole("dialog");
+    expect(within(identityDialog).getByRole("heading", { name: "Edit Identity and contact" })).toBeTruthy();
+    expect(within(identityDialog).getByText("Enter a valid Bangladesh mobile number.")).toBeTruthy();
+    await user.click(within(identityDialog).getByRole("button", { name: "Cancel" }));
+
+    // The remaining incomplete section surfaces its errors when opened from its tab.
+    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    const teachingDialog = screen.getByRole("dialog");
+    expect(within(teachingDialog).getByText("Select your current location.")).toBeTruthy();
+    expect(within(teachingDialog).getByText("Select at least one teaching area.")).toBeTruthy();
   });
 
-  it("keeps the draft form usable and shows a safe temporary-failure message without raw server text", async () => {
+  it("keeps the popup card open and shows a safe temporary-failure message without raw server text", async () => {
     trpcMocks.saveDraft.mockRejectedValue({ data: { code: "INTERNAL_SERVER_ERROR" }, message: "SQL duplicate key tutor_profile" });
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    fireEvent.change(screen.getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
-    const saveButton = screen.getByRole("button", { name: "Save changes" });
-    await user.click(saveButton);
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
+    await user.click(within(dialog).getByRole("button", { name: "Submit" }));
 
     expect(await screen.findByText("We could not save your profile right now. Check your connection and try again.")).toBeTruthy();
     expect(screen.queryByText(/SQL duplicate key/i)).toBeNull();
-    expect(screen.getByDisplayValue("Test Tutor")).toBeTruthy();
-    await waitFor(() => expect((saveButton as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByDisplayValue("Updated Mathematics Tutor")).toBeTruthy();
   });
 
   it("keeps the profile values and shows the pending-review conflict message after review submission fails", async () => {
@@ -242,15 +263,12 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    const submitButton = screen.getAllByRole("button", { name: /submit for review/i })[0];
+    const submitButton = screen.getByRole("button", { name: "Submit profile for review" });
     await user.click(submitButton);
 
     expect(await screen.findByText("Your profile is already under review. Wait for change instructions before editing it again.")).toBeTruthy();
     expect(screen.queryByText(/pending_review internal state/i)).toBeNull();
-    expect(screen.getByDisplayValue("Test Tutor")).toBeTruthy();
+    expect(screen.getByText(/Test Tutor/)).toBeTruthy();
     await waitFor(() => expect((submitButton as HTMLButtonElement).disabled).toBe(false));
   });
 
@@ -298,11 +316,9 @@ describe("TutorProfileWorkspace photo flow", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    await user.click(within(identitySection!).getByRole("button", { name: "Edit Information" }));
-    fireEvent.change(screen.getByLabelText("Upload Tutor profile photo"), {
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Upload Tutor profile photo"), {
       target: { files: [new File(["source"], "replacement.png", { type: "image/png" })] },
     });
     await user.click(screen.getByRole("button", { name: "Confirm cropped photo" }));
@@ -310,7 +326,7 @@ describe("TutorProfileWorkspace photo flow", () => {
     expect(await screen.findByText("Photo uploaded.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/tutor/profile-photo", expect.objectContaining({ method: "POST", credentials: "same-origin" }));
     expect(screen.getByAltText("Current Tutor profile photo").getAttribute("src")).toBe("https://example.test/private-replacement.jpg");
-    expect(screen.getByRole("button", { name: /replace photo/i })).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /replace photo/i })).toBeTruthy();
     expect(trpcMocks.invalidate).toHaveBeenCalled();
   });
 
@@ -324,17 +340,15 @@ describe("TutorProfileWorkspace photo flow", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    await user.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    await user.click(within(identitySection!).getByRole("button", { name: "Edit Information" }));
-    await user.click(screen.getByRole("button", { name: /^remove photo/i }));
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^remove photo/i }));
 
     expect(await screen.findByText("Photo removed.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/tutor/profile-photo", expect.objectContaining({ method: "DELETE", credentials: "same-origin" }));
     expect(screen.queryByAltText("Current Tutor profile photo")).toBeNull();
     expect(screen.getByText("Photo removed. Add a new profile photo before submitting for review.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /upload photo/i })).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /upload photo/i })).toBeTruthy();
   });
 });
 
@@ -352,16 +366,14 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
-    expect(locationSection).toBeTruthy();
-    await user.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
-    await user.click(within(locationSection!).getByRole("button", { name: "Edit Information" }));
-    const currentLocationSearch = within(locationSection!).getByRole("combobox", { hidden: true });
+    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    const dialog = screen.getByRole("dialog");
+    const currentLocationSearch = within(dialog).getAllByRole("combobox")[0];
     await user.type(currentLocationSearch, "Uttara");
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Uttara" })));
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Teaching Areas/, hidden: true })[0]);
-    fireEvent.change(screen.getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}`, hidden: true }), { target: { value: "Uttara" } });
+    fireEvent.click(within(dialog).getAllByRole("button", { name: /Teaching Areas/ })[0]);
+    fireEvent.change(within(dialog).getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}` }), { target: { value: "Uttara" } });
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Uttara" })));
   });
 
@@ -380,11 +392,8 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     }));
     trpcMocks.saveDraft.mockResolvedValue(undefined);
 
+    const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={hierarchyProfile} onboardingFallback={null} />);
-
-    const locationSection = screen.getByText("Section E", { exact: true }).closest("section");
-    expect(locationSection).toBeTruthy();
-    fireEvent.click(within(locationSection!).getByRole("button", { name: "Show details for Location, fee and travel preferences" }));
 
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({
       query: "",
@@ -394,14 +403,13 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       query: "",
       ids: ["dhaka-uttara-sector-1"],
     })));
-    expect(screen.getByDisplayValue("Uttara · thana")).toBeTruthy();
-    expect(screen.getByText("Uttara Sector 1 · subdivision")).toBeTruthy();
 
-    const identitySection = screen.getByText("Section A", { exact: true }).closest("section");
-    expect(identitySection).toBeTruthy();
-    fireEvent.click(within(identitySection!).getByRole("button", { name: "Show details for Identity and contact" }));
-    fireEvent.change(screen.getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
-    await userEvent.setup({ document: window.document }).click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
+    expect(within(dialog).getByText("Uttara Sector 1 · subdivision")).toBeTruthy();
+
+    await user.click(within(dialog).getByRole("button", { name: "Submit" }));
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalledWith(expect.objectContaining({
       currentLocationId: "dhaka-thana-uttara",
       teachingAreaIds: ["dhaka-uttara-sector-1"],

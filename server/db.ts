@@ -1377,6 +1377,17 @@ async function assertCatalogReferences(database: any, input: TutorProfileDraftIn
   if (issues.length > 0) throw new TutorProfileValidationError(issues);
 }
 
+/**
+ * A partial section save re-validates against the full draft schema, where the
+ * list fields require `.min(1)`. When the stored profile has never had a value
+ * they read back as `[]`, which would fail that check and block saving any other
+ * section. Treat a stored empty list as "not set yet" so `.optional()` applies.
+ */
+export function keepList<T>(next: T[] | undefined, previous: T[] | null | undefined): T[] | undefined {
+  if (next !== undefined) return next;
+  return previous && previous.length > 0 ? previous : undefined;
+}
+
 function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftInput): TutorProfileDraftInput {
   return {
     profilePhotoKey: existing.profilePhotoKey,
@@ -1387,7 +1398,7 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     phone: input.phone ?? existing.phone,
     contactEmail: input.contactEmail ?? existing.contactEmail,
     currentLocationId: input.currentLocationId ?? existing.currentLocationId,
-    teachingAreaIds: input.teachingAreaIds ?? existing.teachingAreaIds,
+    teachingAreaIds: keepList(input.teachingAreaIds, existing.teachingAreaIds),
     availableNationwide: input.availableNationwide ?? existing.availableNationwide,
     highestEducation: input.highestEducation ?? existing.highestEducation,
     universityId: input.universityId ?? existing.universityId,
@@ -1396,25 +1407,25 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     degreeMajorId: input.degreeMajorId ?? existing.degreeMajorId,
     studyStatus: input.studyStatus ?? existing.studyStatus,
     graduationYear: input.graduationYear ?? existing.graduationYear,
-    primarySubjectIds: input.primarySubjectIds ?? existing.primarySubjectIds,
-    additionalSubjectIds: input.additionalSubjectIds ?? existing.additionalSubjectIds,
-    classLevelIds: input.classLevelIds ?? existing.classLevelIds,
-    curriculumIds: input.curriculumIds ?? existing.curriculumIds,
+    primarySubjectIds: keepList(input.primarySubjectIds, existing.primarySubjectIds),
+    additionalSubjectIds: keepList(input.additionalSubjectIds, existing.additionalSubjectIds),
+    classLevelIds: keepList(input.classLevelIds, existing.classLevelIds),
+    curriculumIds: keepList(input.curriculumIds, existing.curriculumIds),
     teachingExperienceYears: input.teachingExperienceYears ?? existing.teachingExperienceYears,
     priorTeachingExperience: input.priorTeachingExperience ?? existing.priorTeachingExperience,
     specialExpertise: input.specialExpertise ?? existing.specialExpertise,
-    studentTypeIds: input.studentTypeIds ?? existing.studentTypeIds,
+    studentTypeIds: keepList(input.studentTypeIds, existing.studentTypeIds),
     academicAchievement: input.academicAchievement ?? existing.academicAchievement,
     tuitionType: input.tuitionType ?? existing.tuitionType,
     preferredStudentGender: input.preferredStudentGender ?? existing.preferredStudentGender,
-    preferredClassSizes: input.preferredClassSizes ?? existing.preferredClassSizes,
-    preferredTeachingDays: input.preferredTeachingDays ?? existing.preferredTeachingDays,
-    preferredTimeSlots: input.preferredTimeSlots ?? existing.preferredTimeSlots,
+    preferredClassSizes: keepList(input.preferredClassSizes, existing.preferredClassSizes),
+    preferredTeachingDays: keepList(input.preferredTeachingDays, existing.preferredTeachingDays),
+    preferredTimeSlots: keepList(input.preferredTimeSlots, existing.preferredTimeSlots),
     feeMin: input.feeMin ?? existing.feeMin,
     feeMax: input.feeMax ?? existing.feeMax,
     travelDistanceKm: input.travelDistanceKm ?? existing.travelDistanceKm,
-    teachingLanguageIds: input.teachingLanguageIds ?? existing.teachingLanguageIds,
-    communicationPreferences: input.communicationPreferences ?? existing.communicationPreferences,
+    teachingLanguageIds: keepList(input.teachingLanguageIds, existing.teachingLanguageIds),
+    communicationPreferences: keepList(input.communicationPreferences, existing.communicationPreferences),
     aboutMe: input.aboutMe ?? existing.aboutMe,
     teachingApproach: input.teachingApproach ?? existing.teachingApproach,
     whyChooseMe: input.whyChooseMe ?? existing.whyChooseMe,
@@ -3474,20 +3485,27 @@ export async function recordAuthEvent(input: {
   return { id: Number(result[0].insertId) } as const;
 }
 
-/** Recent public auth events, newest first. Owner/Admin-facing; no credentials stored. */
-export async function listRecentAuthEvents(filters: {
-  event?: AuthEventType;
-  role?: AuthEventRole;
+export type AuthEventFilters = {
+  event?: AuthEventType | "all";
+  role?: AuthEventRole | "all";
   ip?: string;
-  limit?: number;
-} = {}) {
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Owner-facing, paginated history of public (non-Admin) auth events, newest
+ * first. Mirrors `listAdminAuditLogPage`; stores no credential material and only
+ * the pre-masked identifier.
+ */
+export async function listAuthEventsPage(filters: AuthEventFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500);
   const conditions: SQL[] = [];
-  if (filters.event) conditions.push(eq(authEvents.event, filters.event));
-  if (filters.role) conditions.push(eq(authEvents.role, filters.role));
+  if (filters.event && filters.event !== "all") conditions.push(eq(authEvents.event, filters.event));
+  if (filters.role && filters.role !== "all") conditions.push(eq(authEvents.role, filters.role));
   if (filters.ip?.trim()) conditions.push(eq(authEvents.ip, filters.ip.trim()));
+  const offset = (filters.page - 1) * filters.pageSize;
   const query = database
     .select({
       id: authEvents.id,
@@ -3499,9 +3517,13 @@ export async function listRecentAuthEvents(filters: {
       createdAt: authEvents.createdAt,
     })
     .from(authEvents);
-  return conditions.length
-    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(limit)
-    : await query.orderBy(desc(authEvents.createdAt)).limit(limit);
+  const items = conditions.length
+    ? await query.where(and(...conditions)).orderBy(desc(authEvents.createdAt)).limit(filters.pageSize).offset(offset)
+    : await query.orderBy(desc(authEvents.createdAt)).limit(filters.pageSize).offset(offset);
+  const totalQuery = database.select({ value: count() }).from(authEvents);
+  const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
+  const total = Number(totals[0]?.value ?? 0);
+  return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
 /**

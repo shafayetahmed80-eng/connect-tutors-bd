@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { tutorProfileEditableDraftSchema } from "../../../server/tutor-profile.validation";
 import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfilePrivateDetails } from "./TutorProfileFormData";
 
-export type TutorProfileSectionId = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h";
+export type TutorProfileSectionId = "a" | "b" | "c" | "d" | "e";
 
 export type TutorProfileSectionFormState = TutorProfileFormState & {
   primarySubjectIds: string[];
@@ -41,8 +41,8 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   },
   {
     id: "c",
-    label: "Education history",
-    description: "Your current education and qualification history.",
+    label: "Education and expertise",
+    description: "Your education, qualifications, subjects, learner levels, and teaching expertise.",
     fieldKeys: [
       "highestEducation",
       "universityId",
@@ -64,35 +64,29 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   },
   {
     id: "d",
-    label: "Teaching expertise",
-    description: "Your subjects, learner levels, curricula, and teaching experience.",
+    label: "Tuition, location and communication",
+    description: "How and where you teach: format, learner preferences, coverage, fee, languages, and contact preferences.",
     fieldKeys: [
-      "tuitionType", "availableNationwide", "preferredStudentGender", "preferredClassSizes", "preferredTeachingDays", "preferredTimeSlots",
+      "tuitionType",
+      "availableNationwide",
+      "preferredStudentGender",
+      "preferredClassSizes",
+      "preferredTeachingDays",
+      "preferredTimeSlots",
+      "currentLocationId",
+      "teachingAreaIds",
+      "feeMin",
+      "feeMax",
+      "travelDistanceKm",
+      "teachingLanguageIds",
+      "communicationPreferences",
     ],
   },
   {
     id: "e",
-    label: "Location, tuition and availability",
-    description: "Where and how you teach, including your fee, schedule, and learner preferences.",
-    fieldKeys: ["currentLocationId", "teachingAreaIds", "feeMin", "feeMax", "travelDistanceKm"],
-  },
-  {
-    id: "f",
-    label: "Communication & introduction",
-    description: "Your teaching languages, contact preferences, and Guardian-safe introduction.",
-    fieldKeys: ["teachingLanguageIds", "communicationPreferences"],
-  },
-  {
-    id: "g",
-    label: "Tutor introduction",
-    description: "Help Guardians understand your approach and strengths.",
+    label: "Introduction and review",
+    description: "Optional teaching-style details, then submit your profile for review.",
     fieldKeys: ["aboutMe", "teachingApproach", "whyChooseMe", "additionalNotes"],
-  },
-  {
-    id: "h",
-    label: "Profile review",
-    description: "Review your profile and submit it once for moderation.",
-    fieldKeys: [],
   },
 ];
 
