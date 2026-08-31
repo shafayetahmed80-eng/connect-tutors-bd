@@ -135,6 +135,19 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("jumps to and opens a collapsed section from the section navigation", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    // Education starts collapsed, so its rows are not rendered.
+    expect(screen.queryByText("Highest education")).toBeNull();
+
+    const nav = screen.getByRole("navigation", { name: "Profile sections" });
+    await user.click(within(nav).getByRole("button", { name: /Education and teaching expertise/ }));
+
+    expect(screen.getByText("Highest education")).toBeTruthy();
+  });
+
   it("discards unsaved popup edits when the section editor is closed without saving", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
@@ -181,7 +194,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
       onboardingFallback={null}
     />);
 
-    await user.click(screen.getByRole("button", { name: /Education and teaching expertise/ }));
+    await user.click(screen.getByRole("heading", { name: "Education and teaching expertise" }).closest("button") as HTMLElement);
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
 
@@ -200,7 +213,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("button", { name: /Education and teaching expertise/ }));
+    await user.click(screen.getByRole("heading", { name: "Education and teaching expertise" }).closest("button") as HTMLElement);
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");

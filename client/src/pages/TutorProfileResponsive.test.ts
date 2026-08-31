@@ -9,10 +9,9 @@ describe("Tutor Profile mobile responsive layout contract", () => {
     expect(tutorProfileResponsiveClasses.completionActionButton).toContain("whitespace-normal");
   });
 
-  it("keeps the completion card in normal document flow on mobile so it cannot overlap the step wizard", () => {
+  it("keeps the completion card in normal document flow (the sticky section nav is the pinned element)", () => {
     expect(tutorProfileResponsiveClasses.completionCard.split(" ")).not.toContain("sticky");
-    expect(tutorProfileResponsiveClasses.completionCard).toContain("lg:sticky");
-    expect(tutorProfileResponsiveClasses.completionCard).toContain("lg:top-3");
+    expect(tutorProfileResponsiveClasses.completionCard).not.toContain("lg:sticky");
   });
 
   it("bounds photo previews and keeps photo actions readable inside a narrow panel", () => {

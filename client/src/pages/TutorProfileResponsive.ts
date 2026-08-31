@@ -8,7 +8,7 @@ export const tutorProfileResponsiveClasses = {
   selectorText: "min-w-0 flex-1 truncate",
   selectorChip: "max-w-full min-w-0",
   selectorChipText: "min-w-0 break-words",
-  completionCard: "rounded-2xl border border-j-border bg-white/95 p-4 shadow-[0_1px_2px_rgba(23,59,96,0.04),0_10px_28px_rgba(23,59,96,0.06)] backdrop-blur lg:sticky lg:top-3 lg:z-20",
+  completionCard: "rounded-2xl border border-j-border bg-white/95 p-4 shadow-[0_1px_2px_rgba(23,59,96,0.04),0_10px_28px_rgba(23,59,96,0.06)] backdrop-blur",
   completionActions: "mt-3 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-2",
   completionActionButton: "min-h-11 w-full whitespace-normal text-center leading-5",
   photoPanel: "min-w-0 w-full",
