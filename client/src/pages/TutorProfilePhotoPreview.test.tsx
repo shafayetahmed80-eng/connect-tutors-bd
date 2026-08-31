@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -107,9 +107,8 @@ describe("TutorProfileWorkspace photo preview", () => {
     });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Upload Tutor profile photo"), {
+    // The photo control lives on the identity rail, not inside a section popup.
+    fireEvent.change(screen.getByLabelText("Upload Tutor profile photo"), {
       target: { files: [new File(["source"], "selected.png", { type: "image/png" })] },
     });
 

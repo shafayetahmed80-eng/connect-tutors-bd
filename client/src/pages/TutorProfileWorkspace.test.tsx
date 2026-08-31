@@ -121,7 +121,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.getByRole("tab", { name: /Personal/ })).toBeTruthy();
     expect(screen.getByText("Identity and contact")).toBeTruthy();
     expect(screen.getByText("Family and emergency contact")).toBeTruthy();
-    expect(screen.getByText(/Test Tutor/)).toBeTruthy();
+    expect(within(screen.getByRole("tabpanel")).getByText(/Test Tutor/)).toBeTruthy();
     expect(screen.queryByDisplayValue("Test Tutor")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
 
@@ -227,15 +227,15 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(await within(dialog).findByText("Uploaded for private review")).toBeTruthy();
   });
 
-  it("shows one state-aware action in the Profile status card", () => {
-    const { container } = render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
-    const statusCard = container.querySelector<HTMLElement>("section[aria-label='Profile status']");
+  it("shows identity and one state-aware action in the profile rail", () => {
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+    const rail = screen.getByRole("region", { name: "Profile summary" });
 
-    expect(statusCard).toBeTruthy();
-    if (!statusCard) throw new Error("Profile status card is missing");
-    expect(within(statusCard).getByText("Ready for review")).toBeTruthy();
-    expect(within(statusCard).getByRole("button", { name: "Submit for review" })).toBeTruthy();
-    expect(within(statusCard).queryByRole("button", { name: /save draft/i })).toBeNull();
+    expect(within(rail).getByRole("heading", { name: "Test Tutor" })).toBeTruthy();
+    expect(within(rail).getByText("Tutor ID: 1504")).toBeTruthy();
+    expect(within(rail).getByText("Profile completed: 100%")).toBeTruthy();
+    expect(within(rail).getByRole("button", { name: "Submit for review" })).toBeTruthy();
+    expect(within(rail).queryByRole("button", { name: /save draft/i })).toBeNull();
   });
 
   it("uses required markers and inline recovery instead of persistent generic field helper copy", async () => {
@@ -313,29 +313,46 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     expect(await screen.findByText("Your profile is already under review. Wait for change instructions before editing it again.")).toBeTruthy();
     expect(screen.queryByText(/pending_review internal state/i)).toBeNull();
-    expect(screen.getByText(/Test Tutor/)).toBeTruthy();
+    expect(within(screen.getByRole("tabpanel")).getByText(/Test Tutor/)).toBeTruthy();
     await waitFor(() => expect((submitButton as HTMLButtonElement).disabled).toBe(false));
   });
 
-  it("uses the status card for selected-tuition feedback and requires an explicit return before Apply Now", async () => {
+  it("requires an explicit return before Apply Now and offers it only once approved", async () => {
     const returnToSelectedJob = vi.fn();
     const user = userEvent.setup({ document: window.document });
     const pendingWorkspace = render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "pending" }} onboardingFallback={null} tutorApplyReturnTo="/job-board?job=CT-JOB-000042" onReturnToSelectedJob={returnToSelectedJob} />);
 
-    const pendingStatusCard = screen.getByRole("region", { name: "Profile status" });
-    expect(within(pendingStatusCard).getByText("Profile under review")).toBeTruthy();
-    expect(within(pendingStatusCard).getByText("Admin approval is required before you can return to the selected tuition and choose Apply Now yourself.")).toBeTruthy();
+    // Under review the rail carries no action at all — no shortcut back to the job.
+    const pendingRail = screen.getByRole("region", { name: "Profile summary" });
+    expect(within(pendingRail).getByText("Pending review · saved 8/19/2026, 6:00:00 AM")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Selected tuition application" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Return to selected tuition" })).toBeNull();
     expect(returnToSelectedJob).not.toHaveBeenCalled();
 
     pendingWorkspace.unmount();
     render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "approved" }} onboardingFallback={null} tutorApplyReturnTo="/job-board?job=CT-JOB-000042" onReturnToSelectedJob={returnToSelectedJob} />);
-    const approvedStatusCard = screen.getByRole("region", { name: "Profile status" });
-    expect(within(approvedStatusCard).getByText("Ready to apply")).toBeTruthy();
-    expect(within(approvedStatusCard).getByText("Your profile is approved. Return to the selected tuition and click Apply Now yourself.")).toBeTruthy();
-    await user.click(within(approvedStatusCard).getByRole("button", { name: "Return to selected tuition" }));
+    const approvedRail = screen.getByRole("region", { name: "Profile summary" });
+    await user.click(within(approvedRail).getByRole("button", { name: "Return to selected tuition" }));
     expect(returnToSelectedJob).toHaveBeenCalledOnce();
+  });
+
+  it("previews the whole profile from the rail and returns to the tabbed editor", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    expect(screen.getByRole("tablist", { name: "Profile sections" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Profile preview" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "View Profile" }));
+
+    const preview = screen.getByRole("region", { name: "Profile preview" });
+    expect(within(preview).getByRole("heading", { name: "Personal Information" })).toBeTruthy();
+    expect(within(preview).getByRole("heading", { name: "Introduction and review" })).toBeTruthy();
+    expect(screen.queryByRole("tablist", { name: "Profile sections" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit Information" }));
+    expect(screen.getByRole("tablist", { name: "Profile sections" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Profile preview" })).toBeNull();
   });
 });
 
@@ -361,9 +378,7 @@ describe("TutorProfileWorkspace photo flow", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Upload Tutor profile photo"), {
+    fireEvent.change(screen.getByLabelText("Upload Tutor profile photo"), {
       target: { files: [new File(["source"], "replacement.png", { type: "image/png" })] },
     });
     await user.click(screen.getByRole("button", { name: "Confirm cropped photo" }));
@@ -371,7 +386,7 @@ describe("TutorProfileWorkspace photo flow", () => {
     expect(await screen.findByText("Photo uploaded.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/tutor/profile-photo", expect.objectContaining({ method: "POST", credentials: "same-origin" }));
     expect(screen.getByAltText("Current Tutor profile photo").getAttribute("src")).toBe("https://example.test/private-replacement.jpg");
-    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /replace photo/i })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /replace photo/i }).length).toBeGreaterThan(0);
     expect(trpcMocks.invalidate).toHaveBeenCalled();
   });
 
@@ -385,15 +400,13 @@ describe("TutorProfileWorkspace photo flow", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
-    const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: /^remove photo/i }));
+    await user.click(screen.getByRole("button", { name: /^remove photo/i }));
 
     expect(await screen.findByText("Photo removed.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/tutor/profile-photo", expect.objectContaining({ method: "DELETE", credentials: "same-origin" }));
     expect(screen.queryByAltText("Current Tutor profile photo")).toBeNull();
     expect(screen.getByText("Photo removed. Add a new profile photo before submitting for review.")).toBeTruthy();
-    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /upload photo/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /upload photo/i })).toBeTruthy();
   });
 });
 

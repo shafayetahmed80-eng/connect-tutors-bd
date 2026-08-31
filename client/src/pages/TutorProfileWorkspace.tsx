@@ -2,10 +2,11 @@ import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } fr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { TutorProfileStatusHeader } from "./TutorProfileStatusHeader";
+import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
+import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
@@ -321,6 +322,9 @@ export function TutorProfileWorkspace({
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
+  // "View Profile" swaps the tabbed editor for the read-only whole-profile
+  // preview; the rail's button becomes "Edit Information" to come back.
+  const [previewMode, setPreviewMode] = useState(false);
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
   // When set, the section popup shows only this sub-group (Section C is split so
   // its editor opens Education or Teaching expertise, not the whole thing).
@@ -527,6 +531,8 @@ export function TutorProfileWorkspace({
   const openSectionEditor = (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => {
     formBeforeSectionEditRef.current = form;
     setFeedback(null);
+    // An editor always belongs with the tabbed panel, never over the preview.
+    setPreviewMode(false);
     setEditingGroupId(groupId ?? null);
     setEditingSection(sectionId);
   };
@@ -720,18 +726,8 @@ export function TutorProfileWorkspace({
   // Sections "Personal Information" (a) and "Education and teaching expertise" (c)
   // are split into sub-groups so their popups open one part at a time — see
   // getTutorProfileSectionGroups.
-  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5 lg:grid-cols-[176px_1fr]">
-    <div className={`${tutorProfileResponsiveClasses.photoPanel} rounded-2xl border border-dashed border-[#b7d8e9] bg-[#f6fbfe] p-4 text-center`}>
-      <div className={tutorProfileResponsiveClasses.photoPreview}>
-        {form.profilePhotoUrl && !photoPreviewFailed ? <img src={form.profilePhotoUrl} alt="Current Tutor profile photo" className="h-full w-full object-cover" onError={() => setPhotoPreviewFailed(true)} /> : <UserRound size={38} aria-hidden="true" />}
-      </div>
-      <p className="mt-3 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.photo} <span className="text-[#d84a4a]">*</span></p>
-      <p id="tutor-profile-photo-help" className="mt-1 text-xs leading-5 text-[#72889a]">Recent clear face photo · JPEG, PNG, or WebP.</p>
-      <input ref={photoInputRef} className="sr-only" id="tutor-profile-photo" type="file" aria-label="Upload Tutor profile photo" aria-describedby="tutor-profile-photo-help" aria-invalid={Boolean(fieldErrors.profilePhotoUrl)} aria-required="true" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" onChange={selectPhoto} />
-      <Button type="button" variant="outline" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className={`mt-3 ${tutorProfileResponsiveClasses.photoActionButton} rounded-xl border-[#9dcde7] text-[#167ddd]`}><ImagePlus size={15} /> {uploadingPhoto ? "Uploading…" : form.profilePhotoUrl ? "Replace photo" : "Upload photo"}</Button>
-      {form.profilePhotoUrl ? <Button type="button" variant="ghost" disabled={uploadingPhoto} onClick={() => void removePhoto()} className={`mt-1 ${tutorProfileResponsiveClasses.photoActionButton} text-[#bf3b3b] hover:bg-[#fff2f2] hover:text-[#a72f2f]`}><Trash2 size={15} /> Remove photo</Button> : null}
-      <InlineError message={fieldErrors.profilePhotoUrl} />
-    </div>
+  // The profile photo is managed from the identity rail, not from this popup.
+  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5">
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
       <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
@@ -884,34 +880,51 @@ export function TutorProfileWorkspace({
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{editingGroupId ? renderGroupFields(editingGroupId) : renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
-    <TutorProfileStatusHeader
-      statusCard={statusCard}
-      completionPercentage={completionPercentage}
-      photoUrl={form.profilePhotoUrl}
-      profileStatus={profile?.profileStatus}
-      lastUpdatedAt={profile?.lastUpdatedAt}
-      submitting={isSavingProfile}
-      actionPending={saveDraftMutation.isPending || submitProfileMutation.isPending}
-      onAction={runStatusCardAction}
-    />
+    <div className={tutorProfileResponsiveClasses.workspaceShell}>
+      <TutorProfileIdentityRail
+        name={form.name}
+        tutorNumber={profile?.tutorNumber}
+        profileStatus={profile?.profileStatus}
+        lastUpdatedAt={profile?.lastUpdatedAt}
+        photoUrl={form.profilePhotoUrl}
+        photoPreviewFailed={photoPreviewFailed}
+        photoError={fieldErrors.profilePhotoUrl}
+        uploadingPhoto={uploadingPhoto}
+        photoInputRef={photoInputRef}
+        onSelectPhoto={selectPhoto}
+        onRemovePhoto={() => void removePhoto()}
+        onPhotoPreviewError={() => setPhotoPreviewFailed(true)}
+        completionPercentage={completionPercentage}
+        statusCard={statusCard}
+        actionPending={saveDraftMutation.isPending || submitProfileMutation.isPending}
+        submitting={isSavingProfile}
+        onAction={runStatusCardAction}
+        universityName={form.universityId ? readoutResolvers.university(form.universityId) : ""}
+        subjectName={form.facultyDepartmentId ? readoutResolvers.department(form.facultyDepartmentId) : ""}
+        previewMode={previewMode}
+        onTogglePreview={() => setPreviewMode(current => !current)}
+      />
 
-    <p className="flex items-start gap-2 px-1 text-[11px] leading-5 text-j-ink-soft">
-      <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={12} />
-      <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
-    </p>
+      <div className={`min-w-0 ${tp.stack}`}>
+        <p className="flex items-start gap-2 px-1 text-[11px] leading-5 text-j-ink-soft">
+          <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={12} />
+          <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
+        </p>
 
-    {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
+        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 
-    <TutorProfileTabEditor
-      sections={readoutSections}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onEditSection={openSectionEditor}
-    />
+        {previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
+          sections={readoutSections}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onEditSection={openSectionEditor}
+        />}
 
-    {statusCard.action === "submit" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
-      <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton} sm:w-auto`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
-    </div> : null}
+        {statusCard.action === "submit" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
+          <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton} sm:w-auto`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
+        </div> : null}
+      </div>
+    </div>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
 }
