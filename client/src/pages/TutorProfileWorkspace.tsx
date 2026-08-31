@@ -19,7 +19,6 @@ import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
-import { TutorProfileReadView } from "./TutorProfileReadView";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
@@ -321,7 +320,6 @@ export function TutorProfileWorkspace({
   const completionSummary = getTutorProfileCompletionSummary(form);
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
-  const [viewMode, setViewMode] = useState<"read" | "edit">("read");
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
   // When set, the section popup shows only this sub-group (Section C is split so
@@ -488,7 +486,6 @@ export function TutorProfileWorkspace({
       setFeedback({ type: "success", message: "Your private Tutor Profile draft has been saved." });
     } catch (error) {
       if (recoverServerValidationErrors(error)) {
-        setViewMode("edit");
         formBeforeSectionEditRef.current = null;
         setEditingSection(null);
         setEditingGroupId(null);
@@ -563,7 +560,6 @@ export function TutorProfileWorkspace({
     if (Object.keys(submissionErrors).length > 0) {
       setFieldErrors(submissionErrors);
       const target = firstErroredSection(submissionErrors);
-      setViewMode("edit");
       if (target) {
         setActiveTab(target);
         openSectionEditor(target);
@@ -601,7 +597,6 @@ export function TutorProfileWorkspace({
     const submissionErrors = getTutorProfileSubmissionErrors(form);
     setFieldErrors(submissionErrors);
     const target = firstErroredSection(submissionErrors);
-    setViewMode("edit");
     if (target) {
       setActiveTab(target);
       openSectionEditor(target);
@@ -919,9 +914,6 @@ export function TutorProfileWorkspace({
           {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className={tp.primaryButton}>
             {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
           </Button> : null}
-          {viewMode === "read" ? <button type="button" onClick={() => setViewMode("edit")} className="rounded text-sm font-semibold text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
-            Edit all sections
-          </button> : null}
         </div>
       </div>
     </section>
@@ -933,16 +925,12 @@ export function TutorProfileWorkspace({
 
     {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 
-    {viewMode === "read" ? <TutorProfileReadView
-      sections={readoutSections}
-      onEditSection={openSectionEditor}
-    /> : <TutorProfileTabEditor
+    <TutorProfileTabEditor
       sections={readoutSections}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onEditSection={openSectionEditor}
-      onBackToOverview={() => setViewMode("read")}
-    />}
+    />
 
     <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 ${tp.card} p-4 sm:px-5 ${tutorProfileResponsiveClasses.section}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

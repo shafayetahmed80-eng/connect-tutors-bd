@@ -27,20 +27,29 @@ const sections: TutorProfileReadoutSection[] = [
 describe("TutorProfileTabEditor", () => {
   it("shows one tab per section with a filled count and switches panels on click", () => {
     const onTabChange = vi.fn();
-    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} onBackToOverview={vi.fn()} />);
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} />);
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(4);
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
-    expect(within(tabs[0]).getByText("1/3 filled")).toBeTruthy();
+    expect(within(tabs[0]).getByText("1/3")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: /Education & expertise/ }));
     expect(onTabChange).toHaveBeenCalledWith("c");
   });
 
+  it("shows only the active section's panel", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={vi.fn()} />);
+
+    expect(screen.getByRole("tabpanel").getAttribute("aria-label")).toBe("Personal Information");
+    expect(screen.getByText("Full name")).toBeTruthy();
+    expect(screen.queryByText("Institute")).toBeNull();
+    expect(screen.queryByText("Tuition type")).toBeNull();
+  });
+
   it("edits the Personal Information sub-groups (Identity / Family) separately", () => {
     const onEditSection = vi.fn();
-    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={onEditSection} onBackToOverview={vi.fn()} />);
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={onEditSection} />);
 
     expect(screen.getByRole("heading", { name: "Identity and contact" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Family and emergency contact" })).toBeTruthy();
@@ -53,7 +62,7 @@ describe("TutorProfileTabEditor", () => {
 
   it("renders each group of the active section as a sub-card whose pencil edits that sub-group", () => {
     const onEditSection = vi.fn();
-    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={vi.fn()} onEditSection={onEditSection} onBackToOverview={vi.fn()} />);
+    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={vi.fn()} onEditSection={onEditSection} />);
 
     expect(screen.getByRole("heading", { name: "Education" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Teaching expertise" })).toBeTruthy();
@@ -64,13 +73,5 @@ describe("TutorProfileTabEditor", () => {
     expect(onEditSection).toHaveBeenCalledWith("c", "c-teaching");
     fireEvent.click(screen.getByRole("button", { name: "Edit Education" }));
     expect(onEditSection).toHaveBeenCalledWith("c", "c-education");
-  });
-
-  it("returns to the overview", () => {
-    const onBackToOverview = vi.fn();
-    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={vi.fn()} onBackToOverview={onBackToOverview} />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Back to overview/ }));
-    expect(onBackToOverview).toHaveBeenCalledOnce();
   });
 });

@@ -118,7 +118,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    expect(screen.getByRole("heading", { name: "Personal Information" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Personal Information/ })).toBeTruthy();
     expect(screen.getByText("Identity and contact")).toBeTruthy();
     expect(screen.getByText("Family and emergency contact")).toBeTruthy();
     expect(screen.getByText(/Test Tutor/)).toBeTruthy();
@@ -135,17 +135,18 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("jumps to and opens a collapsed section from the section navigation", async () => {
+  it("shows only the selected section's read-out and switches on tab click", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    // Education starts collapsed, so its rows are not rendered.
+    // Personal Information is the default tab; other sections' rows are not rendered.
+    expect(screen.getByRole("tabpanel").getAttribute("aria-label")).toBe("Personal Information");
     expect(screen.queryByText("Highest education")).toBeNull();
 
-    const nav = screen.getByRole("navigation", { name: "Profile sections" });
-    await user.click(within(nav).getByRole("button", { name: /Education and teaching expertise/ }));
+    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
 
     expect(screen.getByText("Highest education")).toBeTruthy();
+    expect(screen.queryByText("Present address")).toBeNull();
   });
 
   it("discards unsaved popup edits when the section editor is closed without saving", async () => {
@@ -194,7 +195,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
       onboardingFallback={null}
     />);
 
-    await user.click(screen.getByRole("heading", { name: "Education and teaching expertise" }).closest("button") as HTMLElement);
+    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
 
@@ -213,7 +214,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("heading", { name: "Education and teaching expertise" }).closest("button") as HTMLElement);
+    await user.click(screen.getByRole("tab", { name: /Education & expertise/ }));
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");
@@ -261,7 +262,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(phoneField.getAttribute("aria-required")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     dialog = screen.getByRole("dialog");
     const teachingAreas = within(dialog).getByRole("button", { name: /Teaching Areas/ });
     expect(teachingAreas.parentElement?.textContent).toContain("Teaching Areas *");
@@ -409,7 +411,8 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
     const currentLocationSearch = within(dialog).getAllByRole("combobox")[0];
     await user.type(currentLocationSearch, "Uttara");
@@ -447,7 +450,8 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       ids: ["dhaka-uttara-sector-1"],
     })));
 
-    await user.click(screen.getByRole("button", { name: "Edit Tuition, location and communication" }));
+    await user.click(screen.getByRole("tab", { name: /Tuition, location & communication/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
     expect(within(dialog).getByText("Uttara Sector 1 · subdivision")).toBeTruthy();
