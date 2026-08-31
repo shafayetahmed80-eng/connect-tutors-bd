@@ -13,8 +13,9 @@ const onboardingFallback = {
 const baseState = hydrateTutorProfileForm(null, onboardingFallback);
 
 describe("Tutor Profile section draft payloads", () => {
-  it("defines the five-section A–E profile sequence", () => {
-    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "b", "c", "d", "e"]);
+  it("defines the four profile sections (Personal / Education / Tuition / Introduction)", () => {
+    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
+    expect(tutorProfileSectionDefinitions[0].label).toBe("Personal Information");
   });
 
   it("sends the merged tuition, location, fee, and communication fields when saving Section D", () => {
@@ -76,9 +77,10 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload).not.toHaveProperty("currentLocationId");
   });
 
-  it("isolates private identity fields from family and emergency fields across section saves", () => {
-    const payload = createTutorProfileSectionDraftPayload("a", {
+  it("saves only the identity private details for the Identity sub-group of Personal Information", () => {
+    const payload = createTutorProfileSectionDraftPayload("a-identity", {
       ...baseState,
+      name: "Rahim Uddin",
       privateDetails: {
         presentAddress: "House 7, Uttara",
         permanentAddress: "Rajshahi",
@@ -90,6 +92,7 @@ describe("Tutor Profile section draft payloads", () => {
       },
     });
 
+    expect(payload).toMatchObject({ name: "Rahim Uddin" });
     expect(payload.privateDetails).toMatchObject({
       presentAddress: "House 7, Uttara",
       permanentAddress: "Rajshahi",
@@ -100,9 +103,10 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload.privateDetails).not.toHaveProperty("emergencyContactName");
   });
 
-  it("isolates private family fields from identity fields when saving Section B", () => {
-    const payload = createTutorProfileSectionDraftPayload("b", {
+  it("saves only the family private details for the Family sub-group of Personal Information", () => {
+    const payload = createTutorProfileSectionDraftPayload("a-family", {
       ...baseState,
+      name: "Rahim Uddin",
       privateDetails: {
         presentAddress: "House 7, Uttara",
         nationality: "Bangladeshi",
@@ -112,6 +116,7 @@ describe("Tutor Profile section draft payloads", () => {
       },
     });
 
+    expect(payload).not.toHaveProperty("name");
     expect(payload.privateDetails).toMatchObject({
       fatherName: "Abdul Rahman",
       fatherPhone: "+8801712345678",
@@ -119,6 +124,23 @@ describe("Tutor Profile section draft payloads", () => {
     });
     expect(payload.privateDetails).not.toHaveProperty("presentAddress");
     expect(payload.privateDetails).not.toHaveProperty("nationality");
+  });
+
+  it("saves both identity and family private details when the whole Personal Information section is saved", () => {
+    const payload = createTutorProfileSectionDraftPayload("a", {
+      ...baseState,
+      privateDetails: {
+        presentAddress: "House 7, Uttara",
+        fatherName: "Abdul Rahman",
+        emergencyContactName: "Nusrat Rahman",
+      },
+    });
+
+    expect(payload.privateDetails).toMatchObject({
+      presentAddress: "House 7, Uttara",
+      fatherName: "Abdul Rahman",
+      emergencyContactName: "Nusrat Rahman",
+    });
   });
 
   it("saves only the academic half of Section C for the Education sub-group", () => {

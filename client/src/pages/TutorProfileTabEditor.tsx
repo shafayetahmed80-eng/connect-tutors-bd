@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, ChevronLeft, GraduationCap, MapPinned, MessageSquareText, PencilLine, User, Users } from "lucide-react";
+import { Check, ChevronLeft, GraduationCap, MapPinned, MessageSquareText, PencilLine, User } from "lucide-react";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
 import { getTutorProfileSectionGroups, type TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
@@ -7,8 +7,7 @@ import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
 const TAB_LABELS: Record<TutorProfileSectionId, string> = {
-  a: "Identity",
-  b: "Family & emergency",
+  a: "Personal Information",
   c: "Education & expertise",
   d: "Tuition, location & communication",
   e: "Introduction",
@@ -16,7 +15,6 @@ const TAB_LABELS: Record<TutorProfileSectionId, string> = {
 
 const SECTION_ICON: Record<TutorProfileSectionId, typeof User> = {
   a: User,
-  b: Users,
   c: GraduationCap,
   d: MapPinned,
   e: MessageSquareText,

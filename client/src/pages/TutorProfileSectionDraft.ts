@@ -2,29 +2,14 @@ import type { z } from "zod";
 import type { tutorProfileEditableDraftSchema } from "../../../server/tutor-profile.validation";
 import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfilePrivateDetails } from "./TutorProfileFormData";
 
-export type TutorProfileSectionId = "a" | "b" | "c" | "d" | "e";
+export type TutorProfileSectionId = "a" | "c" | "d" | "e";
 
-/** Section C is large, so its editor can be opened one sub-group at a time. */
-export type TutorProfileSectionGroupId = "c-education" | "c-teaching";
+/**
+ * The larger sections ("Personal Information" and "Education and teaching
+ * expertise") open their editor one sub-group at a time.
+ */
+export type TutorProfileSectionGroupId = "a-identity" | "a-family" | "c-education" | "c-teaching";
 export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
-
-const sectionCSubGroups = [
-  {
-    id: "c-education" as const,
-    label: "Education",
-    fieldKeys: ["highestEducation", "universityId", "facultyId", "facultyDepartmentId", "studyStatus", "graduationYear", "educationRecords"],
-  },
-  {
-    id: "c-teaching" as const,
-    label: "Teaching expertise",
-    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "studentTypeIds", "academicAchievement"],
-  },
-] as const;
-
-/** The sub-groups a section's read-out pencil can target, or null if it has none. */
-export function getTutorProfileSectionGroups(sectionId: TutorProfileSectionId) {
-  return sectionId === "c" ? sectionCSubGroups : null;
-}
 
 export type TutorProfileSectionFormState = TutorProfileFormState & {
   primarySubjectIds: string[];
@@ -38,6 +23,49 @@ export type TutorProfileSectionFormState = TutorProfileFormState & {
   academicAchievement: string;
 };
 
+type SubGroupDefinition = {
+  id: TutorProfileSectionGroupId;
+  section: TutorProfileSectionId;
+  label: string;
+  fieldKeys: readonly string[];
+  privateDetailKeys?: readonly (keyof TutorProfilePrivateDetails)[];
+};
+
+const sectionSubGroups: readonly SubGroupDefinition[] = [
+  {
+    id: "a-identity",
+    section: "a",
+    label: "Identity and contact",
+    fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail"],
+    privateDetailKeys: ["additionalPhone", "presentAddress", "permanentAddress", "nationality", "religion", "socialProfileLinks"],
+  },
+  {
+    id: "a-family",
+    section: "a",
+    label: "Family and emergency contact",
+    fieldKeys: [],
+    privateDetailKeys: ["fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress"],
+  },
+  {
+    id: "c-education",
+    section: "c",
+    label: "Education",
+    fieldKeys: ["highestEducation", "universityId", "facultyId", "facultyDepartmentId", "studyStatus", "graduationYear", "educationRecords"],
+  },
+  {
+    id: "c-teaching",
+    section: "c",
+    label: "Teaching expertise",
+    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "studentTypeIds", "academicAchievement"],
+  },
+];
+
+/** The sub-groups a section's read-out pencils can target, or null if it has none. */
+export function getTutorProfileSectionGroups(sectionId: TutorProfileSectionId) {
+  const groups = sectionSubGroups.filter(group => group.section === sectionId);
+  return groups.length > 0 ? groups : null;
+}
+
 type SectionDefinition = {
   id: TutorProfileSectionId;
   label: string;
@@ -49,17 +77,13 @@ type SectionDefinition = {
 export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   {
     id: "a",
-    label: "Identity and contact",
-    description: "Your core identity, private address, and contact details.",
+    label: "Personal Information",
+    description: "Your identity, contact and private address details, plus family and emergency contacts.",
     fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail", "privateDetails"],
-    privateDetailKeys: ["additionalPhone", "presentAddress", "permanentAddress", "nationality", "religion", "socialProfileLinks"],
-  },
-  {
-    id: "b",
-    label: "Family & emergency contact",
-    description: "Private family and emergency contact details for verification.",
-    fieldKeys: ["privateDetails"],
-    privateDetailKeys: ["fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress"],
+    privateDetailKeys: [
+      "additionalPhone", "presentAddress", "permanentAddress", "nationality", "religion", "socialProfileLinks",
+      "fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress",
+    ],
   },
   {
     id: "c",
@@ -145,10 +169,10 @@ export function createTutorProfileSectionDraftPayload(
   target: TutorProfileEditTarget,
   form: TutorProfileSectionFormState,
 ) {
-  const subGroup = sectionCSubGroups.find(group => group.id === target);
+  const subGroup = sectionSubGroups.find(group => group.id === target);
   const definition = tutorProfileSectionDefinitions.find(section => section.id === target);
   const fieldKeys = subGroup?.fieldKeys ?? definition?.fieldKeys;
-  const privateDetailKeys = definition?.privateDetailKeys;
+  const privateDetailKeys = subGroup?.privateDetailKeys ?? definition?.privateDetailKeys;
   if (!fieldKeys) throw new Error("Unknown Tutor Profile section.");
 
   const completeDraft = createFullTutorProfileDraftPayload(form) as Record<string, unknown>;

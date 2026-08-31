@@ -9,13 +9,13 @@ import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 afterEach(() => cleanup());
 
 const sections: TutorProfileReadoutSection[] = [
-  { id: "a", title: "Identity and contact", groups: [{ rows: [
-    { label: "Full name", value: "Sojib", missing: false },
-    { label: "Date of birth", value: "Not given", missing: true },
-  ] }] },
-  { id: "b", title: "Family and emergency contact", groups: [{ rows: [
-    { label: "Father's name", value: "Not given", missing: true },
-  ] }] },
+  { id: "a", title: "Personal Information", groups: [
+    { heading: "Identity and contact", rows: [
+      { label: "Full name", value: "Sojib", missing: false },
+      { label: "Date of birth", value: "Not given", missing: true },
+    ] },
+    { heading: "Family and emergency contact", rows: [{ label: "Father's name", value: "Not given", missing: true }] },
+  ] },
   { id: "c", title: "Education and teaching expertise", groups: [
     { heading: "Education", rows: [{ label: "Institute", value: "DU", missing: false }] },
     { heading: "Teaching expertise", rows: [{ label: "Primary subjects", value: "Not given", missing: true }] },
@@ -30,12 +30,25 @@ describe("TutorProfileTabEditor", () => {
     render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} onBackToOverview={vi.fn()} />);
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
-    expect(within(tabs[0]).getByText("1/2 filled")).toBeTruthy();
+    expect(within(tabs[0]).getByText("1/3 filled")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: /Education & expertise/ }));
     expect(onTabChange).toHaveBeenCalledWith("c");
+  });
+
+  it("edits the Personal Information sub-groups (Identity / Family) separately", () => {
+    const onEditSection = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={onEditSection} onBackToOverview={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { name: "Identity and contact" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Family and emergency contact" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    expect(onEditSection).toHaveBeenCalledWith("a", "a-identity");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    expect(onEditSection).toHaveBeenCalledWith("a", "a-family");
   });
 
   it("renders each group of the active section as a sub-card whose pencil edits that sub-group", () => {

@@ -118,7 +118,9 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    expect(screen.getByRole("heading", { name: "Identity and contact" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Personal Information" })).toBeTruthy();
+    expect(screen.getByText("Identity and contact")).toBeTruthy();
+    expect(screen.getByText("Family and emergency contact")).toBeTruthy();
     expect(screen.getByText(/Test Tutor/)).toBeTruthy();
     expect(screen.queryByDisplayValue("Test Tutor")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -257,7 +259,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     // The first incomplete section opens in its popup card with the inline error.
     const identityDialog = await screen.findByRole("dialog");
-    expect(within(identityDialog).getByRole("heading", { name: "Edit Identity and contact" })).toBeTruthy();
+    expect(within(identityDialog).getByRole("heading", { name: "Edit Personal Information" })).toBeTruthy();
     expect(within(identityDialog).getByText("Enter a valid Bangladesh mobile number.")).toBeTruthy();
     await user.click(within(identityDialog).getByRole("button", { name: "Cancel" }));
 

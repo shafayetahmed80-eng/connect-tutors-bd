@@ -35,16 +35,17 @@ function baseForm(overrides: Partial<TeachingProfileState> = {}): TeachingProfil
 }
 
 describe("getTutorProfileReadoutSections", () => {
-  it("returns the five sections in order with the shared titles", () => {
+  it("returns the four sections in order with the shared titles", () => {
     const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
-    expect(sections.map(section => section.id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(sections.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
     expect(sections.map(section => section.title)).toEqual([
-      "Identity and contact",
-      "Family and emergency contact",
+      "Personal Information",
       "Education and teaching expertise",
       "Tuition, location and communication",
       "Introduction and review",
     ]);
+    // Personal Information carries the two former sections as sub-groups.
+    expect(sections[0].groups.map(group => group.heading)).toEqual(["Identity and contact", "Family and emergency contact"]);
   });
 
   it("marks an empty required value as missing and shows 'Not given'", () => {
@@ -60,8 +61,8 @@ describe("getTutorProfileReadoutSections", () => {
     const additionalPhone = rows.find(row => row.label === "Additional phone");
     expect(additionalPhone).toEqual({ label: "Additional phone", value: "—", missing: true, optional: true });
 
-    // Every Section E field is optional for submission.
-    const sectionE = sections[4].groups.flatMap(group => group.rows);
+    // Every "Introduction and review" field is optional for submission.
+    const sectionE = sections[3].groups.flatMap(group => group.rows);
     expect(sectionE.every(row => row.optional === true)).toBe(true);
     expect(sectionE.map(row => row.value)).toEqual(["—", "—", "—", "—"]);
 
@@ -74,7 +75,7 @@ describe("getTutorProfileReadoutSections", () => {
       baseForm({ name: "Rahim", universityId: "999", primarySubjectIds: ["1", "404"] }),
       { ...resolvers, university: () => "", subject: id => (id === "1" ? "Mathematics" : "") },
     );
-    const education = sections[2].groups.flatMap(group => group.rows);
+    const education = sections[1].groups.flatMap(group => group.rows);
     expect(education.find(row => row.label === "Institute")).toEqual({ label: "Institute", value: "Not given", missing: true });
     expect(education.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics");
   });
@@ -97,12 +98,12 @@ describe("getTutorProfileReadoutSections", () => {
     const identityRows = sections[0].groups[0].rows;
     expect(identityRows.find(row => row.label === "Full name")).toEqual({ label: "Full name", value: "Rahim", missing: false });
 
-    const education = sections[2].groups.flatMap(group => group.rows);
+    const education = sections[1].groups.flatMap(group => group.rows);
     expect(education.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics, Physics");
     expect(education.find(row => row.label === "Class / level")?.value).toBe("SSC");
     expect(education.find(row => row.label === "Institute")?.value).toBe("Dhaka University");
 
-    const teaching = sections[3].groups.flatMap(group => group.rows);
+    const teaching = sections[2].groups.flatMap(group => group.rows);
     expect(teaching.find(row => row.label === "Tuition type")?.value).toBe("Home & online");
     expect(teaching.find(row => row.label === "Preferred teaching days")?.value).toBe("Monday, Friday");
     expect(teaching.find(row => row.label === "Current location")?.value).toBe("Uttara");
