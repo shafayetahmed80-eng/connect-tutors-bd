@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { tutorProfileTheme as tp } from "@/pages/tutorProfileTheme";
 
 type TutorProfileSectionModalProps = {
   title: string;
@@ -71,37 +72,37 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
     }
   };
 
-  return <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0b2a44]/45 p-4 py-8 sm:py-12">
+  return <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-j-ink/40 p-4 py-8 sm:py-12">
     <div
       ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="w-full max-w-2xl rounded-3xl bg-white shadow-[0_30px_80px_rgba(11,42,68,0.35)]"
+      className="w-full max-w-2xl rounded-2xl bg-white shadow-[0_24px_64px_rgba(23,59,96,0.28)]"
       onClick={event => event.stopPropagation()}
       onKeyDown={onPanelKeyDown}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-[#e6eff4] p-5 sm:p-6">
-        <h2 id={titleId} className="text-lg font-bold tracking-[-0.02em] text-[#173b60]">Edit {title}</h2>
+      <div className="flex items-start justify-between gap-4 border-b border-j-border p-5">
+        <h2 id={titleId} className={`text-lg ${tp.heading}`}>Edit {title}</h2>
         <button
           type="button"
           aria-label="Close"
           disabled={submitting}
           onClick={onClose}
-          className="-mr-1 -mt-1 rounded-lg p-1.5 text-[#5d7b91] transition hover:bg-[#f0f5f9] hover:text-[#173b60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167ddd] disabled:opacity-50"
+          className={`-mr-1 -mt-1 ${tp.ghostIconButton}`}
         >
           <X size={18} />
         </button>
       </div>
 
-      <div ref={bodyRef} className="max-h-[70vh] overflow-y-auto p-5 sm:p-6">
-        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-[#f2c3c3] bg-[#fff6f6] text-[#a83b3b]" : "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]"}`}>{notice.text}</p> : null}
+      <div ref={bodyRef} className="max-h-[70vh] overflow-y-auto p-5">
+        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-j-err" : "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]"}`}>{notice.text}</p> : null}
         {children}
       </div>
 
-      <div className="flex items-center justify-end gap-3 border-t border-[#e6eff4] p-5 sm:p-6">
+      <div className="flex items-center justify-end gap-3 border-t border-j-border p-5">
         <Button type="button" variant="outline" disabled={submitting} onClick={onClose} className="rounded-xl">Cancel</Button>
-        <Button type="button" disabled={submitting} onClick={onSubmit} className="rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]">
+        <Button type="button" disabled={submitting} onClick={onSubmit} className={tp.primaryButton}>
           {submitting ? "Submitting…" : <>Submit <ArrowRight size={16} /></>}
         </Button>
       </div>

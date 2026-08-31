@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { TutorProfileSystemInfo } from "./TutorProfileSystemInfo";
 
 describe("TutorProfileSystemInfo", () => {
-  it("renders only server-derived Section H information and a local last-updated value", () => {
+  it("renders only server-derived system information and a local last-updated value", () => {
     render(<TutorProfileSystemInfo
       profile={{
         completionPercentage: 74,
@@ -16,7 +16,7 @@ describe("TutorProfileSystemInfo", () => {
       }}
     />);
 
-    expect(screen.getByRole("heading", { name: /section h.*system information/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /system information/i })).toBeTruthy();
     expect(screen.getByText("74%")).toBeTruthy();
     expect(screen.getAllByText(/pending review/i)).toHaveLength(2);
     expect(screen.getByText("Active")).toBeTruthy();

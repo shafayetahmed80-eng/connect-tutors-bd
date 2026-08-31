@@ -15,6 +15,7 @@ import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGu
 import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
+import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { createTutorProfileSectionDraftPayload, tutorProfileSectionDefinitions, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
@@ -799,37 +800,47 @@ export function TutorProfileWorkspace({
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{renderSectionFields(editingSection)}</TutorProfileSectionModal> : null}
-    <div className="flex items-start gap-3 rounded-2xl border border-[#bfe4f6] bg-[#f0faff] p-4 text-sm leading-6 text-[#46728e]">
-      <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
-      <p><strong className="text-[#1b4c6d]">Private registration continuity:</strong> {profile ? "Your name, phone, email, gender, and Bangladesh location were loaded from your secure Tutor registration." : "For this historical Tutor account, review the available account details and add any missing required identity or Bangladesh location information."} Phone and email are used for review and are never shown in the public directory.</p>
-    </div>
-
-    <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"} sm:flex sm:items-center sm:justify-between sm:gap-5`}>
-      <div className="min-w-0">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <p className="font-bold text-[#244a6a]">{statusCard.title}</p>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusCard.tone === "success" ? "bg-[#e5f8ed] text-[#16714a]" : statusCard.tone === "review" ? "bg-[#e4f4fd] text-[#1670a8]" : "bg-[#fff0cf] text-[#9b6411]"}`}>{statusCard.tone === "success" ? "Approved" : statusCard.tone === "review" ? "Review" : "Action needed"}</span>
-        </div>
-        <p className="mt-1 text-sm leading-6 text-[#5e7a90]">{statusCard.description}</p>
-        {statusCard.showProgress ? <div className="mt-3">
-          <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#5e7a90]"><span>Profile completion</span><span>{completionPercentage}%</span></div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#e9f1f5]" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercentage}>
-            <div className="h-full rounded-full bg-[#167ddd] transition-[width] duration-200" style={{ width: `${completionPercentage}%` }} />
+    <section aria-label="Profile status" className={`${tutorProfileResponsiveClasses.completionCard} ${statusCard.tone === "success" ? "border-[#c7e7d7] bg-[#f3fbf6]" : statusCard.tone === "review" ? "border-[#bfe4f6] bg-[#f0faff]" : "border-[#f1dbaa] bg-[#fff9ed]"}`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/70 text-[#8fb0c4] ring-1 ring-j-border">
+            {form.profilePhotoUrl ? <img src={form.profilePhotoUrl} alt="Your Tutor profile photo" className="h-full w-full object-cover" /> : <UserRound size={22} aria-hidden="true" />}
           </div>
-        </div> : null}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className={`font-bold ${tp.heading}`}>{statusCard.title}</p>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusCard.tone === "success" ? "bg-[#e5f8ed] text-[#16714a]" : statusCard.tone === "review" ? "bg-white text-j-accent" : "bg-[#fff0cf] text-[#9b6411]"}`}>{statusCard.tone === "success" ? "Approved" : statusCard.tone === "review" ? "Review" : "Action needed"}</span>
+            </div>
+            <p className={`mt-1 text-sm leading-6 ${tp.bodySoft}`}>{statusCard.description}</p>
+            {statusCard.showProgress ? <div className="mt-3">
+              <div className={`flex items-center justify-between gap-3 text-xs font-medium ${tp.bodySoft}`}><span>Profile completion</span><span>{completionPercentage}%</span></div>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-j-border" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercentage}>
+                <div className="h-full rounded-full bg-j-accent transition-[width] duration-200" style={{ width: `${completionPercentage}%` }} />
+              </div>
+            </div> : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:flex-col sm:items-end">
+          {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className={tp.primaryButton}>
+            {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
+          </Button> : null}
+          {viewMode === "read" ? <button type="button" onClick={() => setViewMode("edit")} className="rounded text-sm font-semibold text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
+            Edit all sections
+          </button> : null}
+        </div>
       </div>
-      {statusCard.action !== "none" ? <Button type="button" disabled={isSavingProfile} onClick={runStatusCardAction} className="mt-4 shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2] sm:mt-0">
-        {statusCard.action === "save" && saveDraftMutation.isPending ? "Saving…" : statusCard.action === "submit" && submitProfileMutation.isPending ? "Submitting…" : statusCard.actionLabel}
-      </Button> : null}
     </section>
 
-    {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-[#f2c3c3] bg-[#fff6f6] text-[#a83b3b]"}`}>{feedback.message}</p> : null}
+    <p className="flex items-start gap-2 px-1 text-xs leading-5 text-j-ink-soft">
+      <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={13} />
+      <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
+    </p>
+
+    {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 
     {viewMode === "read" ? <TutorProfileReadView
       sections={readoutSections}
-      photoUrl={form.profilePhotoUrl}
       onEditSection={openSectionEditor}
-      onEditAll={() => setViewMode("edit")}
     /> : <TutorProfileTabEditor
       sections={readoutSections}
       activeTab={activeTab}
@@ -838,17 +849,16 @@ export function TutorProfileWorkspace({
       onBackToOverview={() => setViewMode("read")}
     />}
 
-    <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-7 ${tutorProfileResponsiveClasses.section}`}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section id="profile-section-review" aria-label="Profile review" className={`scroll-mt-40 ${tp.card} p-4 sm:px-5 ${tutorProfileResponsiveClasses.section}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#1680c2]">Review</p>
-          <h2 className="mt-2 text-xl font-bold tracking-[-0.025em] text-[#173b60]">Profile review</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#647f93]">Review the saved sections, then submit the complete profile once for moderation.</p>
+          <h2 className={`text-base ${tp.heading}`}>Profile review</h2>
+          <p className={`mt-1 text-sm leading-6 ${tp.bodySoft}`}>Review the saved sections, then submit the whole profile once for moderation.</p>
         </div>
-        <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className="shrink-0 rounded-xl bg-[#167ddd] font-bold hover:bg-[#0e6dc2]"><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
+        <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`shrink-0 ${tp.primaryButton}`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
       </div>
-      <div className="mt-6 border-t border-[#e6eff4] pt-5">
-        {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className="rounded-xl bg-[#f6fbfe] p-4 text-sm text-[#5e7a90]">Save your profile sections first. The final review status will appear here.</p>}
+      <div className="mt-5 border-t border-j-border pt-5">
+        {profile ? <TutorProfileSystemInfo profile={profile} /> : <p className={`rounded-xl bg-j-surface-sunken p-4 text-sm ${tp.bodySoft}`}>Save your profile sections first. The final review status will appear here.</p>}
       </div>
     </section>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
