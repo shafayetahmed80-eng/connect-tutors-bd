@@ -1,7 +1,6 @@
 import { and, eq, notInArray, sql } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import {
-  academicFaculties,
   classLevels,
   curricula,
   facultyDepartments,
@@ -10,7 +9,10 @@ import {
   subjectsCatalog,
   universities,
 } from "../drizzle/schema";
-import { suppliedBangladeshUniversities } from "./bangladesh-university-hierarchy";
+import {
+  suppliedBangladeshUniversities,
+  suppliedInstituteDepartments,
+} from "./bangladesh-university-hierarchy";
 
 export type CatalogOptionSeed = {
   name: string;
@@ -19,19 +21,10 @@ export type CatalogOptionSeed = {
   sortOrder: number;
 };
 
-type FacultySeed = CatalogOptionSeed & {
-  universityNormalizedName: string;
-};
-
-type DepartmentSeed = CatalogOptionSeed & {
-  universityNormalizedName: string;
-  facultyNormalizedName: string;
-};
-
 export type TutorProfileCatalogSeedPlan = {
   universities: CatalogOptionSeed[];
-  faculties: FacultySeed[];
-  departments: DepartmentSeed[];
+  /** One flat global Department/Subject vocabulary — no Faculty layer, no per-institute list. */
+  departments: CatalogOptionSeed[];
   subjects: CatalogOptionSeed[];
   classLevels: CatalogOptionSeed[];
   curricula: CatalogOptionSeed[];
@@ -57,83 +50,38 @@ function assertNoDuplicateKeys(keys: readonly string[], label: string) {
   const seen = new Set<string>();
   for (const key of keys) {
     if (seen.has(key)) {
-      throw new Error(`Duplicate supplied ${label} hierarchy key: ${key}`);
+      throw new Error(`Duplicate supplied ${label} key: ${key}`);
     }
     seen.add(key);
   }
 }
 
 /**
- * Maps the user-supplied website-ready JSON into database-ready parent-linked
- * catalog records. Only active institutions and their children are selectable;
- * the source retains inactive entries for future administrative curation.
+ * Maps the user-supplied website-ready JSON into database-ready catalog rows.
+ * Institutes carry only name/status; Department/Subject is one flat global
+ * vocabulary. Inactive institutes stay in the source for future curation but
+ * seed with `active = 0` (not selectable).
  */
 export function buildTutorProfileCatalogSeedPlan(): TutorProfileCatalogSeedPlan {
-  const universitiesSeed: CatalogOptionSeed[] = [];
-  const faculties: FacultySeed[] = [];
-  const departments: DepartmentSeed[] = [];
-
   assertNoDuplicateKeys(
-    suppliedBangladeshUniversities.map(university =>
-      normalizeCatalogName(university.name)
-    ),
-    "university"
+    suppliedBangladeshUniversities.map(university => normalizeCatalogName(university.name)),
+    "institute",
+  );
+  assertNoDuplicateKeys(
+    suppliedInstituteDepartments.map(name => normalizeCatalogName(name)),
+    "department",
   );
 
-  for (let universityIndex = 0; universityIndex < suppliedBangladeshUniversities.length; universityIndex += 1) {
-    const university = suppliedBangladeshUniversities[universityIndex]!;
-    const universityNormalizedName = normalizeCatalogName(university.name);
-    const active = university.status === "Active" ? 1 : 0;
-    universitiesSeed.push({
-      name: university.name,
-      normalizedName: universityNormalizedName,
-      active,
-      sortOrder: universityIndex + 1,
-    });
-
-    assertNoDuplicateKeys(
-      university.faculties.map(faculty => normalizeCatalogName(faculty.name)),
-      `${university.name} faculty`
-    );
-
-    for (let facultyIndex = 0; facultyIndex < university.faculties.length; facultyIndex += 1) {
-      const faculty = university.faculties[facultyIndex]!;
-      const facultyNormalizedName = normalizeCatalogName(faculty.name);
-      faculties.push({
-        name: faculty.name,
-        normalizedName: facultyNormalizedName,
-        universityNormalizedName,
-        active,
-        sortOrder: facultyIndex + 1,
-      });
-
-      assertNoDuplicateKeys(
-        faculty.departments.map(department => normalizeCatalogName(department)),
-        `${university.name} / ${faculty.name} department`
-      );
-
-      for (
-        let departmentIndex = 0;
-        departmentIndex < faculty.departments.length;
-        departmentIndex += 1
-      ) {
-        const name = faculty.departments[departmentIndex]!;
-        departments.push({
-          name,
-          normalizedName: normalizeCatalogName(name),
-          universityNormalizedName,
-          facultyNormalizedName,
-          active,
-          sortOrder: departmentIndex + 1,
-        });
-      }
-    }
-  }
+  const universitiesSeed = suppliedBangladeshUniversities.map((university, index) => ({
+    name: university.name,
+    normalizedName: normalizeCatalogName(university.name),
+    active: university.status === "Active" ? 1 : 0,
+    sortOrder: index + 1,
+  }));
 
   return {
     universities: universitiesSeed,
-    faculties,
-    departments,
+    departments: createOptions(suppliedInstituteDepartments),
     subjects: createOptions([
       "Bangla",
       "English",
@@ -210,7 +158,7 @@ type SeedDatabase = Pick<MySql2Database, "insert" | "select" | "update">;
 async function upsertOptions(
   db: SeedDatabase,
   table: any,
-  options: CatalogOptionSeed[]
+  options: CatalogOptionSeed[],
 ) {
   if (options.length === 0) return;
   await db.insert(table).values(options).onDuplicateKeyUpdate({
@@ -222,94 +170,27 @@ async function upsertOptions(
   });
 }
 
-/** Applies the supplied parent-linked academic hierarchy atomically and idempotently. */
+/** Applies the Institute and Department/Subject catalog atomically and idempotently. */
 async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
   const plan = buildTutorProfileCatalogSeedPlan();
+
   await upsertOptions(db, universities, plan.universities);
-
-  const universityRows = await db
-    .select({ id: universities.id, normalizedName: universities.normalizedName })
-    .from(universities);
-  const universityIdByNormalizedName = new Map(
-    universityRows.map(row => [row.normalizedName, row.id])
-  );
-
-  const facultyRows = plan.faculties.map(faculty => {
-    const universityId = universityIdByNormalizedName.get(
-      faculty.universityNormalizedName
-    );
-    if (!universityId) {
-      throw new Error(`Missing parent university for faculty: ${faculty.name}`);
-    }
-    return { ...faculty, universityId };
-  });
-  if (facultyRows.length > 0) {
-    await db.insert(academicFaculties).values(
-      facultyRows.map(({ universityNormalizedName, ...row }) => row)
-    ).onDuplicateKeyUpdate({
-      set: {
-        name: sql`VALUES(name)`,
-        active: sql`VALUES(active)`,
-        sortOrder: sql`VALUES(sortOrder)`,
-      },
-    });
-  }
-
-  const facultyCatalogRows = await db
-    .select({
-      id: academicFaculties.id,
-      universityId: academicFaculties.universityId,
-      normalizedName: academicFaculties.normalizedName,
-    })
-    .from(academicFaculties);
-  const facultyIdByParentAndNormalizedName = new Map(
-    facultyCatalogRows.map(row => [`${row.universityId}:${row.normalizedName}`, row.id])
-  );
-
-  const departmentRows = plan.departments.map(department => {
-    const universityId = universityIdByNormalizedName.get(
-      department.universityNormalizedName
-    );
-    const facultyId = universityId
-      ? facultyIdByParentAndNormalizedName.get(
-          `${universityId}:${department.facultyNormalizedName}`
-        )
-      : undefined;
-    if (!universityId || !facultyId) {
-      throw new Error(`Missing Faculty parent for department: ${department.name}`);
-    }
-    return { ...department, universityId, facultyId };
-  });
-  if (departmentRows.length > 0) {
-    await db.insert(facultyDepartments).values(
-      departmentRows.map(
-        ({ universityNormalizedName, facultyNormalizedName, ...row }) => row
-      )
-    ).onDuplicateKeyUpdate({
-      set: {
-        name: sql`VALUES(name)`,
-        active: sql`VALUES(active)`,
-        sortOrder: sql`VALUES(sortOrder)`,
-      },
-    });
-  }
+  await upsertOptions(db, facultyDepartments, plan.departments);
 
   // Renames and removed duplicates leave orphan rows under their old normalized
-  // name. Deactivate any Institute no longer in the supplied directory so it
-  // stops being offered; the row itself stays so existing tutor selections
-  // still resolve (and can be re-picked against the current name).
-  const planUniversityNormalizedNames = plan.universities.map(university => university.normalizedName);
-  if (planUniversityNormalizedNames.length > 0) {
-    await db
-      .update(universities)
-      .set({ active: 0 })
-      .where(
-        and(
-          eq(universities.active, 1),
-          notInArray(universities.normalizedName, planUniversityNormalizedNames),
-        ),
-      );
-  }
+  // name. Deactivate any Institute or Department/Subject no longer in the
+  // supplied directory so it stops being offered; the row itself stays so
+  // existing tutor selections still resolve (and can be re-picked).
+  const planUniversityNames = plan.universities.map(option => option.normalizedName);
+  const planDepartmentNames = plan.departments.map(option => option.normalizedName);
+  await db
+    .update(universities)
+    .set({ active: 0 })
+    .where(and(eq(universities.active, 1), notInArray(universities.normalizedName, planUniversityNames)));
+  await db
+    .update(facultyDepartments)
+    .set({ active: 0 })
+    .where(and(eq(facultyDepartments.active, 1), notInArray(facultyDepartments.normalizedName, planDepartmentNames)));
 
   await Promise.all([
     upsertOptions(db, subjectsCatalog, plan.subjects),
@@ -321,7 +202,6 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
 
   return {
     universities: plan.universities.length,
-    faculties: plan.faculties.length,
     facultyDepartments: plan.departments.length,
     subjects: plan.subjects.length,
     classLevels: plan.classLevels.length,
@@ -332,11 +212,11 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
 }
 
 /**
- * Writes the related catalog records atomically. Database uniqueness keys make
- * repeated runs idempotent, while the transaction prevents partial imports.
+ * Writes the catalog records atomically. Database uniqueness keys make repeated
+ * runs idempotent, while the transaction prevents partial imports.
  */
 export async function seedTutorProfileCatalog(db: MySql2Database) {
   return db.transaction(async transaction =>
-    seedTutorProfileCatalogInTransaction(transaction)
+    seedTutorProfileCatalogInTransaction(transaction),
   );
 }

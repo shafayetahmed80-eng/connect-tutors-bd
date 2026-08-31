@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SearchableMultiSelect, resetAcademicSelection } from "./TutorProfileSelectors";
+import { SearchableMultiSelect } from "./TutorProfileSelectors";
 
 function TeachingAreaHarness() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -59,21 +59,6 @@ describe("Tutor Profile selector controls", () => {
     await user.type(screen.getByRole("searchbox", { name: /search teaching areas/i }), "uttara");
 
     expect(onSearchQueryChange).toHaveBeenLastCalledWith("uttara");
-  });
-
-  it("clears dependent academic IDs when a parent academic selector changes", () => {
-    expect(resetAcademicSelection("university", { universityId: "1", facultyId: "4", facultyDepartmentId: "8" }, "2")).toEqual({
-      universityId: "2",
-      facultyId: "",
-      facultyDepartmentId: "",
-      message: "The institute changed, so select the related faculty and department or subject again.",
-    });
-    expect(resetAcademicSelection("faculty", { universityId: "2", facultyId: "4", facultyDepartmentId: "8" }, "5")).toEqual({
-      universityId: "2",
-      facultyId: "5",
-      facultyDepartmentId: "",
-      message: "The related faculty changed, so select the department or subject again.",
-    });
   });
 
   it("opens a focus-contained, touch-friendly selector sheet on a mobile viewport", async () => {

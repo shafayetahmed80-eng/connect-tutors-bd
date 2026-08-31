@@ -53,66 +53,32 @@ describe("Tutor Profile academic catalog seed plan", () => {
     expect(new Set(plan.universities.map(university => university.normalizedName)).size).toBe(plan.universities.length);
   });
 
-  it("preserves the supplied Institute → Faculty → Department/Subject chain", () => {
+  it("builds one flat, deduplicated Department/Subject vocabulary with no Faculty layer", () => {
     const plan = buildTutorProfileCatalogSeedPlan();
-    const university = "University of Dhaka";
-    const faculty = "Faculty of Arts";
-    const department = "Department of Bangla";
 
-    expect(plan.universities.map(option => option.normalizedName)).toContain(
-      normalizeCatalogName(university)
-    );
-    expect(plan.faculties).toEqual(
+    expect(plan).not.toHaveProperty("faculties");
+    const departmentNames = plan.departments.map(option => option.normalizedName);
+    expect(departmentNames).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          universityNormalizedName: normalizeCatalogName(university),
-          name: faculty,
-          normalizedName: normalizeCatalogName(faculty),
-        }),
-      ])
+        "bangla",
+        "english",
+        "computer science and engineering",
+        "bachelor of medicine, bachelor of surgery (mbbs)",
+        "bachelor of dental surgery (bds)",
+        "others",
+      ]),
     );
-    expect(plan.departments).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          universityNormalizedName: normalizeCatalogName(university),
-          facultyNormalizedName: normalizeCatalogName(faculty),
-          name: department,
-          normalizedName: normalizeCatalogName(department),
-        }),
-      ])
+    expect(new Set(departmentNames).size).toBe(plan.departments.length);
+    expect(plan.departments.every(option => option.active === 1)).toBe(true);
+    expect(plan.departments.map((_, index) => index + 1)).toEqual(
+      plan.departments.map(option => option.sortOrder),
     );
-  });
-
-  it("links every Faculty and Department/Subject to its seeded parent", () => {
-    const plan = buildTutorProfileCatalogSeedPlan();
-    const universityNames = new Set(
-      plan.universities.map(university => university.normalizedName)
-    );
-    const facultyKeys = new Set(
-      plan.faculties.map(
-        faculty => `${faculty.universityNormalizedName}:${faculty.normalizedName}`
-      )
-    );
-
-    for (const faculty of plan.faculties) {
-      expect(universityNames.has(faculty.universityNormalizedName)).toBe(true);
-    }
-    for (const department of plan.departments) {
-      expect(
-        facultyKeys.has(
-          `${department.universityNormalizedName}:${department.facultyNormalizedName}`
-        )
-      ).toBe(true);
-    }
   });
 
   it("keeps hierarchy records unique and preserves controlled profile selector options", () => {
     const plan = buildTutorProfileCatalogSeedPlan();
-    const departmentKeys = plan.departments.map(
-      department =>
-        `${department.universityNormalizedName}:${department.facultyNormalizedName}:${department.normalizedName}`
-    );
     const optionGroups = [
+      plan.departments,
       plan.subjects,
       plan.classLevels,
       plan.curricula,
@@ -120,9 +86,7 @@ describe("Tutor Profile academic catalog seed plan", () => {
       plan.languages,
     ];
 
-    expect(plan.faculties.length).toBeGreaterThan(0);
-    expect(plan.departments.length).toBeGreaterThan(1_000);
-    expect(new Set(departmentKeys).size).toBe(plan.departments.length);
+    expect(plan.departments.length).toBeGreaterThan(100);
     expect(plan.subjects.map(subject => subject.normalizedName)).toEqual(
       expect.arrayContaining(["mathematics", "bangla", "english", "ict"])
     );

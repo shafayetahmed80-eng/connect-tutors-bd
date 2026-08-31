@@ -25,7 +25,6 @@ export type TutorProfileReadoutResolvers = {
   studentType: (id: string) => string;
   language: (id: string) => string;
   university: (id: string) => string;
-  faculty: (id: string) => string;
   department: (id: string) => string;
   location: (id: string) => string;
   area: (id: string) => string;
@@ -124,7 +123,6 @@ export function getTutorProfileReadoutSections(
             row("Highest education", text(form.highestEducation), true),
             row("Current study status", fromMap(staticLabels.studyStatus, form.studyStatus)),
             row("Institute", form.universityId ? resolve.university(form.universityId) : ""),
-            row("Related faculty", form.facultyId ? resolve.faculty(form.facultyId) : ""),
             row("Related department / subject", form.facultyDepartmentId ? resolve.department(form.facultyDepartmentId) : ""),
             row("Graduation year", text(form.graduationYear), true),
             row("Qualification history", educationSummary(form)),

@@ -1,15 +1,9 @@
 import source from "./data/bangladesh-universities.json";
 
-export type SuppliedUniversityFaculty = {
-  name: string;
-  departments: string[];
-};
-
 export type SuppliedUniversity = {
   name: string;
   location: string;
   status: "Active" | "Non-functional" | "Programs not started";
-  faculties: SuppliedUniversityFaculty[];
 };
 
 type SuppliedUniversityDirectory = {
@@ -21,17 +15,20 @@ type SuppliedUniversityDirectory = {
   dental_colleges: SuppliedUniversity[];
   affiliated_colleges: SuppliedUniversity[];
   other: SuppliedUniversity[];
+  /** One flat, global Honours/Bachelor/Undergraduate field-of-study vocabulary. */
+  departments: string[];
 };
 
 /**
- * User-supplied, website-ready Bangladesh institute directory.  This stays in
- * a standalone JSON file so Faculty and Department/Subject records can be
- * regenerated without maintaining a second hard-coded hierarchy in the UI.
+ * User-supplied, website-ready Bangladesh institute directory. It stays in a
+ * standalone JSON file so the Institute list and the Department/Subject
+ * vocabulary can be refreshed without editing code.
  *
- * The "Institute" selector spans universities, medical/dental colleges, the
- * former Dhaka-University "seven colleges", and an "Others" catch-all — every
- * group is flattened into one list. "Others" is spread first so it always sorts
- * to the top of the search results.
+ * There is no Faculty layer: the "Institute" selector spans universities,
+ * medical/dental colleges, the former Dhaka-University "seven colleges", and an
+ * "Others" catch-all, and "Department / Subject" is one global list applied to
+ * every institute. "Others" is spread first in each list so it always sorts to
+ * the top of the search results.
  */
 export const bangladeshUniversityDirectory = source as SuppliedUniversityDirectory;
 
@@ -45,3 +42,5 @@ export const suppliedBangladeshUniversities = [
   ...bangladeshUniversityDirectory.dental_colleges,
   ...bangladeshUniversityDirectory.affiliated_colleges,
 ] as const;
+
+export const suppliedInstituteDepartments = bangladeshUniversityDirectory.departments;

@@ -25,7 +25,6 @@ vi.mock("@/lib/trpc", () => {
       },
       catalog: {
         searchUniversities: { useQuery: emptyQuery },
-        searchAcademicFaculties: { useQuery: emptyQuery },
         searchFacultyDepartments: { useQuery: emptyQuery },
         searchDegreeMajors: { useQuery: emptyQuery },
         searchSubjects: { useQuery: emptyQuery },
@@ -65,7 +64,6 @@ const completeProfile = {
   availableNationwide: true,
   highestEducation: "BSc",
   universityId: 1,
-  facultyId: 1,
   facultyDepartmentId: 1,
   degreeMajorId: 1,
   studyStatus: "graduated" as const,

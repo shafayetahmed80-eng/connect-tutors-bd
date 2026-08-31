@@ -6,7 +6,6 @@ const profileDbMocks = vi.hoisted(() => ({
   saveTutorProfileDraft: vi.fn(),
   submitTutorProfile: vi.fn(),
   searchUniversities: vi.fn(),
-  searchAcademicFaculties: vi.fn(),
   searchFacultyDepartments: vi.fn(),
   searchBangladeshLocations: vi.fn(),
   searchRegistrationCityLocations: vi.fn(),
@@ -22,7 +21,6 @@ vi.mock("./db", async importOriginal => {
     saveTutorProfileDraft: profileDbMocks.saveTutorProfileDraft,
     submitTutorProfile: profileDbMocks.submitTutorProfile,
     searchUniversities: profileDbMocks.searchUniversities,
-    searchAcademicFaculties: profileDbMocks.searchAcademicFaculties,
     searchFacultyDepartments: profileDbMocks.searchFacultyDepartments,
     searchBangladeshLocations: profileDbMocks.searchBangladeshLocations,
     searchRegistrationCityLocations: profileDbMocks.searchRegistrationCityLocations,
@@ -44,7 +42,6 @@ const completeDraftPayload = {
   availableNationwide: true,
   highestEducation: "Bachelor of Science",
   universityId: 1,
-  facultyId: 10,
   facultyDepartmentId: 2,
   degreeMajorId: 3,
   studyStatus: "graduated" as const,
@@ -103,8 +100,7 @@ describe("TP-05 owner Tutor Profile procedures", () => {
       completionPercentage: 100,
     });
     profileDbMocks.searchUniversities.mockResolvedValue([{ id: 1, name: "University of Dhaka" }]);
-    profileDbMocks.searchAcademicFaculties.mockResolvedValue([{ id: 10, name: "Faculty of Science", universityId: 1 }]);
-    profileDbMocks.searchFacultyDepartments.mockResolvedValue([{ id: 2, name: "Mathematics", universityId: 1, facultyId: 10 }]);
+    profileDbMocks.searchFacultyDepartments.mockResolvedValue([{ id: 2, name: "Mathematics" }]);
     profileDbMocks.searchBangladeshLocations.mockResolvedValue([{ id: "dhaka", label: "Dhaka", type: "city" }]);
     profileDbMocks.searchRegistrationCityLocations.mockResolvedValue([
       { id: "mirpur", label: "Mirpur", type: "thana", parentId: "dhaka" },
@@ -210,18 +206,14 @@ describe("TP-05 owner Tutor Profile procedures", () => {
     await expect((tutorCaller.catalog as any).searchUniversities({ query: "  Dhaka  ", limit: 20 })).resolves.toEqual([
       { id: 1, name: "University of Dhaka" },
     ]);
-    await expect((tutorCaller.catalog as any).searchAcademicFaculties({ universityId: 1, query: "Science", limit: 10 })).resolves.toEqual([
-      { id: 10, name: "Faculty of Science", universityId: 1 },
-    ]);
-    await expect((tutorCaller.catalog as any).searchFacultyDepartments({ facultyId: 10, query: "Math", limit: 10 })).resolves.toEqual([
-      { id: 2, name: "Mathematics", universityId: 1, facultyId: 10 },
+    await expect((tutorCaller.catalog as any).searchFacultyDepartments({ query: "Math", limit: 10 })).resolves.toEqual([
+      { id: 2, name: "Mathematics" },
     ]);
     await expect((tutorCaller.catalog as any).searchBangladeshLocations({ query: "Dha", types: ["city"], limit: 5 })).resolves.toEqual([
       { id: "dhaka", label: "Dhaka", type: "city" },
     ]);
     expect(profileDbMocks.searchUniversities).toHaveBeenCalledWith({ query: "Dhaka", limit: 20 });
-    expect(profileDbMocks.searchAcademicFaculties).toHaveBeenCalledWith(1, { query: "Science", limit: 10 });
-    expect(profileDbMocks.searchFacultyDepartments).toHaveBeenCalledWith(10, { query: "Math", limit: 10 });
+    expect(profileDbMocks.searchFacultyDepartments).toHaveBeenCalledWith({ query: "Math", limit: 10 });
     expect(profileDbMocks.searchBangladeshLocations).toHaveBeenCalledWith({ query: "Dha", types: ["city"], limit: 5 });
 
     await expect((createCaller("guardian").catalog as any).searchUniversities({ query: "Dhaka" })).rejects.toMatchObject({ code: "FORBIDDEN" });

@@ -50,7 +50,7 @@ const sectionSubGroups: readonly SubGroupDefinition[] = [
     id: "c-education",
     section: "c",
     label: "Education",
-    fieldKeys: ["highestEducation", "universityId", "facultyId", "facultyDepartmentId", "studyStatus", "graduationYear", "educationRecords"],
+    fieldKeys: ["highestEducation", "universityId", "facultyDepartmentId", "studyStatus", "graduationYear", "educationRecords"],
   },
   {
     id: "c-teaching",
@@ -92,7 +92,6 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
     fieldKeys: [
       "highestEducation",
       "universityId",
-      "facultyId",
       "facultyDepartmentId",
       "studyStatus",
       "graduationYear",

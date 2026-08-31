@@ -22,7 +22,6 @@ export type PersistedTutorProfileForForm = {
   teachingAreaIds: string[];
   availableNationwide: boolean;
   universityId: number | null;
-  facultyId?: number | null;
   facultyDepartmentId: number | null;
   degreeMajorId?: number | null;
   profilePhotoUrl?: string | null;
@@ -107,7 +106,6 @@ export type TutorProfileFormState = {
   availableNationwide: boolean;
   highestEducation: string;
   universityId: string;
-  facultyId: string;
   facultyDepartmentId: string;
   studyStatus: "" | "studying" | "graduated" | "professional";
   graduationYear: string;
@@ -178,7 +176,6 @@ export function hydrateTutorProfileForm(
       availableNationwide: false,
       highestEducation: "",
       universityId: "",
-      facultyId: "",
       facultyDepartmentId: "",
       studyStatus: "",
       graduationYear: "",
@@ -217,7 +214,6 @@ export function hydrateTutorProfileForm(
     availableNationwide: profile.availableNationwide,
     highestEducation: profile.highestEducation ?? "",
     universityId: profile.universityId ? String(profile.universityId) : "",
-    facultyId: profile.facultyId ? String(profile.facultyId) : "",
     facultyDepartmentId: profile.facultyDepartmentId ? String(profile.facultyDepartmentId) : "",
     studyStatus: profile.studyStatus ?? "",
     graduationYear: profile.graduationYear ? String(profile.graduationYear) : "",
@@ -259,7 +255,6 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     availableNationwide: form.availableNationwide,
     highestEducation: optionalText(form.highestEducation),
     universityId: optionalId(form.universityId),
-    facultyId: optionalId(form.facultyId),
     facultyDepartmentId: optionalId(form.facultyDepartmentId),
     studyStatus: form.studyStatus || undefined,
     graduationYear: Number.isInteger(graduationYear) ? graduationYear : undefined,

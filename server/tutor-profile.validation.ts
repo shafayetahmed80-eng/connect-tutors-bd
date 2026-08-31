@@ -131,7 +131,6 @@ const profileShape = {
 
   highestEducation: optionalTrimmedText(120),
   universityId: positiveIdSchema.optional(),
-  facultyId: positiveIdSchema.optional(),
   facultyDepartmentId: positiveIdSchema.optional(),
   degreeMajorId: positiveIdSchema.optional(),
   studyStatus: z.enum(["studying", "graduated", "professional"]).optional(),
@@ -229,7 +228,6 @@ const submissionRequiredKeys = [
   "teachingAreaIds",
   "availableNationwide",
   "universityId",
-  "facultyId",
   "facultyDepartmentId",
   "studyStatus",
   "primarySubjectIds",
@@ -286,9 +284,7 @@ export type TutorProfileSubmissionInput = z.infer<typeof tutorProfileSubmissionS
 export type TutorProfileCatalogReferences = {
   activeLocationIds: ReadonlySet<string>;
   activeUniversityIds: ReadonlySet<number>;
-  activeFacultyUniversityIds: ReadonlyMap<number, number>;
-  activeFacultyDepartmentUniversityIds: ReadonlyMap<number, number>;
-  activeFacultyDepartmentFacultyIds: ReadonlyMap<number, number>;
+  activeFacultyDepartmentIds: ReadonlySet<number>;
   activeDegreeMajorFacultyDepartmentIds: ReadonlyMap<number, number>;
   activeSubjectIds: ReadonlySet<number>;
   activeClassLevelIds: ReadonlySet<number>;
@@ -307,7 +303,6 @@ type CatalogReferenceProfile = Pick<
   | "currentLocationId"
   | "teachingAreaIds"
   | "universityId"
-  | "facultyId"
   | "facultyDepartmentId"
   | "degreeMajorId"
   | "primarySubjectIds"
@@ -365,42 +360,11 @@ export function validateTutorProfileCatalogReferences(
     });
   }
 
-  if (profile.facultyId !== undefined) {
-    const parentUniversityId = references.activeFacultyUniversityIds.get(profile.facultyId);
-    if (parentUniversityId === undefined) {
-      issues.push({
-        path: ["facultyId"],
-        message: "The selected faculty is unavailable. Please choose an active option.",
-      });
-    } else if (profile.universityId !== undefined && parentUniversityId !== profile.universityId) {
-      issues.push({
-        path: ["facultyId"],
-        message: "The selected faculty does not belong to the selected university.",
-      });
-    }
-  }
-
-  if (profile.facultyDepartmentId !== undefined) {
-    const parentUniversityId = references.activeFacultyDepartmentUniversityIds.get(profile.facultyDepartmentId);
-    if (parentUniversityId === undefined) {
-      issues.push({
-        path: ["facultyDepartmentId"],
-        message: "The selected faculty or department is unavailable. Please choose an active option.",
-      });
-    } else if (profile.universityId !== undefined && parentUniversityId !== profile.universityId) {
-      issues.push({
-        path: ["facultyDepartmentId"],
-        message: "The selected faculty or department does not belong to the selected university.",
-      });
-    }
-
-    const parentFacultyId = references.activeFacultyDepartmentFacultyIds.get(profile.facultyDepartmentId);
-    if (profile.facultyId !== undefined && parentFacultyId !== profile.facultyId) {
-      issues.push({
-        path: ["facultyDepartmentId"],
-        message: "The selected department or subject does not belong to the selected faculty.",
-      });
-    }
+  if (profile.facultyDepartmentId !== undefined && !references.activeFacultyDepartmentIds.has(profile.facultyDepartmentId)) {
+    issues.push({
+      path: ["facultyDepartmentId"],
+      message: "The selected department or subject is unavailable. Please choose an active option.",
+    });
   }
 
   if (profile.degreeMajorId !== undefined) {
@@ -460,7 +424,6 @@ export function calculateTutorProfileCompletion(profile: Record<string, unknown>
     hasSelections(profile.teachingAreaIds),
     typeof profile.availableNationwide === "boolean",
     hasPositiveId(profile.universityId),
-    hasPositiveId(profile.facultyId),
     hasPositiveId(profile.facultyDepartmentId),
     profile.studyStatus === "studying" || profile.studyStatus === "graduated" || profile.studyStatus === "professional",
     hasSelections(profile.primarySubjectIds),
@@ -478,5 +441,5 @@ export function calculateTutorProfileCompletion(profile: Record<string, unknown>
     hasSelections(profile.communicationPreferences),
   ];
 
-  return Math.round((completedUnits.filter(Boolean).length / 27) * 100);
+  return Math.round((completedUnits.filter(Boolean).length / 26) * 100);
 }
