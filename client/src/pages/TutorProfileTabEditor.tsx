@@ -84,7 +84,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
               <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${complete ? "bg-[#e8f6ef] text-[#1c8a5b]" : "bg-j-accent-wash text-j-accent"}`}>
                 <Icon size={16} aria-hidden={true} />
               </span>
-              <h3 className={`truncate text-[15px] ${tp.heading}`}>{heading}</h3>
+              <h3 className={`text-[15px] leading-tight ${tp.heading}`}>{heading}</h3>
               <span className={`${tp.pill} shrink-0 ${complete ? "bg-[#e8f6ef] text-[#1c8a5b]" : "bg-j-surface-sunken text-[#6b8497]"}`}>
                 {complete ? <Check size={12} aria-hidden={true} /> : null}{total === 0 ? "Optional" : `${filled}/${total}`}
               </span>

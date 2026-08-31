@@ -73,7 +73,7 @@ export function TutorProfileReadView({ sections, onEditSection }: TutorProfileRe
               <Icon size={17} aria-hidden={true} />
             </span>
             <span className="min-w-0 flex-1">
-              <h2 id={`readout-${section.id}`} className={`truncate text-[15px] ${tp.heading}`}>{section.title}</h2>
+              <h2 id={`readout-${section.id}`} className={`text-[15px] leading-tight ${tp.heading}`}>{section.title}</h2>
               {!isOpen && preview ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{preview}</span> : null}
             </span>
             <span className={`${tp.pill} shrink-0 ${complete ? "bg-[#e8f6ef] text-[#1c8a5b]" : "bg-j-surface-sunken text-[#6b8497]"}`}>
