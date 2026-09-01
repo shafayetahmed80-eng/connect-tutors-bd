@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { SiteContentProvider, SiteText } from "@/lib/siteContent";
+import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
@@ -11,7 +12,7 @@ import {
   tutorSupportingDocumentTypes,
   type TutorSupportingDocumentType,
 } from "@shared/tutor-documents";
-import { Check, ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -101,6 +102,7 @@ function CatalogSearchField({
   options,
   selectedId,
   onSelectedIdChange,
+  limit,
   disabled = false,
   required = false,
   hint,
@@ -112,6 +114,8 @@ function CatalogSearchField({
   options: CatalogOption[] | undefined;
   selectedId: string;
   onSelectedIdChange: (id: string) => void;
+  /** Page size the options came from; used to warn when results were cut off. */
+  limit?: number;
   disabled?: boolean;
   required?: boolean;
   hint?: string;
@@ -119,31 +123,65 @@ function CatalogSearchField({
 }) {
   const listId = `catalog-${label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const selectedOption = options?.find(option => String(option.id) === selectedId);
-  const inputValue = query || selectedOption?.name || "";
+
+  // A saved profile arrives as an id with no text, so seed the box from the
+  // selection. The input is otherwise driven only by `query`: deriving it as
+  // `query || selectedName` made an empty box impossible, so backspacing to
+  // clear silently snapped the old name back.
+  useEffect(() => {
+    if (selectedId && !query && selectedOption) onQueryChange(selectedOption.name);
+  }, [selectedId, selectedOption?.name]);
+
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     onQueryChange(nextValue);
     const selection = options?.find(option => option.name === nextValue);
     if (selection) onSelectedIdChange(String(selection.id));
+    // Text that no longer names the selection must drop it, or the form keeps
+    // submitting an option the Tutor can no longer see in the box.
+    else if (selectedId) onSelectedIdChange("");
   };
+
+  const clearSelection = () => {
+    onQueryChange("");
+    onSelectedIdChange("");
+  };
+
+  // A full page of results means the catalog had more to give.
+  const truncated = limit !== undefined && (options?.length ?? 0) >= limit;
+
   return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
-    <input
-      className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}
-      type="search"
-      role="combobox"
-      aria-autocomplete="list"
-      aria-controls={listId}
-      list={listId}
-      value={inputValue}
-      disabled={disabled}
-      aria-invalid={Boolean(error)}
-      aria-required={required || undefined}
-      onChange={onChange}
-      placeholder={disabled ? `Select the previous field first` : `Search ${label.toLocaleLowerCase()}`}
-    />
+    <span className="relative mt-1.5 block">
+      <input
+        className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? "border-[#d84a4a]" : ""}`}
+        type="text"
+        role="combobox"
+        aria-expanded={false}
+        aria-autocomplete="list"
+        aria-controls={listId}
+        list={listId}
+        value={query}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        aria-required={required || undefined}
+        onChange={onChange}
+        placeholder={disabled ? `Select the previous field first` : `Search ${label.toLocaleLowerCase()}`}
+      />
+      {/* Own button rather than the browser's search ✕, whose clear event left
+          the selected id behind while the text snapped back. */}
+      {query && !disabled ? <button
+        type="button"
+        onClick={clearSelection}
+        aria-label={`Clear ${label}`}
+        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-[#6b8497] hover:bg-[#eef5fb] hover:text-[#244a6a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
+      >
+        <X size={14} />
+      </button> : null}
+    </span>
     <datalist id={listId}>{(options ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
     {hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}
+    {truncated ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
     {error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}
   </label>;
 }
@@ -268,8 +306,8 @@ function TutorProfileWorkspaceBody({
   }, [form.profilePhotoUrl]);
 
   const universityId = Number(form.universityId);
-  const universities = trpc.catalog.searchUniversities.useQuery({ query: universityQuery, limit: 50 });
-  const facultyDepartments = trpc.catalog.searchFacultyDepartments.useQuery({ query: departmentQuery, limit: 50 });
+  const universities = trpc.catalog.searchUniversities.useQuery({ query: universityQuery, limit: CATALOG_SEARCH_LIMIT });
+  const facultyDepartments = trpc.catalog.searchFacultyDepartments.useQuery({ query: departmentQuery, limit: CATALOG_SEARCH_LIMIT });
   const subjects = trpc.catalog.searchSubjects.useQuery({ query: "", limit: 50 });
   const classLevels = trpc.catalog.searchClassLevels.useQuery({ query: "", limit: 50 });
   const curricula = trpc.catalog.searchCurricula.useQuery({ query: "", limit: 50 });
@@ -781,8 +819,8 @@ function TutorProfileWorkspaceBody({
     <div className="grid gap-5 md:grid-cols-2">
       <FormSelect label={tutorProfileCopy.fields.educationLevel} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />
       <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
-      <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} required error={fieldErrors.universityId} />
-      <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} required error={fieldErrors.facultyDepartmentId} />
+      <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.universityId} />
+      <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.facultyDepartmentId} />
       <FormInput label={tutorProfileCopy.fields.degreeExamTitle} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />
       <FormInput label={`${tutorProfileCopy.fields.resultGpa} (Optional)`} value={form.resultGpa} onChange={event => update("resultGpa", event.target.value)} placeholder="Ex-4.00" />
       <FormInput label={`${tutorProfileCopy.fields.deptId} (Optional)`} value={form.deptId} onChange={event => update("deptId", event.target.value)} placeholder="Ex-13104096" />

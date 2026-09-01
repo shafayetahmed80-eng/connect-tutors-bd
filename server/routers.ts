@@ -15,6 +15,7 @@ import {
   reviewGuardianProfilePhoto,
 } from "./guardian-profile-photo";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
+import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentAnchorPage,
@@ -158,7 +159,10 @@ function rethrowProfileValidationError(error: unknown): never {
 
 const catalogSearchInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
-  limit: z.number().int().min(1).max(50).default(30),
+  // The institute catalog alone holds 300+ rows, so a 50 ceiling silently hid
+  // real matches behind common words like "Medical". Still bounded, because an
+  // unbounded limit would let one request pull an entire catalog.
+  limit: z.number().int().min(1).max(CATALOG_SEARCH_LIMIT).default(30),
 });
 
 const tutorListingInputSchema = z.object({
