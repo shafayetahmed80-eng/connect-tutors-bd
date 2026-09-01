@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, ClipboardList, ContactRound, LayoutDashboard, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardList, ContactRound, FileUser, LayoutDashboard, LayoutTemplate, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -12,19 +12,32 @@ export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
   gcTime: 0,
 } as const;
 
+/**
+ * Site-content control for the Tutor and Guardian pages. Owner-only, because
+ * editing published copy changes what every visitor sees.
+ */
+const dynamicSectionItems: DashboardNavigationItem[] = [
+  { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section" },
+  { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section" },
+];
+
 export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNavigationItem[] {
-  const items: DashboardNavigationItem[] = [
+  // Order matters twice over: it is the visible order, and DashboardLayout
+  // starts a new section heading wherever `sectionLabel` changes.
+  return [
     { icon: LayoutDashboard, label: "Overview", path: "/admin/dashboard", sectionLabel: "Operations" },
     { icon: UserRoundCog, label: "Tutor management", path: "/admin/tutors", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian activity", path: "/admin/guardians", sectionLabel: "Operations" },
     { icon: ClipboardList, label: "Matching workspace", path: "/admin/matching", sectionLabel: "Operations" },
+    ...(isOwner ? dynamicSectionItems : []),
     { icon: UsersRound, label: "Public Tutor directory", path: "/tutors", sectionLabel: "Public reference", requiresSignOut: true },
+    ...(isOwner
+      ? [
+          { icon: BarChart3, label: "Admin activity report", path: "/admin/reports", sectionLabel: "Owner controls" },
+          { icon: ShieldCheck, label: "Admin security", path: "/admin/security", sectionLabel: "Owner controls" },
+        ]
+      : []),
   ];
-  if (isOwner) {
-    items.push({ icon: BarChart3, label: "Admin activity report", path: "/admin/reports", sectionLabel: "Owner controls" });
-    items.push({ icon: ShieldCheck, label: "Admin security", path: "/admin/security", sectionLabel: "Owner controls" });
-  }
-  return items;
 }
 
 export function getAdminWorkspaceDisplayState({
