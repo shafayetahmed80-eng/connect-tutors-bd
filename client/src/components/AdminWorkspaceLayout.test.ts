@@ -26,11 +26,12 @@ describe("Admin workspace navigation", () => {
     ]);
   });
 
-  it("gives the Owner a Dynamic Section for Tutor and Guardian content control", () => {
+  it("gives the Owner a Dynamic Section for content control and the form option lists", () => {
     const ownerItems = buildAdminWorkspaceNavigation(true);
     expect(ownerItems.filter(item => item.sectionLabel === "Dynamic Section")).toEqual([
       expect.objectContaining({ label: "Tutor Profile", path: "/admin/dynamic/tutor-profile" }),
       expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
+      expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),
     ]);
   });
 
@@ -39,6 +40,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.some(item => item.sectionLabel === "Dynamic Section")).toBe(false);
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/tutor-profile");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/guardian-profile");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/form-options");
   });
 
   it("orders the Dynamic Section after Operations and before the Owner controls", () => {

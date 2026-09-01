@@ -23,6 +23,8 @@ import {
   resolveSiteContentSlotPage,
   siteContentOverrideInputSchema,
   siteContentPageSchema,
+  optionCatalogSchema,
+  optionCatalogNameSchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -932,6 +934,55 @@ export const appRouter = router({
         }
         await db.reorderSiteContentBlocks(input.anchorId, input.orderedIds);
         return { anchorId: input.anchorId };
+      }),
+  }),
+  optionCatalogs: router({
+    // Owner-only throughout: these lists decide what every tutor and guardian
+    // can pick, so a wrong edit is felt site-wide.
+    list: ownerAdminProcedure
+      .input(z.object({ catalog: optionCatalogSchema }))
+      .query(({ input }) => db.listOptionCatalogEntries(input.catalog)),
+    create: ownerAdminProcedure
+      .input(z.object({ catalog: optionCatalogSchema, name: optionCatalogNameSchema }))
+      .mutation(async ({ input }) => {
+        const result = await db.createOptionCatalogEntry(input.catalog, input.name);
+        if (!result.created) {
+          // It may be sitting there hidden, which is not obvious from the name alone.
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.name}" is already on this list — check whether it is hidden.` });
+        }
+        return { created: true as const };
+      }),
+    update: ownerAdminProcedure
+      .input(z.object({
+        catalog: optionCatalogSchema,
+        id: z.number().int().positive(),
+        name: optionCatalogNameSchema,
+        active: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await db.updateOptionCatalogEntry(input.catalog, input.id, { name: input.name, active: input.active });
+        if (!result.renamed) {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.clashesWith}" already uses that name.` });
+        }
+        return { id: input.id };
+      }),
+    remove: ownerAdminProcedure
+      .input(z.object({ catalog: optionCatalogSchema, id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const result = await db.deleteOptionCatalogEntry(input.catalog, input.id);
+        if (!result.deleted) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `${result.usageCount} tutor${result.usageCount === 1 ? "" : "s"} still use this option. Hide it instead of deleting it.`,
+          });
+        }
+        return { id: input.id };
+      }),
+    reorder: ownerAdminProcedure
+      .input(z.object({ catalog: optionCatalogSchema, orderedIds: z.array(z.number().int().positive()).max(CATALOG_SEARCH_LIMIT) }))
+      .mutation(async ({ input }) => {
+        await db.reorderOptionCatalogEntries(input.catalog, input.orderedIds);
+        return { catalog: input.catalog };
       }),
   }),
   admin: router({

@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, ClipboardList, ContactRound, FileUser, LayoutDashboard, LayoutTemplate, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardList, ContactRound, FileUser, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -19,6 +19,7 @@ export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
 const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section" },
   { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section" },
+  { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section" },
 ];
 
 export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNavigationItem[] {
