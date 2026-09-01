@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_SITE_CONTENT_TEXT_LENGTH,
   findSiteContentSlot,
   getSiteContentSlots,
+  getSiteContentSpacingSlots,
+  getSiteContentSurfaces,
   resolveSiteContentSpacingClass,
   resolveSiteContentTextClass,
+  siteContentPageIds,
   siteContentTextSizes,
   type SiteContentSlot,
 } from "./site-content";
@@ -11,6 +15,7 @@ import {
 const anchoredSlot: SiteContentSlot = {
   id: "test.slot",
   page: "tutor-profile",
+  surface: "Test surface",
   group: "Test",
   label: "Test slot",
   defaultText: "Test",
@@ -18,16 +23,30 @@ const anchoredSlot: SiteContentSlot = {
 };
 
 describe("site content slots", () => {
-  it("declares every Tutor Profile slot with a stable id, group and shipped default", () => {
-    const slots = getSiteContentSlots("tutor-profile");
+  it("declares every slot with a unique id, a surface, a group and shipped copy", () => {
+    for (const page of siteContentPageIds) {
+      const slots = getSiteContentSlots(page);
+      expect(slots.length).toBeGreaterThan(0);
 
-    expect(slots.length).toBeGreaterThan(0);
-    expect(new Set(slots.map(slot => slot.id)).size).toBe(slots.length);
-    for (const slot of slots) {
-      expect(slot.id.startsWith("tutor-profile.")).toBe(true);
-      expect(slot.defaultText.trim()).not.toBe("");
-      expect(slot.group.trim()).not.toBe("");
+      for (const slot of slots) {
+        expect(slot.defaultText.trim()).not.toBe("");
+        expect(slot.surface.trim()).not.toBe("");
+        expect(slot.group.trim()).not.toBe("");
+        expect(slot.defaultText.length).toBeLessThanOrEqual(MAX_SITE_CONTENT_TEXT_LENGTH);
+      }
     }
+
+    // Ids must be unique across every page, since the database keys on them.
+    const allIds = siteContentPageIds.flatMap(page => [
+      ...getSiteContentSlots(page).map(slot => slot.id),
+      ...getSiteContentSpacingSlots(page).map(slot => slot.id),
+    ]);
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+
+  it("covers both surfaces behind each admin page", () => {
+    expect(getSiteContentSurfaces("tutor-profile")).toEqual(["Tutor dashboard", "Public tutor profile"]);
+    expect(getSiteContentSurfaces("guardian-profile")).toEqual(["Guardian dashboard", "Request a tutor"]);
   });
 
   it("leaves the call site's own size class alone until an admin changes it", () => {

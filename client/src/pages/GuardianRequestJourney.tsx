@@ -7,6 +7,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
+import { SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
@@ -540,7 +541,7 @@ export function getGuardianRequestSuccessDestination({ embedded, isEditMode }: {
   return embedded && !isEditMode ? "/guardian/dashboard/posted-jobs" : null;
 }
 
-export default function GuardianRequestJourney({ embedded = false }: { embedded?: boolean }) {
+function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }) {
   const [routePath, navigate] = useLocation();
   const editRequestId = getGuardianPendingEditId(window.location.search);
   const isEditMode = editRequestId !== null;
@@ -870,7 +871,7 @@ export default function GuardianRequestJourney({ embedded = false }: { embedded?
 function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
   const valid = LOCAL_PHONE.test(phone);
   return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Start with your phone number</h1>
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.phone.heading" /></h1>
     <label className="mt-6 block max-w-md" htmlFor="guardian-phone">
       <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
       <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
@@ -959,7 +960,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
         : "";
   const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
-    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Create your Guardian account</h1>
+    <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
     <div className="mt-6 grid gap-x-7 gap-y-4 md:grid-cols-2">
       <FieldError id="guardian-full-name-error" message={errors.name}>
@@ -1072,7 +1073,7 @@ function RequestPreview({ input, notes, tuitionCityLabel, tuitionLocationLabel, 
 }
 
 export function SuccessState({ requestId }: { requestId: number | null }) {
-  return <div className="py-8 text-center sm:py-12 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500"><div className="mx-auto grid size-20 place-items-center rounded-[1.7rem] bg-gradient-to-br from-[#dff6e8] to-[#edfaff] text-j-ok shadow-[0_14px_34px_rgba(24,143,115,.14)]"><Check size={38} strokeWidth={2.7} /></div><p className="mt-7 text-xs font-extrabold uppercase tracking-[.18em] text-j-accent">Request received securely</p><h2 className="mx-auto mt-3 max-w-2xl text-3xl font-extrabold tracking-[-.045em] text-j-ink sm:text-4xl">Thank you. Your request is now pending review.</h2><p className="mx-auto mt-4 max-w-xl leading-7 text-[#58758a]">Your Request ID is <strong className="text-j-ink">#{requestId}</strong>. A coordinator will review the learning needs and contact you to confirm any changes before any job is published.</p><div className="mx-auto mt-6 max-w-xl rounded-2xl border border-j-border bg-j-surface-sunken px-5 py-4 text-left text-sm leading-6 text-[#526f87]"><p className="font-extrabold text-j-ink-strong">Your privacy remains protected</p><p className="mt-1">Your phone, email, exact address, student identity, and additional notes are not shown on the Job Board.</p></div><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/guardian/dashboard/posted-jobs" className={primaryButton}>View My Requests <ArrowRight size={18} /></Link><Link href="/guardian/dashboard/hire" className={ghostButton}>Post Another Request</Link></div></div>;
+  return <div className="py-8 text-center sm:py-12 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500"><div className="mx-auto grid size-20 place-items-center rounded-[1.7rem] bg-gradient-to-br from-[#dff6e8] to-[#edfaff] text-j-ok shadow-[0_14px_34px_rgba(24,143,115,.14)]"><Check size={38} strokeWidth={2.7} /></div><p className="mt-7 text-xs font-extrabold uppercase tracking-[.18em] text-j-accent">Request received securely</p><h2 className="mx-auto mt-3 max-w-2xl text-3xl font-extrabold tracking-[-.045em] text-j-ink sm:text-4xl"><SiteText slotId="request-tutor.done.heading" /></h2><p className="mx-auto mt-4 max-w-xl leading-7 text-[#58758a]">Your Request ID is <strong className="text-j-ink">#{requestId}</strong>. A coordinator will review the learning needs and contact you to confirm any changes before any job is published.</p><div className="mx-auto mt-6 max-w-xl rounded-2xl border border-j-border bg-j-surface-sunken px-5 py-4 text-left text-sm leading-6 text-[#526f87]"><p className="font-extrabold text-j-ink-strong">Your privacy remains protected</p><p className="mt-1">Your phone, email, exact address, student identity, and additional notes are not shown on the Job Board.</p></div><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/guardian/dashboard/posted-jobs" className={primaryButton}>View My Requests <ArrowRight size={18} /></Link><Link href="/guardian/dashboard/hire" className={ghostButton}>Post Another Request</Link></div></div>;
 }
 
 function Eyebrow({ step, title, copy }: { step: string; title: string; copy: string }) { return <div className="border-b border-[#e6eef4] pb-4"><p className="text-[11px] font-extrabold uppercase tracking-[.16em] text-j-accent">{step}</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.02em] text-j-ink">{title}</h2><p className="mt-1.5 text-[13px] leading-6 text-[#617e96]">{copy}</p></div>; }
@@ -1084,3 +1085,8 @@ function formatTuitionType(value: TuitionType) { return value === "home" ? "Home
 function formatPreferredGender(value: string) { return value === "any" ? "No preference" : value === "female" ? "Female" : value === "male" ? "Male" : value; }
 function formatStudentGender(value: string) { return value === "female" ? "Female" : value === "male" ? "Male" : value; }
 function formatBudget(input: RequestInput) { return input.budgetKind === "discuss" ? "Discuss with coordinator" : `BDT ${input.budgetMinimum} – ${input.budgetMaximum}`; }
+
+/** Journey copy is Admin-editable; slots fall back to the code defaults. */
+export default function GuardianRequestJourney(props: { embedded?: boolean }) {
+  return <SiteContentProvider page="guardian-profile"><GuardianRequestJourneyBody {...props} /></SiteContentProvider>;
+}

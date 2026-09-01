@@ -23,6 +23,8 @@ vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => mocks.toastSuc
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ auth: { me: { invalidate: mocks.invalidate } }, tutorRequests: { mine: { invalidate: vi.fn() } } }),
+    // Content overrides are cosmetic; an empty list keeps the code defaults.
+    siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     auth: { me: { useQuery: () => mocks.authMe } },
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },
