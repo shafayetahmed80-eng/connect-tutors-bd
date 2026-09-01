@@ -780,6 +780,29 @@ export const tutorSupportingDocuments = mysqlTable(
   ],
 );
 
+/**
+ * Admin overrides for the copy declared in `@shared/site-content`.
+ *
+ * Only changed slots get a row, so an empty table renders the site exactly as
+ * the code ships it, and deleting a row is a complete reset. `slotId` is a
+ * plain string keyed to the registry rather than an enum, so adding an editable
+ * slot never needs a migration.
+ */
+export const siteContentOverrides = mysqlTable(
+  "site_content_overrides",
+  {
+    slotId: varchar("slotId", { length: 120 }).primaryKey(),
+    page: varchar("page", { length: 60 }).notNull(),
+    text: varchar("text", { length: 240 }),
+    textSize: varchar("textSize", { length: 20 }),
+    spacing: varchar("spacing", { length: 20 }),
+    updatedByUserId: int("updatedByUserId").references(() => users.id),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("site_content_overrides_page_idx").on(table.page)],
+);
+
 export const tutorTeachingAreas = mysqlTable(
   "tutor_teaching_areas",
   {

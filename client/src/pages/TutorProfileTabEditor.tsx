@@ -1,5 +1,6 @@
 import React from "react";
 import { PencilLine } from "lucide-react";
+import { SiteText, useSiteContentSpacingClass } from "@/lib/siteContent";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
 import { TutorProfileSectionTabs } from "./TutorProfileSectionTabs";
@@ -20,6 +21,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
 }) {
   const active = sections.find(section => section.id === activeTab) ?? sections[0];
   const activeGroupTargets = getTutorProfileSectionGroups(active.id);
+  const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
 
   return <div className={tp.stack}>
     <TutorProfileSectionTabs sections={sections} activeTab={activeTab} onTabChange={onTabChange} />
@@ -28,9 +30,11 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
       {active.groups.map((group, groupIndex) => {
         const heading = group.heading ?? active.title;
         const groupTarget = activeGroupTargets?.[groupIndex];
-        return <section key={groupIndex} className={`${tp.card} p-4 sm:p-5`}>
+        return <section key={groupIndex} className={`${tp.card} ${sectionPadding}`}>
           <div className="flex items-center justify-between gap-3 border-b border-j-border pb-3">
-            <h3 className={`text-sm ${tp.heading}`}>{heading}</h3>
+            <h3 className={tp.heading}>
+              {groupTarget ? <SiteText slotId={`tutor-profile.group.${groupTarget.id}`} fallback={heading} className="text-sm" /> : <span className="text-sm">{heading}</span>}
+            </h3>
             <button
               type="button"
               aria-label={`Edit ${groupTarget?.label ?? heading}`}

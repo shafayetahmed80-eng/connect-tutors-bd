@@ -36,6 +36,7 @@ import {
   tutorPrivateProfiles,
   tutorUniversityIdDocuments,
   tutorSupportingDocuments,
+  siteContentOverrides,
   tutorPreferredClassSizes,
   tutorPreferredTeachingDays,
   tutorPreferredTimeSlots,
@@ -4039,4 +4040,48 @@ export async function getOwnerAdminActivityReport(input: OwnerAdminActivityRepor
     }),
     recentEvents,
   };
+}
+
+/** Admin copy overrides for one page; an empty result means "use the code defaults". */
+export async function listSiteContentOverrides(page: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      slotId: siteContentOverrides.slotId,
+      text: siteContentOverrides.text,
+      textSize: siteContentOverrides.textSize,
+      spacing: siteContentOverrides.spacing,
+    })
+    .from(siteContentOverrides)
+    .where(eq(siteContentOverrides.page, page));
+}
+
+export async function saveSiteContentOverride(input: {
+  slotId: string;
+  page: string;
+  text: string | null;
+  textSize: string | null;
+  spacing: string | null;
+  updatedByUserId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const values = { ...input };
+  await db.insert(siteContentOverrides).values(values).onDuplicateKeyUpdate({
+    set: {
+      page: values.page,
+      text: values.text,
+      textSize: values.textSize,
+      spacing: values.spacing,
+      updatedByUserId: values.updatedByUserId,
+    },
+  });
+}
+
+/** Clearing an override is a delete, so the code default takes over again. */
+export async function clearSiteContentOverride(slotId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(siteContentOverrides).where(eq(siteContentOverrides.slotId, slotId));
 }

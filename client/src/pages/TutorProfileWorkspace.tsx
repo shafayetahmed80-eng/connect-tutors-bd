@@ -2,6 +2,7 @@ import { SearchableMultiSelect, type SelectorOption } from "@/components/TutorPr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
+import { SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
@@ -220,7 +221,7 @@ function InlineError({ message }: { message?: string }) {
   return message ? <p role="alert" className="mt-1.5 text-xs font-medium leading-5 text-[#b43e3e]">{message}</p> : null;
 }
 
-export function TutorProfileWorkspace({
+function TutorProfileWorkspaceBody({
   profile,
   onboardingFallback,
   onDirtyChange,
@@ -791,7 +792,7 @@ export function TutorProfileWorkspace({
         : <FormInput label={tutorProfileCopy.fields.graduationYear} showRequiredMarker inputMode="numeric" maxLength={4} value={form.graduationYear} onChange={event => update("graduationYear", digitsOnly(event.target.value, 4))} placeholder="Ex-2022" error={fieldErrors.graduationYear} />}
     </div>
     <div className="mt-6 space-y-3">
-      <h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
+      <h3 className="font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
       {form.educationRecords.map((record, index) => {
         const isOpen = openQualificationIndices.has(index);
         const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
@@ -895,7 +896,7 @@ export function TutorProfileWorkspace({
         <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
         <span><strong className="block text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</strong><span className="mt-1 block leading-5">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
       </label>
-      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 text-sm font-bold text-[#244a6a]">Location, fee and travel</h3>
+      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.location-fee-travel" className="text-sm" /></h3>
       <div className="mt-4 grid gap-5 md:grid-cols-3">
         <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
@@ -903,7 +904,7 @@ export function TutorProfileWorkspace({
         <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
         <FormInput label="Travel Distance (km) (Optional)" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
       </div>
-      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 text-sm font-bold text-[#244a6a]">Teaching language and communication</h3>
+      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.language-communication" className="text-sm" /></h3>
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
@@ -972,4 +973,13 @@ export function TutorProfileWorkspace({
     </div>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
   </form>;
+}
+
+/**
+ * Wraps the workspace so every heading below can read its admin override. The
+ * provider fetches once per page; slots fall back to the copy in code, so the
+ * page renders unchanged when nothing has been overridden.
+ */
+export function TutorProfileWorkspace(props: React.ComponentProps<typeof TutorProfileWorkspaceBody>) {
+  return <SiteContentProvider page="tutor-profile"><TutorProfileWorkspaceBody {...props} /></SiteContentProvider>;
 }
