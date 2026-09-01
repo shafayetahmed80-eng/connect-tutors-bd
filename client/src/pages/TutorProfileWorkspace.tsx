@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
+import {
+  MAX_TUTOR_DOCUMENT_BYTES,
+  TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
+  tutorSupportingDocumentLabels,
+  tutorSupportingDocumentTypes,
+  type TutorSupportingDocumentType,
+} from "@shared/tutor-documents";
 import { Check, ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -166,6 +173,44 @@ function FormTextArea({ label, hint, error, required = false, showRequiredMarker
   return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<textarea {...props} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} min-h-28 resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
+/**
+ * One ruled row in the private verification list: label on the left, upload
+ * status and button on the right. Owns its own hidden file input so every
+ * document can be picked independently.
+ */
+function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uploaded, uploading, onSelectFile }: {
+  inputId: string;
+  label: string;
+  uploadLabel: string;
+  required?: boolean;
+  uploaded: boolean;
+  uploading: boolean;
+  onSelectFile: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-j-border py-3 first:pt-0">
+    <input
+      ref={inputRef}
+      id={inputId}
+      className="sr-only"
+      type="file"
+      accept={TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE}
+      aria-label={`Upload ${label}`}
+      aria-required={required || undefined}
+      onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
+    />
+    <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]">
+      {required ? <LockKeyhole className="shrink-0 text-[#167ddd]" size={16} aria-hidden="true" /> : null}
+      {label}
+      {required ? <span aria-hidden="true" className="text-[#d84a4a]">*</span> : <span className="font-normal text-[#72889a]">(Optional)</span>}
+    </p>
+    <div className="flex items-center gap-2">
+      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
+      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+    </div>
+  </div>;
+}
+
 /** Years are typed by hand, so keep the field to digits instead of a spinner. */
 function digitsOnly(value: string, maxLength: number) {
   return value.replace(/\D/g, "").slice(0, maxLength);
@@ -195,13 +240,13 @@ export function TutorProfileWorkspace({
   const [teachingAreaQuery, setTeachingAreaQuery] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingUniversityId, setUploadingUniversityId] = useState(false);
+  const [uploadingDocumentType, setUploadingDocumentType] = useState<TutorSupportingDocumentType | null>(null);
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(null);
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const universityIdInputRef = useRef<HTMLInputElement>(null);
   // Snapshot of `form` taken when a section popup opens, restored if it is
   // closed without saving so Cancel/Escape/X discard the in-popup edits.
   const formBeforeSectionEditRef = useRef<TeachingProfileState | null>(null);
@@ -321,7 +366,7 @@ export function TutorProfileWorkspace({
   const groupedClassLevels = useMemo(() => getGroupedClassLevelSelector(classLevels.data ?? [], form.classLevelIds), [classLevels.data, form.classLevelIds]);
   const completionSummary = getTutorProfileCompletionSummary(form);
   const completionPercentage = completionSummary.completionPercentage;
-  const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
+  const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId || uploadingDocumentType !== null;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
   // "View Profile" swaps the tabbed editor for the read-only whole-profile
   // preview; the rail's button becomes "Edit Information" to come back.
@@ -637,13 +682,17 @@ export function TutorProfileWorkspace({
     }
   };
 
+  /** Shared pre-flight so an obviously wrong file never reaches the server. */
+  const rejectInvalidDocument = (file: File, label: string) => {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) return `${label} must be a JPEG, PNG, or WebP file.`;
+    if (file.size > MAX_TUTOR_DOCUMENT_BYTES) return `${label} must be 5 MB or smaller.`;
+    return null;
+  };
+
   const uploadUniversityIdDocument = async (file: File) => {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-      setFeedback({ type: "error", message: "University ID image must be a JPEG, PNG, or WebP file." });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setFeedback({ type: "error", message: "University ID image must be 5 MB or smaller." });
+    const invalid = rejectInvalidDocument(file, "University ID image");
+    if (invalid) {
+      setFeedback({ type: "error", message: invalid });
       return;
     }
     setUploadingUniversityId(true);
@@ -661,6 +710,33 @@ export function TutorProfileWorkspace({
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the University ID image." });
     } finally {
       setUploadingUniversityId(false);
+    }
+  };
+
+  const uploadSupportingDocument = async (documentType: TutorSupportingDocumentType, file: File) => {
+    const label = tutorSupportingDocumentLabels[documentType];
+    const invalid = rejectInvalidDocument(file, label);
+    if (invalid) {
+      setFeedback({ type: "error", message: invalid });
+      return;
+    }
+    setUploadingDocumentType(documentType);
+    setFeedback(null);
+    try {
+      const payload = new FormData();
+      payload.append("document", file);
+      const response = await fetch(`/api/tutor/supporting-document/${documentType}`, { method: "POST", credentials: "same-origin", body: payload });
+      const result = await response.json().catch(() => ({})) as { error?: string; status?: "uploaded" };
+      if (!response.ok || result.status !== "uploaded") throw new Error(result.error || `Unable to upload the ${label}.`);
+      setForm(current => current.uploadedSupportingDocuments.includes(documentType)
+        ? current
+        : { ...current, uploadedSupportingDocuments: [...current.uploadedSupportingDocuments, documentType] });
+      await utils.tutor.getMyProfile.invalidate();
+      setFeedback({ type: "success", message: `${label} uploaded for private verification.` });
+    } catch (error) {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : `Unable to upload the ${label}.` });
+    } finally {
+      setUploadingDocumentType(null);
     }
   };
 
@@ -750,14 +826,24 @@ export function TutorProfileWorkspace({
       <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
     </div>
     <div className="mt-6">
-      <input ref={universityIdInputRef} id="tutor-university-id-document" className="sr-only" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload University ID card" aria-required="true" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadUniversityIdDocument(file); }} />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-j-border pb-3">
-        <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]"><LockKeyhole className="shrink-0 text-[#167ddd]" size={16} aria-hidden="true" />University ID card <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
-        <div className="flex items-center gap-2">
-          {form.universityIdDocumentStatus === "uploaded" ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
-          <Button type="button" variant="outline" disabled={uploadingUniversityId} aria-busy={uploadingUniversityId} onClick={() => universityIdInputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploadingUniversityId ? "Uploading…" : "Upload Both Side"}</Button>
-        </div>
-      </div>
+      <DocumentUploadRow
+        inputId="tutor-university-id-document"
+        label="University ID card"
+        uploadLabel="Upload Both Side"
+        required
+        uploaded={form.universityIdDocumentStatus === "uploaded"}
+        uploading={uploadingUniversityId}
+        onSelectFile={file => void uploadUniversityIdDocument(file)}
+      />
+      {tutorSupportingDocumentTypes.map(documentType => <DocumentUploadRow
+        key={documentType}
+        inputId={`tutor-document-${documentType}`}
+        label={tutorSupportingDocumentLabels[documentType]}
+        uploadLabel="Upload"
+        uploaded={form.uploadedSupportingDocuments.includes(documentType)}
+        uploading={uploadingDocumentType === documentType}
+        onSelectFile={file => void uploadSupportingDocument(documentType, file)}
+      />)}
     </div>
   </>;
 

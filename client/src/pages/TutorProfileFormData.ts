@@ -7,6 +7,7 @@ import {
   type QualificationCurriculum,
   type QualificationEducationLevel,
 } from "@shared/tutor-education";
+import { isTutorSupportingDocumentType, type TutorSupportingDocumentType } from "@shared/tutor-documents";
 
 export type TutorOnboardingFallback = {
   name: string;
@@ -61,6 +62,7 @@ export type PersistedTutorProfileForForm = {
   privateDetails?: TutorProfilePrivateDetails;
   educationRecords?: TutorProfileEducationRecord[];
   universityIdDocumentStatus?: "uploaded" | "not_uploaded";
+  uploadedSupportingDocuments?: string[];
 };
 
 export type TutorProfilePrivateDetails = {
@@ -143,6 +145,7 @@ export type TutorProfileFormState = {
   privateDetails: TutorProfilePrivateDetails;
   educationRecords: TutorProfileEducationRecord[];
   universityIdDocumentStatus: "uploaded" | "not_uploaded";
+  uploadedSupportingDocuments: TutorSupportingDocumentType[];
 };
 
 function toDateInput(value: Date | string | null): string {
@@ -217,6 +220,7 @@ export function hydrateTutorProfileForm(
       privateDetails: emptyPrivateDetails(),
       educationRecords: [emptyEducationRecord()],
       universityIdDocumentStatus: "not_uploaded",
+      uploadedSupportingDocuments: [],
     };
   }
 
@@ -267,6 +271,7 @@ export function hydrateTutorProfileForm(
         }))
       : [emptyEducationRecord()],
     universityIdDocumentStatus: profile.universityIdDocumentStatus ?? "not_uploaded",
+    uploadedSupportingDocuments: (profile.uploadedSupportingDocuments ?? []).filter(isTutorSupportingDocumentType),
   };
 }
 

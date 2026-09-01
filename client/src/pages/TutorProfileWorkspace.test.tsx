@@ -225,8 +225,49 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/tutor/university-id-document", expect.objectContaining({ method: "POST", credentials: "same-origin" })));
     // Only a safe status is shown - never the storage key or an image URL.
-    expect(await within(dialog).findByText("Uploaded")).toBeTruthy();
+    expect(await within(dialog).findAllByText("Uploaded")).not.toHaveLength(0);
     expect(within(dialog).queryByText(/tutors\/|university-id\./)).toBeNull();
+  });
+
+  it("offers the four optional certificates and uploads each to its own endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documentType: "hsc_certificate", status: "uploaded" }) }));
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    const dialog = screen.getByRole("dialog");
+
+    // All four are offered, and all four are clearly optional.
+    for (const label of ["NID Card Image", "SSC Certificate", "HSC Certificate", "Hons/MS Certificate"]) {
+      expect(within(dialog).getByLabelText(`Upload ${label}`)).toBeTruthy();
+      expect(within(dialog).getByText(label)).toBeTruthy();
+    }
+    expect(within(dialog).getAllByText("(Optional)")).toHaveLength(4);
+
+    fireEvent.change(within(dialog).getByLabelText("Upload HSC Certificate"), {
+      target: { files: [new File(["cert"], "hsc.png", { type: "image/png" })] },
+    });
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/tutor/supporting-document/hsc_certificate", expect.objectContaining({ method: "POST", credentials: "same-origin" })));
+    expect(await within(dialog).findByText("Uploaded")).toBeTruthy();
+  });
+
+  it("rejects an oversized or wrong-typed certificate without calling the upload endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.change(within(dialog).getByLabelText("Upload NID Card Image"), {
+      target: { files: [new File(["pdf"], "nid.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(await screen.findByText("NID Card Image must be a JPEG, PNG, or WebP file.")).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("shows identity in the rail and keeps the submit action at the page end", () => {

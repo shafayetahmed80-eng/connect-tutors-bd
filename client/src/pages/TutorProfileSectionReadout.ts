@@ -1,3 +1,4 @@
+import { tutorSupportingDocumentLabels } from "@shared/tutor-documents";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import type { TeachingProfileState } from "./TutorProfileWorkspace";
 
@@ -133,6 +134,7 @@ export function getTutorProfileReadoutSections(
               : row("Graduation year", text(form.graduationYear)),
             row("Qualification history", educationSummary(form)),
             row("University ID card", form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : ""),
+            row("Supporting documents", form.uploadedSupportingDocuments.map(type => tutorSupportingDocumentLabels[type]).join(", "), true),
           ],
         },
         {

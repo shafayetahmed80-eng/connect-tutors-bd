@@ -756,6 +756,30 @@ export const tutorUniversityIdDocuments = mysqlTable(
   },
 );
 
+/**
+ * Optional private verification documents (NID, SSC/HSC/Hons certificates).
+ * Metadata only — the image bytes stay in object storage and the key is never
+ * exposed to Guardians or public DTOs. `documentType` is a plain string so the
+ * catalog in `@shared/tutor-documents` can grow without a migration.
+ */
+export const tutorSupportingDocuments = mysqlTable(
+  "tutor_supporting_documents",
+  {
+    tutorId: varchar("tutorId", { length: 32 })
+      .notNull()
+      .references(() => tutors.id),
+    documentType: varchar("documentType", { length: 40 }).notNull(),
+    storageKey: varchar("storageKey", { length: 512 }).notNull(),
+    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    primaryKey({ columns: [table.tutorId, table.documentType] }),
+    index("tutor_supporting_documents_tutor_idx").on(table.tutorId),
+  ],
+);
+
 export const tutorTeachingAreas = mysqlTable(
   "tutor_teaching_areas",
   {
