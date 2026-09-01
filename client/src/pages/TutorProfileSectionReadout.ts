@@ -120,11 +120,17 @@ export function getTutorProfileReadoutSections(
         {
           heading: "Education",
           rows: [
-            row("Highest education", text(form.highestEducation), true),
+            row("Education level", text(form.highestEducation), true),
             row("Current study status", fromMap(staticLabels.studyStatus, form.studyStatus)),
             row("Institute", form.universityId ? resolve.university(form.universityId) : ""),
             row("Related department / subject", form.facultyDepartmentId ? resolve.department(form.facultyDepartmentId) : ""),
-            row("Graduation year", text(form.graduationYear), true),
+            row("Degree / exam title", text(form.degreeExamTitle)),
+            row("Result / GPA", text(form.resultGpa), true),
+            row("Dept ID", text(form.deptId), true),
+            // Only the half of the study timeline that the chosen status asks for.
+            form.studyStatus === "studying"
+              ? row("Year/semester", text(form.yearSemester))
+              : row("Graduation year", text(form.graduationYear)),
             row("Qualification history", educationSummary(form)),
             row("University ID card", form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : ""),
           ],

@@ -295,6 +295,20 @@
       "when": 1788207039390,
       "tag": "0041_remove_faculty_layer",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1788257248223,
+      "tag": "0042_education_fields_add",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1788257279356,
+      "tag": "0043_education_drop_legacy_dates",
+      "breakpoints": true
     }
   ]
 }

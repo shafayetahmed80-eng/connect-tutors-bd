@@ -649,15 +649,21 @@ export const tutorAcademicProfiles = mysqlTable(
     tutorId: varchar("tutorId", { length: 32 })
       .primaryKey()
       .references(() => tutors.id),
+    /** Education Level — a curated vocabulary, see `@shared/tutor-education`. */
     highestEducation: varchar("highestEducation", { length: 160 }),
     universityId: int("universityId").references(() => universities.id),
     facultyDepartmentId: int("facultyDepartmentId"),
     degreeMajorId: int("degreeMajorId").references(() => degreeMajors.id),
+    degreeExamTitle: varchar("degreeExamTitle", { length: 160 }),
+    resultGpa: varchar("resultGpa", { length: 80 }),
+    deptId: varchar("deptId", { length: 80 }),
     currentStudyStatus: mysqlEnum("currentStudyStatus", [
       "studying",
       "graduated",
       "professional",
     ]),
+    /** Collected while studying; `graduationYear` takes over once they finish. */
+    yearSemester: varchar("yearSemester", { length: 80 }),
     graduationYear: int("graduationYear"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -710,15 +716,17 @@ export const tutorEducationRecords = mysqlTable(
     tutorId: varchar("tutorId", { length: 32 })
       .notNull()
       .references(() => tutors.id),
+    /** Education Level — a curated vocabulary, see `@shared/tutor-education`. */
     qualificationLevel: varchar("qualificationLevel", { length: 80 }).notNull(),
     instituteName: varchar("instituteName", { length: 200 }).notNull(),
     degreeExamTitle: varchar("degreeExamTitle", { length: 160 }).notNull(),
     majorGroup: varchar("majorGroup", { length: 160 }).notNull(),
     resultGpa: varchar("resultGpa", { length: 80 }),
+    /** Required at submission, but nullable so legacy records still load. */
     curriculum: varchar("curriculum", { length: 80 }),
-    studyStartDate: date("studyStartDate").notNull(),
-    studyEndDate: date("studyEndDate"),
-    passingYear: int("passingYear"),
+    /** Plain four-digit years; Tutors type them rather than picking a date. */
+    studyStartYear: int("studyStartYear").notNull(),
+    studyEndYear: int("studyEndYear"),
     currentlyStudying: int("currentlyStudying").default(0).notNull(),
     instituteIdCardNumber: varchar("instituteIdCardNumber", { length: 160 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

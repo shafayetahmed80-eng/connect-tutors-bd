@@ -35,6 +35,15 @@ const serverProfile = {
   graduationYear: null,
 };
 
+/** `serverProfile` carries no selections, so the preview needs them spelled out. */
+const emptySelections = {
+  primarySubjectIds: [] as string[],
+  classLevelIds: [] as string[],
+  curriculumIds: [] as string[],
+  teachingExperienceYears: "",
+  studentTypeIds: [] as string[],
+};
+
 describe("Tutor Profile form hydration", () => {
   it("uses the persistent Tutor profile over an onboarding browser fallback after it arrives", () => {
     expect(hydrateTutorProfileForm(serverProfile, onboardingFallback)).toMatchObject({
@@ -229,5 +238,30 @@ describe("Tutor Profile form hydration", () => {
       message: expect.stringContaining("required details remaining"),
       firstMissingLabel: "Profile Photo",
     });
+  });
+
+  it("asks only for the study-timeline field that matches the chosen study status", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+
+    const studying = getTutorProfileSubmissionErrors({ ...state, studyStatus: "studying", yearSemester: "", graduationYear: "" });
+    expect(studying.yearSemester).toBe("Enter your current year or semester.");
+    expect(studying.graduationYear).toBeUndefined();
+
+    const graduated = getTutorProfileSubmissionErrors({ ...state, studyStatus: "graduated", yearSemester: "", graduationYear: "" });
+    expect(graduated.graduationYear).toBe("Enter your graduation year.");
+    expect(graduated.yearSemester).toBeUndefined();
+
+    // Filling the matching field clears it; the other one is never asked for.
+    expect(getTutorProfileSubmissionErrors({ ...state, studyStatus: "studying", yearSemester: "2nd Year/Semester" })).not.toHaveProperty("yearSemester");
+    expect(getTutorProfileSubmissionErrors({ ...state, studyStatus: "graduated", graduationYear: "2022" })).not.toHaveProperty("graduationYear");
+  });
+
+  it("counts the study timeline as one required detail only once a study status is chosen", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+
+    const withoutStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "" });
+    const withStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "studying" });
+
+    expect(withStatus.totalRequired).toBe(withoutStatus.totalRequired + 1);
   });
 });

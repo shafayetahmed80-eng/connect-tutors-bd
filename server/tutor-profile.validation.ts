@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  MIN_STUDY_YEAR,
+  academicEducationLevels,
+  maxStudyYear,
+  qualificationCurricula,
+  qualificationEducationLevels,
+} from "@shared/tutor-education";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -86,32 +93,33 @@ const privateDetailsSchema = z.object({
   emergencyContactAddress: optionalTrimmedText(500),
 }).strict();
 
+const studyYearSchema = z.number().int().min(MIN_STUDY_YEAR).max(maxStudyYear());
+
 const educationRecordSchema = z.object({
-  qualificationLevel: z.string().trim().min(2).max(80),
+  qualificationLevel: z.enum(qualificationEducationLevels),
   instituteName: z.string().trim().min(2).max(200),
   degreeExamTitle: z.string().trim().min(2).max(160),
   majorGroup: z.string().trim().min(2).max(160),
   resultGpa: optionalTrimmedText(80),
-  curriculum: optionalTrimmedText(80),
-  studyStartDate: profileDateSchema,
-  studyEndDate: profileDateSchema.optional(),
-  passingYear: z.number().int().min(1950).max(new Date().getUTCFullYear() + 10).optional(),
+  curriculum: z.enum(qualificationCurricula),
+  studyStartYear: studyYearSchema,
+  studyEndYear: studyYearSchema.optional(),
   currentlyStudying: z.boolean(),
   instituteIdCardNumber: optionalTrimmedText(160),
 }).strict().superRefine((value, ctx) => {
-  if (!value.currentlyStudying && !value.studyEndDate) {
+  if (!value.currentlyStudying && value.studyEndYear === undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["studyEndDate"],
-      message: "Study end date is required unless Currently Studying is selected.",
+      path: ["studyEndYear"],
+      message: "Study end year is required unless Currently Studying is selected.",
     });
   }
 
-  if (!value.currentlyStudying && value.passingYear === undefined) {
+  if (value.studyEndYear !== undefined && value.studyEndYear < value.studyStartYear) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["passingYear"],
-      message: "Passing year is required unless Currently Studying is selected.",
+      path: ["studyEndYear"],
+      message: "Study end year cannot be earlier than the study start year.",
     });
   }
 });
@@ -129,12 +137,17 @@ const profileShape = {
   teachingAreaIds: optionalUniqueLocationIdList(15),
   availableNationwide: z.boolean().optional(),
 
-  highestEducation: optionalTrimmedText(120),
+  highestEducation: z.enum(academicEducationLevels).optional(),
   universityId: positiveIdSchema.optional(),
   facultyDepartmentId: positiveIdSchema.optional(),
   degreeMajorId: positiveIdSchema.optional(),
+  degreeExamTitle: optionalTrimmedText(160),
+  resultGpa: optionalTrimmedText(80),
+  deptId: optionalTrimmedText(80),
   studyStatus: z.enum(["studying", "graduated", "professional"]).optional(),
-  graduationYear: z.number().int().min(1950).max(new Date().getUTCFullYear() + 10).optional(),
+  /** Collected while studying; `graduationYear` takes over once they finish. */
+  yearSemester: optionalTrimmedText(80),
+  graduationYear: studyYearSchema.optional(),
 
   primarySubjectIds: optionalUniqueIdList(12),
   additionalSubjectIds: optionalUniqueIdList(12),
@@ -229,6 +242,7 @@ const submissionRequiredKeys = [
   "availableNationwide",
   "universityId",
   "facultyDepartmentId",
+  "degreeExamTitle",
   "studyStatus",
   "primarySubjectIds",
   "classLevelIds",
@@ -266,6 +280,16 @@ export const tutorProfileSubmissionSchema = tutorProfileDraftSchema.superRefine(
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["privateDetails", field], message: "This field is required before profile submission." });
       }
     }
+  }
+
+  // Study status decides which half of the study timeline the Tutor must fill:
+  // an in-progress year/semester, or the year they finished.
+  if (value.studyStatus === "studying" && value.yearSemester === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearSemester"], message: "This field is required before profile submission." });
+  }
+
+  if ((value.studyStatus === "graduated" || value.studyStatus === "professional") && value.graduationYear === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["graduationYear"], message: "This field is required before profile submission." });
   }
 
   if (!value.educationRecords?.length) {
@@ -411,6 +435,15 @@ function hasSelections(value: unknown) {
   return Array.isArray(value) && value.length > 0;
 }
 
+/** Study status decides which timeline field counts toward completion. */
+function hasStudyTimeline(profile: Record<string, unknown>) {
+  if (profile.studyStatus === "studying") return hasNonEmptyString(profile.yearSemester);
+  if (profile.studyStatus === "graduated" || profile.studyStatus === "professional") {
+    return typeof profile.graduationYear === "number" && Number.isInteger(profile.graduationYear);
+  }
+  return false;
+}
+
 export function calculateTutorProfileCompletion(profile: Record<string, unknown>) {
   const completedUnits = [
     hasNonEmptyString(profile.profilePhotoKey),
@@ -425,7 +458,9 @@ export function calculateTutorProfileCompletion(profile: Record<string, unknown>
     typeof profile.availableNationwide === "boolean",
     hasPositiveId(profile.universityId),
     hasPositiveId(profile.facultyDepartmentId),
+    hasNonEmptyString(profile.degreeExamTitle),
     profile.studyStatus === "studying" || profile.studyStatus === "graduated" || profile.studyStatus === "professional",
+    hasStudyTimeline(profile),
     hasSelections(profile.primarySubjectIds),
     hasSelections(profile.classLevelIds),
     hasSelections(profile.curriculumIds),
@@ -441,5 +476,6 @@ export function calculateTutorProfileCompletion(profile: Record<string, unknown>
     hasSelections(profile.communicationPreferences),
   ];
 
-  return Math.round((completedUnits.filter(Boolean).length / 26) * 100);
+  // Derived from the list itself so adding a unit can never leave a stale divisor.
+  return Math.round((completedUnits.filter(Boolean).length / completedUnits.length) * 100);
 }

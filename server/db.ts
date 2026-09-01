@@ -1210,7 +1210,11 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     universityId: row.academic?.universityId ?? undefined,
     facultyDepartmentId: row.academic?.facultyDepartmentId ?? undefined,
     degreeMajorId: row.academic?.degreeMajorId ?? undefined,
+    degreeExamTitle: row.academic?.degreeExamTitle ?? undefined,
+    resultGpa: row.academic?.resultGpa ?? undefined,
+    deptId: row.academic?.deptId ?? undefined,
     studyStatus: row.academic?.currentStudyStatus ?? undefined,
+    yearSemester: row.academic?.yearSemester ?? undefined,
     graduationYear: row.academic?.graduationYear ?? undefined,
     primarySubjectIds: subjectRows.filter((selection: typeof tutorSubjects.$inferSelect) => selection.selectionType === "primary").map((selection: typeof tutorSubjects.$inferSelect) => selection.subjectId),
     additionalSubjectIds: subjectRows.filter((selection: typeof tutorSubjects.$inferSelect) => selection.selectionType === "additional").map((selection: typeof tutorSubjects.$inferSelect) => selection.subjectId),
@@ -1268,9 +1272,8 @@ async function loadTutorProfileOwner(database: any, userId: number) {
       majorGroup: record.majorGroup,
       resultGpa: record.resultGpa ?? undefined,
       curriculum: record.curriculum ?? undefined,
-      studyStartDate: record.studyStartDate.toISOString().slice(0, 10),
-      studyEndDate: record.studyEndDate?.toISOString().slice(0, 10),
-      passingYear: record.passingYear ?? undefined,
+      studyStartYear: record.studyStartYear,
+      studyEndYear: record.studyEndYear ?? undefined,
       currentlyStudying: Boolean(record.currentlyStudying),
       instituteIdCardNumber: record.instituteIdCardNumber ?? undefined,
     })),
@@ -1395,7 +1398,11 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     universityId: input.universityId ?? existing.universityId,
     facultyDepartmentId: input.facultyDepartmentId ?? existing.facultyDepartmentId,
     degreeMajorId: input.degreeMajorId ?? existing.degreeMajorId,
+    degreeExamTitle: input.degreeExamTitle ?? existing.degreeExamTitle,
+    resultGpa: input.resultGpa ?? existing.resultGpa,
+    deptId: input.deptId ?? existing.deptId,
     studyStatus: input.studyStatus ?? existing.studyStatus,
+    yearSemester: input.yearSemester ?? existing.yearSemester,
     graduationYear: input.graduationYear ?? existing.graduationYear,
     primarySubjectIds: keepList(input.primarySubjectIds, existing.primarySubjectIds),
     additionalSubjectIds: keepList(input.additionalSubjectIds, existing.additionalSubjectIds),
@@ -1484,7 +1491,11 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (input.universityId !== undefined) academicValues.universityId = input.universityId;
     if (input.facultyDepartmentId !== undefined) academicValues.facultyDepartmentId = input.facultyDepartmentId;
     if (input.degreeMajorId !== undefined) academicValues.degreeMajorId = input.degreeMajorId;
+    if (input.degreeExamTitle !== undefined) academicValues.degreeExamTitle = input.degreeExamTitle;
+    if (input.resultGpa !== undefined) academicValues.resultGpa = input.resultGpa;
+    if (input.deptId !== undefined) academicValues.deptId = input.deptId;
     if (input.studyStatus !== undefined) academicValues.currentStudyStatus = input.studyStatus;
+    if (input.yearSemester !== undefined) academicValues.yearSemester = input.yearSemester;
     if (input.graduationYear !== undefined) academicValues.graduationYear = input.graduationYear;
     if (Object.keys(academicValues).length > 0) {
       if (existingAcademic) await transaction.update(tutorAcademicProfiles).set(academicValues).where(eq(tutorAcademicProfiles.tutorId, tutorId));
@@ -1522,9 +1533,8 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
           majorGroup: record.majorGroup,
           resultGpa: record.resultGpa ?? null,
           curriculum: record.curriculum ?? null,
-          studyStartDate: new Date(`${record.studyStartDate}T00:00:00.000Z`),
-          studyEndDate: record.studyEndDate ? new Date(`${record.studyEndDate}T00:00:00.000Z`) : null,
-          passingYear: record.passingYear ?? null,
+          studyStartYear: record.studyStartYear,
+          studyEndYear: record.studyEndYear ?? null,
           currentlyStudying: record.currentlyStudying ? 1 : 0,
           instituteIdCardNumber: record.instituteIdCardNumber ?? null,
         })));
@@ -1594,7 +1604,11 @@ export async function submitTutorProfile(userId: number) {
       universityId: profile.universityId,
       facultyDepartmentId: profile.facultyDepartmentId,
       degreeMajorId: profile.degreeMajorId,
+      degreeExamTitle: profile.degreeExamTitle,
+      resultGpa: profile.resultGpa,
+      deptId: profile.deptId,
       studyStatus: profile.studyStatus,
+      yearSemester: profile.yearSemester,
       graduationYear: profile.graduationYear,
       primarySubjectIds: profile.primarySubjectIds,
       additionalSubjectIds: profile.additionalSubjectIds,

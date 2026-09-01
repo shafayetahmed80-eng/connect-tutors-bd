@@ -1,3 +1,13 @@
+import {
+  academicEducationLevels,
+  asEducationOption,
+  qualificationCurricula,
+  qualificationEducationLevels,
+  type AcademicEducationLevel,
+  type QualificationCurriculum,
+  type QualificationEducationLevel,
+} from "@shared/tutor-education";
+
 export type TutorOnboardingFallback = {
   name: string;
   phone: string;
@@ -28,7 +38,11 @@ export type PersistedTutorProfileForForm = {
   dateOfBirth: Date | string | null;
   headline: string | null;
   highestEducation: string | null;
+  degreeExamTitle?: string | null;
+  resultGpa?: string | null;
+  deptId?: string | null;
   studyStatus: "studying" | "graduated" | "professional" | null;
+  yearSemester?: string | null;
   graduationYear: number | null;
   tuitionType?: "home" | "online" | "both" | null;
   preferredStudentGender?: "male" | "female" | "both" | null;
@@ -67,15 +81,14 @@ export type TutorProfilePrivateDetails = {
 };
 
 export type TutorProfileEducationRecord = {
-  qualificationLevel: string;
+  qualificationLevel: QualificationEducationLevel | "";
   instituteName: string;
   degreeExamTitle: string;
   majorGroup: string;
   resultGpa: string;
-  curriculum: string;
-  studyStartDate: string;
-  studyEndDate: string;
-  passingYear: string;
+  curriculum: QualificationCurriculum | "";
+  studyStartYear: string;
+  studyEndYear: string;
   currentlyStudying: boolean;
   instituteIdCardNumber: string;
 };
@@ -88,7 +101,7 @@ const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
 
 const emptyEducationRecord = (): TutorProfileEducationRecord => ({
   qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "",
-  studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "",
+  studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "",
 });
 
 export type TutorProfileFormState = {
@@ -104,10 +117,14 @@ export type TutorProfileFormState = {
   currentLocationId: string;
   teachingAreaIds: string[];
   availableNationwide: boolean;
-  highestEducation: string;
+  highestEducation: AcademicEducationLevel | "";
   universityId: string;
   facultyDepartmentId: string;
+  degreeExamTitle: string;
+  resultGpa: string;
+  deptId: string;
   studyStatus: "" | "studying" | "graduated" | "professional";
+  yearSemester: string;
   graduationYear: string;
   tuitionType: "" | "home" | "online" | "both";
   preferredStudentGender: "" | "male" | "female" | "both";
@@ -177,7 +194,11 @@ export function hydrateTutorProfileForm(
       highestEducation: "",
       universityId: "",
       facultyDepartmentId: "",
+      degreeExamTitle: "",
+      resultGpa: "",
+      deptId: "",
       studyStatus: "",
+      yearSemester: "",
       graduationYear: "",
       tuitionType: "",
       preferredStudentGender: "",
@@ -212,10 +233,14 @@ export function hydrateTutorProfileForm(
     currentLocationId: profile.currentLocationId ?? "",
     teachingAreaIds: profile.teachingAreaIds,
     availableNationwide: profile.availableNationwide,
-    highestEducation: profile.highestEducation ?? "",
+    highestEducation: asEducationOption(academicEducationLevels, profile.highestEducation),
     universityId: profile.universityId ? String(profile.universityId) : "",
     facultyDepartmentId: profile.facultyDepartmentId ? String(profile.facultyDepartmentId) : "",
+    degreeExamTitle: profile.degreeExamTitle ?? "",
+    resultGpa: profile.resultGpa ?? "",
+    deptId: profile.deptId ?? "",
     studyStatus: profile.studyStatus ?? "",
+    yearSemester: profile.yearSemester ?? "",
     graduationYear: profile.graduationYear ? String(profile.graduationYear) : "",
     tuitionType: profile.tuitionType ?? "",
     preferredStudentGender: profile.preferredStudentGender ?? "",
@@ -232,7 +257,15 @@ export function hydrateTutorProfileForm(
     whyChooseMe: profile.whyChooseMe ?? "",
     additionalNotes: profile.additionalNotes ?? "",
     privateDetails: { ...emptyPrivateDetails(), ...(profile.privateDetails ?? {}) },
-    educationRecords: profile.educationRecords?.length ? profile.educationRecords.map(record => ({ ...emptyEducationRecord(), ...record })) : [emptyEducationRecord()],
+    educationRecords: profile.educationRecords?.length
+      ? profile.educationRecords.map(record => ({
+          ...emptyEducationRecord(),
+          ...record,
+          // Records saved before these lists existed fall back to the placeholder.
+          qualificationLevel: asEducationOption(qualificationEducationLevels, record.qualificationLevel),
+          curriculum: asEducationOption(qualificationCurricula, record.curriculum),
+        }))
+      : [emptyEducationRecord()],
     universityIdDocumentStatus: profile.universityIdDocumentStatus ?? "not_uploaded",
   };
 }
@@ -253,10 +286,14 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     currentLocationId: optionalText(form.currentLocationId),
     ...(form.teachingAreaIds.length > 0 ? { teachingAreaIds: form.teachingAreaIds } : {}),
     availableNationwide: form.availableNationwide,
-    highestEducation: optionalText(form.highestEducation),
+    highestEducation: form.highestEducation || undefined,
     universityId: optionalId(form.universityId),
     facultyDepartmentId: optionalId(form.facultyDepartmentId),
+    degreeExamTitle: optionalText(form.degreeExamTitle),
+    resultGpa: optionalText(form.resultGpa),
+    deptId: optionalText(form.deptId),
     studyStatus: form.studyStatus || undefined,
+    yearSemester: optionalText(form.yearSemester),
     graduationYear: Number.isInteger(graduationYear) ? graduationYear : undefined,
     tuitionType: form.tuitionType || undefined,
     preferredStudentGender: form.preferredStudentGender || undefined,
@@ -292,16 +329,18 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
       emergencyContactPhone: form.privateDetails.emergencyContactPhone?.trim() ?? "",
       emergencyContactAddress: form.privateDetails.emergencyContactAddress?.trim() ?? "",
     },
-    educationRecords: form.educationRecords.filter(record => [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup, record.studyStartDate].some(Boolean)).map(record => ({
-      qualificationLevel: record.qualificationLevel.trim(),
+    educationRecords: form.educationRecords.filter(record => [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup, record.studyStartYear].some(Boolean)).map(record => ({
+      // A half-filled record is still sent so the server can answer with a
+      // field-level error the editor can show. Casting here keeps that path:
+      // dropping the record instead would silently discard what was typed.
+      qualificationLevel: record.qualificationLevel as QualificationEducationLevel,
       instituteName: record.instituteName.trim(),
       degreeExamTitle: record.degreeExamTitle.trim(),
       majorGroup: record.majorGroup.trim(),
       resultGpa: optionalText(record.resultGpa),
-      curriculum: optionalText(record.curriculum),
-      studyStartDate: record.studyStartDate,
-      studyEndDate: record.currentlyStudying ? undefined : record.studyEndDate || undefined,
-      passingYear: record.currentlyStudying || !record.passingYear ? undefined : Number(record.passingYear),
+      curriculum: record.curriculum as QualificationCurriculum,
+      studyStartYear: optionalInteger(record.studyStartYear) as number,
+      studyEndYear: record.currentlyStudying ? undefined : optionalInteger(record.studyEndYear),
       currentlyStudying: record.currentlyStudying,
       instituteIdCardNumber: optionalText(record.instituteIdCardNumber),
     })),
