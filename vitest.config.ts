@@ -13,6 +13,10 @@ export default defineConfig({
       "@assets": path.resolve(templateRoot, "attached_assets"),
     },
   },
+  // The app compiles JSX with the automatic runtime via @vitejs/plugin-react,
+  // but this config carries no plugins, so esbuild would otherwise fall back to
+  // the classic runtime and every rendered component would need React in scope.
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],

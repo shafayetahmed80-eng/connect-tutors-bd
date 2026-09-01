@@ -26,6 +26,30 @@ describe("Admin workspace navigation", () => {
     ]);
   });
 
+  it("gives the Owner a Dynamic Section for Tutor and Guardian content control", () => {
+    const ownerItems = buildAdminWorkspaceNavigation(true);
+    expect(ownerItems.filter(item => item.sectionLabel === "Dynamic Section")).toEqual([
+      expect.objectContaining({ label: "Tutor Profile", path: "/admin/dynamic/tutor-profile" }),
+      expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
+    ]);
+  });
+
+  it("hides the Dynamic Section from Admins who are not the Owner", () => {
+    const adminItems = buildAdminWorkspaceNavigation(false);
+    expect(adminItems.some(item => item.sectionLabel === "Dynamic Section")).toBe(false);
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/tutor-profile");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/guardian-profile");
+  });
+
+  it("orders the Dynamic Section after Operations and before the Owner controls", () => {
+    // DashboardLayout renders a heading wherever sectionLabel changes, so the
+    // array order is the section order.
+    const sections = buildAdminWorkspaceNavigation(true)
+      .map(item => item.sectionLabel)
+      .filter((label, index, all) => label !== all[index - 1]);
+    expect(sections).toEqual(["Operations", "Dynamic Section", "Public reference", "Owner controls"]);
+  });
+
   it("keeps Owner-only security management in the Owner navigation boundary", () => {
     const ownerNavigation = buildAdminWorkspaceNavigation(true);
     const security = ownerNavigation.find(item => item.path === "/admin/security");
