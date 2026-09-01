@@ -12,13 +12,24 @@ describe("homepage footer quick links", () => {
 });
 
 describe("footer support information", () => {
-  it("uses only the supplied support number and real internal public routes", () => {
+  it("points at real internal public routes, never a placeholder contact", () => {
     expect(footerSupportChannels).toEqual(expect.arrayContaining([
-      expect.objectContaining({ href: "https://wa.me/8801516131411" }),
       expect.objectContaining({ href: "/request-tutor" }),
       expect.objectContaining({ href: "/contact" }),
     ]));
     expect(footerSupportChannels.map((channel) => channel.href)).not.toContain("tel:+8801600000000");
     expect(footerSupportChannels.map((channel) => channel.href)).not.toContain("mailto:hello@connecttutorsbd.com");
+  });
+
+  it("leaves the WhatsApp row's number blank so the Admin-editable one fills it", () => {
+    const whatsapp = footerSupportChannels.find((channel) => channel.type === "whatsapp");
+
+    // A number hardcoded here would silently outrank the one in the Admin panel.
+    expect(whatsapp).toBeDefined();
+    expect(whatsapp?.href).toBe("");
+    expect(whatsapp?.action).toBe("");
+    for (const channel of footerSupportChannels) {
+      expect(channel.href).not.toMatch(/wa\.me|tel:/);
+    }
   });
 });

@@ -58,3 +58,30 @@ describe("site content override input", () => {
     expect(isEmptySiteContentOverride({ slotId: spacingSlotId, spacing: "roomy" })).toBe(false);
   });
 });
+
+describe("site contact override", () => {
+  const phoneSlot = "site.contact.whatsapp";
+
+  it("accepts a valid Bangladesh number, in any of the shapes an Admin might type", () => {
+    for (const entry of ["8801516131411", "+880 1516 131411", "01516131411"]) {
+      expect(siteContentOverrideInputSchema.safeParse({ slotId: phoneSlot, text: entry }).success, entry).toBe(true);
+    }
+  });
+
+  it("refuses a number that would leave every wa.me link dead", () => {
+    const result = siteContentOverrideInputSchema.safeParse({ slotId: phoneSlot, text: "12345" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.message).toMatch(/Bangladesh mobile number/);
+  });
+
+  it("still allows the slot to be cleared back to the shipped number", () => {
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: phoneSlot, text: "" }).success).toBe(true);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: phoneSlot, text: null }).success).toBe(true);
+  });
+
+  it("leaves ordinary copy slots unvalidated as phone numbers", () => {
+    const textSlot = getSiteContentSlots("tutor-profile")[0]!.id;
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlot, text: "Anything at all" }).success).toBe(true);
+  });
+});
