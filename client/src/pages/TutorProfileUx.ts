@@ -12,7 +12,6 @@ export const tutorProfileCopy = {
     currentLocation: "Current Location",
     teachingAreas: "Teaching Areas",
     university: "Institute",
-    faculty: "Related Faculty",
     facultyDepartment: "Related Department / Subject",
     studyStatus: "Current Study Status",
     primarySubjects: "Primary Subjects",
@@ -70,7 +69,6 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
   universityId: tutorProfileCopy.fields.university,
-  facultyId: tutorProfileCopy.fields.faculty,
   facultyDepartmentId: tutorProfileCopy.fields.facultyDepartment,
   studyStatus: tutorProfileCopy.fields.studyStatus,
   primarySubjectIds: tutorProfileCopy.fields.primarySubjects,
@@ -116,7 +114,6 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
   requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
   if (!form.universityId) errors.universityId = "Select your institute.";
-  if (!form.facultyId) errors.facultyId = "Select your related faculty.";
   if (!form.facultyDepartmentId) errors.facultyDepartmentId = "Select your related department or subject.";
   if (!form.studyStatus) errors.studyStatus = "Select your current study status.";
   requiredSelection(errors, "primarySubjectIds", "Select at least one primary subject.", form.primarySubjectIds);
@@ -145,7 +142,7 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  const totalRequired = 26 + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
+  const totalRequired = 25 + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);
 

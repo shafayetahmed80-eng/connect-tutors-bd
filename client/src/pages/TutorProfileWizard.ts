@@ -43,7 +43,6 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   phone: 0,
   contactEmail: 0,
   universityId: 1,
-  facultyId: 1,
   facultyDepartmentId: 1,
   studyStatus: 1,
   primarySubjectIds: 1,

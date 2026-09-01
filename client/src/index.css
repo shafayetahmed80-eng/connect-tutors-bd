@@ -113,7 +113,7 @@ a { color: inherit; text-decoration: none; } button { border: 0; } img { max-wid
   --motion-duration-fast: 160ms;
   --motion-duration-standard: 220ms;
   --motion-ease-out: cubic-bezier(.23, 1, .32, 1);
-  --motion-focus-color: #f3b63f;
+  --motion-focus-color: #167ddd;
   --motion-focus-width: 3px;
 }
 

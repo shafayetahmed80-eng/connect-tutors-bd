@@ -572,42 +572,15 @@ export const universities = mysqlTable(
   ]
 );
 
-export const academicFaculties = mysqlTable(
-  "academic_faculties",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    universityId: int("universityId")
-      .notNull()
-      .references(() => universities.id),
-    name: varchar("name", { length: 240 }).notNull(),
-    normalizedName: varchar("normalizedName", { length: 240 }).notNull(),
-    active: int("active").default(1).notNull(),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [
-    uniqueIndex("academic_faculties_university_normalized_unique").on(
-      table.universityId,
-      table.normalizedName
-    ),
-    index("academic_faculties_parent_active_sort_idx").on(
-      table.universityId,
-      table.active,
-      table.sortOrder
-    ),
-  ]
-);
-
+/**
+ * Department / Subject — one flat, global Honours/Bachelor/Undergraduate
+ * field-of-study vocabulary. Keeps the historical table name; there is no
+ * Faculty layer and no per-institute scoping any more.
+ */
 export const facultyDepartments = mysqlTable(
   "faculty_departments",
   {
     id: int("id").autoincrement().primaryKey(),
-    universityId: int("universityId")
-      .notNull()
-      .references(() => universities.id),
-    /** Nullable only for legacy profiles created before the Faculty layer. */
-    facultyId: int("facultyId").references(() => academicFaculties.id),
     name: varchar("name", { length: 240 }).notNull(),
     normalizedName: varchar("normalizedName", { length: 240 }).notNull(),
     active: int("active").default(1).notNull(),
@@ -616,22 +589,8 @@ export const facultyDepartments = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
-    uniqueIndex("faculty_departments_university_faculty_normalized_unique").on(
-      table.universityId,
-      table.facultyId,
-      table.normalizedName
-    ),
-    /** Retained for legacy degree-major foreign keys and historic lookups. */
-    index("faculty_departments_parent_active_sort_idx").on(
-      table.universityId,
-      table.active,
-      table.sortOrder
-    ),
-    index("faculty_departments_faculty_active_sort_idx").on(
-      table.facultyId,
-      table.active,
-      table.sortOrder
-    ),
+    uniqueIndex("faculty_departments_normalized_unique").on(table.normalizedName),
+    index("faculty_departments_active_sort_idx").on(table.active, table.sortOrder),
   ]
 );
 
@@ -692,7 +651,6 @@ export const tutorAcademicProfiles = mysqlTable(
       .references(() => tutors.id),
     highestEducation: varchar("highestEducation", { length: 160 }),
     universityId: int("universityId").references(() => universities.id),
-    facultyId: int("facultyId").references(() => academicFaculties.id),
     facultyDepartmentId: int("facultyDepartmentId"),
     degreeMajorId: int("degreeMajorId").references(() => degreeMajors.id),
     currentStudyStatus: mysqlEnum("currentStudyStatus", [
@@ -711,7 +669,6 @@ export const tutorAcademicProfiles = mysqlTable(
       name: "tap_faculty_department_fk",
     }),
     index("tutor_academic_profiles_university_idx").on(table.universityId),
-    index("tutor_academic_profiles_faculty_parent_idx").on(table.facultyId),
     index("tutor_academic_profiles_faculty_idx").on(table.facultyDepartmentId),
     index("tutor_academic_profiles_degree_idx").on(table.degreeMajorId),
   ]
@@ -1431,34 +1388,12 @@ export const tutorsRelations = relations(tutors, ({ one, many }) => ({
 }));
 
 export const universitiesRelations = relations(universities, ({ many }) => ({
-  faculties: many(academicFaculties),
-  facultyDepartments: many(facultyDepartments),
   academicProfiles: many(tutorAcademicProfiles),
 }));
 
-export const academicFacultiesRelations = relations(
-  academicFaculties,
-  ({ one, many }) => ({
-    university: one(universities, {
-      fields: [academicFaculties.universityId],
-      references: [universities.id],
-    }),
-    facultyDepartments: many(facultyDepartments),
-    academicProfiles: many(tutorAcademicProfiles),
-  })
-);
-
 export const facultyDepartmentsRelations = relations(
   facultyDepartments,
-  ({ one, many }) => ({
-    university: one(universities, {
-      fields: [facultyDepartments.universityId],
-      references: [universities.id],
-    }),
-    faculty: one(academicFaculties, {
-      fields: [facultyDepartments.facultyId],
-      references: [academicFaculties.id],
-    }),
+  ({ many }) => ({
     degreeMajors: many(degreeMajors),
     academicProfiles: many(tutorAcademicProfiles),
   })
@@ -1485,10 +1420,6 @@ export const tutorAcademicProfilesRelations = relations(
     university: one(universities, {
       fields: [tutorAcademicProfiles.universityId],
       references: [universities.id],
-    }),
-    faculty: one(academicFaculties, {
-      fields: [tutorAcademicProfiles.facultyId],
-      references: [academicFaculties.id],
     }),
     facultyDepartment: one(facultyDepartments, {
       fields: [tutorAcademicProfiles.facultyDepartmentId],

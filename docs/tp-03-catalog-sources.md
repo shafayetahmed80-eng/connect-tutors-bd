@@ -29,3 +29,43 @@ TP-03 creates a **stable selector catalog**, not a claim that every programme at
 3. Keep `active` and `sortOrder` explicit on every seed row.
 4. Do not auto-scrape or infer department and programme availability from university names.
 5. Preserve source caveats separately from the user-facing selector until a future catalog-governance workflow is approved.
+
+## 2026-09-01 expansion — medical/dental colleges, DU seven colleges, "Others"
+
+The Institute selector was limited to universities, which excluded the many
+tutors who studied MBBS/BDS or Honours at a college. Added, from UGC / BMDC
+(bmdc.org.bd) / DGHS (dghs.gov.bd) sourced compilations, cross-checked against
+the consolidated Wikipedia lists:
+
+| New `bangladesh-universities.json` key | Count | Notes |
+|---|---|---|
+| `government_medical_colleges` | 37 | DGHS list |
+| `army_medical_colleges` | 7 | incl. Navy Medical College, Chattogram (2024) |
+| `private_medical_colleges` | 68 | BMDC-recognised |
+| `dental_colleges` | 13 | Dhaka Dental College (govt) + 12 standalone private; in-medical-college dental *units* are represented by their parent college, not listed separately |
+| `affiliated_colleges` | 7 | the former Dhaka-University "seven colleges", now under Dhaka Central University: Dhaka College, Govt Bangla College, Govt Titumir College, Eden Mohila College, Kabi Nazrul Govt College, Govt Shaheed Suhrawardy College, Begum Badrunnessa Govt Girls' College |
+| `other` | 1 | `Others` — catch-all; spread first so it sorts to the top of Institute search |
+
+Every medical/dental entry carries a minimal `Faculty of Medicine` / `Faculty of
+Dentistry` with `MBBS` / `BDS` / `Others` departments so the required
+Institute → Faculty → Department chain is completable. The seven colleges carry a
+four-faculty Arts/Social Science/Science/Business block.
+
+Name corrections applied in the same pass: `Bogura Science and Technology
+University` → `University of Bogura`; `Rabindra Paitar University (RP Shaha
+University)` → `Ranada Prasad Shaha University (RP Shaha University)` (district
+Kushtia → Narayanganj); merged the duplicate Gopalganj Science and Technology
+University rows; added the missing public `Rabindra University, Bangladesh`
+(Shahjadpur, Sirajganj) and nine missing private universities (Central Women's
+University, East Delta University, Chittagong Independent University, Southern
+University Bangladesh, Metropolitan University, Prime University, Ishakha
+International University, ZH Sikder University of Science & Technology, Bangladesh
+University of Health Sciences).
+
+The seed now also **deactivates** any Institute row whose normalized name is no
+longer in the directory (renames / removed duplicates), so stale options stop
+being offered while existing tutor selections still resolve.
+
+**Deploy:** run `node scripts/seed-tutor-profile-catalog.mjs` (or
+`scripts/apply-bd-university-hierarchy.mjs`) against each environment after
+deploy — no schema migration is required.

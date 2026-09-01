@@ -18,7 +18,6 @@ const completeSubmission = {
   teachingAreaIds: ["bd-mirpur"],
   availableNationwide: true,
   universityId: 1,
-  facultyId: 10,
   facultyDepartmentId: 11,
   degreeMajorId: 111,
   studyStatus: "graduated",
@@ -180,9 +179,7 @@ describe("Tutor Profile domain validation", () => {
     const issues = validateTutorProfileCatalogReferences(completeSubmission, {
       activeLocationIds: new Set(["bd-dhaka", "bd-mirpur"]),
       activeUniversityIds: new Set([1]),
-      activeFacultyUniversityIds: new Map([[10, 2]]),
-      activeFacultyDepartmentUniversityIds: new Map([[11, 2]]),
-      activeFacultyDepartmentFacultyIds: new Map([[11, 20]]),
+      activeFacultyDepartmentIds: new Set<number>(),
       activeDegreeMajorFacultyDepartmentIds: new Map([[111, 12]]),
       activeSubjectIds: new Set([2]),
       activeClassLevelIds: new Set([1]),
@@ -192,7 +189,7 @@ describe("Tutor Profile domain validation", () => {
     });
 
     expect(issues.map(issue => issue.path[0])).toEqual(
-      expect.arrayContaining(["facultyId", "facultyDepartmentId", "degreeMajorId", "primarySubjectIds"]),
+      expect.arrayContaining(["facultyDepartmentId", "degreeMajorId", "primarySubjectIds"]),
     );
   });
 

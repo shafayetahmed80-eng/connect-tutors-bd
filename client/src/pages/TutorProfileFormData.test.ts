@@ -25,7 +25,6 @@ const serverProfile = {
   teachingAreaIds: ["dhaka-uttara"],
   availableNationwide: false,
   universityId: null,
-  facultyId: null,
   facultyDepartmentId: null,
   degreeMajorId: null,
   profilePhotoUrl: null,
@@ -65,7 +64,6 @@ describe("Tutor Profile form hydration", () => {
       dateOfBirth: "1999-04-12",
       headline: "Experienced Mathematics Tutor for SSC Students",
       universityId: "1",
-      facultyId: "2",
       facultyDepartmentId: "3",
     });
 
@@ -73,7 +71,6 @@ describe("Tutor Profile form hydration", () => {
       name: "Amina Rahman",
       currentLocationId: "dhaka-uttara",
       universityId: 1,
-      facultyId: 2,
       facultyDepartmentId: 3,
     });
     expect(payload).not.toHaveProperty("tutorId");

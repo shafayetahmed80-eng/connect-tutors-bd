@@ -1,8 +1,8 @@
-import { SearchableMultiSelect, type SelectorOption, resetAcademicSelection } from "@/components/TutorProfileSelectors";
+import { SearchableMultiSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ImagePlus, Info, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -165,9 +165,7 @@ export function TutorProfileWorkspace({
   onReturnToSelectedJob?: () => void;
 }) {
   const [form, setForm] = useState(() => hydrateTeachingProfile(profile, onboardingFallback));
-  const [academicMessage, setAcademicMessage] = useState("");
   const [universityQuery, setUniversityQuery] = useState("");
-  const [facultyQuery, setFacultyQuery] = useState("");
   const [departmentQuery, setDepartmentQuery] = useState("");
   const [currentLocationQuery, setCurrentLocationQuery] = useState("");
   const [teachingAreaQuery, setTeachingAreaQuery] = useState("");
@@ -200,16 +198,8 @@ export function TutorProfileWorkspace({
   }, [form.profilePhotoUrl]);
 
   const universityId = Number(form.universityId);
-  const facultyId = Number(form.facultyId);
   const universities = trpc.catalog.searchUniversities.useQuery({ query: universityQuery, limit: 50 });
-  const academicFaculties = trpc.catalog.searchAcademicFaculties.useQuery(
-    { universityId: Number.isInteger(universityId) && universityId > 0 ? universityId : 1, query: facultyQuery, limit: 50 },
-    { enabled: Number.isInteger(universityId) && universityId > 0 },
-  );
-  const facultyDepartments = trpc.catalog.searchFacultyDepartments.useQuery(
-    { facultyId: Number.isInteger(facultyId) && facultyId > 0 ? facultyId : 1, query: departmentQuery, limit: 50 },
-    { enabled: Number.isInteger(facultyId) && facultyId > 0 },
-  );
+  const facultyDepartments = trpc.catalog.searchFacultyDepartments.useQuery({ query: departmentQuery, limit: 50 });
   const subjects = trpc.catalog.searchSubjects.useQuery({ query: "", limit: 50 });
   const classLevels = trpc.catalog.searchClassLevels.useQuery({ query: "", limit: 50 });
   const curricula = trpc.catalog.searchCurricula.useQuery({ query: "", limit: 50 });
@@ -302,19 +292,6 @@ export function TutorProfileWorkspace({
       return next;
     });
   };
-  const updateUniversity = (id: string) => {
-    const reset = resetAcademicSelection("university", form, id);
-    setForm(current => ({ ...current, ...reset }));
-    setFacultyQuery("");
-    setDepartmentQuery("");
-    setAcademicMessage(reset.message);
-  };
-  const updateFaculty = (id: string) => {
-    const reset = resetAcademicSelection("faculty", form, id);
-    setForm(current => ({ ...current, ...reset }));
-    setDepartmentQuery("");
-    setAcademicMessage(reset.message);
-  };
 
   const previewPayload = createProfileDraftPayload(form);
   const groupedClassLevels = useMemo(() => getGroupedClassLevelSelector(classLevels.data ?? [], form.classLevelIds), [classLevels.data, form.classLevelIds]);
@@ -368,12 +345,11 @@ export function TutorProfileWorkspace({
       studentType: byName(studentTypes.data),
       language: byName(languages.data),
       university: byName(universities.data),
-      faculty: byName(academicFaculties.data),
       department: byName(facultyDepartments.data),
       location: byLabel(currentBangladeshLocations.data),
       area: byLabel(teachingAreaLocations.data),
     };
-  }, [subjects.data, classLevels.data, curricula.data, studentTypes.data, languages.data, universities.data, academicFaculties.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
+  }, [subjects.data, classLevels.data, curricula.data, studentTypes.data, languages.data, universities.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers), [form, readoutResolvers]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
@@ -496,11 +472,9 @@ export function TutorProfileWorkspace({
   // search and the read view shows raw ids for names that fell out of it.
   const resetSectionEditorSearch = () => {
     setUniversityQuery("");
-    setFacultyQuery("");
     setDepartmentQuery("");
     setCurrentLocationQuery("");
     setTeachingAreaQuery("");
-    setAcademicMessage("");
   };
 
   const openSectionEditor = (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => {
@@ -706,12 +680,10 @@ export function TutorProfileWorkspace({
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
       <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
-      <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={updateUniversity} required error={fieldErrors.universityId} />
-      <CatalogSearchField label="Related Faculty" query={facultyQuery} onQueryChange={setFacultyQuery} options={academicFaculties.data} selectedId={form.facultyId} onSelectedIdChange={updateFaculty} disabled={!form.universityId} required error={fieldErrors.facultyId} />
-      <CatalogSearchField label="Related Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} disabled={!form.facultyId} required error={fieldErrors.facultyDepartmentId} />
+      <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} required error={fieldErrors.universityId} />
+      <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} required error={fieldErrors.facultyDepartmentId} />
       <FormInput label="Graduation Year" type="number" min="1950" max="2100" value={form.graduationYear} onChange={event => update("graduationYear", event.target.value)} />
     </div>
-    {academicMessage ? <p role="status" aria-live="polite" className="mt-4 flex items-start gap-2 rounded-xl bg-[#eef9ff] px-3 py-2 text-xs leading-5 text-[#17668f]"><Info size={15} className="mt-0.5 shrink-0" />{academicMessage}</p> : null}
     <div className="mt-5 space-y-4">
       <div><h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3><p className="mt-1 text-xs leading-5 text-[#72889a]">Private review details. Add your current or most relevant qualification first.</p></div>
       {form.educationRecords.map((record, index) => {

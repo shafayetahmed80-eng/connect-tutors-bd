@@ -12,7 +12,6 @@ import {
   adminTwoFactorRecoveryCodes,
   adminTwoFactorSettings,
   authEvents,
-  academicFaculties,
   classLevels,
   confirmationLetters,
   curricula,
@@ -1209,7 +1208,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     education: row.tutor.education ?? "Not specified",
     availability: row.tutor.availability ?? "Not specified",
     universityId: row.academic?.universityId ?? undefined,
-    facultyId: row.academic?.facultyId ?? undefined,
     facultyDepartmentId: row.academic?.facultyDepartmentId ?? undefined,
     degreeMajorId: row.academic?.degreeMajorId ?? undefined,
     studyStatus: row.academic?.currentStudyStatus ?? undefined,
@@ -1340,11 +1338,10 @@ export async function saveTutorUniversityIdDocument(userId: number, storageKey: 
 }
 
 async function getTutorProfileCatalogReferences(database: any): Promise<TutorProfileCatalogReferences> {
-  const [locationRows, universityRows, academicFacultyRows, facultyDepartmentRows, degreeRows, subjectRows, classLevelRows, curriculumRows, studentTypeRows, languageRows] = await Promise.all([
+  const [locationRows, universityRows, facultyDepartmentRows, degreeRows, subjectRows, classLevelRows, curriculumRows, studentTypeRows, languageRows] = await Promise.all([
     database.select({ id: locations.id }).from(locations).where(eq(locations.enabled, 1)),
     database.select({ id: universities.id }).from(universities).where(eq(universities.active, 1)),
-    database.select({ id: academicFaculties.id, universityId: academicFaculties.universityId }).from(academicFaculties).where(eq(academicFaculties.active, 1)),
-    database.select({ id: facultyDepartments.id, universityId: facultyDepartments.universityId, facultyId: facultyDepartments.facultyId }).from(facultyDepartments).where(eq(facultyDepartments.active, 1)),
+    database.select({ id: facultyDepartments.id }).from(facultyDepartments).where(eq(facultyDepartments.active, 1)),
     database.select({ id: degreeMajors.id, facultyDepartmentId: degreeMajors.facultyDepartmentId }).from(degreeMajors).where(eq(degreeMajors.active, 1)),
     database.select({ id: subjectsCatalog.id }).from(subjectsCatalog).where(eq(subjectsCatalog.active, 1)),
     database.select({ id: classLevels.id }).from(classLevels).where(eq(classLevels.active, 1)),
@@ -1356,13 +1353,7 @@ async function getTutorProfileCatalogReferences(database: any): Promise<TutorPro
   return {
     activeLocationIds: new Set(locationRows.map((row: { id: string }) => row.id)),
     activeUniversityIds: new Set(universityRows.map((row: { id: number }) => row.id)),
-    activeFacultyUniversityIds: new Map(academicFacultyRows.map((row: { id: number; universityId: number }) => [row.id, row.universityId])),
-    activeFacultyDepartmentUniversityIds: new Map(facultyDepartmentRows.map((row: { id: number; universityId: number }) => [row.id, row.universityId])),
-    activeFacultyDepartmentFacultyIds: new Map(
-      facultyDepartmentRows
-        .filter((row: { facultyId: number | null }) => row.facultyId !== null)
-        .map((row: { id: number; facultyId: number | null }) => [row.id, row.facultyId!] as const),
-    ),
+    activeFacultyDepartmentIds: new Set(facultyDepartmentRows.map((row: { id: number }) => row.id)),
     activeDegreeMajorFacultyDepartmentIds: new Map(degreeRows.map((row: { id: number; facultyDepartmentId: number }) => [row.id, row.facultyDepartmentId])),
     activeSubjectIds: new Set(subjectRows.map((row: { id: number }) => row.id)),
     activeClassLevelIds: new Set(classLevelRows.map((row: { id: number }) => row.id)),
@@ -1402,7 +1393,6 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     availableNationwide: input.availableNationwide ?? existing.availableNationwide,
     highestEducation: input.highestEducation ?? existing.highestEducation,
     universityId: input.universityId ?? existing.universityId,
-    facultyId: input.facultyId ?? existing.facultyId,
     facultyDepartmentId: input.facultyDepartmentId ?? existing.facultyDepartmentId,
     degreeMajorId: input.degreeMajorId ?? existing.degreeMajorId,
     studyStatus: input.studyStatus ?? existing.studyStatus,
@@ -1492,7 +1482,6 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     const academicValues: Partial<typeof tutorAcademicProfiles.$inferInsert> = {};
     if (input.highestEducation !== undefined) academicValues.highestEducation = input.highestEducation;
     if (input.universityId !== undefined) academicValues.universityId = input.universityId;
-    if (input.facultyId !== undefined) academicValues.facultyId = input.facultyId;
     if (input.facultyDepartmentId !== undefined) academicValues.facultyDepartmentId = input.facultyDepartmentId;
     if (input.degreeMajorId !== undefined) academicValues.degreeMajorId = input.degreeMajorId;
     if (input.studyStatus !== undefined) academicValues.currentStudyStatus = input.studyStatus;
@@ -1603,7 +1592,6 @@ export async function submitTutorProfile(userId: number) {
       availableNationwide: profile.availableNationwide,
       highestEducation: profile.highestEducation,
       universityId: profile.universityId,
-      facultyId: profile.facultyId,
       facultyDepartmentId: profile.facultyDepartmentId,
       degreeMajorId: profile.degreeMajorId,
       studyStatus: profile.studyStatus,
@@ -1665,26 +1653,15 @@ export async function searchUniversities(input: CatalogSearchInput) {
     .limit(input.limit);
 }
 
-export async function searchAcademicFaculties(universityId: number, input: CatalogSearchInput) {
+/** Department / Subject is one flat global list — no Institute/Faculty parent. */
+export async function searchFacultyDepartments(input: CatalogSearchInput) {
   const db = await getDb();
   if (!db) return [];
   const pattern = catalogSearchPattern(input.query);
   return db
-    .select({ id: academicFaculties.id, universityId: academicFaculties.universityId, name: academicFaculties.name })
-    .from(academicFaculties)
-    .where(pattern ? and(eq(academicFaculties.active, 1), eq(academicFaculties.universityId, universityId), like(academicFaculties.name, pattern)) : and(eq(academicFaculties.active, 1), eq(academicFaculties.universityId, universityId)))
-    .orderBy(asc(academicFaculties.sortOrder), asc(academicFaculties.name))
-    .limit(input.limit);
-}
-
-export async function searchFacultyDepartments(facultyId: number, input: CatalogSearchInput) {
-  const db = await getDb();
-  if (!db) return [];
-  const pattern = catalogSearchPattern(input.query);
-  return db
-    .select({ id: facultyDepartments.id, universityId: facultyDepartments.universityId, facultyId: facultyDepartments.facultyId, name: facultyDepartments.name })
+    .select({ id: facultyDepartments.id, name: facultyDepartments.name })
     .from(facultyDepartments)
-    .where(pattern ? and(eq(facultyDepartments.active, 1), eq(facultyDepartments.facultyId, facultyId), like(facultyDepartments.name, pattern)) : and(eq(facultyDepartments.active, 1), eq(facultyDepartments.facultyId, facultyId)))
+    .where(pattern ? and(eq(facultyDepartments.active, 1), like(facultyDepartments.name, pattern)) : eq(facultyDepartments.active, 1))
     .orderBy(asc(facultyDepartments.sortOrder), asc(facultyDepartments.name))
     .limit(input.limit);
 }

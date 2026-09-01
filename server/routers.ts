@@ -749,14 +749,7 @@ export const appRouter = router({
   }),
   catalog: router({
     searchUniversities: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchUniversities(input)),
-    searchAcademicFaculties: activeTutorProcedure.input(catalogSearchInputSchema.extend({ universityId: z.number().int().positive() })).query(({ input }) => {
-      const { universityId, ...search } = input;
-      return db.searchAcademicFaculties(universityId, search);
-    }),
-    searchFacultyDepartments: activeTutorProcedure.input(catalogSearchInputSchema.extend({ facultyId: z.number().int().positive() })).query(({ input }) => {
-      const { facultyId, ...search } = input;
-      return db.searchFacultyDepartments(facultyId, search);
-    }),
+    searchFacultyDepartments: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchFacultyDepartments(input)),
     searchDegreeMajors: activeTutorProcedure.input(catalogSearchInputSchema.extend({ facultyDepartmentId: z.number().int().positive() })).query(({ input }) => {
       const { facultyDepartmentId, ...search } = input;
       return db.searchDegreeMajors(facultyDepartmentId, search);

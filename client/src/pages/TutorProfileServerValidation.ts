@@ -27,7 +27,6 @@ const serverFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, string>>
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
   availableNationwide: "Available Nationwide",
   universityId: tutorProfileCopy.fields.university,
-  facultyId: tutorProfileCopy.fields.faculty,
   facultyDepartmentId: tutorProfileCopy.fields.facultyDepartment,
   studyStatus: tutorProfileCopy.fields.studyStatus,
   primarySubjectIds: tutorProfileCopy.fields.primarySubjects,

@@ -78,28 +78,23 @@ describe("TP-02 Tutor Profile catalog schema", () => {
       expect(schema[tableName]).toBeDefined();
     }
 
-    const universityColumns = getTableColumns(schema.universities!);
-    const facultyColumns = getTableColumns(schema.academicFaculties!);
-    const departmentColumns = getTableColumns(schema.facultyDepartments!);
-    const degreeColumns = getTableColumns(schema.degreeMajors!);
+    expect(schema).not.toHaveProperty("academicFaculties");
 
-    expect(universityColumns).toMatchObject({
+    expect(getTableColumns(schema.universities!)).toMatchObject({
       id: expect.anything(),
       normalizedName: expect.anything(),
       active: expect.anything(),
     });
-    expect(facultyColumns).toMatchObject({
-      id: expect.anything(),
-      universityId: expect.anything(),
-      normalizedName: expect.anything(),
-    });
+    // Department / Subject is a flat global catalog — no institute or faculty parent.
+    const departmentColumns = getTableColumns(schema.facultyDepartments!);
     expect(departmentColumns).toMatchObject({
       id: expect.anything(),
-      universityId: expect.anything(),
-      facultyId: expect.anything(),
       normalizedName: expect.anything(),
+      active: expect.anything(),
     });
-    expect(degreeColumns).toMatchObject({
+    expect(departmentColumns).not.toHaveProperty("universityId");
+    expect(departmentColumns).not.toHaveProperty("facultyId");
+    expect(getTableColumns(schema.degreeMajors!)).toMatchObject({
       id: expect.anything(),
       facultyDepartmentId: expect.anything(),
       normalizedName: expect.anything(),
@@ -111,12 +106,13 @@ describe("TP-02 Tutor Profile catalog schema", () => {
       expect(schema[tableName]).toBeDefined();
     }
 
-    expect(getTableColumns(schema.tutorAcademicProfiles!)).toMatchObject({
+    const academicProfileColumns = getTableColumns(schema.tutorAcademicProfiles!);
+    expect(academicProfileColumns).toMatchObject({
       tutorId: expect.anything(),
       universityId: expect.anything(),
-      facultyId: expect.anything(),
       facultyDepartmentId: expect.anything(),
     });
+    expect(academicProfileColumns).not.toHaveProperty("facultyId");
 
     expect(getTableColumns(schema.tutorSubjects!)).toMatchObject({
       tutorId: expect.anything(),
@@ -125,8 +121,8 @@ describe("TP-02 Tutor Profile catalog schema", () => {
     });
   });
 
-  it("exposes first-class ORM relations for the Faculty hierarchy", () => {
-    expect(schema.academicFacultiesRelations).toBeDefined();
+  it("exposes first-class ORM relations for the Institute and Department catalog", () => {
+    expect(schema).not.toHaveProperty("academicFacultiesRelations");
     expect(schema.universitiesRelations).toBeDefined();
     expect(schema.facultyDepartmentsRelations).toBeDefined();
     expect(schema.tutorAcademicProfilesRelations).toBeDefined();
@@ -151,14 +147,9 @@ describe("TP-02 Tutor Profile catalog schema", () => {
       "universities_normalized_name_unique",
       "universities_active_sort_idx",
     ]);
-    expectIndexNames(schema.academicFaculties, [
-      "academic_faculties_university_normalized_unique",
-      "academic_faculties_parent_active_sort_idx",
-    ]);
     expectIndexNames(schema.facultyDepartments, [
-      "faculty_departments_university_faculty_normalized_unique",
-      "faculty_departments_parent_active_sort_idx",
-      "faculty_departments_faculty_active_sort_idx",
+      "faculty_departments_normalized_unique",
+      "faculty_departments_active_sort_idx",
     ]);
     expectIndexNames(schema.degreeMajors, [
       "degree_majors_faculty_normalized_unique",

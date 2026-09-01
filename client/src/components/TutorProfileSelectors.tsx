@@ -142,29 +142,3 @@ export function SearchableMultiSelect({
   </div>;
 }
 
-export type AcademicSelection = {
-  universityId: string;
-  facultyId: string;
-  facultyDepartmentId: string;
-};
-
-export function resetAcademicSelection(
-  changedField: "university" | "faculty",
-  selection: AcademicSelection,
-  nextId: string,
-): AcademicSelection & { message: string } {
-  if (changedField === "university") {
-    return {
-      universityId: nextId,
-      facultyId: "",
-      facultyDepartmentId: "",
-      message: "The institute changed, so select the related faculty and department or subject again.",
-    };
-  }
-  return {
-    universityId: selection.universityId,
-    facultyId: nextId,
-    facultyDepartmentId: "",
-    message: "The related faculty changed, so select the department or subject again.",
-  };
-}
