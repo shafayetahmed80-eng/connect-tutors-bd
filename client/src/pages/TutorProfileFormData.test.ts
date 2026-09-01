@@ -256,6 +256,44 @@ describe("Tutor Profile form hydration", () => {
     expect(getTutorProfileSubmissionErrors({ ...state, studyStatus: "graduated", graduationYear: "2022" })).not.toHaveProperty("graduationYear");
   });
 
+  it("normalizes a saved profile back into editable strings before the next draft payload", () => {
+    // The API returns MySQL integers for the study years and omits empty
+    // columns entirely. Spreading that straight into form state used to leave
+    // numbers and undefined where the inputs expect strings, so the very next
+    // payload build - which runs right after a save refetches the profile -
+    // threw "value.trim is not a function" and blanked the page.
+    const savedProfile = {
+      ...serverProfile,
+      educationRecords: [{
+        qualificationLevel: "Honours",
+        instituteName: "University of Dhaka",
+        degreeExamTitle: "BSc",
+        majorGroup: "Physics",
+        curriculum: "English Version",
+        studyStartYear: 2020,
+        studyEndYear: 2024,
+        currentlyStudying: false,
+      }],
+      privateDetails: { fatherName: "Abdul Karim" },
+    } as never;
+
+    const form = hydrateTutorProfileForm(savedProfile, onboardingFallback);
+    const record = form.educationRecords[0];
+
+    expect(record.studyStartYear).toBe("2020");
+    expect(record.studyEndYear).toBe("2024");
+    // Columns the server left out come back as empty strings, not undefined.
+    expect(record.resultGpa).toBe("");
+    expect(record.instituteIdCardNumber).toBe("");
+    expect(form.privateDetails.motherName).toBe("");
+
+    expect(() => createProfileDraftPayload(form)).not.toThrow();
+    expect(createProfileDraftPayload(form).educationRecords[0]).toMatchObject({
+      studyStartYear: 2020,
+      studyEndYear: 2024,
+    });
+  });
+
   it("counts the study timeline as one required detail only once a study status is chosen", () => {
     const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
 
