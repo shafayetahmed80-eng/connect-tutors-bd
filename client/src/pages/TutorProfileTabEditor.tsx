@@ -1,6 +1,6 @@
 import React from "react";
 import { PencilLine } from "lucide-react";
-import { SiteText, useSiteContentSpacingClass } from "@/lib/siteContent";
+import { SiteBlocks, SiteText, useSiteContentSpacingClass } from "@/lib/siteContent";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
 import { TutorProfileSectionTabs } from "./TutorProfileSectionTabs";
@@ -24,6 +24,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
   const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
 
   return <div className={tp.stack}>
+    <SiteBlocks anchorId="tutor-profile.top" />
     <TutorProfileSectionTabs sections={sections} activeTab={activeTab} onTabChange={onTabChange} />
 
     <div role="tabpanel" aria-label={active.title} className="space-y-4">
@@ -49,6 +50,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
           </div>
         </section>;
       })}
+      <SiteBlocks anchorId="tutor-profile.bottom" />
     </div>
   </div>;
 }

@@ -1,6 +1,6 @@
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { SiteContentProvider, SiteText } from "@/lib/siteContent";
+import { SiteBlocks, SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
@@ -207,7 +207,14 @@ function GuardianPhotoPanel() {
 }
 
 function GuardianProfileWorkspace() {
-  return <div className="space-y-6"><GuardianProfilePanel /><GuardianPhotoPanel /></div>;
+  // Provider scoped to this section: the rest of the dashboard has no slots yet.
+  return <SiteContentProvider page="guardian-profile">
+    <div className="space-y-6">
+      <SiteBlocks anchorId="guardian-profile.top" />
+      <GuardianProfilePanel />
+      <GuardianPhotoPanel />
+    </div>
+  </SiteContentProvider>;
 }
 
 function GuardianSettingsPanel() {

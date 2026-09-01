@@ -192,3 +192,42 @@ export function resolveSiteContentTextClass(slot: SiteContentSlot, size: SiteCon
 export function resolveSiteContentSpacingClass(spacing: SiteContentSpacing | null | undefined): string {
   return spacingClasses[spacing ?? "default"];
 }
+
+/**
+ * Notice blocks: extra content an Admin can add, remove and reorder at a fixed
+ * set of anchor points.
+ *
+ * Anchors are declared in code, so a block can only ever appear where a page
+ * has made room for it. This is the deliberate limit on the CMS side of the
+ * Dynamic Section: an Admin can add content around the page's own sections but
+ * cannot delete or reorder those, because they carry validation and database
+ * writes that a page cannot function without.
+ */
+export const siteContentBlockTones = ["info", "warning", "success"] as const;
+export type SiteContentBlockTone = (typeof siteContentBlockTones)[number];
+
+export type SiteContentAnchor = {
+  id: string;
+  page: SiteContentPageId;
+  surface: string;
+  label: string;
+};
+
+const siteContentAnchors: SiteContentAnchor[] = [
+  { id: "tutor-profile.top", page: "tutor-profile", surface: "Tutor dashboard", label: "Above the profile tabs" },
+  { id: "tutor-profile.bottom", page: "tutor-profile", surface: "Tutor dashboard", label: "Below the profile sections" },
+  { id: "public-tutor.top", page: "tutor-profile", surface: "Public tutor profile", label: "Above the profile body" },
+  { id: "guardian-profile.top", page: "guardian-profile", surface: "Guardian dashboard", label: "Above the profile form" },
+  { id: "request-tutor.top", page: "guardian-profile", surface: "Request a tutor", label: "Above the journey" },
+];
+
+export function getSiteContentAnchors(page: SiteContentPageId): SiteContentAnchor[] {
+  return siteContentAnchors.filter(anchor => anchor.page === page);
+}
+
+export function findSiteContentAnchor(anchorId: string): SiteContentAnchor | undefined {
+  return siteContentAnchors.find(anchor => anchor.id === anchorId);
+}
+
+export const MAX_SITE_CONTENT_BLOCK_HEADING = 120;
+export const MAX_SITE_CONTENT_BLOCK_BODY = 1000;

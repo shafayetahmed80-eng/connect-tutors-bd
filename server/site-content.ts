@@ -1,8 +1,12 @@
 import { z } from "zod";
 import {
+  MAX_SITE_CONTENT_BLOCK_BODY,
+  MAX_SITE_CONTENT_BLOCK_HEADING,
   MAX_SITE_CONTENT_TEXT_LENGTH,
+  findSiteContentAnchor,
   findSiteContentSlot,
   findSiteContentSpacingSlot,
+  siteContentBlockTones,
   siteContentPageIds,
   siteContentSpacings,
   siteContentTextSizes,
@@ -53,4 +57,30 @@ export function resolveSiteContentSlotPage(slotId: string) {
 export function isEmptySiteContentOverride(input: SiteContentOverrideInput) {
   const text = input.text?.trim();
   return !text && !input.textSize && !input.spacing;
+}
+
+/**
+ * A block always names an anchor the registry declares, so an Admin cannot
+ * place content anywhere a page has not made room for it.
+ */
+export const siteContentBlockInputSchema = z.object({
+  anchorId: z.string().trim().min(1).max(120),
+  heading: z.string().trim().max(MAX_SITE_CONTENT_BLOCK_HEADING).nullish(),
+  body: z.string().trim().max(MAX_SITE_CONTENT_BLOCK_BODY).nullish(),
+  tone: z.enum(siteContentBlockTones).default("info"),
+  active: z.boolean().default(true),
+}).superRefine((value, ctx) => {
+  if (!findSiteContentAnchor(value.anchorId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["anchorId"], message: "Unknown anchor." });
+  }
+  // A block with no heading and no body would render as an empty box.
+  if (!value.heading?.trim() && !value.body?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["heading"], message: "Add a heading or body text." });
+  }
+});
+
+export type SiteContentBlockInput = z.infer<typeof siteContentBlockInputSchema>;
+
+export function resolveSiteContentAnchorPage(anchorId: string) {
+  return findSiteContentAnchor(anchorId)?.page;
 }

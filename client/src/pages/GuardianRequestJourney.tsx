@@ -7,7 +7,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
-import { SiteContentProvider, SiteText } from "@/lib/siteContent";
+import { SiteBlocks, SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
@@ -1088,5 +1088,8 @@ function formatBudget(input: RequestInput) { return input.budgetKind === "discus
 
 /** Journey copy is Admin-editable; slots fall back to the code defaults. */
 export default function GuardianRequestJourney(props: { embedded?: boolean }) {
-  return <SiteContentProvider page="guardian-profile"><GuardianRequestJourneyBody {...props} /></SiteContentProvider>;
+  return <SiteContentProvider page="guardian-profile">
+    <SiteBlocks anchorId="request-tutor.top" className="mx-auto max-w-2xl px-4 pt-4" />
+    <GuardianRequestJourneyBody {...props} />
+  </SiteContentProvider>;
 }

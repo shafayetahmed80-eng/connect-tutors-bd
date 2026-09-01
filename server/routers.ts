@@ -17,6 +17,8 @@ import {
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import {
   isEmptySiteContentOverride,
+  resolveSiteContentAnchorPage,
+  siteContentBlockInputSchema,
   resolveSiteContentSlotPage,
   siteContentOverrideInputSchema,
   siteContentPageSchema,
@@ -877,6 +879,55 @@ export const appRouter = router({
         }
         await db.clearSiteContentOverride(input.slotId);
         return { slotId: input.slotId, cleared: true as const };
+      }),
+    listBlocks: publicProcedure
+      .input(z.object({ page: siteContentPageSchema }))
+      .query(({ input }) => db.listSiteContentBlocks(input.page)),
+    listAllBlocks: ownerAdminProcedure
+      .input(z.object({ page: siteContentPageSchema }))
+      .query(({ input }) => db.listSiteContentBlocks(input.page, { includeInactive: true })),
+    createBlock: ownerAdminProcedure
+      .input(siteContentBlockInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const page = resolveSiteContentAnchorPage(input.anchorId);
+        if (!page) throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown anchor." });
+        await db.createSiteContentBlock({
+          anchorId: input.anchorId,
+          page,
+          heading: input.heading?.trim() || null,
+          body: input.body?.trim() || null,
+          tone: input.tone,
+          active: input.active,
+          updatedByUserId: ctx.user.id,
+        });
+        return { anchorId: input.anchorId };
+      }),
+    updateBlock: ownerAdminProcedure
+      .input(siteContentBlockInputSchema.and(z.object({ id: z.number().int().positive() })))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateSiteContentBlock(input.id, {
+          heading: input.heading?.trim() || null,
+          body: input.body?.trim() || null,
+          tone: input.tone,
+          active: input.active,
+          updatedByUserId: ctx.user.id,
+        });
+        return { id: input.id };
+      }),
+    deleteBlock: ownerAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await db.deleteSiteContentBlock(input.id);
+        return { id: input.id };
+      }),
+    reorderBlocks: ownerAdminProcedure
+      .input(z.object({ anchorId: z.string().trim().min(1).max(120), orderedIds: z.array(z.number().int().positive()).max(50) }))
+      .mutation(async ({ input }) => {
+        if (!resolveSiteContentAnchorPage(input.anchorId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown anchor." });
+        }
+        await db.reorderSiteContentBlocks(input.anchorId, input.orderedIds);
+        return { anchorId: input.anchorId };
       }),
   }),
   admin: router({

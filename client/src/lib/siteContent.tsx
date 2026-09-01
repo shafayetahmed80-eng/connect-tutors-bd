@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
+  findSiteContentAnchor,
   findSiteContentSlot,
   resolveSiteContentSpacingClass,
   resolveSiteContentTextClass,
@@ -73,4 +74,36 @@ export function SiteText({ slotId, fallback, className }: { slotId: string; fall
   const text = useSiteContentText(slotId, fallback);
   const sizeClass = useSiteContentTextClass(slotId, "");
   return <span className={cn(className, sizeClass)}>{text}</span>;
+}
+
+const blockToneClasses: Record<string, string> = {
+  info: "border-sky-200 bg-sky-50 text-sky-950",
+  warning: "border-amber-200 bg-amber-50 text-amber-950",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-950",
+};
+
+/**
+ * Renders the Admin's notice blocks for one anchor.
+ *
+ * Renders nothing at all when there are no blocks, so an untouched page is
+ * unchanged. Body text is placed as plain text, never as HTML, so an Admin
+ * cannot inject markup or script into a page every visitor sees.
+ */
+export function SiteBlocks({ anchorId, className }: { anchorId: string; className?: string }) {
+  const anchor = findSiteContentAnchor(anchorId);
+  const query = trpc.siteContent.listBlocks.useQuery(
+    { page: anchor?.page ?? "tutor-profile" },
+    { retry: false, staleTime: 60_000, enabled: Boolean(anchor) },
+  );
+  // An anchor the registry no longer declares renders nothing, so retiring one
+  // in code cannot leave orphaned blocks on the page.
+  const blocks = anchor ? (query.data ?? []).filter(block => block.anchorId === anchorId) : [];
+  if (blocks.length === 0) return null;
+
+  return <div className={cn("space-y-2", className)}>
+    {blocks.map(block => <section key={block.id} className={cn("rounded-2xl border p-3 text-sm leading-6", blockToneClasses[block.tone] ?? blockToneClasses.info)}>
+      {block.heading ? <p className="font-bold">{block.heading}</p> : null}
+      {block.body ? <p className={block.heading ? "mt-1 whitespace-pre-line" : "whitespace-pre-line"}>{block.body}</p> : null}
+    </section>)}
+  </div>;
 }

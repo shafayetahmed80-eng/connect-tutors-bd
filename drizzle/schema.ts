@@ -803,6 +803,29 @@ export const siteContentOverrides = mysqlTable(
   table => [index("site_content_overrides_page_idx").on(table.page)],
 );
 
+/**
+ * Admin-authored notice blocks, placed at anchors the pages declare in
+ * `@shared/site-content`. Unlike the page sections, these are Admin-owned
+ * content, so they can be created, reordered and removed freely.
+ */
+export const siteContentBlocks = mysqlTable(
+  "site_content_blocks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    anchorId: varchar("anchorId", { length: 120 }).notNull(),
+    page: varchar("page", { length: 60 }).notNull(),
+    heading: varchar("heading", { length: 120 }),
+    body: text("body"),
+    tone: varchar("tone", { length: 20 }).default("info").notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    active: int("active").default(1).notNull(),
+    updatedByUserId: int("updatedByUserId").references(() => users.id),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("site_content_blocks_anchor_sort_idx").on(table.anchorId, table.active, table.sortOrder)],
+);
+
 export const tutorTeachingAreas = mysqlTable(
   "tutor_teaching_areas",
   {
