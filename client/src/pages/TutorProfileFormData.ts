@@ -60,7 +60,7 @@ export type PersistedTutorProfileForForm = {
   whyChooseMe?: string | null;
   additionalNotes?: string | null;
   privateDetails?: TutorProfilePrivateDetails;
-  educationRecords?: TutorProfileEducationRecord[];
+  educationRecords?: PersistedTutorEducationRecord[];
   universityIdDocumentStatus?: "uploaded" | "not_uploaded";
   uploadedSupportingDocuments?: string[];
 };
@@ -82,6 +82,7 @@ export type TutorProfilePrivateDetails = {
   emergencyContactAddress?: string;
 };
 
+/** The shape the form edits: every scalar is a string the inputs can hold. */
 export type TutorProfileEducationRecord = {
   qualificationLevel: QualificationEducationLevel | "";
   instituteName: string;
@@ -95,6 +96,25 @@ export type TutorProfileEducationRecord = {
   instituteIdCardNumber: string;
 };
 
+/**
+ * The shape the server actually sends: the year columns are MySQL integers and
+ * every nullable column can arrive as `undefined`. Kept separate from the form
+ * record so the two can never be confused again — spreading the wire shape
+ * straight into form state is what put numbers where strings were expected.
+ */
+export type PersistedTutorEducationRecord = {
+  qualificationLevel?: string;
+  instituteName?: string;
+  degreeExamTitle?: string;
+  majorGroup?: string;
+  resultGpa?: string;
+  curriculum?: string;
+  studyStartYear?: number | string;
+  studyEndYear?: number | string;
+  currentlyStudying?: boolean;
+  instituteIdCardNumber?: string;
+};
+
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
   additionalPhone: "", presentAddress: "", permanentAddress: "", nationality: "", religion: "", socialProfileLinks: "",
   fatherName: "", fatherPhone: "", motherName: "", motherPhone: "", emergencyContactName: "", emergencyContactRelation: "",
@@ -105,6 +125,42 @@ const emptyEducationRecord = (): TutorProfileEducationRecord => ({
   qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "",
   studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "",
 });
+
+function toFormText(value: unknown): string {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+/**
+ * Same reason as `hydrateEducationRecord`: the server omits empty columns, and
+ * spreading them over the defaults replaces `""` with `undefined`.
+ */
+function hydratePrivateDetails(details: TutorProfilePrivateDetails | undefined): TutorProfilePrivateDetails {
+  const empty = emptyPrivateDetails();
+  return Object.fromEntries(
+    (Object.keys(empty) as (keyof TutorProfilePrivateDetails)[]).map(key => [key, toFormText(details?.[key])]),
+  ) as TutorProfilePrivateDetails;
+}
+
+/**
+ * Maps one stored record onto the form shape field by field. Deliberately not a
+ * spread: the wire record carries integer years and `undefined` for empty
+ * columns, both of which the string-typed inputs and payload builder choke on.
+ */
+function hydrateEducationRecord(record: PersistedTutorEducationRecord): TutorProfileEducationRecord {
+  return {
+    // Records saved before these lists existed fall back to the placeholder.
+    qualificationLevel: asEducationOption(qualificationEducationLevels, record.qualificationLevel),
+    curriculum: asEducationOption(qualificationCurricula, record.curriculum),
+    instituteName: toFormText(record.instituteName),
+    degreeExamTitle: toFormText(record.degreeExamTitle),
+    majorGroup: toFormText(record.majorGroup),
+    resultGpa: toFormText(record.resultGpa),
+    studyStartYear: toFormText(record.studyStartYear),
+    studyEndYear: toFormText(record.studyEndYear),
+    currentlyStudying: Boolean(record.currentlyStudying),
+    instituteIdCardNumber: toFormText(record.instituteIdCardNumber),
+  };
+}
 
 export type TutorProfileFormState = {
   tutorNumber: number | null;
@@ -260,15 +316,9 @@ export function hydrateTutorProfileForm(
     teachingApproach: profile.teachingApproach ?? "",
     whyChooseMe: profile.whyChooseMe ?? "",
     additionalNotes: profile.additionalNotes ?? "",
-    privateDetails: { ...emptyPrivateDetails(), ...(profile.privateDetails ?? {}) },
+    privateDetails: hydratePrivateDetails(profile.privateDetails),
     educationRecords: profile.educationRecords?.length
-      ? profile.educationRecords.map(record => ({
-          ...emptyEducationRecord(),
-          ...record,
-          // Records saved before these lists existed fall back to the placeholder.
-          qualificationLevel: asEducationOption(qualificationEducationLevels, record.qualificationLevel),
-          curriculum: asEducationOption(qualificationCurricula, record.curriculum),
-        }))
+      ? profile.educationRecords.map(hydrateEducationRecord)
       : [emptyEducationRecord()],
     universityIdDocumentStatus: profile.universityIdDocumentStatus ?? "not_uploaded",
     uploadedSupportingDocuments: (profile.uploadedSupportingDocuments ?? []).filter(isTutorSupportingDocumentType),
