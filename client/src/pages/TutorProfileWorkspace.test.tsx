@@ -68,9 +68,10 @@ const completeProfile = {
   currentLocationId: "1",
   teachingAreaIds: ["1"],
   availableNationwide: true,
-  highestEducation: "BSc",
+  highestEducation: "Honours",
   universityId: 1,
   facultyDepartmentId: 1,
+  degreeExamTitle: "BSc",
   studyStatus: "graduated" as const,
   graduationYear: 2020,
   primarySubjectIds: ["1"],
@@ -139,11 +140,11 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     // Personal Information is the default tab; other sections' rows are not rendered.
     expect(screen.getByRole("tabpanel").getAttribute("aria-label")).toBe("Personal Information");
-    expect(screen.queryByText("Highest education")).toBeNull();
+    expect(screen.queryByText("Education level")).toBeNull();
 
     await user.click(screen.getByRole("tab", { name: /Education/ }));
 
-    expect(screen.getByText("Highest education")).toBeTruthy();
+    expect(screen.getByText("Education level")).toBeTruthy();
     expect(screen.queryByText("Present address")).toBeNull();
   });
 
@@ -186,8 +187,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
       profile={{
         ...completeProfile,
         educationRecords: [
-          { qualificationLevel: "Bachelor’s", instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "", studyStartDate: "2016-01-01", studyEndDate: "2020-01-01", passingYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" },
-          { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "" },
+          { qualificationLevel: "Honours" as const, instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2016", studyEndYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" },
+          { qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" },
         ],
       }}
       onboardingFallback={null}
@@ -201,9 +202,10 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).getByText("BSc Physics · Dhaka University · 2020")).toBeTruthy();
     expect(within(dialog).queryByDisplayValue("BSc Physics")).toBeNull();
     // The empty one stays open for editing.
-    expect(within(dialog).getAllByLabelText(/Qualification Level/).length).toBeGreaterThan(0);
+    expect(within(dialog).getAllByLabelText(/Institute Name/).length).toBe(1);
 
-    await user.click(within(dialog).getByRole("button", { name: /Qualification 1/ }));
+    // Collapsed cards are titled by their education level, so they stay scannable.
+    await user.click(within(dialog).getByRole("button", { name: /Honours/ }));
     expect(within(dialog).getByDisplayValue("BSc Physics")).toBeTruthy();
   });
 
@@ -216,13 +218,56 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(screen.getByRole("button", { name: "Edit Education" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");
-    expect(within(dialog).getByText(/Private verification only/)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: /Upload Both Side/ })).toBeTruthy();
     expect(screen.queryByText(/Guardian.*University ID/i)).toBeNull();
 
     fireEvent.change(input, { target: { files: [new File(["id"], "university-id.png", { type: "image/png" })] } });
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/tutor/university-id-document", expect.objectContaining({ method: "POST", credentials: "same-origin" })));
-    expect(await within(dialog).findByText("Uploaded for private review")).toBeTruthy();
+    // Only a safe status is shown - never the storage key or an image URL.
+    expect(await within(dialog).findAllByText("Uploaded")).not.toHaveLength(0);
+    expect(within(dialog).queryByText(/tutors\/|university-id\./)).toBeNull();
+  });
+
+  it("offers the four optional certificates and uploads each to its own endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documentType: "hsc_certificate", status: "uploaded" }) }));
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    const dialog = screen.getByRole("dialog");
+
+    // All four are offered, and all four are clearly optional.
+    for (const label of ["NID Card Image", "SSC Certificate", "HSC Certificate", "Hons/MS Certificate"]) {
+      expect(within(dialog).getByLabelText(`Upload ${label}`)).toBeTruthy();
+      expect(within(dialog).getByText(label)).toBeTruthy();
+    }
+    expect(within(dialog).getAllByText("(Optional)")).toHaveLength(4);
+
+    fireEvent.change(within(dialog).getByLabelText("Upload HSC Certificate"), {
+      target: { files: [new File(["cert"], "hsc.png", { type: "image/png" })] },
+    });
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/tutor/supporting-document/hsc_certificate", expect.objectContaining({ method: "POST", credentials: "same-origin" })));
+    expect(await within(dialog).findByText("Uploaded")).toBeTruthy();
+  });
+
+  it("rejects an oversized or wrong-typed certificate without calling the upload endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.change(within(dialog).getByLabelText("Upload NID Card Image"), {
+      target: { files: [new File(["pdf"], "nid.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(await screen.findByText("NID Card Image must be a JPEG, PNG, or WebP file.")).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("shows identity in the rail and keeps the submit action at the page end", () => {

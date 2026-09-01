@@ -1,3 +1,4 @@
+import { isStudyYear } from "@shared/tutor-education";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
 export const tutorProfileCopy = {
@@ -13,7 +14,13 @@ export const tutorProfileCopy = {
     teachingAreas: "Teaching Areas",
     university: "Institute",
     facultyDepartment: "Related Department / Subject",
+    educationLevel: "Education Level",
+    degreeExamTitle: "Degree / Exam Title",
+    resultGpa: "Result / GPA",
+    deptId: "Dept ID",
     studyStatus: "Current Study Status",
+    yearSemester: "Year/Semester",
+    graduationYear: "Graduation Year",
     primarySubjects: "Primary Subjects",
     additionalSubjects: "Additional Subjects",
     classLevels: "Class / Level",
@@ -70,7 +77,10 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
   universityId: tutorProfileCopy.fields.university,
   facultyDepartmentId: tutorProfileCopy.fields.facultyDepartment,
+  degreeExamTitle: tutorProfileCopy.fields.degreeExamTitle,
   studyStatus: tutorProfileCopy.fields.studyStatus,
+  yearSemester: tutorProfileCopy.fields.yearSemester,
+  graduationYear: tutorProfileCopy.fields.graduationYear,
   primarySubjectIds: tutorProfileCopy.fields.primarySubjects,
   classLevelIds: tutorProfileCopy.fields.classLevels,
   curriculumIds: tutorProfileCopy.fields.curricula,
@@ -115,7 +125,14 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
   if (!form.universityId) errors.universityId = "Select your institute.";
   if (!form.facultyDepartmentId) errors.facultyDepartmentId = "Select your related department or subject.";
+  if (!form.degreeExamTitle.trim()) errors.degreeExamTitle = "Enter your degree or exam title.";
   if (!form.studyStatus) errors.studyStatus = "Select your current study status.";
+  // Study status decides which half of the study timeline is required.
+  else if (form.studyStatus === "studying") {
+    if (!form.yearSemester.trim()) errors.yearSemester = "Enter your current year or semester.";
+  } else if (!isStudyYear(Number(form.graduationYear))) {
+    errors.graduationYear = "Enter your graduation year.";
+  }
   requiredSelection(errors, "primarySubjectIds", "Select at least one primary subject.", form.primarySubjectIds);
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
@@ -142,7 +159,12 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  const totalRequired = 25 + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
+  // 26 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // gated ones: the study timeline only applies once a study status is chosen,
+  // and nationwide availability only applies to online tuition.
+  const totalRequired = 26
+    + (form.studyStatus ? 1 : 0)
+    + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);
 

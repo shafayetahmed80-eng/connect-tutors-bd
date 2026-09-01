@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { registerGuardianProfilePhotoRoute } from "../guardian-profile-photo-route";
 import { registerTutorProfilePhotoRoute } from "../tutor-profile-photo-route";
 import { registerTutorUniversityIdDocumentRoute } from "../tutor-university-id-document-route";
+import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-document-route";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -42,6 +43,7 @@ async function startServer() {
   registerGuardianProfilePhotoRoute(app);
   registerTutorProfilePhotoRoute(app);
   registerTutorUniversityIdDocumentRoute(app);
+  registerTutorSupportingDocumentRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

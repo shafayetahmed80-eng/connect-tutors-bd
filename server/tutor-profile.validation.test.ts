@@ -20,7 +20,9 @@ const completeSubmission = {
   universityId: 1,
   facultyDepartmentId: 11,
   degreeMajorId: 111,
+  degreeExamTitle: "BSc",
   studyStatus: "graduated",
+  graduationYear: 2022,
   primarySubjectIds: [1],
   additionalSubjectIds: [2],
   classLevelIds: [1],
@@ -49,14 +51,14 @@ const approvedExpandedSubmission = {
     fatherPhone: "+8801712345678",
   },
   educationRecords: [{
-    qualificationLevel: "Bachelor",
+    qualificationLevel: "Honours",
     instituteName: "University of Dhaka",
     degreeExamTitle: "BSc",
     majorGroup: "Mathematics",
-    studyStartDate: "2018-01-01",
+    curriculum: "English Version",
+    studyStartYear: 2018,
     currentlyStudying: false,
-    studyEndDate: "2022-12-31",
-    passingYear: 2022,
+    studyEndYear: 2022,
   }],
   universityIdDocumentStatus: "uploaded",
 };
@@ -132,7 +134,7 @@ describe("Tutor Profile domain validation", () => {
       },
       educationRecords: [{
         ...approvedExpandedSubmission.educationRecords[0],
-        studyEndDate: undefined,
+        studyEndYear: undefined,
       }],
       universityIdDocumentStatus: "not_uploaded",
     });
@@ -142,7 +144,7 @@ describe("Tutor Profile domain validation", () => {
       const paths = result.error.issues.map(issue => issue.path.join("."));
       expect(paths).toEqual(expect.arrayContaining([
         "privateDetails.fatherPhone",
-        "educationRecords.0.studyEndDate",
+        "educationRecords.0.studyEndYear",
         "universityIdDocumentStatus",
       ]));
     }
@@ -203,5 +205,51 @@ describe("Tutor Profile domain validation", () => {
         teachingApproach: "Concept-first teaching.",
       }),
     ).toBe(100);
+  });
+
+  it("asks a studying Tutor for a year/semester and a finished one for a graduation year", () => {
+    const studying = { ...approvedExpandedSubmission, studyStatus: "studying", graduationYear: undefined, yearSemester: undefined };
+
+    // Studying: the graduation year is irrelevant, the year/semester is required.
+    const missingYearSemester = tutorProfileSubmissionSchema.safeParse(studying);
+    expect(missingYearSemester.success).toBe(false);
+    if (!missingYearSemester.success) {
+      expect(missingYearSemester.error.issues.map(issue => issue.path.join("."))).toContain("yearSemester");
+    }
+    expect(tutorProfileSubmissionSchema.safeParse({ ...studying, yearSemester: "2nd Year/Semester" }).success).toBe(true);
+
+    // Graduated: the mirror image - the graduation year is what is required.
+    const graduated = { ...approvedExpandedSubmission, graduationYear: undefined, yearSemester: undefined };
+    const missingGraduationYear = tutorProfileSubmissionSchema.safeParse(graduated);
+    expect(missingGraduationYear.success).toBe(false);
+    if (!missingGraduationYear.success) {
+      expect(missingGraduationYear.error.issues.map(issue => issue.path.join("."))).toContain("graduationYear");
+    }
+
+    // Each status completes the same single unit, so both reach 100.
+    expect(calculateTutorProfileCompletion({ ...studying, yearSemester: "2nd Year/Semester" })).toBe(100);
+    expect(calculateTutorProfileCompletion(completeSubmission)).toBe(100);
+  });
+
+  it("rejects qualification records outside the curated vocabularies or with an inverted year range", () => {
+    const record = approvedExpandedSubmission.educationRecords[0];
+    const parseWithRecord = (overrides: Record<string, unknown>) =>
+      tutorProfileSubmissionSchema.safeParse({
+        ...approvedExpandedSubmission,
+        educationRecords: [{ ...record, ...overrides }],
+      });
+
+    expect(parseWithRecord({ qualificationLevel: "Bachelor" }).success).toBe(false);
+    expect(parseWithRecord({ curriculum: "Bangla" }).success).toBe(false);
+    expect(parseWithRecord({ studyStartYear: 1800 }).success).toBe(false);
+
+    const inverted = parseWithRecord({ studyStartYear: 2022, studyEndYear: 2018 });
+    expect(inverted.success).toBe(false);
+    if (!inverted.success) {
+      expect(inverted.error.issues.map(issue => issue.path.join("."))).toContain("educationRecords.0.studyEndYear");
+    }
+
+    // An ongoing record may leave the end year out entirely.
+    expect(parseWithRecord({ currentlyStudying: true, studyEndYear: undefined }).success).toBe(true);
   });
 });

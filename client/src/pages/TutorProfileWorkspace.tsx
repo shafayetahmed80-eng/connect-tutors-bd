@@ -2,7 +2,15 @@ import { SearchableMultiSelect, type SelectorOption } from "@/components/TutorPr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
+import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
+import {
+  MAX_TUTOR_DOCUMENT_BYTES,
+  TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
+  tutorSupportingDocumentLabels,
+  tutorSupportingDocumentTypes,
+  type TutorSupportingDocumentType,
+} from "@shared/tutor-documents";
+import { Check, ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -143,8 +151,69 @@ function FormInput({ label, hint, error, required = false, showRequiredMarker = 
   return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
+/** Single-select for the Education section's curated vocabularies. */
+function FormSelect({ label, options, placeholder, error, showRequiredMarker = false, ...props }: {
+  label: string;
+  options: readonly string[];
+  placeholder: string;
+  error?: string;
+  showRequiredMarker?: boolean;
+} & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    {label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}
+    <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
+      <option value="">{placeholder}</option>
+      {options.map(option => <option key={option} value={option}>{option}</option>)}
+    </select>
+    {error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}
+  </label>;
+}
+
 function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<textarea {...props} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} min-h-28 resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
+}
+
+/**
+ * One ruled row in the private verification list: label on the left, upload
+ * status and button on the right. Owns its own hidden file input so every
+ * document can be picked independently.
+ */
+function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uploaded, uploading, onSelectFile }: {
+  inputId: string;
+  label: string;
+  uploadLabel: string;
+  required?: boolean;
+  uploaded: boolean;
+  uploading: boolean;
+  onSelectFile: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-j-border py-3 first:pt-0">
+    <input
+      ref={inputRef}
+      id={inputId}
+      className="sr-only"
+      type="file"
+      accept={TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE}
+      aria-label={`Upload ${label}`}
+      aria-required={required || undefined}
+      onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
+    />
+    <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]">
+      {required ? <LockKeyhole className="shrink-0 text-[#167ddd]" size={16} aria-hidden="true" /> : null}
+      {label}
+      {required ? <span aria-hidden="true" className="text-[#d84a4a]">*</span> : <span className="font-normal text-[#72889a]">(Optional)</span>}
+    </p>
+    <div className="flex items-center gap-2">
+      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
+      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+    </div>
+  </div>;
+}
+
+/** Years are typed by hand, so keep the field to digits instead of a spinner. */
+function digitsOnly(value: string, maxLength: number) {
+  return value.replace(/\D/g, "").slice(0, maxLength);
 }
 
 function InlineError({ message }: { message?: string }) {
@@ -171,13 +240,13 @@ export function TutorProfileWorkspace({
   const [teachingAreaQuery, setTeachingAreaQuery] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingUniversityId, setUploadingUniversityId] = useState(false);
+  const [uploadingDocumentType, setUploadingDocumentType] = useState<TutorSupportingDocumentType | null>(null);
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(null);
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const universityIdInputRef = useRef<HTMLInputElement>(null);
   // Snapshot of `form` taken when a section popup opens, restored if it is
   // closed without saving so Cancel/Escape/X discard the in-popup edits.
   const formBeforeSectionEditRef = useRef<TeachingProfileState | null>(null);
@@ -274,7 +343,7 @@ export function TutorProfileWorkspace({
   });
   const addEducationRecord = () => {
     const newIndex = form.educationRecords.length;
-    setForm(current => ({ ...current, educationRecords: [...current.educationRecords, { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartDate: "", studyEndDate: "", passingYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }));
+    setForm(current => ({ ...current, educationRecords: [...current.educationRecords, { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }));
     setOpenQualificationIndices(current => {
       const next = new Set(current);
       next.add(newIndex);
@@ -297,7 +366,7 @@ export function TutorProfileWorkspace({
   const groupedClassLevels = useMemo(() => getGroupedClassLevelSelector(classLevels.data ?? [], form.classLevelIds), [classLevels.data, form.classLevelIds]);
   const completionSummary = getTutorProfileCompletionSummary(form);
   const completionPercentage = completionSummary.completionPercentage;
-  const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId;
+  const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId || uploadingDocumentType !== null;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
   // "View Profile" swaps the tabbed editor for the read-only whole-profile
   // preview; the rail's button becomes "Edit Information" to come back.
@@ -313,8 +382,8 @@ export function TutorProfileWorkspace({
   useEffect(() => {
     if (editingSection !== "c") return;
     const isComplete = (record: TeachingProfileState["educationRecords"][number]) =>
-      Boolean(record.qualificationLevel && record.instituteName && record.degreeExamTitle && record.majorGroup && record.studyStartDate
-        && (record.currentlyStudying || (record.studyEndDate && record.passingYear)));
+      Boolean(record.qualificationLevel && record.instituteName && record.degreeExamTitle && record.majorGroup && record.curriculum && record.studyStartYear
+        && (record.currentlyStudying || record.studyEndYear));
     setOpenQualificationIndices(() => {
       const next = new Set<number>();
       form.educationRecords.forEach((record, index) => {
@@ -613,13 +682,17 @@ export function TutorProfileWorkspace({
     }
   };
 
+  /** Shared pre-flight so an obviously wrong file never reaches the server. */
+  const rejectInvalidDocument = (file: File, label: string) => {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) return `${label} must be a JPEG, PNG, or WebP file.`;
+    if (file.size > MAX_TUTOR_DOCUMENT_BYTES) return `${label} must be 5 MB or smaller.`;
+    return null;
+  };
+
   const uploadUniversityIdDocument = async (file: File) => {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-      setFeedback({ type: "error", message: "University ID image must be a JPEG, PNG, or WebP file." });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setFeedback({ type: "error", message: "University ID image must be 5 MB or smaller." });
+    const invalid = rejectInvalidDocument(file, "University ID image");
+    if (invalid) {
+      setFeedback({ type: "error", message: invalid });
       return;
     }
     setUploadingUniversityId(true);
@@ -637,6 +710,33 @@ export function TutorProfileWorkspace({
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the University ID image." });
     } finally {
       setUploadingUniversityId(false);
+    }
+  };
+
+  const uploadSupportingDocument = async (documentType: TutorSupportingDocumentType, file: File) => {
+    const label = tutorSupportingDocumentLabels[documentType];
+    const invalid = rejectInvalidDocument(file, label);
+    if (invalid) {
+      setFeedback({ type: "error", message: invalid });
+      return;
+    }
+    setUploadingDocumentType(documentType);
+    setFeedback(null);
+    try {
+      const payload = new FormData();
+      payload.append("document", file);
+      const response = await fetch(`/api/tutor/supporting-document/${documentType}`, { method: "POST", credentials: "same-origin", body: payload });
+      const result = await response.json().catch(() => ({})) as { error?: string; status?: "uploaded" };
+      if (!response.ok || result.status !== "uploaded") throw new Error(result.error || `Unable to upload the ${label}.`);
+      setForm(current => current.uploadedSupportingDocuments.includes(documentType)
+        ? current
+        : { ...current, uploadedSupportingDocuments: [...current.uploadedSupportingDocuments, documentType] });
+      await utils.tutor.getMyProfile.invalidate();
+      setFeedback({ type: "success", message: `${label} uploaded for private verification.` });
+    } catch (error) {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : `Unable to upload the ${label}.` });
+    } finally {
+      setUploadingDocumentType(null);
     }
   };
 
@@ -678,40 +778,72 @@ export function TutorProfileWorkspace({
 
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
-      <FormInput label="Highest Education" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value)} placeholder="e.g. Bachelor of Science" />
+      <FormSelect label={tutorProfileCopy.fields.educationLevel} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />
       <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
       <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} required error={fieldErrors.universityId} />
       <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} required error={fieldErrors.facultyDepartmentId} />
-      <FormInput label="Graduation Year" type="number" min="1950" max="2100" value={form.graduationYear} onChange={event => update("graduationYear", event.target.value)} />
+      <FormInput label={tutorProfileCopy.fields.degreeExamTitle} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />
+      <FormInput label={`${tutorProfileCopy.fields.resultGpa} (Optional)`} value={form.resultGpa} onChange={event => update("resultGpa", event.target.value)} placeholder="Ex-4.00" />
+      <FormInput label={`${tutorProfileCopy.fields.deptId} (Optional)`} value={form.deptId} onChange={event => update("deptId", event.target.value)} placeholder="Ex-13104096" />
+      {/* Study status decides which half of the study timeline the Tutor fills in. */}
+      {form.studyStatus === "studying"
+        ? <FormInput label={tutorProfileCopy.fields.yearSemester} showRequiredMarker value={form.yearSemester} onChange={event => update("yearSemester", event.target.value)} placeholder="Ex- 2nd Year/Semester" error={fieldErrors.yearSemester} />
+        : <FormInput label={tutorProfileCopy.fields.graduationYear} showRequiredMarker inputMode="numeric" maxLength={4} value={form.graduationYear} onChange={event => update("graduationYear", digitsOnly(event.target.value, 4))} placeholder="Ex-2022" error={fieldErrors.graduationYear} />}
     </div>
-    <div className="mt-5 space-y-4">
-      <div><h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3><p className="mt-1 text-xs leading-5 text-[#72889a]">Private review details. Add your current or most relevant qualification first.</p></div>
+    <div className="mt-6 space-y-3">
+      <h3 className="text-sm font-bold text-[#244a6a]">Qualification history <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
       {form.educationRecords.map((record, index) => {
         const isOpen = openQualificationIndices.has(index);
-        const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.passingYear].filter(Boolean).join(" · ");
-        return <div key={index} className="overflow-hidden rounded-2xl border border-j-border bg-j-surface-sunken">
+        const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
+        return <div key={index} className={`overflow-hidden rounded-2xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
           <div className="flex items-center gap-2 p-3 sm:px-4">
             <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
+              <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-[#167ddd] text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-bold ${tp.heading}`}>Qualification {index + 1}</span>
+                <span className={`block text-sm font-bold ${tp.heading}`}>{record.qualificationLevel || `Qualification ${index + 1}`}</span>
                 {!isOpen && summary ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{summary}</span> : null}
               </span>
               <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
             </button>
             {form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button> : null}
           </div>
-          {isOpen ? <div className="border-t border-j-border p-4"><div className="grid gap-5 md:grid-cols-2"><FormInput label="Qualification Level" required value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} placeholder="e.g. Bachelor’s" /><FormInput label="Institute Name" required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} /><FormInput label="Degree / Exam Title" required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} /><FormInput label="Subject / Group" required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} /><FormInput label="Study Start Date" required type="date" value={record.studyStartDate} onChange={event => updateEducationRecord(index, "studyStartDate", event.target.value)} /><FormInput label="Result / GPA (Optional)" value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} /><FormInput label="Curriculum (Optional)" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} /><label className="flex items-center gap-2 self-end rounded-xl border border-[#dce8f0] px-3 py-3 text-sm font-semibold text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>{!record.currentlyStudying ? <><FormInput label="Study End Date" required type="date" value={record.studyEndDate} onChange={event => updateEducationRecord(index, "studyEndDate", event.target.value)} /><FormInput label="Passing Year" required type="number" min="1950" max="2100" value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", event.target.value)} /></> : null}<FormInput label="Institute ID Card Number (Optional)" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} /></div></div> : null}
+          {isOpen ? <div className="border-t border-j-border bg-[#fbfdfe] p-4">
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormSelect label={tutorProfileCopy.fields.educationLevel} showRequiredMarker options={qualificationEducationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />
+              <FormInput label="Institute Name" required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- Dhaka College" />
+              <FormInput label={tutorProfileCopy.fields.degreeExamTitle} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />
+              <FormInput label="Subject / Group" required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Science" />
+              <FormSelect label="Curriculum" showRequiredMarker options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />
+              <FormInput label={`${tutorProfileCopy.fields.resultGpa} (Optional)`} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />
+              <FormInput label="Study Start Year" required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />
+              {record.currentlyStudying ? null : <FormInput label="Study End Year" required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />}
+              <label className="flex items-center gap-2 self-end rounded-lg border border-[#dce8f0] px-3 py-2 text-sm font-medium text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>
+              <FormInput label="Institute ID Card Number (Optional)" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />
+            </div>
+          </div> : null}
         </div>;
       })}
       <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
     </div>
-    <div className="mt-5 rounded-2xl border border-[#dce8f0] bg-[#f7fbfd] p-4">
-      <div className="flex items-start gap-3">
-        <LockKeyhole className="mt-0.5 shrink-0 text-[#167ddd]" size={18} />
-        <div className="min-w-0"><p className="text-sm font-bold text-[#244a6a]">University ID card <span aria-hidden="true" className="text-[#d84a4a]">*</span></p><p id="university-id-upload-help" className="mt-1 text-xs leading-5 text-[#72889a]">Private verification only. This image is never displayed to Guardians or on public Tutor profiles. JPEG, PNG, or WebP; up to 5 MB.</p></div>
-      </div>
-      <input ref={universityIdInputRef} id="tutor-university-id-document" className="sr-only" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload University ID card" aria-describedby="university-id-upload-help" aria-required="true" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadUniversityIdDocument(file); }} />
-      <div className="mt-3 flex flex-wrap items-center gap-3"><Button type="button" variant="outline" disabled={uploadingUniversityId} aria-busy={uploadingUniversityId} onClick={() => universityIdInputRef.current?.click()} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploadingUniversityId ? "Uploading…" : form.universityIdDocumentStatus === "uploaded" ? "Replace University ID image" : "Upload University ID image"}</Button>{form.universityIdDocumentStatus === "uploaded" ? <span className="rounded-full bg-[#e7f7ed] px-2.5 py-1 text-xs font-bold text-[#20734c]">Uploaded for private review</span> : <span className="rounded-full bg-[#fff1d5] px-2.5 py-1 text-xs font-bold text-[#926112]">Upload required before final review</span>}</div>
+    <div className="mt-6">
+      <DocumentUploadRow
+        inputId="tutor-university-id-document"
+        label="University ID card"
+        uploadLabel="Upload Both Side"
+        required
+        uploaded={form.universityIdDocumentStatus === "uploaded"}
+        uploading={uploadingUniversityId}
+        onSelectFile={file => void uploadUniversityIdDocument(file)}
+      />
+      {tutorSupportingDocumentTypes.map(documentType => <DocumentUploadRow
+        key={documentType}
+        inputId={`tutor-document-${documentType}`}
+        label={tutorSupportingDocumentLabels[documentType]}
+        uploadLabel="Upload"
+        uploaded={form.uploadedSupportingDocuments.includes(documentType)}
+        uploading={uploadingDocumentType === documentType}
+        onSelectFile={file => void uploadSupportingDocument(documentType, file)}
+      />)}
     </div>
   </>;
 
