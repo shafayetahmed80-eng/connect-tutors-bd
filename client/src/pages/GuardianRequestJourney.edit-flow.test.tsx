@@ -40,6 +40,8 @@ vi.mock("@/pages/JoinTutor", () => ({ SearchableLocationSelect: () => <div /> })
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ tutorRequests: { mine: { invalidate: mocks.invalidate } } }),
+    // Content overrides are cosmetic; an empty list keeps the code defaults.
+    siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     auth: { me: { useQuery: () => ({ data: { id: 4, role: "guardian" }, isLoading: false, refetch: vi.fn() }) } },
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },

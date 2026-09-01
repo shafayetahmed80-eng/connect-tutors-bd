@@ -28,6 +28,9 @@ vi.mock("@/_core/hooks/useAuth", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+      // Content overrides and notice blocks are cosmetic; empty lists keep the
+      // copy and layout the code ships with.
+      siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     guardianProfile: {
       me: { useQuery: () => ({ data: mocks.profile, isLoading: false }) },
       photo: { useQuery: () => ({ data: mocks.photo, isLoading: false }) },

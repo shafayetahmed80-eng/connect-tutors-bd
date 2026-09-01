@@ -1,5 +1,6 @@
 import React from "react";
 import { Check } from "lucide-react";
+import { SiteText } from "@/lib/siteContent";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
@@ -45,7 +46,7 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
           isActive ? "bg-white font-semibold text-j-ink shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-j-ink-soft hover:text-j-ink"
         }`}
       >
-        <span className="truncate">{TAB_LABELS[section.id]}</span>
+        <SiteText slotId={`tutor-profile.tab.${section.id}`} fallback={TAB_LABELS[section.id]} className="truncate" />
         {total === 0 ? null : <span className={`shrink-0 text-[11px] font-bold tabular-nums ${
           complete ? "text-[#1c8a5b]" : isActive ? "text-j-accent" : "text-[#94a6b4]"
         }`}>

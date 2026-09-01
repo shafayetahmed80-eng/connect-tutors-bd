@@ -36,6 +36,8 @@ import {
   tutorPrivateProfiles,
   tutorUniversityIdDocuments,
   tutorSupportingDocuments,
+  siteContentOverrides,
+  siteContentBlocks,
   tutorPreferredClassSizes,
   tutorPreferredTeachingDays,
   tutorPreferredTimeSlots,
@@ -4039,4 +4041,136 @@ export async function getOwnerAdminActivityReport(input: OwnerAdminActivityRepor
     }),
     recentEvents,
   };
+}
+
+/** Admin copy overrides for one page; an empty result means "use the code defaults". */
+export async function listSiteContentOverrides(page: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      slotId: siteContentOverrides.slotId,
+      text: siteContentOverrides.text,
+      textSize: siteContentOverrides.textSize,
+      spacing: siteContentOverrides.spacing,
+    })
+    .from(siteContentOverrides)
+    .where(eq(siteContentOverrides.page, page));
+}
+
+export async function saveSiteContentOverride(input: {
+  slotId: string;
+  page: string;
+  text: string | null;
+  textSize: string | null;
+  spacing: string | null;
+  updatedByUserId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const values = { ...input };
+  await db.insert(siteContentOverrides).values(values).onDuplicateKeyUpdate({
+    set: {
+      page: values.page,
+      text: values.text,
+      textSize: values.textSize,
+      spacing: values.spacing,
+      updatedByUserId: values.updatedByUserId,
+    },
+  });
+}
+
+/** Clearing an override is a delete, so the code default takes over again. */
+export async function clearSiteContentOverride(slotId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(siteContentOverrides).where(eq(siteContentOverrides.slotId, slotId));
+}
+
+/** Active notice blocks for one page, in the order an Admin arranged them. */
+export async function listSiteContentBlocks(page: string, options?: { includeInactive?: boolean }) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: siteContentBlocks.id,
+      anchorId: siteContentBlocks.anchorId,
+      heading: siteContentBlocks.heading,
+      body: siteContentBlocks.body,
+      tone: siteContentBlocks.tone,
+      sortOrder: siteContentBlocks.sortOrder,
+      active: siteContentBlocks.active,
+    })
+    .from(siteContentBlocks)
+    .where(options?.includeInactive
+      ? eq(siteContentBlocks.page, page)
+      : and(eq(siteContentBlocks.page, page), eq(siteContentBlocks.active, 1)))
+    .orderBy(asc(siteContentBlocks.anchorId), asc(siteContentBlocks.sortOrder), asc(siteContentBlocks.id));
+  return rows;
+}
+
+export async function createSiteContentBlock(input: {
+  anchorId: string;
+  page: string;
+  heading: string | null;
+  body: string | null;
+  tone: string;
+  active: boolean;
+  updatedByUserId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  // New blocks land at the end of their anchor rather than jumping to the top.
+  const [last] = await db
+    .select({ sortOrder: siteContentBlocks.sortOrder })
+    .from(siteContentBlocks)
+    .where(eq(siteContentBlocks.anchorId, input.anchorId))
+    .orderBy(desc(siteContentBlocks.sortOrder))
+    .limit(1);
+  await db.insert(siteContentBlocks).values({
+    anchorId: input.anchorId,
+    page: input.page,
+    heading: input.heading,
+    body: input.body,
+    tone: input.tone,
+    active: input.active ? 1 : 0,
+    sortOrder: (last?.sortOrder ?? 0) + 1,
+    updatedByUserId: input.updatedByUserId,
+  });
+}
+
+export async function updateSiteContentBlock(id: number, input: {
+  heading: string | null;
+  body: string | null;
+  tone: string;
+  active: boolean;
+  updatedByUserId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.update(siteContentBlocks).set({
+    heading: input.heading,
+    body: input.body,
+    tone: input.tone,
+    active: input.active ? 1 : 0,
+    updatedByUserId: input.updatedByUserId,
+  }).where(eq(siteContentBlocks.id, id));
+}
+
+export async function deleteSiteContentBlock(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(siteContentBlocks).where(eq(siteContentBlocks.id, id));
+}
+
+/** Rewrites the order of one anchor's blocks from the supplied id sequence. */
+export async function reorderSiteContentBlocks(anchorId: string, orderedIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const id = orderedIds[index];
+    await db.update(siteContentBlocks)
+      .set({ sortOrder: index + 1 })
+      .where(and(eq(siteContentBlocks.id, id), eq(siteContentBlocks.anchorId, anchorId)));
+  }
 }

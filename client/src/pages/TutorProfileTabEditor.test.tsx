@@ -3,6 +3,13 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// The tab editor now reads Admin content overrides and notice blocks. Empty
+// lists keep the copy and layout the code ships with.
+vi.mock("@/lib/trpc", () => {
+  const emptyQuery = () => ({ data: [], isLoading: false, isError: false });
+  return { trpc: { siteContent: { list: { useQuery: emptyQuery }, listBlocks: { useQuery: emptyQuery } } } };
+});
+
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 

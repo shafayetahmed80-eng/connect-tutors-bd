@@ -25,6 +25,8 @@ vi.mock("@/lib/trpc", () => {
         saveProfileDraft: { useMutation: () => ({ mutateAsync: trpcMocks.saveDraft, isPending: false }) },
         submitProfile: { useMutation: () => ({ mutateAsync: trpcMocks.submitProfile, isPending: false }) },
       },
+      // Content overrides are cosmetic; an empty list keeps the code defaults.
+      siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
       catalog: {
         searchUniversities: { useQuery: emptyQuery },
         searchFacultyDepartments: { useQuery: emptyQuery },

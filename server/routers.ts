@@ -15,6 +15,15 @@ import {
   reviewGuardianProfilePhoto,
 } from "./guardian-profile-photo";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
+import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
+import {
+  isEmptySiteContentOverride,
+  resolveSiteContentAnchorPage,
+  siteContentBlockInputSchema,
+  resolveSiteContentSlotPage,
+  siteContentOverrideInputSchema,
+  siteContentPageSchema,
+} from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema } from "./tutor-profile.validation";
@@ -150,7 +159,10 @@ function rethrowProfileValidationError(error: unknown): never {
 
 const catalogSearchInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
-  limit: z.number().int().min(1).max(50).default(30),
+  // The institute catalog alone holds 300+ rows, so a 50 ceiling silently hid
+  // real matches behind common words like "Medical". Still bounded, because an
+  // unbounded limit would let one request pull an entire catalog.
+  limit: z.number().int().min(1).max(CATALOG_SEARCH_LIMIT).default(30),
 });
 
 const tutorListingInputSchema = z.object({
@@ -834,6 +846,93 @@ export const appRouter = router({
       const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
       return db.listTutorJobInterestsForTutor(tutorId);
     }),
+  }),
+  siteContent: router({
+    // Public: the overrides are the published copy, and some of the pages that
+    // read them are visible to signed-out visitors.
+    list: publicProcedure
+      .input(z.object({ page: siteContentPageSchema }))
+      .query(({ input }) => db.listSiteContentOverrides(input.page)),
+    save: ownerAdminProcedure
+      .input(siteContentOverrideInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const page = resolveSiteContentSlotPage(input.slotId);
+        if (!page) throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown content slot." });
+
+        // An override with nothing in it is a reset, not a stored blank.
+        if (isEmptySiteContentOverride(input)) {
+          await db.clearSiteContentOverride(input.slotId);
+          return { slotId: input.slotId, cleared: true as const };
+        }
+
+        await db.saveSiteContentOverride({
+          slotId: input.slotId,
+          page,
+          text: input.text?.trim() || null,
+          textSize: input.textSize ?? null,
+          spacing: input.spacing ?? null,
+          updatedByUserId: ctx.user.id,
+        });
+        return { slotId: input.slotId, cleared: false as const };
+      }),
+    reset: ownerAdminProcedure
+      .input(z.object({ slotId: z.string().trim().min(1).max(120) }))
+      .mutation(async ({ input }) => {
+        if (!resolveSiteContentSlotPage(input.slotId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown content slot." });
+        }
+        await db.clearSiteContentOverride(input.slotId);
+        return { slotId: input.slotId, cleared: true as const };
+      }),
+    listBlocks: publicProcedure
+      .input(z.object({ page: siteContentPageSchema }))
+      .query(({ input }) => db.listSiteContentBlocks(input.page)),
+    listAllBlocks: ownerAdminProcedure
+      .input(z.object({ page: siteContentPageSchema }))
+      .query(({ input }) => db.listSiteContentBlocks(input.page, { includeInactive: true })),
+    createBlock: ownerAdminProcedure
+      .input(siteContentBlockInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const page = resolveSiteContentAnchorPage(input.anchorId);
+        if (!page) throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown anchor." });
+        await db.createSiteContentBlock({
+          anchorId: input.anchorId,
+          page,
+          heading: input.heading?.trim() || null,
+          body: input.body?.trim() || null,
+          tone: input.tone,
+          active: input.active,
+          updatedByUserId: ctx.user.id,
+        });
+        return { anchorId: input.anchorId };
+      }),
+    updateBlock: ownerAdminProcedure
+      .input(siteContentBlockInputSchema.and(z.object({ id: z.number().int().positive() })))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateSiteContentBlock(input.id, {
+          heading: input.heading?.trim() || null,
+          body: input.body?.trim() || null,
+          tone: input.tone,
+          active: input.active,
+          updatedByUserId: ctx.user.id,
+        });
+        return { id: input.id };
+      }),
+    deleteBlock: ownerAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await db.deleteSiteContentBlock(input.id);
+        return { id: input.id };
+      }),
+    reorderBlocks: ownerAdminProcedure
+      .input(z.object({ anchorId: z.string().trim().min(1).max(120), orderedIds: z.array(z.number().int().positive()).max(50) }))
+      .mutation(async ({ input }) => {
+        if (!resolveSiteContentAnchorPage(input.anchorId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown anchor." });
+        }
+        await db.reorderSiteContentBlocks(input.anchorId, input.orderedIds);
+        return { anchorId: input.anchorId };
+      }),
   }),
   admin: router({
     getWorkspaceAccess: adminProcedure.query(({ ctx }) => {

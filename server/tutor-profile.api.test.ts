@@ -28,6 +28,7 @@ vi.mock("./db", async importOriginal => {
   };
 });
 
+import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { appRouter } from "./routers";
 
 const completeDraftPayload = {
@@ -214,11 +215,16 @@ describe("TP-05 owner Tutor Profile procedures", () => {
       { id: "dhaka", label: "Dhaka", type: "city" },
     ]);
     expect(profileDbMocks.searchUniversities).toHaveBeenCalledWith({ query: "Dhaka", limit: 20 });
+
+    // A 50 ceiling silently hid real matches behind common words such as
+    // "Medical", so the catalogs must accept a page large enough to hold them.
+    await expect((tutorCaller.catalog as any).searchUniversities({ query: "Medical", limit: CATALOG_SEARCH_LIMIT })).resolves.toBeDefined();
+    expect(profileDbMocks.searchUniversities).toHaveBeenCalledWith({ query: "Medical", limit: CATALOG_SEARCH_LIMIT });
+    await expect((tutorCaller.catalog as any).searchUniversities({ query: "Medical", limit: CATALOG_SEARCH_LIMIT + 1 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(profileDbMocks.searchFacultyDepartments).toHaveBeenCalledWith({ query: "Math", limit: 10 });
     expect(profileDbMocks.searchBangladeshLocations).toHaveBeenCalledWith({ query: "Dha", types: ["city"], limit: 5 });
 
     await expect((createCaller("guardian").catalog as any).searchUniversities({ query: "Dhaka" })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect((tutorCaller.catalog as any).searchUniversities({ query: "x", limit: 51 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("forwards bounded persisted Bangladesh hierarchy identifiers for active Tutor hydration", async () => {
