@@ -171,16 +171,18 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).queryByDisplayValue("Discarded headline")).toBeNull();
   });
 
-  it("shows National ID as a security-gated mandatory field without rendering an editable NID value", async () => {
+  it("asks for no National ID at all while encrypted storage is not in place", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
     const dialog = screen.getByRole("dialog");
 
-    expect(within(dialog).getByText(/^National ID \(NID\)/)).toBeTruthy();
-    expect(within(dialog).getByText(/Secure collection is pending activation/i)).toBeTruthy();
-    expect(within(dialog).queryByLabelText(/^National ID \(NID\)/i)).toBeNull();
+    // The form used to show NID as a mandatory-but-disabled placeholder. It is
+    // gone entirely instead: nothing invites a tutor to type a government ID
+    // number into storage that has no encryption or access controls yet.
+    expect(within(dialog).queryByText(/National ID/i)).toBeNull();
+    expect(within(dialog).queryByLabelText(/NID/i)).toBeNull();
   });
 
   it("collapses a completed qualification to a one-line summary and expands it on demand", async () => {
