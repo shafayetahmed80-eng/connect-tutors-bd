@@ -4948,3 +4948,21 @@ export async function resetSiteLimit(limitId: string) {
   siteLimitCache = null;
   return { limitId };
 }
+
+/**
+ * The login id an Admin signs in with, for the workspace header.
+ *
+ * Their display name comes from `users`, but that is not what they type at
+ * `/admin/login`, and with more than one Admin the name alone does not say
+ * which account is open.
+ */
+export async function getAdminLoginId(userId: number) {
+  const database = await getDb();
+  if (!database) return null;
+  const [row] = await database
+    .select({ loginId: adminCredentials.loginId })
+    .from(adminCredentials)
+    .where(eq(adminCredentials.userId, userId))
+    .limit(1);
+  return row?.loginId ?? null;
+}

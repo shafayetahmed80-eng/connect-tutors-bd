@@ -47,7 +47,7 @@ vi.mock("./TutorProfileWorkspace", () => ({
 import TutorDashboard from "./TutorDashboard";
 
 async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Open Tutor account menu" }));
+  await user.click(screen.getByRole("button", { name: "Open Tutor Portal account menu" }));
 }
 
 describe("Tutor Dashboard dirty Profile navigation", () => {
@@ -112,13 +112,13 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
 
     render(<TutorDashboard />);
 
-    expect(screen.getByRole("banner", { name: "Tutor workspace header" })).not.toBeNull();
+    expect(screen.getByRole("banner", { name: "Tutor Portal workspace header" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Dashboard" })).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Open notifications" }));
     expect(screen.getByText("No notifications yet.")).not.toBeNull();
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Open Tutor account menu" }));
+    await user.click(screen.getByRole("button", { name: "Open Tutor Portal account menu" }));
     expect(screen.getByText("Tutor ID")).not.toBeNull();
     expect(screen.getByRole("menuitem", { name: "Sign out" })).not.toBeNull();
   });
@@ -130,7 +130,7 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
 
     render(<TutorDashboard />);
 
-    await user.click(screen.getByRole("button", { name: "Open Tutor navigation" }));
+    await user.click(screen.getByRole("button", { name: "Open Tutor Portal navigation" }));
     expect(await screen.findByRole("dialog", { name: "Sidebar" })).not.toBeNull();
   });
 

@@ -1189,10 +1189,17 @@ export const appRouter = router({
       }),
   }),
   admin: router({
-    getWorkspaceAccess: adminProcedure.query(({ ctx }) => {
+    getWorkspaceAccess: adminProcedure.query(async ({ ctx }) => {
       ctx.res.setHeader("Cache-Control", "private, no-store, max-age=0");
       ctx.res.setHeader("Vary", "Cookie");
-      return { isOwner: ctx.user.openId === ENV.ownerOpenId } as const;
+      // The login id rides along with the Owner check rather than getting a
+      // query of its own: the workspace header needs both, and this one is
+      // already fetched on every Admin page.
+      return {
+        isOwner: ctx.user.openId === ENV.ownerOpenId,
+        name: ctx.user.name ?? "Admin",
+        loginId: await db.getAdminLoginId(ctx.user.id),
+      };
     }),
     createInvitation: ownerAdminProcedure.input(z.object({ email: z.string().trim().email().max(320), expiresInHours: z.number().int().min(1).max(24 * 30).default(24 * 7) })).mutation(async ({ ctx, input }) => {
       const token = generateAdminInviteToken();
