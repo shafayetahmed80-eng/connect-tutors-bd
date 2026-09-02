@@ -1,15 +1,21 @@
 import { createHash, randomBytes } from "node:crypto";
+import { ONE_YEAR_MS } from "@shared/const";
 
 export const TUTOR_PORTAL_SESSION_HEADER = "x-connect-tutor-portal-session";
 /**
- * How long one Tutor Dashboard tab's proof stays valid without a renewing
- * request. The client renews every 20s while the tab is focused, but browsers
- * throttle (and eventually freeze) background timers, and a short laptop sleep
- * pauses them entirely. A 10-minute window lets a briefly-backgrounded tab
- * recover instead of bouncing the Tutor to sign-in mid-session, while still
- * keeping a leaked session cookie useless without a live tab hand-off.
+ * How long a Tutor's portal proof stays valid without a renewing request.
+ *
+ * This was ten minutes, on the reasoning that a proof should be short-lived.
+ * In practice a closed laptop or a long break signed the Tutor out while their
+ * account cookie was still good for a year - a sign-out nobody had asked for.
+ * The two now expire together, so only an explicit sign-out ends a session.
+ *
+ * What the proof still buys is unchanged: a session cookie taken on its own
+ * cannot open the Tutor Dashboard, because the paired token lives in the
+ * browser that signed in. The length was never what protected it - an attacker
+ * holding the cookie for ten minutes holds it for a year.
  */
-export const TUTOR_PORTAL_SESSION_TTL_MS = 10 * 60_000;
+export const TUTOR_PORTAL_SESSION_TTL_MS = ONE_YEAR_MS;
 
 type HeaderValue = string | string[] | undefined;
 

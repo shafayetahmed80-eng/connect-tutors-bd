@@ -56,13 +56,14 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
     isMobile = false;
     profileIsLoading = false;
     statsIsLoading = false;
-    window.sessionStorage.setItem(TUTOR_PORTAL_SESSION_STORAGE_KEY, "test-tutor-portal-proof");
+    // The proof lives in localStorage so a second tab is not a new sign-in.
+    window.localStorage.setItem(TUTOR_PORTAL_SESSION_STORAGE_KEY, "test-tutor-portal-proof");
     window.history.pushState({}, "", "/tutor/dashboard/profile");
   });
 
   afterEach(() => {
     cleanup();
-    window.sessionStorage.removeItem(TUTOR_PORTAL_SESSION_STORAGE_KEY);
+    window.localStorage.removeItem(TUTOR_PORTAL_SESSION_STORAGE_KEY);
     vi.restoreAllMocks();
   });
 

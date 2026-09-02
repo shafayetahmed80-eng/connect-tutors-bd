@@ -18,7 +18,7 @@ vi.mock("./db", async importOriginal => {
   };
 });
 
-import { COOKIE_NAME } from "../shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff } from "./guardian-intake-handoff";
@@ -116,7 +116,9 @@ describe("guardianAuth.register", () => {
     expect(result.user).not.toHaveProperty("passwordHash");
     expect(result).not.toHaveProperty("handoffTokenHash");
     expect(cookies[0]).toMatchObject({ name: COOKIE_NAME, value: "guardian-session-token" });
-    expect(cookies[0]?.options).not.toHaveProperty("maxAge");
+    // The cookie carries a year-long token; without maxAge the browser would
+    // still drop it on exit and every panel would ask for a password again.
+    expect(cookies[0]?.options).toMatchObject({ maxAge: ONE_YEAR_MS });
     expect(clearedCookies[0]).toMatchObject({ name: "guardian-intake-handoff", options: { httpOnly: true, path: "/" } });
   });
 

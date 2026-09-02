@@ -81,19 +81,34 @@ export function consumeTutorPortalReauthNotice(storage: Pick<Storage, "getItem" 
   return shouldShowNotice;
 }
 
+/**
+ * The proof itself lives in `localStorage`, not `sessionStorage`.
+ *
+ * Per-tab storage meant a second tab, or reopening the browser, looked like an
+ * unauthenticated visit even though the account cookie was still valid - the
+ * Tutor was sent back to sign-in without ever having signed out.
+ *
+ * Against the threat this proof exists for - a session cookie taken on its own,
+ * away from the browser it was issued to - `localStorage` is just as effective:
+ * the attacker still holds no token. It concedes nothing to XSS either, which
+ * could read either store.
+ *
+ * The markers below stay per-tab on purpose. They describe one tab's journey,
+ * not who is signed in.
+ */
 export function getCurrentTutorPortalToken() {
   if (typeof window === "undefined") return null;
-  return getTutorPortalToken(window.sessionStorage);
+  return getTutorPortalToken(window.localStorage);
 }
 
 export function storeCurrentTutorPortalToken(token: string) {
   if (typeof window === "undefined") return;
-  storeTutorPortalToken(window.sessionStorage, token);
+  storeTutorPortalToken(window.localStorage, token);
 }
 
 export function clearCurrentTutorPortalToken() {
   if (typeof window === "undefined") return;
-  clearTutorPortalToken(window.sessionStorage);
+  clearTutorPortalToken(window.localStorage);
 }
 
 export function markCurrentTutorPortalLoginHandoff() {
