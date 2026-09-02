@@ -274,7 +274,7 @@ export default function TutorDashboard() {
 
   const identity = stats?.tutorRegistration;
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });
-  return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} tutorWorkspaceHeader={sidebarIdentity} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor">
+  return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }] }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor">
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
       {section === "profile" && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}

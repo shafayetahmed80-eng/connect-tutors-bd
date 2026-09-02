@@ -10,7 +10,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -88,19 +87,29 @@ export async function completeDashboardSignOut(
   navigate(loginPath);
 }
 
-export type TutorWorkspaceHeaderIdentity = {
+/**
+ * Who is signed in, for the header every panel now shares.
+ *
+ * `details` rather than a fixed field per panel: a Tutor is identified by a
+ * Tutor ID, a Guardian by a Guardian ID, and an Admin by the User ID they type
+ * at the login screen plus whether they are the Owner. One shaped list covers
+ * all three without the header needing to know which panel it is in.
+ */
+export type WorkspaceHeaderIdentity = {
+  /** The eyebrow above the page heading: "Tutor Portal", "Guardian Portal", "Admin Panel". */
+  portal: string;
   name: string;
-  tutorNumber: string;
   profilePhotoUrl?: string | null;
+  details?: Array<{ label: string; value: string }>;
 };
 
-export function getDashboardAvatarInitials(name: string) {
+export function getDashboardAvatarInitials(name: string, fallback = "?") {
   return name
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map(part => part.charAt(0).toUpperCase())
-    .join("") || "T";
+    .join("") || fallback;
 }
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -139,7 +148,7 @@ export default function DashboardLayout({
   signOutPath = "/",
   onBeforeNavigation,
   sidebarIdentity,
-  tutorWorkspaceHeader,
+  workspaceHeader,
   onTutorSignOutSuccess,
   sidebarPanel,
 }: {
@@ -150,7 +159,7 @@ export default function DashboardLayout({
   signOutPath?: string;
   onBeforeNavigation?: (item: DashboardNavigationItem) => boolean;
   sidebarIdentity?: React.ReactNode;
-  tutorWorkspaceHeader?: TutorWorkspaceHeaderIdentity;
+  workspaceHeader?: WorkspaceHeaderIdentity;
   onTutorSignOutSuccess?: () => void | Promise<void>;
   sidebarPanel?: SidebarPanelId;
 }) {
@@ -212,7 +221,7 @@ export default function DashboardLayout({
         signOutPath={signOutPath}
         onBeforeNavigation={onBeforeNavigation}
         sidebarIdentity={sidebarIdentity}
-        tutorWorkspaceHeader={tutorWorkspaceHeader}
+        workspaceHeader={workspaceHeader}
         onTutorSignOutSuccess={onTutorSignOutSuccess}
         sidebarPanel={sidebarPanel}
       >
@@ -232,7 +241,7 @@ type DashboardLayoutContentProps = {
   signOutPath: string;
   onBeforeNavigation?: (item: DashboardNavigationItem) => boolean;
   sidebarIdentity?: React.ReactNode;
-  tutorWorkspaceHeader?: TutorWorkspaceHeaderIdentity;
+  workspaceHeader?: WorkspaceHeaderIdentity;
   onTutorSignOutSuccess?: () => void | Promise<void>;
   /** Which sidebar this is, so its labels and sizes can be Admin-edited. */
   sidebarPanel?: SidebarPanelId;
@@ -247,7 +256,7 @@ function DashboardLayoutContent({
   signOutPath,
   onBeforeNavigation,
   sidebarIdentity,
-  tutorWorkspaceHeader,
+  workspaceHeader,
   onTutorSignOutSuccess,
   sidebarPanel,
 }: DashboardLayoutContentProps) {
@@ -403,39 +412,6 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          {!tutorWorkspaceHeader ? <SidebarFooter className="border-t border-[#edf2f6] p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button aria-label="Open account menu" className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user ? "Private account details" : "-"}
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (!shouldAllowDashboardAccountSignOut(onBeforeNavigation)) return;
-                    handleSignOut();
-                  }}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter> : null}
         </Sidebar>
         <div
           className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
@@ -448,10 +424,10 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="min-w-0 overflow-x-clip">
-        {tutorWorkspaceHeader ? (
-          <TutorWorkspaceHeader
+        {workspaceHeader ? (
+          <WorkspaceHeader
             heading={workspaceHeading}
-            identity={tutorWorkspaceHeader}
+            identity={workspaceHeader}
             isSigningOut={isSigningOut}
             onSignOut={() => {
               if (!shouldAllowDashboardAccountSignOut(onBeforeNavigation)) return;
@@ -500,25 +476,25 @@ function DashboardLayoutContent({
   );
 }
 
-function TutorWorkspaceHeader({
+function WorkspaceHeader({
   heading,
   identity,
   isSigningOut,
   onSignOut,
 }: {
   heading: string;
-  identity: TutorWorkspaceHeaderIdentity;
+  identity: WorkspaceHeaderIdentity;
   isSigningOut: boolean;
   onSignOut: () => void;
 }) {
   const initials = getDashboardAvatarInitials(identity.name);
 
   return (
-    <header aria-label="Tutor workspace header" className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-[#d9e5ed] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:backdrop-blur sm:px-6">
+    <header aria-label={`${identity.portal} workspace header`} className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-[#d9e5ed] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:backdrop-blur sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger aria-label="Open Tutor navigation" title="Open Tutor navigation" className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-[#116fc4] focus-visible:ring-[#116fc4] md:hidden" />
+        <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-[#116fc4] focus-visible:ring-[#116fc4] md:hidden" />
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d8799]">Tutor Portal</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
           <h1 className="truncate text-base font-semibold tracking-tight text-[#173b60] sm:text-lg">{heading}</h1>
         </div>
       </div>
@@ -536,7 +512,7 @@ function TutorWorkspaceHeader({
         </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label="Open Tutor account menu" className="rounded-full p-0.5 transition hover:bg-[#eef8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-2">
+            <button type="button" aria-label={`Open ${identity.portal} account menu`} className="rounded-full p-0.5 transition hover:bg-[#eef8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-2">
               <Avatar className="size-9 border border-[#d6e5ee] sm:size-10">
                 {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
                 <AvatarFallback className="bg-[#dff3ff] text-xs font-bold text-[#126fb5]">{initials}</AvatarFallback>
@@ -546,8 +522,10 @@ function TutorWorkspaceHeader({
           <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
             <div className="px-2 py-2">
               <p className="truncate text-sm font-bold text-[#173b60]">{identity.name}</p>
-              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6d8799]">Tutor ID</p>
-              <p className="mt-0.5 truncate text-sm font-medium text-[#527086]">{identity.tutorNumber}</p>
+              {(identity.details ?? []).map(detail => <div key={detail.label}>
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</p>
+                <p className="mt-0.5 truncate text-sm font-medium text-[#527086]">{detail.value}</p>
+              </div>)}
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem

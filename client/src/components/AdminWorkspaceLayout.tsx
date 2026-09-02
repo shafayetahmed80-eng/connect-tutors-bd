@@ -84,5 +84,22 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   if (displayState === "denied") {
     return <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-slate-400" /><h1 className="text-2xl font-bold text-slate-900">Admin access required</h1><p className="mt-2 text-sm leading-6 text-slate-600">This workspace is available only to authorized Connect Tutors BD administrators.</p></section>;
   }
-  return <DashboardLayout navigationItems={buildAdminWorkspaceNavigation(Boolean(workspaceAccess.data?.isOwner))} title={title} loginPath="/admin/login" sidebarPanel="admin">{children}</DashboardLayout>;
+  const access = workspaceAccess.data;
+  return <DashboardLayout
+    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner))}
+    title={title}
+    loginPath="/admin/login"
+    sidebarPanel="admin"
+    workspaceHeader={{
+      portal: "Admin Panel",
+      name: access?.name ?? "Admin",
+      details: [
+        // The User ID, not the display name: it is what they type at
+        // /admin/login, and with more than one Admin the name alone does not
+        // say which account is open.
+        ...(access?.loginId ? [{ label: "User ID", value: access.loginId }] : []),
+        { label: "Role", value: access?.isOwner ? "Project Owner" : "Administrator" },
+      ],
+    }}
+  >{children}</DashboardLayout>;
 }

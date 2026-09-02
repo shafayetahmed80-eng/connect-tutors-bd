@@ -308,10 +308,29 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   return <div data-testid="guardian-dashboard-home" className="space-y-6" />;
 }
 
+/**
+ * The Guardian's line in the workspace header. Same two queries the sidebar
+ * identity already runs, so the header costs no extra round trip.
+ */
+function useGuardianWorkspaceHeader() {
+  const profileQuery = trpc.guardianProfile.me.useQuery();
+  const photoQuery = trpc.guardianProfile.photo.useQuery();
+  const profile = profileQuery.data;
+  return {
+    portal: "Guardian Portal",
+    name: profile?.name || "Guardian",
+    // Only an approved photo is shown, the same rule the rest of the site
+    // follows - one awaiting review must not appear as if it had passed.
+    profilePhotoUrl: photoQuery.data?.photoStatus === "approved" ? photoQuery.data.photoUrl : null,
+    details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
+  };
+}
+
 export default function GuardianDashboard() {
   const [, detailParams] = useRoute<{ section?: string; requestId?: string }>("/guardian/dashboard/:section/:requestId");
   const [, params] = useRoute<{ section?: string }>("/guardian/dashboard/:section");
   const section = detailParams?.section ?? params?.section;
   const requestId = detailParams?.requestId ? Number(detailParams.requestId) : undefined;
-  return <DashboardLayout title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} /></DashboardLayout>;
+  const workspaceHeader = useGuardianWorkspaceHeader();
+  return <DashboardLayout workspaceHeader={workspaceHeader} title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} /></DashboardLayout>;
 }
