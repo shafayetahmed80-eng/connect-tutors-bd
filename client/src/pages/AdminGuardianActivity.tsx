@@ -62,12 +62,7 @@ function GuardianActivityContent() {
   const totalPages = requests.data?.totalPages ?? 1;
 
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-    <section className="rounded-3xl bg-[#0f4666] p-6 text-white shadow-[0_18px_42px_rgba(15,70,102,0.16)] sm:p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Guardian operations</p><h1 className="mt-2 text-3xl font-bold tracking-tight">Guardian request activity</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100">Monitor requests and matching progress. Guardian contact details are never listed by default—each deliberate disclosure is recorded for accountability.</p></div>
-        <div className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xs font-bold uppercase tracking-wide text-cyan-100">Requests found</p><p className="mt-1 text-2xl font-bold">{requests.data?.total ?? 0}</p></div>
-      </div>
-    </section>
+    
     <section className="rounded-3xl border border-[#bfe4f6] bg-[linear-gradient(135deg,#f1faff,#ffffff)] p-5 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#167ddd]">Action queue</p><h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#173b60]">Choose the next protected workflow</h2></div><p className="text-xs leading-5 text-[#627e94]">Review and matching can be filtered safely. Contact disclosure stays per request and is separately audited.</p></div>
       <div className="mt-5 grid gap-3 md:grid-cols-3">{guardianActionPresets.map(preset => "href" in preset ? <Link key={preset.id} href={preset.href} className="group flex min-h-20 items-center rounded-2xl border border-[#d9e9f2] bg-white px-4 text-sm font-bold text-[#315b7d] transition hover:-translate-y-0.5 hover:border-[#8acbee] hover:shadow-sm">{preset.label}<ChevronRight className="ml-auto h-4 w-4 text-[#167ddd] transition group-hover:translate-x-0.5" /></Link> : <button type="button" key={preset.id} onClick={() => updateFilter({ status: preset.status, contactConsent: preset.contactConsent })} className="group flex min-h-20 items-center rounded-2xl border border-[#d9e9f2] bg-white px-4 text-left text-sm font-bold text-[#315b7d] transition hover:-translate-y-0.5 hover:border-[#8acbee] hover:shadow-sm">{preset.label}<ChevronRight className="ml-auto h-4 w-4 text-[#167ddd] transition group-hover:translate-x-0.5" /></button>)}</div>
