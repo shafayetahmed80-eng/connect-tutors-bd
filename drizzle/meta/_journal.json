@@ -365,6 +365,13 @@
       "when": 1788414000000,
       "tag": "0051_locations_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "5",
+      "when": 1788420000000,
+      "tag": "0052_site_policy_documents",
+      "breakpoints": true
     }
   ]
 }

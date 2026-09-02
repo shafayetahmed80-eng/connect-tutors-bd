@@ -45,6 +45,7 @@ import {
   tutorSupportingDocuments,
   siteContentOverrides,
   siteContentBlocks,
+  sitePolicyDocuments,
   tutorPreferredClassSizes,
   tutorPreferredTeachingDays,
   tutorPreferredTimeSlots,
@@ -4770,4 +4771,38 @@ export async function deleteLocation(id: string) {
 
   await database.delete(locations).where(eq(locations.id, id));
   return { deleted: true as const };
+}
+
+/**
+ * The legal page bodies the Owner writes.
+ *
+ * Overrides, never replacements, like the rest of the content control: a row
+ * exists only for a page the Owner has actually edited, so an empty table
+ * renders the bodies the code ships and "Reset" is a delete.
+ */
+export async function listPolicyDocuments() {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({ pageKey: sitePolicyDocuments.pageKey, body: sitePolicyDocuments.body, updatedAt: sitePolicyDocuments.updatedAt })
+    .from(sitePolicyDocuments);
+  return rows.map(row => ({ ...row, updatedAt: row.updatedAt ?? null }));
+}
+
+export async function savePolicyDocument(pageKey: string, body: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .insert(sitePolicyDocuments)
+    .values({ pageKey, body })
+    .onDuplicateKeyUpdate({ set: { body } });
+  return { pageKey };
+}
+
+/** Drops the Owner's version, so the page falls back to the body in the registry. */
+export async function resetPolicyDocument(pageKey: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(sitePolicyDocuments).where(eq(sitePolicyDocuments.pageKey, pageKey));
+  return { pageKey };
 }

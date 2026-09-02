@@ -6,6 +6,9 @@ import { Link, useLocation } from "wouter";
 import { ArrowRight, BookOpen, CalendarDays, GraduationCap, MapPinned, Newspaper, UserRoundCheck } from "lucide-react";
 import { findInfoPageCopy, infoPageCopy } from "@shared/public-content";
 import { SiteContentProvider, useSiteContentResolver } from "@/lib/siteContent";
+import { findPolicyPageByPath, type PolicyPageKey } from "@shared/policy-pages";
+import { trpc } from "@/lib/trpc";
+import PolicyDocument from "@/components/PolicyDocument";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 
@@ -42,6 +45,8 @@ function InfoPageContent() {
   const Icon = pageIcons[location] ?? BookOpen;
   const action = getInfoPageAction(location);
   const t = useSiteContentResolver();
+  // Only two of the seven info pages carry a document beneath the hero.
+  const policy = findPolicyPageByPath(location);
   return <div className="site-page">
       <SiteHeader />
       <main className="info-page">
@@ -54,7 +59,24 @@ function InfoPageContent() {
             {t(action.slotId, action.label)} <ArrowRight size={18} />
           </Link>
         </section>
+        {policy ? <section className="shell pb-16"><PolicyBody pageKey={policy.key} fallback={policy.defaultBody} /></section> : null}
       </main>
       <SiteFooter />
   </div>;
+}
+
+/**
+ * The Owner's body for a legal page, falling back to the one the code ships.
+ *
+ * The fallback is not a loading state: a visitor who arrives while the query is
+ * in flight, or when it fails, still reads a complete policy rather than an
+ * empty page. Content is cosmetic everywhere else on the site; here it is the
+ * document someone agreed to, so it must always render something.
+ */
+function PolicyBody({ pageKey, fallback }: { pageKey: PolicyPageKey; fallback: string }) {
+  const documents = trpc.policyDocuments.list.useQuery();
+  const stored = documents.data?.find(row => row.pageKey === pageKey)?.body;
+  return <article className="mx-auto max-w-3xl rounded-[2rem] border border-[#dcecf5] bg-white p-7 shadow-[0_18px_55px_rgba(28,101,148,0.08)] sm:p-10">
+    <PolicyDocument body={stored?.trim() ? stored : fallback} />
+  </article>;
 }
