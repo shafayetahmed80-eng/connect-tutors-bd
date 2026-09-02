@@ -1,11 +1,19 @@
 import { buildJobTitle } from "./job-board.contract";
+import { findSiteLimit } from "@shared/site-limits";
 
-/** A published tuition remains available for 14 days unless an Admin closes or unpublishes it earlier. */
-export const DEFAULT_JOB_EXPIRY_DAYS = 14;
+/**
+ * How long a published tuition stays on the board unless an Admin closes or
+ * unpublishes it earlier.
+ *
+ * The Owner can change this from the Admin panel. What is here is the number
+ * the site ships with, and the fallback wherever the stored settings cannot be
+ * read - the projection is pure, so the caller passes the resolved value in.
+ */
+export const DEFAULT_JOB_EXPIRY_DAYS = findSiteLimit("jobBoard.expiryDays")!.value;
 const DAY_IN_MILLISECONDS = 86_400_000;
 
-export function calculateJobExpiry(from: Date): Date {
-  return new Date(from.getTime() + DEFAULT_JOB_EXPIRY_DAYS * DAY_IN_MILLISECONDS);
+export function calculateJobExpiry(from: Date, expiryDays: number = DEFAULT_JOB_EXPIRY_DAYS): Date {
+  return new Date(from.getTime() + expiryDays * DAY_IN_MILLISECONDS);
 }
 
 export type SafeTutorRequestForPublication = {
@@ -70,7 +78,7 @@ export function generateAutoJobId(requestId: number): string {
   return `CT-JOB-${encoded.padStart(6, "0")}`;
 }
 
-export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPublication): PublishedTutorJobProjection {
+export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPublication, expiryDays: number = DEFAULT_JOB_EXPIRY_DAYS): PublishedTutorJobProjection {
   const directionLabel = input.tuitionType === "online" ? null : input.locationLabel;
   return {
     tutorRequestId: input.requestId,
@@ -92,7 +100,7 @@ export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPubli
     locationLabel: input.tuitionType === "online" ? null : input.locationLabel,
     directionLabel,
     publishedAt: input.publishedAt,
-    expiresAt: calculateJobExpiry(input.publishedAt),
+    expiresAt: calculateJobExpiry(input.publishedAt, expiryDays),
   };
 }
 

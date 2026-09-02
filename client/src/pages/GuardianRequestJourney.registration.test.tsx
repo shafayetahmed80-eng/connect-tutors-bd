@@ -25,6 +25,8 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({ auth: { me: { invalidate: mocks.invalidate } }, tutorRequests: { mine: { invalidate: vi.fn() } } }),
     // Content overrides are cosmetic; an empty list keeps the code defaults.
     siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
+    // The Owner-tunable limits; undefined data leaves the form on the shipped numbers.
+    siteLimits: { resolved: { useQuery: () => ({ data: undefined, isLoading: false, isError: false }) } },
     auth: { me: { useQuery: () => mocks.authMe } },
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },

@@ -6,6 +6,7 @@ import {
   locationSlug,
   type LocationType,
 } from "@shared/location-catalog";
+import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -45,6 +46,7 @@ import {
   tutorSupportingDocuments,
   siteContentOverrides,
   siteContentBlocks,
+  siteLimits as siteLimitsTable,
   sitePolicyDocuments,
   tutorPreferredClassSizes,
   tutorPreferredTeachingDays,
@@ -2981,6 +2983,7 @@ async function synchronizePublishedTutorJob(
 ): Promise<{ publicJobId?: string }> {
   if (input.action !== "publish" && input.action !== "extend_expiry" && input.action !== "unpublish" && input.action !== "close") return {};
   const now = new Date();
+  const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
   const [existingJob] = await tx
     .select({ id: tutorJobs.id, publicJobId: tutorJobs.publicJobId })
     .from(tutorJobs)
@@ -3008,7 +3011,11 @@ async function synchronizePublishedTutorJob(
       budgetMinimum: input.request.budgetMinimum,
       budgetMaximum: input.request.budgetMaximum,
       publishedAt: now,
-    });
+      // Read here rather than inside the projection so that function stays
+      // pure and its tests need no database. Changing the limit moves jobs
+      // published from now on; ones already live keep the expiry they were
+      // given, which is the only fair reading of "expires on".
+    }, jobExpiryDays);
     if (!existingJob) {
       const publicJobId = input.manualJobId ? validateManualJobId(input.manualJobId) : projection.publicJobId;
       if (input.manualJobId) {
@@ -3029,7 +3036,9 @@ async function synchronizePublishedTutorJob(
     if (!existingJob) throw new Error("PUBLISHED_JOB_NOT_FOUND");
     await tx
       .update(tutorJobs)
-      .set({ expiresAt: addDays(now, 14), publicationStatus: "published", deactivatedAt: null })
+      // A second hardcoded 14 lived here, so extending an expiry always gave
+      // a fortnight no matter what publishing gave. Both read the limit now.
+      .set({ expiresAt: addDays(now, jobExpiryDays), publicationStatus: "published", deactivatedAt: null })
       .where(eq(tutorJobs.id, existingJob.id));
     return { publicJobId: existingJob.publicJobId };
   }
@@ -4805,4 +4814,56 @@ export async function resetPolicyDocument(pageKey: string) {
   if (!database) throw new Error("Database is not available");
   await database.delete(sitePolicyDocuments).where(eq(sitePolicyDocuments.pageKey, pageKey));
   return { pageKey };
+}
+
+/**
+ * The Owner's numbers, folded onto the ones the code ships with.
+ *
+ * Every request that validates a capped field calls this, so it is cached for
+ * a short while rather than queried each time. Short, because an Owner who
+ * lowers a limit should see it take effect while they are still looking at the
+ * screen - not because staleness would be dangerous.
+ */
+let siteLimitCache: { values: SiteLimitValues; readAt: number } | null = null;
+const SITE_LIMIT_CACHE_MS = 15_000;
+
+export async function getSiteLimits(): Promise<SiteLimitValues> {
+  if (siteLimitCache && Date.now() - siteLimitCache.readAt < SITE_LIMIT_CACHE_MS) return siteLimitCache.values;
+  const database = await getDb();
+  // Without a database the shipped numbers are the honest answer: they are what
+  // the code was written against.
+  if (!database) return defaultSiteLimits();
+  const rows = await database.select({ limitId: siteLimitsTable.limitId, value: siteLimitsTable.value }).from(siteLimitsTable);
+  const values = resolveSiteLimits(rows.map(row => ({ limitId: row.limitId, value: Number(row.value) })));
+  siteLimitCache = { values, readAt: Date.now() };
+  return values;
+}
+
+/** Rows as stored, for the editor - which must show what was saved, not what was resolved. */
+export async function listSiteLimitOverrides() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({ limitId: siteLimitsTable.limitId, value: siteLimitsTable.value })
+    .from(siteLimitsTable);
+}
+
+export async function saveSiteLimit(limitId: string, value: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .insert(siteLimitsTable)
+    .values({ limitId, value })
+    .onDuplicateKeyUpdate({ set: { value } });
+  siteLimitCache = null;
+  return { limitId, value };
+}
+
+/** Drops the Owner's number, so the limit falls back to the shipped one. */
+export async function resetSiteLimit(limitId: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(siteLimitsTable).where(eq(siteLimitsTable.limitId, limitId));
+  siteLimitCache = null;
+  return { limitId };
 }

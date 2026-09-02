@@ -854,6 +854,20 @@ export const siteContentBlocks = mysqlTable(
  * than `text`: Bangla runs three bytes to the character, so a 40,000-character
  * policy would overflow `text`'s 65,535 bytes well before hitting its limit.
  */
+/**
+ * The numbers the Owner has moved off their shipped values.
+ *
+ * Only changed limits are stored, so an empty table means the site runs on
+ * exactly the numbers in `shared/site-limits.ts` and "Reset" is a delete. The
+ * key is a registry string rather than an enum: adding a limit is a code
+ * change, not a migration.
+ */
+export const siteLimits = mysqlTable("site_limits", {
+  limitId: varchar("limitId", { length: 60 }).primaryKey(),
+  value: int("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const sitePolicyDocuments = mysqlTable("site_policy_documents", {
   pageKey: varchar("pageKey", { length: 60 }).primaryKey(),
   body: mediumtext("body").notNull(),

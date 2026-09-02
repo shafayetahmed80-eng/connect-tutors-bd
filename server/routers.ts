@@ -18,6 +18,8 @@ import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure,
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, locationTypeLabels, type LocationType } from "@shared/location-catalog";
+import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
+import { assertWithinLengthLimit, assertWithinLimit } from "./site-limit-guard";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentAnchorPage,
@@ -183,9 +185,9 @@ const tutorListingInputSchema = z.object({
   division: z.string().trim().max(120).default("all"),
   district: z.string().trim().max(120).default("all"),
   mode: tuitionTypeSchema.or(z.literal("all")).default("all"),
-  subjects: z.array(z.string().trim().min(1).max(80)).max(12).default([]),
-  levels: z.array(z.string().trim().min(1).max(80)).max(12).default([]),
-  languages: z.array(z.string().trim().min(1).max(60)).max(8).default([]),
+  subjects: z.array(z.string().trim().min(1).max(80)).max(siteLimitCeiling("request.subjects")).default([]),
+  levels: z.array(z.string().trim().min(1).max(80)).max(siteLimitCeiling("request.levels")).default([]),
+  languages: z.array(z.string().trim().min(1).max(60)).max(siteLimitCeiling("request.languages")).default([]),
   gender: z.enum(["all", "male", "female"]).default("all"),
   verifiedOnly: z.boolean().default(false),
   minFee: z.number().int().min(0).max(500000).optional(),
@@ -256,7 +258,7 @@ const adminTutorRequestStatusInputSchema = z.object({
 const adminTutorRequestPublicationEditSchema = z.object({
   category: z.string().trim().min(1).max(120).optional(),
   classCourse: z.string().trim().min(1).max(120).optional(),
-  subjects: z.array(z.string().trim().min(1).max(120)).min(1).max(12).optional(),
+  subjects: z.array(z.string().trim().min(1).max(120)).min(1).max(siteLimitCeiling("request.subjects")).optional(),
   daysPerWeek: z.number().int().min(1).max(7).optional(),
   preferredGender: z.enum(["male", "female", "any"]).optional(),
   budget: z.discriminatedUnion("kind", [
@@ -433,7 +435,7 @@ const tutorRequestBaseInputSchema = z.object({
   category: z.string().trim().min(1).max(120),
   curriculumType: z.string().trim().max(32).optional(),
   classCourse: z.string().trim().min(1).max(120),
-  subjects: z.array(z.string().trim().min(1)).min(1).max(12),
+  subjects: z.array(z.string().trim().min(1)).min(1).max(siteLimitCeiling("request.subjects")),
   daysPerWeek: z.number().int().min(1).max(7),
   preferredGender: z.enum(["male", "female", "any"]),
   studentFirstName: z.string().trim().min(1).max(80).optional(),
@@ -495,8 +497,8 @@ export const tutorProfileInputSchema = z.object({
   phone: z.string().trim().regex(/^\+?[0-9\s-]{10,24}$/, "Enter a valid mobile number."),
   contactEmail: z.string().trim().email().max(320),
   gender: z.enum(["male", "female"]),
-  subjects: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
-  levels: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
+  subjects: z.array(z.string().trim().min(1).max(80)).min(1).max(siteLimitCeiling("tutor.subjects")),
+  levels: z.array(z.string().trim().min(1).max(80)).min(1).max(siteLimitCeiling("tutor.levels")),
   experience: z.number().int().min(0).max(60),
   fee: z.number().int().min(0).max(500000),
   mode: tuitionTypeSchema,
@@ -504,7 +506,7 @@ export const tutorProfileInputSchema = z.object({
   institution: z.string().trim().min(2).max(240),
   education: z.string().trim().min(2).max(240),
   availability: z.string().trim().min(2).max(160),
-  languages: z.array(z.string().trim().min(1).max(60)).min(1).max(6),
+  languages: z.array(z.string().trim().min(1).max(60)).min(1).max(siteLimitCeiling("tutor.languages")),
   about: z.string().trim().min(20).max(2000),
 });
 
@@ -839,6 +841,14 @@ export const appRouter = router({
   tutor: router({
     getMyProfile: activeTutorProcedure.query(({ ctx }) => db.getTutorProfileByUserId(ctx.user.id)),
     saveProfileDraft: activeTutorProcedure.input(tutorProfileEditableDraftSchema).mutation(async ({ ctx, input }) => {
+      // The schema holds the ceiling; these are the Owner's numbers.
+      const limits = await db.getSiteLimits();
+      if (input.headline !== undefined) {
+        assertWithinLengthLimit(limits, "tutor.headlineChars", input.headline.length, "Headline");
+      }
+      if (input.educationRecords !== undefined) {
+        assertWithinLimit(limits, "tutor.educationRecords", input.educationRecords.length, "records");
+      }
       try {
         return await db.saveTutorProfileDraft(ctx.user.id, input);
       } catch (error) {
@@ -1044,6 +1054,33 @@ export const appRouter = router({
         }
         return { id: input.id };
       }),
+  }),
+  /**
+   * The numbers the Owner can move. `resolved` is public because the forms
+   * need it: a Guardian choosing subjects should see "8 of 12" rather than
+   * discover the cap by being refused. Writing is the Owner's.
+   */
+  siteLimits: router({
+    resolved: publicProcedure.query(() => db.getSiteLimits()),
+    listOverrides: ownerAdminProcedure.query(() => db.listSiteLimitOverrides()),
+    save: ownerAdminProcedure
+      .input(z.object({ limitId: z.enum(siteLimitIdValues), value: z.number().int() }))
+      .mutation(({ input }) => {
+        const meta = findSiteLimit(input.limitId)!;
+        // Bounds are checked here rather than in the schema because they belong
+        // to the limit, not to the shape of the request - and a message naming
+        // the actual range is far more use than "invalid number".
+        if (input.value < meta.min || input.value > meta.max) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${meta.label} must be between ${meta.min} and ${meta.max} ${meta.unit}.`,
+          });
+        }
+        return db.saveSiteLimit(input.limitId, input.value);
+      }),
+    reset: ownerAdminProcedure
+      .input(z.object({ limitId: z.enum(siteLimitIdValues) }))
+      .mutation(({ input }) => db.resetSiteLimit(input.limitId)),
   }),
   /**
    * The legal pages. `list` is public because the pages that render these are:
@@ -1488,6 +1525,14 @@ export const appRouter = router({
     updatePending: guardianProcedure
       .input(guardianPendingTutorRequestUpdateSchema)
       .mutation(async ({ ctx, input }) => {
+        // The schema above only guards the ceiling; this is the Owner's number.
+        // Editing reuses the create schema, so the two stay in step by
+        // construction - but only the schema does, and the schema now holds the
+        // ceiling rather than the policy.
+        const limits = await db.getSiteLimits();
+        assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+        assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
+
         let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
         if (input.tuitionType !== "online") {
           try {
@@ -1534,6 +1579,10 @@ export const appRouter = router({
         return result;
       }),
     create: guardianProcedure.input(tutorRequestInputSchema).mutation(async ({ ctx, input }) => {
+      const limits = await db.getSiteLimits();
+      assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+      assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
+
       let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
       if (input.tuitionType !== "online") {
         try {

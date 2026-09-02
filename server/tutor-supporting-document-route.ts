@@ -1,17 +1,25 @@
 import type { Express, NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
-import { MAX_TUTOR_DOCUMENT_BYTES } from "@shared/tutor-documents";
-import { getTutorAccountStatusByUserId } from "./db";
+import { getSiteLimits, getTutorAccountStatusByUserId } from "./db";
+import { documentByteLimit, siteLimitCeiling } from "@shared/site-limits";
 import { sdk } from "./_core/sdk";
 import { TutorSupportingDocumentError, uploadTutorSupportingDocument } from "./tutor-supporting-document";
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_TUTOR_DOCUMENT_BYTES, files: 1, fields: 0 } });
+/**
+ * Multer is configured once, when the module loads, so its ceiling is the
+ * highest the Owner could ever set rather than the number they have set. That
+ * keeps a hostile upload from being buffered while the settings are read; the
+ * Owner's own limit is then checked below, once the file is in hand and its
+ * size is known.
+ */
+const MAX_UPLOAD_CEILING_BYTES = siteLimitCeiling("upload.documentMb") * 1024 * 1024;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_CEILING_BYTES, files: 1, fields: 0 } });
 
 type EndpointUser = { id: number; role: "tutor"; accountStatus: "active" };
 
 function sendUploadError(response: Response, error: unknown) {
   if (error instanceof MulterError) {
-    return response.status(400).json({ error: error.code === "LIMIT_FILE_SIZE" ? "Verification documents must be 5 MB or smaller." : "Upload exactly one image using the document field." });
+    return response.status(400).json({ error: error.code === "LIMIT_FILE_SIZE" ? `Verification documents must be ${siteLimitCeiling("upload.documentMb")} MB or smaller.` : "Upload exactly one image using the document field." });
   }
   if (error instanceof TutorSupportingDocumentError || (typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "BAD_REQUEST")) {
     return response.status(400).json({ error: error instanceof Error ? error.message : "Invalid verification document." });
@@ -41,6 +49,10 @@ export function registerTutorSupportingDocumentRoute(app: Express) {
     async (request, response) => {
       try {
         if (!request.file) return response.status(400).json({ error: "Upload exactly one image." });
+        const allowedBytes = documentByteLimit(await getSiteLimits());
+        if (request.file.size > allowedBytes) {
+          return response.status(400).json({ error: `Verification documents must be ${Math.round(allowedBytes / (1024 * 1024))} MB or smaller.` });
+        }
         const result = await uploadTutorSupportingDocument({
           user: response.locals.tutorSupportingDocumentUser as EndpointUser,
           documentType: request.params.documentType,

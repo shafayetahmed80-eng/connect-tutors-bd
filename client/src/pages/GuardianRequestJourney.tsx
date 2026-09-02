@@ -7,6 +7,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
+import { defaultSiteLimits } from "@shared/site-limits";
 import { SiteBlocks, SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
@@ -760,9 +761,25 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       return next;
     });
   };
+  // The Owner's cap, falling back to the shipped one while the query is in
+  // flight or if it fails. The server checks it again either way; this is only
+  // so the form can say no before the work is lost.
+  const resolvedLimits = trpc.siteLimits.resolved.useQuery();
+  const subjectLimit = resolvedLimits.data?.["request.subjects"] ?? defaultSiteLimits()["request.subjects"];
+
   const toggleSubject = (subject: string) => {
     clearJourneyError();
-    setSelectedSubjects((current) => current.includes(subject) ? current.filter((item) => item !== subject) : [...current, subject]);
+    setSelectedSubjects((current) => {
+      if (current.includes(subject)) return current.filter((item) => item !== subject);
+      // The cap used to exist only on the server, so the form invited people to
+      // "choose every subject you need" and then refused the thirteenth with a
+      // validation error. Say no here, with a reason, before the work is lost.
+      if (current.length >= subjectLimit) {
+        setJourneyError(`You can choose up to ${subjectLimit} subjects. Remove one to add another.`);
+        return current;
+      }
+      return [...current, subject];
+    });
   };
   const advance = () => {
     const error = getGuardianRequestStepValidation(requestInput, step === 1 ? 1 : 2);
@@ -845,6 +862,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetStudentGender={(value) => { clearJourneyError(); setStudentGender(value); }}
           onSetAddressDetails={(value) => { clearJourneyError(); setAddressDetails(value); }}
           onToggleSubject={toggleSubject}
+          subjectLimit={subjectLimit}
           onSetTuitionType={(value) => { clearJourneyError(); setTuitionType(value); if (value !== "group") setGroupCapacity(""); if (value !== "package") setPackageDurationMonths(""); if (value === "group" || value === "both") setStudentCount(""); }}
           onSetGroupCapacity={(value) => { clearJourneyError(); setGroupCapacity(value.replace(/\D/g, "")); }}
           onSetPackageDurationMonths={(value) => { clearJourneyError(); setPackageDurationMonths(value.replace(/\D/g, "")); }}
@@ -1030,7 +1048,7 @@ type RequestStageProps = {
   step: 1 | 2 | 3; requestInput: RequestInput; notes: string;
   cities: Array<{ id: string; label: string }>; tuitionLocations: Array<{ id: string; label: string }>;
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
-  onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void;
+  onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void; subjectLimit: number;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
   onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetBudgetKind: (value: BudgetKind) => void;
   onSetBudgetMinimum: (value: string) => void; onSetBudgetMaximum: (value: string) => void; onSetNotes: (value: string) => void;
@@ -1050,7 +1068,7 @@ export function RequestStage(props: RequestStageProps) {
       const isComplete = index + 1 < props.step;
       return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
     })}</ol>
-    {props.step === 1 ? <div className="mt-6 space-y-6"><fieldset><legend className="text-sm font-extrabold text-j-ink-strong">Learning details</legend><p className="mt-1 text-xs leading-5 text-[#71889b]">Start with the student’s curriculum and current level.</p><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><SelectField label="Student gender" optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details">Address Details <span className="font-normal text-[#71889b]">(optional)</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong">Subject selection <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-between gap-3"><p className="max-w-md text-xs leading-5 text-[#617e96]">Choose every subject for which you need a Tutor. You can select more than one.</p><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} subject${input.selectedSubjects.length === 1 ? "" : "s"} selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} subject{input.selectedSubjects.length === 1 ? "" : "s"} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
+    {props.step === 1 ? <div className="mt-6 space-y-6"><fieldset><legend className="text-sm font-extrabold text-j-ink-strong">Learning details</legend><p className="mt-1 text-xs leading-5 text-[#71889b]">Start with the student’s curriculum and current level.</p><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><SelectField label="Student gender" optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details">Address Details <span className="font-normal text-[#71889b]">(optional)</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong">Subject selection <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-between gap-3"><p className="max-w-md text-xs leading-5 text-[#617e96]">Choose every subject for which you need a Tutor — up to {props.subjectLimit}.</p><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} of ${props.subjectLimit} subjects selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} of {props.subjectLimit} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
     {props.step === 2 ? <div className="mt-7 space-y-6">
       <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Tuition type <span className="text-[#d74545]">*</span></legend><p className="mt-1 text-xs leading-5 text-[#71889b]">City and location are required for Home, Group, and Package Tutoring.</p><div className="mt-3 flex flex-wrap gap-2">{(["home", "online", "group", "package"] as const).map((value) => <ChoiceButton key={value} selected={input.tuitionType === value} onClick={() => props.onSetTuitionType(value)}>{formatTuitionType(value)}</ChoiceButton>)}</div></fieldset>
       {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="student-count">Number of students <span className="text-[#d74545]">*</span><span id="student-count-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the number of students for this request (1–100).</span><input id="student-count" className={`${filledField} mt-2`}type="number" min={1} max={100} step={1} inputMode="numeric" aria-describedby="student-count-hint" value={input.studentCount} onChange={(event) => props.onSetStudentCount(event.target.value)} /></label> : null}

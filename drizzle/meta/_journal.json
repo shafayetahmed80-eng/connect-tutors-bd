@@ -372,6 +372,13 @@
       "when": 1788420000000,
       "tag": "0052_site_policy_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "5",
+      "when": 1788430000000,
+      "tag": "0053_site_limits",
+      "breakpoints": true
     }
   ]
 }
