@@ -132,6 +132,63 @@ describe("option catalog manager", () => {
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toContain("already uses that name"));
   });
 
+  it("hides every selected option in one press, skipping those already hidden", async () => {
+    state.rows = [seedRow, { ...usedRow, active: false }, adminRow];
+    render(<OptionCatalogManager />);
+
+    fireEvent.click(screen.getByLabelText("Select Mathematics"));
+    fireEvent.click(screen.getByLabelText("Select Physics"));
+    fireEvent.click(screen.getByRole("button", { name: /^Hide$/ }));
+
+    // Physics is already hidden, so only Mathematics needs a call.
+    await vi.waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
+    expect(state.update).toHaveBeenCalledWith({ catalog: "subjects", id: 1, name: "Mathematics", active: false });
+  });
+
+  it("only offers to delete the selected rows that are actually deletable", () => {
+    render(<OptionCatalogManager />);
+
+    fireEvent.click(screen.getByLabelText("Select Mathematics"));
+    fireEvent.click(screen.getByLabelText("Select Robotics"));
+
+    // Three selected, but a built-in and an in-use option can only be hidden.
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Delete 1/ })).toHaveProperty("disabled", false);
+  });
+
+  it("asks for a second press before deleting in bulk", async () => {
+    render(<OptionCatalogManager />);
+    fireEvent.click(screen.getByLabelText("Select Robotics"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Delete 1/ }));
+    expect(state.remove).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirm deleting 1/ }));
+    await vi.waitFor(() => expect(state.remove).toHaveBeenCalledWith({ catalog: "subjects", id: 3 }));
+  });
+
+  it("selects every visible row from the header, and only the visible ones", () => {
+    render(<OptionCatalogManager />);
+    fireEvent.change(screen.getByPlaceholderText("Filter subjects"), { target: { value: "ph" } });
+
+    fireEvent.click(screen.getByLabelText("Select every matching option"));
+
+    // Selecting rows hidden behind a filter would act on things unseen.
+    expect(screen.getByText("1 selected")).toBeTruthy();
+  });
+
+  it("drops the selection when another catalog is opened", () => {
+    render(<OptionCatalogManager />);
+    fireEvent.click(screen.getByLabelText("Select Mathematics"));
+    expect(screen.getByText("1 selected")).toBeTruthy();
+
+    // Row ids are per-catalog, so a carried-over selection would point at
+    // unrelated rows in the next tab.
+    fireEvent.click(screen.getByRole("tab", { name: "Languages" }));
+
+    expect(screen.queryByText("1 selected")).toBeNull();
+  });
+
   it("counts the hidden options so the Owner can see what is switched off", () => {
     state.rows = [seedRow, { ...usedRow, active: false }, adminRow];
     render(<OptionCatalogManager />);

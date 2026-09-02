@@ -33,6 +33,8 @@ export default function OptionCatalogManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const utils = trpc.useUtils();
   const entries = trpc.optionCatalogs.list.useQuery({ catalog });
@@ -46,6 +48,10 @@ export default function OptionCatalogManager() {
   useEffect(() => {
     setDrafts(Object.fromEntries(rows.map(row => [row.id, { name: row.name, active: row.active }])));
     setPendingDelete(null);
+    // Drop any selection pointing at a row that no longer exists, so a bulk
+    // action can never act on something the Owner just deleted.
+    setSelected(current => new Set(Array.from(current).filter(id => rows.some(row => row.id === id))));
+    setConfirmBulkDelete(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on contents, see above
   }, [savedKey]);
 
@@ -89,6 +95,35 @@ export default function OptionCatalogManager() {
     }, "The option could not be added.");
   };
 
+  const toggleSelected = (id: number, on: boolean) =>
+    setSelected(current => {
+      const next = new Set(current);
+      if (on) next.add(id); else next.delete(id);
+      setConfirmBulkDelete(false);
+      return next;
+    });
+
+  const selectedRows = rows.filter(row => selected.has(row.id));
+  // Same two rules as the per-row button: a built-in comes back on the next
+  // deploy, and an option in use belongs to real profiles.
+  const deletableSelected = selectedRows.filter(row => row.usageCount === 0 && row.origin === "admin");
+
+  const setActiveForSelected = (active: boolean) => run(async () => {
+    for (const row of selectedRows) {
+      if (row.active === active) continue;
+      await update.mutateAsync({ catalog, id: row.id, name: drafts[row.id]?.name.trim() || row.name, active });
+    }
+    setSelected(new Set());
+  }, active ? "The options could not be shown." : "The options could not be hidden.");
+
+  const deleteSelected = () => run(async () => {
+    for (const row of deletableSelected) {
+      await remove.mutateAsync({ catalog, id: row.id });
+    }
+    setSelected(new Set());
+    setConfirmBulkDelete(false);
+  }, "The options could not be deleted.");
+
   const move = (row: Entry, direction: -1 | 1) => {
     const order = rows.map(entry => entry.id);
     const from = order.indexOf(row.id);
@@ -111,7 +146,9 @@ export default function OptionCatalogManager() {
         type="button"
         role="tab"
         aria-selected={item.id === catalog}
-        onClick={() => { setCatalog(item.id); setQuery(""); setError(null); }}
+        // Row ids are per-catalog, so a selection carried across tabs would
+        // point at unrelated rows in the next one.
+        onClick={() => { setCatalog(item.id); setQuery(""); setError(null); setSelected(new Set()); setConfirmBulkDelete(false); }}
         className={`h-8 rounded-md px-3 text-[13px] font-bold ${item.id === catalog ? "bg-[#116fc4] text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
       >{item.label}</button>)}
     </div>
@@ -126,11 +163,53 @@ export default function OptionCatalogManager() {
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Filter ${meta.label.toLowerCase()}`} className={`${inputClass} pl-7`} />
       </label>
+      {/* Ticks only what the filter leaves visible, so a bulk action can never
+          reach a row the Owner cannot see. */}
+      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 shrink-0 accent-[#116fc4]"
+          checked={visible.length > 0 && visible.every(row => selected.has(row.id))}
+          aria-label={needle ? "Select every matching option" : `Select every ${meta.label.toLowerCase()} option`}
+          onChange={event => {
+            const on = event.target.checked;
+            setSelected(current => {
+              const next = new Set(current);
+              for (const row of visible) { if (on) next.add(row.id); else next.delete(row.id); }
+              return next;
+            });
+            setConfirmBulkDelete(false);
+          }}
+        />
+        All
+      </label>
       <span className="text-xs font-bold text-slate-500">{rows.length} total{hiddenCount > 0 ? `, ${hiddenCount} hidden` : ""}</span>
       <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-md bg-[#116fc4] px-3 text-[13px] font-bold text-white disabled:opacity-40">
         {busy ? "Saving…" : dirtyRows.length > 0 ? `Save ${dirtyRows.length} change${dirtyRows.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
+
+    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#116fc4]/30 bg-[#f2f9ff] p-2">
+      <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40">
+        <EyeOff size={13} /> Hide
+      </button>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40">
+        <Eye size={13} /> Show
+      </button>
+      <button
+        type="button"
+        disabled={busy || deletableSelected.length === 0}
+        onClick={() => { if (!confirmBulkDelete) { setConfirmBulkDelete(true); return; } void deleteSelected(); }}
+        className={`flex h-8 items-center gap-1 rounded-md border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-slate-300 bg-white text-slate-700"}`}
+        title={deletableSelected.length < selected.size ? "Built-in options and options in use can only be hidden" : undefined}
+      >
+        <Trash2 size={13} /> {confirmBulkDelete ? `Confirm deleting ${deletableSelected.length}` : `Delete ${deletableSelected.length}`}
+      </button>
+      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-md px-2 text-[13px] font-medium text-slate-500 hover:text-slate-800">
+        Clear
+      </button>
+    </div> : null}
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
@@ -164,6 +243,13 @@ export default function OptionCatalogManager() {
             const canDelete = row.usageCount === 0 && row.origin === "admin";
             return <div key={row.id} className={rowClass}>
               <div className="flex min-w-0 items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 shrink-0 accent-[#116fc4]"
+                  checked={selected.has(row.id)}
+                  aria-label={`Select ${row.name}`}
+                  onChange={event => toggleSelected(row.id, event.target.checked)}
+                />
                 <label htmlFor={`option-${row.id}`} className="sr-only">{row.name}</label>
                 <input
                   id={`option-${row.id}`}

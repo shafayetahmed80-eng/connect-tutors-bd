@@ -2,11 +2,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-/** The copy box, as opposed to the number box beside it holding its size. */
-const TEXT_BOX = "input:not([type=number])";
+/** The copy box, as opposed to the size number box or the select checkbox. */
+const TEXT_BOX = "input:not([type=number]):not([type=checkbox])";
 
 const mocks = vi.hoisted(() => ({
-  rows: [] as Array<{ slotId: string; text: string | null; textSizePx: number | null; spacing: string | null }>,
+  rows: [] as Array<{ slotId: string; text: string | null; textSizePx: number | null; paddingPx?: number | null; spacing: string | null }>,
   save: vi.fn().mockResolvedValue({}),
   reset: vi.fn().mockResolvedValue({}),
   invalidate: vi.fn().mockResolvedValue(undefined),
@@ -128,5 +128,77 @@ describe("Site content editor", () => {
     expect(within(dashboard).getAllByLabelText("Page heading", { selector: "input" }).length).toBe(1);
     expect(within(journey).getAllByLabelText("Phone step heading", { selector: "input" }).length).toBe(1);
     expect(within(dashboard).queryByLabelText("Phone step heading", { selector: "input" })).toBeNull();
+  });
+});
+
+describe("Site content editor bulk actions", () => {
+  const select = (name: string) => fireEvent.click(screen.getByLabelText(name, { selector: "input[type=checkbox]" }));
+
+  it("shows nothing until a row is ticked, then counts the selection", () => {
+    render(<SiteContentEditor page="tutor-profile" />);
+    expect(screen.queryByText(/^[0-9]+ selected$/)).toBeNull();
+
+    select("Select Tutor dashboard Personal tab");
+
+    expect(screen.getByText("1 selected")).toBeTruthy();
+  });
+
+  it("applies one size to every selected row in a single press", async () => {
+    render(<SiteContentEditor page="tutor-profile" />);
+    select("Select Tutor dashboard Personal tab");
+    select("Select Tutor dashboard Education tab");
+
+    fireEvent.change(screen.getByLabelText("Size in pixels for the selected rows"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply to 2" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
+    expect(mocks.save).toHaveBeenCalledWith({ slotId: "tutor-profile.tab.a", text: null, textSizePx: 18 });
+    expect(mocks.save).toHaveBeenCalledWith({ slotId: "tutor-profile.tab.c", text: null, textSizePx: 18 });
+  });
+
+  it("treats a bulk size equal to the shipped one as clearing the override", async () => {
+    render(<SiteContentEditor page="tutor-profile" />);
+    select("Select Tutor dashboard Personal tab");
+
+    // The tabs ship at text-sm, so 14 is not a change worth storing.
+    fireEvent.change(screen.getByLabelText("Size in pixels for the selected rows"), { target: { value: "14" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply to 1" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith({ slotId: "tutor-profile.tab.a", text: null, textSizePx: null }));
+  });
+
+  it("resets only the selected rows that actually have a stored override", async () => {
+    mocks.rows = [{ slotId: "tutor-profile.tab.c", text: "Studies", textSizePx: null, paddingPx: null, spacing: null }];
+    render(<SiteContentEditor page="tutor-profile" />);
+
+    select("Select Tutor dashboard Personal tab");
+    select("Select Tutor dashboard Education tab");
+    fireEvent.click(screen.getByRole("button", { name: /Reset selected/ }));
+
+    // Only the overridden row needs a call; the untouched one has nothing to clear.
+    await waitFor(() => expect(mocks.reset).toHaveBeenCalledTimes(1));
+    expect(mocks.reset).toHaveBeenCalledWith({ slotId: "tutor-profile.tab.c" });
+  });
+
+  it("ticks and clears a whole surface from its heading", () => {
+    render(<SiteContentEditor page="guardian-profile" />);
+    const all = screen.getByLabelText("Select every row under Request a tutor", { selector: "input" });
+
+    fireEvent.click(all);
+    const count = Number(screen.getByText(/^[0-9]+ selected$/).textContent!.split(" ")[0]);
+    expect(count).toBeGreaterThan(1);
+
+    fireEvent.click(all);
+    expect(screen.queryByText(/^[0-9]+ selected$/)).toBeNull();
+  });
+
+  it("selects only what the filter leaves visible", () => {
+    render(<SiteContentEditor page="tutor-profile" />);
+    fireEvent.change(screen.getByPlaceholderText("Filter by label or text"), { target: { value: "qualification" } });
+
+    fireEvent.click(screen.getByLabelText("Select every row under Tutor dashboard", { selector: "input" }));
+
+    // Selecting rows hidden behind a filter would act on things unseen.
+    expect(screen.getByText("1 selected")).toBeTruthy();
   });
 });
