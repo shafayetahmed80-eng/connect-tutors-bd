@@ -1851,9 +1851,7 @@ export async function listGuardianTutorRequests(userId: number) {
       tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
       tuitionLocationId: tutorRequests.tuitionLocationId,
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
-      budgetMode: tutorRequests.budgetMode,
-      budgetMinimum: tutorRequests.budgetMinimum,
-      budgetMaximum: tutorRequests.budgetMaximum,
+      budgetAmount: tutorRequests.budgetAmount,
       notes: tutorRequests.notes,
       status: tutorRequests.status,
       publicationState: tutorRequests.publicationState,
@@ -2279,9 +2277,7 @@ export async function updateGuardianTutorRequest(input: {
   tuitionCityLocationId: string | null;
   tuitionLocationId: string | null;
   tuitionLocationLabel: string | null;
-  budgetMode: "range" | "discuss";
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   notes: string | null;
   monthlyBudget: number | null;
   locationText: string;
@@ -2319,9 +2315,7 @@ export async function updateGuardianTutorRequest(input: {
       tuitionCityLocationId: input.tuitionCityLocationId,
       tuitionLocationId: input.tuitionLocationId,
       tuitionLocationLabel: input.tuitionLocationLabel,
-      budgetMode: input.budgetMode,
-      budgetMinimum: input.budgetMinimum,
-      budgetMaximum: input.budgetMaximum,
+      budgetAmount: input.budgetAmount,
       notes: input.notes,
       monthlyBudget: input.monthlyBudget,
       locationText: input.locationText,
@@ -2609,8 +2603,12 @@ function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatching
   if (filters.appointmentState === "pending") conditions.push(and(isNotNull(tutorRequests.tutorId), isNull(tutorRequests.appointmentConfirmedAt))!);
   if (filters.cancellationState === "cancelled") conditions.push(or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed"), isNotNull(tutorRequests.cancellationReason))!);
   if (filters.cancellationState === "active") conditions.push(and(inArray(tutorRequests.status, ["new", "reviewing", "matched"]), inArray(tutorRequests.publicationState, ["submitted", "reviewing", "changes_requested", "approved", "unpublished", "published"]), isNull(tutorRequests.cancellationReason))!);
-  if (filters.budgetMinimum !== undefined) conditions.push(gte(tutorRequests.budgetMaximum, filters.budgetMinimum));
-  if (filters.budgetMaximum !== undefined) conditions.push(lte(tutorRequests.budgetMinimum, filters.budgetMaximum));
+  // The filter still has two bounds - "between 5,000 and 8,000" - but a request
+  // now offers one figure rather than a range, so both bounds compare against
+  // the same column. They used to compare against opposite ends of the
+  // request's own range, which is what "overlaps this window" meant.
+  if (filters.budgetMinimum !== undefined) conditions.push(gte(tutorRequests.budgetAmount, filters.budgetMinimum));
+  if (filters.budgetMaximum !== undefined) conditions.push(lte(tutorRequests.budgetAmount, filters.budgetMaximum));
   if (filters.createdAfter) conditions.push(gte(tutorRequests.createdAt, filters.createdAfter));
   if (filters.createdBefore) conditions.push(lte(tutorRequests.createdAt, filters.createdBefore));
   if (filters.lastActivityAfter) conditions.push(gte(tutorRequests.lastActivityAt, filters.lastActivityAfter));
@@ -2648,9 +2646,7 @@ const adminTutorRequestFields = {
   tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
   tuitionLocationId: tutorRequests.tuitionLocationId,
   tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
-  budgetMode: tutorRequests.budgetMode,
-  budgetMinimum: tutorRequests.budgetMinimum,
-  budgetMaximum: tutorRequests.budgetMaximum,
+  budgetAmount: tutorRequests.budgetAmount,
   notes: tutorRequests.notes,
   monthlyBudget: tutorRequests.monthlyBudget,
   locationText: tutorRequests.locationText,
@@ -2732,7 +2728,7 @@ export type AdminTutorRequestPublicationEdit = {
   subjects?: string[];
   daysPerWeek?: number;
   preferredGender?: "male" | "female" | "any";
-  budget?: { kind: "range"; minimum: number; maximum: number } | { kind: "discuss" };
+  budgetAmount?: number;
 };
 
 export type PublishedTutorJobListInput = {
@@ -2761,8 +2757,8 @@ function activePublishedTutorJobConditions(input: PublishedTutorJobListInput) {
   if (input.preferredTutorGender) conditions.push(eq(tutorJobs.preferredTutorGender, input.preferredTutorGender));
   if (input.category) conditions.push(eq(tutorJobs.category, input.category));
   if (input.subject) conditions.push(like(tutorJobs.subjects, `%${input.subject}%`));
-  if (input.budgetMinimum !== undefined) conditions.push(gte(tutorJobs.budgetMaximum, input.budgetMinimum));
-  if (input.budgetMaximum !== undefined) conditions.push(lte(tutorJobs.budgetMinimum, input.budgetMaximum));
+  if (input.budgetMinimum !== undefined) conditions.push(gte(tutorJobs.budgetAmount, input.budgetMinimum));
+  if (input.budgetMaximum !== undefined) conditions.push(lte(tutorJobs.budgetAmount, input.budgetMaximum));
   if (input.jobId) conditions.push(eq(tutorJobs.publicJobId, input.jobId));
   return and(...conditions);
 }
@@ -2785,9 +2781,7 @@ export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) 
       studentGender: tutorJobs.studentGender,
       preferredTutorGender: tutorJobs.preferredTutorGender,
       daysPerWeek: tutorJobs.daysPerWeek,
-      budgetMode: tutorJobs.budgetMode,
-      budgetMinimum: tutorJobs.budgetMinimum,
-      budgetMaximum: tutorJobs.budgetMaximum,
+      budgetAmount: tutorJobs.budgetAmount,
       country: tutorJobs.country,
       cityLocationId: tutorJobs.cityLocationId,
       locationId: tutorJobs.locationId,
@@ -2974,9 +2968,7 @@ async function synchronizePublishedTutorJob(
       tuitionCityLocationId: string | null;
       tuitionLocationId: string | null;
       tuitionLocationLabel: string | null;
-      budgetMode: "range" | "discuss" | null;
-      budgetMinimum: number | null;
-      budgetMaximum: number | null;
+      budgetAmount: number | null;
     };
     manualJobId?: string;
   },
@@ -2992,7 +2984,10 @@ async function synchronizePublishedTutorJob(
     .for("update");
 
   if (input.action === "publish") {
-    if (input.request.budgetMode === null) throw new Error("Published job requires a budget mode.");
+    // A job on the public board with no salary is the thing the single-amount
+    // change was made to end, so a request that still carries none - the two
+    // that predate it - cannot be published until its Guardian names one.
+    if (input.request.budgetAmount === null) throw new Error("Published job requires a salary amount.");
     const projection: PublishedTutorJobProjection = buildPublishedTutorJobProjection({
       requestId: input.request.id,
       tuitionType: input.request.tuitionType,
@@ -3007,9 +3002,7 @@ async function synchronizePublishedTutorJob(
       cityLocationId: input.request.tuitionCityLocationId,
       locationId: input.request.tuitionLocationId,
       locationLabel: input.request.tuitionLocationLabel,
-      budgetMode: input.request.budgetMode,
-      budgetMinimum: input.request.budgetMinimum,
-      budgetMaximum: input.request.budgetMaximum,
+      budgetAmount: input.request.budgetAmount,
       publishedAt: now,
       // Read here rather than inside the projection so that function stays
       // pure and its tests need no database. Changing the limit moves jobs
@@ -3087,9 +3080,7 @@ export async function moderateTutorRequestPublication(input: {
         studentGender: tutorRequests.studentGender,
         daysPerWeek: tutorRequests.daysPerWeek,
         preferredGender: tutorRequests.preferredGender,
-        budgetMode: tutorRequests.budgetMode,
-        budgetMinimum: tutorRequests.budgetMinimum,
-        budgetMaximum: tutorRequests.budgetMaximum,
+        budgetAmount: tutorRequests.budgetAmount,
         tuitionType: tutorRequests.tuitionType,
         tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
         tuitionLocationId: tutorRequests.tuitionLocationId,
@@ -3118,9 +3109,7 @@ export async function moderateTutorRequestPublication(input: {
       subjects?: string;
       daysPerWeek?: number;
       preferredGender?: "male" | "female" | "any";
-      budgetMode?: "range" | "discuss" | null;
-      budgetMinimum?: number | null;
-      budgetMaximum?: number | null;
+      budgetAmount?: number | null;
       monthlyBudget?: number | null;
       guardianConfirmedAt?: Date | null;
       guardianReconfirmedAt?: Date | null;
@@ -3143,10 +3132,8 @@ export async function moderateTutorRequestPublication(input: {
       if (edit.subjects !== undefined) update.subjects = JSON.stringify(edit.subjects);
       if (edit.daysPerWeek !== undefined) update.daysPerWeek = edit.daysPerWeek;
       if (edit.preferredGender !== undefined) update.preferredGender = edit.preferredGender;
-      if (edit.budget !== undefined) {
-        update.budgetMode = edit.budget.kind;
-        update.budgetMinimum = edit.budget.kind === "range" ? edit.budget.minimum : null;
-        update.budgetMaximum = edit.budget.kind === "range" ? edit.budget.maximum : null;
+      if (edit.budgetAmount !== undefined) {
+        update.budgetAmount = edit.budgetAmount;
         update.monthlyBudget = null;
       }
       update.guardianConfirmedAt = null;
@@ -3158,9 +3145,7 @@ export async function moderateTutorRequestPublication(input: {
       subjects: update.subjects ?? request.subjects,
       daysPerWeek: update.daysPerWeek ?? request.daysPerWeek,
       preferredGender: update.preferredGender ?? request.preferredGender,
-      budgetMode: update.budgetMode === undefined ? request.budgetMode : update.budgetMode,
-      budgetMinimum: update.budgetMinimum === undefined ? request.budgetMinimum : update.budgetMinimum,
-      budgetMaximum: update.budgetMaximum === undefined ? request.budgetMaximum : update.budgetMaximum,
+      budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
       tuitionLocationLabel: request.tuitionLocationLabel,
     });
     await tx.update(tutorRequests).set(update).where(eq(tutorRequests.id, request.id));
@@ -3182,9 +3167,7 @@ export async function moderateTutorRequestPublication(input: {
         tuitionCityLocationId: request.tuitionCityLocationId,
         tuitionLocationId: request.tuitionLocationId,
         tuitionLocationLabel: request.tuitionLocationLabel,
-        budgetMode: update.budgetMode === undefined ? request.budgetMode : update.budgetMode,
-        budgetMinimum: update.budgetMinimum === undefined ? request.budgetMinimum : update.budgetMinimum,
-        budgetMaximum: update.budgetMaximum === undefined ? request.budgetMaximum : update.budgetMaximum,
+        budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
       },
     });
     const result = await tx.insert(tutorRequestPublicationEvents).values({
@@ -3834,9 +3817,7 @@ const adminGuardianRequestFields = {
   preferredGender: tutorRequests.preferredGender,
   tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
   monthlyBudget: tutorRequests.monthlyBudget,
-  budgetMode: tutorRequests.budgetMode,
-  budgetMinimum: tutorRequests.budgetMinimum,
-  budgetMaximum: tutorRequests.budgetMaximum,
+  budgetAmount: tutorRequests.budgetAmount,
   locationText: tutorRequests.locationText,
   groupCapacity: tutorRequests.groupCapacity,
   packageDurationMonths: tutorRequests.packageDurationMonths,

@@ -16,9 +16,7 @@ const completeRequest = {
   tuitionLocationId: "area-mirpur",
   daysPerWeek: "3",
   preferredGender: "any" as const,
-  budgetKind: "range" as const,
-  budgetMinimum: "10000",
-  budgetMaximum: "12000",
+  salaryAmount: "10000",
 };
 
 describe("canonical Guardian Tutor Request validation", () => {
@@ -29,7 +27,7 @@ describe("canonical Guardian Tutor Request validation", () => {
     );
     expect(getGuardianRequestStepValidation({ ...completeRequest, category: "Bangla Medium", curriculumType: "" }, 1)).toBeNull();
     expect(getGuardianRequestStepValidation({ ...completeRequest, daysPerWeek: "" }, 2)).toBe("Choose how many days per week you need tuition.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, budgetKind: "" as never }, 2)).toBe("Choose a monthly budget option.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
   });
 
   it("requires a City-scoped tuition location for Home, Group, Package, and legacy Both requests", () => {
@@ -63,8 +61,16 @@ describe("canonical Guardian Tutor Request validation", () => {
     expect(getGuardianRequestStepValidation({ ...completeRequest, tuitionType: "group", groupCapacity: "8", studentCount: "" }, 2)).toBeNull();
   });
 
-  it("rejects an invalid budget range and accepts the coordinator-discussion option", () => {
-    expect(getGuardianRequestStepValidation({ ...completeRequest, budgetMinimum: "13000", budgetMaximum: "12000" }, 2)).toBe("Your minimum budget cannot be higher than your maximum budget.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, budgetKind: "discuss", budgetMinimum: "", budgetMaximum: "" }, 2)).toBeNull();
+  it("reads the salary however it is written, and refuses one that is missing or impossible", () => {
+    // The Guardian types a number the way they write numbers; a comma or the
+    // currency word must not be an error.
+    for (const written of ["5000", "5,000", "5,000 Taka"]) {
+      expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: written }, 2), written).toBeNull();
+    }
+    // "Discuss with coordinator" is gone, so an empty field is now a refusal
+    // rather than a second option.
+    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "0" }, 2)).toBe("Enter a salary greater than zero.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "900000" }, 2)).toMatch(/500,000 Taka or less/);
   });
 });

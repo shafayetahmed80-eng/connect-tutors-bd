@@ -379,6 +379,20 @@
       "when": 1788430000000,
       "tag": "0053_site_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "5",
+      "when": 1788500000054,
+      "tag": "0054_salary_amount",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1788500000055,
+      "tag": "0055_drop_budget_range",
+      "breakpoints": true
     }
   ]
 }

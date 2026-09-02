@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { formatSalaryAmount } from "@shared/salary-amount";
 import { CheckCircle2, ChevronDown, FilePenLine, MapPin, Plus, ShieldCheck, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -15,7 +16,7 @@ type RequestRecord = {
   createdAt: Date | string | null; category: string; classCourse: string; subjects: unknown; tuitionType: string; daysPerWeek: number;
   groupCapacity: number | null; packageDurationMonths: number | null; studentCount: number | null; preferredGender: string;
   studentFirstName?: string | null; studentGender?: string | null; addressDetails?: string | null; notes?: string | null;
-  budgetMode: string | null; budgetMinimum: number | null; budgetMaximum: number | null; tuitionLocationLabel?: string | null;
+  budgetAmount: number | null; tuitionLocationLabel?: string | null;
   nextAction?: string | null; contactConsent?: string | null;
 };
 
@@ -60,7 +61,7 @@ export function getGuardianStudentCountDisplay(input: { tuitionType: string; stu
 export function getGuardianPendingEditDestination(requestId: number) { return `/guardian/dashboard/hire?edit=${requestId}`; }
 
 function formatSubjects(value: unknown) { if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").join(", "); if (typeof value !== "string") return "Not specified"; try { const parsed: unknown = JSON.parse(value); return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").join(", ") : value; } catch { return value; } }
-function formatBudget(request: Pick<RequestRecord, "budgetMode" | "budgetMinimum" | "budgetMaximum">) { return request.budgetMode === "discuss" ? "Discuss with coordinator" : request.budgetMinimum !== null && request.budgetMaximum !== null ? `৳${request.budgetMinimum.toLocaleString()} – ৳${request.budgetMaximum.toLocaleString()}` : "Not specified"; }
+function formatBudget(request: Pick<RequestRecord, "budgetAmount">) { return formatSalaryAmount(request.budgetAmount); }
 function formatRequestDate(value: Date | string | number | null) { return value ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : ""; }
 function displayTuitionType(value: string) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : "Package Tutoring"; }
 const statusToneClass: Record<GuardianRequestStatusTone, string> = { blue: "bg-blue-50 text-blue-800 ring-blue-700/15", amber: "bg-amber-50 text-amber-800 ring-amber-700/15", green: "bg-emerald-50 text-emerald-800 ring-emerald-700/15", slate: "bg-slate-100 text-slate-700 ring-slate-500/15" };

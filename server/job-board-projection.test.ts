@@ -34,9 +34,7 @@ describe("Job Board published projection", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
       locationLabel: "Mirpur 10, Dhaka",
-      budgetMode: "range",
-      budgetMinimum: 7000,
-      budgetMaximum: 9000,
+      budgetAmount: 7000,
       publishedAt,
       privateAddress: "House 99, Road 7",
       addressDetails: "Use the west entrance",
@@ -66,9 +64,7 @@ describe("Job Board published projection", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
       locationLabel: "Mirpur 10, Dhaka",
-      budgetMode: "discuss",
-      budgetMinimum: null,
-      budgetMaximum: null,
+      budgetAmount: null,
       publishedAt: new Date("2026-08-21T00:00:00.000Z"),
       privateAddress: "House 99, Road 7",
       guardianPhone: "+8801516131411",
@@ -90,9 +86,7 @@ describe("Job Board published projection", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
       locationLabel: "Mirpur 10, Dhaka",
-      budgetMode: "discuss",
-      budgetMinimum: null,
-      budgetMaximum: null,
+      budgetAmount: null,
       publishedAt: new Date("2026-08-21T00:00:00.000Z"),
     }).studentCount).toBe(1);
   });
@@ -109,9 +103,7 @@ describe("Job Board published projection", () => {
       studentGender: null,
       preferredTutorGender: "female",
       daysPerWeek: 4,
-      budgetMode: "range",
-      budgetMinimum: 7000,
-      budgetMaximum: 9000,
+      budgetAmount: 7000,
       country: "Bangladesh",
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
@@ -131,7 +123,7 @@ describe("Job Board published projection", () => {
       title: "Need English Medium Tutor for Standard 2 Student-4 Days/Week",
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",
-      budget: { kind: "range", minimum: 7000, maximum: 9000 },
+      budgetAmount: 7000,
     });
     expect(job).not.toHaveProperty("guardianName");
     expect(job).not.toHaveProperty("guardianPhone");
@@ -153,9 +145,7 @@ describe("Job Board published projection", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
       locationLabel: "Mirpur 10, Dhaka",
-      budgetMode: "discuss",
-      budgetMinimum: null,
-      budgetMaximum: null,
+      budgetAmount: null,
       publishedAt: new Date("2026-08-21T00:00:00.000Z"),
     }));
 
@@ -163,8 +153,7 @@ describe("Job Board published projection", () => {
       tuitionType: "online",
       classCourse: "Standard 3",
       subjects: "[\"English\"]",
-      budgetMode: "discuss",
-      budgetMinimum: null,
+      budgetAmount: null,
       locationLabel: null,
       directionLabel: null,
       publicationStatus: "published",

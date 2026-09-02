@@ -26,9 +26,9 @@ const mocks = vi.hoisted(() => ({
     studentCount: 1,
     tuitionCityLocationId: null,
     tuitionLocationId: null,
-    budgetMode: "discuss",
-    budgetMinimum: null,
-    budgetMaximum: null,
+    // A saved request carries its salary; the amount is required now, so an
+    // edit cannot get past step two without one.
+    budgetAmount: 8000,
     notes: "Weekday afternoons",
   } as Record<string, unknown>,
 }));
