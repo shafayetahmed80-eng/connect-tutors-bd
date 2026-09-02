@@ -24,7 +24,7 @@ import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 
 const rows = [
   { label: "Primary subjects", value: "Not given", missing: true },
-  { label: "Additional subjects", value: "—", missing: true, optional: true },
+  { label: "Additional subjects", value: "Not given", missing: true, optional: true },
   { label: "Curriculum", value: "English Medium", missing: false },
 ];
 
@@ -43,7 +43,7 @@ describe("tutor profile readout rows", () => {
   it("carries no inline size until an Admin sets one, so the 12px in code stands", () => {
     renderRows();
 
-    for (const text of ["Primary subjects", "Not given", "—", "Curriculum", "English Medium"]) {
+    for (const text of ["Primary subjects", "Curriculum", "English Medium"]) {
       expect(screen.getByText(text).style.fontSize, text).toBe("");
     }
   });
@@ -54,7 +54,7 @@ describe("tutor profile readout rows", () => {
 
     // One control moves the pair: a label at one size beside a value at another
     // is the mismatch splitting them into two knobs would invite.
-    for (const text of ["Primary subjects", "Not given", "—", "Curriculum", "English Medium"]) {
+    for (const text of ["Primary subjects", "Curriculum", "English Medium"]) {
       expect(screen.getByText(text).style.fontSize, text).toBe("16px");
     }
   });
@@ -63,10 +63,12 @@ describe("tutor profile readout rows", () => {
     state.rows = [{ slotId: "tutor-profile.size.record-row", text: null, textSizePx: 16, spacing: null }];
     renderRows();
 
-    // An empty required field has to stay visibly different from an empty
-    // optional one, whatever size the rows are set to.
-    expect(screen.getByText("Not given").className).toContain("text-j-err");
-    expect(screen.getByText("—").className).toContain("#9aabbb");
+    // Both empty fields read "Not given" now, so colour is the only thing left
+    // telling a tutor which blank actually blocks submission.
+    const missing = screen.getAllByText("Not given");
+    expect(missing).toHaveLength(2);
+    expect(missing[0].className).toContain("text-j-err");
+    expect(missing[1].className).toContain("#9aabbb");
     expect(screen.getByText("English Medium").className).toContain("#243b52");
   });
 

@@ -13,7 +13,7 @@ const sections: TutorProfileReadoutSection[] = [
     { heading: "Identity and contact", rows: [
       { label: "Full name", value: "Sojib", missing: false },
       { label: "Date of birth", value: "Not given", missing: true },
-      { label: "Additional phone", value: "—", missing: true, optional: true },
+      { label: "Additional phone", value: "Not given", missing: true, optional: true },
     ] },
     { heading: "Family and emergency contact", rows: [{ label: "Father's name", value: "Karim", missing: false }] },
   ] },
@@ -24,7 +24,7 @@ const sections: TutorProfileReadoutSection[] = [
     { rows: [{ label: "Tuition type", value: "Not given", missing: true }] },
   ] },
   { id: "e", title: "Introduction and review", groups: [
-    { rows: [{ label: "About me", value: "—", missing: true, optional: true }] },
+    { rows: [{ label: "About me", value: "Not given", missing: true, optional: true }] },
   ] },
 ];
 
@@ -54,12 +54,28 @@ describe("TutorProfileSummaryView", () => {
     expect(screen.getByText("Optional")).toBeTruthy();
   });
 
-  it("separates filled, required-missing and optional-missing values", () => {
+  it("separates filled, required-missing and optional-missing by colour alone", () => {
     render(<TutorProfileSummaryView sections={sections} />);
 
-    expect(screen.getAllByLabelText("Filled")).toHaveLength(3);
-    expect(screen.getAllByLabelText("Missing")).toHaveLength(2);
-    expect(screen.getAllByLabelText("Not provided")).toHaveLength(2);
+    // Every empty field now reads "Not given", so the colour is what tells a
+    // tutor whether a blank actually blocks submission.
+    const missing = screen.getAllByText("Not given");
+    expect(missing).toHaveLength(4);
+    expect(missing.filter(node => node.className.includes("text-j-err"))).toHaveLength(2);
+    expect(missing.filter(node => node.className.includes("#9aabbb"))).toHaveLength(2);
+
+    expect(screen.getByText("Sojib").className).toContain("#243b52");
+  });
+
+  it("lists sections the way the tabs lay them out, without repeating a heading", () => {
+    render(<TutorProfileSummaryView sections={sections} />);
+    const preview = screen.getByRole("region", { name: "Profile preview" });
+
+    // A group with its own heading gets a card header; one without leaves the
+    // section header above to name it, rather than saying it twice.
+    expect(within(preview).getAllByRole("heading", { name: "Tuition, location and communication" })).toHaveLength(1);
+    expect(within(preview).getAllByRole("heading", { name: "Introduction and review" })).toHaveLength(1);
+    expect(within(preview).getByRole("heading", { name: "Identity and contact" })).toBeTruthy();
   });
 
   it("stays read-only — no edit controls in the preview", () => {
