@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_OPTION_NAME_LENGTH, optionCatalogIds } from "@shared/option-catalogs";
+import { MAX_LARGE_CATALOG_NAME_LENGTH, MAX_OPTION_NAME_LENGTH, largeCatalogIds, optionCatalogIds } from "@shared/option-catalogs";
 import {
   MAX_SITE_CONTENT_BLOCK_BODY,
   MAX_SITE_CONTENT_BLOCK_HEADING,
@@ -125,3 +125,12 @@ export const optionCatalogNameSchema = z
   .trim()
   .min(1, "Enter a name.")
   .max(MAX_OPTION_NAME_LENGTH, `Keep the name under ${MAX_OPTION_NAME_LENGTH} characters.`);
+
+/** The two large catalogs, searched and paged rather than listed whole. */
+export const largeCatalogSchema = z.enum(largeCatalogIds);
+
+export const largeCatalogNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter a name.")
+  .max(MAX_LARGE_CATALOG_NAME_LENGTH, `Keep the name under ${MAX_LARGE_CATALOG_NAME_LENGTH} characters.`);
