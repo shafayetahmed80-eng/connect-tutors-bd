@@ -13,13 +13,10 @@ import { type ReactNode } from "react";
  */
 export default function AdminDynamicSectionPage({
   title,
-  heading,
-  description,
   children,
 }: {
+  /** Names the page in the workspace header; there is no second copy below it. */
   title: string;
-  heading: string;
-  description: string;
   children?: ReactNode;
 }) {
   const { user, loading } = useAuth();
@@ -35,12 +32,9 @@ export default function AdminDynamicSectionPage({
   }
 
   return <AdminWorkspaceLayout title={title}>
+    {/* No page hero: the workspace header already carries the page name, and a
+        second copy of it in a navy block below said nothing new. */}
     <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-      <section className="rounded-3xl bg-[#0f4666] p-6 text-white shadow-[0_18px_42px_rgba(15,70,102,0.16)] sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Dynamic Section</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">{heading}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100">{description}</p>
-      </section>
       {children ?? <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
         <p className="text-sm font-bold text-slate-700">Content controls are not configured yet.</p>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">This workspace is reserved for editing the published Tutor and Guardian page content. The editing tools will appear here once they are defined.</p>

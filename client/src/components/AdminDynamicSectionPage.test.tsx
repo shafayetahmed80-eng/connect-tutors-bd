@@ -34,7 +34,7 @@ vi.mock("@/lib/trpc", () => ({
 import AdminDynamicSectionPage from "./AdminDynamicSectionPage";
 
 function renderPage() {
-  return render(<AdminDynamicSectionPage title="Tutor Profile content" heading="Tutor Profile" description="Control the published content." />);
+  return render(<AdminDynamicSectionPage title="Tutor Profile content" />);
 }
 
 afterEach(() => {
@@ -49,8 +49,9 @@ describe("Dynamic Section content page", () => {
   it("opens the content workspace for the Owner", () => {
     renderPage();
 
-    expect(screen.getByRole("heading", { name: "Tutor Profile" })).toBeTruthy();
-    expect(screen.getByText("Control the published content.")).toBeTruthy();
+    // The page name lives in the workspace header now; the navy block that
+    // repeated it below is gone, and with it its description.
+    expect(screen.queryByRole("heading", { name: "Tutor Profile" })).toBeNull();
     expect(screen.getByText(/Content controls are not configured yet/)).toBeTruthy();
   });
 
