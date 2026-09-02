@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mutateAsync = vi.fn();
 const fetchAuthenticatedUser = vi.fn();
+// The form invalidates before fetching so it cannot read the pre-login cache.
+const invalidateAuthenticatedUser = vi.fn().mockResolvedValue(undefined);
 
 function trpcErrorWithCode(message: string, code: string): TRPCClientError<never> {
   const error = new TRPCClientError(message);
@@ -20,6 +22,7 @@ vi.mock("@/lib/trpc", () => ({
       auth: {
         me: {
           fetch: fetchAuthenticatedUser,
+          invalidate: invalidateAuthenticatedUser,
         },
       },
     }),
@@ -37,6 +40,7 @@ afterEach(() => {
   cleanup();
   mutateAsync.mockReset();
   fetchAuthenticatedUser.mockReset();
+  invalidateAuthenticatedUser.mockClear();
   window.history.replaceState({}, "", "/");
 });
 
@@ -240,6 +244,9 @@ describe("post-login destinations", () => {
     await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
 
     expect(fetchAuthenticatedUser).toHaveBeenCalledOnce();
+    // Without this the 30s staleTime hands back the pre-login null and a good
+    // password is reported as wrong.
+    expect(invalidateAuthenticatedUser).toHaveBeenCalledOnce();
   });
 
   it("routes Guardian and legacy user accounts directly to their Posted Jobs tab", async () => {
