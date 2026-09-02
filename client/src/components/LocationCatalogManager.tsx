@@ -2,7 +2,9 @@ import { trpc } from "@/lib/trpc";
 import {
   LOCATION_PAGE_SIZE,
   MAX_LOCATION_LABEL_LENGTH,
+  cannotSitInsideMessage,
   childTypesFor,
+  isValidChildType,
   locationTypeLabels,
   type LocationType,
 } from "@shared/location-catalog";
@@ -14,6 +16,7 @@ import {
   EyeOff,
   Home,
   Loader2,
+  Move,
   Plus,
   Search,
   Trash2,
@@ -57,6 +60,11 @@ export default function LocationCatalogManager() {
   const [drafts, setDrafts] = useState<Record<string, { label: string; active: boolean }>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  // The place picked up for moving, held while the Owner navigates to where it
+  // belongs. Cut and paste rather than a dropdown of 597 destinations: the
+  // breadcrumb is already how you find a place, so it may as well be how you
+  // choose one.
+  const [moving, setMoving] = useState<{ id: string; label: string; type: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +114,7 @@ export default function LocationCatalogManager() {
   const create = trpc.locationCatalog.create.useMutation();
   const update = trpc.locationCatalog.update.useMutation();
   const remove = trpc.locationCatalog.remove.useMutation();
+  const move = trpc.locationCatalog.move.useMutation();
 
   const refresh = async () => {
     await utils.locationCatalog.browse.invalidate();
@@ -123,6 +132,33 @@ export default function LocationCatalogManager() {
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * Whether the place being carried can be dropped where the Owner is standing.
+   *
+   * The server checks all of this again; refusing here only means the button
+   * can say why before the click rather than after it.
+   */
+  const moveBlockedBecause = (): string | null => {
+    if (!moving) return null;
+    if (parentId === null) return "The country cannot hold a place directly.";
+    if (parentId === moving.id) return `"${moving.label}" cannot be moved inside itself.`;
+    if (trail.some(step => step.id === moving.id)) return `This is inside "${moving.label}".`;
+    if (rows.some(row => row.id === moving.id)) return `"${moving.label}" is already here.`;
+    if (!parentType) return null;
+    if (!isValidChildType(parentType, moving.type as LocationType)) {
+      return cannotSitInsideMessage(moving.type as LocationType, parentType);
+    }
+    return null;
+  };
+
+  const dropHere = () => {
+    if (!moving || !parentId) return;
+    void run(async () => {
+      await move.mutateAsync({ id: moving.id, newParentId: parentId });
+      setMoving(null);
+    }, "The place could not be moved.");
   };
 
   const openPlace = (id: string | null) => {
@@ -234,6 +270,24 @@ export default function LocationCatalogManager() {
         </span>)}
       </nav>}
 
+    {moving ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-2">
+      <Move className="h-4 w-4 shrink-0 text-amber-700" />
+      <span className="text-[13px] text-amber-900">
+        Carrying <span className="font-bold">{moving.label}</span>. Open the place it belongs in, then drop it there.
+      </span>
+      <span className="flex-1" />
+      {moveBlockedBecause()
+        ? <span className="text-[12px] font-bold text-amber-800">{moveBlockedBecause()}</span>
+        : null}
+      <button
+        type="button"
+        disabled={busy || moveBlockedBecause() !== null}
+        onClick={dropHere}
+        className="h-8 rounded-md bg-amber-600 px-3 text-[13px] font-bold text-white disabled:opacity-40"
+      >{busy ? "Moving…" : `Drop into ${here}`}</button>
+      <button type="button" onClick={() => setMoving(null)} className="h-8 rounded-md px-2 text-[13px] font-medium text-amber-800 hover:text-amber-950">Cancel</button>
+    </div> : null}
+
     {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#116fc4]/30 bg-[#f2f9ff] p-2">
       <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
       <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40"><EyeOff size={13} /> Hide</button>
@@ -332,6 +386,14 @@ export default function LocationCatalogManager() {
                   aria-label={`Open ${row.label}`}
                   title={row.childCount > 0 ? `${row.childCount} inside` : "Nothing inside"}
                 ><CornerDownRight className="h-3.5 w-3.5" /></button>
+                <button
+                  type="button"
+                  disabled={busy || moving?.id === row.id}
+                  onClick={() => { setMoving({ id: row.id, label: row.label, type: row.type }); setError(null); }}
+                  className={iconButtonClass}
+                  aria-label={`Move ${row.label}`}
+                  title="Pick this up, then open where it belongs"
+                ><Move className="h-3.5 w-3.5" /></button>
                 <button
                   type="button"
                   disabled={busy}
