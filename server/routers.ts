@@ -32,6 +32,8 @@ import {
   locationIdSchema,
   locationLabelSchema,
   locationTypeSchema,
+  policyBodySchema,
+  policyPageKeySchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -1042,6 +1044,19 @@ export const appRouter = router({
         }
         return { id: input.id };
       }),
+  }),
+  /**
+   * The legal pages. `list` is public because the pages that render these are:
+   * a visitor reading the Terms is not signed in. Writing is the Owner's.
+   */
+  policyDocuments: router({
+    list: publicProcedure.query(() => db.listPolicyDocuments()),
+    save: ownerAdminProcedure
+      .input(z.object({ pageKey: policyPageKeySchema, body: policyBodySchema }))
+      .mutation(({ input }) => db.savePolicyDocument(input.pageKey, input.body)),
+    reset: ownerAdminProcedure
+      .input(z.object({ pageKey: policyPageKeySchema }))
+      .mutation(({ input }) => db.resetPolicyDocument(input.pageKey)),
   }),
   /**
    * City & Location, kept apart from the option catalogs because it is a tree.

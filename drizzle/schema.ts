@@ -3,6 +3,7 @@ import {
   foreignKey,
   index,
   int,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   primaryKey,
@@ -844,6 +845,20 @@ export const siteContentBlocks = mysqlTable(
   },
   table => [index("site_content_blocks_anchor_sort_idx").on(table.anchorId, table.active, table.sortOrder)],
 );
+
+/**
+ * The body of a legal page, written in the Owner's Markdown subset.
+ *
+ * Kept apart from `site_content_overrides` because that table's `text` column
+ * is `varchar(240)` - sized for a heading, not a document. `mediumtext` rather
+ * than `text`: Bangla runs three bytes to the character, so a 40,000-character
+ * policy would overflow `text`'s 65,535 bytes well before hitting its limit.
+ */
+export const sitePolicyDocuments = mysqlTable("site_policy_documents", {
+  pageKey: varchar("pageKey", { length: 60 }).primaryKey(),
+  body: mediumtext("body").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 export const tutorTeachingAreas = mysqlTable(
   "tutor_teaching_areas",

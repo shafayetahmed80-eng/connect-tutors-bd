@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_LOCATION_ID_LENGTH, MAX_LOCATION_LABEL_LENGTH, locationTypes } from "@shared/location-catalog";
+import { MAX_POLICY_BODY_LENGTH, policyPageKeys } from "@shared/policy-pages";
 import { MAX_LARGE_CATALOG_NAME_LENGTH, MAX_OPTION_NAME_LENGTH, largeCatalogIds, optionCatalogIds } from "@shared/option-catalogs";
 import {
   MAX_SITE_CONTENT_BLOCK_BODY,
@@ -149,3 +150,10 @@ export const locationLabelSchema = z
   .trim()
   .min(1, "Enter a name.")
   .max(MAX_LOCATION_LABEL_LENGTH, `Keep the name under ${MAX_LOCATION_LABEL_LENGTH} characters.`);
+
+/** The legal pages, whose body is a Markdown document rather than a short slot. */
+export const policyPageKeySchema = z.enum(policyPageKeys);
+
+export const policyBodySchema = z
+  .string()
+  .max(MAX_POLICY_BODY_LENGTH, `Keep the document under ${MAX_POLICY_BODY_LENGTH} characters.`);
