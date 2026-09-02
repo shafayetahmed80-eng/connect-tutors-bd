@@ -63,7 +63,7 @@ describe("Admin workspace navigation", () => {
     const sections = buildAdminWorkspaceNavigation(true)
       .map(item => item.sectionLabel)
       .filter((label, index, all) => label !== all[index - 1]);
-    expect(sections).toEqual(["Operations", "Dynamic Section", "Public reference", "Owner controls"]);
+    expect(sections).toEqual(["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"]);
   });
 
   it("keeps Owner-only security management in the Owner navigation boundary", () => {
@@ -93,5 +93,26 @@ describe("Admin workspace navigation", () => {
       staleTime: 0,
       gcTime: 0,
     });
+  });
+});
+
+describe("Sign Out in the sidebar", () => {
+  it("ends the Admin sidebar with a Sign Out that signs out rather than navigating", () => {
+    // The Tutor sidebar has always had one. When the Guardian and Admin panels
+    // gained the workspace header their sidebar account menu was removed, which
+    // left them without any sidebar Sign Out while the Tutor kept one - three
+    // panels, three different answers. This is the Admin half of the fix.
+    const items = buildAdminWorkspaceNavigation(true);
+    const signOut = items[items.length - 1];
+
+    expect(signOut).toMatchObject({ label: "Sign Out", sectionLabel: "Account", action: "signout" });
+  });
+
+  it("shows it to every Admin, not only the Owner", () => {
+    for (const isOwner of [true, false]) {
+      const items = buildAdminWorkspaceNavigation(isOwner);
+      expect(items.filter(item => item.action === "signout"), `isOwner=${isOwner}`).toHaveLength(1);
+      expect(items[items.length - 1].label, `isOwner=${isOwner}`).toBe("Sign Out");
+    }
   });
 });
