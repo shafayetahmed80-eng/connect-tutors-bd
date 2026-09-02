@@ -71,9 +71,7 @@ type SnapshotSource = {
   subjects: string;
   daysPerWeek: number;
   preferredGender: "male" | "female" | "any";
-  budgetMode: "range" | "discuss" | null;
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   tuitionLocationLabel: string | null;
 };
 
@@ -96,11 +94,7 @@ export function buildSafeTutorRequestPublicationSnapshot(request: SnapshotSource
     subjects: safeSubjects(request.subjects),
     daysPerWeek: request.daysPerWeek,
     tutorGenderPreference: request.preferredGender,
-    budget: {
-      mode: request.budgetMode,
-      minimum: request.budgetMinimum,
-      maximum: request.budgetMaximum,
-    },
+    budgetAmount: request.budgetAmount,
     location: request.tuitionLocationLabel?.trim() || null,
   };
 }

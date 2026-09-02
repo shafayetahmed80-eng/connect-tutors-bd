@@ -15,7 +15,7 @@ const validPayload = {
   preferredGender: "any" as const,
   tuitionCityLocationId: "city-dhaka",
   tuitionLocationId: "area-mirpur",
-  budget: { kind: "range" as const, minimum: 10000, maximum: 12000 },
+  budgetAmount: 10000,
 };
 
 describe("tutor request procedure authorization", () => {

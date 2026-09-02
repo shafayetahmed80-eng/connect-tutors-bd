@@ -1080,9 +1080,12 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   tuitionLocationId: varchar("tuitionLocationId", { length: 80 })
     .references(() => locations.id),
   tuitionLocationLabel: varchar("tuitionLocationLabel", { length: 240 }),
-  budgetMode: mysqlEnum("budgetMode", ["range", "discuss"]),
-  budgetMinimum: int("budgetMinimum"),
-  budgetMaximum: int("budgetMaximum"),
+  /**
+   * The monthly salary offered, as one number. Nullable only because the two
+   * requests made before the range and "Discuss with coordinator" options were
+   * removed carry no figure; every new request must name one.
+   */
+  budgetAmount: int("budgetAmount"),
   notes: text("notes"),
   contactConsent: mysqlEnum("contactConsent", [
     "not_required",
@@ -1142,9 +1145,12 @@ export const tutorJobs = mysqlTable("tutor_jobs", {
     .default("any")
     .notNull(),
   daysPerWeek: int("daysPerWeek").notNull(),
-  budgetMode: mysqlEnum("budgetMode", ["range", "discuss"]).notNull(),
-  budgetMinimum: int("budgetMinimum"),
-  budgetMaximum: int("budgetMaximum"),
+  /**
+   * The monthly salary offered, as one number. Nullable only because the two
+   * requests made before the range and "Discuss with coordinator" options were
+   * removed carry no figure; every new request must name one.
+   */
+  budgetAmount: int("budgetAmount"),
   country: varchar("country", { length: 120 }).default("Bangladesh").notNull(),
   cityLocationId: varchar("cityLocationId", { length: 80 }),
   locationId: varchar("locationId", { length: 80 }),

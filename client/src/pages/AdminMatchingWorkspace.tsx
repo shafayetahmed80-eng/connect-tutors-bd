@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { formatSalaryAmount } from "@shared/salary-amount";
 import { trpc } from "@/lib/trpc";
 import {
   BadgeCheck,
@@ -76,9 +77,7 @@ export type MatchingRequest = {
   preferredGender: "male" | "female" | "any";
   tuitionLocationLabel: string | null;
   locationText: string;
-  budgetMode: "range" | "discuss" | null;
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   monthlyBudget: number | null;
   studentFirstName: string | null;
   studentGender: "male" | "female" | null;
@@ -229,12 +228,8 @@ function subjectsForEdit(subjects: string) {
   }
 }
 
-function formatBudget(request: Pick<MatchingRequest, "budgetMode" | "budgetMinimum" | "budgetMaximum" | "monthlyBudget">) {
-  if (request.budgetMode === "discuss") return "Discuss with coordinator";
-  const minimum = request.budgetMinimum ?? request.monthlyBudget;
-  const maximum = request.budgetMaximum ?? request.monthlyBudget;
-  if (minimum === null && maximum === null) return "Not specified";
-  return `৳${(minimum ?? maximum)?.toLocaleString()} – ৳${(maximum ?? minimum)?.toLocaleString()}`;
+function formatBudget(request: Pick<MatchingRequest, "budgetAmount">) {
+  return formatSalaryAmount(request.budgetAmount);
 }
 
 function formatEventTime(value: Date | null) {

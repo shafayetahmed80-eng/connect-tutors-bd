@@ -10,7 +10,7 @@ describe("tutor request validation", () => {
     daysPerWeek: 3,
     preferredGender: "any" as const,
     studentFirstName: "Rafi",
-    budget: { kind: "range" as const, minimum: 10000, maximum: 12000 },
+    budgetAmount: 10000,
     notes: "Weekday evening preferred",
   };
 
@@ -46,7 +46,7 @@ describe("tutor request validation", () => {
     expect(tutorRequestInputSchema.safeParse({
       ...baseRequest,
       tuitionType: "online",
-      budget: { kind: "discuss" },
+      budgetAmount: 5000,
       studentCount: 1,
     }).success).toBe(true);
   });
@@ -202,7 +202,7 @@ describe("tutor request validation", () => {
       category: "",
       subjects: [],
       daysPerWeek: 0,
-      budget: { kind: "range", minimum: 12000, maximum: 10000 },
+      budgetAmount: 12000,
     }).success).toBe(false);
   });
 

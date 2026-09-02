@@ -35,9 +35,7 @@ describe("Admin request publication workflow", () => {
       subjects: "[\"English\",\"Mathematics\"]",
       daysPerWeek: 4,
       preferredGender: "female",
-      budgetMode: "range",
-      budgetMinimum: 8000,
-      budgetMaximum: 10000,
+      budgetAmount: 8000,
       tuitionLocationLabel: "Mirpur 10",
       studentFirstName: "Private Student",
       notes: "Private health and access details",
@@ -50,7 +48,7 @@ describe("Admin request publication workflow", () => {
       subjects: ["English", "Mathematics"],
       daysPerWeek: 4,
       tutorGenderPreference: "female",
-      budget: { mode: "range", minimum: 8000, maximum: 10000 },
+      budgetAmount: 8000,
       location: "Mirpur 10",
     });
     expect(JSON.stringify(snapshot)).not.toContain("Private");

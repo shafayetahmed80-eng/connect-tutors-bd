@@ -25,9 +25,7 @@ const validDraft = {
     tuitionLocationId: "mirpur-10",
     daysPerWeek: "4",
     preferredGender: "female" as const,
-    budgetKind: "range" as const,
-    budgetMinimum: "8000",
-    budgetMaximum: "12000",
+    salaryAmount: "8000",
   },
   notes: "Evening preferred",
 };

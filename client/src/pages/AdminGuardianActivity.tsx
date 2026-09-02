@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { formatSalaryAmount } from "@shared/salary-amount";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -31,11 +32,8 @@ function formatSubjects(value: string) {
   }
 }
 
-function formatBudget(request: { budgetMode: string | null; budgetMinimum: number | null; budgetMaximum: number | null; monthlyBudget: number | null }) {
-  if (request.budgetMode === "discuss") return "Discuss with coordinator";
-  const minimum = request.budgetMinimum ?? request.monthlyBudget;
-  const maximum = request.budgetMaximum ?? request.monthlyBudget;
-  return minimum === null && maximum === null ? "Not specified" : `৳${(minimum ?? maximum)?.toLocaleString()} – ৳${(maximum ?? minimum)?.toLocaleString()}`;
+function formatBudget(request: { budgetAmount: number | null }) {
+  return formatSalaryAmount(request.budgetAmount);
 }
 
 export function getAdminGuardianPrivateDetails(request: {

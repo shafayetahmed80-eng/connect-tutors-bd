@@ -32,9 +32,7 @@ export type SafeTutorRequestForPublication = {
   cityLocationId: string | null;
   locationId: string | null;
   locationLabel: string | null;
-  budgetMode: "range" | "discuss";
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   publishedAt: Date;
   /** Present in callers only to demonstrate that private inputs never pass to output. */
   privateAddress?: string | null;
@@ -53,9 +51,7 @@ export type PublishedTutorJobProjection = {
   studentGender: "male" | "female" | null;
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
-  budgetMode: "range" | "discuss";
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   country: "Bangladesh";
   cityLocationId: string | null;
   locationId: string | null;
@@ -91,9 +87,7 @@ export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPubli
     studentGender: input.studentGender,
     preferredTutorGender: input.preferredTutorGender,
     daysPerWeek: input.daysPerWeek,
-    budgetMode: input.budgetMode,
-    budgetMinimum: input.budgetMode === "range" ? input.budgetMinimum : null,
-    budgetMaximum: input.budgetMode === "range" ? input.budgetMaximum : null,
+    budgetAmount: input.budgetAmount,
     country: "Bangladesh",
     cityLocationId: input.tuitionType === "online" ? null : input.cityLocationId,
     locationId: input.tuitionType === "online" ? null : input.locationId,
@@ -125,9 +119,7 @@ type PublishedTutorJobRow = {
   studentGender: "male" | "female" | "any" | null;
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
-  budgetMode: "range" | "discuss";
-  budgetMinimum: number | null;
-  budgetMaximum: number | null;
+  budgetAmount: number | null;
   country: string;
   cityLocationId: string | null;
   locationId: string | null;
@@ -167,9 +159,9 @@ export function toPublicTutorJob(row: PublishedTutorJobRow) {
     ...(row.studentGender === "male" || row.studentGender === "female" ? { studentGender: row.studentGender } : {}),
     preferredTutorGender: row.preferredTutorGender,
     daysPerWeek: row.daysPerWeek,
-    budget: row.budgetMode === "range" && row.budgetMinimum !== null && row.budgetMaximum !== null
-      ? { kind: "range" as const, minimum: row.budgetMinimum, maximum: row.budgetMaximum }
-      : { kind: "discuss" as const },
+    // One number, or null on the two requests that predate the change. The
+    // Job Board writes it as "5,000 Taka" or "Not set".
+    budgetAmount: row.budgetAmount,
     country: row.country,
     cityLocationId: row.cityLocationId,
     locationId: row.locationId,

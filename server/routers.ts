@@ -18,6 +18,7 @@ import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure,
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
+import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
 import { assertWithinLengthLimit, assertWithinLimit } from "./site-limit-guard";
 import {
@@ -170,6 +171,18 @@ function rethrowProfileValidationError(error: unknown): never {
   throw error;
 }
 
+/**
+ * The monthly salary a Guardian offers, as one number.
+ *
+ * It replaced a choice between a range and "Discuss with coordinator", which
+ * let a request reach the Job Board saying nothing about the money at all.
+ */
+const salaryAmountSchema = z
+  .number()
+  .int("Enter the salary as a whole number.")
+  .positive("Enter a salary greater than zero.")
+  .max(MAX_SALARY_AMOUNT, `Enter a salary of ${MAX_SALARY_AMOUNT.toLocaleString("en-US")} Taka or less.`);
+
 const catalogSearchInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
   // The institute catalog alone holds 300+ rows, so a 50 ceiling silently hid
@@ -261,17 +274,7 @@ const adminTutorRequestPublicationEditSchema = z.object({
   subjects: z.array(z.string().trim().min(1).max(120)).min(1).max(siteLimitCeiling("request.subjects")).optional(),
   daysPerWeek: z.number().int().min(1).max(7).optional(),
   preferredGender: z.enum(["male", "female", "any"]).optional(),
-  budget: z.discriminatedUnion("kind", [
-    z.object({
-      kind: z.literal("range"),
-      minimum: z.number().int().min(0).max(1000000),
-      maximum: z.number().int().min(0).max(1000000),
-    }).refine(value => value.minimum <= value.maximum, {
-      message: "Minimum budget cannot exceed maximum budget.",
-      path: ["minimum"],
-    }),
-    z.object({ kind: z.literal("discuss") }),
-  ]).optional(),
+  budgetAmount: salaryAmountSchema.optional(),
 }).refine(value => Object.values(value).some(entry => entry !== undefined), {
   message: "Provide at least one approved job-facing edit.",
 });
@@ -419,17 +422,6 @@ export function toClientAuthIdentity(user: {
     accountStatus: user.accountStatus,
   } as const;
 }
-const tutorRequestBudgetSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("range"),
-    minimum: z.number().int().min(0).max(1000000),
-    maximum: z.number().int().min(0).max(1000000),
-  }).refine(value => value.minimum <= value.maximum, {
-    message: "Minimum budget cannot exceed maximum budget.",
-    path: ["minimum"],
-  }),
-  z.object({ kind: z.literal("discuss") }),
-]);
 
 const tutorRequestBaseInputSchema = z.object({
   category: z.string().trim().min(1).max(120),
@@ -441,7 +433,7 @@ const tutorRequestBaseInputSchema = z.object({
   studentFirstName: z.string().trim().min(1).max(80).optional(),
   studentGender: z.enum(["male", "female"]).optional(),
   addressDetails: z.string().trim().min(1).max(160).optional(),
-  budget: tutorRequestBudgetSchema,
+  budgetAmount: salaryAmountSchema,
   notes: z.string().trim().max(2000).optional(),
 });
 
@@ -1597,11 +1589,9 @@ export const appRouter = router({
           tuitionCityLocationId: tuitionLocation?.cityLocationId ?? null,
           tuitionLocationId: tuitionLocation?.locationId ?? null,
           tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
-          budgetMode: input.budget.kind,
-          budgetMinimum: input.budget.kind === "range" ? input.budget.minimum : null,
-          budgetMaximum: input.budget.kind === "range" ? input.budget.maximum : null,
+          budgetAmount: input.budgetAmount,
           notes: input.notes ?? null,
-          monthlyBudget: input.budget.kind === "range" ? input.budget.maximum : null,
+          monthlyBudget: null,
           locationText: tuitionLocation?.locationLabel ?? "Online tuition",
         });
         if (!result.updated) {
@@ -1628,7 +1618,7 @@ export const appRouter = router({
           throw error;
         }
       }
-      const monthlyBudget = input.budget.kind === "range" ? input.budget.maximum : null;
+      const monthlyBudget = null;
       const locationText = tuitionLocation?.locationLabel ?? "Online tuition";
       const studentCount = "studentCount" in input ? input.studentCount : null;
       const result = await db.createTutorRequest({
@@ -1649,9 +1639,7 @@ export const appRouter = router({
         tuitionCityLocationId: tuitionLocation?.cityLocationId ?? null,
         tuitionLocationId: tuitionLocation?.locationId ?? null,
         tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
-        budgetMode: input.budget.kind,
-        budgetMinimum: input.budget.kind === "range" ? input.budget.minimum : null,
-        budgetMaximum: input.budget.kind === "range" ? input.budget.maximum : null,
+        budgetAmount: input.budgetAmount,
         notes: input.notes ?? null,
         contactConsent: "not_required",
         monthlyBudget,

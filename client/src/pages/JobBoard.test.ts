@@ -32,8 +32,12 @@ describe("Job Board view helpers", () => {
   });
 
   it("keeps budget labels truthful and provides bounded 20-item pagination actions", () => {
-    expect(formatJobBudget({ kind: "range", minimum: 8000, maximum: 10000 })).toBe("৳8,000–৳10,000 / month");
-    expect(formatJobBudget({ kind: "discuss" })).toBe("Budget to be discussed");
+    // One amount, written the same way the Guardian panel writes it - the Job
+    // Board used to say "৳8,000–৳10,000 / month" while the Guardian's own card
+    // said "৳8,000 – ৳10,000" for the same request.
+    expect(formatJobBudget(8000)).toBe("8,000 Taka");
+    // A request made before the single-amount change carries no figure.
+    expect(formatJobBudget(null)).toBe("Not set");
     expect(getJobBoardPagination({ page: 3, pageSize: 20, totalCount: 45 })).toEqual({ totalPages: 3, previousPage: 2, nextPage: null });
   });
 

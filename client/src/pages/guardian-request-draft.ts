@@ -18,9 +18,7 @@ export type GuardianRequestDraft = {
     tuitionLocationId: string;
     daysPerWeek: string;
     preferredGender: "male" | "female" | "any" | "";
-    budgetKind: "range" | "discuss" | "";
-    budgetMinimum: string;
-    budgetMaximum: string;
+    salaryAmount: string;
   };
   notes: string;
 };
@@ -63,9 +61,7 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
   const tuitionLocationId = asString(request.tuitionLocationId);
   const daysPerWeek = asString(request.daysPerWeek);
   const preferredGender = asOneOf(request.preferredGender, ["male", "female", "any", ""] as const);
-  const budgetKind = asOneOf(request.budgetKind, ["range", "discuss", ""] as const);
-  const budgetMinimum = asString(request.budgetMinimum);
-  const budgetMaximum = asString(request.budgetMaximum);
+  const salaryAmount = asString(request.salaryAmount);
   const notes = asString(value.notes);
 
   if (
@@ -83,9 +79,7 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
     tuitionLocationId === null ||
     daysPerWeek === null ||
     preferredGender === null ||
-    budgetKind === null ||
-    budgetMinimum === null ||
-    budgetMaximum === null ||
+    salaryAmount === null ||
     notes === null
   ) {
     return null;
@@ -109,9 +103,7 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
       tuitionLocationId,
       daysPerWeek,
       preferredGender,
-      budgetKind,
-      budgetMinimum,
-      budgetMaximum,
+      salaryAmount,
     },
     notes,
   };

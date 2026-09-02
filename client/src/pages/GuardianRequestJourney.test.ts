@@ -17,9 +17,7 @@ const completeLearningInput = {
   studentCount: "1",
   daysPerWeek: "3",
   preferredGender: "any" as const,
-  budgetKind: "discuss" as const,
-  budgetMinimum: "",
-  budgetMaximum: "",
+  salaryAmount: "5000",
 };
 
 describe("Guardian request validation feedback", () => {

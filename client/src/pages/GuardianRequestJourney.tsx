@@ -8,6 +8,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { defaultSiteLimits } from "@shared/site-limits";
+import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
@@ -395,9 +396,7 @@ type RequestInput = {
   tuitionLocationId: string;
   daysPerWeek: string;
   preferredGender: PreferredGender;
-  budgetKind: BudgetKind;
-  budgetMinimum: string;
-  budgetMaximum: string;
+  salaryAmount: string;
 };
 
 const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
@@ -504,7 +503,9 @@ export function getGuardianRequestStepValidation(input: RequestInput, step: 1 | 
   if (step >= 2) {
     if (!input.daysPerWeek) return "Choose how many days per week you need tuition.";
     if (!input.preferredGender) return "Choose your preferred Tutor gender.";
-    if (!input.budgetKind) return "Choose a monthly budget option.";
+    const salary = parseSalaryAmount(input.salaryAmount);
+    const salaryError = validateSalaryAmount(salary);
+    if (salaryError) return salaryValidationMessage(salaryError);
     if (input.tuitionType !== "online" && (!input.tuitionCityLocationId || !input.tuitionLocationId)) return "Choose a City and a location for Home, Group, or Package Tutoring.";
     if (input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package") {
       const studentCount = Number(input.studentCount);
@@ -517,12 +518,6 @@ export function getGuardianRequestStepValidation(input: RequestInput, step: 1 | 
     if (input.tuitionType === "package") {
       const packageDurationMonths = Number(input.packageDurationMonths);
       if (!Number.isInteger(packageDurationMonths) || packageDurationMonths < 1 || packageDurationMonths > 24) return "Enter a Package Tutoring duration from 1 to 24 whole months.";
-    }
-    if (input.budgetKind === "range") {
-      const minimum = Number(input.budgetMinimum);
-      const maximum = Number(input.budgetMaximum);
-      if (!Number.isInteger(minimum) || minimum < 0 || !Number.isInteger(maximum) || maximum < 0) return "Enter a valid minimum and maximum monthly budget in BDT.";
-      if (minimum > maximum) return "Your minimum budget cannot be higher than your maximum budget.";
     }
   }
   return null;
@@ -576,9 +571,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [tuitionLocationId, setTuitionLocationId] = useState("");
   const [daysPerWeek, setDaysPerWeek] = useState("");
   const [preferredGender, setPreferredGender] = useState<PreferredGender>("");
-  const [budgetKind, setBudgetKind] = useState<BudgetKind>("");
-  const [budgetMinimum, setBudgetMinimum] = useState("");
-  const [budgetMaximum, setBudgetMaximum] = useState("");
+  const [salaryAmount, setSalaryAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [requestId, setRequestId] = useState<number | null>(null);
   const [draftRestoredFor, setDraftRestoredFor] = useState<number | null>(null);
@@ -669,7 +662,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, budgetKind, budgetMinimum, budgetMaximum }), [addressDetails, budgetKind, budgetMaximum, budgetMinimum, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
+  const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount }), [addressDetails, salaryAmount, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
     if (embedded || isEditMode || routePath !== "/request-tutor") return;
@@ -709,9 +702,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setTuitionLocationId(request.tuitionLocationId ?? "");
     setDaysPerWeek(request.daysPerWeek?.toString() ?? "");
     setPreferredGender(request.preferredGender === "male" || request.preferredGender === "female" || request.preferredGender === "any" ? request.preferredGender : "");
-    setBudgetKind(request.budgetMode === "discuss" ? "discuss" : "range");
-    setBudgetMinimum(request.budgetMinimum?.toString() ?? "");
-    setBudgetMaximum(request.budgetMaximum?.toString() ?? "");
+    // Grouped for editing, so reopening a saved request shows "5,000" rather
+    // than a bare 5000 the Guardian would have to re-punctuate.
+    setSalaryAmount(formatSalaryInput(request.budgetAmount));
     setNotes(request.notes ?? "");
     setLoadedEditRequestId(editRequestId);
   }, [authQuery.data?.role, authQuery.isLoading, editRequestId, guardianRequestsQuery.data, guardianRequestsQuery.isLoading, loadedEditRequestId, navigate]);
@@ -737,9 +730,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       setTuitionLocationId(draft.request.tuitionLocationId);
       setDaysPerWeek(draft.request.daysPerWeek);
       setPreferredGender(draft.request.preferredGender);
-      setBudgetKind(draft.request.budgetKind);
-      setBudgetMinimum(draft.request.budgetMinimum);
-      setBudgetMaximum(draft.request.budgetMaximum);
+      setSalaryAmount(draft.request.salaryAmount);
       setNotes(draft.notes);
     }
     setDraftRestoredFor(draftOwnerId);
@@ -806,7 +797,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       preferredGender: preferredGender as Exclude<PreferredGender, "">,
       studentGender: studentGender || undefined,
       addressDetails: addressDetails.trim() || undefined,
-      budget: budgetKind === "discuss" ? { kind: "discuss" as const } : { kind: "range" as const, minimum: Number(budgetMinimum), maximum: Number(budgetMaximum) },
+      budgetAmount: parseSalaryAmount(salaryAmount) ?? 0,
       notes: notes.trim() || undefined,
     };
     const submit = (input: Parameters<typeof requestMutation.mutate>[0]) => {
@@ -871,9 +862,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetTuitionLocation={(value) => { clearJourneyError(); setTuitionLocationId(value); }}
           onSetDays={(value) => { clearJourneyError(); setDaysPerWeek(value); }}
           onSetPreferredGender={(value) => { clearJourneyError(); setPreferredGender(value); }}
-          onSetBudgetKind={(value) => { clearJourneyError(); setBudgetKind(value); if (value === "discuss") { setBudgetMinimum(""); setBudgetMaximum(""); } }}
-          onSetBudgetMinimum={(value) => { clearJourneyError(); setBudgetMinimum(value.replace(/\D/g, "")); }}
-          onSetBudgetMaximum={(value) => { clearJourneyError(); setBudgetMaximum(value.replace(/\D/g, "")); }}
+          onSetSalaryAmount={(value) => { clearJourneyError(); setSalaryAmount(value); }}
           onSetNotes={(value) => { clearJourneyError(); setNotes(value); }}
           onBack={() => { clearJourneyError(); setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3); }}
           onAdvance={advance}
@@ -1050,8 +1039,7 @@ type RequestStageProps = {
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
   onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void; subjectLimit: number;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
-  onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetBudgetKind: (value: BudgetKind) => void;
-  onSetBudgetMinimum: (value: string) => void; onSetBudgetMaximum: (value: string) => void; onSetNotes: (value: string) => void;
+  onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetNotes: (value: string) => void;
   onBack: () => void; onAdvance: () => void; onEditStep?: (step: 1 | 2) => void; onSubmit: (event: FormEvent) => void;
 };
 
@@ -1076,7 +1064,11 @@ export function RequestStage(props: RequestStageProps) {
       {input.tuitionType === "group" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="group-capacity">Maximum students <span className="text-[#d74545]">*</span><span id="group-capacity-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the maximum number of students in this Group Tutoring request (2–100).</span><input id="group-capacity" className={`${filledField} mt-2`}type="number" min={2} max={100} step={1} inputMode="numeric" aria-describedby="group-capacity-hint" value={input.groupCapacity} onChange={(event) => props.onSetGroupCapacity(event.target.value)} /></label> : null}
       {input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="package-duration-months">Package duration (months) <span className="text-[#d74545]">*</span><span id="package-duration-months-hint" className="mt-1 block text-xs font-normal leading-5 text-[#71889b]">Enter the full Package Tutoring duration in months (1–24).</span><input id="package-duration-months" className={`${filledField} mt-2`}type="number" min={1} max={24} step={1} inputMode="numeric" aria-describedby="package-duration-months-hint" value={input.packageDurationMonths} onChange={(event) => props.onSetPackageDurationMonths(event.target.value)} /></label> : null}
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Days per week" value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} /><SelectField label="Preferred Tutor gender" value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} /></div>
-      <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly budget <span className="text-[#d74545]">*</span></legend><div className="mt-3 flex flex-wrap gap-2"><ChoiceButton selected={input.budgetKind === "range"} onClick={() => props.onSetBudgetKind("range")}>Budget range</ChoiceButton><ChoiceButton selected={input.budgetKind === "discuss"} onClick={() => props.onSetBudgetKind("discuss")}>Discuss with coordinator</ChoiceButton></div>{input.budgetKind === "range" ? <div className="mt-4 grid gap-4 sm:grid-cols-2"><InputField label="Minimum (BDT)" value={input.budgetMinimum} onChange={props.onSetBudgetMinimum} inputMode="numeric" /><InputField label="Maximum (BDT)" value={input.budgetMaximum} onChange={props.onSetBudgetMaximum} inputMode="numeric" /></div> : null}</fieldset>
+      {/* One amount, not a range and not "discuss": a Tutor reading the Job
+          Board should learn what the tuition pays. Typed however the Guardian
+          writes numbers - 5000, 5,000, even "5,000 Taka" - and shown back as
+          "5,000 Taka" wherever it appears. */}
+      <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly salary <span className="text-[#d74545]">*</span></legend><div className="mt-3 max-w-xs"><InputField label="Amount (Taka)" value={input.salaryAmount} onChange={props.onSetSalaryAmount} inputMode="numeric" placeholder={SALARY_INPUT_PLACEHOLDER} /></div>{parseSalaryAmount(input.salaryAmount) !== null ? <p className="mt-2 text-xs font-bold text-[#126ea9]">{formatSalaryAmount(parseSalaryAmount(input.salaryAmount))}</p> : null}</fieldset>
       <label className="block text-sm font-extrabold text-j-ink-soft">Additional notes <span className="font-normal text-[#71889b]">(optional)</span><textarea className={`${filledArea} mt-2 min-h-28`} value={props.notes} onChange={(event) => props.onSetNotes(event.target.value)} maxLength={2000} /></label>
     </div> : null}
     {props.step === 3 ? <RequestPreview input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onEditStep={onEditStep} /> : null}
@@ -1095,14 +1087,14 @@ export function SuccessState({ requestId }: { requestId: number | null }) {
 }
 
 function Eyebrow({ step, title, copy }: { step: string; title: string; copy: string }) { return <div className="border-b border-[#e6eef4] pb-4"><p className="text-[11px] font-extrabold uppercase tracking-[.16em] text-j-accent">{step}</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.02em] text-j-ink">{title}</h2><p className="mt-1.5 text-[13px] leading-6 text-[#617e96]">{copy}</p></div>; }
-function InputField({ label, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<input className={`${filledField} mt-2`}type={type} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
+function InputField({ label, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<input className={`${filledField} mt-2`}type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
 function SelectField({ label, value, onChange, options, placeholder, formatOption, optional }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<select className={`${filledField} mt-2`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></label>; }
 function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }
 function formatPreferredGender(value: string) { return value === "any" ? "No preference" : value === "female" ? "Female" : value === "male" ? "Male" : value; }
 function formatStudentGender(value: string) { return value === "female" ? "Female" : value === "male" ? "Male" : value; }
-function formatBudget(input: RequestInput) { return input.budgetKind === "discuss" ? "Discuss with coordinator" : `BDT ${input.budgetMinimum} – ${input.budgetMaximum}`; }
+function formatBudget(input: RequestInput) { return formatSalaryAmount(parseSalaryAmount(input.salaryAmount)); }
 
 /** Journey copy is Admin-editable; slots fall back to the code defaults. */
 export default function GuardianRequestJourney(props: { embedded?: boolean }) {

@@ -108,7 +108,7 @@ const pendingUpdate = {
   addressDetails: "Private landmark",
   tuitionCityLocationId: "city-dhaka",
   tuitionLocationId: "location-mirpur",
-  budget: { kind: "range" as const, minimum: 5000, maximum: 7000 },
+  budgetAmount: 5000,
   notes: "Private scheduling note",
   studentCount: 1,
 };
