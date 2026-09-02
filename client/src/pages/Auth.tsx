@@ -19,6 +19,13 @@ import { trpc } from "@/lib/trpc";
 import { getSafeTutorApplyReturnPath, getTutorApplyPostLoginPath, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 
+/**
+ * Thrown when the server accepted the credentials but the session cannot be
+ * used - a missing portal proof, or an account of the wrong role. Kept distinct
+ * so the form never blames the password for something the password did not do.
+ */
+class SignedInButBlockedError extends Error {}
+
 type PublicAccountRole = "guardian" | "tutor";
 type AuthMode = "login" | "register";
 
@@ -143,17 +150,22 @@ export default function AuthPage() {
     try {
       const result = await loginAccount.mutateAsync({ role, identifier, password });
       if (result.user.role === "tutor") {
-        if (!result.tutorPortalToken) throw new Error("Tutor portal proof was not issued.");
+        if (!result.tutorPortalToken) throw new SignedInButBlockedError("Signed in, but the Tutor portal proof was not issued. Please try again.");
         storeCurrentTutorPortalToken(result.tutorPortalToken);
         markCurrentTutorPortalLoginHandoff();
         tutorPortalHandoffEstablished = true;
         setIsEnteringTutorWorkspace(true);
       }
+      // The page-load `auth.me` cached `null` under the app's 30s staleTime, so
+      // `fetch()` alone would hand back that pre-login value and make a
+      // successful sign-in look like a rejected one. AdminLogin already does
+      // this; the public form did not, which is why only Admin was unaffected.
+      await utils.auth.me.invalidate();
       const authenticatedUser = await utils.auth.me.fetch();
       if (result.user.role === "tutor" && authenticatedUser?.role !== "tutor") {
         clearCurrentTutorPortalToken();
         clearCurrentTutorPortalLoginHandoff();
-        throw new Error("This account is not a Tutor account.");
+        throw new SignedInButBlockedError("Signed in, but this account is not a Tutor account.");
       }
       const tutorApplyReturnPath = getTutorApplyReturnFromLocation(location);
       if (result.user.role === "tutor" && tutorApplyReturnPath && typeof window !== "undefined") {
@@ -181,7 +193,9 @@ export default function AuthPage() {
         cause instanceof TRPCClientError && cause.data?.code !== "UNAUTHORIZED" && typeof cause.message === "string" && cause.message.trim()
           ? cause.message
           : null;
-      setFormError(actionableServerMessage ?? "Email/mobile number or password is not correct. Choose the account type you used when registering.");
+      // Only a rejected credential earns the credential message.
+      const signedInButBlocked = cause instanceof SignedInButBlockedError ? cause.message : null;
+      setFormError(signedInButBlocked ?? actionableServerMessage ?? "Email/mobile number or password is not correct. Choose the account type you used when registering.");
     }
   };
 
