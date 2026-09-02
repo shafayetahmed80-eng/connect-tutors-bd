@@ -53,11 +53,18 @@ const wideFieldClassName = "md:col-span-2";
  * way to see where one topic ended and the next began. Every panel now reads as
  * a short list of named groups.
  */
-function FormSection({ title, description, children }: { title: React.ReactNode; description?: string; children: React.ReactNode }) {
-  return <section className="border-t border-[#e6eff4] pt-5 first:border-t-0 first:pt-0">
-    <h3 className="text-[13px] font-bold text-[#244a6a]">{title}</h3>
-    {description ? <p className="mt-0.5 text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
-    <div className="mt-4">{children}</div>
+function FormSection({ title, description, children }: { title?: React.ReactNode; description?: string; children: React.ReactNode }) {
+  // A raised panel rather than a rule between blocks. The dialog body is
+  // tinted, so each white group lifts off it the way the reference's floating
+  // cards lift off their backdrop - the same layering, in the site's own blues.
+  return <section className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(23,59,96,0.04),0_8px_20px_-12px_rgba(22,119,232,0.18)] ring-1 ring-[#dbe9f4]">
+    {title ? <div className="flex items-baseline gap-2 border-b border-[#e9f2f8] bg-gradient-to-b from-[#f8fcff] to-[#f1f8fd] px-4 py-2.5">
+      {/* A short accent spine, the one place the panel is coloured. */}
+      <span aria-hidden="true" className="h-3.5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#4aa6f0] to-[#1677e8]" />
+      <h3 className="text-[13px] font-bold text-[#244a6a]">{title}</h3>
+      {description ? <p className="text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
+    </div> : null}
+    <div className="p-4">{children}</div>
   </section>;
 }
 
@@ -840,7 +847,7 @@ function TutorProfileWorkspaceBody({
   // are split into sub-groups so their popups open one part at a time — see
   // getTutorProfileSectionGroups.
   // The profile photo is managed from the identity rail, not from this popup.
-  const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5">
+  const renderIdentityFields = (title?: string): React.ReactNode => <FormSection title={title}>
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
       <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.gender}</span><select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
@@ -855,9 +862,9 @@ function TutorProfileWorkspaceBody({
       <FormInput label="Additional Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
       <FormInput label="Social Profile Links (Optional)" placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
     </div>
-  </div>;
+  </FormSection>;
 
-  const renderFamilyContactFields = (): React.ReactNode => <div className="grid gap-5 md:grid-cols-2">
+  const renderFamilyContactFields = (title?: string): React.ReactNode => <FormSection title={title}><div className={compactFieldGridClassName}>
     <FormInput label="Father’s Name" placeholder="Ex- Abdul Karim" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
     <FormInput label="Father’s Phone Number" placeholder="Ex- 01712345678" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} />
     <FormInput label="Mother’s Name (Optional)" placeholder="Ex- Abdul Karim" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
@@ -866,7 +873,8 @@ function TutorProfileWorkspaceBody({
     <FormInput label="Emergency Contact Relation (Optional)" placeholder="Ex- Uncle" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
     <FormInput label="Emergency Contact Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
     <FormTextArea label="Emergency Contact Address (Optional)" rows={2} value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
-  </div>;
+    </div>
+  </FormSection>;
 
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
@@ -939,7 +947,7 @@ function TutorProfileWorkspaceBody({
     </div>
   </>;
 
-  const renderTeachingExpertiseFields = (): React.ReactNode => <div className="space-y-5">
+  const renderTeachingExpertiseFields = (): React.ReactNode => <div className="space-y-3.5">
     <FormSection title="What you teach">
       <div className={compactFieldGridClassName}>
         <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
@@ -975,11 +983,11 @@ function TutorProfileWorkspaceBody({
   // The editable fields for a whole section, used only when the submit-for-review
   // error path opens a section that is otherwise edited one sub-group at a time.
   const renderSectionFields = (sectionId: TutorProfileSectionId): React.ReactNode => {
-    if (sectionId === "a") return <div className="space-y-5">{renderIdentityFields()}{renderFamilyContactFields()}</div>;
+    if (sectionId === "a") return <div className="space-y-3.5">{renderIdentityFields("Identity and contact")}{renderFamilyContactFields("Family and emergency contact")}</div>;
 
-    if (sectionId === "c") return <div className="space-y-5">{renderEducationFields()}{renderTeachingExpertiseFields()}</div>;
+    if (sectionId === "c") return <div className="space-y-3.5">{renderEducationFields()}{renderTeachingExpertiseFields()}</div>;
 
-    if (sectionId === "d") return <div className="space-y-5">
+    if (sectionId === "d") return <div className="space-y-3.5">
       <FormSection title="How you teach">
         <div className={compactFieldGridClassName}>
           <ChoiceGroup label={tutorProfileCopy.fields.tuitionType} name="tuition-type" required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />
@@ -1017,7 +1025,7 @@ function TutorProfileWorkspaceBody({
       </FormSection>
     </div>;
 
-    return <div className="space-y-5">
+    return <div className="space-y-3.5">
       <FormSection title="Your introduction">
         <div className="space-y-4">
           <FormTextArea label="About Me" rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />

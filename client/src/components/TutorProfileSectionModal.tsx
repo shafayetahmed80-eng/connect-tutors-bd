@@ -97,19 +97,19 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
   // The scrim settles first and the panel follows a beat later on the same
   // decelerating curve the sidebar uses, so the dialog reads as arriving rather
   // than appearing. `motion-reduce` drops both.
-  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0d2233]/55 p-4 py-8 backdrop-blur-[3px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
+  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#173b60]/35 p-4 py-8 backdrop-blur-[3px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
     <div
       ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className={`w-full max-w-[40rem] overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_-12px_rgba(9,32,54,0.45)] ring-1 ring-[#0d2233]/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 delay-75 fill-mode-backwards ${MODAL_MOTION} motion-reduce:animate-none motion-reduce:delay-0`}
+      className={`w-full max-w-[40rem] overflow-hidden rounded-2xl bg-white shadow-[0_28px_70px_-18px_rgba(23,59,96,0.35),0_0_40px_-16px_rgba(22,119,232,0.35)] ring-1 ring-[#cadff0] animate-in fade-in zoom-in-95 slide-in-from-bottom-4 delay-75 fill-mode-backwards ${MODAL_MOTION} motion-reduce:animate-none motion-reduce:delay-0`}
       onClick={event => event.stopPropagation()}
       onKeyDown={onPanelKeyDown}
     >
       {/* Three bands - header, scrolling body, actions - with the outer two
           tinted, so where the content scrolls is obvious at a glance. */}
-      <div className="flex items-start justify-between gap-4 border-b border-[#dfeaf2] bg-gradient-to-b from-[#f7fbfe] to-[#eef6fb] px-4 py-3">
+      <div className="flex items-start justify-between gap-4 border-b-2 border-[#d3e7f6] bg-gradient-to-b from-[#f7fbfe] to-[#e9f4fc] px-4 py-3">
         <div className="min-w-0">
           <p aria-hidden="true" className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7595ad]">Edit section</p>
           {/* The eyebrow carries "Edit" visually; the heading keeps it for a
@@ -130,7 +130,7 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
         </button>
       </div>
 
-      <div ref={bodyRef} className="max-h-[72vh] overflow-y-auto px-4 py-4 sm:px-5">
+      <div ref={bodyRef} className="max-h-[72vh] space-y-3.5 overflow-y-auto bg-[#f4f9fd] px-4 py-4 sm:px-5">
         {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-j-err" : "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]"}`}>{notice.text}</p> : null}
         {children}
       </div>
