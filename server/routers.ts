@@ -871,7 +871,7 @@ export const appRouter = router({
           slotId: input.slotId,
           page,
           text: input.text?.trim() || null,
-          textSize: input.textSize ?? null,
+          textSizePx: input.textSizePx ?? null,
           spacing: input.spacing ?? null,
           updatedByUserId: ctx.user.id,
         });

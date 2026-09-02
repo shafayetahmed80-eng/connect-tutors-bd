@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_SITE_CONTENT_TEXT_LENGTH,
+  MAX_SITE_CONTENT_TEXT_PX,
+  MIN_SITE_CONTENT_TEXT_PX,
+  clampSiteContentTextPx,
   findSiteContentSlot,
+  getSiteContentSizeSlots,
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
   resolveSiteContentSpacingClass,
-  resolveSiteContentTextClass,
+  resolveSiteContentTextStyle,
   siteContentPageIds,
-  siteContentTextSizes,
+  siteContentSlotDefaultPx,
   type SiteContentSlot,
 } from "./site-content";
 
@@ -40,6 +44,7 @@ describe("site content slots", () => {
     const allIds = siteContentPageIds.flatMap(page => [
       ...getSiteContentSlots(page).map(slot => slot.id),
       ...getSiteContentSpacingSlots(page).map(slot => slot.id),
+      ...getSiteContentSizeSlots(page).map(slot => slot.id),
     ]);
     expect(new Set(allIds).size).toBe(allIds.length);
   });
@@ -49,31 +54,46 @@ describe("site content slots", () => {
     expect(getSiteContentSurfaces("guardian-profile")).toEqual(["Guardian dashboard", "Request a tutor"]);
   });
 
-  it("leaves the call site's own size class alone until an admin changes it", () => {
-    // An untouched slot must not emit a class, or one-off sizes like
+  it("emits no style at all until an admin sets a size", () => {
+    // An untouched slot must not carry an inline size, or one-off sizes like
     // text-[13px] would be silently replaced on every page.
-    expect(resolveSiteContentTextClass(anchoredSlot, null)).toBe("");
-    expect(resolveSiteContentTextClass(anchoredSlot, undefined)).toBe("");
-    expect(resolveSiteContentTextClass(anchoredSlot, "default")).toBe("");
+    expect(resolveSiteContentTextStyle(null)).toBeUndefined();
+    expect(resolveSiteContentTextStyle(undefined)).toBeUndefined();
   });
 
-  it("steps along the type ramp from the slot's anchor", () => {
-    expect(resolveSiteContentTextClass(anchoredSlot, "smaller")).toBe("text-xs");
-    expect(resolveSiteContentTextClass(anchoredSlot, "larger")).toBe("text-base");
-    expect(resolveSiteContentTextClass(anchoredSlot, "largest")).toBe("text-lg");
+  it("applies the admin's size verbatim, in pixels", () => {
+    expect(resolveSiteContentTextStyle(13)).toEqual({ fontSize: "13px" });
+    expect(resolveSiteContentTextStyle(24)).toEqual({ fontSize: "24px" });
   });
 
-  it("clamps at both ends of the ramp so an override cannot fall off the scale", () => {
-    const smallest: SiteContentSlot = { ...anchoredSlot, defaultTextClass: "text-xs" };
-    const largest: SiteContentSlot = { ...anchoredSlot, defaultTextClass: "text-3xl" };
+  it("clamps a stored size into the supported range rather than rendering it", () => {
+    // A value outside the range can only arrive from an older row or a hand-
+    // edited database, and an unclamped one would render a broken page.
+    expect(clampSiteContentTextPx(2)).toBe(MIN_SITE_CONTENT_TEXT_PX);
+    expect(clampSiteContentTextPx(400)).toBe(MAX_SITE_CONTENT_TEXT_PX);
+    expect(clampSiteContentTextPx(13.6)).toBe(14);
+    expect(resolveSiteContentTextStyle(999)).toEqual({ fontSize: `${MAX_SITE_CONTENT_TEXT_PX}px` });
+  });
 
-    expect(resolveSiteContentTextClass(smallest, "smaller")).toBe("text-xs");
-    expect(resolveSiteContentTextClass(largest, "largest")).toBe("text-3xl");
+  it("reports the pixel size every slot ships at, so the editor can show it", () => {
+    expect(siteContentSlotDefaultPx(anchoredSlot)).toBe(14);
+    expect(siteContentSlotDefaultPx({ ...anchoredSlot, defaultTextClass: "text-xs" })).toBe(12);
+    expect(siteContentSlotDefaultPx({ ...anchoredSlot, defaultTextClass: "text-3xl" })).toBe(30);
 
-    for (const size of siteContentTextSizes) {
-      const resolved = resolveSiteContentTextClass(largest, size);
-      expect(resolved === "" || resolved.startsWith("text-")).toBe(true);
+    // Every declared slot must map to a real number, or the editor shows NaN.
+    for (const page of siteContentPageIds) {
+      for (const slot of getSiteContentSlots(page)) {
+        expect(Number.isFinite(siteContentSlotDefaultPx(slot)), slot.id).toBe(true);
+      }
     }
+  });
+
+  it("gives the profile record rows a size slot the admin can reach", () => {
+    const slot = getSiteContentSizeSlots("tutor-profile").find(candidate => candidate.id === "tutor-profile.size.record-row");
+
+    expect(slot).toBeDefined();
+    expect(slot?.defaultPx).toBe(12);
+    expect(slot?.surface).toBe("Tutor dashboard");
   });
 
   it("falls back to the default padding for an unset or unknown spacing", () => {

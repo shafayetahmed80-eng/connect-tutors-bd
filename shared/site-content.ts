@@ -13,22 +13,40 @@ export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile"] 
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
- * Size is stored as a step relative to the slot's own default rather than an
- * absolute class, so "one size larger" means the same thing on a page heading
- * and on a help line, and the design scale stays intact on small screens.
+ * Size is stored as an absolute pixel value, so what an Admin types is exactly
+ * what renders.
+ *
+ * The trade this makes: a step scale could never fall off the design ramp,
+ * while a free number can be set large enough to break a layout on a narrow
+ * screen. The bounds below are the only guard, deliberately wide.
  */
-export const siteContentTextSizes = ["smaller", "default", "larger", "largest"] as const;
-export type SiteContentTextSize = (typeof siteContentTextSizes)[number];
+export const MIN_SITE_CONTENT_TEXT_PX = 10;
+export const MAX_SITE_CONTENT_TEXT_PX = 48;
 
-const textSizeOffsets: Record<SiteContentTextSize, number> = {
-  smaller: -1,
-  default: 0,
-  larger: 1,
-  largest: 2,
-};
+/**
+ * Size the profile record rows ship at - label, value, "—" and "Not given" all
+ * share it. Declared here rather than in the theme file because both the
+ * rendering tokens and the Admin control have to agree on one number.
+ */
+export const TUTOR_PROFILE_RECORD_ROW_PX = 12;
 
-/** The Tailwind type ramp the offsets walk along. */
+/** The Tailwind type ramp slots anchor to, and what each rung measures. */
 const textScale = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl", "text-3xl"] as const;
+
+/**
+ * Pixel value of each rung, used to show an Admin the size a slot ships at
+ * before they change it. Tailwind's default scale against a 16px root, which
+ * this project does not override.
+ */
+const textScalePx: Record<(typeof textScale)[number], number> = {
+  "text-xs": 12,
+  "text-sm": 14,
+  "text-base": 16,
+  "text-lg": 18,
+  "text-xl": 20,
+  "text-2xl": 24,
+  "text-3xl": 30,
+};
 
 export const siteContentSpacings = ["compact", "default", "roomy"] as const;
 export type SiteContentSpacing = (typeof siteContentSpacings)[number];
@@ -59,9 +77,9 @@ export type SiteContentSlot = {
    */
   kind?: "text" | "phone";
   /**
-   * The rung on the type ramp a size step counts from. Only used to compute an
-   * override; when the admin leaves the size alone the call site's own class is
-   * kept, so this need not match that class exactly.
+   * The rung on the type ramp this slot ships at. Only used to show the Admin
+   * the starting size; when they leave the size alone the call site's own class
+   * is kept, so this need not match that class exactly.
    */
   defaultTextClass: (typeof textScale)[number];
 };
@@ -69,7 +87,7 @@ export type SiteContentSlot = {
 export type SiteContentOverride = {
   slotId: string;
   text?: string | null;
-  textSize?: SiteContentTextSize | null;
+  textSizePx?: number | null;
 };
 
 export type SiteContentSpacingSlot = {
@@ -78,6 +96,25 @@ export type SiteContentSpacingSlot = {
   surface: string;
   group: string;
   label: string;
+};
+
+/**
+ * A slot that carries only a size, with no copy of its own.
+ *
+ * Record rows are built from tutor data rather than from fixed copy, so there
+ * is no text to edit - but their size still needs to be adjustable without a
+ * deploy. Parallel to the spacing-only slots above.
+ */
+export type SiteContentSizeSlot = {
+  id: string;
+  page: SiteContentPageId;
+  surface: string;
+  group: string;
+  label: string;
+  /** What the size is in code, and what Reset returns to. */
+  defaultPx: number;
+  /** Shown under the control so the Admin knows what it moves. */
+  help: string;
 };
 
 /** Site-wide values, shown on public pages as well as the dashboards. */
@@ -157,6 +194,18 @@ const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
   { id: "tutor-profile.spacing.section-card", page: "tutor-profile", surface: "Tutor dashboard", group: "Spacing", label: "Section card padding" },
 ];
 
+const siteContentSizeSlots: SiteContentSizeSlot[] = [
+  {
+    id: "tutor-profile.size.record-row",
+    page: "tutor-profile",
+    surface: "Tutor dashboard",
+    group: "Text size",
+    label: "Profile record rows",
+    defaultPx: TUTOR_PROFILE_RECORD_ROW_PX,
+    help: "Field names and their values on every profile tab, including “Not given”.",
+  },
+];
+
 export function getSiteContentSlots(page: SiteContentPageId): SiteContentSlot[] {
   return siteContentSlots.filter(slot => slot.page === page);
 }
@@ -165,11 +214,16 @@ export function getSiteContentSpacingSlots(page: SiteContentPageId): SiteContent
   return siteContentSpacingSlots.filter(slot => slot.page === page);
 }
 
+export function getSiteContentSizeSlots(page: SiteContentPageId): SiteContentSizeSlot[] {
+  return siteContentSizeSlots.filter(slot => slot.page === page);
+}
+
 /** Surfaces in declaration order, so the editor mirrors the registry. */
 export function getSiteContentSurfaces(page: SiteContentPageId): string[] {
   const surfaces = [
     ...getSiteContentSlots(page).map(slot => slot.surface),
     ...getSiteContentSpacingSlots(page).map(slot => slot.surface),
+    ...getSiteContentSizeSlots(page).map(slot => slot.surface),
   ];
   return surfaces.filter((surface, index) => surfaces.indexOf(surface) === index);
 }
@@ -182,23 +236,36 @@ export function findSiteContentSpacingSlot(slotId: string): SiteContentSpacingSl
   return siteContentSpacingSlots.find(slot => slot.id === slotId);
 }
 
+export function findSiteContentSizeSlot(slotId: string): SiteContentSizeSlot | undefined {
+  return siteContentSizeSlots.find(slot => slot.id === slotId);
+}
+
 /** Longest text an override may carry; headings are short by design. */
 export const MAX_SITE_CONTENT_TEXT_LENGTH = 240;
 
+/** The size a slot ships at, shown as the starting point in the admin editor. */
+export function siteContentSlotDefaultPx(slot: SiteContentSlot): number {
+  return textScalePx[slot.defaultTextClass];
+}
+
+/** Keeps a stored or typed size inside the supported range. */
+export function clampSiteContentTextPx(px: number): number {
+  return Math.min(MAX_SITE_CONTENT_TEXT_PX, Math.max(MIN_SITE_CONTENT_TEXT_PX, Math.round(px)));
+}
+
 /**
- * Walks the type ramp from the slot's anchor by the chosen step, clamped so an
- * override can never fall off either end of the scale.
+ * The inline style that applies an overridden size, or `undefined` when there
+ * is no override.
  *
- * Returns an empty string for the default, so a slot the admin has not touched
- * keeps whatever size class the call site already used - including one-off
- * values like `text-[13px]` that are not on the ramp.
+ * Returning nothing for the untouched case is what keeps the site byte-identical
+ * to what ships: no inline style means the call site's own class still decides,
+ * including one-off values like `text-[13px]` that are not on the ramp. A
+ * Tailwind class cannot be used here because arbitrary values are generated at
+ * build time, and this number only exists at runtime.
  */
-export function resolveSiteContentTextClass(slot: SiteContentSlot, size: SiteContentTextSize | null | undefined): string {
-  if (!size || size === "default") return "";
-  const base = textScale.indexOf(slot.defaultTextClass);
-  if (base < 0) return "";
-  const next = Math.min(textScale.length - 1, Math.max(0, base + textSizeOffsets[size]));
-  return textScale[next];
+export function resolveSiteContentTextStyle(px: number | null | undefined): { fontSize: string } | undefined {
+  if (px == null) return undefined;
+  return { fontSize: `${clampSiteContentTextPx(px)}px` };
 }
 
 export function resolveSiteContentSpacingClass(spacing: SiteContentSpacing | null | undefined): string {

@@ -4052,7 +4052,7 @@ export async function listSiteContentOverrides(page: string) {
     .select({
       slotId: siteContentOverrides.slotId,
       text: siteContentOverrides.text,
-      textSize: siteContentOverrides.textSize,
+      textSizePx: siteContentOverrides.textSizePx,
       spacing: siteContentOverrides.spacing,
     })
     .from(siteContentOverrides)
@@ -4063,7 +4063,7 @@ export async function saveSiteContentOverride(input: {
   slotId: string;
   page: string;
   text: string | null;
-  textSize: string | null;
+  textSizePx: number | null;
   spacing: string | null;
   updatedByUserId: number;
 }) {
@@ -4074,7 +4074,7 @@ export async function saveSiteContentOverride(input: {
     set: {
       page: values.page,
       text: values.text,
-      textSize: values.textSize,
+      textSizePx: values.textSizePx,
       spacing: values.spacing,
       updatedByUserId: values.updatedByUserId,
     },

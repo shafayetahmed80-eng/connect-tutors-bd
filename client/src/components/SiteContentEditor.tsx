@@ -1,24 +1,19 @@
 import { trpc } from "@/lib/trpc";
 import {
   MAX_SITE_CONTENT_TEXT_LENGTH,
+  MAX_SITE_CONTENT_TEXT_PX,
+  MIN_SITE_CONTENT_TEXT_PX,
+  getSiteContentSizeSlots,
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
+  siteContentSlotDefaultPx,
   siteContentSpacings,
-  siteContentTextSizes,
   type SiteContentPageId,
   type SiteContentSpacing,
-  type SiteContentTextSize,
 } from "@shared/site-content";
 import { Loader2, RotateCcw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
-const sizeLabels: Record<SiteContentTextSize, string> = {
-  smaller: "S−",
-  default: "Default",
-  larger: "L+",
-  largest: "XL+",
-};
 
 const spacingLabels: Record<SiteContentSpacing, string> = {
   compact: "Compact",
@@ -35,8 +30,22 @@ const inputClass = "h-8 w-full min-w-0 rounded-md border border-slate-200 bg-whi
 const rowClass = "grid grid-cols-[minmax(0,1fr)_5.5rem_1.75rem] items-center gap-2 py-1 sm:grid-cols-[minmax(6rem,10rem)_minmax(0,1fr)_5.5rem_1.75rem]";
 const rowLabelClass = "col-span-3 truncate text-[13px] font-medium text-slate-700 sm:col-span-1";
 
-type Draft = { text: string; textSize: SiteContentTextSize; spacing: SiteContentSpacing };
-type Stored = { text: string | null; textSize: string | null; spacing: string | null };
+/** `textPx` is the number in the box, kept as a string so it can be emptied. */
+type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
+type Stored = { text: string | null; textSizePx: number | null; spacing: string | null };
+
+const sizeInputClass = "h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-[13px] tabular-nums text-slate-800 outline-none focus:border-[#116fc4] focus:ring-2 focus:ring-sky-100";
+
+/**
+ * The pixel value to store, or `null` when the box is empty, unreadable, or
+ * still on the shipped size - all three mean "no override", which keeps a row
+ * out of the table rather than storing a value that changes nothing.
+ */
+function overriddenPx(typed: string, shippedPx: number): number | null {
+  const parsed = Number.parseInt(typed.trim(), 10);
+  if (!Number.isFinite(parsed) || parsed === shippedPx) return null;
+  return Math.min(MAX_SITE_CONTENT_TEXT_PX, Math.max(MIN_SITE_CONTENT_TEXT_PX, parsed));
+}
 
 /**
  * Dense list of a page's editable copy, grouped by the surface it appears on.
@@ -50,6 +59,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   const overrides = trpc.siteContent.list.useQuery({ page });
   const textSlots = useMemo(() => getSiteContentSlots(page), [page]);
   const spacingSlots = useMemo(() => getSiteContentSpacingSlots(page), [page]);
+  const sizeSlots = useMemo(() => getSiteContentSizeSlots(page), [page]);
   const surfaces = useMemo(() => getSiteContentSurfaces(page), [page]);
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -63,23 +73,33 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     return map;
   }, [overrides.data]);
 
-  /** What a slot's draft looks like when it matches what is saved. */
+  /**
+   * What a slot's draft looks like when it matches what is saved.
+   *
+   * An untouched size shows the number the slot ships at rather than a blank
+   * box, so the Admin can see where they are starting from - but it still saves
+   * as "no override" while it equals that number.
+   */
   const savedDraft = useMemo(() => {
     const map = new Map<string, Draft>();
     for (const slot of textSlots) {
       const row = stored.get(slot.id);
       map.set(slot.id, {
         text: row?.text ?? slot.defaultText,
-        textSize: (row?.textSize as SiteContentTextSize | null) ?? "default",
+        textPx: String(row?.textSizePx ?? siteContentSlotDefaultPx(slot)),
         spacing: "default",
       });
     }
     for (const slot of spacingSlots) {
       const row = stored.get(slot.id);
-      map.set(slot.id, { text: "", textSize: "default", spacing: (row?.spacing as SiteContentSpacing | null) ?? "default" });
+      map.set(slot.id, { text: "", textPx: "", spacing: (row?.spacing as SiteContentSpacing | null) ?? "default" });
+    }
+    for (const slot of sizeSlots) {
+      const row = stored.get(slot.id);
+      map.set(slot.id, { text: "", textPx: String(row?.textSizePx ?? slot.defaultPx), spacing: "default" });
     }
     return map;
-  }, [stored, textSlots, spacingSlots]);
+  }, [stored, textSlots, spacingSlots, sizeSlots]);
 
   // Re-seed whenever the saved overrides change, so a save or reset is
   // reflected. Keyed on contents rather than array identity: seeding on
@@ -94,9 +114,9 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     const draft = drafts[slotId];
     const saved = savedDraft.get(slotId);
     if (!draft || !saved) return false;
-    return draft.text.trim() !== saved.text.trim() || draft.textSize !== saved.textSize || draft.spacing !== saved.spacing;
+    return draft.text.trim() !== saved.text.trim() || draft.textPx.trim() !== saved.textPx.trim() || draft.spacing !== saved.spacing;
   };
-  const dirtyIds = [...textSlots, ...spacingSlots].map(slot => slot.id).filter(isDirty);
+  const dirtyIds = [...textSlots, ...spacingSlots, ...sizeSlots].map(slot => slot.id).filter(isDirty);
 
   const update = (slotId: string, change: Partial<Draft>) =>
     setDrafts(current => ({ ...current, [slotId]: { ...current[slotId], ...change } }));
@@ -111,14 +131,17 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       for (const slotId of dirtyIds) {
         const draft = drafts[slotId];
         const slot = textSlots.find(candidate => candidate.id === slotId);
+        const sizeSlot = sizeSlots.find(candidate => candidate.id === slotId);
         if (slot) {
           const trimmed = draft.text.trim();
-          // Matching the shipped copy at the default size means "no override".
+          // Matching the shipped copy at the shipped size means "no override".
           await save.mutateAsync({
             slotId,
             text: trimmed === slot.defaultText ? null : trimmed,
-            textSize: draft.textSize === "default" ? null : draft.textSize,
+            textSizePx: overriddenPx(draft.textPx, siteContentSlotDefaultPx(slot)),
           });
+        } else if (sizeSlot) {
+          await save.mutateAsync({ slotId, textSizePx: overriddenPx(draft.textPx, sizeSlot.defaultPx) });
         } else {
           await save.mutateAsync({ slotId, spacing: draft.spacing === "default" ? null : draft.spacing });
         }
@@ -172,10 +195,11 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     {surfaces.map(surface => {
       const surfaceTextSlots = textSlots.filter(slot => slot.surface === surface && matches(slot.label, drafts[slot.id]?.text ?? slot.defaultText));
       const surfaceSpacingSlots = spacingSlots.filter(slot => slot.surface === surface && matches(slot.label, ""));
-      if (surfaceTextSlots.length === 0 && surfaceSpacingSlots.length === 0) return null;
+      const surfaceSizeSlots = sizeSlots.filter(slot => slot.surface === surface && matches(slot.label, slot.help));
+      if (surfaceTextSlots.length === 0 && surfaceSpacingSlots.length === 0 && surfaceSizeSlots.length === 0) return null;
 
       const groups = surfaceTextSlots.map(slot => slot.group).filter((group, index, all) => all.indexOf(group) === index);
-      const overriddenHere = [...surfaceTextSlots, ...surfaceSpacingSlots].filter(slot => stored.has(slot.id)).length;
+      const overriddenHere = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].filter(slot => stored.has(slot.id)).length;
 
       return <section key={surface} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5">
@@ -198,19 +222,45 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               className={inputClass}
             />
             {/* A phone number is a value other code builds links from, not
-                display copy, so a size step on it would mean nothing. */}
-            {slot.kind === "phone" ? <span /> : <select
-              aria-label={`${surface} ${slot.label} text size`}
-              value={drafts[slot.id]?.textSize ?? "default"}
-              onChange={event => update(slot.id, { textSize: event.target.value as SiteContentTextSize })}
-              className={inputClass}
-            >
-              {siteContentTextSizes.map(size => <option key={size} value={size}>{sizeLabels[size]}</option>)}
-            </select>}
+                display copy, so a size on it would mean nothing. */}
+            {slot.kind === "phone" ? <span /> : <input
+              type="number"
+              inputMode="numeric"
+              min={MIN_SITE_CONTENT_TEXT_PX}
+              max={MAX_SITE_CONTENT_TEXT_PX}
+              aria-label={`${surface} ${slot.label} text size in pixels`}
+              value={drafts[slot.id]?.textPx ?? ""}
+              onChange={event => update(slot.id, { textPx: event.target.value })}
+              className={sizeInputClass}
+            />}
             <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-600 disabled:opacity-30">
               <RotateCcw size={13} />
             </button>
           </div>)}
+        </div>)}
+
+        {surfaceSizeSlots.map(slot => <div key={slot.id} className="mt-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Text size</p>
+          <div className={rowClass}>
+            <span className={rowLabelClass} title={slot.label}>
+              {slot.label}
+              {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+            </span>
+            <span className="hidden text-[11px] leading-4 text-slate-500 sm:block">{slot.help}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={MIN_SITE_CONTENT_TEXT_PX}
+              max={MAX_SITE_CONTENT_TEXT_PX}
+              aria-label={`${surface} ${slot.label} text size in pixels`}
+              value={drafts[slot.id]?.textPx ?? ""}
+              onChange={event => update(slot.id, { textPx: event.target.value })}
+              className={sizeInputClass}
+            />
+            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-600 disabled:opacity-30">
+              <RotateCcw size={13} />
+            </button>
+          </div>
         </div>)}
 
         {surfaceSpacingSlots.map(slot => <div key={slot.id} className="mt-2">

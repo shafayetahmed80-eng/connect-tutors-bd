@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  data: [] as Array<{ slotId: string; text: string | null; textSize: string | null; spacing: string | null }>,
+  data: [] as Array<{ slotId: string; text: string | null; textSizePx: number | null; spacing: string | null }>,
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -37,26 +37,35 @@ describe("site content rendering", () => {
     expect(slot.className).toContain("font-bold");
   });
 
-  it("shows the Admin's wording and size step once an override exists", () => {
-    state.data = [{ slotId: HEADING_SLOT, text: "Academic background", textSize: "larger", spacing: null }];
+  it("shows the Admin's wording and pixel size once an override exists", () => {
+    state.data = [{ slotId: HEADING_SLOT, text: "Academic background", textSizePx: 18, spacing: null }];
     renderSlot();
 
     const slot = screen.getByText("Academic background");
     expect(screen.queryByText("Education")).toBeNull();
-    // text-sm stepped one rung up the ramp.
-    expect(slot.className).toContain("text-base");
+    // Inline, so it beats the size class the call site already applied.
+    expect(slot.style.fontSize).toBe("18px");
+    // The rest of the call site's styling survives.
     expect(slot.className).toContain("font-bold");
   });
 
+  it("leaves the shipped size alone when only the wording is overridden", () => {
+    state.data = [{ slotId: HEADING_SLOT, text: "Academic background", textSizePx: null, spacing: null }];
+    renderSlot();
+
+    // No inline size at all, so one-off classes like text-[13px] still win.
+    expect(screen.getByText("Academic background").style.fontSize).toBe("");
+  });
+
   it("keeps the shipped copy when an override is blank, so a page is never left empty", () => {
-    state.data = [{ slotId: HEADING_SLOT, text: "   ", textSize: null, spacing: null }];
+    state.data = [{ slotId: HEADING_SLOT, text: "   ", textSizePx: null, spacing: null }];
     renderSlot();
 
     expect(screen.getByText("Education")).toBeTruthy();
   });
 
   it("ignores an override for a slot the registry no longer declares", () => {
-    state.data = [{ slotId: "tutor-profile.removed-slot", text: "Ghost", textSize: null, spacing: null }];
+    state.data = [{ slotId: "tutor-profile.removed-slot", text: "Ghost", textSizePx: null, spacing: null }];
     renderSlot();
 
     expect(screen.queryByText("Ghost")).toBeNull();
@@ -68,7 +77,7 @@ describe("site content rendering", () => {
     const defaultPadding = screen.getByTestId("spacing").textContent;
     cleanup();
 
-    state.data = [{ slotId: "tutor-profile.spacing.section-card", text: null, textSize: null, spacing: "roomy" }];
+    state.data = [{ slotId: "tutor-profile.spacing.section-card", text: null, textSizePx: null, spacing: "roomy" }];
     renderSlot(<Spacing />);
 
     expect(screen.getByTestId("spacing").textContent).not.toBe(defaultPadding);
@@ -89,7 +98,7 @@ describe("site-wide contact slot", () => {
   });
 
   it("uses the Admin's number, normalized, across every link built from it", () => {
-    state.data = [{ slotId: "site.contact.whatsapp", text: "+880 1712 345678", textSize: null, spacing: null }];
+    state.data = [{ slotId: "site.contact.whatsapp", text: "+880 1712 345678", textSizePx: null, spacing: null }];
     render(<SiteContentProvider page="site"><Contact /></SiteContentProvider>);
 
     expect(screen.getByTestId("wa").getAttribute("href")).toBe("https://wa.me/8801712345678?text=Help%20me");
@@ -98,7 +107,7 @@ describe("site-wide contact slot", () => {
   it("keeps site slots readable inside a page that adds its own provider", () => {
     // The header and footer sit on pages with their own provider; a provider
     // that replaced its parent would blank the support number there.
-    state.data = [{ slotId: "site.contact.whatsapp", text: "8801712345678", textSize: null, spacing: null }];
+    state.data = [{ slotId: "site.contact.whatsapp", text: "8801712345678", textSizePx: null, spacing: null }];
     render(
       <SiteContentProvider page="site">
         <SiteContentProvider page="tutor-profile"><Contact /></SiteContentProvider>

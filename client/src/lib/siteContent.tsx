@@ -7,14 +7,13 @@ import {
   telHref,
   whatsappHref,
   resolveSiteContentSpacingClass,
-  resolveSiteContentTextClass,
+  resolveSiteContentTextStyle,
   type SiteContentPageId,
   type SiteContentSpacing,
-  type SiteContentTextSize,
 } from "@shared/site-content";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-type ResolvedOverride = { text: string | null; textSize: string | null; spacing: string | null };
+type ResolvedOverride = { text: string | null; textSizePx: number | null; spacing: string | null };
 type SiteContentValue = { overrides: Map<string, ResolvedOverride> };
 
 const SiteContentContext = createContext<SiteContentValue>({ overrides: new Map() });
@@ -37,7 +36,7 @@ export function SiteContentProvider({ page, children }: { page: SiteContentPageI
   const value = useMemo<SiteContentValue>(() => {
     const overrides = new Map(parent.overrides);
     for (const row of query.data ?? []) {
-      overrides.set(row.slotId, { text: row.text ?? null, textSize: row.textSize ?? null, spacing: row.spacing ?? null });
+      overrides.set(row.slotId, { text: row.text ?? null, textSizePx: row.textSizePx ?? null, spacing: row.spacing ?? null });
     }
     return { overrides };
   }, [query.data, parent]);
@@ -56,12 +55,15 @@ export function useSiteContentText(slotId: string, fallback?: string) {
   return override?.text?.trim() || slot?.defaultText || fallback || "";
 }
 
-/** The size class for a slot, walked from its default by the admin's step. */
-export function useSiteContentTextClass(slotId: string, fallback: string) {
+/**
+ * The inline size an admin set for a slot, or `undefined` when untouched.
+ *
+ * Works for both kinds of slot: a copy slot's own size, and a size-only slot
+ * such as the profile record rows, which have no editable text.
+ */
+export function useSiteContentTextStyle(slotId: string) {
   const override = useOverride(slotId);
-  const slot = findSiteContentSlot(slotId);
-  if (!slot) return fallback;
-  return resolveSiteContentTextClass(slot, override?.textSize as SiteContentTextSize | null);
+  return resolveSiteContentTextStyle(override?.textSizePx);
 }
 
 export function useSiteContentSpacingClass(slotId: string) {
@@ -74,13 +76,14 @@ export function useSiteContentSpacingClass(slotId: string) {
  * be used inside a `.map()` where a hook call would break the rules of hooks.
  *
  * `className` carries the styling the call site already applied (colour,
- * weight); the resolved size class is merged on top so an admin's size step
- * wins over the default without losing the rest of the design.
+ * weight, and the size it ships at); an admin's pixel size is applied as an
+ * inline style on top, which wins over the class without disturbing the rest
+ * of the design. No override means no style attribute at all.
  */
 export function SiteText({ slotId, fallback, className }: { slotId: string; fallback?: string; className?: string }) {
   const text = useSiteContentText(slotId, fallback);
-  const sizeClass = useSiteContentTextClass(slotId, "");
-  return <span className={cn(className, sizeClass)}>{text}</span>;
+  const style = useSiteContentTextStyle(slotId);
+  return <span className={className} style={style}>{text}</span>;
 }
 
 const blockToneClasses: Record<string, string> = {
