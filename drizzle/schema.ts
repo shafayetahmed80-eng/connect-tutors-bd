@@ -804,7 +804,8 @@ export const siteContentOverrides = mysqlTable(
     slotId: varchar("slotId", { length: 120 }).primaryKey(),
     page: varchar("page", { length: 60 }).notNull(),
     text: varchar("text", { length: 240 }),
-    textSize: varchar("textSize", { length: 20 }),
+    /** Absolute font size in pixels; null means the slot renders as shipped. */
+    textSizePx: int("textSizePx"),
     spacing: varchar("spacing", { length: 20 }),
     updatedByUserId: int("updatedByUserId").references(() => users.id),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

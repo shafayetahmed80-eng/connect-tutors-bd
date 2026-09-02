@@ -1,0 +1,1 @@
+ALTER TABLE `site_content_overrides` DROP COLUMN `textSize`;

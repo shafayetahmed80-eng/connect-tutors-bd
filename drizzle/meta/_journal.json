@@ -337,6 +337,20 @@
       "when": 1788288952297,
       "tag": "0047_catalog_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1788325017968,
+      "tag": "0048_site_content_text_px",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1788325033362,
+      "tag": "0049_drop_site_content_text_step",
+      "breakpoints": true
     }
   ]
 }

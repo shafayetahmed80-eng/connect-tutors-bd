@@ -9,7 +9,7 @@ function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; lab
     <Icon size={15} className="mt-0.5 shrink-0 text-[#8fa6b6]" aria-hidden={true} />
     <span className="min-w-0">
       <span className="block text-[11px] text-[#8496a6]">{label}</span>
-      <span className={`block break-words text-[13px] ${value ? "font-medium text-j-ink" : tp.rowValueMissing}`}>{value || "Not given"}</span>
+      <span className={`block break-words text-[13px] ${value ? "font-medium text-j-ink" : tp.rowValueMissingTone}`}>{value || "Not given"}</span>
     </span>
   </div>;
 }

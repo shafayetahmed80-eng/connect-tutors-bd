@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSiteContentSlots, getSiteContentSpacingSlots } from "@shared/site-content";
+import { getSiteContentSizeSlots, getSiteContentSlots, getSiteContentSpacingSlots } from "@shared/site-content";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentSlotPage,
@@ -8,10 +8,11 @@ import {
 
 const textSlotId = getSiteContentSlots("tutor-profile")[0]!.id;
 const spacingSlotId = getSiteContentSpacingSlots("tutor-profile")[0]!.id;
+const sizeSlotId = getSiteContentSizeSlots("tutor-profile")[0]!.id;
 
 describe("site content override input", () => {
   it("accepts a text and size change for a declared text slot", () => {
-    const result = siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, text: "  Renamed  ", textSize: "larger" });
+    const result = siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, text: "  Renamed  ", textSizePx: 18 });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.text).toBe("Renamed");
@@ -26,15 +27,27 @@ describe("site content override input", () => {
 
   it("keeps text and spacing on their own slot kinds rather than storing a value nothing reads", () => {
     expect(siteContentOverrideInputSchema.safeParse({ slotId: spacingSlotId, text: "Nope" }).success).toBe(false);
-    expect(siteContentOverrideInputSchema.safeParse({ slotId: spacingSlotId, textSize: "larger" }).success).toBe(false);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: spacingSlotId, textSizePx: 18 }).success).toBe(false);
     expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, spacing: "roomy" }).success).toBe(false);
 
     expect(siteContentOverrideInputSchema.safeParse({ slotId: spacingSlotId, spacing: "compact" }).success).toBe(true);
   });
 
-  it("rejects an unknown size or spacing value", () => {
-    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSize: "enormous" }).success).toBe(false);
+  it("rejects a size outside the supported range, or an unknown spacing", () => {
+    // The bounds are the only guard now that the size is a free number.
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSizePx: 9 }).success).toBe(false);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSizePx: 49 }).success).toBe(false);
+    // A fraction would render, but nothing offers one and it hides typos.
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSizePx: 13.5 }).success).toBe(false);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSizePx: 10 }).success).toBe(true);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlotId, textSizePx: 48 }).success).toBe(true);
     expect(siteContentOverrideInputSchema.safeParse({ slotId: spacingSlotId, spacing: "airy" }).success).toBe(false);
+  });
+
+  it("accepts a size for a size-only slot but refuses text or spacing on it", () => {
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: sizeSlotId, textSizePx: 14 }).success).toBe(true);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: sizeSlotId, text: "Nope" }).success).toBe(false);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: sizeSlotId, spacing: "roomy" }).success).toBe(false);
   });
 
   it("caps override text so a heading cannot be turned into a wall of copy", () => {
@@ -45,16 +58,17 @@ describe("site content override input", () => {
   it("reads a slot's page from the registry rather than trusting the caller", () => {
     expect(resolveSiteContentSlotPage(textSlotId)).toBe("tutor-profile");
     expect(resolveSiteContentSlotPage(spacingSlotId)).toBe("tutor-profile");
+    expect(resolveSiteContentSlotPage(sizeSlotId)).toBe("tutor-profile");
     expect(resolveSiteContentSlotPage("nope")).toBeUndefined();
   });
 
   it("treats an override with nothing in it as a reset, so 'no row' always means default", () => {
     expect(isEmptySiteContentOverride({ slotId: textSlotId })).toBe(true);
     expect(isEmptySiteContentOverride({ slotId: textSlotId, text: "   " })).toBe(true);
-    expect(isEmptySiteContentOverride({ slotId: textSlotId, text: null, textSize: null })).toBe(true);
+    expect(isEmptySiteContentOverride({ slotId: textSlotId, text: null, textSizePx: null })).toBe(true);
 
     expect(isEmptySiteContentOverride({ slotId: textSlotId, text: "Renamed" })).toBe(false);
-    expect(isEmptySiteContentOverride({ slotId: textSlotId, textSize: "larger" })).toBe(false);
+    expect(isEmptySiteContentOverride({ slotId: textSlotId, textSizePx: 18 })).toBe(false);
     expect(isEmptySiteContentOverride({ slotId: spacingSlotId, spacing: "roomy" })).toBe(false);
   });
 });

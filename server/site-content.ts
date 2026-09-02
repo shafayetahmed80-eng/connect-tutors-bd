@@ -4,15 +4,17 @@ import {
   MAX_SITE_CONTENT_BLOCK_BODY,
   MAX_SITE_CONTENT_BLOCK_HEADING,
   MAX_SITE_CONTENT_TEXT_LENGTH,
+  MAX_SITE_CONTENT_TEXT_PX,
+  MIN_SITE_CONTENT_TEXT_PX,
   findSiteContentAnchor,
   isSiteContactNumber,
   normalizeSiteContactNumber,
+  findSiteContentSizeSlot,
   findSiteContentSlot,
   findSiteContentSpacingSlot,
   siteContentBlockTones,
   siteContentPageIds,
   siteContentSpacings,
-  siteContentTextSizes,
 } from "@shared/site-content";
 
 export const siteContentPageSchema = z.enum(siteContentPageIds);
@@ -25,25 +27,29 @@ export const siteContentPageSchema = z.enum(siteContentPageIds);
 export const siteContentOverrideInputSchema = z.object({
   slotId: z.string().trim().min(1).max(120),
   text: z.string().trim().max(MAX_SITE_CONTENT_TEXT_LENGTH).nullish(),
-  textSize: z.enum(siteContentTextSizes).nullish(),
+  textSizePx: z.number().int().min(MIN_SITE_CONTENT_TEXT_PX).max(MAX_SITE_CONTENT_TEXT_PX).nullish(),
   spacing: z.enum(siteContentSpacings).nullish(),
 }).superRefine((value, ctx) => {
   const textSlot = findSiteContentSlot(value.slotId);
   const spacingSlot = findSiteContentSpacingSlot(value.slotId);
+  const sizeSlot = findSiteContentSizeSlot(value.slotId);
 
   if (textSlot?.kind === "phone" && value.text != null && value.text.trim() !== "" && !isSiteContactNumber(normalizeSiteContactNumber(value.text))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "Enter a Bangladesh mobile number, for example 8801516131411." });
   }
 
-  if (!textSlot && !spacingSlot) {
+  if (!textSlot && !spacingSlot && !sizeSlot) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "Unknown content slot." });
     return;
   }
 
   // Reject a payload aimed at the wrong kind of slot rather than silently
   // storing a value nothing will ever read.
-  if (spacingSlot && (value.text !== undefined || value.textSize !== undefined)) {
+  if (spacingSlot && (value.text !== undefined || value.textSizePx !== undefined)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a spacing value." });
+  }
+  if (sizeSlot && (value.text !== undefined || value.spacing !== undefined)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a text size." });
   }
   if (textSlot && value.spacing !== undefined) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot does not accept a spacing value." });
@@ -54,7 +60,7 @@ export type SiteContentOverrideInput = z.infer<typeof siteContentOverrideInputSc
 
 /** The page a slot belongs to, taken from the registry rather than the caller. */
 export function resolveSiteContentSlotPage(slotId: string) {
-  return (findSiteContentSlot(slotId) ?? findSiteContentSpacingSlot(slotId))?.page;
+  return (findSiteContentSlot(slotId) ?? findSiteContentSpacingSlot(slotId) ?? findSiteContentSizeSlot(slotId))?.page;
 }
 
 /**
@@ -63,7 +69,7 @@ export function resolveSiteContentSlotPage(slotId: string) {
  */
 export function isEmptySiteContentOverride(input: SiteContentOverrideInput) {
   const text = input.text?.trim();
-  return !text && !input.textSize && !input.spacing;
+  return !text && input.textSizePx == null && !input.spacing;
 }
 
 /**

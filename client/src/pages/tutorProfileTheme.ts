@@ -25,12 +25,18 @@ export const tutorProfileTheme = {
   eyebrow: "text-[11px] font-bold uppercase tracking-[0.14em] text-[#8496a6]",
 
   /** Read-out row label / value. */
-  rowLabel: "text-[13px] text-[#6b8497]",
-  rowValue: "text-sm font-medium text-[#243b52]",
+  rowLabel: "text-[12px] text-[#6b8497]",
+  rowValue: "text-[12px] font-medium text-[#243b52]",
   /** Value shown for an empty optional field ("—"). */
-  rowValueMuted: "text-sm text-[#9aabbb]",
+  rowValueMuted: "text-[12px] text-[#9aabbb]",
   /** Value shown for an empty required field. */
-  rowValueMissing: "text-sm font-medium text-j-err",
+  rowValueMissing: "text-[12px] font-medium text-j-err",
+  /**
+   * The same "missing" treatment without a size, for call sites that set their
+   * own. Combining `rowValueMissing` with another `text-*` class leaves two
+   * font sizes on one element and no reliable winner.
+   */
+  rowValueMissingTone: "font-medium text-j-err",
 
   /** Pill / chip base (add tone classes per use). */
   pill: "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
