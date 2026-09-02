@@ -51,6 +51,24 @@ export const locationTypeLabels: Record<LocationType, string> = {
   area: "Area",
 };
 
+/**
+ * "a Thana", "an Area". Only ever applied to the type labels above, so the
+ * crude vowel test is enough - there is no "an hour" or "a university" here.
+ */
+export function withArticle(type: LocationType): string {
+  const label = locationTypeLabels[type];
+  return `${/^[AEIOU]/.test(label) ? "an" : "a"} ${label}`;
+}
+
+/**
+ * The one sentence that explains a rejected placement, built here so the form,
+ * the move banner and the server all say exactly the same thing.
+ */
+export function cannotSitInsideMessage(childType: LocationType, parentType: LocationType): string {
+  const opening = withArticle(childType);
+  return `${opening[0].toUpperCase()}${opening.slice(1)} cannot sit inside ${withArticle(parentType)}.`;
+}
+
 /** The types that may be added beneath a parent of this type. */
 export function childTypesFor(parentType: LocationType): LocationType[] {
   return locationTypes.filter(type => locationTypeRank[type] > locationTypeRank[parentType]);

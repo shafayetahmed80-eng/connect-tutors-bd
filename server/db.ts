@@ -4760,6 +4760,87 @@ export async function updateLocation(id: string, input: { label: string; active:
  * it. Children are checked as well as usages: deleting a city would otherwise
  * strand its areas somewhere no breadcrumb reaches.
  */
+/**
+ * Moves a place under a different parent.
+ *
+ * Without this the only way to correct a place added in the wrong spot was to
+ * delete it and add it again - and a place anyone has already chosen cannot be
+ * deleted, so the mistake stayed. Moving keeps the id, which is what Guardian
+ * profiles and published jobs actually store, so nothing they point at breaks.
+ *
+ * Four things can make a move wrong, and all four are checked here rather than
+ * trusted from the screen:
+ *
+ *   - the destination has to exist;
+ *   - it has to be allowed to hold this kind of place (the rank rule);
+ *   - it must not be the place itself or anything inside it, which would cut a
+ *     branch off the tree and leave it pointing at nobody;
+ *   - the destination must not already hold a place of the same type and name,
+ *     which the unique index would refuse anyway, but with a worse message.
+ */
+export async function moveLocation(id: string, newParentId: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [node] = await database
+    .select({ id: locations.id, label: locations.label, type: locations.type, parentId: locations.parentId })
+    .from(locations)
+    .where(eq(locations.id, id))
+    .limit(1);
+  if (!node) return { moved: false as const, reason: "missing" as const };
+  if (node.parentId === newParentId) return { moved: false as const, reason: "already-there" as const };
+
+  const [parent] = await database
+    .select({ id: locations.id, label: locations.label, type: locations.type, country: locations.country })
+    .from(locations)
+    .where(eq(locations.id, newParentId))
+    .limit(1);
+  if (!parent) return { moved: false as const, reason: "missing-parent" as const };
+
+  // Asked before the type check, which would otherwise answer first and answer
+  // worse: a place dropped into itself fails the rank rule too, and "an Area
+  // cannot sit inside an Area" is a confusing way to say "that is the same
+  // place". Walking up from the destination is the cheap way to ask whether the
+  // destination is inside the thing being carried; the tree is 597 rows, so it
+  // is loaded whole rather than climbed with a query per level.
+  //
+  // Note this is a belt on top of braces. The rank rule already makes a cycle
+  // impossible - a descendant always outranks its ancestor, so no descendant
+  // can ever be a legal parent - but that is a property of the rank table
+  // rather than of this function, and it should not go unguarded here if the
+  // table is ever rearranged.
+  const tree = await loadLocationTree(database);
+  if (newParentId === id || ancestorTrail(tree, newParentId).some(step => step.id === id)) {
+    return { moved: false as const, reason: "into-itself" as const, label: node.label };
+  }
+
+  if (!isValidChildType(parent.type as LocationType, node.type as LocationType)) {
+    return { moved: false as const, reason: "bad-type" as const, parentType: parent.type, nodeType: node.type };
+  }
+
+  const [clash] = await database
+    .select({ id: locations.id, label: locations.label })
+    .from(locations)
+    .where(and(
+      eq(locations.parentId, newParentId),
+      eq(locations.type, node.type),
+      eq(locations.label, node.label),
+    ))
+    .limit(1);
+  if (clash && clash.id !== id) {
+    return { moved: false as const, reason: "duplicate" as const, label: clash.label, parentLabel: parent.label };
+  }
+
+  await database
+    .update(locations)
+    // `country` follows the new parent: it is the country the place is in, not
+    // a label of its own, so leaving the old one behind would be a quiet lie.
+    .set({ parentId: parent.id, country: parent.country, origin: "admin" })
+    .where(eq(locations.id, id));
+
+  return { moved: true as const, label: node.label, parentLabel: parent.label };
+}
+
 export async function deleteLocation(id: string) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");

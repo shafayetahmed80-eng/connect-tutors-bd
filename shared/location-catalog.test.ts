@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cannotSitInsideMessage,
   childTypesFor,
   isValidChildType,
   locationSlug,
@@ -43,6 +44,14 @@ describe("location catalog rules", () => {
 
   it("ranks every type it lists, so no type can slip through unranked", () => {
     for (const type of locationTypes) expect(typeof locationTypeRank[type]).toBe("number");
+  });
+
+  it("writes the refusal as one sentence, so every screen says it the same way", () => {
+    // The article follows the word, not a fixed "a", and the sentence starts
+    // with a capital wherever it is shown.
+    expect(cannotSitInsideMessage("thana", "area")).toBe("A Thana cannot sit inside an Area.");
+    expect(cannotSitInsideMessage("area", "upazila")).toBe("An Area cannot sit inside an Upazila.");
+    expect(cannotSitInsideMessage("city", "district")).toBe("A City cannot sit inside a District.");
   });
 
   it("makes ids in the style of the stored ones", () => {

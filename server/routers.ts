@@ -17,7 +17,7 @@ import {
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
-import { LOCATION_PAGE_SIZE, locationTypeLabels, type LocationType } from "@shared/location-catalog";
+import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
 import { assertWithinLengthLimit, assertWithinLimit } from "./site-limit-guard";
 import {
@@ -1132,8 +1132,10 @@ export const appRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: `"${result.label}" is already here — check whether it is hidden.` });
         }
         if (result.reason === "bad-type") {
-          const parentLabel = locationTypeLabels[result.parentType as LocationType] ?? result.parentType;
-          throw new TRPCError({ code: "BAD_REQUEST", message: `A ${locationTypeLabels[input.type]} cannot sit inside a ${parentLabel}.` });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: cannotSitInsideMessage(input.type, result.parentType as LocationType),
+          });
         }
         throw new TRPCError({ code: "NOT_FOUND", message: "That place no longer exists." });
       }),
@@ -1144,6 +1146,28 @@ export const appRouter = router({
         if (result.renamed) return { id: input.id };
         if (result.reason === "duplicate") {
           throw new TRPCError({ code: "CONFLICT", message: `"${result.label}" already uses that name here.` });
+        }
+        throw new TRPCError({ code: "NOT_FOUND", message: "That place no longer exists." });
+      }),
+    move: ownerAdminProcedure
+      .input(z.object({ id: locationIdSchema, newParentId: locationIdSchema }))
+      .mutation(async ({ input }) => {
+        const result = await db.moveLocation(input.id, input.newParentId);
+        if (result.moved) return { id: input.id, parentLabel: result.parentLabel };
+        if (result.reason === "bad-type") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: cannotSitInsideMessage(result.nodeType as LocationType, result.parentType as LocationType),
+          });
+        }
+        if (result.reason === "into-itself") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `"${result.label}" cannot be moved inside itself.` });
+        }
+        if (result.reason === "duplicate") {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.parentLabel}" already holds a place called "${result.label}".` });
+        }
+        if (result.reason === "already-there") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That place is already here." });
         }
         throw new TRPCError({ code: "NOT_FOUND", message: "That place no longer exists." });
       }),
