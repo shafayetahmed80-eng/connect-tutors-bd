@@ -27,13 +27,26 @@ import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
+import {
+  hud,
+  hudChipClassName,
+  hudControlAccent,
+  hudErrorBorder,
+  hudErrorClassName,
+  hudFieldClassName,
+  hudHintClassName,
+  hudLabelClassName,
+  hudRequiredMark,
+  hudRowClassName,
+  hudSectionTitleClassName,
+} from "./tutorProfileHud";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-[12px] text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = hudFieldClassName;
 
 /**
  * Two columns of controls that are all one line tall.
@@ -54,9 +67,9 @@ const wideFieldClassName = "md:col-span-2";
  * a short list of named groups.
  */
 function FormSection({ title, description, children }: { title: React.ReactNode; description?: string; children: React.ReactNode }) {
-  return <section className="border-t border-[#e6eff4] pt-5 first:border-t-0 first:pt-0">
-    <h3 className="text-[13px] font-bold text-[#244a6a]">{title}</h3>
-    {description ? <p className="mt-0.5 text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
+  return <section className={`border-t ${hud.lineSoft} pt-5 first:border-t-0 first:pt-0`}>
+    <h3 className={hudSectionTitleClassName}>{title}</h3>
+    {description ? <p className="mt-0.5 text-[11px] leading-4 text-[#7f9db4]">{description}</p> : null}
     <div className="mt-4">{children}</div>
   </section>;
 }
@@ -78,13 +91,13 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
   error?: string;
 }) {
   return <div role="radiogroup" aria-label={label} className={tutorProfileResponsiveClasses.fieldRoot}>
-    <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+    <span className={hudLabelClassName}>{label}{required ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</span>
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
       {options.map(([optionValue, optionLabel]) => <label
         key={optionValue}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-[#167ddd] bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#4fd1ff]/25 ${value === optionValue ? "border-[#4fd1ff] bg-[#4fd1ff]/12 font-semibold text-[#8fdcff]" : "border-[#2f5675] text-[#cfe6f5] hover:border-[#3d6b8f]"}`}
       >
-        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />
+        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className={`h-4 w-4 ${hudControlAccent}`} />
         {optionLabel}
       </label>)}
     </div>
@@ -207,11 +220,11 @@ function CatalogSearchField({
   // A full page of results means the catalog had more to give.
   const truncated = limit !== undefined && (options?.length ?? 0) >= limit;
 
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
-    <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+  return <label className={`${hudRowClassName} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className={hudLabelClassName}>{label}{required ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</span>
     <span className="relative mt-1 block">
       <input
-        className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? "border-[#d84a4a]" : ""}`}
+        className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? hudErrorBorder : ""}`}
         type="text"
         role="combobox"
         aria-expanded={false}
@@ -231,20 +244,20 @@ function CatalogSearchField({
         type="button"
         onClick={clearSelection}
         aria-label={`Clear ${label}`}
-        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-[#6b8497] hover:bg-[#eef5fb] hover:text-[#244a6a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
+        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-[#8fb0c7] hover:bg-[#4fd1ff]/12 hover:text-[#eaf6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
       >
         <X size={14} />
       </button> : null}
     </span>
     <datalist id={listId}>{(options ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
-    {hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}
-    {truncated ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
-    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {hint ? <span className={hudHintClassName}>{hint}</span> : null}
+    {truncated ? <span className={hudHintClassName}>Showing the first {limit} matches — type more to narrow the list.</span> : null}
+    {error ? <span role="alert" className={hudErrorClassName}>{error}</span> : null}
   </label>;
 }
 
 function FormInput({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${hudRowClassName} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={hudLabelClassName}>{label}{showRequiredMarker ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? hudErrorBorder : ""}`} />{hint ? <span className={hudHintClassName}>{hint}</span> : null}{error ? <span role="alert" className={hudErrorClassName}>{error}</span> : null}</label>;
 }
 
 /** Single-select for the Education section's curated vocabularies. */
@@ -255,18 +268,18 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
   error?: string;
   showRequiredMarker?: boolean;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
-    <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
-    <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
+  return <label className={`${hudRowClassName} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className={hudLabelClassName}>{label}{showRequiredMarker ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</span>
+    <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? hudErrorBorder : ""}`}>
       <option value="">{placeholder}</option>
       {options.map(option => <option key={option} value={option}>{option}</option>)}
     </select>
-    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {error ? <span role="alert" className={hudErrorClassName}>{error}</span> : null}
   </label>;
 }
 
 function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${hudRowClassName} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={hudLabelClassName}>{label}{showRequiredMarker ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? hudErrorBorder : ""}`} />{hint ? <span className={hudHintClassName}>{hint}</span> : null}{error ? <span role="alert" className={hudErrorClassName}>{error}</span> : null}</label>;
 }
 
 /**
@@ -284,7 +297,7 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
   onSelectFile: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-j-border py-3 first:pt-0">
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#24405a] py-3 first:pt-0">
     <input
       ref={inputRef}
       id={inputId}
@@ -295,14 +308,14 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
       aria-required={required || undefined}
       onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
     />
-    <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]">
-      {required ? <LockKeyhole className="shrink-0 text-[#167ddd]" size={16} aria-hidden="true" /> : null}
+    <p className={`flex items-center gap-2 text-[13px] font-bold ${hud.text}`}>
+      {required ? <LockKeyhole className="shrink-0 text-[#5cd1ff]" size={16} aria-hidden="true" /> : null}
       {label}
-      {required ? <span aria-hidden="true" className="text-[#d84a4a]">*</span> : <span className="font-normal text-[#72889a]">(Optional)</span>}
+      {required ? <span aria-hidden="true" className={hudRequiredMark}>*</span> : <span className="font-normal text-[#7f9db4]">(Optional)</span>}
     </p>
     <div className="flex items-center gap-2">
-      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
-      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+      {uploaded ? <span className="flex items-center gap-1 text-[11px] font-bold text-[#7ee8bd]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
+      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#2f5675] bg-transparent text-[#5cd1ff] hover:border-[#4fd1ff]/60 hover:bg-[#4fd1ff]/10 hover:text-[#8fdcff]"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
     </div>
   </div>;
 }
@@ -313,7 +326,7 @@ function digitsOnly(value: string, maxLength: number) {
 }
 
 function InlineError({ message }: { message?: string }) {
-  return message ? <p role="alert" className="mt-1.5 text-xs font-medium leading-5 text-[#b43e3e]">{message}</p> : null;
+  return message ? <p role="alert" className="mt-1 text-[11px] font-medium leading-4 text-[#ff9a9a]">{message}</p> : null;
 }
 
 function TutorProfileWorkspaceBody({
@@ -843,7 +856,7 @@ function TutorProfileWorkspaceBody({
   const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5">
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
-      <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.gender}</span><select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
+      <label className={tp.fieldRow}><span className={hudLabelClassName}>{tutorProfileCopy.fields.gender}</span><select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? hudErrorBorder : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
       <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
       <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
       <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} error={fieldErrors.phone} />
@@ -871,7 +884,7 @@ function TutorProfileWorkspaceBody({
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
       <FormSelect label={tutorProfileCopy.fields.educationLevel} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />
-      <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
+      <label className={tp.fieldRow}><span className={hudLabelClassName}>{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className={hudRequiredMark}> *</span></span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? hudErrorBorder : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
       <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.universityId} />
       <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.facultyDepartmentId} />
       <FormInput label={tutorProfileCopy.fields.degreeExamTitle} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />
@@ -883,23 +896,23 @@ function TutorProfileWorkspaceBody({
         : <FormInput label={tutorProfileCopy.fields.graduationYear} showRequiredMarker inputMode="numeric" maxLength={4} value={form.graduationYear} onChange={event => update("graduationYear", digitsOnly(event.target.value, 4))} placeholder="Ex-2022" error={fieldErrors.graduationYear} />}
     </div>
     <div className="mt-6 space-y-3">
-      <h3 className="font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
+      <h3 className={`font-bold ${hud.textStrong}`}><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className={hudRequiredMark}>*</span></h3>
       {form.educationRecords.map((record, index) => {
         const isOpen = openQualificationIndices.has(index);
         const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
-        return <div key={index} className={`overflow-hidden rounded-2xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
+        return <div key={index} className={`overflow-hidden rounded-xl border bg-[#0a1a29]/50 transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#4fd1ff]/45 shadow-[0_6px_24px_-14px_rgba(79,209,255,0.55)]" : "border-j-border"}`}>
           <div className="flex items-center gap-2 p-3 sm:px-4">
             <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
-              <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-[#167ddd] text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
+              <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-gradient-to-br from-[#2bb8f0] to-[#1a8fd0] text-[#04101c]" : "bg-[#4fd1ff]/12 text-[#8fdcff]"}`}>{index + 1}</span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-bold ${tp.heading}`}>{record.qualificationLevel || `Qualification ${index + 1}`}</span>
-                {!isOpen && summary ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{summary}</span> : null}
+                <span className={`block text-[13px] font-bold ${hud.textStrong}`}>{record.qualificationLevel || `Qualification ${index + 1}`}</span>
+                {!isOpen && summary ? <span className="mt-0.5 block truncate text-[11px] text-[#8fb0c7]">{summary}</span> : null}
               </span>
-              <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
+              <ChevronDown size={16} className={`shrink-0 text-[#8fb0c7] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
             </button>
-            {form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button> : null}
+            {form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#ff9a9a] hover:bg-[#ff6b6b]/12 hover:text-[#ffbdbd]"><Trash2 size={15} /> Remove</Button> : null}
           </div>
-          {isOpen ? <div className="border-t border-j-border bg-[#fbfdfe] p-4">
+          {isOpen ? <div className={`border-t ${hud.lineSoft} bg-[#0a1a29]/40 p-4`}>
             <div className="grid gap-5 md:grid-cols-2">
               <FormSelect label={tutorProfileCopy.fields.educationLevel} showRequiredMarker options={qualificationEducationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />
               <FormInput label="Institute Name" required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- Dhaka College" />
@@ -909,13 +922,13 @@ function TutorProfileWorkspaceBody({
               <FormInput label={`${tutorProfileCopy.fields.resultGpa} (Optional)`} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />
               <FormInput label="Study Start Year" required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />
               {record.currentlyStudying ? null : <FormInput label="Study End Year" required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />}
-              <label className="flex items-center gap-2 self-end rounded-lg border border-[#dce8f0] px-3 py-2 text-sm font-medium text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>
+              <label className="flex items-center gap-2 self-end rounded-lg border border-[#2f5675] px-3 py-2 text-[12px] font-medium text-[#cfe6f5]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>
               <FormInput label="Institute ID Card Number (Optional)" placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />
             </div>
           </div> : null}
         </div>;
       })}
-      <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
+      <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#2f5675] bg-transparent text-[#5cd1ff] hover:border-[#4fd1ff]/60 hover:bg-[#4fd1ff]/10 hover:text-[#8fdcff]"><Plus size={16} /> Add another qualification</Button>
     </div>
     <div className="mt-6">
       <DocumentUploadRow
@@ -988,10 +1001,10 @@ function TutorProfileWorkspaceBody({
           <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={[{ id: "monday", label: "Monday" }, { id: "tuesday", label: "Tuesday" }, { id: "wednesday", label: "Wednesday" }, { id: "thursday", label: "Thursday" }, { id: "friday", label: "Friday" }, { id: "saturday", label: "Saturday" }, { id: "sunday", label: "Sunday" }]} selectedIds={form.preferredTeachingDays} onChange={value => update("preferredTeachingDays", value)} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.timeSlots} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />
           <label
-            className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
+            className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#0a1a29]/60 p-3.5 text-[12px] text-[#cfe6f5] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#4fd1ff]/25 ${fieldErrors.availableNationwide ? hudErrorBorder : "border-[#2f5675]"}`}
           >
-            <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
-            <span><strong className="block text-[13px] font-semibold text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
+            <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className={`mt-0.5 h-4 w-4 rounded ${hudControlAccent}`} />
+            <span><strong className={`block text-[13px] font-semibold ${hud.textStrong}`}>Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={hudRequiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-[11px] leading-4 text-[#7f9db4]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
           </label>
         </div>
       </FormSection>

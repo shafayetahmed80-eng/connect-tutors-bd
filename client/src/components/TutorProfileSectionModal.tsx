@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { tutorProfileTheme as tp } from "@/pages/tutorProfileTheme";
+import { hud } from "@/pages/tutorProfileHud";
 
 type TutorProfileSectionModalProps = {
   title: string;
@@ -97,47 +97,47 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
   // The scrim settles first and the panel follows a beat later on the same
   // decelerating curve the sidebar uses, so the dialog reads as arriving rather
   // than appearing. `motion-reduce` drops both.
-  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0d2233]/55 p-4 py-8 backdrop-blur-[3px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
+  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#04101c]/75 p-4 py-8 backdrop-blur-[6px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
     <div
       ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className={`w-full max-w-[40rem] overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_-12px_rgba(9,32,54,0.45)] ring-1 ring-[#0d2233]/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 delay-75 fill-mode-backwards ${MODAL_MOTION} motion-reduce:animate-none motion-reduce:delay-0`}
+      className={`w-full max-w-[40rem] overflow-hidden rounded-2xl ${hud.panel} ${hud.edge} ${hud.bloom} animate-in fade-in zoom-in-95 slide-in-from-bottom-4 delay-75 fill-mode-backwards ${MODAL_MOTION} motion-reduce:animate-none motion-reduce:delay-0`}
       onClick={event => event.stopPropagation()}
       onKeyDown={onPanelKeyDown}
     >
       {/* Three bands - header, scrolling body, actions - with the outer two
           tinted, so where the content scrolls is obvious at a glance. */}
-      <div className="flex items-start justify-between gap-4 border-b border-[#dfeaf2] bg-gradient-to-b from-[#f7fbfe] to-[#eef6fb] px-4 py-3">
+      <div className={`flex items-start justify-between gap-4 border-b ${hud.line} ${hud.band} px-4 py-3`}>
         <div className="min-w-0">
-          <p aria-hidden="true" className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7595ad]">Edit section</p>
+          <p aria-hidden="true" className={`text-[11px] font-bold uppercase tracking-[0.14em] ${hud.accentText}`}>Edit section</p>
           {/* The eyebrow carries "Edit" visually; the heading keeps it for a
               screen reader, so the dialog is still announced as an editor. */}
           {/* The space has to sit outside the hidden span: the accessible name
               is built from trimmed text nodes, so "Edit " inside it would join
               the title with no gap. */}
-          <h2 id={titleId} className={`mt-0.5 truncate text-base ${tp.heading}`}><span className="sr-only">Edit</span>{" "}{title}</h2>
+          <h2 id={titleId} className={`mt-0.5 truncate text-base font-bold tracking-[-0.02em] ${hud.textStrong}`}><span className="sr-only">Edit</span>{" "}{title}</h2>
         </div>
         <button
           type="button"
           aria-label="Close"
           disabled={submitting}
           onClick={onClose}
-          className={`-mr-1 shrink-0 ${tp.ghostIconButton}`}
+          className="-mr-1 shrink-0 rounded-lg p-1.5 text-[#8fb0c7] transition hover:bg-[#4fd1ff]/10 hover:text-[#eaf6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4fd1ff]/40 disabled:opacity-50"
         >
           <X size={18} />
         </button>
       </div>
 
       <div ref={bodyRef} className="max-h-[72vh] overflow-y-auto px-4 py-4 sm:px-5">
-        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-j-err" : "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]"}`}>{notice.text}</p> : null}
+        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-[13px] font-medium ${notice.tone === "error" ? "border-[#e06b6b]/50 bg-[#ff6b6b]/10 text-[#ff9a9a]" : "border-[#3ddc97]/40 bg-[#3ddc97]/10 text-[#7ee8bd]"}`}>{notice.text}</p> : null}
         {children}
       </div>
 
-      <div className="flex items-center justify-end gap-3 border-t border-[#dfeaf2] bg-[#f8fbfd] px-4 py-3">
-        <Button type="button" variant="outline" disabled={submitting} onClick={onClose} className="rounded-xl">Cancel</Button>
-        <Button type="button" disabled={submitting} onClick={onSubmit} className={tp.primaryButton}>
+      <div className={`flex items-center justify-end gap-3 border-t ${hud.line} ${hud.band} px-4 py-3`}>
+        <Button type="button" variant="outline" disabled={submitting} onClick={onClose} className="rounded-xl border-[#2f5675] bg-transparent text-[#cfe6f5] hover:border-[#4fd1ff]/60 hover:bg-[#4fd1ff]/10 hover:text-[#eaf6ff]">Cancel</Button>
+        <Button type="button" disabled={submitting} onClick={onSubmit} className="gap-1.5 rounded-xl border-0 bg-gradient-to-r from-[#2bb8f0] to-[#1a8fd0] font-bold text-[#04101c] shadow-[0_0_20px_-4px_rgba(79,209,255,0.6)] transition hover:from-[#4fd1ff] hover:to-[#2bb8f0] hover:shadow-[0_0_26px_-2px_rgba(79,209,255,0.75)]">
           {submitting ? "Submitting…" : <>Submit <ArrowRight size={16} /></>}
         </Button>
       </div>
