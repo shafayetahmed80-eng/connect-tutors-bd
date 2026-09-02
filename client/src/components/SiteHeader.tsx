@@ -1,12 +1,12 @@
 import { useSiteContact } from "@/lib/siteContent";
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Menu, Phone, UserRound, X } from "lucide-react";
+import { Menu, Phone, UserRound, X } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
 
-const navItems = [
+export const navItems = [
   { label: "Job Board", href: "/job-board" },
   { label: "Blog", href: "/blogs" },
 ];
@@ -32,14 +32,21 @@ export function getJourneyNavigation(audience: JourneyAudience) {
   ] as const;
 }
 
-// A signed-in visitor goes straight to their own workspace (no `/account` stop);
-// the label stays a neutral "Account" so it never exposes the role in the header.
+/**
+ * The single sign-in entry in the navigation bar.
+ *
+ * The label never changes. Someone already signed in is taken straight to their
+ * own workspace instead, so the header never has to say "Account" and never
+ * announces which role is signed in.
+ */
+export const PUBLIC_ACCOUNT_LABEL = "Sign In";
+
 export function getPublicAccountNavigation(user: { role?: string } | null | undefined) {
-  if (!user) return { href: "/login", label: "Sign in" };
-  if (user.role === "tutor") return { href: "/tutor/dashboard/jobs", label: "Account" };
-  if (user.role === "admin") return { href: "/admin/matching", label: "Account" };
-  if (user.role === "guardian" || user.role === "user") return { href: "/guardian/dashboard/posted-jobs", label: "Account" };
-  return { href: "/account", label: "Account" };
+  if (!user) return { href: "/login", label: PUBLIC_ACCOUNT_LABEL };
+  if (user.role === "tutor") return { href: "/tutor/dashboard/jobs", label: PUBLIC_ACCOUNT_LABEL };
+  if (user.role === "admin") return { href: "/admin/matching", label: PUBLIC_ACCOUNT_LABEL };
+  if (user.role === "guardian" || user.role === "user") return { href: "/guardian/dashboard/posted-jobs", label: PUBLIC_ACCOUNT_LABEL };
+  return { href: "/account", label: PUBLIC_ACCOUNT_LABEL };
 }
 
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
@@ -64,50 +71,6 @@ export function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function AccountMenu({
-  user,
-  loading,
-  logout,
-  mobile = false,
-  publicMarketing = false,
-}: {
-  user: { role?: string } | null | undefined;
-  loading: boolean;
-  logout: () => Promise<void>;
-  mobile?: boolean;
-  publicMarketing?: boolean;
-}) {
-  if (loading) {
-    return <span className={mobile ? "mobile-account-status" : "account-status"}>Checking account…</span>;
-  }
-
-  if (publicMarketing) {
-    const navigation = getPublicAccountNavigation(user);
-    return <Link href={navigation.href} className={mobile ? "mobile-menu-link" : "header-sign-in"}><UserRound size={mobile ? 16 : 14} />{navigation.label}</Link>;
-  }
-
-  if (!user) {
-    return (
-      <Link href="/login" className={mobile ? "mobile-menu-link" : "header-sign-in"}>
-        <UserRound size={mobile ? 16 : 14} />
-        Sign In
-      </Link>
-    );
-  }
-
-  return (
-    <>
-      <Link href="/account" className={mobile ? "mobile-menu-link" : "header-account-link"}>
-        <UserRound size={mobile ? 16 : 14} />
-        {user.role === "tutor" ? "Tutor account" : user.role === "admin" ? "Admin account" : "Guardian account"}
-      </Link>
-      <button type="button" className={mobile ? "mobile-menu-link mobile-menu-button" : "account-status account-button"} onClick={() => void logout()}>
-        Log out
-      </button>
-    </>
-  );
-}
-
 export default function SiteHeader({
   variant = "default",
   journeyAudience = "guardian",
@@ -118,10 +81,11 @@ export default function SiteHeader({
   const contact = useSiteContact();
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
-  const { user, loading, logout } = useAuth();
+  const { user } = useAuth();
   const isJourneyHeader = variant === "journey";
-  const isPublicMarketingRoute = !isJourneyHeader && !location.startsWith("/admin") && !location.startsWith("/tutor/dashboard") && location !== "/account";
   const journeyNavigation = getJourneyNavigation(journeyAudience);
+  // Same label whether or not someone is signed in; only where it goes changes.
+  const accountNavigation = getPublicAccountNavigation(user);
 
   useEffect(() => setOpen(false), [location]);
 
@@ -145,13 +109,9 @@ export default function SiteHeader({
               <FaWhatsapp size={16} aria-hidden="true" />
             </a>
           </div>
-          {isJourneyHeader ? (
-            <Link href="/contact" className="journey-help-link">Need help? Contact us</Link>
-          ) : (
-            <div className="microbar-account">
-              <AccountMenu user={user} loading={loading} logout={logout} publicMarketing={isPublicMarketingRoute} />
-            </div>
-          )}
+          {/* The account entry used to sit here. It lives in the navigation bar
+              now, so this strip carries contact details and nothing else. */}
+          {isJourneyHeader ? <Link href="/contact" className="journey-help-link">Need help? Contact us</Link> : null}
         </div>
       </div>
 
@@ -167,6 +127,10 @@ export default function SiteHeader({
             ))
           ) : (
             <>
+              <Link href={accountNavigation.href} className="nav-sign-in">
+                <UserRound size={14} aria-hidden="true" />
+                {accountNavigation.label}
+              </Link>
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} className={location === item.href ? "nav-active" : ""}>
                   {item.label}
@@ -206,9 +170,8 @@ export default function SiteHeader({
                   {item.label}
                 </Link>
               ))}
-              {user?.role === "admin" && !isPublicMarketingRoute ? <Link href="/admin/matching" className="mobile-menu-link"><LayoutDashboard size={16} /> Admin Dashboard</Link> : null}
               <Link href="/become-tutor" className="mobile-menu-link mobile-tutor-link">Become a Tutor</Link>
-              <AccountMenu user={user} loading={loading} logout={logout} mobile publicMarketing={isPublicMarketingRoute} />
+              <Link href={accountNavigation.href} className="mobile-menu-link"><UserRound size={16} aria-hidden="true" /> {accountNavigation.label}</Link>
             </>
           )}
         </nav>
