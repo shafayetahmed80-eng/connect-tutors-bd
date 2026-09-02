@@ -55,7 +55,7 @@ const requestStageProps = {
   tuitionCityLabel: "Dhaka",
   tuitionLocationLabel: "Mirpur 10",
   pending: false,
-  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetBudgetKind: vi.fn(), onSetBudgetMinimum: vi.fn(), onSetBudgetMaximum: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
+  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), subjectLimit: 12, onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetBudgetKind: vi.fn(), onSetBudgetMinimum: vi.fn(), onSetBudgetMaximum: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
 };
 
 describe("Guardian private-account presentation", () => {
@@ -149,7 +149,7 @@ describe("Guardian private-account presentation", () => {
 
   it("offers a keyboard-reachable location edit action that clears only the selected area", async () => {
     const onSetTuitionLocation = vi.fn();
-    render(<RequestStage step={2} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", budgetKind: "discuss", budgetMinimum: "", budgetMaximum: "" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetBudgetKind={vi.fn()} onSetBudgetMinimum={vi.fn()} onSetBudgetMaximum={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
+    render(<RequestStage step={2} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", budgetKind: "discuss", budgetMinimum: "", budgetMaximum: "" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetBudgetKind={vi.fn()} onSetBudgetMinimum={vi.fn()} onSetBudgetMaximum={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
     const editButton = screen.getByRole("button", { name: "Change selected location" });
     expect(editButton.className).toContain("min-h-11");
@@ -264,7 +264,7 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByRole("heading", { name: "Tell us about the learning needs" })).not.toBeNull();
     expect(screen.getByRole("group", { name: "Learning details" })).not.toBeNull();
     expect(screen.getByRole("group", { name: "Subject selection" })).not.toBeNull();
-    expect(screen.getByRole("status", { name: "1 subject selected" }).textContent).toContain("1 subject selected");
+    expect(screen.getByRole("status", { name: "1 of 12 subjects selected" }).textContent).toContain("1 of 12 selected");
     expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Continue to tuition preferences" })).not.toBeNull();
   });

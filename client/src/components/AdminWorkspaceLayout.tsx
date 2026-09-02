@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, ClipboardList, ContactRound, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardList, ContactRound, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, UserRoundCog, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -26,6 +26,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: School, label: "Institutes & departments", path: "/admin/dynamic/institutes", sectionLabel: "Dynamic Section" },
   { icon: MapPin, label: "Cities & locations", path: "/admin/dynamic/locations", sectionLabel: "Dynamic Section" },
   { icon: Scale, label: "Legal pages", path: "/admin/dynamic/legal-pages", sectionLabel: "Dynamic Section" },
+  { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section" },
 ];
 
 export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNavigationItem[] {

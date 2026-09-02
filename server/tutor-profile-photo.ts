@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { clearTutorProfilePhotoKey, saveTutorProfilePhotoKey } from "./db";
+import { clearTutorProfilePhotoKey, getSiteLimits, saveTutorProfilePhotoKey } from "./db";
 import { storagePut } from "./storage";
 
 export const MAX_TUTOR_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024;
+export type PhotoDimensionBounds = { min: number; max: number };
+
 export const MIN_TUTOR_PROFILE_PHOTO_DIMENSION = 300;
 export const MAX_TUTOR_PROFILE_PHOTO_DIMENSION = 10_000;
 
@@ -87,7 +89,12 @@ function readWebpDimensions(buffer: Buffer) {
   return undefined;
 }
 
-export function validateTutorProfilePhoto(file: TutorProfilePhotoFile): ValidatedTutorProfilePhoto {
+/**
+ * @param bounds the Owner's pixel limits. Optional so the many callers that
+ * have no reason to care keep working on the shipped numbers; the upload paths
+ * pass the resolved ones.
+ */
+export function validateTutorProfilePhoto(file: TutorProfilePhotoFile, bounds: PhotoDimensionBounds = { min: MIN_TUTOR_PROFILE_PHOTO_DIMENSION, max: MAX_TUTOR_PROFILE_PHOTO_DIMENSION }): ValidatedTutorProfilePhoto {
   if (!file?.buffer || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) invalidPhoto("Upload one non-empty profile photo.");
   if (file.buffer.length > MAX_TUTOR_PROFILE_PHOTO_BYTES) invalidPhoto("Profile photos must be 5 MB or smaller.");
 
@@ -103,11 +110,11 @@ export function validateTutorProfilePhoto(file: TutorProfilePhotoFile): Validate
         : undefined;
   if (!detected?.dimensions) invalidPhoto("Profile photos must be a valid JPEG, PNG, or WebP image.");
   if (normalizeDeclaredImageMimeType(file.mimetype) !== detected.contentType) invalidPhoto("The uploaded image type does not match its binary signature.");
-  if (detected.dimensions.width < MIN_TUTOR_PROFILE_PHOTO_DIMENSION || detected.dimensions.height < MIN_TUTOR_PROFILE_PHOTO_DIMENSION) {
-    invalidPhoto("Profile photos must be at least 300 × 300 pixels.");
+  if (detected.dimensions.width < bounds.min || detected.dimensions.height < bounds.min) {
+    invalidPhoto(`Profile photos must be at least ${bounds.min} × ${bounds.min} pixels.`);
   }
-  if (detected.dimensions.width > MAX_TUTOR_PROFILE_PHOTO_DIMENSION || detected.dimensions.height > MAX_TUTOR_PROFILE_PHOTO_DIMENSION) {
-    invalidPhoto("Profile photos must not exceed 10,000 × 10,000 pixels.");
+  if (detected.dimensions.width > bounds.max || detected.dimensions.height > bounds.max) {
+    invalidPhoto(`Profile photos must not exceed ${bounds.max.toLocaleString("en-US")} × ${bounds.max.toLocaleString("en-US")} pixels.`);
   }
 
   return { contentType: detected.contentType, extension: detected.extension, ...detected.dimensions };
@@ -129,6 +136,13 @@ type PhotoRemovalDependencies = {
   clearTutorProfilePhotoKey: typeof clearTutorProfilePhotoKey;
 };
 
+
+/** The Owner's pixel bounds, read once per upload. */
+async function resolvePhotoBounds(): Promise<PhotoDimensionBounds> {
+  const limits = await getSiteLimits();
+  return { min: limits["photo.minDimension"], max: limits["photo.maxDimension"] };
+}
+
 export async function uploadTutorProfilePhoto({
   user,
   file,
@@ -139,7 +153,7 @@ export async function uploadTutorProfilePhoto({
   file: TutorProfilePhotoFile;
 } & Partial<PhotoUploadDependencies>) {
   assertAuthorizedTutor(user);
-  const photo = validateTutorProfilePhoto(file);
+  const photo = validateTutorProfilePhoto(file, await resolvePhotoBounds());
   const stored = await put(`tutors/${user.id}/profile-photo.${photo.extension}`, file.buffer, photo.contentType);
   await saveKey(user.id, stored.key);
   return { profilePhotoUrl: stored.url, width: photo.width, height: photo.height };

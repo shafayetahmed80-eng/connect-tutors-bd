@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { siteLimitCeiling } from "@shared/site-limits";
 import {
   MIN_STUDY_YEAR,
   academicEducationLevels,
@@ -129,7 +130,7 @@ const profileShape = {
   name: z.string().trim().min(2, "Enter your full name.").max(160).optional(),
   gender: z.enum(["male", "female"]).optional(),
   dateOfBirth: profileDateSchema.optional(),
-  headline: z.string().trim().min(10, "Headline must be at least 10 characters.").max(140).optional(),
+  headline: z.string().trim().min(10, "Headline must be at least 10 characters.").max(siteLimitCeiling("tutor.headlineChars")).optional(),
 
   phone: bangladeshPhoneSchema.optional(),
   contactEmail: z.string().trim().email("Enter a valid email address.").max(320).optional(),
@@ -181,7 +182,7 @@ const profileShape = {
 
   /** Private to Tutor and authorised Admin reviewers; NID remains excluded until encrypted storage is delivered. */
   privateDetails: privateDetailsSchema.optional(),
-  educationRecords: z.array(educationRecordSchema).max(12).optional(),
+  educationRecords: z.array(educationRecordSchema).max(siteLimitCeiling("tutor.educationRecords")).optional(),
   /** The upload route owns the object key. The profile form may only report a safe state. */
   universityIdDocumentStatus: z.enum(["not_uploaded", "uploaded"]).optional(),
 } satisfies z.ZodRawShape;

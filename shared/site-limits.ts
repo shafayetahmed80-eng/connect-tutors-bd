@@ -1,0 +1,237 @@
+/**
+ * The numbers the Owner can change without a deploy.
+ *
+ * Every one of these was a literal sitting in a zod schema, and a literal in a
+ * schema is invisible: the Guardian request form told people to "choose every
+ * subject you need a tutor for" and said nothing about a cap of twelve, so the
+ * twelfth subject was fine and the thirteenth was a validation error with no
+ * warning beforehand. Naming each limit once is most of the fix; making it
+ * editable and showing it on the form is the rest.
+ *
+ * A Guardian's request and a Tutor's profile both have subjects, levels and
+ * languages, and they are **not** the same limit: one is what a family is
+ * asking for, the other is what a person teaches. They are listed separately
+ * here because merging them would be a decision nobody made.
+ *
+ * Each limit carries the bounds it may be moved between. They are not
+ * decoration: a cap of zero would make a required field unfillable, and a text
+ * length above the database column would fail on save rather than in
+ * validation, which is a worse error in every way.
+ */
+export const siteLimitIds = [
+  "request.subjects",
+  "request.levels",
+  "request.languages",
+  "tutor.subjects",
+  "tutor.levels",
+  "tutor.languages",
+  "tutor.educationRecords",
+  "jobBoard.expiryDays",
+  "upload.documentMb",
+  "photo.minDimension",
+  "photo.maxDimension",
+  "tutor.headlineChars",
+  "request.addressChars",
+] as const;
+
+export type SiteLimitId = (typeof siteLimitIds)[number];
+
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length";
+
+export type SiteLimitMeta = {
+  id: SiteLimitId;
+  group: SiteLimitGroup;
+  label: string;
+  /** What moving it changes, in the Owner's terms. */
+  help: string;
+  /** Word after the number in the editor: "12 subjects", "14 days". */
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+};
+
+/**
+ * `max` is a real ceiling, not a guess. Where a limit measures text, it is the
+ * width of the column that stores it - raising it further needs a migration,
+ * so the editor will not offer what the database would refuse.
+ */
+export const siteLimits: SiteLimitMeta[] = [
+  {
+    id: "request.subjects",
+    group: "Selection",
+    label: "Subjects per request",
+    help: "How many subjects a Guardian may choose when asking for a tutor.",
+    unit: "subjects",
+    value: 12,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "request.levels",
+    group: "Selection",
+    label: "Class levels per request",
+    help: "How many class levels one request may cover.",
+    unit: "levels",
+    value: 12,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "request.languages",
+    group: "Selection",
+    label: "Languages per request",
+    help: "How many teaching languages one request may ask for.",
+    unit: "languages",
+    value: 8,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "tutor.subjects",
+    group: "Selection",
+    label: "Subjects per Tutor",
+    help: "How many subjects a Tutor may say they teach. Separate from the request limit above.",
+    unit: "subjects",
+    value: 8,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "tutor.levels",
+    group: "Selection",
+    label: "Class levels per Tutor",
+    help: "How many class levels a Tutor may say they teach.",
+    unit: "levels",
+    value: 8,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "tutor.languages",
+    group: "Selection",
+    label: "Languages per Tutor",
+    help: "How many languages a Tutor may say they teach in.",
+    unit: "languages",
+    value: 6,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "tutor.educationRecords",
+    group: "Selection",
+    label: "Education records per Tutor",
+    help: "How many degrees and certificates a Tutor may list.",
+    unit: "records",
+    value: 12,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "jobBoard.expiryDays",
+    group: "Job board",
+    label: "Job expires after",
+    help: "How long a published job stays on the board. Changing this affects jobs published from now on, not ones already live.",
+    unit: "days",
+    value: 14,
+    min: 1,
+    max: 180,
+  },
+  {
+    id: "upload.documentMb",
+    group: "Uploads",
+    label: "Certificate file size",
+    help: "Largest certificate or document a Tutor may upload.",
+    unit: "MB",
+    value: 5,
+    min: 1,
+    max: 20,
+  },
+  {
+    id: "photo.minDimension",
+    group: "Uploads",
+    label: "Smallest photo accepted",
+    help: "A profile photo narrower or shorter than this is rejected as too small to show well.",
+    unit: "px",
+    value: 300,
+    min: 100,
+    max: 2000,
+  },
+  {
+    id: "photo.maxDimension",
+    group: "Uploads",
+    label: "Largest photo accepted",
+    help: "A guard against a photo so large it exhausts memory while being resized.",
+    unit: "px",
+    value: 10_000,
+    min: 1000,
+    max: 20_000,
+  },
+  {
+    id: "tutor.headlineChars",
+    group: "Text length",
+    label: "Tutor headline",
+    help: "Longest headline a Tutor may write. The column holds 240, so it cannot go higher without a migration.",
+    unit: "characters",
+    value: 140,
+    min: 40,
+    max: 240,
+  },
+  {
+    id: "request.addressChars",
+    group: "Text length",
+    label: "Request address details",
+    help: "Longest address note on a tutor request. The column holds 160, so it cannot go higher without a migration.",
+    unit: "characters",
+    value: 160,
+    min: 40,
+    max: 160,
+  },
+];
+
+export function findSiteLimit(id: string): SiteLimitMeta | undefined {
+  return siteLimits.find(limit => limit.id === id);
+}
+
+export type SiteLimitValues = Record<SiteLimitId, number>;
+
+/** The numbers as shipped, before anything the Owner has stored. */
+export function defaultSiteLimits(): SiteLimitValues {
+  return Object.fromEntries(siteLimits.map(limit => [limit.id, limit.value])) as SiteLimitValues;
+}
+
+/**
+ * Folds stored overrides onto the shipped numbers.
+ *
+ * A stored value outside its bounds is ignored rather than clamped. Clamping
+ * would silently enforce a number nobody chose; falling back to the shipped one
+ * at least matches what the code and the tests were written against. This
+ * matters because bounds can tighten in a later deploy while an old row sits in
+ * the table.
+ */
+export function resolveSiteLimits(stored: Array<{ limitId: string; value: number }>): SiteLimitValues {
+  const resolved = defaultSiteLimits();
+  for (const row of stored) {
+    const meta = findSiteLimit(row.limitId);
+    if (!meta) continue;
+    if (!Number.isInteger(row.value)) continue;
+    if (row.value < meta.min || row.value > meta.max) continue;
+    resolved[meta.id] = row.value;
+  }
+  return resolved;
+}
+
+/** Bytes for the upload limit, which is stored and shown in megabytes. */
+export function documentByteLimit(limits: SiteLimitValues): number {
+  return limits["upload.documentMb"] * 1024 * 1024;
+}
+
+/**
+ * The absolute ceiling for a limit, used where validation has to be built
+ * before the stored numbers can be read - a zod schema at module load, say.
+ * The Owner's own number is then checked separately against the resolved
+ * value, so the schema guards the database and the check guards the policy.
+ */
+export function siteLimitCeiling(id: SiteLimitId): number {
+  return findSiteLimit(id)!.max;
+}
