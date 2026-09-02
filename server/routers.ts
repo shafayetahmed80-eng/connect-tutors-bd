@@ -16,6 +16,7 @@ import {
 } from "./guardian-profile-photo";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
+import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentAnchorPage,
@@ -25,6 +26,8 @@ import {
   siteContentPageSchema,
   optionCatalogSchema,
   optionCatalogNameSchema,
+  largeCatalogSchema,
+  largeCatalogNameSchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -984,6 +987,56 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.reorderOptionCatalogEntries(input.catalog, input.orderedIds);
         return { catalog: input.catalog };
+      }),
+
+    // Institutes and Departments: same rules, but searched and paged, because
+    // 300-odd rows are neither quick to send nor usable as one list. No reorder
+    // - they read alphabetically, and search is how a row is found.
+    searchLarge: ownerAdminProcedure
+      .input(z.object({
+        catalog: largeCatalogSchema,
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).max(10_000).default(1),
+      }))
+      .query(({ input }) => db.searchLargeCatalogEntries(input.catalog, {
+        query: input.query,
+        page: input.page,
+        pageSize: LARGE_CATALOG_PAGE_SIZE,
+      })),
+    createLarge: ownerAdminProcedure
+      .input(z.object({ catalog: largeCatalogSchema, name: largeCatalogNameSchema }))
+      .mutation(async ({ input }) => {
+        const result = await db.createLargeCatalogEntry(input.catalog, input.name);
+        if (!result.created) {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.name}" is already on this list — check whether it is hidden.` });
+        }
+        return { created: true as const };
+      }),
+    updateLarge: ownerAdminProcedure
+      .input(z.object({
+        catalog: largeCatalogSchema,
+        id: z.number().int().positive(),
+        name: largeCatalogNameSchema,
+        active: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await db.updateLargeCatalogEntry(input.catalog, input.id, { name: input.name, active: input.active });
+        if (!result.renamed) {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.clashesWith}" already uses that name.` });
+        }
+        return { id: input.id };
+      }),
+    removeLarge: ownerAdminProcedure
+      .input(z.object({ catalog: largeCatalogSchema, id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const result = await db.deleteLargeCatalogEntry(input.catalog, input.id);
+        if (!result.deleted) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `${result.usageCount} record${result.usageCount === 1 ? "" : "s"} still use this. Hide it instead of deleting it.`,
+          });
+        }
+        return { id: input.id };
       }),
   }),
   admin: router({

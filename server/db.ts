@@ -4325,3 +4325,146 @@ export async function reorderOptionCatalogEntries(catalog: OptionCatalogKey, ord
     await db.update(table).set({ sortOrder: index + 1 }).where(eq(table.id, orderedIds[index]));
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Institute and Department administration
+ *
+ * The same edit rules as the five small catalogs, but searched and paged on
+ * the server: at 300-odd rows each, sending the whole table to the browser to
+ * be filtered there is neither quick nor kind to a phone.
+ * ------------------------------------------------------------------ */
+
+const largeCatalogTables = {
+  institutes: {
+    table: universities,
+    // One place points at an Institute.
+    usages: [{ table: tutorAcademicProfiles, column: tutorAcademicProfiles.universityId }],
+  },
+  departments: {
+    table: facultyDepartments,
+    // Two do for a Department, and both have to be counted or a delete that
+    // looked safe would fail on a foreign key.
+    usages: [
+      { table: tutorAcademicProfiles, column: tutorAcademicProfiles.facultyDepartmentId },
+      { table: degreeMajors, column: degreeMajors.facultyDepartmentId },
+    ],
+  },
+} as const;
+
+export type LargeCatalogKey = keyof typeof largeCatalogTables;
+
+/** `count(*)` across every table that can point at this row, as one expression. */
+function largeCatalogUsageSql(catalog: LargeCatalogKey, table: any) {
+  const { usages } = largeCatalogTables[catalog];
+  const parts = usages.map(usage => sql`(select count(*) from ${usage.table} where ${usage.column} = ${table.id})`);
+  return parts.length === 1 ? parts[0] : sql`${parts[0]} + ${parts[1]}`;
+}
+
+/**
+ * One page of a large catalog, filtered by `query`, with the number of rows
+ * that matched so the client can page without counting them itself.
+ *
+ * Ordered by name rather than `sortOrder`: dragging a row through three hundred
+ * is no way to arrange anything, so these read alphabetically and the search
+ * box is how a row is found.
+ */
+export async function searchLargeCatalogEntries(
+  catalog: LargeCatalogKey,
+  input: { query: string; page: number; pageSize: number },
+) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { table } = largeCatalogTables[catalog];
+  const pattern = input.query.trim() ? `%${input.query.trim()}%` : undefined;
+  const where = pattern ? like(table.name, pattern) : undefined;
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(table)
+    .where(where);
+
+  const rows = await db
+    .select({
+      id: table.id,
+      name: table.name,
+      active: table.active,
+      origin: table.origin,
+      usageCount: largeCatalogUsageSql(catalog, table),
+    })
+    .from(table)
+    .where(where)
+    .orderBy(asc(table.name))
+    .limit(input.pageSize)
+    .offset(Math.max(0, input.page - 1) * input.pageSize);
+
+  return {
+    total: Number(total ?? 0),
+    rows: rows.map(row => ({ ...row, active: row.active === 1, usageCount: Number(row.usageCount ?? 0) })),
+  };
+}
+
+export async function createLargeCatalogEntry(catalog: LargeCatalogKey, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table } = largeCatalogTables[catalog];
+  const normalizedName = normalizeCatalogName(name);
+
+  const [existing] = await db
+    .select({ id: table.id, name: table.name })
+    .from(table)
+    .where(eq(table.normalizedName, normalizedName))
+    .limit(1);
+  if (existing) return { created: false as const, name: existing.name };
+
+  const [last] = await db.select({ sortOrder: table.sortOrder }).from(table).orderBy(desc(table.sortOrder)).limit(1);
+  await db.insert(table).values({
+    name: name.trim().replace(/\s+/g, " "),
+    normalizedName,
+    active: 1,
+    sortOrder: (last?.sortOrder ?? 0) + 1,
+    // Marked as the Owner's, so the seed leaves it alone on the next deploy.
+    origin: "admin",
+  });
+  return { created: true as const };
+}
+
+export async function updateLargeCatalogEntry(
+  catalog: LargeCatalogKey,
+  id: number,
+  input: { name: string; active: boolean },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table } = largeCatalogTables[catalog];
+  const normalizedName = normalizeCatalogName(input.name);
+
+  const [clash] = await db
+    .select({ id: table.id, name: table.name })
+    .from(table)
+    .where(eq(table.normalizedName, normalizedName))
+    .limit(1);
+  if (clash && clash.id !== id) return { renamed: false as const, clashesWith: clash.name };
+
+  await db
+    .update(table)
+    .set({ name: input.name.trim().replace(/\s+/g, " "), normalizedName, active: input.active ? 1 : 0, origin: "admin" })
+    .where(eq(table.id, id));
+  return { renamed: true as const };
+}
+
+/** Removes a row, re-checking every referencing table first. */
+export async function deleteLargeCatalogEntry(catalog: LargeCatalogKey, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table, usages } = largeCatalogTables[catalog];
+
+  let inUse = 0;
+  for (const usage of usages) {
+    const [row] = await db.select({ count: sql<number>`count(*)` }).from(usage.table).where(eq(usage.column, id));
+    inUse += Number(row?.count ?? 0);
+  }
+  if (inUse > 0) return { deleted: false as const, usageCount: inUse };
+
+  await db.delete(table).where(eq(table.id, id));
+  return { deleted: true as const };
+}

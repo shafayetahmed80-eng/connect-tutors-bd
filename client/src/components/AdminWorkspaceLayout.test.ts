@@ -35,6 +35,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs" }),
       expect.objectContaining({ label: "Home page", path: "/admin/dynamic/home" }),
       expect.objectContaining({ label: "Public pages", path: "/admin/dynamic/public-pages" }),
+      expect.objectContaining({ label: "Institutes & departments", path: "/admin/dynamic/institutes" }),
     ]);
   });
 
@@ -47,6 +48,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/sidebar-tabs");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/home");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/public-pages");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/institutes");
   });
 
   it("orders the Dynamic Section after Operations and before the Owner controls", () => {

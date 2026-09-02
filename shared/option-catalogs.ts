@@ -40,3 +40,35 @@ export const MAX_OPTION_NAME_LENGTH = 160;
  * while nothing has selected them.
  */
 export type OptionCatalogOrigin = "seed" | "admin";
+
+/**
+ * The two large catalogs, kept apart from the five above because they behave
+ * differently rather than because they hold different things.
+ *
+ * At 300-odd rows each, listing them whole is neither usable nor cheap, so
+ * these are searched and paged on the server. Manual ordering is not offered
+ * either: dragging one row through three hundred is no way to arrange
+ * anything, so they read alphabetically and search is how you find a row.
+ *
+ * Their `varchar(240)` columns are wider than the small catalogs' 160, because
+ * an institute's full name with its abbreviation runs long.
+ */
+export const largeCatalogIds = ["institutes", "departments"] as const;
+export type LargeCatalogId = (typeof largeCatalogIds)[number];
+
+export type LargeCatalogMeta = Omit<OptionCatalogMeta, "id"> & { id: LargeCatalogId };
+
+export const largeCatalogs: LargeCatalogMeta[] = [
+  { id: "institutes", label: "Institutes", usedFor: "Tutor profile education", itemLabel: "institute" },
+  { id: "departments", label: "Departments / subjects", usedFor: "Tutor profile education", itemLabel: "department" },
+];
+
+export function findLargeCatalog(id: string): LargeCatalogMeta | undefined {
+  return largeCatalogs.find(catalog => catalog.id === id);
+}
+
+/** Longest a large-catalog name may be; matches their `varchar(240)` columns. */
+export const MAX_LARGE_CATALOG_NAME_LENGTH = 240;
+
+/** Rows returned per page. Enough to scan, small enough to render instantly. */
+export const LARGE_CATALOG_PAGE_SIZE = 25;
