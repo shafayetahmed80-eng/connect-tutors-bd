@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_LOCATION_ID_LENGTH, MAX_LOCATION_LABEL_LENGTH, locationTypes } from "@shared/location-catalog";
 import { MAX_LARGE_CATALOG_NAME_LENGTH, MAX_OPTION_NAME_LENGTH, largeCatalogIds, optionCatalogIds } from "@shared/option-catalogs";
 import {
   MAX_SITE_CONTENT_BLOCK_BODY,
@@ -134,3 +135,17 @@ export const largeCatalogNameSchema = z
   .trim()
   .min(1, "Enter a name.")
   .max(MAX_LARGE_CATALOG_NAME_LENGTH, `Keep the name under ${MAX_LARGE_CATALOG_NAME_LENGTH} characters.`);
+
+/**
+ * City & Location. A tree rather than a list, so an id is a string the caller
+ * read off a row, never something it composed.
+ */
+export const locationIdSchema = z.string().trim().min(1).max(MAX_LOCATION_ID_LENGTH);
+
+export const locationTypeSchema = z.enum(locationTypes);
+
+export const locationLabelSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter a name.")
+  .max(MAX_LOCATION_LABEL_LENGTH, `Keep the name under ${MAX_LOCATION_LABEL_LENGTH} characters.`);
