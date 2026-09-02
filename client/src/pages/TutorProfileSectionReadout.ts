@@ -33,16 +33,17 @@ export type TutorProfileReadoutResolvers = {
 
 /**
  * `optional` rows are ones the server does not require for submission
- * (`submissionRequiredKeys` in server/tutor-profile.validation.ts). They still
- * show when empty, but read "—" in the normal colour and are left out of the
- * per-section filled/total count instead of being flagged red as "Not given".
+ * (`submissionRequiredKeys` in server/tutor-profile.validation.ts). Every empty
+ * field reads "Not given" whether or not it is optional - a dash left the tutor
+ * guessing what it meant. The flag still decides the colour, so an optional
+ * blank stays muted rather than red, and it is still left out of the
+ * per-section filled/total count.
  */
 export type TutorProfileReadoutRow = { label: string; value: string; missing: boolean; optional?: boolean };
 export type TutorProfileReadoutGroup = { heading?: string; rows: TutorProfileReadoutRow[] };
 export type TutorProfileReadoutSection = { id: TutorProfileSectionId; title: string; groups: TutorProfileReadoutGroup[] };
 
 const NOT_GIVEN = "Not given";
-const NOT_PROVIDED = "—";
 
 function text(value: string | null | undefined): TutorProfileReadoutRow["value"] {
   const trimmed = (value ?? "").trim();
@@ -55,7 +56,7 @@ function list(ids: readonly string[], resolve: (id: string) => string): string {
 
 function row(label: string, value: string, optional = false): TutorProfileReadoutRow {
   const missing = value.trim().length === 0;
-  const base: TutorProfileReadoutRow = { label, value: value || (optional ? NOT_PROVIDED : NOT_GIVEN), missing };
+  const base: TutorProfileReadoutRow = { label, value: value || NOT_GIVEN, missing };
   return optional ? { ...base, optional: true } : base;
 }
 

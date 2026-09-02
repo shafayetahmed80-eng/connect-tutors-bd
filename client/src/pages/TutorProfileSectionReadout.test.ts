@@ -54,17 +54,22 @@ describe("getTutorProfileReadoutSections", () => {
     expect(nameRow).toEqual({ label: "Full name", value: "Not given", missing: true });
   });
 
-  it("marks an empty optional value as optional and shows an em dash, not a red 'Not given'", () => {
+  it("says 'Not given' on every empty field, and still flags which ones are optional", () => {
     const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
     const rows = sections.flatMap(section => section.groups.flatMap(group => group.rows));
 
+    // An em dash left the tutor guessing; the wording is now the same
+    // everywhere and only the `optional` flag (and so the colour) differs.
     const additionalPhone = rows.find(row => row.label === "Additional phone");
-    expect(additionalPhone).toEqual({ label: "Additional phone", value: "—", missing: true, optional: true });
+    expect(additionalPhone).toEqual({ label: "Additional phone", value: "Not given", missing: true, optional: true });
 
     // Every "Introduction and review" field is optional for submission.
     const sectionE = sections[3].groups.flatMap(group => group.rows);
     expect(sectionE.every(row => row.optional === true)).toBe(true);
-    expect(sectionE.map(row => row.value)).toEqual(["—", "—", "—", "—"]);
+    expect(sectionE.map(row => row.value)).toEqual(["Not given", "Not given", "Not given", "Not given"]);
+
+    // No empty field anywhere still reads as a dash.
+    expect(rows.filter(row => row.missing).every(row => row.value === "Not given")).toBe(true);
 
     // Required rows keep the plain shape with no `optional` flag.
     expect(rows.find(row => row.label === "Father's name")).toEqual({ label: "Father's name", value: "Not given", missing: true });

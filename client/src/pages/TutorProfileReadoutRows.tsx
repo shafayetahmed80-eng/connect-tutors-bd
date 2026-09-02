@@ -6,8 +6,9 @@ import type { TutorProfileReadoutRow } from "./TutorProfileSectionReadout";
 /**
  * One group of read-out rows as a ruled record list, shared by the tab editor
  * panels. Label above value on phones; `label | value` on a hairline-divided
- * row from `sm` up; two columns from `lg` up. Empty required values are red
- * "Not given"; empty optional values are muted "—".
+ * row from `sm` up; two columns from `lg` up. Every empty field reads "Not
+ * given"; the colour is what separates a required blank (red) from an optional
+ * one (muted).
  *
  * Label and value share one Admin-editable size. They are read as a pair, so
  * splitting them into two controls would only invite a mismatched pair.
