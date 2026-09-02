@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_OPTION_NAME_LENGTH, optionCatalogIds } from "@shared/option-catalogs";
 import {
   MAX_SITE_CONTENT_BLOCK_BODY,
   MAX_SITE_CONTENT_BLOCK_HEADING,
@@ -90,3 +91,15 @@ export type SiteContentBlockInput = z.infer<typeof siteContentBlockInputSchema>;
 export function resolveSiteContentAnchorPage(anchorId: string) {
   return findSiteContentAnchor(anchorId)?.page;
 }
+
+/**
+ * The option-catalog admin inputs. They live here beside the site-content
+ * schemas because both power the same Dynamic Section of the Admin panel.
+ */
+export const optionCatalogSchema = z.enum(optionCatalogIds);
+
+export const optionCatalogNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter a name.")
+  .max(MAX_OPTION_NAME_LENGTH, `Keep the name under ${MAX_OPTION_NAME_LENGTH} characters.`);

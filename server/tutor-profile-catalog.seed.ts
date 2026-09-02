@@ -161,11 +161,14 @@ async function upsertOptions(
   options: CatalogOptionSeed[],
 ) {
   if (options.length === 0) return;
+  // Only refresh rows the seed itself owns. An Owner who renamed, reordered or
+  // hid an option through the Admin panel would otherwise have that undone by
+  // the next deploy, silently and with no record of it.
   await db.insert(table).values(options).onDuplicateKeyUpdate({
     set: {
-      name: sql`VALUES(name)`,
-      active: sql`VALUES(active)`,
-      sortOrder: sql`VALUES(sortOrder)`,
+      name: sql`IF(origin = 'seed', VALUES(name), name)`,
+      active: sql`IF(origin = 'seed', VALUES(active), active)`,
+      sortOrder: sql`IF(origin = 'seed', VALUES(sortOrder), sortOrder)`,
     },
   });
 }
@@ -183,14 +186,17 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
   // existing tutor selections still resolve (and can be re-picked).
   const planUniversityNames = plan.universities.map(option => option.normalizedName);
   const planDepartmentNames = plan.departments.map(option => option.normalizedName);
+  // Scoped to seed-owned rows for the same reason as the upsert: an Owner's own
+  // entry is absent from the plan by definition, so an unscoped sweep would
+  // switch off exactly the rows they added.
   await db
     .update(universities)
     .set({ active: 0 })
-    .where(and(eq(universities.active, 1), notInArray(universities.normalizedName, planUniversityNames)));
+    .where(and(eq(universities.active, 1), eq(universities.origin, "seed"), notInArray(universities.normalizedName, planUniversityNames)));
   await db
     .update(facultyDepartments)
     .set({ active: 0 })
-    .where(and(eq(facultyDepartments.active, 1), notInArray(facultyDepartments.normalizedName, planDepartmentNames)));
+    .where(and(eq(facultyDepartments.active, 1), eq(facultyDepartments.origin, "seed"), notInArray(facultyDepartments.normalizedName, planDepartmentNames)));
 
   await Promise.all([
     upsertOptions(db, subjectsCatalog, plan.subjects),

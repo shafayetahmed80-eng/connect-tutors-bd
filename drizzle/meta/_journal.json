@@ -330,6 +330,13 @@
       "when": 1788278834494,
       "tag": "0046_site_content_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1788288952297,
+      "tag": "0047_catalog_origin",
+      "breakpoints": true
     }
   ]
 }

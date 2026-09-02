@@ -563,6 +563,8 @@ export const universities = mysqlTable(
     normalizedName: varchar("normalizedName", { length: 240 }).notNull(),
     active: int("active").default(1).notNull(),
     sortOrder: int("sortOrder").default(0).notNull(),
+    /** Same meaning as `catalogFields.origin`; the seed refreshes only its own rows. */
+    origin: varchar("origin", { length: 10 }).default("seed").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -585,6 +587,8 @@ export const facultyDepartments = mysqlTable(
     normalizedName: varchar("normalizedName", { length: 240 }).notNull(),
     active: int("active").default(1).notNull(),
     sortOrder: int("sortOrder").default(0).notNull(),
+    /** Same meaning as `catalogFields.origin`; the seed refreshes only its own rows. */
+    origin: varchar("origin", { length: 10 }).default("seed").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -627,6 +631,12 @@ const catalogFields = {
   normalizedName: varchar("normalizedName", { length: 160 }).notNull(),
   active: int("active").default(1).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  /**
+   * Who owns this row: "seed" for the defaults shipped in code, "admin" for
+   * anything the Owner added or edited. The seed only overwrites its own rows,
+   * so a deploy can refresh the defaults without undoing an Owner's changes.
+   */
+  origin: varchar("origin", { length: 10 }).default("seed").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 };

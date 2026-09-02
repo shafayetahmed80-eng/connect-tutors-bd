@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from "drizzle-orm";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -70,6 +70,7 @@ import {
   type User,
   type UserRole,
 } from "../drizzle/schema";
+import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
@@ -4172,5 +4173,152 @@ export async function reorderSiteContentBlocks(anchorId: string, orderedIds: num
     await db.update(siteContentBlocks)
       .set({ sortOrder: index + 1 })
       .where(and(eq(siteContentBlocks.id, id), eq(siteContentBlocks.anchorId, anchorId)));
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Option catalog administration
+ *
+ * The Owner-editable side of the five small catalogs the Tutor and
+ * Request-a-tutor forms are built from. The searches above only ever return
+ * active rows, because a form must not offer a retired option; these read and
+ * write the whole table instead, hidden rows included.
+ * ------------------------------------------------------------------ */
+
+const optionCatalogTables = {
+  subjects: { table: subjectsCatalog, usage: { table: tutorSubjects, column: tutorSubjects.subjectId } },
+  "class-levels": { table: classLevels, usage: { table: tutorClassLevels, column: tutorClassLevels.classLevelId } },
+  curricula: { table: curricula, usage: { table: tutorCurricula, column: tutorCurricula.curriculumId } },
+  "student-types": { table: studentTypes, usage: { table: tutorStudentTypes, column: tutorStudentTypes.studentTypeId } },
+  languages: { table: languagesCatalog, usage: { table: tutorTeachingLanguages, column: tutorTeachingLanguages.languageId } },
+} as const;
+
+export type OptionCatalogKey = keyof typeof optionCatalogTables;
+
+function optionCatalogTable(catalog: OptionCatalogKey) {
+  return optionCatalogTables[catalog];
+}
+
+/**
+ * Every row of one catalog with the number of tutors currently using it.
+ * The count is what makes deletion safe to offer: a row at zero can go, and a
+ * row above zero can only be hidden.
+ */
+export async function listOptionCatalogEntries(catalog: OptionCatalogKey) {
+  const db = await getDb();
+  if (!db) return [];
+  const { table, usage } = optionCatalogTable(catalog);
+  const rows = await db
+    .select({
+      id: table.id,
+      name: table.name,
+      active: table.active,
+      sortOrder: table.sortOrder,
+      origin: table.origin,
+      usageCount: sql<number>`(select count(*) from ${usage.table} where ${usage.column} = ${table.id})`,
+    })
+    .from(table)
+    .orderBy(asc(table.sortOrder), asc(table.name));
+  return rows.map(row => ({
+    ...row,
+    active: row.active === 1,
+    // MySQL hands a subquery count back as a string through some drivers.
+    usageCount: Number(row.usageCount ?? 0),
+  }));
+}
+
+async function findOptionCatalogEntryByName(db: any, catalog: OptionCatalogKey, normalizedName: string) {
+  const { table } = optionCatalogTable(catalog);
+  const [existing] = await db
+    .select({ id: table.id, name: table.name })
+    .from(table)
+    .where(eq(table.normalizedName, normalizedName))
+    .limit(1);
+  return existing as { id: number; name: string } | undefined;
+}
+
+/** Adds an Owner-created option at the end of the list. */
+export async function createOptionCatalogEntry(catalog: OptionCatalogKey, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table } = optionCatalogTable(catalog);
+  const normalizedName = normalizeCatalogName(name);
+
+  const existing = await findOptionCatalogEntryByName(db, catalog, normalizedName);
+  if (existing) return { created: false as const, id: existing.id, name: existing.name };
+
+  const [last] = await db
+    .select({ sortOrder: table.sortOrder })
+    .from(table)
+    .orderBy(desc(table.sortOrder))
+    .limit(1);
+  await db.insert(table).values({
+    name: name.trim().replace(/\s+/g, " "),
+    normalizedName,
+    active: 1,
+    sortOrder: (last?.sortOrder ?? 0) + 1,
+    // Marked as the Owner's so the seed leaves it alone on the next deploy.
+    origin: "admin",
+  });
+  return { created: true as const };
+}
+
+/**
+ * Renames or hides one option. Editing a seed row flips it to "admin" so the
+ * next deploy stops overwriting it - that flag is the whole reason the change
+ * survives.
+ */
+export async function updateOptionCatalogEntry(
+  catalog: OptionCatalogKey,
+  id: number,
+  input: { name: string; active: boolean },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table } = optionCatalogTable(catalog);
+  const normalizedName = normalizeCatalogName(input.name);
+
+  const clash = await findOptionCatalogEntryByName(db, catalog, normalizedName);
+  if (clash && clash.id !== id) return { renamed: false as const, clashesWith: clash.name };
+
+  await db
+    .update(table)
+    .set({
+      name: input.name.trim().replace(/\s+/g, " "),
+      normalizedName,
+      active: input.active ? 1 : 0,
+      origin: "admin",
+    })
+    .where(eq(table.id, id));
+  return { renamed: true as const };
+}
+
+/**
+ * Removes an option outright. Only safe while nothing points at it, which the
+ * caller checks first; the count is re-read here so a tutor who saved a profile
+ * between the two cannot lose a selection.
+ */
+export async function deleteOptionCatalogEntry(catalog: OptionCatalogKey, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table, usage } = optionCatalogTable(catalog);
+
+  const [used] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(usage.table)
+    .where(eq(usage.column, id));
+  if (Number(used?.count ?? 0) > 0) return { deleted: false as const, usageCount: Number(used?.count ?? 0) };
+
+  await db.delete(table).where(eq(table.id, id));
+  return { deleted: true as const };
+}
+
+/** Applies a drag-and-drop reorder; ids missing from the list keep their place. */
+export async function reorderOptionCatalogEntries(catalog: OptionCatalogKey, orderedIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const { table } = optionCatalogTable(catalog);
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    await db.update(table).set({ sortOrder: index + 1 }).where(eq(table.id, orderedIds[index]));
   }
 }
