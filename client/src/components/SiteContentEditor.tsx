@@ -197,14 +197,16 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               onChange={event => update(slot.id, { text: event.target.value })}
               className={inputClass}
             />
-            <select
+            {/* A phone number is a value other code builds links from, not
+                display copy, so a size step on it would mean nothing. */}
+            {slot.kind === "phone" ? <span /> : <select
               aria-label={`${surface} ${slot.label} text size`}
               value={drafts[slot.id]?.textSize ?? "default"}
               onChange={event => update(slot.id, { textSize: event.target.value as SiteContentTextSize })}
               className={inputClass}
             >
               {siteContentTextSizes.map(size => <option key={size} value={size}>{sizeLabels[size]}</option>)}
-            </select>
+            </select>}
             <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 text-slate-600 disabled:opacity-30">
               <RotateCcw size={13} />
             </button>

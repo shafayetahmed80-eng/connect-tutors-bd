@@ -9,7 +9,7 @@
  * validation and database writes.
  */
 
-export const siteContentPageIds = ["tutor-profile", "guardian-profile"] as const;
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -53,6 +53,12 @@ export type SiteContentSlot = {
   label: string;
   defaultText: string;
   /**
+   * "text" is display copy, which the size step applies to. "phone" is a value
+   * other code builds links from, so the editor hides the size control and the
+   * server checks the format - a malformed number breaks every wa.me link.
+   */
+  kind?: "text" | "phone";
+  /**
    * The rung on the type ramp a size step counts from. Only used to compute an
    * override; when the admin leaves the size alone the call site's own class is
    * kept, so this need not match that class exactly.
@@ -73,6 +79,11 @@ export type SiteContentSpacingSlot = {
   group: string;
   label: string;
 };
+
+/** Site-wide values, shown on public pages as well as the dashboards. */
+const siteSlots: SiteContentSlot[] = [
+  { id: "site.contact.whatsapp", page: "site", surface: "Contact", group: "Support", label: "WhatsApp / call number", kind: "phone", defaultText: "8801516131411", defaultTextClass: "text-sm" },
+];
 
 /** Tutor Profile workspace - the page a Tutor fills in at /tutor/dashboard/profile. */
 const tutorProfileSlots: SiteContentSlot[] = [
@@ -135,6 +146,7 @@ const requestTutorSlots: SiteContentSlot[] = [
 ];
 
 const siteContentSlots: SiteContentSlot[] = [
+  ...siteSlots,
   ...tutorProfileSlots,
   ...publicTutorProfileSlots,
   ...guardianProfileSlots,
@@ -231,3 +243,37 @@ export function findSiteContentAnchor(anchorId: string): SiteContentAnchor | und
 
 export const MAX_SITE_CONTENT_BLOCK_HEADING = 120;
 export const MAX_SITE_CONTENT_BLOCK_BODY = 1000;
+
+/**
+ * Bangladesh mobile number in the form links are built from: 880 followed by
+ * the 10-digit national number, no plus, no spaces. The same shape the tutor
+ * and guardian forms already accept, minus the leading "+".
+ */
+const contactNumberPattern = /^8801[3-9]\d{8}$/;
+
+export function isSiteContactNumber(value: string) {
+  return contactNumberPattern.test(value.trim());
+}
+
+/**
+ * Strips anything a person might type around the digits - "+", spaces, dashes,
+ * a leading 0 or a bare 1XXXXXXXXX - so a reasonable entry still produces a
+ * working link instead of a silent 404 on wa.me.
+ */
+export function normalizeSiteContactNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("880")) return digits;
+  if (digits.startsWith("0")) return `88${digits}`;
+  if (digits.startsWith("1")) return `880${digits}`;
+  return digits;
+}
+
+/** wa.me link, optionally pre-filling the message box. */
+export function whatsappHref(number: string, message?: string) {
+  const base = `https://wa.me/${number}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+}
+
+export function telHref(number: string) {
+  return `tel:+${number}`;
+}

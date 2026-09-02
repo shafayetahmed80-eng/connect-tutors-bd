@@ -3,6 +3,9 @@ import { cn } from "@/lib/utils";
 import {
   findSiteContentAnchor,
   findSiteContentSlot,
+  normalizeSiteContactNumber,
+  telHref,
+  whatsappHref,
   resolveSiteContentSpacingClass,
   resolveSiteContentTextClass,
   type SiteContentPageId,
@@ -26,14 +29,18 @@ const SiteContentContext = createContext<SiteContentValue>({ overrides: new Map(
  */
 export function SiteContentProvider({ page, children }: { page: SiteContentPageId; children: ReactNode }) {
   const query = trpc.siteContent.list.useQuery({ page }, { retry: false, staleTime: 60_000 });
+  // Providers nest: the site-wide one wraps the whole app, and a page adds its
+  // own inside it. Merging rather than replacing keeps the header and footer's
+  // site slots working on a page that has a provider of its own.
+  const parent = useContext(SiteContentContext);
 
   const value = useMemo<SiteContentValue>(() => {
-    const overrides = new Map<string, ResolvedOverride>();
+    const overrides = new Map(parent.overrides);
     for (const row of query.data ?? []) {
       overrides.set(row.slotId, { text: row.text ?? null, textSize: row.textSize ?? null, spacing: row.spacing ?? null });
     }
     return { overrides };
-  }, [query.data]);
+  }, [query.data, parent]);
 
   return <SiteContentContext.Provider value={value}>{children}</SiteContentContext.Provider>;
 }
@@ -106,4 +113,23 @@ export function SiteBlocks({ anchorId, className }: { anchorId: string; classNam
       {block.body ? <p className={block.heading ? "mt-1 whitespace-pre-line" : "whitespace-pre-line"}>{block.body}</p> : null}
     </section>)}
   </div>;
+}
+
+/**
+ * The support number and the links built from it.
+ *
+ * Every caller goes through this rather than writing a wa.me or tel: URL, so
+ * changing the number in the Admin panel reaches all of them. The stored value
+ * is normalized before use, so a number entered with spaces or a leading 0
+ * still produces a working link.
+ */
+export function useSiteContact() {
+  const raw = useSiteContentText("site.contact.whatsapp");
+  const number = normalizeSiteContactNumber(raw);
+  return {
+    number,
+    display: `+${number}`,
+    tel: telHref(number),
+    whatsapp: (message?: string) => whatsappHref(number, message),
+  };
 }

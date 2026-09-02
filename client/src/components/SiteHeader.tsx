@@ -1,3 +1,4 @@
+import { useSiteContact } from "@/lib/siteContent";
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, Menu, Phone, UserRound, X } from "lucide-react";
@@ -114,6 +115,7 @@ export default function SiteHeader({
   variant?: "default" | "journey";
   journeyAudience?: JourneyAudience;
 }) {
+  const contact = useSiteContact();
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { user, loading, logout } = useAuth();
@@ -128,12 +130,12 @@ export default function SiteHeader({
       <div className={isJourneyHeader ? "journey-contact-bar" : "microbar"}>
         <div className="shell microbar-inner">
           <div className="contact-actions">
-            <a href="tel:+8801516131411" className="phone-link">
+            <a href={contact.tel} className="phone-link">
               <Phone size={14} />
               <span>+880 1516 131411</span>
             </a>
             <a
-              href="https://wa.me/8801516131411"
+              href={contact.whatsapp()}
               className="whatsapp-link"
               target="_blank"
               rel="noreferrer"

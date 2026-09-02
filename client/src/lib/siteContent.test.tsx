@@ -10,7 +10,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: { siteContent: { list: { useQuery: () => ({ data: state.data, isLoading: false, isError: false }) } } },
 }));
 
-import { SiteContentProvider, SiteText, useSiteContentSpacingClass } from "./siteContent";
+import { SiteContentProvider, SiteText, useSiteContact, useSiteContentSpacingClass } from "./siteContent";
 
 const HEADING_SLOT = "tutor-profile.group.c-education";
 
@@ -72,5 +72,39 @@ describe("site content rendering", () => {
     renderSlot(<Spacing />);
 
     expect(screen.getByTestId("spacing").textContent).not.toBe(defaultPadding);
+  });
+});
+
+function Contact() {
+  const contact = useSiteContact();
+  return <a href={contact.whatsapp("Help me")} data-testid="wa">{contact.display}</a>;
+}
+
+describe("site-wide contact slot", () => {
+  it("falls back to the number shipped in code", () => {
+    render(<SiteContentProvider page="site"><Contact /></SiteContentProvider>);
+
+    expect(screen.getByTestId("wa").getAttribute("href")).toBe("https://wa.me/8801516131411?text=Help%20me");
+    expect(screen.getByTestId("wa").textContent).toBe("+8801516131411");
+  });
+
+  it("uses the Admin's number, normalized, across every link built from it", () => {
+    state.data = [{ slotId: "site.contact.whatsapp", text: "+880 1712 345678", textSize: null, spacing: null }];
+    render(<SiteContentProvider page="site"><Contact /></SiteContentProvider>);
+
+    expect(screen.getByTestId("wa").getAttribute("href")).toBe("https://wa.me/8801712345678?text=Help%20me");
+  });
+
+  it("keeps site slots readable inside a page that adds its own provider", () => {
+    // The header and footer sit on pages with their own provider; a provider
+    // that replaced its parent would blank the support number there.
+    state.data = [{ slotId: "site.contact.whatsapp", text: "8801712345678", textSize: null, spacing: null }];
+    render(
+      <SiteContentProvider page="site">
+        <SiteContentProvider page="tutor-profile"><Contact /></SiteContentProvider>
+      </SiteContentProvider>,
+    );
+
+    expect(screen.getByTestId("wa").getAttribute("href")).toContain("8801712345678");
   });
 });

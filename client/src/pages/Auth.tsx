@@ -1,3 +1,4 @@
+import { useSiteContact } from "@/lib/siteContent";
 import React, { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -111,6 +112,7 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
 }
 
 export default function AuthPage() {
+  const contact = useSiteContact();
   const [location, navigate] = useLocation();
   const [mode, setMode] = useState<AuthMode>(() => getInitialMode(location));
   const [role, setRole] = useState<PublicAccountRole>(getInitialRole);
@@ -244,7 +246,7 @@ export default function AuthPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-4">
                     <label htmlFor="account-password" className="block text-sm font-bold text-j-ink-strong">Password</label>
-                    <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href="https://wa.me/8801516131411?text=Hello%20Connect%20Tutors%20BD%2C%20I%20need%20help%20recovering%20my%20account.">Need help signing in?</a>
+                    <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors BD, I need help recovering my account.")}>Need help signing in?</a>
                   </div>
                   <div className="relative">
                     <input
@@ -292,7 +294,7 @@ export default function AuthPage() {
                 <Link href={selectedJourney.registerHref} className="mt-6 flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-j-accent px-6 py-4 font-bold text-white shadow-[0_12px_25px_rgba(22,125,221,0.24)] transition hover:bg-j-accent-hover">
                   {selectedJourney.registerLabel}<ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href="https://wa.me/8801516131411?text=Hello%20Connect%20Tutors%20BD%2C%20I%20need%20help%20with%20my%20account."><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
+                <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors BD, I need help with my account.")}><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
                 <button type="button" onClick={() => switchMode("login")} className="mt-5 block text-sm font-semibold text-[#39779e] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Already registered? Sign in</button>
               </div>
             )}

@@ -2,6 +2,7 @@
  * Connect Tutors BD visual direction: Neighbourhood Learning Blue — an editorial, supportive footer
  * that turns service details into clear next steps rather than a dense utility panel.
  */
+import { useSiteContact } from "@/lib/siteContent";
 import { Link } from "wouter";
 import { CircleHelp, ClipboardList, MessageCircle } from "lucide-react";
 import { BrandLogo } from "./SiteHeader";
@@ -24,9 +25,9 @@ export const footerSupportChannels = [
   {
     type: "whatsapp",
     title: "Message us on WhatsApp",
-    action: "+880 1516 131411",
+    action: "",
     detail: "Use WhatsApp for a direct enquiry.",
-    href: "https://wa.me/8801516131411",
+    href: "",
   },
   {
     type: "help",
@@ -44,6 +45,11 @@ function FooterSupportIcon({ type }: { type: (typeof footerSupportChannels)[numb
 }
 
 export default function SiteFooter() {
+  const contact = useSiteContact();
+  // The WhatsApp row carries no number of its own: it is filled from the one
+  // Admin-editable value so a change reaches every link on the site at once.
+  const channels = footerSupportChannels.map(channel =>
+    channel.type === "whatsapp" ? { ...channel, action: contact.display, href: contact.whatsapp() } : channel);
   return (
     <footer className="site-footer">
       <div className="shell footer-main">
@@ -53,7 +59,7 @@ export default function SiteFooter() {
           <p>Tell us what you need, and our team will guide you through the next step.</p>
           <BrandLogo />
         </div>
-        {footerSupportChannels.map((channel) => (
+        {channels.map((channel) => (
           <div className="footer-contact-card" key={channel.type}>
             <FooterSupportIcon type={channel.type} />
             <div>

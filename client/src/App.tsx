@@ -39,6 +39,7 @@ import AdminCredentialSetup from "./pages/AdminCredentialSetup";
 import AdminInvitationAccept from "./pages/AdminInvitationAccept";
 import AdminMonitoringOverview from "./pages/AdminMonitoringOverview";
 import AdminTutorManagement from "./pages/AdminTutorManagement";
+import { SiteContentProvider } from "@/lib/siteContent";
 import AdminDynamicTutorProfile from "./pages/AdminDynamicTutorProfile";
 import AdminDynamicGuardianProfile from "./pages/AdminDynamicGuardianProfile";
 import AdminGuardianActivity from "./pages/AdminGuardianActivity";
@@ -72,5 +73,8 @@ function Router() {
 }
 
 export default function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster position="top-center" /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  // Site-wide slots (the support number) are needed by the header and footer on
+  // every route, so the provider sits above the router. Page-level providers
+  // nest inside it and merge, rather than replacing it.
+  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><SiteContentProvider page="site"><Toaster position="top-center" /><Router /></SiteContentProvider></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }

@@ -1,3 +1,4 @@
+import { useSiteContact } from "@/lib/siteContent";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel } from "@/components/journeyField";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
@@ -30,9 +31,10 @@ export function getTutorSignInErrorMessage(cause: unknown): string {
   return "We could not sign you in. Please check your details and try again.";
 }
 
-const RECOVERY_WHATSAPP_HREF = "https://wa.me/8801516131411?text=Hello%20Connect%20Tutors%20BD%2C%20I%20need%20help%20recovering%20my%20account.";
+const RECOVERY_MESSAGE = "Hello Connect Tutors BD, I need help recovering my account.";
 
 export default function TutorLogin() {
+  const contact = useSiteContact();
   const [, navigate] = useLocation();
   const { data: user, isLoading: authLoading } = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
@@ -101,7 +103,7 @@ export default function TutorLogin() {
               <div>
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="tutor-login-password" className={fieldLabel}>Password <span className="text-[#dd4b4b]">*</span></label>
-                  <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={RECOVERY_WHATSAPP_HREF}>Need help signing in?</a>
+                  <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp(RECOVERY_MESSAGE)}>Need help signing in?</a>
                 </div>
                 <span className={fieldRow}><input id="tutor-login-password" required type={showPassword ? "text" : "password"} value={password} onChange={event => setPassword(event.target.value)} onKeyDown={capsLockWarning.updateCapsLockState} onKeyUp={capsLockWarning.updateCapsLockState} onBlur={capsLockWarning.clearCapsLockWarning} className={fieldInput} placeholder="Your password" autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(current => !current)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} className="-mr-1.5 rounded-md p-1 text-[#5b86a3] transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span>
                 <CapsLockWarning isCapsLockOn={capsLockWarning.isCapsLockOn} />

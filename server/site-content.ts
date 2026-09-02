@@ -4,6 +4,8 @@ import {
   MAX_SITE_CONTENT_BLOCK_HEADING,
   MAX_SITE_CONTENT_TEXT_LENGTH,
   findSiteContentAnchor,
+  isSiteContactNumber,
+  normalizeSiteContactNumber,
   findSiteContentSlot,
   findSiteContentSpacingSlot,
   siteContentBlockTones,
@@ -27,6 +29,10 @@ export const siteContentOverrideInputSchema = z.object({
 }).superRefine((value, ctx) => {
   const textSlot = findSiteContentSlot(value.slotId);
   const spacingSlot = findSiteContentSpacingSlot(value.slotId);
+
+  if (textSlot?.kind === "phone" && value.text != null && value.text.trim() !== "" && !isSiteContactNumber(normalizeSiteContactNumber(value.text))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "Enter a Bangladesh mobile number, for example 8801516131411." });
+  }
 
   if (!textSlot && !spacingSlot) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "Unknown content slot." });
