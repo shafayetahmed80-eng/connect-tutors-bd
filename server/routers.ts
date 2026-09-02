@@ -17,6 +17,7 @@ import {
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
+import { LOCATION_PAGE_SIZE, locationTypeLabels, type LocationType } from "@shared/location-catalog";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentAnchorPage,
@@ -28,6 +29,9 @@ import {
   optionCatalogNameSchema,
   largeCatalogSchema,
   largeCatalogNameSchema,
+  locationIdSchema,
+  locationLabelSchema,
+  locationTypeSchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -1037,6 +1041,75 @@ export const appRouter = router({
           });
         }
         return { id: input.id };
+      }),
+  }),
+  /**
+   * City & Location, kept apart from the option catalogs because it is a tree.
+   * Every call names a parent, and adding a row means choosing where it hangs:
+   * a location no breadcrumb reaches is a location nobody can pick.
+   */
+  locationCatalog: router({
+    browse: ownerAdminProcedure
+      .input(z.object({
+        parentId: locationIdSchema.nullable().default(null),
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).max(10_000).default(1),
+      }))
+      .query(({ input }) => db.browseLocations({
+        parentId: input.parentId,
+        query: input.query,
+        page: input.page,
+        pageSize: LOCATION_PAGE_SIZE,
+      })),
+    search: ownerAdminProcedure
+      .input(z.object({
+        query: z.string().trim().max(120),
+        page: z.number().int().min(1).max(10_000).default(1),
+      }))
+      .query(({ input }) => db.searchLocations({
+        query: input.query,
+        page: input.page,
+        pageSize: LOCATION_PAGE_SIZE,
+      })),
+    create: ownerAdminProcedure
+      .input(z.object({ parentId: locationIdSchema, type: locationTypeSchema, label: locationLabelSchema }))
+      .mutation(async ({ input }) => {
+        const result = await db.createLocation(input);
+        if (result.created) return { created: true as const, id: result.id };
+        if (result.reason === "duplicate") {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.label}" is already here — check whether it is hidden.` });
+        }
+        if (result.reason === "bad-type") {
+          const parentLabel = locationTypeLabels[result.parentType as LocationType] ?? result.parentType;
+          throw new TRPCError({ code: "BAD_REQUEST", message: `A ${locationTypeLabels[input.type]} cannot sit inside a ${parentLabel}.` });
+        }
+        throw new TRPCError({ code: "NOT_FOUND", message: "That place no longer exists." });
+      }),
+    update: ownerAdminProcedure
+      .input(z.object({ id: locationIdSchema, label: locationLabelSchema, active: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const result = await db.updateLocation(input.id, { label: input.label, active: input.active });
+        if (result.renamed) return { id: input.id };
+        if (result.reason === "duplicate") {
+          throw new TRPCError({ code: "CONFLICT", message: `"${result.label}" already uses that name here.` });
+        }
+        throw new TRPCError({ code: "NOT_FOUND", message: "That place no longer exists." });
+      }),
+    remove: ownerAdminProcedure
+      .input(z.object({ id: locationIdSchema }))
+      .mutation(async ({ input }) => {
+        const result = await db.deleteLocation(input.id);
+        if (result.deleted) return { id: input.id };
+        if (result.reason === "has-children") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `${result.childCount} place${result.childCount === 1 ? "" : "s"} sit inside this one. Remove or move them first.`,
+          });
+        }
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `${result.usageCount} record${result.usageCount === 1 ? "" : "s"} still use this. Hide it instead of deleting it.`,
+        });
       }),
   }),
   admin: router({

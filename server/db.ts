@@ -1,4 +1,11 @@
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableName, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from "drizzle-orm";
+import type { MySqlTable } from "drizzle-orm/mysql-core";
+import {
+  MAX_LOCATION_ID_LENGTH,
+  isValidChildType,
+  locationSlug,
+  type LocationType,
+} from "@shared/location-catalog";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -4353,10 +4360,25 @@ const largeCatalogTables = {
 
 export type LargeCatalogKey = keyof typeof largeCatalogTables;
 
+/**
+ * A backtick-qualified reference to the outer query's `id`, for use inside a
+ * correlated subquery.
+ *
+ * Interpolating the column itself is not enough: drizzle sometimes renders it
+ * bare as `` `id` ``, and a bare `id` inside `select ... from other_table`
+ * resolves against *that* table when it happens to have an `id` of its own -
+ * so the subquery silently compares a row to itself and counts nothing. The
+ * table name has to be written out.
+ */
+export function outerId(table: MySqlTable) {
+  return sql.raw(`\`${getTableName(table)}\`.\`id\``);
+}
+
 /** `count(*)` across every table that can point at this row, as one expression. */
 function largeCatalogUsageSql(catalog: LargeCatalogKey, table: any) {
   const { usages } = largeCatalogTables[catalog];
-  const parts = usages.map(usage => sql`(select count(*) from ${usage.table} where ${usage.column} = ${table.id})`);
+  const id = outerId(table);
+  const parts = usages.map(usage => sql`(select count(*) from ${usage.table} where ${usage.column} = ${id})`);
   return parts.length === 1 ? parts[0] : sql`${parts[0]} + ${parts[1]}`;
 }
 
@@ -4466,5 +4488,286 @@ export async function deleteLargeCatalogEntry(catalog: LargeCatalogKey, id: numb
   if (inUse > 0) return { deleted: false as const, usageCount: inUse };
 
   await db.delete(table).where(eq(table.id, id));
+  return { deleted: true as const };
+}
+
+/**
+ * Every column that names a location, whether or not a foreign key backs it.
+ *
+ * Five of these are real foreign keys; `tutors.locationId` and the two on
+ * `tutor_jobs` are not, so the database would let a delete orphan them without
+ * complaint. Counting only the constrained ones would mean the screen reports
+ * "nothing uses this" while five tutor profiles quietly lose their district.
+ */
+const locationUsageColumns = [
+  { table: guardianProfiles, column: guardianProfiles.cityLocationId },
+  { table: guardianProfiles, column: guardianProfiles.locationId },
+  { table: tutors, column: tutors.locationId },
+  { table: tutorTeachingAreas, column: tutorTeachingAreas.locationId },
+  { table: tutorRequests, column: tutorRequests.tuitionCityLocationId },
+  { table: tutorRequests, column: tutorRequests.tuitionLocationId },
+  { table: tutorJobs, column: tutorJobs.cityLocationId },
+  { table: tutorJobs, column: tutorJobs.locationId },
+] as const;
+
+/** `count(*)` across all eight of them, as one expression. */
+function locationUsageSql() {
+  const id = outerId(locations);
+  const parts = locationUsageColumns.map(
+    usage => sql`(select count(*) from ${usage.table} where ${usage.column} = ${id})`,
+  );
+  return parts.reduce((left, right) => sql`${left} + ${right}`);
+}
+
+// Self-referencing, so the alias is doing real work: without `child` the inner
+// `locations` would shadow the outer one and every row would count itself.
+const locationChildCountSql = sql<number>`(select count(*) from ${locations} as child where child.parentId = ${outerId(locations)})`;
+
+type LocationCatalogRow = {
+  id: string;
+  label: string;
+  type: string;
+  active: boolean;
+  origin: string;
+  usageCount: number;
+  childCount: number;
+};
+
+function toLocationCatalogRow(row: Record<string, unknown>): LocationCatalogRow {
+  return {
+    id: String(row.id),
+    label: String(row.label),
+    type: String(row.type),
+    active: row.enabled === 1,
+    origin: String(row.origin ?? "seed"),
+    usageCount: Number(row.usageCount ?? 0),
+    childCount: Number(row.childCount ?? 0),
+  };
+}
+
+const locationSelection = {
+  id: locations.id,
+  label: locations.label,
+  type: locations.type,
+  enabled: locations.enabled,
+  origin: locations.origin,
+  usageCount: locationUsageSql(),
+  childCount: locationChildCountSql,
+};
+
+type LocationTreeNode = { id: string; label: string; parentId: string | null };
+
+/**
+ * Every id, label and parent in one go, so an ancestor trail can be walked in
+ * memory rather than with a query per level. The whole catalog is 597 rows -
+ * cheaper to fetch once than to climb it five times.
+ */
+async function loadLocationTree(database: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  const all = await database
+    .select({ id: locations.id, label: locations.label, parentId: locations.parentId })
+    .from(locations);
+  return new Map<string, LocationTreeNode>(all.map(row => [row.id, { ...row, parentId: row.parentId ?? null }]));
+}
+
+function ancestorTrail(tree: Map<string, LocationTreeNode>, id: string | null) {
+  const trail: Array<{ id: string; label: string }> = [];
+  let cursor = id;
+  // Bounded rather than `while (cursor)`: a parentId cycle would otherwise
+  // hang the request, and the deepest real path is five levels.
+  for (let depth = 0; cursor && depth < 12; depth += 1) {
+    const node = tree.get(cursor);
+    if (!node) break;
+    trail.unshift({ id: node.id, label: node.label });
+    cursor = node.parentId;
+  }
+  return trail;
+}
+
+/**
+ * One level of the tree: the children of `parentId`, or the roots when it is
+ * null, with the trail of ancestors above them for the breadcrumb.
+ */
+export async function browseLocations(input: { parentId: string | null; query: string; page: number; pageSize: number }) {
+  const database = await getDb();
+  if (!database) return { rows: [], total: 0, trail: [], parentType: null };
+
+  const term = input.query.trim();
+  const where = and(
+    input.parentId === null ? isNull(locations.parentId) : eq(locations.parentId, input.parentId),
+    term ? like(locations.label, `%${term}%`) : undefined,
+  );
+
+  const [totalRow] = await database.select({ total: sql<number>`count(*)` }).from(locations).where(where);
+
+  const rows = await database
+    .select(locationSelection)
+    .from(locations)
+    .where(where)
+    // Coarser levels first, then alphabetically, so a city's thanas do not sit
+    // shuffled in among its areas.
+    .orderBy(asc(locations.type), asc(locations.label))
+    .limit(input.pageSize)
+    .offset(Math.max(0, input.page - 1) * input.pageSize);
+
+  const tree = await loadLocationTree(database);
+  let parentType: string | null = null;
+  if (input.parentId) {
+    const [parent] = await database
+      .select({ type: locations.type })
+      .from(locations)
+      .where(eq(locations.id, input.parentId))
+      .limit(1);
+    parentType = parent?.type ?? null;
+  }
+
+  return {
+    total: Number(totalRow?.total ?? 0),
+    rows: rows.map(toLocationCatalogRow),
+    trail: ancestorTrail(tree, input.parentId),
+    parentType,
+  };
+}
+
+/**
+ * Searches the whole tree rather than one level, because an Owner looking for
+ * "Mirpur" should not have to remember which city holds it. Each hit carries
+ * the path to it, which is the only thing telling one "Bazar" from another.
+ */
+export async function searchLocations(input: { query: string; page: number; pageSize: number }) {
+  const database = await getDb();
+  if (!database) return { rows: [], total: 0 };
+  const term = input.query.trim();
+  if (!term) return { rows: [], total: 0 };
+
+  const where = like(locations.label, `%${term}%`);
+  const [totalRow] = await database.select({ total: sql<number>`count(*)` }).from(locations).where(where);
+
+  const rows = await database
+    .select({ ...locationSelection, parentId: locations.parentId })
+    .from(locations)
+    .where(where)
+    .orderBy(asc(locations.type), asc(locations.label))
+    .limit(input.pageSize)
+    .offset(Math.max(0, input.page - 1) * input.pageSize);
+
+  const tree = await loadLocationTree(database);
+  return {
+    total: Number(totalRow?.total ?? 0),
+    rows: rows.map(row => ({
+      ...toLocationCatalogRow(row),
+      parentId: row.parentId ?? null,
+      path: ancestorTrail(tree, row.parentId ?? null).map(step => step.label),
+    })),
+  };
+}
+
+/** A free id in the style of the stored ones, with a fallback for labels that slugify to nothing. */
+async function reserveLocationId(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, label: string) {
+  const base = locationSlug(label) || `loc-${Date.now().toString(36)}`;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`.slice(0, MAX_LOCATION_ID_LENGTH);
+    const [taken] = await database.select({ id: locations.id }).from(locations).where(eq(locations.id, candidate)).limit(1);
+    if (!taken) return candidate;
+  }
+  return `loc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export async function createLocation(input: { parentId: string; type: string; label: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [parent] = await database
+    .select({ id: locations.id, type: locations.type, country: locations.country })
+    .from(locations)
+    .where(eq(locations.id, input.parentId))
+    .limit(1);
+  if (!parent) return { created: false as const, reason: "missing-parent" as const };
+  if (!isValidChildType(parent.type as LocationType, input.type as LocationType)) {
+    return { created: false as const, reason: "bad-type" as const, parentType: parent.type };
+  }
+
+  const label = input.label.trim().replace(/\s+/g, " ");
+  // The unique index is on (parentId, type, label), so a clash is only a clash
+  // under the same parent: two "Bazar Area" in different cities are both fine.
+  const [clash] = await database
+    .select({ label: locations.label })
+    .from(locations)
+    .where(and(
+      eq(locations.parentId, input.parentId),
+      eq(locations.type, input.type as LocationType),
+      eq(locations.label, label),
+    ))
+    .limit(1);
+  if (clash) return { created: false as const, reason: "duplicate" as const, label: clash.label };
+
+  const id = await reserveLocationId(database, label);
+  await database.insert(locations).values({
+    id,
+    label,
+    type: input.type as LocationType,
+    country: parent.country,
+    parentId: parent.id,
+    enabled: 1,
+    // The Owner's own row, so a later migration refreshing the shipped catalog
+    // leaves it alone.
+    origin: "admin",
+  });
+  return { created: true as const, id };
+}
+
+export async function updateLocation(id: string, input: { label: string; active: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [current] = await database
+    .select({ parentId: locations.parentId, type: locations.type })
+    .from(locations)
+    .where(eq(locations.id, id))
+    .limit(1);
+  if (!current) return { renamed: false as const, reason: "missing" as const };
+
+  const label = input.label.trim().replace(/\s+/g, " ");
+  const [clash] = await database
+    .select({ id: locations.id, label: locations.label })
+    .from(locations)
+    .where(and(
+      current.parentId === null ? isNull(locations.parentId) : eq(locations.parentId, current.parentId),
+      eq(locations.type, current.type),
+      eq(locations.label, label),
+    ))
+    .limit(1);
+  if (clash && clash.id !== id) return { renamed: false as const, reason: "duplicate" as const, label: clash.label };
+
+  await database
+    .update(locations)
+    .set({ label, enabled: input.active ? 1 : 0, origin: "admin" })
+    .where(eq(locations.id, id));
+  return { renamed: true as const };
+}
+
+/**
+ * Removes a location, refusing while anything still names it or hangs beneath
+ * it. Children are checked as well as usages: deleting a city would otherwise
+ * strand its areas somewhere no breadcrumb reaches.
+ */
+export async function deleteLocation(id: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [child] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(locations)
+    .where(eq(locations.parentId, id));
+  const childCount = Number(child?.count ?? 0);
+  if (childCount > 0) return { deleted: false as const, reason: "has-children" as const, childCount };
+
+  let inUse = 0;
+  for (const usage of locationUsageColumns) {
+    const [row] = await database.select({ count: sql<number>`count(*)` }).from(usage.table).where(eq(usage.column, id));
+    inUse += Number(row?.count ?? 0);
+  }
+  if (inUse > 0) return { deleted: false as const, reason: "in-use" as const, usageCount: inUse };
+
+  await database.delete(locations).where(eq(locations.id, id));
   return { deleted: true as const };
 }

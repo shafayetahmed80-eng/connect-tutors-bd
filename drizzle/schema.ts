@@ -493,6 +493,8 @@ export const locations = mysqlTable(
     country: varchar("country", { length: 120 }).notNull(),
     parentId: varchar("parentId", { length: 80 }),
     enabled: int("enabled").default(1).notNull(),
+    /** Same meaning as `catalogFields.origin`; the shipped rows are the product's. */
+    origin: varchar("origin", { length: 10 }).default("seed").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
