@@ -4,7 +4,7 @@ import { guardianDashboardNavigation } from "./GuardianDashboard";
 describe("Guardian Dashboard navigation", () => {
   it("keeps operational Guardian destinations separate from planned placeholders", () => {
     const active = guardianDashboardNavigation.filter(item => !item.planned);
-    expect(active.map(item => item.label)).toEqual(["Dashboard", "Hire a tutor", "Profile", "Attendance", "Posted jobs", "Notifications", "Confirmation Letter", "Settings", "How it works"]);
+    expect(active.map(item => item.label)).toEqual(["Dashboard", "Hire a tutor", "Profile", "Attendance", "Posted jobs", "Notifications", "Confirmation Letter", "Settings", "How it works", "Sign Out"]);
     expect(active.every(item => item.path.startsWith("/guardian/"))).toBe(true);
   });
 

@@ -4,7 +4,7 @@ import { closeMobileSidebarAfterNavigation, getMobileWorkspaceContext } from "@/
 
 describe("Guardian workspace navigation", () => {
   it("defines the approved workspace and account groups with stable destinations", () => {
-    expect(guardianDashboardNavigation.filter(item => item.sectionLabel).map(item => item.sectionLabel)).toEqual(["Workspace", "Account"]);
+    expect(guardianDashboardNavigation.filter(item => item.sectionLabel).map(item => item.sectionLabel)).toEqual(["Workspace", "Account", "Account"]);
     expect(guardianDashboardNavigation.map(item => item.path)).toEqual([
       "/guardian/dashboard",
       "/guardian/dashboard/hire",
@@ -17,6 +17,7 @@ describe("Guardian workspace navigation", () => {
       "/guardian/dashboard/exclusive",
       "/guardian/dashboard/how-it-works",
       "/guardian/dashboard/community",
+      "/guardian/dashboard/sign-out",
     ]);
   });
 
@@ -34,5 +35,23 @@ describe("Guardian workspace navigation", () => {
       workspace: "Guardian workspace",
       destination: "Posted jobs",
     });
+  });
+});
+
+describe("Sign Out in the Guardian sidebar", () => {
+  it("ends the sidebar with a Sign Out that signs out rather than navigating", () => {
+    // All three panels answer this the same way now. The Guardian sidebar had
+    // an account dropdown at its foot until the workspace header replaced it,
+    // and removing that left the Guardian with no sidebar Sign Out at all
+    // while the Tutor kept one.
+    const signOut = guardianDashboardNavigation[guardianDashboardNavigation.length - 1];
+
+    expect(signOut).toMatchObject({ label: "Sign Out", sectionLabel: "Account", action: "signout" });
+    expect(guardianDashboardNavigation.filter(item => item.action === "signout")).toHaveLength(1);
+  });
+
+  it("does not mark it as planned, the way an unbuilt destination is", () => {
+    // A planned item renders disabled. Sign Out works today.
+    expect(guardianDashboardNavigation.find(item => item.action === "signout")?.planned).toBeUndefined();
   });
 });

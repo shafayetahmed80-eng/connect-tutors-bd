@@ -66,7 +66,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     surface: "Admin panel",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
-    groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls"],
+    groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"],
     items: [
       ["/admin/dashboard", "Overview"],
       ["/admin/tutors", "Tutor management"],
@@ -85,6 +85,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/tutors", "Public Tutor directory"],
       ["/admin/reports", "Admin activity report"],
       ["/admin/security", "Admin security"],
+      ["/admin/sign-out", "Sign Out"],
     ],
   },
   {
@@ -129,6 +130,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/guardian/dashboard/exclusive", "Exclusively yours"],
       ["/guardian/dashboard/how-it-works", "How it works"],
       ["/guardian/dashboard/community", "Join Guardian Community"],
+      ["/guardian/dashboard/sign-out", "Sign Out"],
     ],
   },
 ];
