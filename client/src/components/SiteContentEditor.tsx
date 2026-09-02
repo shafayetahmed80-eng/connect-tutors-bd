@@ -36,6 +36,7 @@ type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
 type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
 
 const sizeInputClass = "h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-[13px] tabular-nums text-slate-800 outline-none focus:border-[#116fc4] focus:ring-2 focus:ring-sky-100";
+const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-[#116fc4]";
 
 /**
  * The pixel value to store, or `null` when the box is empty, unreadable, or
@@ -67,6 +68,8 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkPx, setBulkPx] = useState("");
 
   const stored = useMemo(() => {
     const map = new Map<string, Stored>();
@@ -162,6 +165,83 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     }
   };
 
+  const toggleSelected = (slotId: string, on: boolean) =>
+    setSelected(current => {
+      const next = new Set(current);
+      if (on) next.add(slotId); else next.delete(slotId);
+      return next;
+    });
+
+  /** Ticks or clears a whole surface at once, respecting the active filter. */
+  const toggleMany = (slotIds: string[], on: boolean) =>
+    setSelected(current => {
+      const next = new Set(current);
+      for (const id of slotIds) {
+        if (on) next.add(id); else next.delete(id);
+      }
+      return next;
+    });
+
+  /**
+   * Only slots that actually carry a size can take a bulk size. Spacing slots
+   * and the phone slot are selectable - so they can be reset in bulk - but a
+   * size applied to them would be stored and never read.
+   */
+  const sizableSelected = () => Array.from(selected).filter(slotId => {
+    const slot = textSlots.find(candidate => candidate.id === slotId);
+    if (slot) return slot.kind !== "phone";
+    return sizeSlots.some(candidate => candidate.id === slotId);
+  });
+
+  const applyBulkSize = async () => {
+    const px = Number.parseInt(bulkPx.trim(), 10);
+    if (!Number.isFinite(px)) return;
+    const clamped = Math.min(MAX_SITE_CONTENT_TEXT_PX, Math.max(MIN_SITE_CONTENT_TEXT_PX, px));
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      for (const slotId of sizableSelected()) {
+        const slot = textSlots.find(candidate => candidate.id === slotId);
+        const sizeSlot = sizeSlots.find(candidate => candidate.id === slotId);
+        // Matching the shipped size still means "no override", in bulk too.
+        const shipped = slot ? siteContentSlotDefaultPx(slot) : sizeSlot!.defaultPx;
+        const value = clamped === shipped ? null : clamped;
+        if (sizeSlot && siteContentSizeSlotMetric(sizeSlot) === "padding") {
+          await save.mutateAsync({ slotId, paddingPx: value });
+        } else if (slot) {
+          const trimmed = drafts[slotId]?.text.trim() ?? "";
+          await save.mutateAsync({ slotId, text: trimmed === slot.defaultText ? null : trimmed, textSizePx: value });
+        } else {
+          await save.mutateAsync({ slotId, textSizePx: value });
+        }
+      }
+      await utils.siteContent.list.invalidate({ page });
+      setBulkPx("");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "The size could not be applied.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetSelected = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Only rows that actually have a stored override need a call.
+      for (const slotId of Array.from(selected).filter(id => stored.has(id))) {
+        await reset.mutateAsync({ slotId });
+      }
+      await utils.siteContent.list.invalidate({ page });
+      setSelected(new Set());
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "The rows could not be reset.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const resetSlot = async (slotId: string) => {
     setSaving(true);
     setSaveError(null);
@@ -198,6 +278,33 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       </button>
     </div>
 
+    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#116fc4]/30 bg-[#f2f9ff] p-2">
+      <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
+      <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
+        Set size
+        <input
+          type="number"
+          inputMode="numeric"
+          min={MIN_SITE_CONTENT_TEXT_PX}
+          max={MAX_SITE_CONTENT_TEXT_PX}
+          aria-label="Size in pixels for the selected rows"
+          value={bulkPx}
+          onChange={event => setBulkPx(event.target.value)}
+          className={`${sizeInputClass} w-16`}
+        />
+        px
+      </label>
+      <button type="button" disabled={saving || bulkPx.trim() === "" || sizableSelected().length === 0} onClick={() => void applyBulkSize()} className="h-8 rounded-md bg-[#116fc4] px-3 text-[13px] font-bold text-white disabled:opacity-40">
+        Apply to {sizableSelected().length}
+      </button>
+      <button type="button" disabled={saving || !Array.from(selected).some(id => stored.has(id))} onClick={() => void resetSelected()} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40">
+        <RotateCcw size={13} /> Reset selected
+      </button>
+      <button type="button" onClick={() => setSelected(new Set())} className="h-8 rounded-md px-2 text-[13px] font-medium text-slate-500 hover:text-slate-800">
+        Clear
+      </button>
+    </div> : null}
+
     {saveError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{saveError}</p> : null}
 
     {surfaces.map(surface => {
@@ -209,19 +316,45 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       const groups = surfaceTextSlots.map(slot => slot.group).filter((group, index, all) => all.indexOf(group) === index);
       const overriddenHere = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].filter(slot => stored.has(slot.id)).length;
 
+      // Only what the filter leaves visible, so "select all" never picks up a
+      // row the Owner cannot see.
+      const surfaceIds = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].map(slot => slot.id);
+      const allSelected = surfaceIds.length > 0 && surfaceIds.every(id => selected.has(id));
+
       return <section key={surface} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5">
-          <h2 className="text-[13px] font-bold text-slate-900">{surface}</h2>
-          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{overriddenHere} edited</span>
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
+          <label className="flex min-w-0 items-center gap-2">
+            <input
+              type="checkbox"
+              className={checkboxClass}
+              checked={allSelected}
+              aria-label={`Select every row under ${surface}`}
+              onChange={event => toggleMany(surfaceIds, event.target.checked)}
+            />
+            <h2 className="truncate text-[13px] font-bold text-slate-900">{surface}</h2>
+          </label>
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-slate-400">{overriddenHere} edited</span>
         </div>
 
         {groups.map(group => <div key={group} className="mt-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{group}</p>
           {surfaceTextSlots.filter(slot => slot.group === group).map(slot => <div key={slot.id} className={rowClass}>
-            <label htmlFor={`slot-${slot.id}`} className={rowLabelClass} title={slot.label}>
-              {slot.label}
-              {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
-            </label>
+            {/* The checkbox lives inside the label cell rather than taking a
+                grid column of its own, which would squeeze the text box on a
+                phone where the label already wraps to its own line. */}
+            <span className={`${rowLabelClass} flex items-center gap-2`}>
+              <input
+                type="checkbox"
+                className={checkboxClass}
+                checked={selected.has(slot.id)}
+                aria-label={`Select ${surface} ${slot.label}`}
+                onChange={event => toggleSelected(slot.id, event.target.checked)}
+              />
+              <label htmlFor={`slot-${slot.id}`} className="min-w-0 truncate" title={slot.label}>
+                {slot.label}
+                {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+              </label>
+            </span>
             <input
               id={`slot-${slot.id}`}
               value={drafts[slot.id]?.text ?? ""}
@@ -250,9 +383,18 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         {surfaceSizeSlots.map(slot => <div key={slot.id} className="mt-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Text size</p>
           <div className={rowClass}>
-            <span className={rowLabelClass} title={slot.label}>
-              {slot.label}
-              {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+            <span className={`${rowLabelClass} flex items-center gap-2`}>
+              <input
+                type="checkbox"
+                className={checkboxClass}
+                checked={selected.has(slot.id)}
+                aria-label={`Select ${surface} ${slot.label}`}
+                onChange={event => toggleSelected(slot.id, event.target.checked)}
+              />
+              <span className="min-w-0 truncate" title={slot.label}>
+                {slot.label}
+                {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+              </span>
             </span>
             <span className="hidden text-[11px] leading-4 text-slate-500 sm:block">{slot.help}</span>
             <input
@@ -274,9 +416,18 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         {surfaceSpacingSlots.map(slot => <div key={slot.id} className="mt-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Spacing</p>
           <div className={rowClass}>
-            <span className={rowLabelClass} title={slot.label}>
-              {slot.label}
-              {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+            <span className={`${rowLabelClass} flex items-center gap-2`}>
+              <input
+                type="checkbox"
+                className={checkboxClass}
+                checked={selected.has(slot.id)}
+                aria-label={`Select ${surface} ${slot.label}`}
+                onChange={event => toggleSelected(slot.id, event.target.checked)}
+              />
+              <span className="min-w-0 truncate" title={slot.label}>
+                {slot.label}
+                {isDirty(slot.id) ? <span className="ml-1 text-[#116fc4]" aria-label="unsaved">•</span> : null}
+              </span>
             </span>
             <span className="hidden sm:block" />
             <select
