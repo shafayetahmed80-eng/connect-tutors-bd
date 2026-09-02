@@ -33,7 +33,64 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-1.5 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 py-2 text-sm text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-[12px] text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+
+/**
+ * Two columns of controls that are all one line tall.
+ *
+ * Long-form fields are deliberately kept out and given `md:col-span-2` instead:
+ * a textarea beside a one-line select stretches its row to the taller of the
+ * two, which is what made these panels look ragged.
+ */
+const compactFieldGridClassName = "grid gap-x-5 gap-y-4 md:grid-cols-2";
+/** Full-width row inside `compactFieldGridClassName`. */
+const wideFieldClassName = "md:col-span-2";
+
+/**
+ * A titled block of related fields.
+ *
+ * The three long panels used to be one undifferentiated grid, so a tutor had no
+ * way to see where one topic ended and the next began. Every panel now reads as
+ * a short list of named groups.
+ */
+function FormSection({ title, description, children }: { title: React.ReactNode; description?: string; children: React.ReactNode }) {
+  return <section className="border-t border-[#e6eff4] pt-5 first:border-t-0 first:pt-0">
+    <h3 className="text-[13px] font-bold text-[#244a6a]">{title}</h3>
+    {description ? <p className="mt-0.5 text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
+    <div className="mt-4">{children}</div>
+  </section>;
+}
+
+/**
+ * A small set of mutually exclusive choices, laid out as a labelled row of
+ * buttons rather than a bordered fieldset.
+ *
+ * The fieldsets these replace carried their own heavy border and a third label
+ * style, so they read as a different kind of thing from the fields beside them.
+ */
+function ChoiceGroup({ label, name, value, options, onChange, required = false, error }: {
+  label: string;
+  name: string;
+  value: string;
+  options: ReadonlyArray<readonly [string, string]>;
+  onChange: (value: string) => void;
+  required?: boolean;
+  error?: string;
+}) {
+  return <div role="radiogroup" aria-label={label} className={tutorProfileResponsiveClasses.fieldRoot}>
+    <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+    <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
+      {options.map(([optionValue, optionLabel]) => <label
+        key={optionValue}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-[#167ddd] bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
+      >
+        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />
+        {optionLabel}
+      </label>)}
+    </div>
+    <InlineError message={error} />
+  </div>;
+}
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
@@ -150,9 +207,9 @@ function CatalogSearchField({
   // A full page of results means the catalog had more to give.
   const truncated = limit !== undefined && (options?.length ?? 0) >= limit;
 
-  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
-    <span>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
-    <span className="relative mt-1.5 block">
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+    <span className="relative mt-1 block">
       <input
         className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? "border-[#d84a4a]" : ""}`}
         type="text"
@@ -180,14 +237,14 @@ function CatalogSearchField({
       </button> : null}
     </span>
     <datalist id={listId}>{(options ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
-    {hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}
-    {truncated ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
-    {error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}
+    {hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}
+    {truncated ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
   </label>;
 }
 
 function FormInput({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 /** Single-select for the Education section's curated vocabularies. */
@@ -198,18 +255,18 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
   error?: string;
   showRequiredMarker?: boolean;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>
-    {label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
     <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
       <option value="">{placeholder}</option>
       {options.map(option => <option key={option} value={option}>{option}</option>)}
     </select>
-    {error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
   </label>;
 }
 
-function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className={`block text-[13px] font-medium text-[#244a6a] ${tutorProfileResponsiveClasses.fieldRoot}`}>{label}{showRequiredMarker ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}<textarea {...props} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} min-h-28 resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1.5 block text-xs font-normal leading-5 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1.5 block text-xs font-medium leading-5 text-[#b43e3e]">{error}</span> : null}</label>;
+function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 /**
@@ -786,39 +843,35 @@ function TutorProfileWorkspaceBody({
   const renderIdentityFields = (): React.ReactNode => <div className="grid gap-5">
     <div className="grid gap-5 md:grid-cols-2">
       <FormInput label={tutorProfileCopy.fields.fullName} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />
-      <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.gender}<select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
+      <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.gender}</span><select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
       <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
       <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
-      <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} hint="Private — never public." error={fieldErrors.phone} />
-      <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} hint="Private — never public." error={fieldErrors.contactEmail} />
-      <FormTextArea label="Present Address" required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} hint="Private — visible only to you and authorized review staff." />
-      <FormTextArea label="Permanent Address" required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} hint="Private — never shown to Guardians." />
-      <FormInput label="Nationality" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
-      <FormInput label="Religion" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
-      <div className="rounded-2xl border border-[#f0d594] bg-[#fffaf0] p-4 text-sm text-[#765417] md:col-span-2">
-        <p className="font-bold text-[#614711]">National ID (NID) <span aria-hidden="true" className="text-[#d84a4a]">*</span></p>
-        <p className="mt-1 leading-5">Secure collection is pending activation. Do not enter or upload NID information yet; this field will open only after encrypted storage and access controls are activated.</p>
-      </div>
-      <FormInput label="Additional Phone (Optional)" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
-      <FormInput label="Social Profile Links (Optional)" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
+      <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} error={fieldErrors.phone} />
+      <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />
+      <FormTextArea label="Present Address" rows={2} required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} />
+      <FormTextArea label="Permanent Address" rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />
+      <FormInput label="Nationality" placeholder="Ex- Bangladeshi" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
+      <FormInput label="Religion" placeholder="Ex- Islam" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
+      <FormInput label="Additional Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
+      <FormInput label="Social Profile Links (Optional)" placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
     </div>
   </div>;
 
   const renderFamilyContactFields = (): React.ReactNode => <div className="grid gap-5 md:grid-cols-2">
-    <FormInput label="Father’s Name" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
-    <FormInput label="Father’s Phone Number" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} hint="Private — used only for profile verification." />
-    <FormInput label="Mother’s Name (Optional)" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
-    <FormInput label="Mother’s Phone Number (Optional)" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
-    <FormInput label="Emergency Contact Name (Optional)" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
-    <FormInput label="Emergency Contact Relation (Optional)" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
-    <FormInput label="Emergency Contact Phone (Optional)" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
-    <FormTextArea label="Emergency Contact Address (Optional)" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
+    <FormInput label="Father’s Name" placeholder="Ex- Abdul Karim" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
+    <FormInput label="Father’s Phone Number" placeholder="Ex- 01712345678" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} />
+    <FormInput label="Mother’s Name (Optional)" placeholder="Ex- Abdul Karim" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
+    <FormInput label="Mother’s Phone Number (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
+    <FormInput label="Emergency Contact Name (Optional)" placeholder="Ex- Rahima Begum" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
+    <FormInput label="Emergency Contact Relation (Optional)" placeholder="Ex- Uncle" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
+    <FormInput label="Emergency Contact Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
+    <FormTextArea label="Emergency Contact Address (Optional)" rows={2} value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
   </div>;
 
   const renderEducationFields = (): React.ReactNode => <>
     <div className="grid gap-5 md:grid-cols-2">
       <FormSelect label={tutorProfileCopy.fields.educationLevel} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />
-      <label className="block text-[13px] font-medium text-[#244a6a]">{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className="text-[#d84a4a]"> *</span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
+      <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.studyStatus}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={tutorProfileCopy.fields.studyStatus} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>
       <CatalogSearchField label="Institute" query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.universityId} />
       <CatalogSearchField label="Department / Subject" query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.facultyDepartmentId} />
       <FormInput label={tutorProfileCopy.fields.degreeExamTitle} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />
@@ -857,7 +910,7 @@ function TutorProfileWorkspaceBody({
               <FormInput label="Study Start Year" required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />
               {record.currentlyStudying ? null : <FormInput label="Study End Year" required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />}
               <label className="flex items-center gap-2 self-end rounded-lg border border-[#dce8f0] px-3 py-2 text-sm font-medium text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />Currently studying</label>
-              <FormInput label="Institute ID Card Number (Optional)" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />
+              <FormInput label="Institute ID Card Number (Optional)" placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />
             </div>
           </div> : null}
         </div>;
@@ -886,16 +939,30 @@ function TutorProfileWorkspaceBody({
     </div>
   </>;
 
-  const renderTeachingExpertiseFields = (): React.ReactNode => <div className="grid gap-5 md:grid-cols-2">
-    <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
-    <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
-    <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
-    <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
-    <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
-    <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
-    <FormTextArea label="Prior Teaching Experience" value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." />
-    <FormTextArea label="Special Expertise" value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />
-    <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
+  const renderTeachingExpertiseFields = (): React.ReactNode => <div className="space-y-5">
+    <FormSection title="What you teach">
+      <div className={compactFieldGridClassName}>
+        <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
+      </div>
+    </FormSection>
+
+    <FormSection title="Who you teach">
+      <div className={compactFieldGridClassName}>
+        <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
+      </div>
+    </FormSection>
+
+    <FormSection title="In your own words">
+      <div className="space-y-4">
+        <FormTextArea label="Prior Teaching Experience" value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." />
+        <FormTextArea label="Special Expertise" value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />
+        <FormTextArea label="Academic Achievement" value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />
+      </div>
+    </FormSection>
   </div>;
 
   const renderGroupFields = (groupId: TutorProfileSectionGroupId): React.ReactNode => {
@@ -912,48 +979,56 @@ function TutorProfileWorkspaceBody({
 
     if (sectionId === "c") return <div className="space-y-5">{renderEducationFields()}{renderTeachingExpertiseFields()}</div>;
 
-    if (sectionId === "d") return <>
-      <div className="grid gap-5 lg:grid-cols-2">
-        <fieldset className="rounded-2xl border border-[#dce8f0] p-4">
-          <legend className="px-1 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.tuitionType} <span className="text-[#d84a4a]">*</span></legend>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">{([['home', 'Home tuition'], ['online', 'Online tuition'], ['both', 'Both']] as const).map(([value, label]) => <label key={value} className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#dce8f0] px-3 py-2.5 text-sm text-[#315b78] has-[:checked]:border-[#167ddd] has-[:checked]:bg-[#f0faff]"><input type="radio" name="tuition-type" value={value} checked={form.tuitionType === value} onChange={() => update("tuitionType", value)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />{label}</label>)}</div>
-          <InlineError message={fieldErrors.tuitionType} />
-        </fieldset>
-        <fieldset className="rounded-2xl border border-[#dce8f0] p-4">
-          <legend className="px-1 text-sm font-bold text-[#244a6a]">{tutorProfileCopy.fields.preferredStudentGender}<span aria-hidden="true" className="text-[#d84a4a]"> *</span></legend>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">{([['male', 'Male'], ['female', 'Female'], ['both', 'Both']] as const).map(([value, label]) => <label key={value} className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#dce8f0] px-3 py-2.5 text-sm text-[#315b78] has-[:checked]:border-[#167ddd] has-[:checked]:bg-[#f0faff]"><input type="radio" name="student-gender" value={value} checked={form.preferredStudentGender === value} onChange={() => update("preferredStudentGender", value)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />{label}</label>)}</div>
-          <InlineError message={fieldErrors.preferredStudentGender} />
-        </fieldset>
-        <SearchableMultiSelect label={tutorProfileCopy.fields.classSizes} required options={[{ id: "one_to_one", label: "One-to-one" }, { id: "small_group", label: "Small group" }, { id: "group", label: "Group" }]} selectedIds={form.preferredClassSizes} onChange={value => update("preferredClassSizes", value)} emptyMessage="No class-size options found." error={fieldErrors.preferredClassSizes} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={[{ id: "monday", label: "Monday" }, { id: "tuesday", label: "Tuesday" }, { id: "wednesday", label: "Wednesday" }, { id: "thursday", label: "Thursday" }, { id: "friday", label: "Friday" }, { id: "saturday", label: "Saturday" }, { id: "sunday", label: "Sunday" }]} selectedIds={form.preferredTeachingDays} onChange={value => update("preferredTeachingDays", value)} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.timeSlots} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />
-      </div>
-      <label
-        className={`mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border bg-[#f7fbfd] p-4 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#167ddd] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
-      >
-        <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
-        <span><strong className="block text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</strong><span className="mt-1 block leading-5">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
-      </label>
-      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.location-fee-travel" className="text-sm" /></h3>
-      <div className="mt-4 grid gap-5 md:grid-cols-3">
-        <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
-        <FormInput label={tutorProfileCopy.fields.feeMin} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />
-        <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
-        <FormInput label="Travel Distance (km) (Optional)" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
-      </div>
-      <h3 className="mt-8 border-t border-[#e6eff4] pt-6 font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.language-communication" className="text-sm" /></h3>
-      <div className="mt-4 grid gap-5 md:grid-cols-2">
-        <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
-      </div>
-    </>;
+    if (sectionId === "d") return <div className="space-y-5">
+      <FormSection title="How you teach">
+        <div className={compactFieldGridClassName}>
+          <ChoiceGroup label={tutorProfileCopy.fields.tuitionType} name="tuition-type" required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />
+          <ChoiceGroup label={tutorProfileCopy.fields.preferredStudentGender} name="student-gender" required value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.classSizes} required options={[{ id: "one_to_one", label: "One-to-one" }, { id: "small_group", label: "Small group" }, { id: "group", label: "Group" }]} selectedIds={form.preferredClassSizes} onChange={value => update("preferredClassSizes", value)} emptyMessage="No class-size options found." error={fieldErrors.preferredClassSizes} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={[{ id: "monday", label: "Monday" }, { id: "tuesday", label: "Tuesday" }, { id: "wednesday", label: "Wednesday" }, { id: "thursday", label: "Thursday" }, { id: "friday", label: "Friday" }, { id: "saturday", label: "Saturday" }, { id: "sunday", label: "Sunday" }]} selectedIds={form.preferredTeachingDays} onChange={value => update("preferredTeachingDays", value)} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.timeSlots} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />
+          <label
+            className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
+          >
+            <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
+            <span><strong className="block text-[13px] font-semibold text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
+          </label>
+        </div>
+      </FormSection>
 
-    return <div className="grid gap-5 md:grid-cols-2">
-      <FormTextArea label="About Me" maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />
-      <FormTextArea label="Teaching Approach" maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />
-      <FormTextArea label="Why Choose Me" maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." hint={`${form.whyChooseMe.length}/2000 characters`} />
-      <FormTextArea label="Additional Notes (Optional)" maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." hint={`${form.additionalNotes.length}/2000 characters`} />
+      <FormSection title={<SiteText slotId="tutor-profile.form.location-fee-travel" className="text-sm" />}>
+        <div className={compactFieldGridClassName}>
+          <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
+          {/* The fee pair and the distance read as one line of numbers. */}
+          <div className={`${wideFieldClassName} grid gap-x-5 gap-y-4 sm:grid-cols-3`}>
+            <FormInput label={tutorProfileCopy.fields.feeMin} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />
+            <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />
+            <FormInput label="Travel Distance (km) (Optional)" placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection title={<SiteText slotId="tutor-profile.form.language-communication" className="text-sm" />}>
+        <div className={compactFieldGridClassName}>
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
+        </div>
+      </FormSection>
+    </div>;
+
+    return <div className="space-y-5">
+      <FormSection title="Your introduction">
+        <div className="space-y-4">
+          <FormTextArea label="About Me" rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />
+          <FormTextArea label="Teaching Approach" rows={5} maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />
+          <FormTextArea label="Why Choose Me" rows={5} maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." hint={`${form.whyChooseMe.length}/2000 characters`} />
+        </div>
+      </FormSection>
+
+      <FormSection title="For the review team">
+        <FormTextArea label="Additional Notes (Optional)" rows={4} maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." hint={`${form.additionalNotes.length}/2000 characters`} />
+      </FormSection>
     </div>;
   };
 
@@ -990,10 +1065,6 @@ function TutorProfileWorkspaceBody({
       />
 
       <div className={`min-w-0 ${tp.stack}`}>
-        <p className="flex items-start gap-2 px-1 text-[11px] leading-5 text-j-ink-soft">
-          <LockKeyhole className="mt-0.5 shrink-0 text-j-accent" size={12} />
-          <span>{profile ? "Name, phone, email, gender and location come from your secure Tutor registration." : "Review the available account details and add any missing required identity or location information."} Phone and email are used for review only and are never shown publicly.</span>
-        </p>
 
         {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 

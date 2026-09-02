@@ -38,6 +38,26 @@ export const tutorProfileTheme = {
    */
   rowValueMissingTone: "font-medium text-j-err",
 
+  /**
+   * One label style for every control in the section editor.
+   *
+   * Inputs, selects, multi-selects and choice groups each used to bring their
+   * own size and weight, so two fields side by side in the same grid did not
+   * look like they belonged together.
+   */
+  fieldLabel: "block text-[12px] font-semibold text-[#244a6a]",
+  /**
+   * The wrapper around a label and its control.
+   *
+   * `index.css` sets `font: inherit` on form elements as an unlayered rule,
+   * which in Tailwind v4 outranks every utility class - so a `text-*` class on
+   * an input has never had any effect. The control takes its size and weight
+   * from here instead, which is the one thing that does reach it.
+   */
+  fieldRow: "block text-[12px] font-normal",
+  /** The red asterisk that marks a required field. */
+  requiredMark: "text-[#d84a4a]",
+
   /** Pill / chip base (add tone classes per use). */
   pill: "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
 

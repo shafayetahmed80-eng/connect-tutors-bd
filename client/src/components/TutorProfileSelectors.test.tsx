@@ -92,10 +92,12 @@ describe("Tutor Profile selector controls", () => {
     const trigger = screen.getByRole("button", { name: /teaching areas/i });
     await user.click(trigger);
     await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
-    expect(trigger.textContent).toMatch(/no selections/i);
+    // Staged-but-uncommitted picks must not show on the closed trigger.
+    expect(trigger.textContent).toMatch(/^Select teaching areas$/i);
 
     await user.click(screen.getByRole("button", { name: /cancel/i }));
-    expect(trigger.textContent).toMatch(/no selections/i);
+    // Staged-but-uncommitted picks must not show on the closed trigger.
+    expect(trigger.textContent).toMatch(/^Select teaching areas$/i);
 
     await user.click(trigger);
     await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
