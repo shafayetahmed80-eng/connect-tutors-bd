@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { COOKIE_NAME } from "../shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 import * as db from "./db";
@@ -127,7 +127,9 @@ describe("Tutor password authentication", () => {
     expect(result.tutorPortalToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(cookies[0]).toMatchObject({ name: COOKIE_NAME, value: "signed-password-session" });
     expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "none", path: "/" });
-    expect(cookies[0]?.options).not.toHaveProperty("maxAge");
+    // The cookie carries a year-long token; without maxAge the browser would
+    // still drop it on exit and every panel would ask for a password again.
+    expect(cookies[0]?.options).toMatchObject({ maxAge: ONE_YEAR_MS });
   });
 
   it("persists a durable auth_events row with a masked identifier on a successful sign-in", async () => {

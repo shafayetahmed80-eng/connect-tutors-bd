@@ -1,5 +1,4 @@
 import { Redirect } from "wouter";
-import { LockKeyhole } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 /**
@@ -15,16 +14,14 @@ export function getAccountRedirectPath(role: string | null | undefined): string 
   return "/";
 }
 
-function AccountStatusPanel({ title, description }: { title: string; description: string }) {
-  return <main className="auth-page"><div className="auth-shell"><section className="auth-panel auth-support-panel" aria-live="polite"><div className="auth-icon"><LockKeyhole size={21} /></div><p className="eyebrow">Secure account access</p><h1>{title}</h1><p>{description}</p></section></div></main>;
-}
-
 export default function AccountPage() {
   const { user, loading } = useAuth({ redirectOnUnauthenticated: true, redirectPath: "/login" });
 
-  if (loading || !user) {
-    return <AccountStatusPanel title="Checking your account…" description="We are confirming your account permissions before opening your workspace." />;
-  }
+  // Nothing is drawn while the session resolves. This used to show a "Checking
+  // your account…" panel, which read as a real page the visitor had arrived at
+  // rather than the redirect it actually is - and it is on screen for a moment
+  // either way.
+  if (loading || !user) return null;
 
   return <Redirect to={getAccountRedirectPath(user.role)} />;
 }

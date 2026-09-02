@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TUTOR_PORTAL_SESSION_HEADER,
   createTutorPortalExpiry,
+  TUTOR_PORTAL_SESSION_TTL_MS,
   getTutorPortalTokenFromHeaders,
   hashTutorPortalToken,
 } from "./tutor-portal-session";
@@ -26,9 +27,12 @@ describe("Tutor portal-session token contract", () => {
     expect(getTutorPortalTokenFromHeaders(undefined as never)).toBeUndefined();
   });
 
-  it("creates a stale-tab expiry ten minutes ahead of a supplied clock", () => {
+  it("dates the proof from a supplied clock, a year out like the cookie carrying it", () => {
+    // This was ten minutes, which signed a Tutor out over a lunch break while
+    // their account cookie was still valid. Nobody had asked to be signed out.
     const now = new Date("2026-08-24T00:00:00.000Z");
 
-    expect(createTutorPortalExpiry(now)).toEqual(new Date("2026-08-24T00:10:00.000Z"));
+    expect(createTutorPortalExpiry(now).getTime() - now.getTime()).toBe(TUTOR_PORTAL_SESSION_TTL_MS);
+    expect(createTutorPortalExpiry(now)).toEqual(new Date("2027-08-24T00:00:00.000Z"));
   });
 });
