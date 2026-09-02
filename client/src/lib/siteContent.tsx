@@ -7,13 +7,14 @@ import {
   telHref,
   whatsappHref,
   resolveSiteContentSpacingClass,
+  resolveSiteContentPaddingStyle,
   resolveSiteContentTextStyle,
   type SiteContentPageId,
   type SiteContentSpacing,
 } from "@shared/site-content";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-type ResolvedOverride = { text: string | null; textSizePx: number | null; spacing: string | null };
+type ResolvedOverride = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
 type SiteContentValue = { overrides: Map<string, ResolvedOverride> };
 
 const SiteContentContext = createContext<SiteContentValue>({ overrides: new Map() });
@@ -36,7 +37,7 @@ export function SiteContentProvider({ page, children }: { page: SiteContentPageI
   const value = useMemo<SiteContentValue>(() => {
     const overrides = new Map(parent.overrides);
     for (const row of query.data ?? []) {
-      overrides.set(row.slotId, { text: row.text ?? null, textSizePx: row.textSizePx ?? null, spacing: row.spacing ?? null });
+      overrides.set(row.slotId, { text: row.text ?? null, textSizePx: row.textSizePx ?? null, paddingPx: row.paddingPx ?? null, spacing: row.spacing ?? null });
     }
     return { overrides };
   }, [query.data, parent]);
@@ -64,6 +65,28 @@ export function useSiteContentText(slotId: string, fallback?: string) {
 export function useSiteContentTextStyle(slotId: string) {
   const override = useOverride(slotId);
   return resolveSiteContentTextStyle(override?.textSizePx);
+}
+
+/** Vertical padding an admin set for a row-sizing slot, else `undefined`. */
+export function useSiteContentPaddingStyle(slotId: string) {
+  const override = useOverride(slotId);
+  return resolveSiteContentPaddingStyle(override?.paddingPx);
+}
+
+/**
+ * One resolver for callers that need many slots at once, such as a sidebar
+ * mapping over its menu items.
+ *
+ * `SiteText` cannot help where the string itself is needed rather than a node -
+ * a tooltip or an aria-label - and a hook per item would break the rules of
+ * hooks inside `.map()`. This reads the context once and hands back a lookup.
+ */
+export function useSiteContentResolver() {
+  const { overrides } = useContext(SiteContentContext);
+  return useMemo(() => (slotId: string, fallback: string) => {
+    const text = overrides.get(slotId)?.text?.trim();
+    return text || findSiteContentSlot(slotId)?.defaultText || fallback;
+  }, [overrides]);
 }
 
 export function useSiteContentSpacingClass(slotId: string) {

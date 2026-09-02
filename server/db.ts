@@ -4053,6 +4053,7 @@ export async function listSiteContentOverrides(page: string) {
       slotId: siteContentOverrides.slotId,
       text: siteContentOverrides.text,
       textSizePx: siteContentOverrides.textSizePx,
+      paddingPx: siteContentOverrides.paddingPx,
       spacing: siteContentOverrides.spacing,
     })
     .from(siteContentOverrides)
@@ -4064,6 +4065,7 @@ export async function saveSiteContentOverride(input: {
   page: string;
   text: string | null;
   textSizePx: number | null;
+  paddingPx: number | null;
   spacing: string | null;
   updatedByUserId: number;
 }) {
@@ -4075,6 +4077,7 @@ export async function saveSiteContentOverride(input: {
       page: values.page,
       text: values.text,
       textSizePx: values.textSizePx,
+      paddingPx: values.paddingPx,
       spacing: values.spacing,
       updatedByUserId: values.updatedByUserId,
     },

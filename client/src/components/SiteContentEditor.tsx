@@ -7,6 +7,7 @@ import {
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
+  siteContentSizeSlotMetric,
   siteContentSlotDefaultPx,
   siteContentSpacings,
   type SiteContentPageId,
@@ -32,7 +33,7 @@ const rowLabelClass = "col-span-3 truncate text-[13px] font-medium text-slate-70
 
 /** `textPx` is the number in the box, kept as a string so it can be emptied. */
 type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
-type Stored = { text: string | null; textSizePx: number | null; spacing: string | null };
+type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
 
 const sizeInputClass = "h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-[13px] tabular-nums text-slate-800 outline-none focus:border-[#116fc4] focus:ring-2 focus:ring-sky-100";
 
@@ -96,7 +97,9 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     }
     for (const slot of sizeSlots) {
       const row = stored.get(slot.id);
-      map.set(slot.id, { text: "", textPx: String(row?.textSizePx ?? slot.defaultPx), spacing: "default" });
+      // A padding slot stores its number in its own column.
+      const saved = siteContentSizeSlotMetric(slot) === "padding" ? row?.paddingPx : row?.textSizePx;
+      map.set(slot.id, { text: "", textPx: String(saved ?? slot.defaultPx), spacing: "default" });
     }
     return map;
   }, [stored, textSlots, spacingSlots, sizeSlots]);
@@ -141,7 +144,12 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
             textSizePx: overriddenPx(draft.textPx, siteContentSlotDefaultPx(slot)),
           });
         } else if (sizeSlot) {
-          await save.mutateAsync({ slotId, textSizePx: overriddenPx(draft.textPx, sizeSlot.defaultPx) });
+          // Font size and padding live in separate columns, so a stored number
+          // never has to be read against the registry to know what it meant.
+          const px = overriddenPx(draft.textPx, sizeSlot.defaultPx);
+          await save.mutateAsync(siteContentSizeSlotMetric(sizeSlot) === "padding"
+            ? { slotId, paddingPx: px }
+            : { slotId, textSizePx: px });
         } else {
           await save.mutateAsync({ slotId, spacing: draft.spacing === "default" ? null : draft.spacing });
         }

@@ -806,6 +806,12 @@ export const siteContentOverrides = mysqlTable(
     text: varchar("text", { length: 240 }),
     /** Absolute font size in pixels; null means the slot renders as shipped. */
     textSizePx: int("textSizePx"),
+    /**
+     * Vertical padding in pixels, for slots that size a row rather than its
+     * text. Kept apart from `textSizePx` so a stored number never has to be
+     * read against the registry to know which measurement it was.
+     */
+    paddingPx: int("paddingPx"),
     spacing: varchar("spacing", { length: 20 }),
     updatedByUserId: int("updatedByUserId").references(() => users.id),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -21,6 +21,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
+import { SiteContentProvider, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
+import {
+  sidebarFontSlotId,
+  sidebarGroupSlotId,
+  sidebarPaddingSlotId,
+  sidebarTabsSlotId,
+  type SidebarPanelId,
+} from "@shared/sidebar-tabs";
 import { Bell, LayoutDashboard, LoaderCircle, LogOut, PanelLeft, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -133,6 +141,7 @@ export default function DashboardLayout({
   sidebarIdentity,
   tutorWorkspaceHeader,
   onTutorSignOutSuccess,
+  sidebarPanel,
 }: {
   children: React.ReactNode;
   navigationItems?: DashboardNavigationItem[];
@@ -143,6 +152,7 @@ export default function DashboardLayout({
   sidebarIdentity?: React.ReactNode;
   tutorWorkspaceHeader?: TutorWorkspaceHeaderIdentity;
   onTutorSignOutSuccess?: () => void | Promise<void>;
+  sidebarPanel?: SidebarPanelId;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -191,6 +201,9 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
+      {/* Merges into whatever the app-wide provider already holds, so the
+          sidebar's own overrides load without disturbing the site slots. */}
+      <SiteContentProvider page="sidebar-tabs">
       <DashboardLayoutContent
         setSidebarWidth={setSidebarWidth}
         navigationItems={navigationItems}
@@ -201,9 +214,11 @@ export default function DashboardLayout({
         sidebarIdentity={sidebarIdentity}
         tutorWorkspaceHeader={tutorWorkspaceHeader}
         onTutorSignOutSuccess={onTutorSignOutSuccess}
+        sidebarPanel={sidebarPanel}
       >
         {children}
       </DashboardLayoutContent>
+      </SiteContentProvider>
     </SidebarProvider>
   );
 }
@@ -219,6 +234,8 @@ type DashboardLayoutContentProps = {
   sidebarIdentity?: React.ReactNode;
   tutorWorkspaceHeader?: TutorWorkspaceHeaderIdentity;
   onTutorSignOutSuccess?: () => void | Promise<void>;
+  /** Which sidebar this is, so its labels and sizes can be Admin-edited. */
+  sidebarPanel?: SidebarPanelId;
 };
 
 function DashboardLayoutContent({
@@ -232,8 +249,12 @@ function DashboardLayoutContent({
   sidebarIdentity,
   tutorWorkspaceHeader,
   onTutorSignOutSuccess,
+  sidebarPanel,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const resolveSlot = useSiteContentResolver();
+  const sidebarFontStyle = useSiteContentTextStyle(sidebarPanel ? sidebarFontSlotId(sidebarPanel) : "");
+  const sidebarPaddingStyle = useSiteContentPaddingStyle(sidebarPanel ? sidebarPaddingSlotId(sidebarPanel) : "");
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -353,21 +374,27 @@ function DashboardLayoutContent({
                 const isActive = location === item.path;
                 const previousSection = navigationItems[index - 1]?.sectionLabel;
                 const showSectionLabel = Boolean(item.sectionLabel && item.sectionLabel !== previousSection);
+                // Resolved through one lookup rather than a hook per item, and
+                // used as a string so the tooltip renames along with the label.
+                const label = sidebarPanel ? resolveSlot(sidebarTabsSlotId(sidebarPanel, item.path), item.label) : item.label;
                 return (
                   <SidebarMenuItem key={`${item.path}-${item.label}`}>
                     {item.dividerBefore ? <div className="mx-2 my-3 h-px bg-[#e7eef3] group-data-[collapsible=icon]:mx-0" /> : null}
-                    {showSectionLabel ? <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a91a4] group-data-[collapsible=icon]:sr-only">{item.sectionLabel}</p> : null}
+                    {showSectionLabel ? <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a91a4] group-data-[collapsible=icon]:sr-only">
+                      {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, item.sectionLabel!), item.sectionLabel!) : item.sectionLabel}
+                    </p> : null}
                     <SidebarMenuButton
                       isActive={item.action ? false : isActive}
                       onClick={() => handleNavigation(item)}
-                      tooltip={item.label}
+                      tooltip={label}
                       aria-current={isActive && !item.action ? "page" : undefined}
                       className={getDashboardNavigationItemClassName(isActive && !item.action)}
+                      style={{ ...sidebarFontStyle, ...sidebarPaddingStyle }}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive && !item.action ? "text-[#116fc4]" : "text-[#6d8799]"}`}
                       />
-                      <span>{item.label}</span>
+                      <span>{label}</span>
                       {item.planned ? <span className="ml-auto rounded-full bg-[#fff4dc] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#9a6611] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>

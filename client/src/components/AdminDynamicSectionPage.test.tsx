@@ -23,6 +23,11 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     auth: { logout: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } },
+    // The dashboard sidebar reads its Admin-editable labels through this.
+    siteContent: {
+      list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
+      listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
+    },
   },
 }));
 

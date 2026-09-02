@@ -32,6 +32,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Tutor Profile", path: "/admin/dynamic/tutor-profile" }),
       expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
       expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),
+      expect.objectContaining({ label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs" }),
     ]);
   });
 
@@ -41,6 +42,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/tutor-profile");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/guardian-profile");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/form-options");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/sidebar-tabs");
   });
 
   it("orders the Dynamic Section after Operations and before the Owner controls", () => {
