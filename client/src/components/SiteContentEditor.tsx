@@ -362,9 +362,12 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               onChange={event => update(slot.id, { text: event.target.value })}
               className={inputClass}
             />
-            {/* A phone number is a value other code builds links from, not
-                display copy, so a size on it would mean nothing. */}
-            {slot.kind === "phone" ? <span /> : <input
+            {/* A phone number is a value other code builds links from. A
+                "text-only" slot renders as a plain string on a page whose
+                stylesheet selects by element, where a sized wrapper would
+                recolour the whole heading. Neither can carry a size, so neither
+                offers a box that would quietly do nothing. */}
+            {slot.kind === "phone" || slot.kind === "text-only" ? <span /> : <input
               type="number"
               inputMode="numeric"
               min={MIN_SITE_CONTENT_TEXT_PX}

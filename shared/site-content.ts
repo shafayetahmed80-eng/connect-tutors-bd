@@ -16,7 +16,8 @@ import {
   sidebarPanels,
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
-export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs"] as const;
+import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -78,11 +79,16 @@ export type SiteContentSlot = {
   label: string;
   defaultText: string;
   /**
-   * "text" is display copy, which the size step applies to. "phone" is a value
-   * other code builds links from, so the editor hides the size control and the
-   * server checks the format - a malformed number breaks every wa.me link.
+   * "text" is display copy, which the size applies to. "phone" is a value other
+   * code builds links from, so the editor hides the size control and the server
+   * checks the format - a malformed number breaks every wa.me link.
+   *
+   * "text-only" is copy on a page whose stylesheet selects by element, where
+   * injecting a sized wrapper would recolour the whole heading. Those pages read
+   * their copy as plain strings, so a size box would be a control that does
+   * nothing; the editor hides it too.
    */
-  kind?: "text" | "phone";
+  kind?: "text" | "phone" | "text-only";
   /**
    * The rung on the type ramp this slot ships at. Only used to show the Admin
    * the starting size; when they leave the size alone the call site's own class
@@ -226,6 +232,107 @@ const sidebarTabsSlots: SiteContentSlot[] = sidebarPanels.flatMap(panel => [
   })),
 ]);
 
+/**
+ * The home page, generated from `homeCopy` rather than restated here. The copy
+ * has exactly one home, so a slot's default is always what the page renders.
+ */
+const homeSlots: SiteContentSlot[] = (() => {
+  const slots: SiteContentSlot[] = [];
+  const add = (surface: string, group: string, id: string, label: string, defaultText: string, defaultTextClass: SiteContentSlot["defaultTextClass"] = "text-sm") => {
+    slots.push({ id: `home.${id}`, page: "home", surface, group, label, defaultText, defaultTextClass, kind: "text-only" });
+  };
+  const addHeading = (surface: string, id: string, heading: { lead: string; accent: string; tail?: string }) => {
+    add(surface, "Heading", `${id}.lead`, "Heading, first part", heading.lead, "text-3xl");
+    add(surface, "Heading", `${id}.accent`, "Heading, coloured part", heading.accent, "text-3xl");
+    if (heading.tail !== undefined) add(surface, "Heading", `${id}.tail`, "Heading, last part", heading.tail, "text-3xl");
+  };
+
+  const hero = homeCopy.hero;
+  add("Hero", "Intro", "hero.kicker", "Kicker", hero.kicker, "text-xs");
+  addHeading("Hero", "hero.title", hero.title);
+  add("Hero", "Intro", "hero.description", "Description", hero.description);
+  add("Hero", "Buttons", "hero.primaryAction", "Primary button", hero.primaryAction);
+  add("Hero", "Buttons", "hero.secondaryAction", "Secondary button", hero.secondaryAction);
+  add("Hero", "Intro", "hero.assurance", "Assurance line", hero.assurance, "text-xs");
+  add("Hero", "Floating cards", "hero.floatOne.lead", "Card 1 first line", hero.floatOne.lead, "text-xs");
+  add("Hero", "Floating cards", "hero.floatOne.strong", "Card 1 second line", hero.floatOne.strong, "text-xs");
+  add("Hero", "Floating cards", "hero.floatTwo.lead", "Card 2 first line", hero.floatTwo.lead, "text-xs");
+  add("Hero", "Floating cards", "hero.floatTwo.strong", "Card 2 second line", hero.floatTwo.strong, "text-xs");
+
+  add("Proof strip", "Intro", "proof.introLead", "Intro, first part", homeCopy.proof.introLead, "text-xs");
+  add("Proof strip", "Intro", "proof.introStrong", "Intro, bold part", homeCopy.proof.introStrong, "text-xs");
+  for (const item of homeCopy.proof.items) {
+    add("Proof strip", "Items", `proof.${item.id}.title`, `${item.title} — title`, item.title, "text-xs");
+    add("Proof strip", "Items", `proof.${item.id}.copy`, `${item.title} — copy`, item.copy, "text-xs");
+  }
+
+  const tuition = homeCopy.tuition;
+  add("Tuition types", "Intro", "tuition.eyebrow", "Eyebrow", tuition.eyebrow, "text-xs");
+  addHeading("Tuition types", "tuition.title", tuition.title);
+  add("Tuition types", "Intro", "tuition.description", "Description", tuition.description);
+  add("Tuition types", "Toggle", "tuition.homeToggle", "Home tuition tab", tuition.homeToggle, "text-xs");
+  add("Tuition types", "Toggle", "tuition.onlineToggle", "Online tuition tab", tuition.onlineToggle, "text-xs");
+  add("Tuition types", "Toggle", "tuition.homeNote", "Note under Home tuition", tuition.homeNote, "text-xs");
+  add("Tuition types", "Toggle", "tuition.onlineNote", "Note under Online tuition", tuition.onlineNote, "text-xs");
+  for (const card of tuition.cards) {
+    add("Tuition types", "Cards", `tuition.${card.id}.title`, `${card.title} — title`, card.title, "text-lg");
+    add("Tuition types", "Cards", `tuition.${card.id}.copy`, `${card.title} — copy`, card.copy, "text-xs");
+  }
+
+  add("Belief banner", "Quote", "belief.lead", "Quote, first part", homeCopy.belief.lead, "text-2xl");
+  add("Belief banner", "Quote", "belief.accent", "Quote, coloured part", homeCopy.belief.accent, "text-2xl");
+
+  const journey = homeCopy.journey;
+  add("How it works", "Intro", "journey.eyebrow", "Eyebrow", journey.eyebrow, "text-xs");
+  addHeading("How it works", "journey.title", journey.title);
+  add("How it works", "Intro", "journey.description", "Description", journey.description);
+  add("How it works", "Buttons", "journey.action", "Link", journey.action);
+  for (const step of journey.steps) {
+    add("How it works", "Steps", `journey.${step.id}.title`, `Step ${step.number} — title`, step.title, "text-base");
+    add("How it works", "Steps", `journey.${step.id}.copy`, `Step ${step.number} — copy`, step.copy, "text-xs");
+  }
+
+  const stories = homeCopy.stories;
+  add("Room to learn", "Intro", "stories.eyebrow", "Eyebrow", stories.eyebrow, "text-xs");
+  addHeading("Room to learn", "stories.title", stories.title);
+  add("Room to learn", "Intro", "stories.description", "Description", stories.description);
+  for (const bullet of stories.bullets) {
+    add("Room to learn", "Bullets", `stories.${bullet.id}`, bullet.text, bullet.text, "text-xs");
+  }
+  add("Room to learn", "Image badge", "stories.badgeLead", "Badge first line", stories.badgeLead, "text-xs");
+  add("Room to learn", "Image badge", "stories.badgeStrong", "Badge second line", stories.badgeStrong, "text-xs");
+  add("Room to learn", "Buttons", "stories.action", "Button", stories.action);
+
+  const faq = homeCopy.faq;
+  add("FAQ", "Intro", "faq.eyebrow", "Eyebrow", faq.eyebrow, "text-xs");
+  addHeading("FAQ", "faq.title", faq.title);
+  add("FAQ", "Intro", "faq.description", "Description", faq.description);
+  add("FAQ", "Intro", "faq.action", "Link", faq.action);
+  for (const item of faq.items) {
+    add("FAQ", "Questions", `faq.${item.id}.question`, `${item.question}`, item.question);
+    add("FAQ", "Questions", `faq.${item.id}.answer`, "Answer", item.answer, "text-xs");
+  }
+
+  const cta = homeCopy.finalCta;
+  add("Final call to action", "Content", "cta.eyebrow", "Eyebrow", cta.eyebrow, "text-xs");
+  add("Final call to action", "Content", "cta.titleLead", "Heading, first line", cta.titleLead, "text-3xl");
+  add("Final call to action", "Content", "cta.titleTail", "Heading, second line", cta.titleTail, "text-3xl");
+  add("Final call to action", "Content", "cta.action", "Button", cta.action);
+
+  return slots;
+})();
+
+/** The informational pages behind the header links, one surface each. */
+const infoPageSlots: SiteContentSlot[] = [
+  ...infoPageCopy.flatMap<SiteContentSlot>(page => [
+    { id: `info.${page.key}.eyebrow`, page: "info-pages", surface: page.eyebrow, group: page.path, label: "Eyebrow", defaultText: page.eyebrow, defaultTextClass: "text-xs" , kind: "text-only" },
+    { id: `info.${page.key}.title`, page: "info-pages", surface: page.eyebrow, group: page.path, label: "Heading", defaultText: page.title, defaultTextClass: "text-3xl" , kind: "text-only" },
+    { id: `info.${page.key}.copy`, page: "info-pages", surface: page.eyebrow, group: page.path, label: "Description", defaultText: page.copy, defaultTextClass: "text-sm" , kind: "text-only" },
+  ]),
+  { id: "info.action.requestTutor", page: "info-pages", surface: "Shared buttons", group: "Calls to action", label: "Request a tutor button", defaultText: infoPageActions.requestTutor, defaultTextClass: "text-sm" , kind: "text-only" },
+  { id: "info.action.joinTutor", page: "info-pages", surface: "Shared buttons", group: "Calls to action", label: "Join as a tutor button", defaultText: infoPageActions.joinTutor, defaultTextClass: "text-sm" , kind: "text-only" },
+];
+
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
   ...tutorProfileSlots,
@@ -233,6 +340,8 @@ const siteContentSlots: SiteContentSlot[] = [
   ...guardianProfileSlots,
   ...requestTutorSlots,
   ...sidebarTabsSlots,
+  ...homeSlots,
+  ...infoPageSlots,
 ];
 
 const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
