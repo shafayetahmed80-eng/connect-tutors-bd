@@ -1,0 +1,4183 @@
+{
+  "locations": [
+    {
+      "id": "bd",
+      "label": "Bangladesh",
+      "type": "country",
+      "country": "Bangladesh",
+      "parentId": null
+    },
+    {
+      "id": "barishal-city",
+      "label": "Barishal",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "chattogram-city",
+      "label": "Chattogram",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "dhaka-city",
+      "label": "Dhaka",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "khulna-city",
+      "label": "Khulna",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "mymensingh-city",
+      "label": "Mymensingh",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "rajshahi-city",
+      "label": "Rajshahi",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "rangpur-city",
+      "label": "Rangpur",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "sirajganj-city",
+      "label": "Sirajganj",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "sylhet-city",
+      "label": "Sylhet",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "tangail-city",
+      "label": "Tangail",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "cumilla-district",
+      "label": "Cumilla",
+      "type": "district",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "gazipur-district",
+      "label": "Gazipur",
+      "type": "district",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "narayanganj-district",
+      "label": "Narayanganj",
+      "type": "district",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "dhaka-abdullahpur",
+      "label": "Abdullahpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-adabor",
+      "label": "Adabor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "narayanganj-area-adamjee-epz",
+      "label": "Adamjee EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "dhaka-aftabnagar",
+      "label": "Aftabnagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "ctg-agrabad",
+      "label": "Agrabad",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-airport-area",
+      "label": "Airport Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "ctg-ak-khan",
+      "label": "AK Khan",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "cumilla-area-akhaura-road",
+      "label": "Akhaura Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "mymensingh-akua",
+      "label": "Akua",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "tangail-akur-takur",
+      "label": "Akur Takur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "barishal-alekanda",
+      "label": "Alekanda",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-area-alkaran",
+      "label": "Alkaran",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-aman-shah",
+      "label": "Aman Shah",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-ambarkhana",
+      "label": "Ambarkhana",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-area-aminbazar",
+      "label": "Aminbazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-area-amtola",
+      "label": "Amtola",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-area-anandabazar",
+      "label": "Anandabazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-andarkilla",
+      "label": "Andarkilla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "ctg-andarkilla",
+      "label": "Anderkilla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-aram-bagh",
+      "label": "Arambagh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ashulia",
+      "label": "Ashulia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-azimpur",
+      "label": "Azimpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-baddarhat",
+      "label": "Baddarhat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-bagbari",
+      "label": "Bagbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "tangail-baghil",
+      "label": "Baghil",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-area-bagmara",
+      "label": "Bagmara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "ctg-bahaddarhat",
+      "label": "Bahaddarhat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-baily-road",
+      "label": "Baily Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-baipayl",
+      "label": "Baipayl",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "gazipur-area-baipayl",
+      "label": "Baipayl",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "chattogram-area-bakhshirhat",
+      "label": "Bakhshirhat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "gazipur-area-bakhtarpur",
+      "label": "Bakhtarpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "dhaka-banani",
+      "label": "Banani",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-banani-dohs",
+      "label": "Banani DOHS",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-banasree",
+      "label": "Banasree",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-bandar-bazar",
+      "label": "Bandar Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "barishal-area-bandar-road",
+      "label": "Bandar Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "tangail-area-bangabandhu-jamuna-bridge-bhuapur",
+      "label": "Bangabandhu Jamuna Bridge (Bhuapur)",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-area-baniani",
+      "label": "Baniani",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "narayanganj-area-baradi",
+      "label": "Baradi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "cumilla-area-bard",
+      "label": "BARD",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "dhaka-baridhara",
+      "label": "Baridhara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-baridhara-dohs",
+      "label": "Baridhara DOHS",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-area-barishal-river-port",
+      "label": "Barishal River Port",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "dhaka-bashabo",
+      "label": "Bashabo",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-bashundhara",
+      "label": "Bashundhara R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-r-a-block-a-n",
+      "label": "Bashundhara R/A (Block A–N)",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-residential",
+      "label": "Bashundhara Residential",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-bay-terminal",
+      "label": "Bay Terminal",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "ctg-bayezid",
+      "label": "Bayezid",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-bazar-station",
+      "label": "Bazar Station Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-begun-bari",
+      "label": "Begun Bari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rangpur-area-beldanga",
+      "label": "Beldanga",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sirajganj-belkuichi-road",
+      "label": "Belkuchi Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "barishal-area-bell-s-park",
+      "label": "Bell's Park",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "tangail-bepari-para",
+      "label": "Bepari Para",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-area-bhaluka-epz",
+      "label": "Bhaluka EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "sylhet-area-bhatipara",
+      "label": "Bhatipara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "gazipur-area-bhawal-national-park",
+      "label": "Bhawal National Park",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-bhawal-rajbari",
+      "label": "Bhawal Rajbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "narayanganj-area-bhulta",
+      "label": "Bhulta",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "cumilla-area-bibi-bazar-land-port",
+      "label": "Bibi Bazar (Land Port)",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "barishal-area-bibir-char",
+      "label": "Bibir Char",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "dhaka-bijoy-sarani",
+      "label": "Bijoy Sarani",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bijoynagar",
+      "label": "Bijoynagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rajshahi-area-binnati-more",
+      "label": "Binnati More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "raj-binodpur",
+      "label": "Binodpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "gazipur-area-bishwa-ijtema-ground-tongi",
+      "label": "Bishwa Ijtema Ground (Tongi)",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "chattogram-area-bishwa-road",
+      "label": "Bishwa Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "gazipur-area-board-bazar",
+      "label": "Board Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "barishal-bogura-road",
+      "label": "Bogura Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "rangpur-area-boro-alamnagar",
+      "label": "Boro Alamnagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "mymensingh-boro-bazar",
+      "label": "Boro Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "narayanganj-area-boro-bazar",
+      "label": "Boro Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "dhaka-bosila",
+      "label": "Bosila",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-boyra",
+      "label": "Boyra",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "gazipur-area-bscic-industrial-area",
+      "label": "BSCIC Industrial Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "dhaka-buet-area",
+      "label": "BUET Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-cb-road",
+      "label": "C&B Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "rangpur-area-carmichael-road",
+      "label": "Carmichael Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "chattogram-area-chaktai",
+      "label": "Chaktai",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-area-chalan-beel",
+      "label": "Chalan Beel",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "chattogram-area-chandgaon-r-a",
+      "label": "Chandgaon R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-area-chandrima-uddan",
+      "label": "Chandrima Uddan",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "mymensingh-area-char-ishwardia",
+      "label": "Char Ishwardia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-charpara",
+      "label": "Charpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "narayanganj-area-chashara",
+      "label": "Chashara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "barishal-area-chawk-bazar",
+      "label": "Chawk Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-area-chawk-bazar-circle",
+      "label": "Chawk Bazar Circle",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-chawkbazar",
+      "label": "Chawkbazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "sirajganj-area-china",
+      "label": "China",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "khulna-area-chittaranjan-avenue",
+      "label": "Chittaranjan Avenue",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "gazipur-area-chourasta",
+      "label": "Chourasta",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sylhet-area-chowhatta",
+      "label": "Chowhatta",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-co-bazar",
+      "label": "CO Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "tangail-college-gate",
+      "label": "College Gate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "rangpur-area-college-para",
+      "label": "College Para",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "barishal-area-college-road",
+      "label": "College Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "mymensingh-area-college-road",
+      "label": "College Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "sirajganj-area-college-road",
+      "label": "College Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "tangail-area-college-road",
+      "label": "College Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "cumilla-area-court-bazar",
+      "label": "Court Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-area-court-more",
+      "label": "Court More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sirajganj-area-court-more",
+      "label": "Court More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "cumilla-area-cumilla-cantonment",
+      "label": "Cumilla Cantonment",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "sylhet-dargah-gate",
+      "label": "Dargah Gate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-darussalam",
+      "label": "Darussalam",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-dewan-bazar",
+      "label": "Dewan Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-dhaka-road",
+      "label": "Dhaka Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "rangpur-dhap",
+      "label": "Dhap",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "cumilla-area-dharmasagar",
+      "label": "Dharmasagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-area-dhepa-epz",
+      "label": "Dhepa EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-dhepurhat",
+      "label": "Dhepurhat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "dhaka-diabari",
+      "label": "Diabari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-dilkusha",
+      "label": "Dilkusha",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-diplomatic-zone",
+      "label": "Diplomatic Zone",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rajshahi-area-dorgapara",
+      "label": "Dorgapara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "gazipur-area-duet-area",
+      "label": "DUET Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sylhet-area-east-dargah",
+      "label": "East Dargah",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "gazipur-area-ekdala",
+      "label": "Ekdala",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-area-elenga",
+      "label": "Elenga",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "dhaka-elephant-road",
+      "label": "Elephant Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-enayet-bazar",
+      "label": "Enayet Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-area-enayetpur",
+      "label": "Enayetpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-farmgate",
+      "label": "Farmgate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "narayanganj-area-fatulla",
+      "label": "Fatulla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "chattogram-area-firingee-bazar",
+      "label": "Firingee Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "khulna-area-fullbarigate",
+      "label": "Fullbarigate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-gabtoli",
+      "label": "Gabtoli",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "mymensingh-area-ganginar-par",
+      "label": "Ganginar Par",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-ganginarpar",
+      "label": "Ganginarpar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-area-gazipur-border",
+      "label": "Gazipur Border",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "gazipur-area-gazipur-safari-park",
+      "label": "Gazipur Safari Park",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "ctg-gec",
+      "label": "GEC Circle",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rajshahi-area-ghoramara",
+      "label": "Ghoramara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "narayanganj-area-gobra",
+      "label": "Gobra",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "khulna-gollamari",
+      "label": "Gollamari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "cumilla-area-gomia",
+      "label": "Gomia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-area-gopalpur-road",
+      "label": "Gopalpur Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rangpur-area-gopigonj",
+      "label": "Gopigonj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "barishal-area-gorakhali",
+      "label": "Gorakhali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-area-gosaildanga",
+      "label": "Gosaildanga",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "mymensingh-area-goshaidanga",
+      "label": "Goshaidanga",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-gulistan",
+      "label": "Gulistan",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-gulshan-avenue",
+      "label": "Gulshan Avenue",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-gulshan-1",
+      "label": "Gulshan-1",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-gulshan-2",
+      "label": "Gulshan-2",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "narayanganj-area-hakim-para",
+      "label": "Hakim Para",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "chattogram-area-halishahar-r-a",
+      "label": "Halishahar R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rajshahi-area-hararganj",
+      "label": "Hararganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "gazipur-area-harashpur",
+      "label": "Harashpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sirajganj-area-hard-point",
+      "label": "Hard Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-area-hatirpool",
+      "label": "Hatirpool",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-area-hazrat-shahjalal",
+      "label": "Hazrat Shahjalal",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-area-hemayetpur",
+      "label": "Hemayetpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "gazipur-area-hi-tech-city-kaliakair",
+      "label": "Hi-Tech City Kaliakair",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "cumilla-area-hosen-shah-road",
+      "label": "Hosen Shah Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "gazipur-area-iut-area",
+      "label": "IUT Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sylhet-area-jaflong",
+      "label": "Jaflong",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-area-jail-road",
+      "label": "Jail Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "chattogram-area-jalalabad",
+      "label": "Jalalabad",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-jaldia",
+      "label": "Jaldia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "ctg-jamal-khan",
+      "label": "Jamal Khan",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sirajganj-area-jamuna-bridge-sirajganj",
+      "label": "Jamuna Bridge (Sirajganj)",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "cumilla-area-jhautola",
+      "label": "Jhautola",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "gazipur-area-joydebpur",
+      "label": "Joydebpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-area-kabilapara",
+      "label": "Kabilapara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-kachijhuli",
+      "label": "Kachijhuli",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "narayanganj-area-kadam-rasul",
+      "label": "Kadam Rasul",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "tangail-kagmara",
+      "label": "Kagmara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "dhaka-kakrail",
+      "label": "Kakrail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "tangail-area-kalabari",
+      "label": "Kalabari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "sirajganj-kalia-haripur",
+      "label": "Kalia Haripur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-kallyanpur",
+      "label": "Kallyanpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "narayanganj-area-kalur-bazar",
+      "label": "Kalur Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "chattogram-area-kalurghat",
+      "label": "Kalurghat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-kamalapur",
+      "label": "Kamalapur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rangpur-kamarpara",
+      "label": "Kamarpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "narayanganj-area-kanchan",
+      "label": "Kanchan",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "cumilla-area-kandirpar",
+      "label": "Kandirpar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "gazipur-area-kashem-bazar",
+      "label": "Kashem Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "barishal-kashipur",
+      "label": "Kashipur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "raj-katakhali",
+      "label": "Katakhali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "chattogram-area-kattali",
+      "label": "Kattali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-kawnia",
+      "label": "Kawnia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "dhaka-kawran-bazar",
+      "label": "Kawran Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-area-kazi-bazar",
+      "label": "Kazi Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-kazir-bazar",
+      "label": "Kazir Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "raj-kazla",
+      "label": "Kazla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "khulna-area-kda-avenue",
+      "label": "KDA Avenue",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "mymensingh-area-kewatkhali",
+      "label": "Kewatkhali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "khulna-area-khalishpur-r-a",
+      "label": "Khalishpur R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-khulna-epz",
+      "label": "Khulna EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-khulna-railway-station",
+      "label": "Khulna Railway Station",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-sadar",
+      "label": "Khulna Sadar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "chattogram-area-khulshi-r-a",
+      "label": "Khulshi R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "gazipur-area-konabari",
+      "label": "Konabari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-area-korotia",
+      "label": "Korotia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "cumilla-area-kotbari",
+      "label": "Kotbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "sylhet-area-kumarpara",
+      "label": "Kumarpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-area-kuril",
+      "label": "Kuril",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-area-lala-bazar",
+      "label": "Lala Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-lalbagh",
+      "label": "Lalbagh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "ctg-lalkhan-bazar",
+      "label": "Lalkhan Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rajshahi-area-lalkuthi",
+      "label": "Lalkuthi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "cumilla-area-lalmatir-more",
+      "label": "Lalmatir More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "narayanganj-area-lanchpur",
+      "label": "Lanchpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "raj-laxmipur",
+      "label": "Laxmipur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "chattogram-area-madarbari",
+      "label": "Madarbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-madina-market",
+      "label": "Madina Market",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-mahiganj",
+      "label": "Mahiganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-mahiganj-epz",
+      "label": "Mahiganj EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "cumilla-area-mainamati",
+      "label": "Mainamati",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-mainamoti",
+      "label": "Mainamoti",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "khulna-area-majher-char",
+      "label": "Majher Char",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-area-malibagh",
+      "label": "Malibagh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "gazipur-area-maona-chowrasta",
+      "label": "Maona Chowrasta",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "mymensingh-maskanda",
+      "label": "Maskanda",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "khulna-area-mayur-river",
+      "label": "Mayur River",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "rangpur-medical-mor",
+      "label": "Medical Mor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sylhet-mirabazar",
+      "label": "Mirabazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-modern-mor",
+      "label": "Modern Mor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "dhaka-area-mogbazar",
+      "label": "Mogbazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-area-moglabazar",
+      "label": "Moglabazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "narayanganj-area-mograpara",
+      "label": "Mograpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "dhaka-mohakhali",
+      "label": "Mohakhali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "tangail-area-mohera",
+      "label": "Mohera",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "chattogram-area-mohra",
+      "label": "Mohra",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "raj-motihar",
+      "label": "Motihar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "khulna-mujgunni",
+      "label": "Mujgunni",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "ctg-muradpur",
+      "label": "Muradpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "narayanganj-area-murapara",
+      "label": "Murapara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "mymensingh-area-mymensingh-epz",
+      "label": "Mymensingh EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "barishal-area-nabagram",
+      "label": "Nabagram",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "narayanganj-area-nabiganj",
+      "label": "Nabiganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "sirajganj-area-nagarbari",
+      "label": "Nagarbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-nakhalpara",
+      "label": "Nakhalpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "mymensingh-area-nandipur",
+      "label": "Nandipur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "narayanganj-area-narayanganj-epz",
+      "label": "Narayanganj EPZ",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "ctg-nasirabad",
+      "label": "Nasirabad",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-nathullabad",
+      "label": "Nathullabad",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "rajshahi-area-natore-road",
+      "label": "Natore Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "chattogram-area-nawabpur",
+      "label": "Nawabpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "cumilla-area-naya-bazar",
+      "label": "Naya Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-area-new-market",
+      "label": "New Market",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "tangail-new-market",
+      "label": "New Market",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "khulna-nirala",
+      "label": "Nirala",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "mymensingh-area-notun-bazar",
+      "label": "Notun Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-area-old-dhaka",
+      "label": "Old Dhaka",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rajshahi-area-padma-garden",
+      "label": "Padma Garden",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "tangail-area-pakutia",
+      "label": "Pakutia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "narayanganj-area-panam-nagar",
+      "label": "Panam Nagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "chattogram-area-panchlaish-r-a",
+      "label": "Panchlaish R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-panthapath",
+      "label": "Panthapath",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-patenga-beach",
+      "label": "Patenga Beach",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-area-pathantula",
+      "label": "Pathantula",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "chattogram-area-pathantuli",
+      "label": "Pathantuli",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-patharghata",
+      "label": "Patharghata",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "tangail-area-pathrail",
+      "label": "Pathrail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "rangpur-area-payra-bondor",
+      "label": "Payra Bondor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "gazipur-area-pirujali",
+      "label": "Pirujali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sirajganj-area-porjana",
+      "label": "Porjana",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "ctg-port",
+      "label": "Port",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-puran-dhaka",
+      "label": "Puran Dhaka",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sirajganj-area-rail-bazar",
+      "label": "Rail Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-railgate",
+      "label": "Railgate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "mymensingh-area-railway-station-area",
+      "label": "Railway Station Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "gazipur-area-rajendrapur-cantonment",
+      "label": "Rajendrapur Cantonment",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "cumilla-area-rajgonj",
+      "label": "Rajgonj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-area-rajshahi-university",
+      "label": "Rajshahi University",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-area-rakkhiya-bazar",
+      "label": "Rakkhiya Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-rampura",
+      "label": "Rampura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-rayer-bazar",
+      "label": "Rayer Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-area-roysheen",
+      "label": "Roysheen",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-rupatali",
+      "label": "Rupatali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "khulna-rupsha",
+      "label": "Rupsha",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-rupsha-bridge",
+      "label": "Rupsha Bridge",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "tangail-sabalia",
+      "label": "Sabalia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "barishal-sadar-road",
+      "label": "Sadar Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "tangail-area-safari-park-ghatail",
+      "label": "Safari Park Ghatail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "barishal-sagardi",
+      "label": "Sagardi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "gazipur-area-salna",
+      "label": "Salna",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-santosh",
+      "label": "Santosh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "chattogram-area-saraipara",
+      "label": "Saraipara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rangpur-area-satmatha",
+      "label": "Satmatha",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "chattogram-area-shah-amanat-airport",
+      "label": "Shah Amanat Airport",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-shahbagh",
+      "label": "Shahbagh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "raj-shaheb-bazar",
+      "label": "Shaheb Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-shahjalal-upashahar",
+      "label": "Shahjalal Upashahar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "mymensingh-shambhuganj",
+      "label": "Shambhuganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-shantinagar",
+      "label": "Shantinagar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rangpur-shapla-chattar",
+      "label": "Shapla Chattar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sirajganj-shialkol",
+      "label": "Shialkol",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "khulna-shib-bari",
+      "label": "Shib Bari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-shibbari",
+      "label": "Shibbari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "rajshahi-area-shibganj",
+      "label": "Shibganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-area-shibganj",
+      "label": "Shibganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-shibgonj",
+      "label": "Shibgonj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "cumilla-area-shimaibag",
+      "label": "Shimaibag",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "sylhet-area-shimulbag",
+      "label": "Shimulbag",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "raj-shiroil",
+      "label": "Shiroil",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "khulna-area-shiromoni",
+      "label": "Shiromoni",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "chattogram-area-sholashahar",
+      "label": "Sholashahar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "mymensingh-area-shombhuganj",
+      "label": "Shombhuganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-shyamoli",
+      "label": "Shyamoli",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "narayanganj-area-siddhirganj",
+      "label": "Siddhirganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "sirajganj-area-sirajganj-economic-zone",
+      "label": "Sirajganj Economic Zone",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-sadar",
+      "label": "Sirajগঞ্জ Sadar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "khulna-area-sonadanga-r-a",
+      "label": "Sonadanga R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "raj-sopura",
+      "label": "Sopura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sirajganj-ss-road",
+      "label": "SS Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "cumilla-area-station-road",
+      "label": "Station Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rangpur-station-road",
+      "label": "Station Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sylhet-subid-bazar",
+      "label": "Subid Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-surma",
+      "label": "Surma",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-surma-r-a",
+      "label": "Surma R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rangpur-area-tajhat",
+      "label": "Tajhat",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "raj-talaimari",
+      "label": "Talaimari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "narayanganj-area-taltola",
+      "label": "Taltola",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "tangail-thana-para",
+      "label": "Thana Para",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "chattogram-area-tiger-pass",
+      "label": "Tiger Pass",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "ctg-tigerpass",
+      "label": "Tigerpass",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-area-tilagarh",
+      "label": "Tilagarh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-tilagarh-r-a",
+      "label": "Tilagarh R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-tilagor",
+      "label": "Tilagor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-area-tongi",
+      "label": "Tongi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "gazipur-area-tongi",
+      "label": "Tongi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-tongi-industrial-area",
+      "label": "Tongi Industrial Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "mymensingh-town-hall",
+      "label": "Town Hall",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "rangpur-area-town-hall",
+      "label": "Town Hall",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "khulna-tutpara",
+      "label": "Tutpara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "raj-upashahar",
+      "label": "Upashahar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-area-uposhahar",
+      "label": "Uposhahar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rajshahi-area-uposhohor",
+      "label": "Uposhohor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-area-west-dargah",
+      "label": "West Dargah",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-zindabazar",
+      "label": "Zindabazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-thana-adabar",
+      "label": "Adabar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-agargaon",
+      "label": "Agargaon",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-akbarshah",
+      "label": "Akbarshah",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-badda",
+      "label": "Badda",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-bakalia",
+      "label": "Bakalia",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-thana-bandar",
+      "label": "Bandar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-bangshal",
+      "label": "Bangshal",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-thana-barishal-kotwali",
+      "label": "Barishal Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-thana-bayazid",
+      "label": "Bayazid",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-thana-bhujpur",
+      "label": "Bhujpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-thana-biman-bandar",
+      "label": "Biman Bandar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rajshahi-thana-boalia",
+      "label": "Boalia",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "dhaka-thana-cantonment",
+      "label": "Cantonment",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-chandgaon",
+      "label": "Chandgaon",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-chawk-bazar",
+      "label": "Chawk Bazar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-chawkbazar",
+      "label": "Chawkbazar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "khulna-thana-daulatpur",
+      "label": "Daulatpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-thana-demra",
+      "label": "Demra",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-dhanmondi",
+      "label": "Dhanmondi",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-double-mooring",
+      "label": "Double Mooring",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-thana-epz",
+      "label": "EPZ",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-gulshan",
+      "label": "Gulshan",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-halishahar",
+      "label": "Halishahar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-hatirjheel",
+      "label": "Hatirjheel",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-hazaribagh",
+      "label": "Hazaribagh",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-thana-jalalabad",
+      "label": "Jalalabad",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-thana-jatrabari",
+      "label": "Jatrabari",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-kadamtali",
+      "label": "Kadamtali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-kafrul",
+      "label": "Kafrul",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-kalabagan",
+      "label": "Kalabagan",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-kamrangirchar",
+      "label": "Kamrangirchar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-thana-khalishpur",
+      "label": "Khalishpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-thana-khan-jahan-ali",
+      "label": "Khan Jahan Ali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-thana-khilgaon",
+      "label": "Khilgaon",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-khilkhet",
+      "label": "Khilkhet",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-khulshi",
+      "label": "Khulshi",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-thana-kotwali",
+      "label": "Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-kotwali",
+      "label": "Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-thana-kotwali",
+      "label": "Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "sylhet-thana-kotwali",
+      "label": "Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-thana-lalbagh",
+      "label": "Lalbagh",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rajshahi-thana-matihar",
+      "label": "Matihar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "dhaka-thana-mirpur",
+      "label": "Mirpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-mohammadpur",
+      "label": "Mohammadpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-motijheel",
+      "label": "Motijheel",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-mugda",
+      "label": "Mugda",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "mymensingh-thana-mymensingh-kotwali",
+      "label": "Mymensingh Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "dhaka-thana-new-market",
+      "label": "New Market",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-pahartali",
+      "label": "Pahartali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-pallabi",
+      "label": "Pallabi",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-paltan",
+      "label": "Paltan",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-panchlaish",
+      "label": "Panchlaish",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-thana-patenga",
+      "label": "Patenga",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rajshahi-thana-rajpara",
+      "label": "Rajpara",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "dhaka-thana-ramna",
+      "label": "Ramna",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rangpur-thana-rangpur-kotwali",
+      "label": "Rangpur Kotwali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "dhaka-thana-sabujbagh",
+      "label": "Sabujbagh",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-thana-sadarghat",
+      "label": "Sadarghat",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-thana-shah-ali",
+      "label": "Shah Ali",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "rajshahi-thana-shah-makhdum",
+      "label": "Shah Makhdum",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "dhaka-thana-shahjahanpur",
+      "label": "Shahjahanpur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-thana-shahjalal",
+      "label": "Shahjalal",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-thana-sher-e-bangla-nagar",
+      "label": "Sher-e-Bangla Nagar",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-shyampur",
+      "label": "Shyampur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-thana-sonadanga",
+      "label": "Sonadanga",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-thana-sutrapur",
+      "label": "Sutrapur",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-tejgaon",
+      "label": "Tejgaon",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-tejgaon-industrial-area",
+      "label": "Tejgaon Industrial Area",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-turag",
+      "label": "Turag",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-uttara",
+      "label": "Uttara",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-vatara",
+      "label": "Vatara",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-thana-wari",
+      "label": "Wari",
+      "type": "thana",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "barishal-upazila-agailjhara",
+      "label": "Agailjhara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-upazila-anwara",
+      "label": "Anwara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "narayanganj-upazila-araihazar",
+      "label": "Araihazar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "barishal-upazila-babuganj",
+      "label": "Babuganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "rangpur-upazila-badarganj",
+      "label": "Badarganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rajshahi-upazila-bagha",
+      "label": "Bagha",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-upazila-bagmara",
+      "label": "Bagmara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "barishal-upazila-bakerganj",
+      "label": "Bakerganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "sylhet-upazila-balaganj",
+      "label": "Balaganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "barishal-upazila-banaripara",
+      "label": "Banaripara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "narayanganj-upazila-bandar",
+      "label": "Bandar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "chattogram-upazila-banshkhali",
+      "label": "Banshkhali",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-upazila-barisal-sadar",
+      "label": "Barisal Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "cumilla-upazila-barura",
+      "label": "Barura",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "tangail-upazila-basail",
+      "label": "Basail",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "khulna-upazila-batiaghata",
+      "label": "Batiaghata",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "sylhet-upazila-beanibazar",
+      "label": "Beanibazar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sirajganj-upazila-belkuchi",
+      "label": "Belkuchi",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "mymensingh-upazila-bhaluka",
+      "label": "Bhaluka",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "tangail-upazila-bhuapur",
+      "label": "Bhuapur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "sylhet-upazila-bishwanath",
+      "label": "Bishwanath",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "chattogram-upazila-boalkhali",
+      "label": "Boalkhali",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "cumilla-upazila-brahmanpara",
+      "label": "Brahmanpara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-upazila-burichong",
+      "label": "Burichong",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "chattogram-upazila-chandanaish",
+      "label": "Chandanaish",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "cumilla-upazila-chandina",
+      "label": "Chandina",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "rajshahi-upazila-charghat",
+      "label": "Charghat",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "cumilla-upazila-chauddagram",
+      "label": "Chauddagram",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "sirajganj-upazila-chauhali",
+      "label": "Chauhali",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sylhet-upazila-companiganj",
+      "label": "Companiganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "cumilla-upazila-cumilla-adarsha-sadar",
+      "label": "Cumilla Adarsha Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-upazila-cumilla-sadar-dakshin",
+      "label": "Cumilla Sadar Dakshin",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "khulna-upazila-dacope",
+      "label": "Dacope",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "sylhet-upazila-dakshin-surma",
+      "label": "Dakshin Surma",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "cumilla-upazila-daudkandi",
+      "label": "Daudkandi",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-upazila-debidwar",
+      "label": "Debidwar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "tangail-upazila-delduar",
+      "label": "Delduar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "dhaka-upazila-dhamrai",
+      "label": "Dhamrai",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "tangail-upazila-dhanbari",
+      "label": "Dhanbari",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-upazila-dhobaura",
+      "label": "Dhobaura",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "khulna-upazila-dighalia",
+      "label": "Dighalia",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "dhaka-upazila-dohar",
+      "label": "Dohar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-upazila-dumuria",
+      "label": "Dumuria",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "rajshahi-upazila-durgapur",
+      "label": "Durgapur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "chattogram-upazila-fatikchhari",
+      "label": "Fatikchhari",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-upazila-fatikchhari-north",
+      "label": "Fatikchhari North",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-upazila-fenchuganj",
+      "label": "Fenchuganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "mymensingh-upazila-fulbaria",
+      "label": "Fulbaria",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-upazila-gaffargaon",
+      "label": "Gaffargaon",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "rangpur-upazila-gangachhara",
+      "label": "Gangachhara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "mymensingh-upazila-gauripur",
+      "label": "Gauripur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "gazipur-upazila-gazipur-sadar",
+      "label": "Gazipur Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-upazila-ghatail",
+      "label": "Ghatail",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "rajshahi-upazila-godagari",
+      "label": "Godagari",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sylhet-upazila-golapganj",
+      "label": "Golapganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "tangail-upazila-gopalpur",
+      "label": "Gopalpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "barishal-upazila-gournadi",
+      "label": "Gournadi",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "sylhet-upazila-gowainghat",
+      "label": "Gowainghat",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "mymensingh-upazila-haluaghat",
+      "label": "Haluaghat",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "chattogram-upazila-hathazari",
+      "label": "Hathazari",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "barishal-upazila-hizla",
+      "label": "Hizla",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "cumilla-upazila-homna",
+      "label": "Homna",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "mymensingh-upazila-ishwarganj",
+      "label": "Ishwarganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "sylhet-upazila-jaintiapur",
+      "label": "Jaintiapur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "gazipur-upazila-kaliakair",
+      "label": "Kaliakair",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-upazila-kaliganj",
+      "label": "Kaliganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "tangail-upazila-kalihati",
+      "label": "Kalihati",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "sirajganj-upazila-kamarkhanda",
+      "label": "Kamarkhanda",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sylhet-upazila-kanaighat",
+      "label": "Kanaighat",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "gazipur-upazila-kapasia",
+      "label": "Kapasia",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "chattogram-upazila-karnaphuli",
+      "label": "Karnaphuli",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "rangpur-upazila-kaunia",
+      "label": "Kaunia",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sirajganj-upazila-kazipur",
+      "label": "Kazipur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "dhaka-upazila-keraniganj",
+      "label": "Keraniganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "khulna-upazila-koyra",
+      "label": "Koyra",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "cumilla-upazila-laksam",
+      "label": "Laksam",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "chattogram-upazila-lohagara",
+      "label": "Lohagara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "tangail-upazila-madhupur",
+      "label": "Madhupur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "cumilla-upazila-meghna",
+      "label": "Meghna",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "barishal-upazila-mehendiganj",
+      "label": "Mehendiganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "chattogram-upazila-mirsharai",
+      "label": "Mirsharai",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "tangail-upazila-mirzapur",
+      "label": "Mirzapur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "rangpur-upazila-mithapukur",
+      "label": "Mithapukur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rajshahi-upazila-mohanpur",
+      "label": "Mohanpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "cumilla-upazila-monohorgonj",
+      "label": "Monohorgonj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "mymensingh-upazila-muktagachha",
+      "label": "Muktagachha",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "barishal-upazila-muladi",
+      "label": "Muladi",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "cumilla-upazila-muradnagar",
+      "label": "Muradnagar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "mymensingh-upazila-mymensingh-sadar",
+      "label": "Mymensingh Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "tangail-upazila-nagarpur",
+      "label": "Nagarpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "mymensingh-upazila-nandail",
+      "label": "Nandail",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "cumilla-upazila-nangalkot",
+      "label": "Nangalkot",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "narayanganj-upazila-narayanganj-sadar",
+      "label": "Narayanganj Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "dhaka-upazila-nawabganj",
+      "label": "Nawabganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sylhet-upazila-osmani-nagar",
+      "label": "Osmani Nagar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rajshahi-upazila-paba",
+      "label": "Paba",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "khulna-upazila-paikgachha",
+      "label": "Paikgachha",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "chattogram-upazila-patiya",
+      "label": "Patiya",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "mymensingh-upazila-phulpur",
+      "label": "Phulpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "khulna-upazila-phultala",
+      "label": "Phultala",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "rangpur-upazila-pirgacha",
+      "label": "Pirgacha",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-upazila-pirganj",
+      "label": "Pirganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rajshahi-upazila-puthia",
+      "label": "Puthia",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "sirajganj-upazila-raiganj",
+      "label": "Raiganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "rangpur-upazila-rangpur-sadar",
+      "label": "Rangpur Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "chattogram-upazila-rangunia",
+      "label": "Rangunia",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-upazila-raozan",
+      "label": "Raozan",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "narayanganj-upazila-rupganj",
+      "label": "Rupganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "khulna-upazila-rupsa",
+      "label": "Rupsa",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "tangail-upazila-sakhipur",
+      "label": "Sakhipur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "chattogram-upazila-sandwip",
+      "label": "Sandwip",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-upazila-satkania",
+      "label": "Satkania",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "dhaka-upazila-savar",
+      "label": "Savar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "sirajganj-upazila-shahjadpur",
+      "label": "Shahjadpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-upazila-sirajganj-sadar",
+      "label": "Sirajganj Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "chattogram-upazila-sitakunda",
+      "label": "Sitakunda",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "narayanganj-upazila-sonargaon",
+      "label": "Sonargaon",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "gazipur-upazila-sreepur",
+      "label": "Sreepur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "sylhet-upazila-sylhet-sadar",
+      "label": "Sylhet Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "tangail-upazila-tangail-sadar",
+      "label": "Tangail Sadar",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "rajshahi-upazila-tanore",
+      "label": "Tanore",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rangpur-upazila-taraganj",
+      "label": "Taraganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "sirajganj-upazila-tarash",
+      "label": "Tarash",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "khulna-upazila-terokhada",
+      "label": "Terokhada",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "cumilla-upazila-titas",
+      "label": "Titas",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "mymensingh-upazila-trishal",
+      "label": "Trishal",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "sirajganj-upazila-ullahpara",
+      "label": "Ullahpara",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "barishal-upazila-wazirpur",
+      "label": "Wazirpur",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "sylhet-upazila-zakiganj",
+      "label": "Zakiganj",
+      "type": "upazila",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "dhaka-mirpur-3",
+      "label": "Mirpur 3",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-4",
+      "label": "Mirpur 4",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-5",
+      "label": "Mirpur 5",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-7",
+      "label": "Mirpur 7",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-8",
+      "label": "Mirpur 8",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-9",
+      "label": "Mirpur 9",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-15",
+      "label": "Section 15",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "chattogram-halishahar-block-a",
+      "label": "Halishahar Block A",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-b",
+      "label": "Halishahar Block B",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-c",
+      "label": "Halishahar Block C",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-d",
+      "label": "Halishahar Block D",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-e",
+      "label": "Halishahar Block E",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-f",
+      "label": "Halishahar Block F",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-g",
+      "label": "Halishahar Block G",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-h",
+      "label": "Halishahar Block H",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-i",
+      "label": "Halishahar Block I",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-j",
+      "label": "Halishahar Block J",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-k",
+      "label": "Halishahar Block K",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-l",
+      "label": "Halishahar Block L",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "chattogram-halishahar-block-z",
+      "label": "Halishahar Block Z",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "chattogram-thana-halishahar"
+    },
+    {
+      "id": "dhaka-mirpur-section-1",
+      "label": "Mirpur 1",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-10",
+      "label": "Mirpur 10",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-11",
+      "label": "Mirpur 11",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-12",
+      "label": "Mirpur 12",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-13",
+      "label": "Mirpur 13",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-14",
+      "label": "Mirpur 14",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-2",
+      "label": "Mirpur 2",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-mirpur-section-6",
+      "label": "Mirpur 6",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-mirpur"
+    },
+    {
+      "id": "dhaka-uttara-sector-1",
+      "label": "Uttara Sector 1",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-10",
+      "label": "Uttara Sector 10",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-11",
+      "label": "Uttara Sector 11",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-12",
+      "label": "Uttara Sector 12",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-13",
+      "label": "Uttara Sector 13",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-14",
+      "label": "Uttara Sector 14",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-15",
+      "label": "Uttara Sector 15",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-16",
+      "label": "Uttara Sector 16",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-17",
+      "label": "Uttara Sector 17",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-18",
+      "label": "Uttara Sector 18",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-2",
+      "label": "Uttara Sector 2",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-3",
+      "label": "Uttara Sector 3",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-4",
+      "label": "Uttara Sector 4",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-5",
+      "label": "Uttara Sector 5",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-6",
+      "label": "Uttara Sector 6",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-7",
+      "label": "Uttara Sector 7",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-8",
+      "label": "Uttara Sector 8",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    },
+    {
+      "id": "dhaka-uttara-sector-9",
+      "label": "Uttara Sector 9",
+      "type": "subdivision",
+      "country": "Bangladesh",
+      "parentId": "dhaka-thana-uttara"
+    }
+  ]
+}
