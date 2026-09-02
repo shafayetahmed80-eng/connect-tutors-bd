@@ -872,6 +872,7 @@ export const appRouter = router({
           page,
           text: input.text?.trim() || null,
           textSizePx: input.textSizePx ?? null,
+          paddingPx: input.paddingPx ?? null,
           spacing: input.spacing ?? null,
           updatedByUserId: ctx.user.id,
         });

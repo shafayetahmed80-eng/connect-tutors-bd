@@ -313,5 +313,5 @@ export default function GuardianDashboard() {
   const [, params] = useRoute<{ section?: string }>("/guardian/dashboard/:section");
   const section = detailParams?.section ?? params?.section;
   const requestId = detailParams?.requestId ? Number(detailParams.requestId) : undefined;
-  return <DashboardLayout title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />}><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} /></DashboardLayout>;
+  return <DashboardLayout title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} /></DashboardLayout>;
 }

@@ -9,7 +9,14 @@
  * validation and database writes.
  */
 
-export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile"] as const;
+import {
+  sidebarFontSlotId,
+  sidebarGroupSlotId,
+  sidebarPaddingSlotId,
+  sidebarPanels,
+  sidebarTabsSlotId,
+} from "./sidebar-tabs";
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -111,11 +118,22 @@ export type SiteContentSizeSlot = {
   surface: string;
   group: string;
   label: string;
+  /**
+   * Which measurement this slot moves. Both are pixel values, but they are
+   * stored in separate columns so a row never has to be read against the
+   * registry to know what its number meant.
+   */
+  metric?: "fontSize" | "padding";
   /** What the size is in code, and what Reset returns to. */
   defaultPx: number;
   /** Shown under the control so the Admin knows what it moves. */
   help: string;
 };
+
+/** A size slot's measurement; the older text-only slots predate the field. */
+export function siteContentSizeSlotMetric(slot: SiteContentSizeSlot): "fontSize" | "padding" {
+  return slot.metric ?? "fontSize";
+}
 
 /** Site-wide values, shown on public pages as well as the dashboards. */
 const siteSlots: SiteContentSlot[] = [
@@ -182,12 +200,39 @@ const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.done.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Confirmation heading", defaultText: "Thank you. Your request is now pending review.", defaultTextClass: "text-3xl" },
 ];
 
+/**
+ * The three dashboard sidebars, expanded from `@shared/sidebar-tabs` rather
+ * than written out: ~40 menu items and headings would be pure repetition here,
+ * and the ids have to match what `DashboardLayout` derives at render time.
+ */
+const sidebarTabsSlots: SiteContentSlot[] = sidebarPanels.flatMap(panel => [
+  ...panel.groups.map(heading => ({
+    id: sidebarGroupSlotId(panel.id, heading),
+    page: "sidebar-tabs" as const,
+    surface: panel.surface,
+    group: "Group headings",
+    label: heading,
+    defaultText: heading,
+    defaultTextClass: "text-xs" as const,
+  })),
+  ...panel.items.map(([path, label]) => ({
+    id: sidebarTabsSlotId(panel.id, path),
+    page: "sidebar-tabs" as const,
+    surface: panel.surface,
+    group: "Menu items",
+    label,
+    defaultText: label,
+    defaultTextClass: "text-sm" as const,
+  })),
+]);
+
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
   ...tutorProfileSlots,
   ...publicTutorProfileSlots,
   ...guardianProfileSlots,
   ...requestTutorSlots,
+  ...sidebarTabsSlots,
 ];
 
 const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
@@ -204,6 +249,28 @@ const siteContentSizeSlots: SiteContentSizeSlot[] = [
     defaultPx: TUTOR_PROFILE_RECORD_ROW_PX,
     help: "Field names and their values on every profile tab, including “Not given”.",
   },
+  ...sidebarPanels.flatMap<SiteContentSizeSlot>(panel => [
+    {
+      id: sidebarFontSlotId(panel.id),
+      page: "sidebar-tabs",
+      surface: panel.surface,
+      group: "Size",
+      label: "Menu text size",
+      metric: "fontSize",
+      defaultPx: panel.fontPx,
+      help: "Applies to every menu item in this sidebar.",
+    },
+    {
+      id: sidebarPaddingSlotId(panel.id),
+      page: "sidebar-tabs",
+      surface: panel.surface,
+      group: "Size",
+      label: "Menu row padding",
+      metric: "padding",
+      defaultPx: panel.paddingPx,
+      help: "Space above and below each menu item. Setting it replaces the fixed row height.",
+    },
+  ]),
 ];
 
 export function getSiteContentSlots(page: SiteContentPageId): SiteContentSlot[] {
@@ -266,6 +333,18 @@ export function clampSiteContentTextPx(px: number): number {
 export function resolveSiteContentTextStyle(px: number | null | undefined): { fontSize: string } | undefined {
   if (px == null) return undefined;
   return { fontSize: `${clampSiteContentTextPx(px)}px` };
+}
+
+/**
+ * Vertical padding for a sidebar row, or `undefined` when untouched.
+ *
+ * `height: auto` comes along with it: the rows ship at a fixed `h-10`, and
+ * padding on a fixed-height box would change nothing at all.
+ */
+export function resolveSiteContentPaddingStyle(px: number | null | undefined) {
+  if (px == null) return undefined;
+  const value = `${clampSiteContentTextPx(px)}px`;
+  return { paddingTop: value, paddingBottom: value, height: "auto" as const };
 }
 
 export function resolveSiteContentSpacingClass(spacing: SiteContentSpacing | null | undefined): string {

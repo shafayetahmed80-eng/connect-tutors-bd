@@ -30,6 +30,11 @@ vi.mock("@/lib/trpc", () => ({
     },
     tutorRequests: { assigned: { useQuery: () => ({ data: [], isLoading: false }) } },
     locations: { list: { useQuery: () => ({ data: [] }) } },
+    // The dashboard sidebar reads its Admin-editable labels through this.
+    siteContent: {
+      list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
+      listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
+    },
   },
 }));
 

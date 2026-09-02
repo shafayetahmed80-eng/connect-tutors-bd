@@ -9,6 +9,7 @@ import {
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
+  resolveSiteContentPaddingStyle,
   resolveSiteContentSpacingClass,
   resolveSiteContentTextStyle,
   siteContentPageIds,
@@ -86,6 +87,15 @@ describe("site content slots", () => {
         expect(Number.isFinite(siteContentSlotDefaultPx(slot)), slot.id).toBe(true);
       }
     }
+  });
+
+  it("emits padding only once set, and takes the fixed row height off with it", () => {
+    expect(resolveSiteContentPaddingStyle(null)).toBeUndefined();
+    expect(resolveSiteContentPaddingStyle(undefined)).toBeUndefined();
+
+    // Padding on a fixed-height row would change nothing, so height gives way.
+    expect(resolveSiteContentPaddingStyle(14)).toEqual({ paddingTop: "14px", paddingBottom: "14px", height: "auto" });
+    expect(resolveSiteContentPaddingStyle(999)).toMatchObject({ paddingTop: `${MAX_SITE_CONTENT_TEXT_PX}px` });
   });
 
   it("gives the profile record rows a size slot the admin can reach", () => {

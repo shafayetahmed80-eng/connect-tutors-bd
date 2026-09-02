@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, ClipboardList, ContactRound, FileUser, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardList, ContactRound, FileUser, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, PanelsTopLeft, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -20,6 +20,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section" },
   { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section" },
   { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section" },
+  { icon: PanelsTopLeft, label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs", sectionLabel: "Dynamic Section" },
 ];
 
 export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNavigationItem[] {
@@ -77,5 +78,5 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   if (displayState === "denied") {
     return <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-slate-400" /><h1 className="text-2xl font-bold text-slate-900">Admin access required</h1><p className="mt-2 text-sm leading-6 text-slate-600">This workspace is available only to authorized Connect Tutors BD administrators.</p></section>;
   }
-  return <DashboardLayout navigationItems={buildAdminWorkspaceNavigation(Boolean(workspaceAccess.data?.isOwner))} title={title} loginPath="/admin/login">{children}</DashboardLayout>;
+  return <DashboardLayout navigationItems={buildAdminWorkspaceNavigation(Boolean(workspaceAccess.data?.isOwner))} title={title} loginPath="/admin/login" sidebarPanel="admin">{children}</DashboardLayout>;
 }

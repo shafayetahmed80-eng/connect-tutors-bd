@@ -10,6 +10,7 @@ import {
   isSiteContactNumber,
   normalizeSiteContactNumber,
   findSiteContentSizeSlot,
+  siteContentSizeSlotMetric,
   findSiteContentSlot,
   findSiteContentSpacingSlot,
   siteContentBlockTones,
@@ -28,6 +29,7 @@ export const siteContentOverrideInputSchema = z.object({
   slotId: z.string().trim().min(1).max(120),
   text: z.string().trim().max(MAX_SITE_CONTENT_TEXT_LENGTH).nullish(),
   textSizePx: z.number().int().min(MIN_SITE_CONTENT_TEXT_PX).max(MAX_SITE_CONTENT_TEXT_PX).nullish(),
+  paddingPx: z.number().int().min(MIN_SITE_CONTENT_TEXT_PX).max(MAX_SITE_CONTENT_TEXT_PX).nullish(),
   spacing: z.enum(siteContentSpacings).nullish(),
 }).superRefine((value, ctx) => {
   const textSlot = findSiteContentSlot(value.slotId);
@@ -45,14 +47,28 @@ export const siteContentOverrideInputSchema = z.object({
 
   // Reject a payload aimed at the wrong kind of slot rather than silently
   // storing a value nothing will ever read.
-  if (spacingSlot && (value.text !== undefined || value.textSizePx !== undefined)) {
+  if (spacingSlot && (value.text !== undefined || value.textSizePx !== undefined || value.paddingPx !== undefined)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a spacing value." });
   }
-  if (sizeSlot && (value.text !== undefined || value.spacing !== undefined)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a text size." });
+  if (sizeSlot) {
+    if (value.text !== undefined || value.spacing !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a size." });
+    }
+    // A size slot moves one measurement. Storing the other column would leave a
+    // number nothing reads, and no way to tell later which one was meant.
+    const wrongColumn = siteContentSizeSlotMetric(sizeSlot) === "padding" ? value.textSizePx : value.paddingPx;
+    if (wrongColumn !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["slotId"],
+        message: siteContentSizeSlotMetric(sizeSlot) === "padding"
+          ? "This slot sets padding, not a text size."
+          : "This slot sets a text size, not padding.",
+      });
+    }
   }
-  if (textSlot && value.spacing !== undefined) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot does not accept a spacing value." });
+  if (textSlot && (value.spacing !== undefined || value.paddingPx !== undefined)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot does not accept a spacing or padding value." });
   }
 });
 
@@ -69,7 +85,7 @@ export function resolveSiteContentSlotPage(slotId: string) {
  */
 export function isEmptySiteContentOverride(input: SiteContentOverrideInput) {
   const text = input.text?.trim();
-  return !text && input.textSizePx == null && !input.spacing;
+  return !text && input.textSizePx == null && input.paddingPx == null && !input.spacing;
 }
 
 /**
