@@ -27,9 +27,9 @@ describe("GuardianWorkspaceState", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it("uses an honest planned-state message without presenting fake data", () => {
-    render(<GuardianWorkspaceState kind="planned" />);
+  it("shows the planned state as a bare heading, with no paragraph explaining itself", () => {
+    const { container } = render(<GuardianWorkspaceState kind="planned" />);
     expect(screen.getByRole("heading", { name: "Coming soon" })).toBeTruthy();
-    expect(screen.getByText(/privacy rules are ready/i)).toBeTruthy();
+    expect(container.querySelector("p")).toBeNull();
   });
 });
