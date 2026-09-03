@@ -119,7 +119,7 @@ describe("GuardianRequestJourney create flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
     act(() => { mocks.createOptions?.onSuccess?.({ id: 1 }); });
 
-    fireEvent.click(screen.getByRole("button", { name: "+ Post another request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Post another request" }));
 
     // Step 1 again, with the previous answers gone rather than carried over.
     expect(screen.getByRole("button", { name: "Continue to tuition preferences" })).not.toBeNull();

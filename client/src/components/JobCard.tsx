@@ -72,7 +72,11 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
       onClick={onOpen}
       onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
       aria-label={`${job.title}, Job ID ${job.jobId}`}
-      className="flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(.23,1,.32,1)] hover:-translate-y-[3px] hover:border-[#1677e8] hover:shadow-[0_14px_27px_rgba(36,86,129,.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      // A calmer hover than it had: half the lift, a longer and gentler curve,
+      // a border that warms rather than snapping to full accent blue, and a
+      // shadow that is softer but spreads further. On a page of twenty cards
+      // the old 3px snap read as the list twitching under the pointer.
+      className="flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <h3 className="text-[13px] font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
 

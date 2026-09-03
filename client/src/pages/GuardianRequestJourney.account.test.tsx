@@ -296,7 +296,7 @@ describe("Guardian private-account presentation", () => {
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Continue to tuition preferences" })).toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
-    fireEvent.click(screen.getByRole("button", { name: "+ Post another request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Post another request" }));
     expect(onPostAnother).toHaveBeenCalled();
   });
 
@@ -327,7 +327,7 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByText("Facebook")).not.toBeNull();
     expect(screen.getByText("Evening slots preferred")).not.toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
-    fireEvent.click(screen.getByRole("button", { name: "+ Post another request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Post another request" }));
     expect(onPostAnother).toHaveBeenCalled();
   });
 it("names the salary field once, and calls no preference Any", () => {
