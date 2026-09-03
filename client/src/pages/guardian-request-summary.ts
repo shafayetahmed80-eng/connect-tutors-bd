@@ -16,8 +16,10 @@ import { formatSalaryAmount, parseSalaryAmount } from "@shared/salary-amount";
 export type GuardianSummaryRow = {
   label: string;
   value: string;
-  /** True when the field is empty; the view greys it rather than hiding it. */
+  /** True when the field is empty; the view colours it rather than hiding it. */
   empty?: boolean;
+  /** An empty optional field is a choice; an empty required one is a gap. */
+  optional?: boolean;
 };
 
 export type GuardianSummaryGroup = {
@@ -45,9 +47,9 @@ export type GuardianSummaryInput = {
   heardAboutUs: string;
 };
 
-function filled(label: string, value: string): GuardianSummaryRow {
+function filled(label: string, value: string, optional = false): GuardianSummaryRow {
   const text = value.trim();
-  return text ? { label, value: text } : { label, value: "Not set", empty: true };
+  return text ? { label, value: text } : { label, value: "Not set", empty: true, optional };
 }
 
 function plural(count: string, singular: string) {
@@ -85,8 +87,8 @@ export function buildGuardianRequestSummary(
         filled("Curriculum Type", input.curriculumType),
         filled("Class / level", input.classCourse),
         filled("Subjects", input.selectedSubjects.join(", ")),
-        filled("Student gender", input.studentGender ? formatStudentGender(input.studentGender) : ""),
-        filled("Address Details", input.addressDetails),
+        filled("Student gender", input.studentGender ? formatStudentGender(input.studentGender) : "", true),
+        filled("Address Details", input.addressDetails, true),
       ],
     },
     {
@@ -98,11 +100,11 @@ export function buildGuardianRequestSummary(
         filled("Location", location),
         filled("Days per week", input.daysPerWeek && plural(input.daysPerWeek, "day")),
         // Free text and a referral answer, in the order the field list sets.
-        { label: "Institute Name", value: formatInstituteName(input.instituteName), empty: !input.instituteName.trim() },
+        { label: "Institute Name", value: formatInstituteName(input.instituteName), empty: !input.instituteName.trim(), optional: true },
         { label: "Where Did You Hear About Us", value: formatRequestSource(input.heardAboutUs), empty: !input.heardAboutUs },
         filled("Preferred Tutor gender", input.preferredGender ? formatTutorPreference(input.preferredGender) : ""),
         { label: "Salary", value: formatSalaryAmount(salary), empty: salary === null },
-        filled("Additional notes", notes),
+        filled("Additional notes", notes, true),
       ],
     },
   ];
