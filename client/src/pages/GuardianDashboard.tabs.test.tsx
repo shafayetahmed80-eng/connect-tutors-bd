@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -42,6 +42,10 @@ vi.mock("./GuardianRequestTracking", () => ({
   GuardianRequestTracking: ({ embedded }: { embedded?: boolean }) => <section data-testid="guardian-request-tracking">{embedded ? "Embedded private request history" : "Standalone request history"}</section>,
 }));
 
+vi.mock("@/pages/GuardianRequestJourney", () => ({
+  default: ({ embedded }: { embedded?: boolean }) => <div data-testid="guardian-request-journey">{embedded ? "Embedded hire journey" : "Standalone hire journey"}</div>,
+}));
+
 import { GuardianDashboardContent } from "./GuardianDashboard";
 
 afterEach(cleanup);
@@ -52,6 +56,19 @@ describe("Guardian dashboard working tabs", () => {
 
     expect(screen.getByRole("heading", { name: "Posted jobs" })).toBeTruthy();
     expect(screen.getByTestId("guardian-request-tracking").textContent).toContain("Embedded private request history");
+  });
+
+  it("opens Hire a tutor as a sheet with the Posted jobs list waiting behind it", () => {
+    render(<GuardianDashboardContent section="hire" />);
+
+    // The list sits behind the sheet, so dismissing the sheet lands the
+    // Guardian on the tab where the new request will appear.
+    expect(screen.getByRole("heading", { name: "Posted jobs" })).toBeTruthy();
+    expect(screen.getByTestId("guardian-request-tracking").textContent).toContain("Embedded private request history");
+
+    // The journey rides inside the dialog, not the page itself.
+    const dialog = screen.getByRole("dialog", { name: "Hire a tutor" });
+    expect(within(dialog).getByTestId("guardian-request-journey").textContent).toBe("Embedded hire journey");
   });
 
   it("shows a truthful Attendance deferral when no Tutor match is confirmed", () => {
