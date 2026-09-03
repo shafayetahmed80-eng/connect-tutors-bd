@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  JOB_ID_PATTERN,
   buildJobTitle,
   canTransitionJobState,
   createPaginationMeta,
@@ -8,7 +7,7 @@ import {
   normalizeJobBoardFilters,
   type JobBoardFilters,
   type JobLifecycleState,
-  validateManualJobId,
+  normalizeJobIdSearch,
 } from "./job-board.contract";
 
 describe("job board lifecycle contract", () => {
@@ -30,12 +29,16 @@ describe("job board lifecycle contract", () => {
     expect(canTransitionJobState("matched", "closed")).toBe(false);
   });
 
-  it("validates the provisional manual Job ID policy without accepting unsafe values", () => {
-    expect(JOB_ID_PATTERN.test("CT-MAN-AB12CD")).toBe(true);
-    expect(validateManualJobId("CT-MAN-AB12CD")).toEqual("CT-MAN-AB12CD");
-    expect(() => validateManualJobId("ct-man-ab12cd")).toThrow();
-    expect(() => validateManualJobId("CT-MAN-ABC 123")).toThrow();
-    expect(() => validateManualJobId("CT-MAN-AB12")).toThrow();
+  it("accepts a Job ID number in the search box and nothing else", () => {
+    // The search used to validate against the manual CT-MAN pattern alone, so
+    // searching for an ordinary job's ID - the format the board itself shows -
+    // always failed. Manual IDs are gone; there is one shape now.
+    expect(normalizeJobIdSearch(" 6800 ")).toBe("6800");
+    expect(() => normalizeJobIdSearch("CT-MAN-AB12CD")).toThrow();
+    expect(() => normalizeJobIdSearch("CT-JOB-000002")).toThrow();
+    expect(() => normalizeJobIdSearch("abc")).toThrow();
+    // Below the offset there is no request to find.
+    expect(() => normalizeJobIdSearch("1")).toThrow();
   });
 
   it("treats an expiry timestamp at or before now as expired", () => {
@@ -69,7 +72,7 @@ describe("job board lifecycle contract", () => {
       tuitionType: "home",
       page: "2",
       pageSize: "24",
-      jobId: " CT-MAN-AB12CD ",
+      jobId: " 6800 ",
     });
 
     expect(filters).toEqual({
@@ -78,7 +81,7 @@ describe("job board lifecycle contract", () => {
       tuitionType: "home",
       page: 2,
       pageSize: 24,
-      jobId: "CT-MAN-AB12CD",
+      jobId: "6800",
     });
     expect(() => normalizeJobBoardFilters({ page: 0 })).toThrow();
     expect(() => normalizeJobBoardFilters({ pageSize: 101 })).toThrow();

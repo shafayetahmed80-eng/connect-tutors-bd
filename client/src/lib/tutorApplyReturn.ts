@@ -1,7 +1,17 @@
-const JOB_ID_PATTERN = /^CT-JOB-\d{6}$/;
+import { isJobIdNumber } from "@shared/job-id";
+
+/**
+ * Job IDs are plain numbers now (`6800`), not `CT-JOB-000002`. This file kept
+ * its own copy of the old pattern, so a Tutor sent to sign in from a job would
+ * have come back to nothing: the return path was built from an ID this
+ * regular expression no longer recognised.
+ */
+function isJobId(value: string) {
+  return isJobIdNumber(value);
+}
 
 export function buildTutorApplyReturnPath(jobId: string) {
-  if (!JOB_ID_PATTERN.test(jobId)) return null;
+  if (!isJobId(jobId)) return null;
   return `/job-board?job=${jobId}`;
 }
 
@@ -14,7 +24,7 @@ export function getSafeTutorApplyReturnPath(value?: string | null) {
   const parameters = new URLSearchParams(query);
   if (Array.from(parameters.keys()).length !== 1) return null;
   const jobId = parameters.get("job");
-  return jobId && JOB_ID_PATTERN.test(jobId) ? buildTutorApplyReturnPath(jobId) : null;
+  return jobId && isJobId(jobId) ? buildTutorApplyReturnPath(jobId) : null;
 }
 
 export function buildTutorApplySignInPath(jobId: string) {

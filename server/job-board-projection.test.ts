@@ -13,7 +13,7 @@ describe("Job Board published projection", () => {
   });
 
   it("creates a deterministic immutable auto Job ID from the source request", () => {
-    expect(generateAutoJobId(1503)).toBe("CT-JOB-00015R");
+    expect(generateAutoJobId(1503)).toBe("8302");
     expect(generateAutoJobId(1503)).toBe(generateAutoJobId(1503));
     expect(() => generateAutoJobId(0)).toThrow("positive");
   });
@@ -41,7 +41,7 @@ describe("Job Board published projection", () => {
       guardianPhone: "+8801516131411",
     });
 
-    expect(job.publicJobId).toBe("CT-JOB-00015R");
+    expect(job.publicJobId).toBe("8302");
     expect(job.directionLabel).toBe("Mirpur 10, Dhaka");
     expect(job.studentCount).toBe(2);
     expect(job.studentGender).toBe("female");
@@ -94,7 +94,7 @@ describe("Job Board published projection", () => {
   it("returns a public read model without Guardian, student, note, or exact-address data", () => {
     const job = toPublicTutorJob({
       id: 8,
-      publicJobId: "CT-JOB-00015R",
+      publicJobId: "8302",
       tuitionType: "home",
       category: "English Medium",
       classCourse: "Standard 2",
@@ -119,7 +119,7 @@ describe("Job Board published projection", () => {
     });
 
     expect(job).toMatchObject({
-      jobId: "CT-JOB-00015R",
+      jobId: "8302",
       title: "Need English Medium Tutor for Standard 2 Student-4 Days/Week",
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",

@@ -284,16 +284,12 @@ const adminTutorRequestPublicationInputSchema = z.object({
   action: z.enum(["verify", "edit", "guardian_confirmed", "guardian_reconfirmed", "request_changes", "approve", "publish", "extend_expiry", "unpublish", "close"]),
   reason: z.string().trim().max(1000).optional(),
   edit: adminTutorRequestPublicationEditSchema.optional(),
-  manualJobId: z.string().trim().min(3).max(32).optional(),
 }).superRefine((value, context) => {
   if (value.action === "edit" && !value.edit) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["edit"], message: "A safe job-facing edit is required." });
   }
   if (value.action === "request_changes" && !value.reason) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["reason"], message: "A Guardian follow-up reason is required." });
-  }
-  if (value.manualJobId && value.action !== "publish") {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["manualJobId"], message: "A manual Job ID can only be set while publishing." });
   }
 });
 
