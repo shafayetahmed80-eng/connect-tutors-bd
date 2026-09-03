@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { CheckCircle2, ChevronDown, FilePenLine, MapPin, Plus, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, FilePenLine, MapPin, ShieldCheck, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import SiteFooter from "@/components/SiteFooter";
@@ -8,6 +8,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { GuardianWorkspaceSkeleton, GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
 import { trpc } from "@/lib/trpc";
 import JobCard, { DetailsAction } from "@/components/JobCard";
+import { PostAnotherRequestButton } from "@/components/PostAnotherRequestButton";
 import JobDetailsModal from "@/components/JobDetailsModal";
 import { formatPostedDate } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
@@ -138,9 +139,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
             </button>;
           })}
         </div>
-        <Link href="/guardian/dashboard/hire" className="mb-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-3.5 text-[12px] font-bold text-white hover:bg-[#1267c8]">
-          <Plus size={13} /> Post another request
-        </Link>
+        <PostAnotherRequestButton href="/guardian/dashboard/hire" variant="solid" className="mb-2" />
       </div>
 
       {requestsQuery.isLoading ? <div className="mt-5"><GuardianWorkspaceSkeleton label="Loading your private tutor requests" /></div> : null}
