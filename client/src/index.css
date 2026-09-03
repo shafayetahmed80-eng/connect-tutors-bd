@@ -118,23 +118,31 @@ a { color: inherit; text-decoration: none; } button { border: 0; } img { max-wid
   --motion-focus-width: 3px;
 }
 
-.motion-interactive,
-[data-slot="button"],
-button,
-a[href] {
-  transition-duration: var(--motion-duration-fast);
-  transition-timing-function: var(--motion-ease-out);
-}
+/* In `base` so it is a default rather than a ceiling: unlayered rules beat
+ * every Tailwind utility whatever their specificity, so while this sat
+ * outside a layer no component could ask for a slower hover than 160ms or a
+ * curve of its own - the utility was generated and then silently lost. From
+ * `base` it still dresses everything that says nothing, and a component that
+ * does say something is now heard. */
+@layer base {
+  .motion-interactive,
+  [data-slot="button"],
+  button,
+  a[href] {
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-out);
+  }
 
-.motion-interactive:hover:not(:disabled),
-[data-slot="button"]:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
+  .motion-interactive:hover:not(:disabled),
+  [data-slot="button"]:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
 
-.motion-interactive:active:not(:disabled),
-[data-slot="button"]:active:not(:disabled),
-button:active:not(:disabled) {
-  transform: scale(.97);
+  .motion-interactive:active:not(:disabled),
+  [data-slot="button"]:active:not(:disabled),
+  button:active:not(:disabled) {
+    transform: scale(.97);
+  }
 }
 
 /* Fields carry their own focus cue - the border takes the accent - so the
