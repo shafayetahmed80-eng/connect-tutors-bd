@@ -76,7 +76,7 @@ describe("GuardianRequestJourney Pending edit flow", () => {
     window.history.pushState({}, "", "/request-tutor?edit=17");
     render(<GuardianRequestJourney />);
 
-    await waitFor(() => expect(screen.getByText("Tell us about the learning needs")).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("list", { name: "Tutor request details progress" })).toBeTruthy());
     expect((screen.getByDisplayValue("English Medium") as HTMLSelectElement).value).toBe("English Medium");
     expect((screen.getByDisplayValue("Standard 1") as HTMLSelectElement).value).toBe("Standard 1");
     expect(screen.queryByRole("textbox", { name: /Student first name/ })).toBeNull();
