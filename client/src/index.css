@@ -137,7 +137,10 @@ button:active:not(:disabled) {
   transform: scale(.97);
 }
 
-:where(button, a[href], select, input, textarea):focus-visible {
+/* Fields carry their own focus cue - the border takes the accent - so the
+ * outline here would sit outside that as a second halo. Buttons and links
+ * have no such cue of their own, which is why they keep it. */
+:where(button, a[href]):focus-visible {
   outline: var(--motion-focus-width) solid var(--motion-focus-color);
   outline-offset: 3px;
 }

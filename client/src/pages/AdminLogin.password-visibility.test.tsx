@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/SiteHeader", () => ({
   default: () => <header aria-label="Site header" />,
+  BrandLogo: () => <span>Connect Tutors BD</span>,
 }));
 
 vi.mock("@/lib/trpc", () => ({

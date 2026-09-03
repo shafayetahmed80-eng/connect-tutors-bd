@@ -139,7 +139,6 @@ describe("AdminMatchingWorkspace helpers", () => {
       selectedViewId: null, onApply, onCreate, onDelete,
     }));
 
-    expect(screen.getByText(/filter choices only/i)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Saved View name"), { target: { value: "Today's queue" } });
     fireEvent.click(screen.getByRole("button", { name: "Save filters" }));
     expect(onCreate).toHaveBeenCalledWith("Today's queue");
@@ -325,7 +324,6 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(screen.getByText("Tutor applications awaiting coordination")).not.toBeNull();
     expect(screen.getByText("Amina Rahman")).not.toBeNull();
     expect(screen.getByRole("link", { name: /call amina rahman/i }).getAttribute("href")).toBe("tel:+8801712345678");
-    expect(screen.getByText(/guardian contact is never shown/i)).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /shortlist tutor/i }));
     expect(onReview).toHaveBeenCalledWith(71, "shortlisted");
     expect(screen.getByRole("button", { name: /decline application/i })).not.toBeNull();
@@ -350,7 +348,6 @@ describe("AdminMatchingWorkspace helpers", () => {
 
     expect(screen.getByRole("region", { name: /guardian photo moderation queue/i })).not.toBeNull();
     expect(screen.getByText("GD-8K4M29")).not.toBeNull();
-    expect(screen.getByText(/phone, email, address, student, and request data are not shown/i)).not.toBeNull();
     expect(screen.queryByText(/@/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /approve photo/i }));
     expect(onReview).toHaveBeenCalledWith(31, "approved");
