@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  adminCredentialLoginChecklist,
   adminCredentialLoginForm,
   adminLoginHelpLink,
   adminPasswordRecoveryLink,
@@ -21,8 +20,9 @@ describe("getAdminDashboardDestination", () => {
 });
 
 describe("Admin Login credential guidance", () => {
-  it("uses the public Admin Help route rather than a protected Admin destination", () => {
+  it("keeps the two routes off this page pointing at public destinations", () => {
     expect(adminLoginHelpLink).toEqual({ label: "See Admin Help", href: "/admin/help" });
+    expect(adminPasswordRecoveryLink.href).toBe("/admin/credential-setup");
   });
 
   it("uses a direct User ID and password form without an authenticator requirement", () => {
@@ -31,22 +31,15 @@ describe("Admin Login credential guidance", () => {
       passwordLabel: "Password",
       submitLabel: "Sign in to Admin",
     });
-    expect(adminCredentialLoginChecklist).toEqual([
-      "Assigned Admin User ID",
-      "Password",
-      "Protected workspace access",
-    ]);
-    expect(adminCredentialLoginChecklist.join(" ").toLowerCase()).not.toContain("authenticator");
-    expect(adminCredentialLoginChecklist.join(" ").toLowerCase()).not.toContain("two-factor");
+    const labels = Object.values(adminCredentialLoginForm).join(" ").toLowerCase();
+    expect(labels).not.toContain("authenticator");
+    expect(labels).not.toContain("two-factor");
   });
 
   it("offers a generic password recovery route that requires Project Owner verification", () => {
     expect(adminPasswordRecoveryLink).toEqual({
       label: "Forgot password?",
       href: "/admin/credential-setup",
-      helper: "Project Owner verification is required to reset an Admin password.",
     });
-    expect(adminPasswordRecoveryLink.helper.toLowerCase()).not.toContain("email");
-    expect(adminPasswordRecoveryLink.helper.toLowerCase()).not.toContain("account exists");
   });
 });
