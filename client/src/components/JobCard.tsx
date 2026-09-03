@@ -7,6 +7,7 @@ import {
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { AlignLeft, BookOpen, House, MapPin, Wallet } from "lucide-react";
+import { RecordIcon } from "./recordIcons";
 
 /**
  * One job, as the Guardian's Posted jobs tab and the public Job Board both show
@@ -80,10 +81,10 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
     >
       <h3 className="text-[13px] font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-[#6c879e]">
-        <span>Job ID : {job.jobId}</span>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] tabular-nums text-[#6c879e]">
+        <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
-        <span>Posted : {job.postedAt}</span>
+        <span className="inline-flex items-center gap-1"><RecordIcon name="posted" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
         <span className={`font-bold ${statusToneClass[job.statusTone]}`}>{job.statusLabel}</span>
       </div>
