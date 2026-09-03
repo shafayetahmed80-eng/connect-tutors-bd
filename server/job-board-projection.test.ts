@@ -115,6 +115,8 @@ describe("Job Board published projection", () => {
       guardianPhone: "+8801516131411",
       studentFirstName: "Private Student",
       notes: "Please start after Eid",
+      instituteName: "Dhaka College",
+      heardAboutUs: "facebook",
       exactAddress: "House 99, Road 7",
     });
 
@@ -129,6 +131,11 @@ describe("Job Board published projection", () => {
       // the exact address stay out - those are never reviewed into publication.
       notes: "Please start after Eid",
     });
+    // Neither answer is a Tutor's to read: the referral is ours to count,
+    // and the student's institute beside a city and an area narrows an
+    // address further than the Guardian agreed to.
+    expect(job).not.toHaveProperty("instituteName");
+    expect(job).not.toHaveProperty("heardAboutUs");
     expect(job).not.toHaveProperty("guardianName");
     expect(job).not.toHaveProperty("guardianPhone");
     expect(job).not.toHaveProperty("studentFirstName");

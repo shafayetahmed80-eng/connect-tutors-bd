@@ -1,4 +1,5 @@
 import { COOKIE_NAME, ONE_YEAR_MS, PENDING_REDIRECT_COOKIE } from "@shared/const";
+import { INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES } from "@shared/request-source";
 import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -430,6 +431,10 @@ const tutorRequestBaseInputSchema = z.object({
   studentGender: z.enum(["male", "female"]).optional(),
   addressDetails: z.string().trim().min(1).max(160).optional(),
   budgetAmount: salaryAmountSchema,
+  // Optional, and blank is a real answer - the client sends nothing rather
+  // than "" so an empty box does not store an empty string.
+  instituteName: z.string().trim().max(INSTITUTE_NAME_MAX_LENGTH).optional(),
+  heardAboutUs: z.enum(REQUEST_SOURCE_VALUES),
   notes: z.string().trim().max(2000).optional(),
 });
 
@@ -1586,6 +1591,8 @@ export const appRouter = router({
           tuitionLocationId: tuitionLocation?.locationId ?? null,
           tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
           budgetAmount: input.budgetAmount,
+          instituteName: input.instituteName || null,
+          heardAboutUs: input.heardAboutUs,
           notes: input.notes ?? null,
           monthlyBudget: null,
           locationText: tuitionLocation?.locationLabel ?? "Online tuition",
@@ -1636,6 +1643,8 @@ export const appRouter = router({
         tuitionLocationId: tuitionLocation?.locationId ?? null,
         tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
         budgetAmount: input.budgetAmount,
+        instituteName: input.instituteName || null,
+        heardAboutUs: input.heardAboutUs,
         notes: input.notes ?? null,
         contactConsent: "not_required",
         monthlyBudget,

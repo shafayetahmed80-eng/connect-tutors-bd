@@ -29,6 +29,10 @@ const mocks = vi.hoisted(() => ({
     // A saved request carries its salary; the amount is required now, so an
     // edit cannot get past step two without one.
     budgetAmount: 8000,
+    // A referral answer is required too, so an edit stalls on step two
+    // without one - the same way it stalls without a salary.
+    instituteName: "Dhaka College",
+    heardAboutUs: "websites",
     notes: "Weekday afternoons",
   } as Record<string, unknown>,
 }));
@@ -88,6 +92,8 @@ describe("GuardianRequestJourney Pending edit flow", () => {
 
     expect(mocks.updatePending).toHaveBeenCalledWith(expect.objectContaining({
       requestId: 17,
+      instituteName: "Dhaka College",
+      heardAboutUs: "websites",
       tuitionType: "online",
       category: "English Medium",
       curriculumType: "Cambridge",

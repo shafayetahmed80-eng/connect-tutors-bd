@@ -11,6 +11,8 @@ describe("tutor request validation", () => {
     preferredGender: "any" as const,
     studentFirstName: "Rafi",
     budgetAmount: 10000,
+    instituteName: "Dhaka College",
+    heardAboutUs: "facebook" as const,
     notes: "Weekday evening preferred",
   };
 
@@ -47,6 +49,8 @@ describe("tutor request validation", () => {
       ...baseRequest,
       tuitionType: "online",
       budgetAmount: 5000,
+      instituteName: "Dhaka College",
+      heardAboutUs: "facebook" as const,
       studentCount: 1,
     }).success).toBe(true);
   });
@@ -203,6 +207,8 @@ describe("tutor request validation", () => {
       subjects: [],
       daysPerWeek: 0,
       budgetAmount: 12000,
+      instituteName: "Dhaka College",
+      heardAboutUs: "facebook" as const,
     }).success).toBe(false);
   });
 

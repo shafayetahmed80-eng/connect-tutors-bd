@@ -26,6 +26,8 @@ const validDraft = {
     daysPerWeek: "4",
     preferredGender: "female" as const,
     salaryAmount: "8000",
+    instituteName: "Dhaka College",
+    heardAboutUs: "facebook" as const,
   },
   notes: "Evening preferred",
 };
@@ -100,5 +102,16 @@ describe("Guardian private request draft contract", () => {
     expect(serialized).not.toContain("guardian@example.com");
     expect(serialized).not.toContain("01700000000");
     expect(serialized).not.toContain("dhaka-uttara");
+  });
+  it("restores a draft written before Institute Name and the referral answer existed", () => {
+    // A Guardian mid-request when this shipped must not lose the draft; both
+    // read back empty so the form asks the two new questions and keeps the rest.
+    const { instituteName: _instituteName, heardAboutUs: _heardAboutUs, ...legacyRequest } = validDraft.request;
+    const restored = parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: legacyRequest }));
+
+    expect(restored).not.toBeNull();
+    expect(restored?.request.instituteName).toBe("");
+    expect(restored?.request.heardAboutUs).toBe("");
+    expect(restored?.request.category).toBe(validDraft.request.category);
   });
 });
