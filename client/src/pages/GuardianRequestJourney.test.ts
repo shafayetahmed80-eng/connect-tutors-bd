@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getGuardianRequestJourneyPresentation,
   getGuardianRequestStepValidation,
-  getGuardianRequestSuccessDestination,
   guardianAccountPolicyLinks,
   guardianRequestSteps,
 } from "./GuardianRequestJourney";
@@ -22,7 +21,7 @@ const completeLearningInput = {
 
 describe("Guardian request validation feedback", () => {
   it("uses English-first named request sub-steps for the guided Guardian journey", () => {
-    expect(guardianRequestSteps).toEqual(["Learning needs", "Tuition preferences", "Review & submit"]);
+    expect(guardianRequestSteps).toEqual(["Learning needs", "Tuition preferences", "Confirmation"]);
   });
 
   it("provides clear English recovery guidance for the first missing learning-need field", () => {
@@ -75,8 +74,4 @@ describe("Guardian request embedded dashboard mode", () => {
     });
   });
 
-  it("returns a newly submitted embedded request directly to the private Pending list", () => {
-    expect(getGuardianRequestSuccessDestination({ embedded: true, isEditMode: false })).toBe("/guardian/dashboard/posted-jobs");
-    expect(getGuardianRequestSuccessDestination({ embedded: false, isEditMode: false })).toBeNull();
-  });
 });

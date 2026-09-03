@@ -405,7 +405,7 @@ type RequestInput = {
   heardAboutUs: RequestSource | "";
 };
 
-const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
+const requestSteps = ["Learning needs", "Tuition preferences", "Confirmation"] as const;
 
 /**
  * Prefers the server's per-field Zod messages (now on `data.zodFieldErrors`) over
@@ -541,17 +541,12 @@ export function getGuardianRequestJourneyPresentation({ embedded }: { embedded: 
     : { showPublicChrome: true, rootClassName: "site-page min-h-screen bg-j-page text-j-ink" };
 }
 
-export function getGuardianRequestSuccessDestination({ embedded, isEditMode }: { embedded: boolean; isEditMode: boolean }) {
-  return embedded && !isEditMode ? "/guardian/dashboard/posted-jobs" : null;
-}
-
 function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }) {
   const [routePath, navigate] = useLocation();
   const editRequestId = getGuardianPendingEditId(window.location.search);
   const isEditMode = editRequestId !== null;
   const presentation = getGuardianRequestJourneyPresentation({ embedded });
-  const createSuccessDestination = getGuardianRequestSuccessDestination({ embedded, isEditMode });
-  const [stage, setStage] = useState<"phone" | "register" | "request" | "success">(() => embedded ? "request" : "phone");
+  const [stage, setStage] = useState<"phone" | "register" | "request">(() => embedded ? "request" : "phone");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [journeyError, setJourneyError] = useState("");
   const [phone, setPhone] = useState("");
@@ -665,12 +660,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       submissionStartedRef.current = false;
       setRequestId(result.id);
       setJourneyError("");
-      if (createSuccessDestination) {
-        void utils.tutorRequests.mine.invalidate();
-        navigate(createSuccessDestination);
-        return;
-      }
-      setStage("success");
+      // Step 3 is the confirmation, so a sent request stays in the journey
+      // instead of navigating out of it. The Posted jobs list behind the sheet
+      // still needs to hear about the new request.
+      void utils.tutorRequests.mine.invalidate();
+      setStep(3);
     },
     onError: (error) => {
       submissionStartedRef.current = false;
@@ -820,13 +814,17 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     });
   };
   const advance = () => {
-    const error = getGuardianRequestStepValidation(requestInput, step === 1 ? 1 : 2);
+    const error = getGuardianRequestStepValidation(requestInput, 1);
     if (error) { setJourneyError(error); return; }
     clearJourneyError();
-    setStep((current) => Math.min(3, current + 1) as 1 | 2 | 3);
+    setStep(2);
   };
   const submitRequest = (event: FormEvent) => {
     event.preventDefault();
+    // Step 2 carries the only submit control. Step 1 shares this form, so an
+    // Enter key pressed in one of its fields must not send a request the
+    // Guardian has not finished writing, and step 3 is already sent.
+    if (step !== 2) return;
     if (!canStartGuardianRequestSubmission({ mutationPending: requestMutation.isPending || updatePendingMutation.isPending, submissionStarted: submissionStartedRef.current })) return;
     const error = getGuardianRequestStepValidation(requestInput, 2);
     if (error) {
@@ -878,8 +876,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
-        {stage !== "success" && journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
-        {stage === "success" ? <SuccessState requestId={requestId} input={requestInput} notes={notes} tuitionCityLabel={tuitionCityLabel} tuitionLocationLabel={tuitionLocationLabel} onPostAnother={startAnotherRequest} /> : null}
+        {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
@@ -917,8 +914,10 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetNotes={(value) => { clearJourneyError(); setNotes(value); }}
           onBack={() => { clearJourneyError(); setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3); }}
           onAdvance={advance}
-          onEditStep={(targetStep) => { clearJourneyError(); setStep(targetStep); }}
           onSubmit={submitRequest}
+          isEditMode={isEditMode}
+          requestId={requestId}
+          onPostAnother={startAnotherRequest}
         /> : null}
       </section>
     </div></main>
@@ -1091,7 +1090,9 @@ type RequestStageProps = {
   onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void; subjectLimit: number;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
   onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetInstituteName: (value: string) => void; onSetHeardAboutUs: (value: RequestSource) => void; onSetNotes: (value: string) => void;
-  onBack: () => void; onAdvance: () => void; onEditStep?: (step: 1 | 2) => void; onSubmit: (event: FormEvent) => void;
+  onBack: () => void; onAdvance: () => void; onSubmit: (event: FormEvent) => void;
+  /** Step 3 reads the request back once it is sent. */
+  isEditMode?: boolean; requestId?: number | null; onPostAnother?: () => void;
 };
 
 export function RequestStage(props: RequestStageProps) {
@@ -1099,7 +1100,11 @@ export function RequestStage(props: RequestStageProps) {
   const availableLevels = getGuardianLevelsForCurriculum(input.category);
   const availableSubjects = getGuardianSubjectsForLearningNeed(input.category, input.classCourse);
   const locationSelection = getGuardianLocationSelectionState(input.tuitionCityLocationId, input.tuitionLocationId, props.tuitionCityLabel, props.tuitionLocationLabel);
-  const onEditStep = props.onEditStep ?? (() => undefined);
+  // Step 2 sends the request, so its button says so rather than "Continue" -
+  // the Guardian has to know the press is the one that posts the job.
+  const submitLabel = props.isEditMode
+    ? (props.pending ? "Saving changes" : "Save changes")
+    : (props.pending ? "Sending request" : "Send request");
   return <form className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" onSubmit={props.onSubmit}>
     <ol className="mt-7 grid gap-2 sm:grid-cols-3" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
       const isActive = props.step === index + 1;
@@ -1122,21 +1127,12 @@ export function RequestStage(props: RequestStageProps) {
       <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly salary <span className="text-[#d74545]">*</span></legend><div className="mt-3 max-w-xs"><InputField label="Amount (Taka)" labelHidden value={input.salaryAmount} onChange={props.onSetSalaryAmount} inputMode="numeric" placeholder={SALARY_INPUT_PLACEHOLDER} /></div>{parseSalaryAmount(input.salaryAmount) !== null ? <p className="mt-2 text-xs font-bold text-[#126ea9]">{formatSalaryAmount(parseSalaryAmount(input.salaryAmount))}</p> : null}</fieldset>
       <label className="block text-sm font-extrabold text-j-ink-soft">Additional notes <span className="font-normal text-[#71889b]">(optional)</span><textarea className={`${filledArea} mt-2 min-h-28`} value={props.notes} onChange={(event) => props.onSetNotes(event.target.value)} maxLength={2000} /></label>
     </div> : null}
-    {props.step === 3 ? <RequestPreview input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onEditStep={onEditStep} /> : null}
-    <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back</button> : <span className="hidden sm:block" />}{props.step < 3 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}>Continue <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={props.pending ? "Sending request" : "Send request"}>{props.pending && <Loader2 className="animate-spin" size={18} />}{props.pending ? "Sending request" : "Send request"} <ArrowRight size={17} /></button>}</div>
+    {/* Step 3 is the request read back after it is sent, so it carries its own
+        two actions and none of the journey's - there is nothing left to go
+        Back to and nothing left to send. */}
+    {props.step === 3 ? <SuccessState requestId={props.requestId ?? null} input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onPostAnother={props.onPostAnother ?? (() => undefined)} /> : null}
+    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back</button> : <span className="hidden sm:block" />}{props.step === 1 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}>Continue <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
   </form>;
-}
-
-function RequestPreview({ input, notes, tuitionCityLabel, tuitionLocationLabel, onEditStep }: { input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string; onEditStep: (step: 1 | 2) => void }) {
-  const groups = buildGuardianRequestSummary(input, notes, tuitionCityLabel, tuitionLocationLabel);
-  const editLink = "min-h-11 rounded-lg px-3 text-xs font-extrabold text-j-accent underline underline-offset-4 transition hover:bg-j-accent-wash focus:outline-none focus:ring-2 focus:ring-j-accent/30";
-
-  return <div className="mt-7">
-    <GuardianRequestSummaryView
-      groups={groups}
-      renderGroupAction={group => <button type="button" className={editLink} onClick={() => onEditStep(group.step)}>Edit {group.title.toLowerCase()}</button>}
-    />
-  </div>;
 }
 
 /**

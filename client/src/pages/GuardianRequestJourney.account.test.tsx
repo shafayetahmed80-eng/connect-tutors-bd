@@ -271,13 +271,10 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByRole("button", { name: "Continue to tuition preferences" })).not.toBeNull();
   });
 
-  it("shows a sectioned preview with edit-back actions that preserve the Guardian's entered details", () => {
-    const onEditStep = vi.fn();
-    render(<RequestStage {...requestStageProps} requestInput={{ ...requestStageProps.requestInput, studentGender: "female", addressDetails: "Opposite the community library" }} onEditStep={onEditStep} />);
+  it("reads the sent request back on step 3 and offers only the two actions that follow it", () => {
+    const onPostAnother = vi.fn();
+    render(<RequestStage {...requestStageProps} requestId={1} onPostAnother={onPostAnother} requestInput={{ ...requestStageProps.requestInput, studentGender: "female", addressDetails: "Opposite the community library" }} />);
 
-    // The step tracker already names step 3 "Review & submit"; a second
-    // heading saying the same thing went with the rest of the page furniture.
-    expect(screen.queryByRole("heading", { name: "Review your request" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Learning needs" })).not.toBeNull();
     expect(screen.getByText("Curriculum Type")).not.toBeNull();
     expect(screen.getByText("Cambridge")).not.toBeNull();
@@ -290,14 +287,18 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByText("Address Details")).not.toBeNull();
     expect(screen.getByText("Opposite the community library")).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit learning needs" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit tuition preferences" }));
-    expect(onEditStep).toHaveBeenNthCalledWith(1, 1);
-    expect(onEditStep).toHaveBeenNthCalledWith(2, 2);
+    // The request is already sent by the time step 3 renders, so the journey's
+    // own controls are gone and only the two follow-on actions remain.
+    expect(screen.queryByRole("button", { name: "Send request" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Continue to tuition preferences" })).toBeNull();
+    expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
+    fireEvent.click(screen.getByRole("button", { name: "+ Post another request" }));
+    expect(onPostAnother).toHaveBeenCalled();
   });
 
   it("prevents duplicate request starts while a request is pending and labels the protected action clearly", () => {
-    render(<RequestStage {...requestStageProps} pending />);
+    render(<RequestStage {...requestStageProps} step={2} pending />);
 
     const submitButton = screen.getByRole("button", { name: "Sending request" }) as HTMLButtonElement;
     expect(submitButton.disabled).toBe(true);
