@@ -1,6 +1,6 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link as WouterLink, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Facebook, Globe, KeyRound, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Facebook, Globe, KeyRound, Loader2, Megaphone, MoreHorizontal, Phone, Plus, School, Users } from "lucide-react";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
@@ -592,7 +592,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
    * Back to an empty step 1 without leaving the route.
    *
    * Inside the sheet the confirmation and the form share one URL, so
-   * "+ Post another request" cannot navigate its way to a fresh form - it
+   * "Post another request" cannot navigate its way to a fresh form - it
    * clears the answers instead. Tuition type returns to its own default
    * rather than blank, matching how the journey first mounts.
    */
@@ -1162,7 +1162,20 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
         <h2 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-j-ink"><SiteText slotId="request-tutor.done.heading" /></h2>
         {requestId === null ? null : <p className="mt-1 text-[13px] text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
       </div>
-      <button type="button" onClick={onPostAnother} className={`${ghostButton} shrink-0`}>+ Post another request</button>
+      {/* A card rather than a filled button: `View my request` at the foot is
+          the primary blue, and two competing solids would leave the Guardian
+          guessing which one finishes the job. The chip carries the plus, so
+          the label does not have to spell it. */}
+      <button
+        type="button"
+        onClick={onPostAnother}
+        className="group inline-flex shrink-0 items-center gap-2.5 rounded-xl border border-[#dbe9f4] bg-white px-3.5 py-2.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      >
+        <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-lg bg-j-accent-wash text-j-accent transition-colors duration-[320ms] group-hover:bg-j-accent group-hover:text-white">
+          <Plus size={15} strokeWidth={2.4} />
+        </span>
+        <span className="text-[13px] font-extrabold text-j-ink">Post another request</span>
+      </button>
     </div>
 
     <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
