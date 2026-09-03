@@ -314,4 +314,19 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByRole("link", { name: "View My Requests" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
     expect(screen.getByRole("link", { name: "Post Another Request" }).getAttribute("href")).toBe("/guardian/dashboard/hire");
   });
+it("names the salary field once, and calls no preference Any", () => {
+    // "Monthly salary" is the legend directly above; "Amount (Taka)" said the
+    // same thing a line below it. The label stays in the markup so the input
+    // keeps an accessible name - it is only hidden from sight.
+    render(<RequestStage {...requestStageProps} step={2} />);
+
+    expect(screen.getByLabelText(/Amount \(Taka\)/)).not.toBeNull();
+    expect(screen.getByText(/Amount \(Taka\)/).className).toContain("sr-only");
+
+    // The review reads the same word the Job Board card has always used.
+    cleanup();
+    render(<RequestStage {...requestStageProps} step={3} requestInput={{ ...requestStageProps.requestInput, preferredGender: "any" }} />);
+    expect(screen.getByText("Any")).not.toBeNull();
+    expect(screen.queryByText("No preference")).toBeNull();
+  });
 });
