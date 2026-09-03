@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { trpc } from "@/lib/trpc";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { BadgeCheck, ChevronLeft, ChevronRight, CircleAlert, Loader2, Search, ShieldAlert, UserRoundCog } from "lucide-react";
 import { useState } from "react";
 
@@ -21,6 +22,8 @@ function TutorManagementContent() {
   const utils = trpc.useUtils();
   const [filters, setFilters] = useState<TutorFilters>(defaultFilters);
   const [selectedTutor, setSelectedTutor] = useState<{ id: string; name: string; status: Exclude<ProfileStatus, "all"> } | null>(null);
+  // The moderation dialog is rendered inline, so the lock follows its open state.
+  useBodyScrollLock(selectedTutor !== null);
   const [nextStatus, setNextStatus] = useState<"approved" | "changes_requested" | "suspended">("approved");
   const [reason, setReason] = useState("");
   const tutors = trpc.admin.listTutorDirectory.useQuery(filters);

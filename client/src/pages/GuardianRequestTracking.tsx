@@ -179,6 +179,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
                 }}
                 onOpen={() => setExpandedId(request.id)}
                 action={<DetailsAction />}
+                showMapLink={false}
               />;
             })}
           </div>
@@ -202,6 +203,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
           notes: openRequest.notes ?? null,
         }}
         onClose={() => setExpandedId(null)}
+        showMapLink={false}
         action={<>
           <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-[12px] font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
           {/* Only while Pending: once a tuition is Live it is out of the

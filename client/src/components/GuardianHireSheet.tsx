@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { tutorProfileTheme as tp } from "@/pages/tutorProfileTheme";
 
 const FOCUSABLE_SELECTOR =
@@ -48,18 +49,13 @@ export function GuardianHireSheet({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  useBodyScrollLock();
+
   useEffect(() => {
-    // The page behind must not scroll under the sheet on a phone, where the
-    // sheet covers most of it and the two scroll areas read as one broken one.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const previouslyFocused = document.activeElement as HTMLElement | null;
     // Land on the first field rather than the Close button.
     (focusableWithin(bodyRef.current)[0] ?? panelRef.current)?.focus();
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus?.();
-    };
+    return () => { previouslyFocused?.focus?.(); };
   }, []);
 
   const onPanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {

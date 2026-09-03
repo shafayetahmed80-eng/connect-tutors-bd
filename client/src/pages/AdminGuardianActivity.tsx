@@ -1,6 +1,7 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { trpc } from "@/lib/trpc";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -54,6 +55,8 @@ export function getAdminGuardianPrivateDetails(request: {
 function GuardianActivityContent() {
   const [filters, setFilters] = useState<GuardianFilters>(initialFilters);
   const [contactRequestId, setContactRequestId] = useState<number | null>(null);
+  // The contact dialog is rendered inline, so the lock follows its open state.
+  useBodyScrollLock(contactRequestId !== null);
   const requests = trpc.admin.listGuardianRequests.useQuery(filters);
   const contact = trpc.admin.getGuardianContact.useQuery({ requestId: contactRequestId ?? 1 }, { enabled: contactRequestId !== null, retry: false });
   const updateFilter = (change: Partial<GuardianFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
