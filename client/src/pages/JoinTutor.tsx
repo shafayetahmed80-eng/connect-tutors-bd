@@ -7,8 +7,8 @@ import { BANGLADESH_COUNTRY_CODE, formatBangladeshMobile, isValidBangladeshLocal
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, getCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
-import { ArrowRight, ChevronDown, Eye, EyeOff, LoaderCircle, MapPinned, Search } from "lucide-react";
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, ChevronDown, Eye, EyeOff, LoaderCircle, MapPin, MapPinned } from "lucide-react";
+import React, { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -255,6 +255,20 @@ function PasswordInput({ id, value, onChange, show, onToggle, placeholder, error
   return <span className="relative mt-2 block"><input id={id} required value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} className={`${filledField} pr-12`} placeholder={placeholder} type={show ? "text" : "password"} autoComplete={autoComplete} minLength={8} maxLength={128} /><button type="button" onClick={onToggle} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 inline-flex items-center rounded-r-xl px-3 text-j-ink-soft transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{show ? <EyeOff size={17} /> : <Eye size={17} />}</button></span>;
 }
 
+/**
+ * A place picker you type into.
+ *
+ * The field itself is the search box: clicking it opens the list and every
+ * keystroke narrows it. It used to be a button that opened a panel with a
+ * separate search input inside, which meant nobody could type until they had
+ * found and pressed the chevron first - the list looked searchable and did not
+ * behave it.
+ *
+ * Built to the ARIA combobox pattern: focus stays in the input and
+ * `aria-activedescendant` moves through the options, so arrow keys and a
+ * screen reader agree about which place is highlighted. The chevron is
+ * decorative and lets clicks fall through to the input behind it.
+ */
 export function SearchableLocationSelect({ triggerId, label, required, value, options, disabled, placeholder, searchPlaceholder, emptyMessage, onChange }: {
   triggerId?: string;
   label: string;
@@ -262,45 +276,105 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
   value: string;
   options: Array<{ id: string; label: string }>;
   disabled?: boolean;
+  /** Shown when nothing is chosen yet. */
   placeholder: string;
+  /** Shown while the list is open, where it reads as an instruction to type. */
   searchPlaceholder: string;
   emptyMessage: string;
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const selectorRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  // Callers do not always name the field, but it always needs a label to be
+  // announced by - and a label that focuses it when clicked.
+  const inputId = triggerId ?? `${listId}-field`;
   const selected = options.find((option) => option.id === value);
-  const normalizedSearch = searchTerm.trim().toLocaleLowerCase();
-  const filteredOptions = useMemo(() => options.filter((option) => option.label.toLocaleLowerCase().includes(normalizedSearch)), [normalizedSearch, options]);
+  const normalizedSearch = query.trim().toLocaleLowerCase();
+  // An open field with nothing typed offers the whole list; a closed one reads
+  // back the chosen place rather than the half-typed search that found it.
+  const filteredOptions = useMemo(
+    () => (normalizedSearch ? options.filter((option) => option.label.toLocaleLowerCase().includes(normalizedSearch)) : options),
+    [normalizedSearch, options],
+  );
+
+  const close = () => { setOpen(false); setQuery(""); setActiveIndex(0); };
+  const choose = (optionId: string) => { onChange(optionId); close(); };
 
   useEffect(() => {
-    if (disabled) setOpen(false);
+    if (disabled) close();
   }, [disabled]);
+
+  useEffect(() => { setActiveIndex(0); }, [normalizedSearch]);
 
   useEffect(() => {
     if (!open) return;
     const closeWhenOutside = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && !selectorRef.current?.contains(target)) {
-        setOpen(false);
-        setSearchTerm("");
-      }
+      if (target instanceof Node && !selectorRef.current?.contains(target)) close();
     };
     document.addEventListener("pointerdown", closeWhenOutside);
     return () => document.removeEventListener("pointerdown", closeWhenOutside);
   }, [open]);
 
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) { setOpen(true); return; }
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((current) => Math.min(Math.max(current + step, 0), Math.max(filteredOptions.length - 1, 0)));
+      return;
+    }
+    if (event.key === "Enter") {
+      // The journey's form spans all three steps, so a stray Enter here must
+      // pick a place rather than submit the request.
+      if (!open) return;
+      event.preventDefault();
+      const option = filteredOptions[activeIndex];
+      if (option) choose(option.id);
+      return;
+    }
+    if (event.key === "Escape" && open) { event.preventDefault(); close(); }
+  };
+
+  const activeOption = open ? filteredOptions[activeIndex] : undefined;
+
   return <div ref={selectorRef} className={`relative block text-[13px] font-semibold text-j-ink-soft ${open ? "z-40" : "z-0"}`}>
-    <span>{label} {required ? <RequiredMark /> : <span className="text-[#8aa0b2]">(if applicable)</span>}</span>
-    <button id={triggerId} type="button" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => { setOpen((current) => !current); setSearchTerm(""); }} className={`${fieldClass} !bg-white flex min-h-10 items-center justify-between gap-2 text-left font-normal disabled:cursor-not-allowed disabled:opacity-55`}>
-      <span className={selected ? "truncate" : "truncate text-[#8fa1af]"}>{selected?.label ?? placeholder}</span><ChevronDown size={16} className={`shrink-0 text-[#5d7b91] transition ${open ? "rotate-180" : ""}`} />
-    </button>
-    {open ? <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
-      <div className="mb-2 flex items-center gap-2 rounded-xl bg-j-surface-sunken px-3 py-2"><Search size={15} className="shrink-0 text-[#4982a7]" /><input aria-label={`${label} search`} autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-normal outline-none placeholder:text-[#83a0b3]" placeholder={searchPlaceholder} /></div>
-      <div role="listbox" aria-label={`${label} options`} className="max-h-56 overflow-y-auto pr-1">
-        {filteredOptions.length ? filteredOptions.map((option) => <button key={option.id} type="button" role="option" aria-selected={option.id === value} onClick={() => { onChange(option.id); setOpen(false); setSearchTerm(""); }} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition hover:bg-j-surface-sunken ${option.id === value ? "bg-j-accent-wash text-[#126ea9]" : "text-j-ink-strong"}`}><MapPinned size={14} className="shrink-0 text-[#4d93bd]" />{option.label}</button>) : <p className="px-3 py-5 text-center text-sm font-normal text-[#71899b]">{emptyMessage}</p>}
-      </div>
-    </div> : null}
+    <label htmlFor={inputId}>{label} {required ? <RequiredMark /> : <span className="text-[#8aa0b2]">(if applicable)</span>}</label>
+    <span className="relative mt-2 block">
+      <MapPin aria-hidden="true" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent" />
+      <input
+        id={inputId}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={activeOption ? `${listId}-${activeOption.id}` : undefined}
+        autoComplete="off"
+        disabled={disabled}
+        value={open ? query : selected?.label ?? ""}
+        placeholder={open ? searchPlaceholder : placeholder}
+        onChange={(event) => { setOpen(true); setQuery(event.target.value); }}
+        onClick={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        className={`${filledField} !bg-white pl-10 pr-9 font-normal disabled:cursor-not-allowed disabled:opacity-55`}
+      />
+      <ChevronDown aria-hidden="true" size={16} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#5d7b91] transition ${open ? "-rotate-180" : ""}`} />
+    </span>
+    {open ? <ul id={listId} role="listbox" aria-label={`${label} options`} className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
+      {filteredOptions.length ? filteredOptions.map((option, index) => <li
+        key={option.id}
+        id={`${listId}-${option.id}`}
+        role="option"
+        aria-selected={option.id === value}
+        // Pointer down would blur the input before the click landed.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => choose(option.id)}
+        onMouseEnter={() => setActiveIndex(index)}
+        className={`flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${option.id === value ? "bg-j-accent-wash text-[#126ea9]" : index === activeIndex ? "bg-j-surface-sunken text-j-ink-strong" : "text-j-ink-strong"}`}
+      ><MapPinned aria-hidden="true" size={14} className="shrink-0 text-[#4d93bd]" />{option.label}</li>) : <li role="presentation" className="px-3 py-5 text-center text-sm font-normal text-[#71899b]">{emptyMessage}</li>}
+    </ul> : null}
   </div>;
 }
