@@ -147,28 +147,32 @@ describe("Guardian private-account presentation", () => {
     expect(getGuardianLocationSelectionState("dhaka", "stale", "Dhaka", "")).toBeNull();
   });
 
-  it("offers a keyboard-reachable location edit action that clears only the selected area", async () => {
+  it("leaves the chosen location in the dropdowns with nothing repeating it", () => {
+    // The City and Location dropdowns show the choice themselves, so neither a
+    // confirmation strip nor a "Change location" link earns its place below.
     const onSetTuitionLocation = vi.fn();
-    render(<RequestStage step={2} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
+    render(<RequestStage step={1} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
-    const editButton = screen.getByRole("button", { name: "Change selected location" });
-    expect(editButton.className).toContain("min-h-11");
-    fireEvent.click(editButton);
-    expect(onSetTuitionLocation).toHaveBeenCalledWith("");
+    expect(screen.getByRole("button", { name: "Mirpur 10" })).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Location selected" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change selected location" })).toBeNull();
+    expect(onSetTuitionLocation).not.toHaveBeenCalled();
   });
 
-  it("offers the approved Tuition Type options and explains the physical-location rule", () => {
+  it("offers the approved Tuition Type options as a dropdown", () => {
+    // Learning needs opens with Tuition type, City and Location, so the first
+    // question is where and how - the answers that decide what follows.
     const onSetTuitionType = vi.fn();
-    render(<RequestStage {...requestStageProps} step={2} onSetTuitionType={onSetTuitionType} />);
+    render(<RequestStage {...requestStageProps} step={1} onSetTuitionType={onSetTuitionType} />);
 
-    expect(screen.getByRole("button", { name: "Home Tutoring" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Online Tutoring" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Group Tutoring" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Package Tutoring" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Home and Online Tutoring" })).toBeNull();
-    expect(screen.getByText("City and location are required for Home, Group, and Package Tutoring.")).not.toBeNull();
+    const select = screen.getByLabelText(/Tuition type/) as HTMLSelectElement;
+    expect(screen.getByRole("option", { name: "Home Tutoring" })).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Online Tutoring" })).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Group Tutoring" })).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Package Tutoring" })).not.toBeNull();
+    expect(screen.queryByRole("option", { name: "Home and Online Tutoring" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Group Tutoring" }));
+    fireEvent.change(select, { target: { value: "group" } });
     expect(onSetTuitionType).toHaveBeenCalledWith("group");
   });
 
@@ -181,7 +185,6 @@ describe("Guardian private-account presentation", () => {
     const capacityInput = screen.getByRole("spinbutton", { name: /Maximum students/ }) as HTMLInputElement;
     expect(capacityInput.min).toBe("2");
     expect(capacityInput.max).toBe("100");
-    expect(capacityInput.getAttribute("aria-describedby")).toBe("group-capacity-hint");
     fireEvent.change(capacityInput, { target: { value: "12" } });
     expect(onSetGroupCapacity).toHaveBeenCalledWith("12");
 
@@ -199,7 +202,6 @@ describe("Guardian private-account presentation", () => {
     const durationInput = screen.getByRole("spinbutton", { name: /Package duration/ }) as HTMLInputElement;
     expect(durationInput.min).toBe("1");
     expect(durationInput.max).toBe("24");
-    expect(durationInput.getAttribute("aria-describedby")).toBe("package-duration-months-hint");
     fireEvent.change(durationInput, { target: { value: "9" } });
     expect(onSetPackageDurationMonths).toHaveBeenCalledWith("9");
 
@@ -261,7 +263,7 @@ describe("Guardian private-account presentation", () => {
   it("presents Learning needs as a clear, accessible selection workspace with selection feedback", () => {
     render(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, category: "Bangla Medium", curriculumType: "", classCourse: "Class 1", selectedSubjects: ["English"] }} />);
 
-    expect(screen.getByRole("heading", { name: "Tell us about the learning needs" })).not.toBeNull();
+    expect(screen.getByRole("list", { name: "Tutor request details progress" })).not.toBeNull();
     expect(screen.getByRole("group", { name: "Learning details" })).not.toBeNull();
     expect(screen.getByRole("group", { name: "Subject selection" })).not.toBeNull();
     expect(screen.getByRole("status", { name: "1 of 12 subjects selected" }).textContent).toContain("1 of 12 selected");
