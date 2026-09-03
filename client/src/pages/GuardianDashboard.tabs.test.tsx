@@ -76,13 +76,16 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
     expect(screen.getByDisplayValue("GDN-9H4K-2M8Q")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save profile" })).toBeTruthy();
-    expect(screen.getByText(/mobile or email change, contact support/i)).toBeTruthy();
+    expect(screen.queryByText(/mobile or email change, contact support/i)).toBeNull();
   });
 
-  it("renders current-password settings and truthful process guidance", () => {
+  it("renders current-password settings and keeps the support contact reachable", () => {
     const { rerender } = render(<GuardianDashboardContent section="settings" />);
     expect(screen.getByLabelText("Current password")).toBeTruthy();
-    expect(screen.getByText(/phone and email changes require support-assisted verification/i)).toBeTruthy();
+    // The explanation went; the number a Guardian needs to change a phone or
+    // email is the one thing on that card they cannot get anywhere else.
+    expect(screen.getByRole("link", { name: "01516 131 411" })).toBeTruthy();
+    expect(screen.queryByText(/require support-assisted verification/i)).toBeNull();
 
     rerender(<GuardianDashboardContent section="how-it-works" />);
     expect(screen.getByRole("heading", { name: "How it works" })).toBeTruthy();

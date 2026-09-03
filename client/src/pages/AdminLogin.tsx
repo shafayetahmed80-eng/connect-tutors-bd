@@ -83,7 +83,7 @@ export default function AdminLogin() {
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
           <div className="relative">
           <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors BD</Link>
-          <div className="z-10 mt-20 max-w-sm"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8fd0f5]">Restricted access</p><h1 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.04em]">Admin workspace sign in.</h1><p className="mt-5 text-sm leading-7 text-[#c8ddf0]">Use your assigned Admin User ID and password to manage matching requests and protected workflow actions.</p></div>
+          <div className="z-10 mt-20 max-w-sm"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8fd0f5]">Restricted access</p><h1 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.04em]">Admin workspace sign in.</h1></div>
           </div>
         </div>
         <div className="flex items-center px-7 py-10 sm:px-14 sm:py-14">

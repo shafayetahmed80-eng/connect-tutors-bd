@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 
 export type GuardianWorkspaceStateKind = "loading" | "empty" | "error" | "planned";
 
-const content: Record<GuardianWorkspaceStateKind, { title: string; message: string }> = {
+const content: Record<GuardianWorkspaceStateKind, { title: string; message?: string }> = {
   loading: { title: "Loading your private workspace", message: "Your Guardian information is being retrieved securely." },
-  empty: { title: "Nothing here yet", message: "This section will show your Guardian information when it becomes available." },
+  empty: { title: "Nothing here yet" },
   error: { title: "We could not load this section", message: "Your private workspace is temporarily unavailable. Please try again." },
-  planned: { title: "Coming soon", message: "This Guardian workspace section is planned and will be introduced after its data and privacy rules are ready." },
+  planned: { title: "Coming soon" },
 };
 
 export function GuardianWorkspaceState({ kind, title, message, onRetry }: { kind: GuardianWorkspaceStateKind; title?: string; message?: string; onRetry?: () => void }) {
@@ -18,7 +18,7 @@ export function GuardianWorkspaceState({ kind, title, message, onRetry }: { kind
     <section role={kind === "loading" ? "status" : undefined} aria-busy={kind === "loading" || undefined} className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
       <Icon aria-hidden="true" className={`mx-auto mb-4 size-8 text-[#1677c8] ${kind === "loading" ? "animate-spin" : ""}`} />
       <h2 className="text-xl font-black text-slate-950">{title || copy.title}</h2>
-      <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">{message || copy.message}</p>
+      {message || copy.message ? <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">{message || copy.message}</p> : null}
       {kind === "error" && onRetry ? <Button type="button" variant="outline" onClick={onRetry} className="mt-5 border-[#9dcde7] text-[#0e4f85]">Try again</Button> : null}
     </section>
   );
