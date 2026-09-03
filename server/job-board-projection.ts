@@ -1,5 +1,6 @@
 import { buildJobTitle } from "./job-board.contract";
 import { findSiteLimit } from "@shared/site-limits";
+import { jobIdForRequest } from "@shared/job-id";
 
 /**
  * How long a published tuition stays on the board unless an Admin closes or
@@ -64,15 +65,12 @@ export type PublishedTutorJobProjection = {
 /**
  * One request can have at most one published-job projection, making this
  * deterministic ID both collision-free and stable across unpublish/re-publish.
+ *
+ * It used to read `CT-JOB-000002` and now reads `6800`. The same number is
+ * shown on a Pending request before it is published, so a Guardian and a Tutor
+ * can be talking about the same job without either having to translate.
  */
-export function generateAutoJobId(requestId: number): string {
-  if (!Number.isInteger(requestId) || requestId <= 0) {
-    throw new Error("Request ID must be a positive integer.");
-  }
-  const encoded = requestId.toString(36).toUpperCase();
-  if (encoded.length > 6) throw new Error("Request ID is too large for the Job ID format.");
-  return `CT-JOB-${encoded.padStart(6, "0")}`;
-}
+export const generateAutoJobId = jobIdForRequest;
 
 export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPublication, expiryDays: number = DEFAULT_JOB_EXPIRY_DAYS): PublishedTutorJobProjection {
   const directionLabel = input.tuitionType === "online" ? null : input.locationLabel;

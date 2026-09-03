@@ -285,7 +285,7 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(screen.queryByRole("button", { name: /^close request$/i })).toBeNull();
   });
 
-  it("offers an optional manual Job ID while retaining the automatic-ID publish path", () => {
+  it("publishes without asking for a Job ID, because the job already has one", () => {
     const onAction = vi.fn();
     render(createElement(PublicationControls, {
       request: { ...reviewingRequest, publicationState: "approved", guardianConfirmedAt: new Date("2026-08-21T08:00:00.000Z") },
@@ -294,11 +294,12 @@ describe("AdminMatchingWorkspace helpers", () => {
       onEdit: event => event.preventDefault(),
     }));
 
-    const jobId = screen.getByLabelText(/job id/i);
-    expect(jobId.getAttribute("placeholder")).toBe("Leave blank for an automatic ID");
-    fireEvent.change(jobId, { target: { value: "CTB-260821-042" } });
+    // The number is derived from the request, so there is nothing to type and
+    // nothing that could clash. An Admin used to be offered a free-text field
+    // here, which allowed two kinds of ID for the same kind of thing.
+    expect(screen.queryByLabelText(/job id/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /publish to job board/i }));
-    expect(onAction).toHaveBeenCalledWith("publish", "CTB-260821-042");
+    expect(onAction).toHaveBeenCalledWith("publish");
   });
 
   it("keeps Tutor contact within the protected Admin queue and offers only valid review actions", () => {

@@ -113,7 +113,6 @@ import {
   toPublicTutorJob,
   type PublishedTutorJobProjection,
 } from "./job-board-projection";
-import { validateManualJobId } from "./job-board.contract";
 import {
   canSubmitTutorInterest,
   transitionTutorInterest,
@@ -2970,7 +2969,6 @@ async function synchronizePublishedTutorJob(
       tuitionLocationLabel: string | null;
       budgetAmount: number | null;
     };
-    manualJobId?: string;
   },
 ): Promise<{ publicJobId?: string }> {
   if (input.action !== "publish" && input.action !== "extend_expiry" && input.action !== "unpublish" && input.action !== "close") return {};
@@ -3010,13 +3008,12 @@ async function synchronizePublishedTutorJob(
       // given, which is the only fair reading of "expires on".
     }, jobExpiryDays);
     if (!existingJob) {
-      const publicJobId = input.manualJobId ? validateManualJobId(input.manualJobId) : projection.publicJobId;
-      if (input.manualJobId) {
-        const [conflictingJob] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.publicJobId, publicJobId)).limit(1);
-        if (conflictingJob) throw new Error("JOB_ID_CONFLICT");
-      }
-      await tx.insert(tutorJobs).values({ ...projection, publicJobId });
-      return { publicJobId };
+      // The number comes from the request and from nowhere else. An Admin used
+      // to be able to type one in, which allowed two kinds of ID for the same
+      // kind of thing and a collision check to go with it; a derived number can
+      // clash with nothing, because one request has one id.
+      await tx.insert(tutorJobs).values(projection);
+      return { publicJobId: projection.publicJobId };
     }
     await tx
       .update(tutorJobs)
@@ -3059,7 +3056,6 @@ export async function moderateTutorRequestPublication(input: {
   action: TutorRequestPublicationAction;
   reason?: string;
   edit?: AdminTutorRequestPublicationEdit;
-  manualJobId?: string;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -3151,7 +3147,6 @@ export async function moderateTutorRequestPublication(input: {
     await tx.update(tutorRequests).set(update).where(eq(tutorRequests.id, request.id));
     const jobProjection = await synchronizePublishedTutorJob(tx, {
       action: input.action,
-      manualJobId: input.manualJobId,
       request: {
         id: request.id,
         tuitionType: request.tuitionType,

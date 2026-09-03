@@ -1,4 +1,4 @@
-export const JOB_ID_PATTERN = /^CT-MAN-[A-Z0-9]{6}$/;
+import { isJobIdNumber } from "@shared/job-id";
 
 export const JOB_LIFECYCLE_STATES = [
   "draft",
@@ -35,11 +35,21 @@ export function canTransitionJobState(
   return ALLOWED_TRANSITIONS[from].includes(to);
 }
 
-export function validateManualJobId(value: string): string {
+/**
+ * A Job ID someone typed into the board's search box.
+ *
+ * There is one shape now: the number every job is given the moment its request
+ * is made. An Admin used to be able to set a `CT-MAN-XXXXXX` by hand, which
+ * meant two kinds of ID for the same kind of thing and no way to tell from a
+ * number alone which a job would have.
+ *
+ * The search used to validate against that manual pattern alone, so searching
+ * for an ordinary job's ID always failed - it rejected the very format the
+ * board itself displayed.
+ */
+export function normalizeJobIdSearch(value: string): string {
   const normalized = value.trim();
-  if (!JOB_ID_PATTERN.test(normalized)) {
-    throw new Error("Manual Job ID must match CT-MAN-XXXXXX.");
-  }
+  if (!isJobIdNumber(normalized)) throw new Error("Enter a Job ID like 6800.");
   return normalized;
 }
 
@@ -104,7 +114,7 @@ export function normalizeJobBoardFilters(input: JobBoardFilterInput): JobBoardFi
   const locationId = normalizeOptionalIdentifier(input.locationId, "Location");
   const jobId = input.jobId === undefined
     ? undefined
-    : validateManualJobId(input.jobId);
+    : normalizeJobIdSearch(input.jobId);
 
   return {
     ...(cityId ? { cityId } : {}),
