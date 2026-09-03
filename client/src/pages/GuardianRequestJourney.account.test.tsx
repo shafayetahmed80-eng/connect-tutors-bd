@@ -307,8 +307,10 @@ describe("Guardian private-account presentation", () => {
   });
 
   it("reads the whole request back with the two actions the field list places", () => {
+    const onPostAnother = vi.fn();
     render(<SuccessState
       requestId={1}
+      onPostAnother={onPostAnother}
       input={requestStageProps.requestInput}
       notes="Evening slots preferred"
       tuitionCityLabel="Dhaka"
@@ -321,7 +323,8 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByText("Facebook")).not.toBeNull();
     expect(screen.getByText("Evening slots preferred")).not.toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
-    expect(screen.getByRole("link", { name: "+ Post another request" }).getAttribute("href")).toBe("/guardian/dashboard/hire");
+    fireEvent.click(screen.getByRole("button", { name: "+ Post another request" }));
+    expect(onPostAnother).toHaveBeenCalled();
   });
 it("names the salary field once, and calls no preference Any", () => {
     // "Monthly salary" is the legend directly above; "Amount (Taka)" said the

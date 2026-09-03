@@ -8,7 +8,8 @@ import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
 import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
 import { GuardianWorkspaceSkeleton, GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
 import { Bell, Clock3, FileText, HelpCircle, ImagePlus, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
+import { GuardianHireSheet } from "@/components/GuardianHireSheet";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -276,6 +277,7 @@ function GuardianConfirmationLetterPanel() {
 }
 
 export function GuardianDashboardContent({ section, requestId }: { section?: string; requestId?: number }) {
+  const [, navigate] = useLocation();
   const requestsQuery = trpc.tutorRequests.mine.useQuery();
   const requests = requestsQuery.data ?? [];
   const sectionLabel = section ? guardianDashboardNavigation.find(item => item.path.endsWith(`/${section}`))?.label : "Dashboard";
@@ -285,7 +287,12 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   }
 
   if (section === "hire") {
-    return <div className="space-y-6"><h1 className="text-3xl font-black tracking-tight text-slate-950">Hire a tutor</h1><GuardianRequestJourney embedded /></div>;
+    return <>
+      <div className="space-y-6"><h1 className="text-3xl font-black tracking-tight text-slate-950">Posted jobs</h1><GuardianRequestTracking embedded /></div>
+      <GuardianHireSheet title="Hire a tutor" onClose={() => navigate("/guardian/dashboard/posted-jobs")}>
+        <GuardianRequestJourney embedded />
+      </GuardianHireSheet>
+    </>;
   }
 
   if (section === "profile") return <GuardianProfileWorkspace />;

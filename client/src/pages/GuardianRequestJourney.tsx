@@ -586,6 +586,39 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [requestId, setRequestId] = useState<number | null>(null);
   const [draftRestoredFor, setDraftRestoredFor] = useState<number | null>(null);
   const [loadedEditRequestId, setLoadedEditRequestId] = useState<number | null>(null);
+
+  /**
+   * Back to an empty step 1 without leaving the route.
+   *
+   * Inside the sheet the confirmation and the form share one URL, so
+   * "+ Post another request" cannot navigate its way to a fresh form - it
+   * clears the answers instead. Tuition type returns to its own default
+   * rather than blank, matching how the journey first mounts.
+   */
+  const startAnotherRequest = () => {
+    setStage("request");
+    setStep(1);
+    setRequestId(null);
+    setJourneyError("");
+    setCategory("");
+    setCurriculumType("");
+    setClassCourse("");
+    setSelectedSubjects([]);
+    setTuitionType("home");
+    setGroupCapacity("");
+    setPackageDurationMonths("");
+    setStudentCount("");
+    setStudentGender("");
+    setAddressDetails("");
+    setTuitionCityLocationId("");
+    setTuitionLocationId("");
+    setDaysPerWeek("");
+    setPreferredGender("");
+    setSalaryAmount("");
+    setInstituteName("");
+    setHeardAboutUs("");
+    setNotes("");
+  };
   const submissionStartedRef = useRef(false);
 
   const authQuery = trpc.auth.me.useQuery();
@@ -846,7 +879,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {stage !== "success" && journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
-        {stage === "success" ? <SuccessState requestId={requestId} input={requestInput} notes={notes} tuitionCityLabel={tuitionCityLabel} tuitionLocationLabel={tuitionLocationLabel} /> : null}
+        {stage === "success" ? <SuccessState requestId={requestId} input={requestInput} notes={notes} tuitionCityLabel={tuitionCityLabel} tuitionLocationLabel={tuitionLocationLabel} onPostAnother={startAnotherRequest} /> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
@@ -1114,7 +1147,7 @@ function RequestPreview({ input, notes, tuitionCityLabel, tuitionLocationLabel, 
  * The two actions sit where the field list puts them - carry on posting from
  * the top right, go and watch this one from the foot.
  */
-export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitionLocationLabel }: { requestId: number | null; input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string }) {
+export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitionLocationLabel, onPostAnother }: { requestId: number | null; input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string; onPostAnother: () => void }) {
   const groups = buildGuardianRequestSummary(input, notes, tuitionCityLabel, tuitionLocationLabel);
 
   return <div className="mt-7 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
@@ -1124,7 +1157,7 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
         <h2 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-j-ink"><SiteText slotId="request-tutor.done.heading" /></h2>
         {requestId === null ? null : <p className="mt-1 text-[13px] text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
       </div>
-      <Link href="/guardian/dashboard/hire" className={`${ghostButton} shrink-0`}>+ Post another request</Link>
+      <button type="button" onClick={onPostAnother} className={`${ghostButton} shrink-0`}>+ Post another request</button>
     </div>
 
     <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
