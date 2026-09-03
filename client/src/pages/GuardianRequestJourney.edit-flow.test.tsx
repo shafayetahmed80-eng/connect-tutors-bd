@@ -86,9 +86,9 @@ describe("GuardianRequestJourney Pending edit flow", () => {
     expect(screen.queryByRole("textbox", { name: /Student first name/ })).toBeNull();
     expect((screen.getByDisplayValue("Private access note") as HTMLTextAreaElement).value).toBe("Private access note");
 
+    // Step 2 carries the submit, and an edit saves rather than sends.
     fireEvent.click(screen.getByRole("button", { name: "Continue to tuition preferences" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue to tuition preferences" }));
-    fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(mocks.updatePending).toHaveBeenCalledWith(expect.objectContaining({
       requestId: 17,
