@@ -7,6 +7,11 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { GuardianWorkspaceSkeleton, GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
 import { trpc } from "@/lib/trpc";
+import JobCard, { DetailsAction } from "@/components/JobCard";
+import JobDetailsModal from "@/components/JobDetailsModal";
+import { formatPostedDate } from "@shared/job-card";
+import { jobIdForRequest } from "@shared/job-id";
+import { buildJobTitle } from "@shared/job-title";
 
 type GuardianRequestStatusTone = "blue" | "amber" | "green" | "slate";
 type GuardianLifecycleKey = "pending" | "live" | "appointed" | "confirmed" | "cancelled";
@@ -105,15 +110,110 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
   const requestedDetail = detailRequestId ? requests.find(item => item.id === detailRequestId) : null;
   const isPrivateRouteError = Boolean(requestsQuery.error);
 
-  return <div className={embedded ? "" : "site-page min-h-screen bg-slate-50"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:py-14"}>
-    {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="bg-[#0e4f85] px-5 py-6 text-white sm:px-7"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-200">Guardian private request</p><h1 className="mt-2 text-2xl font-black">Request #{requestedDetail.id}</h1><p className="mt-2 text-sm text-blue-100">Submitted {formatRequestDate(requestedDetail.createdAt)} · {getGuardianRequestLifecycle(requestedDetail).label}</p></div><PrivateRequestDetails request={requestedDetail} embedded={embedded} /></section> : <>
-      <div className="mb-6 flex flex-col gap-5 rounded-3xl bg-[#0e4f85] p-6 text-white shadow-xl shadow-blue-950/10 sm:flex-row sm:items-end sm:justify-between sm:p-9"><div className="max-w-2xl"><p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">Guardian account</p><h1 className="text-3xl font-black tracking-tight sm:text-4xl">Posted jobs</h1><p className="mt-3 max-w-xl text-sm leading-6 text-blue-100 sm:text-base">Your private requests are shown here. New Pending requests appear first; a published Job Board entry never reveals your private details.</p></div><Link href="/guardian/dashboard/hire" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold !text-[#0e4f85] transition hover:bg-blue-50"><Plus size={17} /> Post another request</Link></div>
-      {requestsQuery.isLoading ? <GuardianWorkspaceSkeleton label="Loading your private tutor requests" /> : null}
-      {!requestsQuery.isLoading && isPrivateRouteError ? <GuardianWorkspaceState kind="error" title="Private requests are temporarily unavailable" message="Request history is only available from the Guardian account that created it. Please try again securely." onRetry={() => { void requestsQuery.refetch(); }} /> : null}
-      {!requestsQuery.isLoading && !isPrivateRouteError && requests.length === 0 ? <div className="space-y-4"><GuardianWorkspaceState kind="empty" title="No tutor requests yet" message="Tell us the student’s learning needs and our coordinator will begin reviewing suitable tutor options." /><div className="text-center"><Link href="/guardian/dashboard/hire" className="inline-flex items-center gap-2 rounded-xl bg-[#1677c8] px-5 py-3 text-sm font-bold text-white hover:bg-[#0e4f85]"><Plus size={17} /> Post a request</Link></div></div> : null}
-      {!requestsQuery.isLoading && !isPrivateRouteError && requests.length > 0 ? <div className="space-y-5"><section aria-label="Request status overview" className="grid gap-2 sm:grid-cols-5">{guardianLifecycleSteps.map((step, index) => <div key={step.key} className={`rounded-2xl border p-3 ${index === 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white"}`}><p className="text-xs font-bold uppercase tracking-[.1em] text-slate-500">{step.label}</p><p className="mt-1 text-2xl font-black text-slate-950">{counts[step.key]}</p></div>)}</section><div className="space-y-4">{orderedRequests.map(request => { const lifecycle = getGuardianRequestLifecycle(request); const presentation = getGuardianRequestStatusPresentation(request.status); const isExpanded = expandedId === request.id; return <article key={request.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-bold uppercase tracking-[.15em] text-slate-500">Request #{request.id}</p><span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusToneClass[presentation.tone]}`}>{lifecycle.label}</span></div><h2 className="mt-2 truncate text-lg font-extrabold text-slate-900">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm leading-6 text-slate-600">{formatSubjects(request.subjects)} · Submitted {formatRequestDate(request.createdAt)}</p></div><div className="flex shrink-0 gap-2"><button type="button" onClick={() => setExpandedId(isExpanded ? null : request.id)} aria-expanded={isExpanded} className="hidden items-center justify-center gap-2 rounded-xl border border-[#9ccbe7] bg-white px-4 py-2.5 text-sm font-extrabold text-[#126ea9] hover:bg-[#f2faff] sm:inline-flex">Details <ChevronDown className={`size-4 transition ${isExpanded ? "rotate-180" : ""}`} /></button><Link href={`/guardian/dashboard/posted-jobs/${request.id}`} className="inline-flex items-center justify-center rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-extrabold text-white hover:bg-[#0e4f85] sm:hidden">Details</Link></div></div>{isExpanded ? <PrivateRequestDetails request={request} embedded /> : null}</article>; })}</div></div> : null}
+  const [activeStage, setActiveStage] = useState<GuardianLifecycleKey>("pending");
+  const visibleRequests = useMemo(
+    () => orderedRequests.filter(request => getGuardianRequestLifecycle(request).key === activeStage),
+    [orderedRequests, activeStage],
+  );
+  const openRequest = expandedId ? requests.find(item => item.id === expandedId) ?? null : null;
+
+  return <div className={embedded ? "" : "site-page min-h-screen bg-slate-50"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "shell py-10"}>
+    {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
+      {/* No page hero: the workspace header already names this screen, and the
+          five stages carry the counts that the old summary cards showed. */}
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dce9f1]">
+        <div role="tablist" aria-label="Request stages" className="flex flex-wrap items-end gap-5">
+          {guardianLifecycleSteps.map(step => {
+            const selected = step.key === activeStage;
+            return <button
+              key={step.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => { setActiveStage(step.key); setExpandedId(null); }}
+              className={`relative pb-2.5 pt-1.5 text-[12px] font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-[#6c879e] hover:text-[#173d60]"}`}
+            >
+              {step.label} <span className={`ml-1 tabular-nums ${selected ? "text-[#1267c8]" : "text-[#8ba3b6]"}`}>{String(counts[step.key]).padStart(2, "0")}</span>
+              {selected ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
+            </button>;
+          })}
+        </div>
+        <Link href="/guardian/dashboard/hire" className="mb-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-3.5 text-[12px] font-bold text-white hover:bg-[#1267c8]">
+          <Plus size={13} /> Post another request
+        </Link>
+      </div>
+
+      {requestsQuery.isLoading ? <div className="mt-5"><GuardianWorkspaceSkeleton label="Loading your private tutor requests" /></div> : null}
+      {!requestsQuery.isLoading && isPrivateRouteError ? <div className="mt-5"><GuardianWorkspaceState kind="error" title="Private requests are temporarily unavailable" message="Your requests could not be loaded just now. Please try again." onRetry={() => requestsQuery.refetch()} /></div> : null}
+
+      {!requestsQuery.isLoading && !isPrivateRouteError && requests.length === 0
+        ? <div className="mt-5"><GuardianWorkspaceState kind="empty" title="No requests yet" message="Post your first tutor request and it will appear here." /></div>
+        : null}
+
+      {!requestsQuery.isLoading && !isPrivateRouteError && requests.length > 0 && visibleRequests.length === 0
+        ? <p className="mt-6 rounded-xl border border-dashed border-[#c9dce9] bg-white px-4 py-8 text-center text-sm text-[#6c879e]">
+            No {guardianLifecycleSteps.find(step => step.key === activeStage)?.label.toLowerCase()} requests. Your other requests are under the stages above.
+          </p>
+        : null}
+
+      {/* Two to a row, and the grid stretches each card in a row to the height
+          of its tallest neighbour, so a long subject list cannot leave the card
+          beside it looking clipped. */}
+      {visibleRequests.length > 0
+        ? <div className="mt-5 grid items-stretch gap-3.5 lg:grid-cols-2">
+            {visibleRequests.map(request => {
+              const lifecycle = getGuardianRequestLifecycle(request);
+              return <JobCard
+                key={request.id}
+                job={{
+                  jobId: jobIdForRequest(request.id),
+                  title: buildJobTitle({ category: request.category, classCourse: request.classCourse, studentCount: request.studentCount ?? 1, daysPerWeek: request.daysPerWeek }),
+                  postedAt: formatPostedDate(request.createdAt),
+                  statusLabel: lifecycle.label,
+                  statusTone: lifecycle.key,
+                  tuitionType: request.tuitionType,
+                  budgetAmount: request.budgetAmount,
+                  subjects: request.subjects,
+                  locationLabel: request.tuitionLocationLabel ?? null,
+                  preferredTutorGender: request.preferredGender,
+                }}
+                onOpen={() => setExpandedId(request.id)}
+                action={<DetailsAction />}
+              />;
+            })}
+          </div>
+        : null}
+
+      {openRequest ? <JobDetailsModal
+        job={{
+          jobId: jobIdForRequest(openRequest.id),
+          title: buildJobTitle({ category: openRequest.category, classCourse: openRequest.classCourse, studentCount: openRequest.studentCount ?? 1, daysPerWeek: openRequest.daysPerWeek }),
+          postedAt: formatPostedDate(openRequest.createdAt),
+          statusLabel: getGuardianRequestLifecycle(openRequest).label,
+          statusTone: getGuardianRequestLifecycle(openRequest).key,
+          tuitionType: openRequest.tuitionType,
+          budgetAmount: openRequest.budgetAmount,
+          subjects: openRequest.subjects,
+          locationLabel: openRequest.tuitionLocationLabel ?? null,
+          preferredTutorGender: openRequest.preferredGender,
+          studentGender: openRequest.studentGender ?? null,
+          daysPerWeek: openRequest.daysPerWeek,
+          studentCount: openRequest.studentCount,
+          notes: openRequest.notes ?? null,
+        }}
+        onClose={() => setExpandedId(null)}
+        action={<>
+          <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-[12px] font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
+          {/* Only while Pending: once a tuition is Live it is out of the
+              Guardian's hands and a coordinator is working on it. */}
+          {getGuardianRequestLifecycle(openRequest).key === "pending"
+            ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-[12px] font-bold text-white hover:bg-[#1267c8]">Update</Link>
+            : null}
+        </>}
+      /> : null}
     </>}
   </main>{embedded ? null : <SiteFooter />}</div>;
 }
+
 
 export default function GuardianRequestTrackingPage() { return <GuardianRequestTracking />; }

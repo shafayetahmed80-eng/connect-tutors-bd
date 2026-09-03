@@ -4,6 +4,9 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import SharedJobCard from "@/components/JobCard";
+import SharedJobDetailsModal from "@/components/JobDetailsModal";
+import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { BriefcaseBusiness, ChevronLeft, ChevronRight, Compass, ExternalLink, Filter, HeartHandshake, MapPinned, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
@@ -41,6 +44,8 @@ export type JobBoardJob = {
   preferredTutorGender: TutorGender;
   daysPerWeek: number;
   budgetAmount: number | null;
+  /** What the Admin approved for publication, not the Guardian's raw note. */
+  notes: string | null;
   country: string;
   cityLocationId: string | null;
   locationId: string | null;
@@ -277,10 +282,34 @@ function ApplicationControl({ interest, isTutor, isApprovedTutor, isInterestSavi
   return <div className="mt-3 rounded-2xl border border-[#cfe8f7] bg-[#f4fbff] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#167ddd]" /><p className="text-xs leading-5 text-[#55738a]">{copy.description}</p></div><button type="button" onClick={onAction} className="motion-interactive mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#167ddd] px-3 text-sm font-bold text-white hover:bg-[#0b6db0]">{copy.label}</button></div>;
 }
 
+/**
+ * The Job Board card is the Guardian panel's card. Only the action differs -
+ * Apply Now where a Guardian sees Details - so the same component draws both
+ * and neither can drift.
+ */
 function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onDetails: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
-  const directionUrl = buildMapsDirectionUrl(job.directionLabel);
-  const cardFacts = getJobBoardCardFacts(job);
-  return <article className="flex min-w-0 flex-col rounded-3xl border border-[#dce8f0] bg-white p-5 shadow-[0_12px_30px_rgba(38,83,117,0.06)] transition-[transform,box-shadow,border-color] duration-200 motion-safe:hover:-translate-y-1 hover:border-[#abd4eb] hover:shadow-[0_18px_38px_rgba(38,83,117,0.12)] focus-within:border-[#7dbce1] focus-within:shadow-[0_18px_38px_rgba(38,83,117,0.12)] motion-reduce:transition-none"><div className="flex items-start justify-between gap-3"><span className="rounded-lg bg-[#eaf6ff] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-[#1475b5]">{job.jobId}</span><span className="rounded-full bg-[#f2f8fa] px-2.5 py-1 text-[11px] font-bold text-[#55738a]">{formatJobBoardTuitionType(job.tuitionType)}</span></div><h2 className="mt-4 text-lg font-extrabold leading-6 tracking-[-0.02em] text-[#173b60]">{job.title}</h2><dl className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 border-y border-[#e7eef3] py-4 text-sm"><JobMeta label="Posted date" value={formatJobBoardDate(job.publishedAt)} /><JobMeta label="Subjects" value={job.subjects.length ? job.subjects.join(", ") : "Subjects to be confirmed"} />{cardFacts.map(fact => <JobMeta key={fact.label} label={fact.label} value={fact.value} />)}<JobMeta label="Tutoring days" value={`${job.daysPerWeek} days/week`} /><JobMeta label="Salary" value={formatJobBudget(job.budgetAmount)} /><JobMeta label="Location" value={job.locationLabel ?? (job.tuitionType === "online" ? "Online" : "Area to be coordinated")} /></dl><ApplicationControl interest={interest} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={isInterestSaving} onAction={onInterestAction} /><div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={onDetails} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#167ddd] px-3 text-sm font-bold text-white hover:bg-[#0b6db0]"><BriefcaseBusiness className="h-4 w-4" /> View details</button>{directionUrl ? <a href={directionUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#c9e2f2] px-3 text-sm font-bold text-[#167ddd] hover:bg-[#f4fbff]"><Compass className="h-4 w-4" /> Direction</a> : null}</div></article>;
+  const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
+  return <SharedJobCard
+    job={{
+      jobId: job.jobId,
+      title: job.title,
+      postedAt: formatPostedDate(job.publishedAt),
+      statusLabel: "Live",
+      statusTone: "live",
+      tuitionType: job.tuitionType,
+      budgetAmount: job.budgetAmount,
+      subjects: job.subjects,
+      locationLabel: job.locationLabel,
+      preferredTutorGender: job.preferredTutorGender,
+    }}
+    onOpen={onDetails}
+    action={<button
+      type="button"
+      disabled={isInterestSaving}
+      onClick={event => { event.stopPropagation(); onInterestAction(); }}
+      className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-3.5 text-[12px] font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
+    >{isInterestSaving ? "Saving…" : applyCopy.label}</button>}
+  />;
 }
 
 function JobMeta({ label, value }: { label: string; value: string }) { return <div><dt className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#87a1b2]">{label}</dt><dd className="mt-1 text-sm font-semibold leading-5 text-[#355d79]">{value}</dd></div>; }
@@ -289,10 +318,48 @@ function EmptyBoard({ onClear }: { onClear?: () => void }) {
   const contact = useSiteContact();
   return <div className="rounded-3xl border border-dashed border-[#c9dce8] bg-[radial-gradient(circle_at_50%_0%,#effaff,white_58%)] px-6 py-12 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#eaf6ff] shadow-[0_9px_18px_rgba(22,125,221,.12)]"><BriefcaseBusiness className="h-7 w-7 text-[#167ddd]" /></div><p className="mt-4 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#4c9ed8]">A careful match takes time</p><h2 className="mt-2 text-lg font-extrabold text-[#173b60]">No available tuition matches yet</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#5c7a8f]">Only Guardian-confirmed, active opportunities appear here. Broaden your filters or check back as the team publishes newly verified tuition requirements.</p><div className="mx-auto mt-5 flex max-w-md flex-wrap justify-center gap-3">{onClear ? <button type="button" onClick={onClear} className="rounded-xl bg-[#eaf6ff] px-4 py-2 text-sm font-bold text-[#167ddd]">Clear filters</button> : null}<a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="rounded-xl border border-[#c9e2f2] bg-white px-4 py-2 text-sm font-bold text-[#167ddd]">Ask our team on WhatsApp</a></div><p className="mt-5 text-xs font-semibold text-[#6b899d]"><ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-[#248d69]" />Private Guardian contact details are only coordinated after a suitable match.</p></div>; }
 
+/**
+ * The same dialog the Guardian sees, with Apply Now in place of Update.
+ *
+ * The reason a Tutor cannot apply yet - not signed in, profile not approved -
+ * sits here rather than under every card in the grid, where it would repeat
+ * identically on each one.
+ */
 function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onClose: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
-  const directionUrl = buildMapsDirectionUrl(job.directionLabel);
-  const detailFacts = getJobBoardDetailFacts(job);
-  return <div className="fixed inset-0 z-50 grid place-items-end bg-[#062946]/45 p-0 sm:place-items-center sm:p-6" role="presentation"><section role="dialog" aria-modal="true" aria-labelledby="job-detail-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-[#167ddd]">{job.jobId}</p><h2 id="job-detail-title" className="mt-2 text-xl font-extrabold leading-7 text-[#173b60]">{job.title}</h2></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-[#55738a] hover:bg-slate-100" aria-label="Close job details"><X className="h-5 w-5" /></button></div><div className="mt-6 grid gap-4 rounded-2xl bg-[#f7fbfd] p-5 sm:grid-cols-2"><JobMeta label="Posted Date" value={formatJobBoardDate(job.publishedAt)} /><JobMeta label="Subjects" value={job.subjects.join(", ") || "To be confirmed"} />{detailFacts.map(fact => <JobMeta key={fact.label} label={fact.label} value={fact.value} />)}<JobMeta label="Tutoring Days" value={`${job.daysPerWeek} days/week`} /><JobMeta label="Salary" value={formatJobBudget(job.budgetAmount)} /><JobMeta label="Location" value={job.locationLabel ?? (job.tuitionType === "online" ? "Online" : "Shared after coordination")} /><JobMeta label="Tuition Type" value={formatJobBoardTuitionType(job.tuitionType)} /><JobMeta label="Category" value={job.category} /><JobMeta label="Class / Course" value={job.classCourse} /></div><div className="mt-5 rounded-2xl border border-[#cfe8f7] bg-[#f2faff] p-4 text-sm leading-6 text-[#426981]"><MapPinned className="mr-1 inline h-4 w-4 text-[#167ddd]" />{JOB_BOARD_DISCLOSURE_NOTICE}</div><ApplicationControl interest={interest} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={isInterestSaving} onAction={onInterestAction} /><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#cfe0eb] px-4 text-sm font-bold text-[#315b79]">Close</button>{directionUrl ? <a href={directionUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#167ddd] px-4 text-sm font-bold text-white hover:bg-[#0b6db0]"><MapPinned className="h-4 w-4" /> View area in Google Maps <ExternalLink className="h-3.5 w-3.5" /></a> : null}</div></section></div>;
+  const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
+  const interestCopy = getTutorInterestPresentation(interest?.status);
+  const label = interestCopy.actionLabel ?? applyCopy.label;
+  const reason = interestCopy.description ?? applyCopy.description;
+
+  return <SharedJobDetailsModal
+    job={{
+      jobId: job.jobId,
+      title: job.title,
+      postedAt: formatPostedDate(job.publishedAt),
+      statusLabel: interestCopy.statusLabel ?? "Live",
+      statusTone: "live",
+      tuitionType: job.tuitionType,
+      budgetAmount: job.budgetAmount,
+      subjects: job.subjects,
+      locationLabel: job.locationLabel,
+      preferredTutorGender: job.preferredTutorGender,
+      studentGender: job.studentGender ?? null,
+      daysPerWeek: job.daysPerWeek,
+      studentCount: job.studentCount,
+      notes: job.notes,
+    }}
+    onClose={onClose}
+    action={<>
+      {reason ? <span className="mr-auto text-[11px] text-[#6c879e]">{reason}</span> : null}
+      <button type="button" onClick={onClose} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-[12px] font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
+      <button
+        type="button"
+        disabled={isInterestSaving}
+        onClick={onInterestAction}
+        className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-[12px] font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
+      >{isInterestSaving ? "Saving…" : label}</button>
+    </>}
+  />;
 }
 
 export default function JobBoard() {

@@ -393,6 +393,13 @@
       "when": 1788500000055,
       "tag": "0055_drop_budget_range",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1788600000000,
+      "tag": "0056_job_notes",
+      "breakpoints": true
     }
   ]
 }

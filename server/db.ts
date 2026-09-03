@@ -2785,6 +2785,7 @@ export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) 
       cityLocationId: tutorJobs.cityLocationId,
       locationId: tutorJobs.locationId,
       locationLabel: tutorJobs.locationLabel,
+      notes: tutorJobs.notes,
       directionLabel: tutorJobs.directionLabel,
       publishedAt: tutorJobs.publishedAt,
       expiresAt: tutorJobs.expiresAt,
@@ -2968,6 +2969,7 @@ async function synchronizePublishedTutorJob(
       tuitionLocationId: string | null;
       tuitionLocationLabel: string | null;
       budgetAmount: number | null;
+      notes: string | null;
     };
   },
 ): Promise<{ publicJobId?: string }> {
@@ -3001,6 +3003,7 @@ async function synchronizePublishedTutorJob(
       locationId: input.request.tuitionLocationId,
       locationLabel: input.request.tuitionLocationLabel,
       budgetAmount: input.request.budgetAmount,
+      notes: input.request.notes,
       publishedAt: now,
       // Read here rather than inside the projection so that function stays
       // pure and its tests need no database. Changing the limit moves jobs
@@ -3077,6 +3080,7 @@ export async function moderateTutorRequestPublication(input: {
         daysPerWeek: tutorRequests.daysPerWeek,
         preferredGender: tutorRequests.preferredGender,
         budgetAmount: tutorRequests.budgetAmount,
+        notes: tutorRequests.notes,
         tuitionType: tutorRequests.tuitionType,
         tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
         tuitionLocationId: tutorRequests.tuitionLocationId,
@@ -3163,6 +3167,7 @@ export async function moderateTutorRequestPublication(input: {
         tuitionLocationId: request.tuitionLocationId,
         tuitionLocationLabel: request.tuitionLocationLabel,
         budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
+        notes: request.notes,
       },
     });
     const result = await tx.insert(tutorRequestPublicationEvents).values({

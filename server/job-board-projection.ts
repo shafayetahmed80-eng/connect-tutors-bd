@@ -34,6 +34,7 @@ export type SafeTutorRequestForPublication = {
   locationId: string | null;
   locationLabel: string | null;
   budgetAmount: number | null;
+  notes: string | null;
   publishedAt: Date;
   /** Present in callers only to demonstrate that private inputs never pass to output. */
   privateAddress?: string | null;
@@ -53,6 +54,7 @@ export type PublishedTutorJobProjection = {
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
   budgetAmount: number | null;
+  notes: string | null;
   country: "Bangladesh";
   cityLocationId: string | null;
   locationId: string | null;
@@ -86,6 +88,7 @@ export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPubli
     preferredTutorGender: input.preferredTutorGender,
     daysPerWeek: input.daysPerWeek,
     budgetAmount: input.budgetAmount,
+    notes: input.notes,
     country: "Bangladesh",
     cityLocationId: input.tuitionType === "online" ? null : input.cityLocationId,
     locationId: input.tuitionType === "online" ? null : input.locationId,
@@ -118,6 +121,7 @@ type PublishedTutorJobRow = {
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
   budgetAmount: number | null;
+  notes: string | null;
   country: string;
   cityLocationId: string | null;
   locationId: string | null;
@@ -160,6 +164,11 @@ export function toPublicTutorJob(row: PublishedTutorJobRow) {
     // One number, or null on the two requests that predate the change. The
     // Job Board writes it as "5,000 Taka" or "Not set".
     budgetAmount: row.budgetAmount,
+    // Public because nothing reaches this board unreviewed: an Admin reads the
+    // request and publishes it deliberately, and can edit the note first. That
+    // review is the safeguard, so it has to be real - the Admin's publication
+    // editor shows and edits this field for exactly that reason.
+    notes: row.notes,
     country: row.country,
     cityLocationId: row.cityLocationId,
     locationId: row.locationId,

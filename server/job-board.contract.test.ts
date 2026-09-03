@@ -55,14 +55,14 @@ describe("job board lifecycle contract", () => {
       classCourse: "Standard 2",
       studentCount: 1,
       daysPerWeek: 4,
-    })).toBe("Need English Medium (Cambridge) Tutor for Standard 2 Student-4 Days/Week");
+    })).toBe("Need English Medium (Cambridge) Tutor for Standard 2 Student - 4 Days / Week");
 
     expect(buildJobTitle({
       category: "Science",
       classCourse: "Class 8",
       studentCount: 2,
       daysPerWeek: 3,
-    })).toBe("Need Science Tutor for Class 8 Students-3 Days/Week");
+    })).toBe("Need Science Tutor for Class 8 Students - 3 Days / Week");
   });
 
   it("normalizes canonical filters and rejects invalid pagination", () => {
