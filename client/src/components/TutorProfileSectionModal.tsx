@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tutorProfileTheme as tp } from "@/pages/tutorProfileTheme";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type TutorProfileSectionModalProps = {
   title: string;
@@ -44,6 +45,8 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  useBodyScrollLock();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

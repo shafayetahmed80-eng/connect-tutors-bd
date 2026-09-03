@@ -407,6 +407,9 @@ type RequestInput = {
 
 const requestSteps = ["Learning needs", "Tuition preferences", "Confirmation"] as const;
 
+/** Most tuitions are for one student, so the count starts there. */
+export const DEFAULT_STUDENT_COUNT = "1";
+
 /**
  * Prefers the server's per-field Zod messages (now on `data.zodFieldErrors`) over
  * the raw stringified error, so a rejected registration reads as guidance rather
@@ -567,7 +570,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [tuitionType, setTuitionType] = useState<TuitionType>("home");
   const [groupCapacity, setGroupCapacity] = useState("");
   const [packageDurationMonths, setPackageDurationMonths] = useState("");
-  const [studentCount, setStudentCount] = useState("");
+  // One student is the ordinary case, so the field starts answered instead of
+  // making every Guardian type the same "1".
+  const [studentCount, setStudentCount] = useState(DEFAULT_STUDENT_COUNT);
   const [studentGender, setStudentGender] = useState<StudentGender>("");
   const [addressDetails, setAddressDetails] = useState("");
   const [tuitionCityLocationId, setTuitionCityLocationId] = useState("");
@@ -602,7 +607,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setTuitionType("home");
     setGroupCapacity("");
     setPackageDurationMonths("");
-    setStudentCount("");
+    setStudentCount(DEFAULT_STUDENT_COUNT);
     setStudentGender("");
     setAddressDetails("");
     setTuitionCityLocationId("");
@@ -900,7 +905,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetAddressDetails={(value) => { clearJourneyError(); setAddressDetails(value); }}
           onToggleSubject={toggleSubject}
           subjectLimit={subjectLimit}
-          onSetTuitionType={(value) => { clearJourneyError(); setTuitionType(value); if (value !== "group") setGroupCapacity(""); if (value !== "package") setPackageDurationMonths(""); if (value === "group" || value === "both") setStudentCount(""); }}
+          onSetTuitionType={(value) => { clearJourneyError(); setTuitionType(value); if (value !== "group") setGroupCapacity(""); if (value !== "package") setPackageDurationMonths(""); if (value === "group" || value === "both") setStudentCount(DEFAULT_STUDENT_COUNT); }}
           onSetGroupCapacity={(value) => { clearJourneyError(); setGroupCapacity(value.replace(/\D/g, "")); }}
           onSetPackageDurationMonths={(value) => { clearJourneyError(); setPackageDurationMonths(value.replace(/\D/g, "")); }}
           onSetStudentCount={(value) => { clearJourneyError(); setStudentCount(value.replace(/\D/g, "")); }}
@@ -1065,7 +1070,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
         <SearchableLocationSelect triggerId="guardian-account-city" label="City" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
       </FieldError>
       <FieldError id="guardian-account-location-error" message={errors.locationId}>
-        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required countContext={props.accountCityLabel} onChange={props.onLocation} />
+        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required onChange={props.onLocation} />
       </FieldError>
     </div>
 
@@ -1113,7 +1118,7 @@ export function RequestStage(props: RequestStageProps) {
     })}</ol>
     {props.step === 1 ? <div className="mt-6 space-y-6">
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Tuition type" value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} /></div>
-      {input.tuitionType !== "online" ? <><div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /><SearchableLocationSelect label="Location" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required countContext={props.tuitionCityLabel} onChange={props.onSetTuitionLocation} /></div></> : null}
+      {input.tuitionType !== "online" ? <><div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /><SearchableLocationSelect label="Location" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required onChange={props.onSetTuitionLocation} /></div></> : null}
       <fieldset><legend className="sr-only">Learning details</legend><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><SelectField label="Student gender" optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details">Address Details <span className="font-normal text-[#71889b]">(optional)</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong">Subject selection <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-end gap-3"><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} of ${props.subjectLimit} subjects selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} of {props.subjectLimit} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
     {props.step === 2 ? <div className="mt-7 space-y-6">
       {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="student-count">Number of students <span className="text-[#d74545]">*</span><input id="student-count" className={`${filledField} mt-2`}type="number" min={1} max={100} step={1} inputMode="numeric" value={input.studentCount} onChange={(event) => props.onSetStudentCount(event.target.value)} /></label> : null}

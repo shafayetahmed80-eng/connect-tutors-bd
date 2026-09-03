@@ -59,10 +59,10 @@ function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; labe
   </div>;
 }
 
-export default function JobCard({ job, onOpen, action }: { job: JobCardData; onOpen: () => void; action: React.ReactNode }) {
+export default function JobCard({ job, onOpen, action, showMapLink = true }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean }) {
   const salary = formatSalaryAmount(job.budgetAmount);
   const place = formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel });
-  const mapUrl = buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel);
+  const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
   return (
     <article

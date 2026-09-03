@@ -3,6 +3,7 @@ import { Check, RotateCcw, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { tutorProfileResponsiveClasses } from "@/pages/TutorProfileResponsive";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type TutorProfilePhotoEditorProps = {
   imageUrl: string;
@@ -35,6 +36,8 @@ export function TutorProfilePhotoEditor({ imageUrl, isSubmitting = false, onCanc
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useBodyScrollLock();
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {

@@ -12,6 +12,7 @@ import {
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { MapPin, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { TutorPreferenceIcon, type JobCardData } from "./JobCard";
 
 export type JobDetailsData = JobCardData & {
@@ -41,12 +42,17 @@ export default function JobDetailsModal({
   job,
   onClose,
   action,
+  showMapLink = true,
 }: {
   job: JobDetailsData;
   onClose: () => void;
   action: React.ReactNode;
+  /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */
+  showMapLink?: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useBodyScrollLock();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -55,7 +61,7 @@ export default function JobDetailsModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const mapUrl = buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel);
+  const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
   return (
     <div

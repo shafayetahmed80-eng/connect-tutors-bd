@@ -59,7 +59,7 @@ describe("Tutor registration location dropdown", () => {
     expect(onChange).toHaveBeenCalledWith("mirpur-10");
   });
 
-  it("shows the selected City total and filtered location counts", () => {
+  it("narrows the list to what the search matches, and counts nothing at the reader", () => {
     render(
       <SearchableLocationSelect
         label="Thana / Upazila / Area / Sub-area"
@@ -72,15 +72,22 @@ describe("Tutor registration location dropdown", () => {
         placeholder="Search thana, upazila, area or sub-area"
         searchPlaceholder="Search location or sub-area"
         emptyMessage="No location matches your search."
-        countContext="Dhaka"
         onChange={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("2 locations available in Dhaka")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /search thana/i }));
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+
     fireEvent.change(screen.getByPlaceholderText("Search location or sub-area"), { target: { value: "10" } });
-    expect(screen.getByText("1 of 2 locations match your search")).toBeTruthy();
+    const matches = screen.getAllByRole("option");
+    expect(matches).toHaveLength(1);
+    expect(matches[0].textContent).toContain("Mirpur-10");
+
+    // Somebody picking their own area does not need the catalogue counted at
+    // them - the running totals that used to sit here are gone.
+    expect(screen.queryByText(/locations available in/)).toBeNull();
+    expect(screen.queryByText(/locations match your search/)).toBeNull();
   });
 
   it("closes an open dropdown when the user clicks outside its boundary", () => {
