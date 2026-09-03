@@ -153,7 +153,10 @@ describe("Guardian private-account presentation", () => {
     const onSetTuitionLocation = vi.fn();
     render(<RequestStage step={1} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetInstituteName={vi.fn()} onSetHeardAboutUs={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Mirpur 10" })).not.toBeNull();
+    // A closed combobox reads the chosen place back as its own value.
+    const location = screen.getByRole("combobox", { name: /^Location/ }) as HTMLInputElement;
+    expect(location.value).toBe("Mirpur 10");
+    expect((screen.getByRole("combobox", { name: /Tuition City/ }) as HTMLInputElement).value).toBe("Dhaka");
     expect(screen.queryByRole("status", { name: "Location selected" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Change selected location" })).toBeNull();
     expect(onSetTuitionLocation).not.toHaveBeenCalled();
