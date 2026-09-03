@@ -1151,6 +1151,8 @@ export const tutorJobs = mysqlTable("tutor_jobs", {
    * removed carry no figure; every new request must name one.
    */
   budgetAmount: int("budgetAmount"),
+  /** The Guardian's note, carried onto the board after an Admin approves the request. */
+  notes: text("notes"),
   country: varchar("country", { length: 120 }).default("Bangladesh").notNull(),
   cityLocationId: varchar("cityLocationId", { length: 80 }),
   locationId: varchar("locationId", { length: 80 }),

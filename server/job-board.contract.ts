@@ -1,3 +1,6 @@
+import { buildJobTitle } from "@shared/job-title";
+export { buildJobTitle };
+export type { JobTitleInput } from "@shared/job-title";
 import { isJobIdNumber } from "@shared/job-id";
 
 export const JOB_LIFECYCLE_STATES = [
@@ -57,28 +60,6 @@ export function isJobExpired(expiresAt: Date | null, now = new Date()): boolean 
   return expiresAt !== null && expiresAt.getTime() <= now.getTime();
 }
 
-export type JobTitleInput = {
-  category: string;
-  classCourse: string;
-  studentCount: number;
-  daysPerWeek: number;
-};
-
-function safeTitlePart(value: string): string {
-  return value.trim().replace(/[\r\n]+/g, " ").replace(/\s+/g, " ");
-}
-
-export function buildJobTitle({
-  category,
-  classCourse,
-  studentCount,
-  daysPerWeek,
-}: JobTitleInput): string {
-  const normalizedCategory = safeTitlePart(category);
-  const normalizedClassCourse = safeTitlePart(classCourse);
-  const studentLabel = studentCount === 1 ? "Student" : "Students";
-  return `Need ${normalizedCategory} Tutor for ${normalizedClassCourse} ${studentLabel}-${daysPerWeek} Days/Week`;
-}
 
 export type JobBoardFilters = {
   cityId?: string;

@@ -91,7 +91,7 @@ describe("Job Board published projection", () => {
     }).studentCount).toBe(1);
   });
 
-  it("returns a public read model without Guardian, student, note, or exact-address data", () => {
+  it("returns a public read model without Guardian, student, or exact-address data", () => {
     const job = toPublicTutorJob({
       id: 8,
       publicJobId: "8302",
@@ -114,21 +114,24 @@ describe("Job Board published projection", () => {
       guardianName: "Private Guardian",
       guardianPhone: "+8801516131411",
       studentFirstName: "Private Student",
-      notes: "Private note",
+      notes: "Please start after Eid",
       exactAddress: "House 99, Road 7",
     });
 
     expect(job).toMatchObject({
       jobId: "8302",
-      title: "Need English Medium Tutor for Standard 2 Student-4 Days/Week",
+      title: "Need English Medium Tutor for Standard 2 Student - 4 Days / Week",
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",
       budgetAmount: 7000,
+      // Published on purpose: nothing reaches this board without an Admin
+      // reading the request and approving it. Contacts, the student's name and
+      // the exact address stay out - those are never reviewed into publication.
+      notes: "Please start after Eid",
     });
     expect(job).not.toHaveProperty("guardianName");
     expect(job).not.toHaveProperty("guardianPhone");
     expect(job).not.toHaveProperty("studentFirstName");
-    expect(job).not.toHaveProperty("notes");
     expect(job).not.toHaveProperty("exactAddress");
   });
 
