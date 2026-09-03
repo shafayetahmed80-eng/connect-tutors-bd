@@ -5,6 +5,7 @@ import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NA
 import { jobIdForRequest } from "@shared/job-id";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
 import { GuardianRequestSummaryView } from "./GuardianRequestSummaryView";
+import { MoneyAmountField } from "@/components/MoneyAmountField";
 import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
@@ -1129,7 +1130,10 @@ export function RequestStage(props: RequestStageProps) {
           Board should learn what the tuition pays. Typed however the Guardian
           writes numbers - 5000, 5,000, even "5,000 Taka" - and shown back as
           "5,000 Taka" wherever it appears. */}
-      <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly salary <span className="text-[#d74545]">*</span></legend><div className="mt-3 max-w-xs"><InputField label="Amount (Taka)" labelHidden value={input.salaryAmount} onChange={props.onSetSalaryAmount} inputMode="numeric" placeholder={SALARY_INPUT_PLACEHOLDER} /></div>{parseSalaryAmount(input.salaryAmount) !== null ? <p className="mt-2 text-xs font-bold text-[#126ea9]">{formatSalaryAmount(parseSalaryAmount(input.salaryAmount))}</p> : null}</fieldset>
+      {/* The currency word lives inside the box now, so the line that used to
+          echo "5,000 Taka" underneath is gone - it read as a result rather
+          than as the unit it was. */}
+      <fieldset><legend className="text-sm font-extrabold text-j-ink-soft">Monthly salary <span className="text-[#d74545]">*</span></legend><div className="mt-3 max-w-xs"><MoneyAmountField ariaLabel="Amount (Taka)" value={input.salaryAmount} onChange={props.onSetSalaryAmount} placeholder={SALARY_INPUT_PLACEHOLDER} inputClassName={filledField} formatOnBlur /></div></fieldset>
       <label className="block text-sm font-extrabold text-j-ink-soft">Additional notes <span className="font-normal text-[#71889b]">(optional)</span><textarea className={`${filledArea} mt-2 min-h-28`} value={props.notes} onChange={(event) => props.onSetNotes(event.target.value)} maxLength={2000} /></label>
     </div> : null}
     {/* Step 3 is the request read back after it is sent, so it carries its own
