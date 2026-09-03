@@ -1086,6 +1086,10 @@ export const tutorRequests = mysqlTable("tutor_requests", {
    * removed carry no figure; every new request must name one.
    */
   budgetAmount: int("budgetAmount"),
+  /** Free text, not a pick from `academic_institutes`; optional, so blank stays null. */
+  instituteName: varchar("instituteName", { length: 120 }),
+  /** How the Guardian found us. Ours to count - never projected to the Job Board. */
+  heardAboutUs: mysqlEnum("heardAboutUs", ["friends_family", "facebook", "websites", "others"]),
   notes: text("notes"),
   contactConsent: mysqlEnum("contactConsent", [
     "not_required",

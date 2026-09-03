@@ -1,3 +1,5 @@
+import { REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
+
 export const GUARDIAN_REQUEST_DRAFT_VERSION = 1 as const;
 
 export type GuardianRequestDraft = {
@@ -19,6 +21,8 @@ export type GuardianRequestDraft = {
     daysPerWeek: string;
     preferredGender: "male" | "female" | "any" | "";
     salaryAmount: string;
+    instituteName: string;
+    heardAboutUs: RequestSource | "";
   };
   notes: string;
 };
@@ -62,6 +66,8 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
   const daysPerWeek = asString(request.daysPerWeek);
   const preferredGender = asOneOf(request.preferredGender, ["male", "female", "any", ""] as const);
   const salaryAmount = asString(request.salaryAmount);
+  const instituteName = asString(request.instituteName ?? "");
+  const heardAboutUs = asOneOf(request.heardAboutUs ?? "", [...REQUEST_SOURCE_VALUES, ""] as const);
   const notes = asString(value.notes);
 
   if (
@@ -80,6 +86,8 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
     daysPerWeek === null ||
     preferredGender === null ||
     salaryAmount === null ||
+    instituteName === null ||
+    heardAboutUs === null ||
     notes === null
   ) {
     return null;
@@ -104,6 +112,8 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
       daysPerWeek,
       preferredGender,
       salaryAmount,
+      instituteName,
+      heardAboutUs,
     },
     notes,
   };

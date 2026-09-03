@@ -17,7 +17,7 @@ const completeLearningInput = {
   studentCount: "1",
   daysPerWeek: "3",
   preferredGender: "any" as const,
-  salaryAmount: "5000",
+  instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5000",
 };
 
 describe("Guardian request validation feedback", () => {

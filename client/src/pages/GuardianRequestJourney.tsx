@@ -1,6 +1,10 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link as WouterLink, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Phone } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Facebook, Globe, KeyRound, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
+import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
+import { jobIdForRequest } from "@shared/job-id";
+import { buildGuardianRequestSummary } from "./guardian-request-summary";
+import { GuardianRequestSummaryView } from "./GuardianRequestSummaryView";
 import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
@@ -397,6 +401,8 @@ type RequestInput = {
   daysPerWeek: string;
   preferredGender: PreferredGender;
   salaryAmount: string;
+  instituteName: string;
+  heardAboutUs: RequestSource | "";
 };
 
 const requestSteps = ["Learning needs", "Tuition preferences", "Review & submit"] as const;
@@ -508,6 +514,7 @@ export function getGuardianRequestStepValidation(input: RequestInput, step: 1 | 
     const salary = parseSalaryAmount(input.salaryAmount);
     const salaryError = validateSalaryAmount(salary);
     if (salaryError) return salaryValidationMessage(salaryError);
+    if (!input.heardAboutUs) return "Tell us where you heard about us.";
     if (input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package") {
       const studentCount = Number(input.studentCount);
       if (!Number.isInteger(studentCount) || studentCount < 1 || studentCount > 100) return "Enter the number of students from 1 to 100.";
@@ -573,6 +580,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [daysPerWeek, setDaysPerWeek] = useState("");
   const [preferredGender, setPreferredGender] = useState<PreferredGender>("");
   const [salaryAmount, setSalaryAmount] = useState("");
+  const [instituteName, setInstituteName] = useState("");
+  const [heardAboutUs, setHeardAboutUs] = useState<RequestSource | "">("");
   const [notes, setNotes] = useState("");
   const [requestId, setRequestId] = useState<number | null>(null);
   const [draftRestoredFor, setDraftRestoredFor] = useState<number | null>(null);
@@ -663,7 +672,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount }), [addressDetails, salaryAmount, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
+  const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
     if (embedded || isEditMode || routePath !== "/request-tutor") return;
@@ -701,6 +710,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setAddressDetails(request.addressDetails ?? "");
     setTuitionCityLocationId(request.tuitionCityLocationId ?? "");
     setTuitionLocationId(request.tuitionLocationId ?? "");
+    setInstituteName(request.instituteName ?? "");
+    setHeardAboutUs(isRequestSource(request.heardAboutUs) ? request.heardAboutUs : "");
     setDaysPerWeek(request.daysPerWeek?.toString() ?? "");
     setPreferredGender(request.preferredGender === "male" || request.preferredGender === "female" || request.preferredGender === "any" ? request.preferredGender : "");
     // Grouped for editing, so reopening a saved request shows "5,000" rather
@@ -732,6 +743,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       setDaysPerWeek(draft.request.daysPerWeek);
       setPreferredGender(draft.request.preferredGender);
       setSalaryAmount(draft.request.salaryAmount);
+      setInstituteName(draft.request.instituteName);
+      setHeardAboutUs(draft.request.heardAboutUs);
       setNotes(draft.notes);
     }
     setDraftRestoredFor(draftOwnerId);
@@ -799,6 +812,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       studentGender: studentGender || undefined,
       addressDetails: addressDetails.trim() || undefined,
       budgetAmount: parseSalaryAmount(salaryAmount) ?? 0,
+      instituteName: normalizeInstituteName(instituteName) || undefined,
+      heardAboutUs: heardAboutUs as RequestSource,
       notes: notes.trim() || undefined,
     };
     const submit = (input: Parameters<typeof requestMutation.mutate>[0]) => {
@@ -831,7 +846,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {stage !== "success" && journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
-        {stage === "success" ? <SuccessState requestId={requestId} /> : null}
+        {stage === "success" ? <SuccessState requestId={requestId} input={requestInput} notes={notes} tuitionCityLabel={tuitionCityLabel} tuitionLocationLabel={tuitionLocationLabel} /> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
@@ -864,6 +879,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetDays={(value) => { clearJourneyError(); setDaysPerWeek(value); }}
           onSetPreferredGender={(value) => { clearJourneyError(); setPreferredGender(value); }}
           onSetSalaryAmount={(value) => { clearJourneyError(); setSalaryAmount(value); }}
+          onSetInstituteName={(value) => { clearJourneyError(); setInstituteName(value); }}
+          onSetHeardAboutUs={(value) => { clearJourneyError(); setHeardAboutUs(value); }}
           onSetNotes={(value) => { clearJourneyError(); setNotes(value); }}
           onBack={() => { clearJourneyError(); setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3); }}
           onAdvance={advance}
@@ -1040,7 +1057,7 @@ type RequestStageProps = {
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
   onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void; subjectLimit: number;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
-  onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetNotes: (value: string) => void;
+  onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetInstituteName: (value: string) => void; onSetHeardAboutUs: (value: RequestSource) => void; onSetNotes: (value: string) => void;
   onBack: () => void; onAdvance: () => void; onEditStep?: (step: 1 | 2) => void; onSubmit: (event: FormEvent) => void;
 };
 
@@ -1064,7 +1081,7 @@ export function RequestStage(props: RequestStageProps) {
       {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="student-count">Number of students <span className="text-[#d74545]">*</span><input id="student-count" className={`${filledField} mt-2`}type="number" min={1} max={100} step={1} inputMode="numeric" value={input.studentCount} onChange={(event) => props.onSetStudentCount(event.target.value)} /></label> : null}
       {input.tuitionType === "group" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="group-capacity">Maximum students <span className="text-[#d74545]">*</span><input id="group-capacity" className={`${filledField} mt-2`}type="number" min={2} max={100} step={1} inputMode="numeric" value={input.groupCapacity} onChange={(event) => props.onSetGroupCapacity(event.target.value)} /></label> : null}
       {input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="package-duration-months">Package duration (months) <span className="text-[#d74545]">*</span><input id="package-duration-months" className={`${filledField} mt-2`}type="number" min={1} max={24} step={1} inputMode="numeric" value={input.packageDurationMonths} onChange={(event) => props.onSetPackageDurationMonths(event.target.value)} /></label> : null}
-      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Days per week" value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} /><SelectField label="Preferred Tutor gender" value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} /></div>
+      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Days per week" value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} /><InputField label="Institute Name" optional value={input.instituteName} onChange={props.onSetInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder={INSTITUTE_NAME_PLACEHOLDER} icon={<School size={17} />} /><SelectField label="Where Did You Hear About Us" value={input.heardAboutUs} onChange={(value) => props.onSetHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" formatOption={formatRequestSource} icon={input.heardAboutUs ? REQUEST_SOURCE_ICONS[input.heardAboutUs] : <Megaphone size={17} />} /><SelectField label="Preferred Tutor gender" value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} /></div>
       {/* One amount, not a range and not "discuss": a Tutor reading the Job
           Board should learn what the tuition pays. Typed however the Guardian
           writes numbers - 5000, 5,000, even "5,000 Taka" - and shown back as
@@ -1078,20 +1095,58 @@ export function RequestStage(props: RequestStageProps) {
 }
 
 function RequestPreview({ input, notes, tuitionCityLabel, tuitionLocationLabel, onEditStep }: { input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string; onEditStep: (step: 1 | 2) => void }) {
-  const location = input.tuitionType === "online" ? "Online Tuition" : `${tuitionCityLabel} — ${tuitionLocationLabel}`;
+  const groups = buildGuardianRequestSummary(input, notes, tuitionCityLabel, tuitionLocationLabel);
   const editLink = "min-h-11 rounded-lg px-3 text-xs font-extrabold text-j-accent underline underline-offset-4 transition hover:bg-j-accent-wash focus:outline-none focus:ring-2 focus:ring-j-accent/30";
-  return <div className="mt-7 space-y-5"><div className="rounded-2xl border border-j-border bg-j-surface-sunken p-5 text-sm leading-7 text-[#385e79]"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-extrabold text-j-ink">Review your request</h3></div><span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-[#2a739f] ring-1 ring-inset ring-j-border">Private review</span></div><section className="mt-5 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-learning-needs"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-learning-needs" className="font-extrabold text-j-ink-strong">Learning needs</h4><button type="button" className={editLink} onClick={() => onEditStep(1)}>Edit learning needs</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Category" value={input.category} />{input.curriculumType ? <ReviewItem label="Curriculum Type" value={input.curriculumType} /> : null}<ReviewItem label="Class / level" value={input.classCourse} /><ReviewItem label="Subjects" value={input.selectedSubjects.join(", ")} />{input.studentGender ? <ReviewItem label="Student gender" value={formatStudentGender(input.studentGender)} /> : null}{input.addressDetails ? <ReviewItem label="Address Details" value={input.addressDetails} /> : null}</dl></section><section className="mt-4 rounded-xl border border-j-border bg-white p-4" aria-labelledby="review-tuition-preferences"><div className="flex flex-wrap items-center justify-between gap-3"><h4 id="review-tuition-preferences" className="font-extrabold text-j-ink-strong">Tuition preferences</h4><button type="button" className={editLink} onClick={() => onEditStep(2)}>Edit tuition preferences</button></div><dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2"><ReviewItem label="Tuition type" value={formatTuitionType(input.tuitionType)} />{input.tuitionType === "group" ? <ReviewItem label="Maximum students" value={`${input.groupCapacity} students`} /> : null}{input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <ReviewItem label="Number of students" value={`${input.studentCount} student${input.studentCount === "1" ? "" : "s"}`} /> : null}{input.tuitionType === "package" ? <ReviewItem label="Package duration" value={`${input.packageDurationMonths} month${input.packageDurationMonths === "1" ? "" : "s"}`} /> : null}<ReviewItem label="Location" value={location} /><ReviewItem label="Days per week" value={`${input.daysPerWeek} day${input.daysPerWeek === "1" ? "" : "s"}`} /><ReviewItem label="Preferred Tutor gender" value={formatPreferredGender(input.preferredGender)} /><ReviewItem label="Monthly salary" value={formatBudget(input)} />{notes ? <ReviewItem label="Additional notes" value={notes} /> : null}</dl></section></div><p className="rounded-xl border border-[#ead8a8] bg-[#fffbf0] px-4 py-3 text-sm leading-6 text-[#6f5b2a]">After you send this request, a coordinator will review it and will confirm any change with you before a job is published. Contact details and exact addresses stay private.</p></div>;
+
+  return <div className="mt-7">
+    <GuardianRequestSummaryView
+      groups={groups}
+      renderGroupAction={group => <button type="button" className={editLink} onClick={() => onEditStep(group.step)}>Edit {group.title.toLowerCase()}</button>}
+    />
+  </div>;
 }
 
-export function SuccessState({ requestId }: { requestId: number | null }) {
-  return <div className="py-8 text-center sm:py-12 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500"><div className="mx-auto grid size-20 place-items-center rounded-[1.7rem] bg-gradient-to-br from-[#dff6e8] to-[#edfaff] text-j-ok shadow-[0_14px_34px_rgba(24,143,115,.14)]"><Check size={38} strokeWidth={2.7} /></div><p className="mt-7 text-xs font-extrabold uppercase tracking-[.18em] text-j-accent">Request received securely</p><h2 className="mx-auto mt-3 max-w-2xl text-3xl font-extrabold tracking-[-.045em] text-j-ink sm:text-4xl"><SiteText slotId="request-tutor.done.heading" /></h2><p className="mx-auto mt-4 max-w-xl leading-7 text-[#58758a]">Your Request ID is <strong className="text-j-ink">#{requestId}</strong>. A coordinator will review the learning needs and contact you to confirm any changes before any job is published.</p><div className="mx-auto mt-6 max-w-xl rounded-2xl border border-j-border bg-j-surface-sunken px-5 py-4 text-left text-sm leading-6 text-[#526f87]"><p className="font-extrabold text-j-ink-strong">Your privacy remains protected</p><p className="mt-1">Your phone, email, exact address, student identity, and additional notes are not shown on the Job Board.</p></div><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/guardian/dashboard/posted-jobs" className={primaryButton}>View My Requests <ArrowRight size={18} /></Link><Link href="/guardian/dashboard/hire" className={ghostButton}>Post Another Request</Link></div></div>;
+/**
+ * What a Guardian sees the moment a request is sent: the whole request read
+ * back in the same record layout the review used, so the confirmation is the
+ * request rather than a receipt that talks about it.
+ *
+ * The two actions sit where the field list puts them - carry on posting from
+ * the top right, go and watch this one from the foot.
+ */
+export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitionLocationLabel }: { requestId: number | null; input: RequestInput; notes: string; tuitionCityLabel: string; tuitionLocationLabel: string }) {
+  const groups = buildGuardianRequestSummary(input, notes, tuitionCityLabel, tuitionLocationLabel);
+
+  return <div className="mt-7 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-j-ok"><Check size={15} strokeWidth={3} /> Request received securely</p>
+        <h2 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-j-ink"><SiteText slotId="request-tutor.done.heading" /></h2>
+        {requestId === null ? null : <p className="mt-1 text-[13px] text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
+      </div>
+      <Link href="/guardian/dashboard/hire" className={`${ghostButton} shrink-0`}>+ Post another request</Link>
+    </div>
+
+    <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
+
+    <div className="mt-7 flex justify-center border-t border-[#e6eef4] pt-6">
+      <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}>View my request <ArrowRight size={18} /></Link>
+    </div>
+  </div>;
 }
 
-function InputField({ label, labelHidden, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder }: { label: string; labelHidden?: boolean; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft"><span className={labelHidden ? "sr-only" : undefined}>{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}</span><input className={`${filledField} ${labelHidden ? "" : "mt-2"}`}type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></label>; }
-function SelectField({ label, value, onChange, options, placeholder, formatOption, optional }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<select className={`${filledField} mt-2`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></label>; }
+function InputField({ label, labelHidden, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder, icon }: { label: string; labelHidden?: boolean; icon?: ReactNode; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft"><span className={labelHidden ? "sr-only" : undefined}>{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}</span><span className={`relative block ${labelHidden ? "" : "mt-2"}`}>{icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}<input className={`${filledField} ${icon ? "pl-10" : ""}`}type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></span></label>; }
+function SelectField({ label, value, onChange, options, placeholder, formatOption, optional, icon }: { label: string; icon?: ReactNode; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<span className="relative mt-2 block">{icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}<select className={`${filledField} ${icon ? "pl-10" : ""}`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></span></label>; }
 function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }
+const REQUEST_SOURCE_ICONS: Record<RequestSource, ReactNode> = {
+  friends_family: <Users size={17} />,
+  facebook: <Facebook size={17} />,
+  websites: <Globe size={17} />,
+  others: <MoreHorizontal size={17} />,
+};
+
 function formatPreferredGender(value: string) { return value === "any" ? "Any" : value === "female" ? "Female" : value === "male" ? "Male" : value; }
 function formatStudentGender(value: string) { return value === "female" ? "Female" : value === "male" ? "Male" : value; }
 function formatBudget(input: RequestInput) { return formatSalaryAmount(parseSalaryAmount(input.salaryAmount)); }

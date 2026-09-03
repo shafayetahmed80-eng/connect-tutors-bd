@@ -16,7 +16,7 @@ const completeRequest = {
   tuitionLocationId: "area-mirpur",
   daysPerWeek: "3",
   preferredGender: "any" as const,
-  salaryAmount: "10000",
+  instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "10000",
 };
 
 describe("canonical Guardian Tutor Request validation", () => {
@@ -27,7 +27,7 @@ describe("canonical Guardian Tutor Request validation", () => {
     );
     expect(getGuardianRequestStepValidation({ ...completeRequest, category: "Bangla Medium", curriculumType: "" }, 1)).toBeNull();
     expect(getGuardianRequestStepValidation({ ...completeRequest, daysPerWeek: "" }, 2)).toBe("Choose how many days per week you need tuition.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
   });
 
   it("requires a City-scoped tuition location for Home, Group, Package, and legacy Both requests", () => {
@@ -65,12 +65,12 @@ describe("canonical Guardian Tutor Request validation", () => {
     // The Guardian types a number the way they write numbers; a comma or the
     // currency word must not be an error.
     for (const written of ["5000", "5,000", "5,000 Taka"]) {
-      expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: written }, 2), written).toBeNull();
+      expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: written }, 2), written).toBeNull();
     }
     // "Discuss with coordinator" is gone, so an empty field is now a refusal
     // rather than a second option.
-    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "0" }, 2)).toBe("Enter a salary greater than zero.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, salaryAmount: "900000" }, 2)).toMatch(/500,000 Taka or less/);
+    expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "0" }, 2)).toBe("Enter a salary greater than zero.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "900000" }, 2)).toMatch(/500,000 Taka or less/);
   });
 });

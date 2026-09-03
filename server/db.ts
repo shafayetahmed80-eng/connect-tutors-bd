@@ -7,6 +7,7 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
+import type { RequestSource } from "@shared/request-source";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -1851,6 +1852,8 @@ export async function listGuardianTutorRequests(userId: number) {
       tuitionLocationId: tutorRequests.tuitionLocationId,
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
       budgetAmount: tutorRequests.budgetAmount,
+      instituteName: tutorRequests.instituteName,
+      heardAboutUs: tutorRequests.heardAboutUs,
       notes: tutorRequests.notes,
       status: tutorRequests.status,
       publicationState: tutorRequests.publicationState,
@@ -2277,6 +2280,8 @@ export async function updateGuardianTutorRequest(input: {
   tuitionLocationId: string | null;
   tuitionLocationLabel: string | null;
   budgetAmount: number | null;
+  instituteName: string | null;
+  heardAboutUs: RequestSource | null;
   notes: string | null;
   monthlyBudget: number | null;
   locationText: string;
@@ -2315,6 +2320,8 @@ export async function updateGuardianTutorRequest(input: {
       tuitionLocationId: input.tuitionLocationId,
       tuitionLocationLabel: input.tuitionLocationLabel,
       budgetAmount: input.budgetAmount,
+      instituteName: input.instituteName,
+      heardAboutUs: input.heardAboutUs,
       notes: input.notes,
       monthlyBudget: input.monthlyBudget,
       locationText: input.locationText,
@@ -2646,6 +2653,8 @@ const adminTutorRequestFields = {
   tuitionLocationId: tutorRequests.tuitionLocationId,
   tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
   budgetAmount: tutorRequests.budgetAmount,
+  instituteName: tutorRequests.instituteName,
+  heardAboutUs: tutorRequests.heardAboutUs,
   notes: tutorRequests.notes,
   monthlyBudget: tutorRequests.monthlyBudget,
   locationText: tutorRequests.locationText,
@@ -3080,6 +3089,8 @@ export async function moderateTutorRequestPublication(input: {
         daysPerWeek: tutorRequests.daysPerWeek,
         preferredGender: tutorRequests.preferredGender,
         budgetAmount: tutorRequests.budgetAmount,
+        instituteName: tutorRequests.instituteName,
+        heardAboutUs: tutorRequests.heardAboutUs,
         notes: tutorRequests.notes,
         tuitionType: tutorRequests.tuitionType,
         tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
@@ -3818,6 +3829,8 @@ const adminGuardianRequestFields = {
   tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
   monthlyBudget: tutorRequests.monthlyBudget,
   budgetAmount: tutorRequests.budgetAmount,
+  instituteName: tutorRequests.instituteName,
+  heardAboutUs: tutorRequests.heardAboutUs,
   locationText: tutorRequests.locationText,
   groupCapacity: tutorRequests.groupCapacity,
   packageDurationMonths: tutorRequests.packageDurationMonths,

@@ -48,14 +48,14 @@ function PasswordMatchHarness() {
 
 const requestStageProps = {
   step: 3 as const,
-  requestInput: { category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5", selectedSubjects: ["English", "Mathematics"], tuitionType: "home" as const, groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "" as const, addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", preferredGender: "female" as const, salaryAmount: "5,000" },
+  requestInput: { category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5", selectedSubjects: ["English", "Mathematics"], tuitionType: "home" as const, groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "" as const, addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", preferredGender: "female" as const, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" },
   notes: "Weekday afternoons preferred.",
   cities: [{ id: "dhaka", label: "Dhaka" }],
   tuitionLocations: [{ id: "mirpur-10", label: "Mirpur 10" }],
   tuitionCityLabel: "Dhaka",
   tuitionLocationLabel: "Mirpur 10",
   pending: false,
-  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), subjectLimit: 12, onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
+  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), subjectLimit: 12, onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(), onSetInstituteName: vi.fn(), onSetHeardAboutUs: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
 };
 
 describe("Guardian private-account presentation", () => {
@@ -151,7 +151,7 @@ describe("Guardian private-account presentation", () => {
     // The City and Location dropdowns show the choice themselves, so neither a
     // confirmation strip nor a "Change location" link earns its place below.
     const onSetTuitionLocation = vi.fn();
-    render(<RequestStage step={1} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
+    render(<RequestStage step={1} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetInstituteName={vi.fn()} onSetHeardAboutUs={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: "Mirpur 10" })).not.toBeNull();
     expect(screen.queryByRole("status", { name: "Location selected" })).toBeNull();
@@ -275,7 +275,9 @@ describe("Guardian private-account presentation", () => {
     const onEditStep = vi.fn();
     render(<RequestStage {...requestStageProps} requestInput={{ ...requestStageProps.requestInput, studentGender: "female", addressDetails: "Opposite the community library" }} onEditStep={onEditStep} />);
 
-    expect(screen.getByRole("heading", { name: "Review your request" })).not.toBeNull();
+    // The step tracker already names step 3 "Review & submit"; a second
+    // heading saying the same thing went with the rest of the page furniture.
+    expect(screen.queryByRole("heading", { name: "Review your request" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Learning needs" })).not.toBeNull();
     expect(screen.getByText("Curriculum Type")).not.toBeNull();
     expect(screen.getByText("Cambridge")).not.toBeNull();
@@ -304,15 +306,22 @@ describe("Guardian private-account presentation", () => {
     expect(canStartGuardianRequestSubmission({ mutationPending: false, submissionStarted: true })).toBe(false);
   });
 
-  it("renders the approved private acknowledgement with dashboard request actions", () => {
-    render(<SuccessState requestId={415} />);
-
+  it("reads the whole request back with the two actions the field list places", () => {
+    render(<SuccessState
+      requestId={1}
+      input={requestStageProps.requestInput}
+      notes="Evening slots preferred"
+      tuitionCityLabel="Dhaka"
+      tuitionLocationLabel="Mirpur 10"
+    />);
     expect(screen.getByRole("heading", { name: "Thank you. Your request is now pending review." })).not.toBeNull();
-    expect(screen.getByText("#415")).not.toBeNull();
-    expect(screen.getByText(/contact you to confirm any changes before any job is published/i)).not.toBeNull();
-    expect(screen.getByText(/not shown on the Job Board/i)).not.toBeNull();
-    expect(screen.getByRole("link", { name: "View My Requests" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
-    expect(screen.getByRole("link", { name: "Post Another Request" }).getAttribute("href")).toBe("/guardian/dashboard/hire");
+    // Request 1 is Job 6800 - the same number the Guardian will see on the card.
+    expect(screen.getByText("6800")).not.toBeNull();
+    expect(screen.getByText("Cambridge")).not.toBeNull();
+    expect(screen.getByText("Facebook")).not.toBeNull();
+    expect(screen.getByText("Evening slots preferred")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
+    expect(screen.getByRole("link", { name: "+ Post another request" }).getAttribute("href")).toBe("/guardian/dashboard/hire");
   });
 it("names the salary field once, and calls no preference Any", () => {
     // "Monthly salary" is the legend directly above; "Amount (Taka)" said the

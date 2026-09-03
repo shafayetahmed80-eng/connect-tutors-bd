@@ -109,6 +109,8 @@ const pendingUpdate = {
   tuitionCityLocationId: "city-dhaka",
   tuitionLocationId: "location-mirpur",
   budgetAmount: 5000,
+  instituteName: "Dhaka College",
+  heardAboutUs: "facebook" as const,
   notes: "Private scheduling note",
   studentCount: 1,
 };
