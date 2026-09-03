@@ -294,7 +294,7 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
 
   return <div ref={selectorRef} className={`relative block text-[13px] font-semibold text-j-ink-soft ${open ? "z-40" : "z-0"}`}>
     <span>{label} {required ? <RequiredMark /> : <span className="text-[#8aa0b2]">(if applicable)</span>}</span>
-    <button id={triggerId} type="button" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => { setOpen((current) => !current); setSearchTerm(""); }} className={`${fieldClass} flex min-h-10 items-center justify-between gap-2 text-left font-normal disabled:cursor-not-allowed disabled:opacity-55`}>
+    <button id={triggerId} type="button" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => { setOpen((current) => !current); setSearchTerm(""); }} className={`${fieldClass} !bg-white flex min-h-10 items-center justify-between gap-2 text-left font-normal disabled:cursor-not-allowed disabled:opacity-55`}>
       <span className={selected ? "truncate" : "truncate text-[#8fa1af]"}>{selected?.label ?? placeholder}</span><ChevronDown size={16} className={`shrink-0 text-[#5d7b91] transition ${open ? "rotate-180" : ""}`} />
     </button>
     {countContext && !disabled && options.length ? <p aria-live="polite" className="mt-1 text-xs font-normal text-[#607f95]">{options.length} locations available in {countContext}</p> : null}
