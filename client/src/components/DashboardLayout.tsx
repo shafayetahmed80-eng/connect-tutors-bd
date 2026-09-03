@@ -122,11 +122,27 @@ export function getDashboardSidebarToggleLabel(isCollapsed: boolean) {
   return isCollapsed ? "Expand navigation" : "Collapse navigation";
 }
 
+/**
+ * How a navigation row reads at rest, under the pointer, and when it is the
+ * page you are on.
+ *
+ * Hover is deliberately *neutral* and active is the only blue. They used to be
+ * two shades of the same wash - `#eef8ff` against `#eaf7ff` - so running the
+ * pointer down the list made every row look selected in turn, and the real
+ * selection was impossible to keep track of. Now hovering warms the ground and
+ * darkens the text; only the current page turns blue.
+ *
+ * The active row is marked by a short accent bar on its leading edge as well
+ * as by colour. A bar is legible at a glance in a vertical list, survives being
+ * collapsed to icons, and does not depend on telling two pale blues apart. It
+ * replaces the blue drop shadow the row used to carry, which made the
+ * navigation the loudest thing on a screen whose subject is elsewhere.
+ */
 export function getDashboardNavigationItemClassName(isActive: boolean) {
-  const shared = "h-10 rounded-xl px-3 font-medium transition-[transform,colors,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-2 motion-reduce:transition-none";
+  const shared = "relative h-[38px] rounded-lg px-3 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-1 motion-reduce:transition-none";
   return isActive
-    ? `${shared} bg-[#eaf7ff] text-[#116fc4] shadow-[0_8px_18px_rgba(17,111,196,0.12)]`
-    : `${shared} text-[#527086] hover:bg-[#eef8ff] hover:text-[#116fc4]`;
+    ? `${shared} !bg-[#f1f8fe] font-semibold !text-[#116fc4] before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-[#116fc4] before:content-['']`
+    : `${shared} font-medium text-[#527086] hover:bg-[#f1f5f9] hover:text-[#2b4d66]`;
 }
 
 export function closeMobileSidebarAfterNavigation(
@@ -352,10 +368,10 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
           <Sidebar
             collapsible="icon"
-            className={`border-r border-[#d9e5ed] bg-white ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
+            className={`border-r border-[#e6eef4] bg-[#fbfdff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             disableTransition={isResizing}
           >
-          <SidebarHeader className="h-16 justify-center border-b border-[#edf2f6]">
+          <SidebarHeader className="h-16 justify-center border-b border-[#e9f0f5]">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
@@ -375,10 +391,10 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          {sidebarIdentity ? <div className="border-b border-[#edf2f6] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
+          {sidebarIdentity ? <div className="border-b border-[#e9f0f5] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
 
           <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain">
-            <SidebarMenu className="px-2 py-3">
+            <SidebarMenu className="gap-0.5 px-2 py-3">
               {navigationItems.map((item, index) => {
                 const isActive = location === item.path;
                 const previousSection = navigationItems[index - 1]?.sectionLabel;
@@ -388,8 +404,8 @@ function DashboardLayoutContent({
                 const label = sidebarPanel ? resolveSlot(sidebarTabsSlotId(sidebarPanel, item.path), item.label) : item.label;
                 return (
                   <SidebarMenuItem key={`${item.path}-${item.label}`}>
-                    {item.dividerBefore ? <div className="mx-2 my-3 h-px bg-[#e7eef3] group-data-[collapsible=icon]:mx-0" /> : null}
-                    {showSectionLabel ? <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a91a4] group-data-[collapsible=icon]:sr-only">
+                    {item.dividerBefore ? <div className="mx-2 my-2.5 h-px bg-[#eaf0f5] group-data-[collapsible=icon]:mx-0" /> : null}
+                    {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
                       {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, item.sectionLabel!), item.sectionLabel!) : item.sectionLabel}
                     </p> : null}
                     <SidebarMenuButton
@@ -401,10 +417,10 @@ function DashboardLayoutContent({
                       style={{ ...sidebarFontStyle, ...sidebarPaddingStyle }}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive && !item.action ? "text-[#116fc4]" : "text-[#6d8799]"}`}
+                        className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-[#116fc4]" : "text-[#8ba1b2]"}`}
                       />
                       <span>{label}</span>
-                      {item.planned ? <span className="ml-auto rounded-full bg-[#fff4dc] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#9a6611] group-data-[collapsible=icon]:hidden">Soon</span> : null}
+                      {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
