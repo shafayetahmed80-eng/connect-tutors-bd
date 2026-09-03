@@ -331,13 +331,13 @@ describe("Guardian private-account presentation", () => {
     expect(onPostAnother).toHaveBeenCalled();
   });
 it("names the salary field once, and calls no preference Any", () => {
-    // "Monthly salary" is the legend directly above; "Amount (Taka)" said the
-    // same thing a line below it. The label stays in the markup so the input
-    // keeps an accessible name - it is only hidden from sight.
+    // "Monthly salary" is the legend directly above, so the amount field is
+    // named by aria-label rather than by a second visible line saying the same
+    // thing. The currency word inside the box is decoration on top of that.
     render(<RequestStage {...requestStageProps} step={2} />);
 
-    expect(screen.getByLabelText(/Amount \(Taka\)/)).not.toBeNull();
-    expect(screen.getByText(/Amount \(Taka\)/).className).toContain("sr-only");
+    expect(screen.getByLabelText("Amount (Taka)")).not.toBeNull();
+    expect(screen.queryByText(/Amount \(Taka\)/)).toBeNull();
 
     // The review reads the same word the Job Board card has always used.
     cleanup();

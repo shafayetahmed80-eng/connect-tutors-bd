@@ -5,6 +5,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
+import { MoneyAmountField } from "@/components/MoneyAmountField";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
@@ -264,7 +265,7 @@ function JobBoardFilters({ filters, update, cities, locations }: { filters: JobB
     <FilterLabel label="Curriculum / category"><input value={filters.category} onChange={event => update("category", event.target.value)} placeholder="e.g. English Medium" className="job-board-input" /></FilterLabel>
     <FilterLabel label="Subject"><input value={filters.subject} onChange={event => update("subject", event.target.value)} placeholder="e.g. Mathematics" className="job-board-input" /></FilterLabel>
     <FilterLabel label="Preferred Tutor"><select value={filters.preferredTutorGender} onChange={event => update("preferredTutorGender", event.target.value as JobBoardFilterState["preferredTutorGender"])} className="job-board-input"><option value="">Any Tutor</option><option value="female">Female Tutor</option><option value="male">Male Tutor</option></select></FilterLabel>
-    <FilterLabel label="Maximum monthly budget"><input inputMode="numeric" value={filters.budgetMaximum} onChange={event => update("budgetMaximum", event.target.value.replace(/\D/g, ""))} placeholder="e.g. 10000" className="job-board-input" /></FilterLabel>
+    <FilterLabel label="Maximum monthly budget"><MoneyAmountField value={filters.budgetMaximum} onChange={value => update("budgetMaximum", value.replace(/\D/g, ""))} placeholder="e.g. 10000" inputClassName="job-board-input" /></FilterLabel>
     <FilterLabel label="City"><select value={filters.cityId} onChange={event => update("cityId", event.target.value)} className="job-board-input"><option value="">All Cities</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></FilterLabel>
     <FilterLabel label="Area / Sub-area"><select disabled={!filters.cityId} value={filters.locationId} onChange={event => update("locationId", event.target.value)} className="job-board-input disabled:cursor-not-allowed disabled:bg-slate-50"><option value="">{filters.cityId ? "All areas" : "Choose a City first"}</option>{locations.map(location => <option key={location.id} value={location.id}>{location.label}</option>)}</select></FilterLabel>
     <p className="rounded-2xl bg-[#f5faff] p-3 text-xs leading-5 text-[#52748d]"><ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-[#167ddd]" />Locations are shown at area level only. Exact family addresses are coordinated privately.</p>
