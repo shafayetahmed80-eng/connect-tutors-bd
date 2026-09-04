@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { fieldLabel, filledField, filledArea, primaryButton, ghostButton } from "@/components/journeyField";
+import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, optionalMark, primaryButton, ghostButton, requiredMark } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
@@ -942,7 +942,7 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
   return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.phone.heading" /></h1>
     <label className="mt-6 block max-w-md" htmlFor="guardian-phone">
-      <span className={fieldLabel}>Bangladesh mobile number <span className="text-[#d74545]">*</span></span>
+      <span className={fieldLabel}>Bangladesh mobile number <span className={requiredMark}>*</span></span>
       <span className={`mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
         <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
         <input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-3.5 py-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb]" value={phone} onChange={(event) => onPhoneChange(event.target.value)} placeholder="01712345678" inputMode="numeric" autoComplete="tel" />
@@ -1019,7 +1019,7 @@ function FieldError({ id, message, children }: { id: string; message?: string; c
 export function AccountStage(props: GuardianAccountStageProps) {
   const errors = props.fieldErrors ?? {};
   const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
-  const star = <span className="text-[#d74545]">*</span>;
+  const star = <span className={requiredMark}>*</span>;
   const confirmBorder = errors.confirmPassword
     ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
     : passwordMatch?.matches
@@ -1031,7 +1031,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
-    <div className="mt-6 grid gap-x-7 gap-y-4 md:grid-cols-2">
+    <div className={`mt-6 ${fieldGrid}`}>
       <FieldError id="guardian-full-name-error" message={errors.name}>
         <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
       </FieldError>
@@ -1126,23 +1126,47 @@ export function RequestStage(props: RequestStageProps) {
       return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-2xs ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
     })}</ol>
     {props.step === 1 ? <div className="mt-6 space-y-6">
-      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Tuition type" icon={<TuitionTypeIcon type={input.tuitionType} />} value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} /></div>
-      {input.tuitionType !== "online" ? <><div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /><SearchableLocationSelect label="Location" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required onChange={props.onSetTuitionLocation} /></div></> : null}
-      <fieldset><legend className="sr-only">Learning details</legend><div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Curriculum / category" icon={<RecordIcon name="category" size={17} />} value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />{input.category === "English Medium" ? <SelectField label="Curriculum Type" icon={<RecordIcon name="curriculumType" size={17} />} value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}<SelectField label="Class / level" icon={<RecordIcon name="classLevel" size={17} />} value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} /><SelectField label="Student gender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} /></div><label className="mt-4 block text-sm font-extrabold text-j-ink-soft" htmlFor="address-details"><span className="inline-flex items-center gap-1.5"><RecordIcon name="location" size={15} className="text-j-accent" />Address Details</span> <span className="font-normal text-[#71889b]">(optional)</span><textarea id="address-details" className={`${filledArea} mt-2 min-h-24`} value={input.addressDetails} onChange={(event) => props.onSetAddressDetails(event.target.value)} maxLength={160} /></label></fieldset><fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="subjects" size={15} className="text-j-accent" />Subject selection</span> <span className="text-[#d74545]">*</span></legend><div className="mt-1 flex flex-wrap items-start justify-end gap-3"><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} of ${props.subjectLimit} subjects selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} of {props.subjectLimit} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset></div> : null}
+      <fieldset>
+        <legend className="sr-only">Learning details</legend>
+        {/* One grid for the whole step, so every box is exactly one column
+            wide. Tuition type used to sit alone in a two-column grid with dead
+            space beside it, and the learning details ran a second grid below. */}
+        <div className={fieldGrid}>
+          <SelectField label="Tuition type" icon={<TuitionTypeIcon type={input.tuitionType} />} value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} />
+          {input.tuitionType !== "online" ? <SearchableLocationSelect label="Tuition City" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /> : null}
+          {input.tuitionType !== "online" ? <SearchableLocationSelect label="Location" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required onChange={props.onSetTuitionLocation} /> : null}
+          <SelectField label="Curriculum / category" icon={<RecordIcon name="category" size={17} />} value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />
+          {input.category === "English Medium" ? <SelectField label="Curriculum Type" icon={<RecordIcon name="curriculumType" size={17} />} value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}
+          <SelectField label="Class / level" icon={<RecordIcon name="classLevel" size={17} />} value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} />
+          <SelectField label="Student gender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} />
+          <div className={fieldGridWide}>
+            <TextAreaField label="Address Details" labelIcon={<RecordIcon name="location" size={15} />} id="address-details" optional value={input.addressDetails} onChange={props.onSetAddressDetails} maxLength={160} />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="subjects" size={15} className="text-j-accent" />Subject selection</span> <span className={requiredMark}>*</span></legend><div className="mt-1 flex flex-wrap items-start justify-end gap-3"><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} of ${props.subjectLimit} subjects selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} of {props.subjectLimit} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset>
+    </div> : null}
     {props.step === 2 ? <div className="mt-7 space-y-6">
-      {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="student-count"><span className="inline-flex items-center gap-1.5"><RecordIcon name="students" size={15} className="text-j-accent" />Number of students</span> <span className="text-[#d74545]">*</span><input id="student-count" className={`${filledField} mt-2`}type="number" min={1} max={100} step={1} inputMode="numeric" value={input.studentCount} onChange={(event) => props.onSetStudentCount(event.target.value)} /></label> : null}
-      {input.tuitionType === "group" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="group-capacity"><span className="inline-flex items-center gap-1.5"><RecordIcon name="students" size={15} className="text-j-accent" />Maximum students</span> <span className="text-[#d74545]">*</span><input id="group-capacity" className={`${filledField} mt-2`}type="number" min={2} max={100} step={1} inputMode="numeric" value={input.groupCapacity} onChange={(event) => props.onSetGroupCapacity(event.target.value)} /></label> : null}
-      {input.tuitionType === "package" ? <label className="block max-w-sm text-sm font-extrabold text-j-ink-soft" htmlFor="package-duration-months"><span className="inline-flex items-center gap-1.5"><RecordIcon name="packageDuration" size={15} className="text-j-accent" />Package duration (months)</span> <span className="text-[#d74545]">*</span><input id="package-duration-months" className={`${filledField} mt-2`}type="number" min={1} max={24} step={1} inputMode="numeric" value={input.packageDurationMonths} onChange={(event) => props.onSetPackageDurationMonths(event.target.value)} /></label> : null}
-      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Days per week" icon={<RecordIcon name="daysPerWeek" size={17} />} value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} /><InputField label="Institute Name" optional value={input.instituteName} onChange={props.onSetInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder={INSTITUTE_NAME_PLACEHOLDER} icon={<School size={17} />} /><SelectField label="Where Did You Hear About Us" value={input.heardAboutUs} onChange={(value) => props.onSetHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" formatOption={formatRequestSource} icon={input.heardAboutUs ? REQUEST_SOURCE_ICONS[input.heardAboutUs] : <Megaphone size={17} />} /><SelectField label="Preferred Tutor gender" icon={<TutorPreferenceIcon preference={input.preferredGender || "any"} className="text-j-accent" />} value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} /></div>
-      {/* One amount, not a range and not "discuss": a Tutor reading the Job
-          Board should learn what the tuition pays. Typed however the Guardian
-          writes numbers - 5000, 5,000, even "5,000 Taka" - and shown back as
-          "5,000 Taka" wherever it appears. */}
-      {/* The currency word lives inside the box now, so the line that used to
-          echo "5,000 Taka" underneath is gone - it read as a result rather
-          than as the unit it was. */}
-      <fieldset><legend className="text-sm font-extrabold text-j-ink-soft"><span className="inline-flex items-center gap-1.5"><RecordIcon name="salary" size={15} className="text-j-accent" />Monthly salary</span> <span className="text-[#d74545]">*</span></legend><div className="mt-3 max-w-xs"><MoneyAmountField ariaLabel="Amount (Taka)" value={input.salaryAmount} onChange={props.onSetSalaryAmount} placeholder={SALARY_INPUT_PLACEHOLDER} inputClassName={filledField} formatOnBlur /></div></fieldset>
-      <label className="block text-sm font-extrabold text-j-ink-soft"><span className="inline-flex items-center gap-1.5"><RecordIcon name="notes" size={15} className="text-j-accent" />Additional notes</span> <span className="font-normal text-[#71889b]">(optional)</span><textarea className={`${filledArea} mt-2 min-h-28`} value={props.notes} onChange={(event) => props.onSetNotes(event.target.value)} maxLength={2000} /></label>
+      {/* One grid, so the salary box is not 320px wide under a 384px student
+          count under a half-width dropdown. Every field is one column.
+          The salary is one amount, not a range and not "discuss": a Tutor
+          reading the Job Board should learn what the tuition pays. Typed
+          however the Guardian writes numbers - 5000, 5,000, even "5,000 Taka"
+          - and shown back as "5,000 Taka" wherever it appears, with the
+          currency word inside the box rather than echoed underneath. */}
+      <div className={fieldGrid}>
+        {input.tuitionType === "home" || input.tuitionType === "online" || input.tuitionType === "package" ? <NumberField label="Number of students" labelIcon={<RecordIcon name="students" size={15} />} id="student-count" min={1} max={100} value={input.studentCount} onChange={props.onSetStudentCount} /> : null}
+        {input.tuitionType === "group" ? <NumberField label="Maximum students" labelIcon={<RecordIcon name="students" size={15} />} id="group-capacity" min={2} max={100} value={input.groupCapacity} onChange={props.onSetGroupCapacity} /> : null}
+        {input.tuitionType === "package" ? <NumberField label="Package duration (months)" labelIcon={<RecordIcon name="packageDuration" size={15} />} id="package-duration-months" min={1} max={24} value={input.packageDurationMonths} onChange={props.onSetPackageDurationMonths} /> : null}
+        <SelectField label="Days per week" icon={<RecordIcon name="daysPerWeek" size={17} />} value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} />
+        <InputField label="Institute Name" optional value={input.instituteName} onChange={props.onSetInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder={INSTITUTE_NAME_PLACEHOLDER} icon={<School size={17} />} />
+        <SelectField label="Where Did You Hear About Us" value={input.heardAboutUs} onChange={(value) => props.onSetHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" formatOption={formatRequestSource} icon={input.heardAboutUs ? REQUEST_SOURCE_ICONS[input.heardAboutUs] : <Megaphone size={17} />} />
+        <SelectField label="Preferred Tutor gender" icon={<TutorPreferenceIcon preference={input.preferredGender || "any"} className="text-j-accent" />} value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} />
+        <MoneyField label="Monthly salary" labelIcon={<RecordIcon name="salary" size={15} />} value={input.salaryAmount} onChange={props.onSetSalaryAmount} placeholder={SALARY_INPUT_PLACEHOLDER} />
+        <div className={fieldGridWide}>
+          <TextAreaField label="Additional notes" labelIcon={<RecordIcon name="notes" size={15} />} optional value={props.notes} onChange={props.onSetNotes} maxLength={2000} minHeight="min-h-28" />
+        </div>
+      </div>
     </div> : null}
     {/* Step 3 is the request read back after it is sent, so it carries its own
         two actions and none of the journey's - there is nothing left to go
@@ -1192,8 +1216,68 @@ function TuitionTypeIcon({ type }: { type: string }) {
   return <House aria-hidden="true" size={17} />;
 }
 
-function InputField({ label, labelHidden, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder, icon }: { label: string; labelHidden?: boolean; icon?: ReactNode; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) { return <label className="block text-sm font-extrabold text-j-ink-soft"><span className={labelHidden ? "sr-only" : undefined}>{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}</span><span className={`relative block ${labelHidden ? "" : "mt-2"}`}>{icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}<input className={`${filledField} ${icon ? "pl-10" : ""}`}type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} /></span></label>; }
-function SelectField({ label, value, onChange, options, placeholder, formatOption, optional, icon }: { label: string; icon?: ReactNode; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) { return <label className="text-sm font-extrabold text-j-ink-soft">{label} {optional ? <span className="font-normal text-[#71889b]">(optional)</span> : <span className="text-[#d74545]">*</span>}<span className="relative mt-2 block">{icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}<select className={`${filledField} ${icon ? "pl-10" : ""}`}value={value} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}</select></span></label>; }
+/**
+ * A field's label, its icon, and its required / optional note - in one voice.
+ *
+ * Every field in the journey renders its label through here. They used to be
+ * written by hand at each call site, which is how the form ended up with three
+ * label sizes, two reds on the asterisk, and both "(optional)" and
+ * "(if applicable)" for the same idea.
+ */
+function FieldLabelText({ label, labelIcon, labelHidden, optional }: { label: string; labelIcon?: ReactNode; labelHidden?: boolean; optional?: boolean }) {
+  return <span className={labelHidden ? "sr-only" : fieldLabel}>
+    <span className="inline-flex items-center gap-1.5">{labelIcon ? <span aria-hidden="true" className="text-j-accent">{labelIcon}</span> : null}{label}</span>
+    {optional ? <span className={optionalMark}> (optional)</span> : <span className={requiredMark}> *</span>}
+  </span>;
+}
+
+function InputField({ label, labelIcon, labelHidden, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder, icon, id }: { label: string; labelIcon?: ReactNode; labelHidden?: boolean; icon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) {
+  return <label className="block">
+    <FieldLabelText label={label} labelIcon={labelIcon} labelHidden={labelHidden} optional={optional} />
+    <span className={`relative block ${labelHidden ? "" : "mt-2"}`}>
+      {icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
+      <input id={id} className={`${filledField} ${icon ? "pl-10" : ""}`} type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} />
+    </span>
+  </label>;
+}
+
+function SelectField({ label, labelIcon, value, onChange, options, placeholder, formatOption, optional, icon }: { label: string; labelIcon?: ReactNode; icon?: ReactNode; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string; formatOption?: (value: string) => string; optional?: boolean }) {
+  return <label className="block">
+    <FieldLabelText label={label} labelIcon={labelIcon} optional={optional} />
+    <span className="relative mt-2 block">
+      {icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
+      <select className={`${filledField} ${icon ? "pl-10" : ""}`} value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{placeholder}</option>
+        {options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}
+      </select>
+    </span>
+  </label>;
+}
+
+/** A whole-number field. One grid cell wide, like every other field. */
+function NumberField({ label, labelIcon, id, value, onChange, min, max }: { label: string; labelIcon?: ReactNode; id: string; value: string; onChange: (value: string) => void; min: number; max: number }) {
+  return <label className="block">
+    <FieldLabelText label={label} labelIcon={labelIcon} />
+    <input id={id} className={`${filledField} mt-2`} type="number" min={min} max={max} step={1} inputMode="numeric" value={value} onChange={(event) => onChange(event.target.value)} />
+  </label>;
+}
+
+function TextAreaField({ label, labelIcon, id, value, onChange, maxLength, optional, minHeight = "min-h-24" }: { label: string; labelIcon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; maxLength?: number; optional?: boolean; minHeight?: string }) {
+  return <label className="block">
+    <FieldLabelText label={label} labelIcon={labelIcon} optional={optional} />
+    <textarea id={id} className={`${filledArea} mt-2 ${minHeight}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength={maxLength} />
+  </label>;
+}
+
+/** An amount of money, with the currency word inside the box. */
+function MoneyField({ label, labelIcon, value, onChange, placeholder }: { label: string; labelIcon?: ReactNode; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return <label className="block">
+    <FieldLabelText label={label} labelIcon={labelIcon} />
+    <span className="mt-2 block">
+      <MoneyAmountField ariaLabel={`${label} (Taka)`} value={value} onChange={onChange} placeholder={placeholder} inputClassName={filledField} formatOnBlur />
+    </span>
+  </label>;
+}
 function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }

@@ -336,7 +336,7 @@ it("names the salary field once, and calls no preference Any", () => {
     // thing. The currency word inside the box is decoration on top of that.
     render(<RequestStage {...requestStageProps} step={2} />);
 
-    expect(screen.getByLabelText("Amount (Taka)")).not.toBeNull();
+    expect(screen.getByLabelText("Monthly salary (Taka)")).not.toBeNull();
     expect(screen.queryByText(/Amount \(Taka\)/)).toBeNull();
 
     // The review reads the same word the Job Board card has always used.
