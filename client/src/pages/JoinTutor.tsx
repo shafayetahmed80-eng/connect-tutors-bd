@@ -20,7 +20,8 @@ const initialForm = {
   contactEmail: "",
   password: "",
   confirmPassword: "",
-  gender: "male" as "male" | "female",
+  // No default. A pre-ticked answer is the form's guess, not the person's.
+  gender: "" as "" | "male" | "female",
   cityId: "",
   locationId: "",
 };
@@ -56,6 +57,7 @@ export function validateTutorRegistration(
   else if (form.password.length > 128) errors.password = "Password must be 128 characters or fewer.";
   if (!form.confirmPassword) errors.confirmPassword = "Confirm your password.";
   else if (form.password !== form.confirmPassword) errors.confirmPassword = "Passwords do not match.";
+  if (!form.gender) errors.gender = "Choose your gender to continue.";
   if (!form.cityId) errors.cityId = "Choose your City to continue.";
   if (!form.locationId) errors.locationId = "Choose your Location to continue.";
   if (!agreed) errors.agreed = "Accept the Terms of Use and Privacy Policy to create your account.";
@@ -115,7 +117,7 @@ export default function JoinTutor() {
         password: form.password,
         confirmPassword: form.confirmPassword,
         phone: formatBangladeshMobile(form.phone),
-        gender: form.gender,
+        gender: form.gender as "male" | "female",
         cityId: form.cityId,
         locationId: form.locationId,
         termsAccepted: agreed,
@@ -127,7 +129,7 @@ export default function JoinTutor() {
         name: form.name.trim(),
         phone: formatBangladeshMobile(form.phone),
         contactEmail: form.contactEmail.trim(),
-        gender: form.gender,
+        gender: form.gender as "male" | "female",
         locationId: form.locationId,
       });
       if (!result.tutorPortalToken) throw new Error("Tutor portal proof was not issued.");
@@ -222,7 +224,7 @@ export default function JoinTutor() {
           <section aria-labelledby="tutor-registration-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
             <div className="grid gap-x-7 gap-y-4 md:grid-cols-2">
               <FieldError id="name-error" message={fieldErrors.name}><label className={fieldLabel} htmlFor="name">Full name <RequiredMark /><input id="name" required maxLength={160} value={form.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} className={fieldClass} placeholder="Your full name" autoComplete="name" /></label></FieldError>
-              <fieldset><legend className={fieldLabel}>Gender <RequiredMark /></legend><div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">{(["male", "female"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${form.gender === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}><input type="radio" name="gender" className="sr-only" checked={form.gender === option} onChange={() => update("gender", option)} />{option === "male" ? "Male" : "Female"}</label>)}</div></fieldset>
+              <FieldError id="gender-error" message={fieldErrors.gender}><fieldset><legend className={fieldLabel}>Gender <RequiredMark /></legend><div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">{(["male", "female"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${form.gender === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}><input type="radio" name="gender" className="sr-only" checked={form.gender === option} onChange={() => update("gender", option)} />{option === "male" ? "Male" : "Female"}</label>)}</div></fieldset></FieldError>
               <FieldError id="phone-error" message={fieldErrors.phone}><label className={fieldLabel} htmlFor="phone">Phone number <RequiredMark /><span className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12"><span className="flex items-center border-r border-j-border px-3.5 text-sm font-bold text-j-ink-soft">{BANGLADESH_COUNTRY_CODE}</span><input id="phone" required value={form.phone} onChange={(event) => update("phone", normalizeBangladeshLocalMobile(event.target.value))} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "phone-error" : undefined} className="min-w-0 flex-1 bg-transparent px-3.5 py-3 text-sm text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder="1XXXXXXXXX" inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" /></span></label></FieldError>
               <FieldError id="contactEmail-error" message={fieldErrors.contactEmail}><label className={fieldLabel} htmlFor="contactEmail">Email <RequiredMark /><input id="contactEmail" required maxLength={320} value={form.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} aria-invalid={Boolean(fieldErrors.contactEmail)} aria-describedby={fieldErrors.contactEmail ? "contactEmail-error" : undefined} className={fieldClass} placeholder="name@example.com" type="email" autoComplete="email" /></label></FieldError>
               <FieldError id="password-error" message={fieldErrors.password}><label className={fieldLabel} htmlFor="password">Password <RequiredMark /><PasswordInput id="password" value={form.password} onChange={(value) => update("password", value)} show={showPassword} onToggle={() => setShowPassword((current) => !current)} placeholder="At least 8 characters" error={fieldErrors.password} autoComplete="new-password" /></label></FieldError>

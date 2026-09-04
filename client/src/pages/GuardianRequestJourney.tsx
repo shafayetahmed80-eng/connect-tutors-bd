@@ -429,11 +429,12 @@ export function guardianAuthErrorMessage(error: { message: string; data?: unknow
 }
 
 export type GuardianAccountFieldErrors = Partial<
-  Record<"name" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
+  Record<"name" | "gender" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
 >;
 
 const guardianAccountErrorFieldIds: Record<keyof GuardianAccountFieldErrors, string> = {
   name: "guardian-full-name",
+  gender: "guardian-gender",
   email: "guardian-email",
   password: "guardian-password",
   confirmPassword: "guardian-confirm-password",
@@ -447,7 +448,7 @@ const guardianAccountErrorFieldIds: Record<keyof GuardianAccountFieldErrors, str
  * back with a stringified server error. Same shape as `validateTutorRegistration`.
  */
 export function validateGuardianRegistration(
-  values: { name: string; email: string; password: string; confirmPassword: string; accountCityId: string; accountLocationId: string },
+  values: { name: string; gender: string; email: string; password: string; confirmPassword: string; accountCityId: string; accountLocationId: string },
   termsAccepted: boolean,
 ): GuardianAccountFieldErrors {
   const errors: GuardianAccountFieldErrors = {};
@@ -455,6 +456,7 @@ export function validateGuardianRegistration(
   if (name.length < 2) errors.name = "Enter your full name.";
   else if (name.length > 160) errors.name = "Full name must be 160 characters or fewer.";
   const email = values.email.trim();
+  if (!values.gender) errors.gender = "Choose your gender to continue.";
   if (!email) errors.email = "Enter your email address.";
   else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Enter a valid email address.";
   else if (email.length > 320) errors.email = "Email address must be 320 characters or fewer.";
@@ -558,7 +560,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [journeyError, setJourneyError] = useState("");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [gender, setGender] = useState<"male" | "female">("female");
+  // No default, for the same reason the Tutor form has none.
+  const [gender, setGender] = useState<"" | "male" | "female">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -868,7 +871,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   };
   const register = () => {
     const errors = validateGuardianRegistration(
-      { name, email, password, confirmPassword, accountCityId, accountLocationId },
+      { name, gender, email, password, confirmPassword, accountCityId, accountLocationId },
       termsAccepted,
     );
     setAccountFieldErrors(errors);
@@ -878,7 +881,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       return;
     }
     clearJourneyError();
-    registrationMutation.mutate({ name: name.trim(), gender, email: email.trim(), password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+    registrationMutation.mutate({ name: name.trim(), gender: gender as "male" | "female", email: email.trim(), password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
   };
 
   return <div className={presentation.rootClassName}>
@@ -955,7 +958,7 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
 }
 
 export type GuardianAccountStageProps = {
-  name: string; email: string; phone: string; gender: "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
+  name: string; email: string; phone: string; gender: "" | "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
   cities: Array<{ id: string; label: string }>; accountCityId: string; accountLocations: Array<{ id: string; label: string }>;
   accountLocationId: string; accountCityLabel: string; termsAccepted: boolean; pending: boolean;
   fieldErrors?: GuardianAccountFieldErrors;
@@ -1002,7 +1005,7 @@ export function getGuardianLocationSelectionState(cityId: string, locationId: st
   return { complete: true as const, cityLabel, locationLabel };
 }
 
-function GenderSegment({ value, current, onSelect }: { value: "female" | "male"; current: "female" | "male"; onSelect: (value: "female" | "male") => void }) {
+function GenderSegment({ value, current, onSelect }: { value: "female" | "male"; current: "" | "female" | "male"; onSelect: (value: "female" | "male") => void }) {
   const label = value === "female" ? "Female" : "Male";
   return <label className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${current === value ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}>
     <input type="radio" name="guardian-gender" className="sr-only" checked={current === value} onChange={() => onSelect(value)} />{label}
@@ -1033,13 +1036,15 @@ export function AccountStage(props: GuardianAccountStageProps) {
         <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>Full name {star}</span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
       </FieldError>
 
-      <fieldset>
-        <legend className={fieldLabel}>Gender {star}</legend>
-        <div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">
-          <GenderSegment value="female" current={props.gender} onSelect={props.onGender} />
-          <GenderSegment value="male" current={props.gender} onSelect={props.onGender} />
-        </div>
-      </fieldset>
+      <FieldError id="guardian-gender-error" message={errors.gender}>
+        <fieldset id="guardian-gender">
+          <legend className={fieldLabel}>Gender {star}</legend>
+          <div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">
+            <GenderSegment value="female" current={props.gender} onSelect={props.onGender} />
+            <GenderSegment value="male" current={props.gender} onSelect={props.onGender} />
+          </div>
+        </fieldset>
+      </FieldError>
 
       <label className="block" htmlFor="guardian-phone">
         <span className={fieldLabel}>Phone number {star}</span>

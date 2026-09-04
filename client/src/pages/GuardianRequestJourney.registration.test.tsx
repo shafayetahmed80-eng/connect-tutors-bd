@@ -78,6 +78,7 @@ describe("validateGuardianRegistration", () => {
     confirmPassword: "GuardianPass1",
     accountCityId: "dhaka",
     accountLocationId: "mirpur-10",
+    gender: "female",
   };
 
   it("accepts a complete, in-bounds account form", () => {
@@ -89,6 +90,7 @@ describe("validateGuardianRegistration", () => {
     expect(validateGuardianRegistration({ ...valid, email: "not-an-email" }, true).email).toMatch(/valid email/i);
     expect(validateGuardianRegistration({ ...valid, password: "short" }, true).password).toMatch(/8 characters/i);
     expect(validateGuardianRegistration({ ...valid, confirmPassword: "different" }, true).confirmPassword).toMatch(/do not match/i);
+    expect(validateGuardianRegistration({ ...valid, gender: "" }, true).gender).toMatch(/gender/i);
     expect(validateGuardianRegistration({ ...valid, accountCityId: "" }, true).cityLocationId).toMatch(/City/i);
     expect(validateGuardianRegistration({ ...valid, accountLocationId: "" }, true).locationId).toMatch(/Location/i);
     expect(validateGuardianRegistration(valid, false).terms).toMatch(/Terms/i);
