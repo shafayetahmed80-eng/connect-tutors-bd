@@ -22,7 +22,7 @@ const spacingLabels: Record<SiteContentSpacing, string> = {
   roomy: "Roomy",
 };
 
-const inputClass = "h-8 w-full min-w-0 rounded-md border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 /**
  * Four columns once there is room for them; below `sm` the label takes its own
  * line, because squeezing it alongside the controls leaves the text box too
@@ -35,7 +35,7 @@ const rowLabelClass = "col-span-3 truncate text-[13px] font-medium text-j-ink-so
 type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
 type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
 
-const sizeInputClass = "h-8 w-full min-w-0 rounded-md border border-j-border bg-white px-2 text-[13px] tabular-nums text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const sizeInputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] tabular-nums text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
 
 /**
@@ -256,29 +256,29 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   };
 
   if (overrides.isLoading) {
-    return <div className="flex min-h-32 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading page content…</div>;
+    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading page content…</div>;
   }
   if (overrides.isError) {
-    return <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Page content could not be loaded.</div>;
+    return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Page content could not be loaded.</div>;
   }
 
   const needle = query.trim().toLowerCase();
   const matches = (label: string, text: string) => !needle || label.toLowerCase().includes(needle) || text.toLowerCase().includes(needle);
 
   return <div className="space-y-3">
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Filter content</span>
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter by label or text" className={`${inputClass} pl-7`} />
       </label>
       <span className="text-xs font-bold text-j-ink-muted">{stored.size} overridden</span>
-      <button type="button" disabled={saving || dirtyIds.length === 0} onClick={() => void saveAll()} className="h-8 rounded-md bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={saving || dirtyIds.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
         {saving ? "Saving…" : dirtyIds.length > 0 ? `Save ${dirtyIds.length} change${dirtyIds.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
 
-    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-accent/30 bg-[#f2f9ff] p-2">
+    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-accent/30 bg-[#f2f9ff] p-2">
       <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
       <label className="flex items-center gap-1.5 text-[12px] text-j-ink-soft">
         Set size
@@ -294,13 +294,13 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         />
         px
       </label>
-      <button type="button" disabled={saving || bulkPx.trim() === "" || sizableSelected().length === 0} onClick={() => void applyBulkSize()} className="h-8 rounded-md bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={saving || bulkPx.trim() === "" || sizableSelected().length === 0} onClick={() => void applyBulkSize()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
         Apply to {sizableSelected().length}
       </button>
-      <button type="button" disabled={saving || !Array.from(selected).some(id => stored.has(id))} onClick={() => void resetSelected()} className="flex h-8 items-center gap-1 rounded-md border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40">
+      <button type="button" disabled={saving || !Array.from(selected).some(id => stored.has(id))} onClick={() => void resetSelected()} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40">
         <RotateCcw size={13} /> Reset selected
       </button>
-      <button type="button" onClick={() => setSelected(new Set())} className="h-8 rounded-md px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">
+      <button type="button" onClick={() => setSelected(new Set())} className="h-8 rounded-lg px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">
         Clear
       </button>
     </div> : null}
@@ -321,7 +321,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       const surfaceIds = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].map(slot => slot.id);
       const allSelected = surfaceIds.length > 0 && surfaceIds.every(id => selected.has(id));
 
-      return <section key={surface} className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+      return <section key={surface} className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-j-border pb-1.5">
           <label className="flex min-w-0 items-center gap-2">
             <input
@@ -377,7 +377,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               onChange={event => update(slot.id, { textPx: event.target.value })}
               className={sizeInputClass}
             />}
-            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-j-border text-j-ink-soft disabled:opacity-30">
+            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30">
               <RotateCcw size={13} />
             </button>
           </div>)}
@@ -410,7 +410,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               onChange={event => update(slot.id, { textPx: event.target.value })}
               className={sizeInputClass}
             />
-            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-j-border text-j-ink-soft disabled:opacity-30">
+            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30">
               <RotateCcw size={13} />
             </button>
           </div>
@@ -441,7 +441,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
             >
               {siteContentSpacings.map(spacing => <option key={spacing} value={spacing}>{spacingLabels[spacing]}</option>)}
             </select>
-            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-md border border-j-border text-j-ink-soft disabled:opacity-30">
+            <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30">
               <RotateCcw size={13} />
             </button>
           </div>

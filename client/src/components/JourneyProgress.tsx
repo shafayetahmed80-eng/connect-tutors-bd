@@ -33,7 +33,7 @@ export function JourneyProgress({
           return (
             <li
               key={step.label}
-              className={`relative flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+              className={`relative flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                 active
                   ? "border-j-accent/40 bg-j-accent-wash shadow-[0_8px_20px_rgba(26,119,193,0.08)]"
                   : completed

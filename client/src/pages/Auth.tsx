@@ -109,7 +109,7 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
         }
       }}
       tabIndex={selected ? 0 : -1}
-      className={`rounded-2xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
+      className={`rounded-xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
     >
       <Icon className="text-j-accent" size={25} aria-hidden="true" />
       <strong className="mt-4 block text-lg">{content.title}</strong>
@@ -292,7 +292,7 @@ export default function AuthPage() {
                 <p className="text-center text-xs leading-5 text-[#7b95a9]">For password recovery, contact our support team on WhatsApp. We do not offer email reset links yet.</p>
               </form>
             ) : (
-              <div className="mt-8 rounded-2xl border border-j-border bg-j-surface-sunken p-6">
+              <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-j-accent">Your {selectedRole.title} journey</p>
                 <h3 className="mt-2 text-xl font-bold text-j-ink">{selectedJourney.heading}</h3>
                 <p className="mt-2 leading-7 text-[#668197]">{selectedJourney.summary}</p>

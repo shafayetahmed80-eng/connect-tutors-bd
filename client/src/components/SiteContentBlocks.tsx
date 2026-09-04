@@ -10,7 +10,7 @@ import {
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-const inputClass = "w-full min-w-0 rounded-md border border-j-border bg-white px-2 py-1 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const inputClass = "w-full min-w-0 rounded-lg border border-j-border bg-white px-2 py-1 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const toneLabels: Record<SiteContentBlockTone, string> = { info: "Info", warning: "Warning", success: "Success" };
 
 type BlockRow = {
@@ -85,7 +85,7 @@ export default function SiteContentBlocks({ page }: { page: SiteContentPageId })
   };
 
   if (blocks.isLoading) {
-    return <div className="flex min-h-24 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading blocks…</div>;
+    return <div className="flex min-h-24 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading blocks…</div>;
   }
 
   return <div className="space-y-3">
@@ -93,7 +93,7 @@ export default function SiteContentBlocks({ page }: { page: SiteContentPageId })
 
     {anchors.map(anchor => {
       const rows = rowsFor(anchor.id);
-      return <section key={anchor.id} className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+      return <section key={anchor.id} className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-j-border pb-1.5">
           <h3 className="text-[13px] font-bold text-j-ink">{anchor.label}</h3>
           <span className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{anchor.surface} · {rows.length} block{rows.length === 1 ? "" : "s"}</span>
@@ -141,16 +141,16 @@ export default function SiteContentBlocks({ page }: { page: SiteContentPageId })
               </label>
             </div>
             <div className="flex items-start gap-1">
-              <button type="button" disabled={busy || index === 0} aria-label={`Move block ${index + 1} up`} onClick={() => move(anchor.id, index, -1)} className="grid h-7 w-7 place-items-center rounded-md border border-j-border text-j-ink-soft disabled:opacity-30"><ChevronUp size={13} /></button>
-              <button type="button" disabled={busy || index === rows.length - 1} aria-label={`Move block ${index + 1} down`} onClick={() => move(anchor.id, index, 1)} className="grid h-7 w-7 place-items-center rounded-md border border-j-border text-j-ink-soft disabled:opacity-30"><ChevronDown size={13} /></button>
-              <button type="button" disabled={busy || !dirty} onClick={() => void run(() => update.mutateAsync({ id: block.id, anchorId: block.anchorId, heading: value.heading, body: value.body, tone: value.tone, active: value.active }))} className="h-7 rounded-md bg-j-accent px-2 text-[12px] font-bold text-white disabled:opacity-30">Save</button>
-              <button type="button" disabled={busy} aria-label={`Delete block ${index + 1}`} onClick={() => void run(() => remove.mutateAsync({ id: block.id }))} className="grid h-7 w-7 place-items-center rounded-md border border-red-200 text-red-600 disabled:opacity-30"><Trash2 size={13} /></button>
+              <button type="button" disabled={busy || index === 0} aria-label={`Move block ${index + 1} up`} onClick={() => move(anchor.id, index, -1)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30"><ChevronUp size={13} /></button>
+              <button type="button" disabled={busy || index === rows.length - 1} aria-label={`Move block ${index + 1} down`} onClick={() => move(anchor.id, index, 1)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30"><ChevronDown size={13} /></button>
+              <button type="button" disabled={busy || !dirty} onClick={() => void run(() => update.mutateAsync({ id: block.id, anchorId: block.anchorId, heading: value.heading, body: value.body, tone: value.tone, active: value.active }))} className="h-7 rounded-lg bg-j-accent px-2 text-[12px] font-bold text-white disabled:opacity-30">Save</button>
+              <button type="button" disabled={busy} aria-label={`Delete block ${index + 1}`} onClick={() => void run(() => remove.mutateAsync({ id: block.id }))} className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 text-red-600 disabled:opacity-30"><Trash2 size={13} /></button>
             </div>
           </div>;
         })}
 
         {/* New blocks start hidden, so nothing reaches visitors until it is ready. */}
-        <button type="button" disabled={busy} onClick={() => void run(() => create.mutateAsync({ anchorId: anchor.id, heading: "New notice", body: "", tone: "info", active: false }))} className="mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-j-border px-2 text-[12px] font-bold text-j-accent disabled:opacity-40">
+        <button type="button" disabled={busy} onClick={() => void run(() => create.mutateAsync({ anchorId: anchor.id, heading: "New notice", body: "", tone: "info", active: false }))} className="mt-2 inline-flex h-7 items-center gap-1 rounded-lg border border-j-border px-2 text-[12px] font-bold text-j-accent disabled:opacity-40">
           <Plus size={13} /> Add block
         </button>
       </section>;

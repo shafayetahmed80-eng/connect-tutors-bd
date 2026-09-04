@@ -28,14 +28,14 @@ export default function AdminDynamicSectionPage({
   }
 
   if (!isAdmin || !workspaceAccess.data?.isOwner) {
-    return <section className="mx-auto flex min-h-[58vh] max-w-xl flex-col items-center justify-center rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-amber-600" /><h1 className="text-2xl font-bold text-j-ink">Owner access required</h1><p className="mt-2 text-sm leading-6 text-j-ink-soft">Site content control is restricted to the Project Owner. No content is loaded for other accounts.</p></section>;
+    return <section className="mx-auto flex min-h-[58vh] max-w-xl flex-col items-center justify-center rounded-xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-amber-600" /><h1 className="text-2xl font-bold text-j-ink">Owner access required</h1><p className="mt-2 text-sm leading-6 text-j-ink-soft">Site content control is restricted to the Project Owner. No content is loaded for other accounts.</p></section>;
   }
 
   return <AdminWorkspaceLayout title={title}>
     {/* No page hero: the workspace header already carries the page name, and a
         second copy of it in a navy block below said nothing new. */}
     <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-      {children ?? <section className="rounded-3xl border border-dashed border-j-field-border bg-white p-10 text-center">
+      {children ?? <section className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center">
         <p className="text-sm font-bold text-j-ink-soft">Content controls are not configured yet.</p>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-j-ink-soft">This workspace is reserved for editing the published Tutor and Guardian page content. The editing tools will appear here once they are defined.</p>
       </section>}

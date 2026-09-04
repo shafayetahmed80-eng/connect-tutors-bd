@@ -58,11 +58,11 @@ export default function SiteLimitEditor() {
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
     {overrides.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the limits…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the limits…</div>
       : groups.map(group => {
         const rows = siteLimits.filter(limit => limit.group === group);
         if (rows.length === 0) return null;
-        return <section key={group} className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+        return <section key={group} className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
           <h2 className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{group}</h2>
           <div className="mt-2 space-y-1">
             {rows.map(limit => {
@@ -89,19 +89,19 @@ export default function SiteLimitEditor() {
                     max={limit.max}
                     value={draft}
                     onChange={event => setDrafts(current => ({ ...current, [limit.id]: event.target.value }))}
-                    className={`h-8 w-20 rounded-md border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:ring-2 focus:ring-sky-100 ${outOfRange ? "border-red-300" : "border-j-border focus:border-j-accent"}`}
+                    className={`h-8 w-20 rounded-lg border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:ring-2 focus:ring-sky-100 ${outOfRange ? "border-red-300" : "border-j-border focus:border-j-accent"}`}
                   />
                   <button
                     type="button"
                     disabled={busy !== null || !changed || outOfRange}
                     onClick={() => void run(limit.id, () => save.mutateAsync({ limitId: limit.id, value: parsed }), "The limit could not be saved.")}
-                    className="h-8 rounded-md bg-j-accent px-2.5 text-[12px] font-bold text-white disabled:opacity-40"
+                    className="h-8 rounded-lg bg-j-accent px-2.5 text-[12px] font-bold text-white disabled:opacity-40"
                   >{busy === limit.id ? "…" : "Save"}</button>
                   <button
                     type="button"
                     disabled={busy !== null || !edited}
                     onClick={() => void run(limit.id, () => reset.mutateAsync({ limitId: limit.id }), "The limit could not be reset.")}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30"
                     aria-label={`Reset ${limit.label}`}
                     title={edited ? `Go back to ${limit.value}` : "Already at the shipped value"}
                   ><RotateCcw className="h-3.5 w-3.5" /></button>

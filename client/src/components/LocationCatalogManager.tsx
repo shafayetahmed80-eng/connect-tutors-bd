@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const inputClass = "h-8 w-full min-w-0 rounded-md border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
-const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30";
+const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30";
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
 
 type Row = {
@@ -223,7 +223,7 @@ export default function LocationCatalogManager() {
       Used by <span className="font-bold text-j-ink-strong">registration, Request a tutor and the Job Board</span>. Places sit inside one another, so open a city to reach its areas. Hiding one keeps every profile that already chose it but stops it being offered on new forms.
     </p>
 
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Search every place</span>
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
@@ -248,7 +248,7 @@ export default function LocationCatalogManager() {
         Page
       </label>
       <span className="text-xs font-bold text-j-ink-muted">{active.isFetching ? "Searching…" : `${total} found`}</span>
-      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-md bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
         {busy ? "Saving…" : dirtyRows.length > 0 ? `Save ${dirtyRows.length} change${dirtyRows.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
@@ -256,7 +256,7 @@ export default function LocationCatalogManager() {
     {searching
       ? <p className="text-[12px] font-bold text-j-ink-muted">Searching every place. <button type="button" onClick={() => openPlace(parentId)} className="text-j-accent underline">Back to {here}</button></p>
       : <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[13px]">
-        <button type="button" onClick={() => openPlace(null)} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-bold text-j-ink-muted hover:bg-j-surface-muted hover:text-j-ink-strong">
+        <button type="button" onClick={() => openPlace(null)} className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 font-bold text-j-ink-muted hover:bg-j-surface-muted hover:text-j-ink-strong">
           <Home className="h-3.5 w-3.5" /> All
         </button>
         {trail.map((step, index) => <span key={step.id} className="flex items-center gap-1">
@@ -265,12 +265,12 @@ export default function LocationCatalogManager() {
             type="button"
             onClick={() => openPlace(step.id)}
             disabled={index === trail.length - 1}
-            className={`rounded-md px-1.5 py-0.5 font-bold ${index === trail.length - 1 ? "text-j-ink-strong" : "text-j-ink-muted hover:bg-j-surface-muted hover:text-j-ink-strong"}`}
+            className={`rounded-lg px-1.5 py-0.5 font-bold ${index === trail.length - 1 ? "text-j-ink-strong" : "text-j-ink-muted hover:bg-j-surface-muted hover:text-j-ink-strong"}`}
           >{step.label}</button>
         </span>)}
       </nav>}
 
-    {moving ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-2">
+    {moving ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-2">
       <Move className="h-4 w-4 shrink-0 text-amber-700" />
       <span className="text-[13px] text-amber-900">
         Carrying <span className="font-bold">{moving.label}</span>. Open the place it belongs in, then drop it there.
@@ -283,28 +283,28 @@ export default function LocationCatalogManager() {
         type="button"
         disabled={busy || moveBlockedBecause() !== null}
         onClick={dropHere}
-        className="h-8 rounded-md bg-amber-600 px-3 text-[13px] font-bold text-white disabled:opacity-40"
+        className="h-8 rounded-lg bg-amber-600 px-3 text-[13px] font-bold text-white disabled:opacity-40"
       >{busy ? "Moving…" : `Drop into ${here}`}</button>
-      <button type="button" onClick={() => setMoving(null)} className="h-8 rounded-md px-2 text-[13px] font-medium text-amber-800 hover:text-amber-950">Cancel</button>
+      <button type="button" onClick={() => setMoving(null)} className="h-8 rounded-lg px-2 text-[13px] font-medium text-amber-800 hover:text-amber-950">Cancel</button>
     </div> : null}
 
-    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-accent/30 bg-[#f2f9ff] p-2">
+    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-accent/30 bg-[#f2f9ff] p-2">
       <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-md border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><EyeOff size={13} /> Hide</button>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-md border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><Eye size={13} /> Show</button>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><EyeOff size={13} /> Hide</button>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><Eye size={13} /> Show</button>
       <button
         type="button"
         disabled={busy || deletableSelected.length === 0}
         onClick={() => { if (!confirmBulkDelete) { setConfirmBulkDelete(true); return; } void deleteSelected(); }}
-        className={`flex h-8 items-center gap-1 rounded-md border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
+        className={`flex h-8 items-center gap-1 rounded-lg border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
         title={deletableSelected.length < selected.size ? "Built-in places, places in use and places with others inside can only be hidden" : undefined}
       ><Trash2 size={13} /> {confirmBulkDelete ? `Confirm deleting ${deletableSelected.length}` : `Delete ${deletableSelected.length}`}</button>
-      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-md px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">Clear</button>
+      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-lg px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">Clear</button>
     </div> : null}
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
-    {!searching && parentId && addableTypes.length > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-2 shadow-sm">
+    {!searching && parentId && addableTypes.length > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white p-2 shadow-sm">
       <label htmlFor="new-place-label" className="sr-only">Add a place inside {here}</label>
       <input
         id="new-place-label"
@@ -324,7 +324,7 @@ export default function LocationCatalogManager() {
       >
         {addableTypes.map(type => <option key={type} value={type}>{locationTypeLabels[type]}</option>)}
       </select>
-      <button type="button" disabled={busy || newLabel.trim().length === 0} onClick={addPlace} className="flex h-8 items-center gap-1 rounded-md bg-j-ink px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={busy || newLabel.trim().length === 0} onClick={addPlace} className="flex h-8 items-center gap-1 rounded-lg bg-j-ink px-3 text-[13px] font-bold text-white disabled:opacity-40">
         <Plus className="h-3.5 w-3.5" /> Add
       </button>
     </div> : null}
@@ -334,10 +334,10 @@ export default function LocationCatalogManager() {
     </p> : null}
 
     {active.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading places…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading places…</div>
       : active.isError
-      ? <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">This list could not be loaded.</div>
-      : <section className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+      ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">This list could not be loaded.</div>
+      : <section className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
         {rows.length === 0
           ? <p className="py-6 text-center text-sm text-j-ink-muted">{searching ? "Nothing matches that search." : `There is nothing inside ${here} yet.`}</p>
           : rows.map(row => {
@@ -415,11 +415,11 @@ export default function LocationCatalogManager() {
           })}
 
         {total > LOCATION_PAGE_SIZE ? <div className="mt-3 flex items-center justify-between gap-2 border-t border-j-border pt-2">
-          <button type="button" disabled={page <= 1 || active.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-md border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
+          <button type="button" disabled={page <= 1 || active.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
             <ChevronLeft size={14} /> Previous
           </button>
           <span className="text-[12px] font-bold text-j-ink-muted">Page {page} of {lastPage}</span>
-          <button type="button" disabled={page >= lastPage || active.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-md border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
+          <button type="button" disabled={page >= lastPage || active.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
             Next <ChevronRight size={14} />
           </button>
         </div> : null}

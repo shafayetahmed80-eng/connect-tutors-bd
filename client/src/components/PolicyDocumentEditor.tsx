@@ -69,7 +69,7 @@ export default function PolicyDocumentEditor() {
         role="tab"
         aria-selected={page.key === pageKey}
         onClick={() => { setPageKey(page.key); setError(null); }}
-        className={`h-8 rounded-md px-3 text-[13px] font-bold ${page.key === pageKey ? "bg-j-accent text-white" : "border border-j-border bg-white text-j-ink-soft hover:border-j-field-border"}`}
+        className={`h-8 rounded-lg px-3 text-[13px] font-bold ${page.key === pageKey ? "bg-j-accent text-white" : "border border-j-border bg-white text-j-ink-soft hover:border-j-field-border"}`}
       >{page.label}</button>)}
     </div>
 
@@ -77,7 +77,7 @@ export default function PolicyDocumentEditor() {
       This is the document a Guardian and a Tutor tick a box to accept, shown at <span className="font-bold text-j-ink-strong">{meta.path}</span>. Write with <code className="rounded bg-j-surface-muted px-1">##</code> for a heading, <code className="rounded bg-j-surface-muted px-1">-</code> for a bullet, <code className="rounded bg-j-surface-muted px-1">**bold**</code>, and <code className="rounded bg-j-surface-muted px-1">[text](link)</code>. Anything else stays as written.
     </p>
 
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-2 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white p-2 shadow-sm">
       <span className="text-xs font-bold text-j-ink-muted">
         {shipped ? "As shipped" : "Edited by you"} · {words} word{words === 1 ? "" : "s"} · {draft.length}/{MAX_POLICY_BODY_LENGTH}
       </span>
@@ -86,23 +86,23 @@ export default function PolicyDocumentEditor() {
         type="button"
         disabled={busy}
         onClick={() => { if (!confirmReset) { setConfirmReset(true); return; } void run(() => reset.mutateAsync({ pageKey }), "The document could not be reset."); }}
-        className={`flex h-8 items-center gap-1 rounded-md border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmReset ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
+        className={`flex h-8 items-center gap-1 rounded-lg border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmReset ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
         title="Go back to the document the site ships with"
       ><RotateCcw size={13} /> {confirmReset ? "Confirm reset" : "Reset"}</button> : null}
       <button
         type="button"
         disabled={busy || !dirty || draft.length > MAX_POLICY_BODY_LENGTH}
         onClick={() => void run(() => save.mutateAsync({ pageKey, body: draft }), "The document could not be saved.")}
-        className="h-8 rounded-md bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40"
+        className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40"
       >{busy ? "Saving…" : dirty ? "Save document" : saved ? "Saved" : "No changes"}</button>
     </div>
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
     {documents.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the documents…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the documents…</div>
       : <div className="grid gap-3 lg:grid-cols-2">
-        <section className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+        <section className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
           <label htmlFor="policy-body" className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{meta.label}</label>
           <textarea
             id="policy-body"
@@ -110,12 +110,12 @@ export default function PolicyDocumentEditor() {
             maxLength={MAX_POLICY_BODY_LENGTH}
             onChange={event => setDraft(event.target.value)}
             spellCheck={false}
-            className="mt-1.5 min-h-[28rem] w-full resize-y rounded-md border border-j-border bg-white p-3 font-mono text-[12px] leading-6 text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+            className="mt-1.5 min-h-[28rem] w-full resize-y rounded-lg border border-j-border bg-white p-3 font-mono text-[12px] leading-6 text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
           />
         </section>
-        <section className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
+        <section className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
           <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-j-ink-faint"><Eye size={12} /> Preview</p>
-          <div className="mt-1.5 max-h-[28rem] overflow-y-auto rounded-md border border-j-border bg-[#fbfdff] p-4">
+          <div className="mt-1.5 max-h-[28rem] overflow-y-auto rounded-lg border border-j-border bg-[#fbfdff] p-4">
             {draft.trim()
               ? <PolicyDocument body={draft} />
               : <p className="text-sm text-j-ink-muted">Nothing to show — the page would be empty.</p>}
