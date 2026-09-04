@@ -146,7 +146,6 @@ export function getTutorProfileReadoutSections(
             row("Class / level", list(form.classLevelIds, resolve.classLevel)),
             row("Curriculum", list(form.curriculumIds, resolve.curriculum)),
             row("Teaching experience (years)", text(form.teachingExperienceYears)),
-            row("Student types", list(form.studentTypeIds, resolve.studentType)),
             row("Prior teaching experience", text(form.priorTeachingExperience), true),
             row("Special expertise", text(form.specialExpertise), true),
             row("Academic achievement", text(form.academicAchievement), true),

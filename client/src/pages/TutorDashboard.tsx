@@ -15,6 +15,7 @@ import {
 } from "@/lib/tutorPortalSession";
 import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
+import { TutorApplicationStatus } from "./TutorApplicationStatus";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
@@ -74,14 +75,6 @@ export function getTutorDashboardSection(location: string): TutorDashboardSectio
   const pathname = location.split(/[?#]/, 1)[0] || "/tutor/dashboard";
   const rawSection = pathname.split("/").filter(Boolean).pop() || "dashboard";
   return tutorDashboardSections.includes(rawSection as TutorDashboardSection) ? rawSection as TutorDashboardSection : "dashboard";
-}
-
-function statusLabel(status?: "draft" | "pending" | "changes_requested" | "approved" | "suspended") {
-  if (status === "approved") return "Approved";
-  if (status === "pending") return "Pending review";
-  if (status === "changes_requested") return "Changes requested";
-  if (status === "suspended") return "Profile suspended";
-  return "Profile required";
 }
 
 export function formatTutorSince(registeredAt?: Date | string | null) {
@@ -283,15 +276,15 @@ export default function TutorDashboard() {
       {section === "settings" && <TutorSettings email={profile?.contactEmail ?? "Secure account email unavailable"} />}
       {section === "jobs" && <JobBoardContent embedded />}
       {section === "confirmation-letter" && <TutorConfirmationLetterPanel />}
-      {["status", "payment", "certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} status={stats?.profileStatus} />}
+      {section === "status" && <TutorApplicationStatus />}
+      {["payment", "certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>
   </DashboardLayout>;
 }
 
-function DashboardDesignPreview({ section, status }: { section: string; status?: "draft" | "pending" | "changes_requested" | "approved" | "suspended" }) {
+function DashboardDesignPreview({ section }: { section: string }) {
   const descriptions: Record<string, string> = {
     jobs: "The visual structure is ready. Tutor-to-job matching will be connected after the matching and assignment workflow is defined.",
-    status: `Your current profile status is ${statusLabel(status)}. A detailed review timeline will be added with the Admin moderation workflow.`,
     "confirmation-letter": "The secure confirmation-letter download workflow will be connected after Tutor approval rules are finalised.",
     payment: "The payment dashboard design is reserved for the future payment workflow; no transaction or payment data is shown yet.",
     certificate: "Certificate eligibility and generation rules will be added before this section becomes active.",

@@ -27,6 +27,9 @@ import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
+import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
+import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
+import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
@@ -254,6 +257,42 @@ function FormInput({ label, hint, error, required = false, showRequiredMarker = 
   return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
+/**
+ * A Bangladesh mobile box. `+880` is fixed furniture and the Tutor types the ten
+ * local digits, because the server accepts only the international form and a
+ * plain box invited `01712345678` - which it rejects, failing the whole save.
+ */
+function FormPhoneInput({ label, error, required = false, showRequiredMarker = required, value, onChange }: {
+  label: string;
+  error?: string;
+  required?: boolean;
+  showRequiredMarker?: boolean;
+  value: string | undefined;
+  onChange: (stored: string) => void;
+}) {
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+    <span className={`${fieldClassName} flex items-stretch overflow-hidden !px-0 !py-0 focus-within:border-j-accent focus-within:ring-2 focus-within:ring-[#dceffe] ${error ? "border-[#d84a4a]" : ""}`}>
+      <span aria-hidden="true" className="flex items-center border-r border-[#e4edf4] bg-[#f7fafc] px-2.5 font-bold text-[#5b7c94]">{BANGLADESH_COUNTRY_CODE}</span>
+      <input
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        maxLength={10}
+        placeholder="1XXXXXXXXX"
+        required={required}
+        aria-label={label}
+        aria-invalid={Boolean(error)}
+        aria-required={showRequiredMarker || undefined}
+        value={toLocalPhoneDigits(value)}
+        onChange={event => onChange(toStoredPhoneValue(event.target.value))}
+        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-j-ink outline-none placeholder:text-[#99aabb]"
+      />
+    </span>
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+  </label>;
+}
+
 /** Single-select for the Education section's curated vocabularies. */
 function FormSelect({ label, options, placeholder, error, showRequiredMarker = false, ...props }: {
   label: string;
@@ -348,6 +387,9 @@ function TutorProfileWorkspaceBody({
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
+  // Kept apart from `fieldErrors`, which the server’s narrow issue contract fills
+  // and which carries no path for anything under `privateDetails`.
+  const [phoneErrors, setPhoneErrors] = useState<Partial<Record<TutorProfilePhoneField, string>>>({});
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
   // Snapshot of `form` taken when a section popup opens, restored if it is
@@ -622,10 +664,25 @@ function TutorProfileWorkspaceBody({
     return true;
   };
 
+  /**
+   * A half-typed mobile number fails the whole save, and the server reports it on
+   * a path the field-error contract drops - so the Tutor used to see a section
+   * that simply would not submit. Name the box here instead.
+   */
+  const acceptPhoneNumbers = (draft: Parameters<typeof findIncompletePhoneFields>[0]) => {
+    const incomplete = findIncompletePhoneFields(draft);
+    setPhoneErrors(Object.fromEntries(incomplete.map(field => [field, incompletePhoneMessage])));
+    if (incomplete.length === 0) return true;
+    setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+    return false;
+  };
+
   const saveSectionDraft = async (target: TutorProfileEditTarget): Promise<boolean> => {
     setFeedback(null);
+    const draft = createTutorProfileSectionDraftPayload(target, form);
+    if (!acceptPhoneNumbers(draft)) return false;
     try {
-      await saveDraftMutation.mutateAsync(createTutorProfileSectionDraftPayload(target, form));
+      await saveDraftMutation.mutateAsync(draft);
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
@@ -652,6 +709,7 @@ function TutorProfileWorkspaceBody({
   const openSectionEditor = (sectionId: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => {
     formBeforeSectionEditRef.current = form;
     setFeedback(null);
+    setPhoneErrors({});
     // An editor always belongs with the tabbed panel, never over the preview.
     setPreviewMode(false);
     setEditingGroupId(groupId ?? null);
@@ -705,9 +763,12 @@ function TutorProfileWorkspaceBody({
       return;
     }
 
+    const draft = buildDraftInput();
+    if (!acceptPhoneNumbers(draft)) return;
+
     setFeedback(null);
     try {
-      await saveDraftMutation.mutateAsync(buildDraftInput());
+      await saveDraftMutation.mutateAsync(draft);
       await submitProfileMutation.mutateAsync();
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
@@ -853,25 +914,25 @@ function TutorProfileWorkspaceBody({
       <label className={tp.fieldRow}><span className={tp.fieldLabel}>{tutorProfileCopy.fields.gender}</span><select aria-label={tutorProfileCopy.fields.gender} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>
       <FormInput label={tutorProfileCopy.fields.dateOfBirth} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />
       <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
-      <FormInput label={tutorProfileCopy.fields.phone} required type="tel" value={form.phone} onChange={event => update("phone", event.target.value)} error={fieldErrors.phone} />
+      <FormPhoneInput label={tutorProfileCopy.fields.phone} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />
       <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />
       <FormTextArea label="Present Address" rows={2} required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} />
       <FormTextArea label="Permanent Address" rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />
       <FormInput label="Nationality" placeholder="Ex- Bangladeshi" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
       <FormInput label="Religion" placeholder="Ex- Islam" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
-      <FormInput label="Additional Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.additionalPhone} onChange={event => updatePrivateDetail("additionalPhone", event.target.value)} />
+      <FormPhoneInput label="Additional Phone (Optional)" value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />
       <FormInput label="Social Profile Links (Optional)" placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />
     </div>
   </FormSection>;
 
   const renderFamilyContactFields = (title?: string): React.ReactNode => <FormSection title={title}><div className={compactFieldGridClassName}>
     <FormInput label="Father’s Name" placeholder="Ex- Abdul Karim" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />
-    <FormInput label="Father’s Phone Number" placeholder="Ex- 01712345678" required type="tel" value={form.privateDetails.fatherPhone} onChange={event => updatePrivateDetail("fatherPhone", event.target.value)} />
+    <FormPhoneInput label="Father’s Phone Number" required value={form.privateDetails.fatherPhone} onChange={value => updatePrivateDetail("fatherPhone", value)} error={phoneErrors.fatherPhone} />
     <FormInput label="Mother’s Name (Optional)" placeholder="Ex- Abdul Karim" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />
-    <FormInput label="Mother’s Phone Number (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.motherPhone} onChange={event => updatePrivateDetail("motherPhone", event.target.value)} />
+    <FormPhoneInput label="Mother’s Phone Number (Optional)" value={form.privateDetails.motherPhone} onChange={value => updatePrivateDetail("motherPhone", value)} error={phoneErrors.motherPhone} />
     <FormInput label="Emergency Contact Name (Optional)" placeholder="Ex- Rahima Begum" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />
     <FormInput label="Emergency Contact Relation (Optional)" placeholder="Ex- Uncle" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />
-    <FormInput label="Emergency Contact Phone (Optional)" placeholder="Ex- 01712345678" type="tel" value={form.privateDetails.emergencyContactPhone} onChange={event => updatePrivateDetail("emergencyContactPhone", event.target.value)} />
+    <FormPhoneInput label="Emergency Contact Phone (Optional)" value={form.privateDetails.emergencyContactPhone} onChange={value => updatePrivateDetail("emergencyContactPhone", value)} error={phoneErrors.emergencyContactPhone} />
     <FormTextArea label="Emergency Contact Address (Optional)" rows={2} value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />
     </div>
   </FormSection>;
@@ -954,13 +1015,7 @@ function TutorProfileWorkspaceBody({
         <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
         <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
-      </div>
-    </FormSection>
-
-    <FormSection title="Who you teach">
-      <div className={compactFieldGridClassName}>
         <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
       </div>
     </FormSection>
 
@@ -993,7 +1048,7 @@ function TutorProfileWorkspaceBody({
           <ChoiceGroup label={tutorProfileCopy.fields.tuitionType} name="tuition-type" required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />
           <ChoiceGroup label={tutorProfileCopy.fields.preferredStudentGender} name="student-gender" required value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.classSizes} required options={[{ id: "one_to_one", label: "One-to-one" }, { id: "small_group", label: "Small group" }, { id: "group", label: "Group" }]} selectedIds={form.preferredClassSizes} onChange={value => update("preferredClassSizes", value)} emptyMessage="No class-size options found." error={fieldErrors.preferredClassSizes} />
-          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={[{ id: "monday", label: "Monday" }, { id: "tuesday", label: "Tuesday" }, { id: "wednesday", label: "Wednesday" }, { id: "thursday", label: "Thursday" }, { id: "friday", label: "Friday" }, { id: "saturday", label: "Saturday" }, { id: "sunday", label: "Sunday" }]} selectedIds={form.preferredTeachingDays} onChange={value => update("preferredTeachingDays", value)} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={teachingDayOptions} selectedIds={selectedTeachingDayIds(form.preferredTeachingDays)} onChange={value => update("preferredTeachingDays", expandTeachingDayIds(value))} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.timeSlots} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />
           <label
             className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}

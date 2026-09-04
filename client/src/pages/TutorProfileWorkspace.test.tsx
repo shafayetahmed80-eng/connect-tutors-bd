@@ -522,8 +522,6 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       teachingAreaIds: ["dhaka-uttara-sector-1"],
     })));
   });
-});
-
 
   it("scopes teaching-area catalog requests to a selected city parent", async () => {
     const cityProfile = { ...completeProfile, currentLocationId: "dhaka-city" };
@@ -541,3 +539,91 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       parentId: "dhaka-city",
     })));
   });
+});
+
+describe("the Tutor Profile phone boxes", () => {
+  afterEach(() => {
+    cleanup();
+    trpcMocks.saveDraft.mockReset();
+  });
+
+  it("saves Family and emergency contact when the number is typed the way Bangladeshis write it", async () => {
+    // This section used to refuse to save. Its placeholder read `Ex- 01712345678`
+    // and it sent that word for word, but the server takes only `+8801712345678`
+    // and reports the rejection on a path the field-error contract drops - so the
+    // Tutor saw a popup that closed on nothing.
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Father’s Name/), { target: { value: "Abdul Karim" } });
+    fireEvent.change(within(dialog).getByLabelText("Father’s Phone Number"), { target: { value: "01712345678" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls[0][0].privateDetails).toMatchObject({
+      fatherName: "Abdul Karim",
+      fatherPhone: "+8801712345678",
+    });
+  });
+
+  it("keeps +880 out of the box, so it cannot be typed away", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const phone = within(screen.getByRole("dialog")).getByLabelText(tutorProfileCopy.fields.phone) as HTMLInputElement;
+
+    expect(phone.value).toBe("1712345678");
+    expect(phone.maxLength).toBe(10);
+  });
+
+  it("names the half-typed number instead of letting the save fail", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Mother’s Phone Number (Optional)"), { target: { value: "17123" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+    expect(within(dialog).getAllByRole("alert").map(node => node.textContent).join(" ")).toMatch(/10-digit Bangladesh mobile number/);
+  });
+});
+
+describe("what the Teaching expertise and Availability boxes ask for", () => {
+  afterEach(() => {
+    cleanup();
+    trpcMocks.saveDraft.mockReset();
+  });
+
+  it("no longer asks a Tutor to classify their students", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching expertise" }));
+
+    expect(within(screen.getByRole("dialog")).queryByText("Student Types")).toBeNull();
+  });
+
+  it("offers All Days, and saves it as the seven days the server accepts", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, preferredTeachingDays: [] }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Availability" }));
+    const dialog = screen.getByRole("dialog");
+
+    await user.click(within(dialog).getByRole("button", { name: /Preferred Teaching Days/ }));
+    await user.click(within(dialog).getByLabelText("All Days"));
+    await user.click(within(dialog).getAllByRole("button", { name: "Done" })[0]);
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls[0][0].preferredTeachingDays)
+      .toEqual(["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]);
+  });
+});
