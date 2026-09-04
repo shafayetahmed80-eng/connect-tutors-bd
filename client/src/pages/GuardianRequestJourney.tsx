@@ -951,7 +951,7 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
     </label>
     <div className="mt-6 flex max-w-md flex-col gap-3">
-      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} Continue securely <ArrowRight size={18} /></button>
+      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /> <ArrowRight size={18} /></button>
       <p className="text-center text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
     </div>
   </div>;
@@ -1089,10 +1089,10 @@ export function AccountStage(props: GuardianAccountStageProps) {
 
     <div className="mt-6 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-        <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back to phone</button>
+        <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.accountBack" fallback="Back to phone" /></button>
         <p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
       </div>
-      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} Create Guardian account <ArrowRight size={18} /></button>
+      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Create Guardian account" /> <ArrowRight size={18} /></button>
     </div>
   </section>;
 }
@@ -1172,7 +1172,7 @@ export function RequestStage(props: RequestStageProps) {
         two actions and none of the journey's - there is nothing left to go
         Back to and nothing left to send. */}
     {props.step === 3 ? <SuccessState requestId={props.requestId ?? null} input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onPostAnother={props.onPostAnother ?? (() => undefined)} /> : null}
-    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> Back</button> : <span className="hidden sm:block" />}{props.step === 1 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}>Continue <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
+    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /> <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
   </form>;
 }
 
@@ -1203,7 +1203,7 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
     <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
 
     <div className="mt-7 flex justify-center border-t border-[#e6eef4] pt-6">
-      <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}>View my request <ArrowRight size={18} /></Link>
+      <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}><SiteText slotId="button-section.journey.viewRequest" fallback="View my request" /> <ArrowRight size={18} /></Link>
     </div>
   </div>;
 }

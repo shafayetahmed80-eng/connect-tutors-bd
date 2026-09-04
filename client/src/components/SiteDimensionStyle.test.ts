@@ -36,6 +36,37 @@ describe("the letter size an Owner sets for input fields", () => {
     expect(css).toContain(".input-text-journey { font-size: 15px; }");
   });
 });
+describe("the size an Owner sets for buttons", () => {
+  const buttonLimitIds = siteLimits.filter(limit => limit.group === "Button Section").map(limit => limit.id);
+
+  it("reaches the stylesheet, every one of them", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    for (const id of buttonLimitIds) {
+      const meta = findSiteLimit(id)!;
+      expect(css, id).toContain(`${meta.value}${meta.unit}`);
+    }
+    expect(buttonLimitIds).toHaveLength(6);
+  });
+
+  it("targets only the ordinary shared button, by its data-size attribute", () => {
+    // An icon-only button, or one explicitly given sm/lg, was sized on
+    // purpose - the selector must not catch it.
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    expect(css).toContain('[data-slot="button"][data-size="default"]');
+  });
+
+  it("offers no fixed width, because a button sizes to its own label", () => {
+    for (const id of buttonLimitIds) {
+      expect(findSiteLimit(id)!.label.toLowerCase(), id).not.toContain("width");
+    }
+  });
+
+  it("keeps the shared button and the journey button apart, as every other pair here does", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "button.height": 40, "journeyButton.height": 52 });
+    expect(css).toContain(`height: 40px`);
+    expect(css).toContain(`height: 52px`);
+  });
+});
 describe("the dialog sizes an Owner sets", () => {
   it("reaches the stylesheet, every one of them", () => {
     // A number offered in the Admin panel that no rule reads would be a dial

@@ -34,8 +34,12 @@ export const filledField =
 export const filledArea =
   "input-text-journey w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 
+// Height, text size, and horizontal padding are the Owner's, set in
+// Admin > Button Section and applied against `.journey-button` - the literal
+// min-h-12/px-5/py-3/text-sm that used to sit here are gone, so nothing
+// competes with the rule that replaces them.
 const journeyButton =
-  "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
+  "journey-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
 
 export const primaryButton = `${journeyButton} bg-j-accent text-white shadow-[0_10px_20px_rgba(22,125,221,.24)] hover:-translate-y-0.5 hover:bg-j-accent-hover`;
 

@@ -57,6 +57,15 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // on the icon's own <svg>, or on a box it shares with the field.
     `.input-text-profile svg, svg.input-text-profile { width: 1em; height: 1em; }`,
     `.input-text-journey svg, svg.input-text-journey { width: 1em; height: 1em; }`,
+    // The shared Button component's "ordinary" case only - `data-size` names
+    // it, so an icon-only button or one explicitly given sm/lg keeps the size
+    // it was given on purpose. Two attribute selectors outrank the single
+    // Tailwind class (text-sm) still sitting in the component's shared base
+    // string, which is what lets this win without editing that string.
+    `[data-slot="button"][data-size="default"] { font-size: ${limits["button.textSize"]}px; height: ${limits["button.height"]}px; padding-left: ${limits["button.paddingX"]}px; padding-right: ${limits["button.paddingX"]}px; }`,
+    // The Guardian journey's own primary/ghost buttons - a separate
+    // vocabulary from the shared Button above, not built on it.
+    `.journey-button { font-size: ${limits["journeyButton.textSize"]}px; height: ${limits["journeyButton.height"]}px; padding-left: ${limits["journeyButton.paddingX"]}px; padding-right: ${limits["journeyButton.paddingX"]}px; }`,
   ].join("\n");
 }
 

@@ -17,7 +17,7 @@ import {
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
-export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages"] as const;
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -208,6 +208,30 @@ const requestTutorSlots: SiteContentSlot[] = [
 ];
 
 /**
+ * Labels on the action buttons inside a modal, form, or journey - Continue,
+ * Back, Cancel, Submit - kept on their own page rather than folded into
+ * tutor-profile or guardian-profile, so an Owner renaming a button finds every
+ * one of them in one place instead of hunting across two content screens.
+ *
+ * Only static labels are here. A button whose word changes with state -
+ * "Send request" versus "Save changes", "Submit" versus "Submitting…" - is
+ * left in code: one overridden string cannot correctly stand in for two
+ * different states without erasing the distinction between them.
+ */
+const buttonSectionSlots: SiteContentSlot[] = [
+  { id: "button-section.journey.phoneContinue", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Continue button", defaultText: "Continue securely", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.accountCreate", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Create account button", defaultText: "Create Guardian account", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.accountBack", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Back button", defaultText: "Back to phone", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.stepContinue", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },
+  { id: "button-section.profile.cancel", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Cancel button", defaultText: "Cancel", defaultTextClass: "text-sm" },
+  { id: "button-section.profile.submit", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Submit button", defaultText: "Submit", defaultTextClass: "text-sm" },
+  { id: "button-section.profile.photoReset", page: "button-section", surface: "Tutor profile editor", group: "Photo cropper", label: "Reset button", defaultText: "Reset", defaultTextClass: "text-sm" },
+  { id: "button-section.profile.photoUse", page: "button-section", surface: "Tutor profile editor", group: "Photo cropper", label: "Use photo button", defaultText: "Use this photo", defaultTextClass: "text-sm" },
+];
+
+/**
  * The three dashboard sidebars, expanded from `@shared/sidebar-tabs` rather
  * than written out: ~40 menu items and headings would be pure repetition here,
  * and the ids have to match what `DashboardLayout` derives at render time.
@@ -343,6 +367,7 @@ const siteContentSlots: SiteContentSlot[] = [
   ...sidebarTabsSlots,
   ...homeSlots,
   ...infoPageSlots,
+  ...buttonSectionSlots,
 ];
 
 const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
