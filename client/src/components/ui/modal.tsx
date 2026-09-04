@@ -151,12 +151,15 @@ export function ModalHeader({
   title,
   eyebrow,
   srPrefix,
+  meta,
 }: {
   title: string;
   /** Small uppercase kicker above the title. Decorative — hidden from a screen reader. */
   eyebrow?: string;
   /** Spoken before the title, so the dialog is announced as e.g. "Edit …". */
   srPrefix?: string;
+  /** A muted line under the title — an id/date row, a one-line subtitle. Stays pinned with the header. */
+  meta?: React.ReactNode;
 }) {
   const { titleId, onClose, busy } = useModalContext("ModalHeader");
   return (
@@ -169,6 +172,7 @@ export function ModalHeader({
         <h2 id={titleId} className={cn("truncate text-base", tp.heading, eyebrow && "mt-0.5")}>
           {srPrefix ? <><span className="sr-only">{srPrefix}</span>{" "}</> : null}{title}
         </h2>
+        {meta ? <div className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
       </div>
       <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton)}>
         <X size={18} />
