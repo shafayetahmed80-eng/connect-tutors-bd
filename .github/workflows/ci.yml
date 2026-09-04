@@ -1,8 +1,14 @@
 # Runs the checks that used to depend on somebody remembering to run them.
 #
 # The suite needs a real database - ten tests read `site_limits` and fail
-# against nothing - so this brings up MariaDB 10.4, the version XAMPP ships
-# locally, and migrates it before running anything.
+# against nothing - so this brings up MySQL 8 and migrates it first.
+#
+# MySQL rather than the MariaDB 10.4 XAMPP ships locally: the schema assumes
+# MySQL 8 timestamp semantics, which is why my.ini has to force
+# `explicit_defaults_for_timestamp=1` on the local machine. MySQL 8 has it on
+# by default, and MariaDB 10.4 will not let a service container change it -
+# the variable is read-only until 10.5. Testing against what the schema was
+# written for is the honest target anyway.
 name: CI
 
 on:
@@ -21,11 +27,11 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      mariadb:
-        image: mariadb:10.4
+      mysql:
+        image: mysql:8
         env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
-          MARIADB_DATABASE: connect_tutors_db
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: connect_tutors_db
         ports:
           - 3306:3306
         options: >-
@@ -85,14 +91,8 @@ jobs:
       - name: Typecheck
         run: pnpm check
 
-      - name: Prepare the database
-        # The schema assumes MySQL 8 timestamp semantics. MariaDB defaults
-        # `explicit_defaults_for_timestamp` to 0, which makes nullable timestamp
-        # columns fail with ER_INVALID_DEFAULT - the same fix my.ini carries
-        # locally.
-        run: |
-          mysql -h 127.0.0.1 -u root -e "SET GLOBAL explicit_defaults_for_timestamp = 1;"
-          pnpm db:migrate
+      - name: Migrate the database
+        run: pnpm db:migrate
 
       - name: Tests
         run: pnpm test
