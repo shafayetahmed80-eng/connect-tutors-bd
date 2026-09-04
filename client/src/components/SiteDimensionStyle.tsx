@@ -2,24 +2,46 @@ import { trpc } from "@/lib/trpc";
 import { defaultSiteLimits, type SiteLimitValues } from "@shared/site-limits";
 
 /**
- * Turns the Owner's dialog sizes into CSS, once for the whole app.
+ * Turns the Owner's dialog settings into CSS, once for the whole app.
  *
- * Inline styles cannot carry a media query, and a dialog is a full-width sheet
- * on a phone whatever the desktop width is set to - so the widths have to live
- * in a real stylesheet rather than on the element. This renders that sheet from
- * the stored numbers, and the shell only tags itself with `data-modal-size`.
+ * Everything here is a rule rather than an inline style, for two reasons. A
+ * dialog is a full-width sheet on a phone whatever the desktop width says, so
+ * the widths have to sit inside a media query and a style attribute cannot
+ * carry one. And the shell should not have to read settings to draw itself:
+ * it tags what it is - `data-modal-backdrop`, `data-modal-size` - and this
+ * decides what that looks like.
  *
- * Field heights apply to single-line controls. A textarea grows with what is
- * typed and carries its own class, so it is deliberately not matched here.
+ * The matching Tailwind classes are deliberately absent from the shell, so
+ * nothing here is fighting a utility for the same property.
  */
 export function buildSiteDimensionCss(limits: SiteLimitValues): string {
+  const radius = `${limits["modal.radius"]}px`;
+  const motion = `${limits["modal.motionMs"]}ms`;
+  // One dial keeps the shadow in proportion: the offset and reach follow the
+  // blur, so the shipped 48 gives back exactly `0 24px 48px -24px`.
+  const blur = limits["modal.shadowBlur"];
+  const ink = (percent: number) => `color-mix(in srgb, var(--j-ink) ${percent}%, transparent)`;
+
   return [
+    "[data-modal-backdrop] {",
+    `  background-color: ${ink(limits["modal.backdropOpacity"])};`,
+    `  animation-duration: ${motion};`,
+    "}",
+    "[data-modal-size] {",
+    `  animation-duration: ${motion};`,
+    `  box-shadow: 0 ${blur / 2}px ${blur}px -${blur / 2}px ${ink(limits["modal.shadowOpacity"])};`,
+    // A sheet sits on the bottom edge of a phone, so only its top corners round.
+    `  border-top-left-radius: ${radius};`,
+    `  border-top-right-radius: ${radius};`,
+    "}",
     "@media (min-width: 640px) {",
+    `  [data-modal-size] { border-radius: ${radius}; max-height: min(92vh, ${limits["modal.maxHeight"]}px); }`,
     `  [data-modal-size="sm"] { max-width: ${limits["modal.width.sm"]}px; }`,
     `  [data-modal-size="md"] { max-width: ${limits["modal.width.md"]}px; }`,
     `  [data-modal-size="lg"] { max-width: ${limits["modal.width.lg"]}px; }`,
-    `  [data-modal-size] { max-height: min(92vh, ${limits["modal.maxHeight"]}px); }`,
     "}",
+    // Single-line controls only. A text box grows with what is typed and keeps
+    // its own class, so it is not matched here.
     `.modal-field-profile { height: ${limits["modal.fieldHeight.profile"]}px; }`,
     `.modal-field-journey { height: ${limits["modal.fieldHeight.journey"]}px; }`,
   ].join("\n");
