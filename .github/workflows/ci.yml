@@ -94,5 +94,14 @@ jobs:
       - name: Migrate the database
         run: pnpm db:migrate
 
+      - name: Seed the catalogues the discovery tests read
+        # Four tests query real rows rather than fixtures: they want a `country`
+        # location and a couple of approved, verified tutors. Same order as the
+        # local rebuild recipe, and every step is idempotent.
+        run: |
+          pnpm db:seed:locations
+          pnpm db:seed:tutor-profile-catalog
+          node scripts/seed-dev-discovery-fixtures.mjs
+
       - name: Tests
         run: pnpm test
