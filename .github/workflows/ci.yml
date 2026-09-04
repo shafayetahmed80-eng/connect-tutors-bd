@@ -1,0 +1,107 @@
+# Runs the checks that used to depend on somebody remembering to run them.
+#
+# The suite needs a real database - ten tests read `site_limits` and fail
+# against nothing - so this brings up MySQL 8 and migrates it first.
+#
+# MySQL rather than the MariaDB 10.4 XAMPP ships locally: the schema assumes
+# MySQL 8 timestamp semantics, which is why my.ini has to force
+# `explicit_defaults_for_timestamp=1` on the local machine. MySQL 8 has it on
+# by default, and MariaDB 10.4 will not let a service container change it -
+# the variable is read-only until 10.5. Testing against what the schema was
+# written for is the honest target anyway.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # A second push to the same branch cancels the first; only the tip matters.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Types, migrations, tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: connect_tutors_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+    env:
+      DATABASE_URL: mysql://root:@127.0.0.1:3306/connect_tutors_db
+      # The session verifier rejects a token whose appId is empty, and the
+      # signing tests want a deterministic secret rather than a random one.
+      VITE_APP_ID: ci
+      JWT_SECRET: ci-deterministic-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every migration is registered in the journal
+        # `drizzle-kit migrate` builds its work list from `_journal.json` alone,
+        # so a .sql file missing from it is never applied - and nothing else
+        # notices until a column turns out not to exist in production. That is
+        # exactly how 0057 shipped broken.
+        run: |
+          # Three files in this folder are catalogue seeds rather than schema
+          # migrations: idempotent INSERT ... ON DUPLICATE KEY data, applied by
+          # hand or by a seed script, and deliberately outside the journal.
+          # They are referenced by path from drizzle/bangladesh-location-hierarchy.test.ts
+          # and scripts/seed-dev-discovery-fixtures.mjs, which is why they live
+          # here rather than in a folder of their own.
+          seeds="0010_bangladesh_location_hierarchy 0013_academic_catalog_canonical_correction 0014_bangladesh_subarea_catalog_correction"
+          missing=0
+          checked=0
+          for file in drizzle/*.sql; do
+            tag="$(basename "$file" .sql)"
+            case " $seeds " in *" $tag "*) continue ;; esac
+            checked=$((checked + 1))
+            if ! grep -q "\"$tag\"" drizzle/meta/_journal.json; then
+              echo "::error file=$file::$tag has no entry in drizzle/meta/_journal.json, so db:migrate will skip it"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "All $checked migrations are journalled."
+          fi
+          exit "$missing"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm check
+
+      - name: Migrate the database
+        run: pnpm db:migrate
+
+      - name: Seed the catalogues the discovery tests read
+        # Four tests query real rows rather than fixtures: they want a `country`
+        # location and a couple of approved, verified tutors. Same order as the
+        # local rebuild recipe, and every step is idempotent.
+        run: |
+          pnpm db:seed:locations
+          pnpm db:seed:tutor-profile-catalog
+          node scripts/seed-dev-discovery-fixtures.mjs
+
+      - name: Tests
+        run: pnpm test

@@ -7,5 +7,5 @@
 --
 -- `heardAboutUs` is ours to count. It is nullable for the same reason - the
 -- rows that predate this column were never asked.
-ALTER TABLE `tutor_requests` ADD `instituteName` varchar(120);
+ALTER TABLE `tutor_requests` ADD `instituteName` varchar(120);--> statement-breakpoint
 ALTER TABLE `tutor_requests` ADD `heardAboutUs` enum('friends_family','facebook','websites','others');
