@@ -2897,9 +2897,14 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       locationLabel: tutorJobs.locationLabel,
       expiresAt: tutorJobs.expiresAt,
       publicationStatus: tutorJobs.publicationStatus,
+      budgetAmount: tutorJobs.budgetAmount,
+      // Appointed and Confirmed are the same interest status; only the request
+      // knows which, so a Tutor cannot be shown their own stage without it.
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
     })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
+    .innerJoin(tutorRequests, eq(tutorJobs.tutorRequestId, tutorRequests.id))
     .where(eq(tutorJobInterests.tutorId, tutorId))
     .orderBy(desc(tutorJobInterests.updatedAt), desc(tutorJobInterests.id));
 }
