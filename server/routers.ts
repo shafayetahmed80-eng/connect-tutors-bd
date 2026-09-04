@@ -41,6 +41,7 @@ import {
   policyPageKeySchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
+import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema } from "./tutor-profile.validation";
 import { guardianProfilePhotoRejectionReasonValues } from "../drizzle/schema";
@@ -845,13 +846,7 @@ export const appRouter = router({
     getMyProfile: activeTutorProcedure.query(({ ctx }) => db.getTutorProfileByUserId(ctx.user.id)),
     saveProfileDraft: activeTutorProcedure.input(tutorProfileEditableDraftSchema).mutation(async ({ ctx, input }) => {
       // The schema holds the ceiling; these are the Owner's numbers.
-      const limits = await db.getSiteLimits();
-      if (input.headline !== undefined) {
-        assertWithinLengthLimit(limits, "tutor.headlineChars", input.headline.length, "Headline");
-      }
-      if (input.educationRecords !== undefined) {
-        assertWithinLimit(limits, "tutor.educationRecords", input.educationRecords.length, "records");
-      }
+      assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);
       try {
         return await db.saveTutorProfileDraft(ctx.user.id, input);
       } catch (error) {

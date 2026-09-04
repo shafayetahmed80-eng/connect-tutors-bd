@@ -12,6 +12,22 @@ describe("option catalog registry", () => {
     }
   });
 
+  it("names only screens that actually read the catalog", () => {
+    // An Owner decides whether an edit here is worth making by reading this
+    // line. Three of these said "Tutor profile and Request a tutor" while the
+    // Guardian form built its categories, levels and subjects from its own
+    // tree in GuardianRequestJourney - and could not have read these anyway,
+    // since catalog.search* is activeTutorProcedure.
+    for (const catalog of optionCatalogs) {
+      expect(catalog.usedFor, catalog.id).not.toMatch(/Request a tutor/i);
+    }
+  });
+
+  it("drops a catalog once nothing asks its question", () => {
+    // Student types left the Tutor profile; the table and its rows stay, but
+    // an Owner should not be offered a list that no form reads.
+    expect(findOptionCatalog("student-types")).toBeUndefined();
+  });
   it("leaves the 300-row Institute and Department lists out", () => {
     // They need paging and a search box of their own; dropping them into this
     // screen would render every row at once.

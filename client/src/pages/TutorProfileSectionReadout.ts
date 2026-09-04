@@ -23,7 +23,6 @@ export type TutorProfileReadoutResolvers = {
   subject: (id: string) => string;
   classLevel: (id: string) => string;
   curriculum: (id: string) => string;
-  studentType: (id: string) => string;
   language: (id: string) => string;
   university: (id: string) => string;
   department: (id: string) => string;

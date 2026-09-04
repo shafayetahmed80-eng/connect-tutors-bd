@@ -35,6 +35,8 @@ vi.mock("@/lib/trpc", () => ({
       list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
       listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
     },
+    // The Owner-set caps the profile reads to bound its multi-selects.
+    siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
   },
 }));
 

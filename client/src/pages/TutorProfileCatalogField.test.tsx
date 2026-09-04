@@ -22,6 +22,8 @@ vi.mock("@/lib/trpc", () => {
         submitProfile: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
       },
       siteContent: { list: { useQuery: empty }, listBlocks: { useQuery: empty } },
+      // The Owner-set caps the profile reads to bound its multi-selects.
+      siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
       catalog: {
         searchUniversities: { useQuery: () => ({ data: mocks.universities, isLoading: false }) },
         searchFacultyDepartments: { useQuery: empty },
