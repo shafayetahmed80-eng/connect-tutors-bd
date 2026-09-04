@@ -1,5 +1,6 @@
 import React from "react";
 import { useSiteContentTextStyle } from "@/lib/siteContent";
+import { LabelIcon } from "@/components/recordIcons";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import type { TutorProfileReadoutRow } from "./TutorProfileSectionReadout";
 
@@ -23,7 +24,9 @@ export function TutorProfileReadoutRows({ rows }: { rows: TutorProfileReadoutRow
       key={row.label}
       className="flex flex-col gap-0.5 border-b border-j-border/60 py-2 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3 lg:[&:nth-last-child(2)]:border-b-0"
     >
-      <dt className={`sm:w-40 sm:shrink-0 ${tp.rowLabel}`} style={sizeStyle}>{row.label}</dt>
+      <dt className={`flex items-center gap-1.5 sm:w-40 sm:shrink-0 ${tp.rowLabel}`} style={sizeStyle}>
+        <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]"><LabelIcon label={row.label} /></span>{row.label}
+      </dt>
       <dd className={`min-w-0 break-words ${row.missing && !row.optional ? tp.rowValueMissing : row.missing ? tp.rowValueMuted : tp.rowValue}`} style={sizeStyle}>{row.value}</dd>
     </div>)}
   </dl>;
