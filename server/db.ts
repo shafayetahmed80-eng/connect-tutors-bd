@@ -1189,7 +1189,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
   if (!row) return undefined;
 
   const tutorId = row.tutor.id;
-  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, teachingDayRows, timeSlotRows, languageRows, communicationRows, educationRecordRows, supportingDocumentRows, assignedCountRows] = await Promise.all([
+  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, teachingDayRows, timeSlotRows, languageRows, communicationRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
     database.select().from(tutorTeachingAreas).where(eq(tutorTeachingAreas.tutorId, tutorId)),
     database.select().from(tutorSubjects).where(eq(tutorSubjects.tutorId, tutorId)),
     database.select().from(tutorClassLevels).where(eq(tutorClassLevels.tutorId, tutorId)),
@@ -1204,6 +1204,14 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     // Types only — the storage keys stay out of every profile DTO.
     database.select({ documentType: tutorSupportingDocuments.documentType }).from(tutorSupportingDocuments).where(eq(tutorSupportingDocuments.tutorId, tutorId)),
     database.select({ value: count() }).from(tutorRequests).where(eq(tutorRequests.tutorId, tutorId)),
+    // The newest Admin decision. A Tutor asked to make changes could not see
+    // which changes: the reason was written here and read only by an Admin.
+    database
+      .select({ nextStatus: tutorProfileModerationEvents.nextStatus, reason: tutorProfileModerationEvents.reason, createdAt: tutorProfileModerationEvents.createdAt })
+      .from(tutorProfileModerationEvents)
+      .where(eq(tutorProfileModerationEvents.tutorId, tutorId))
+      .orderBy(desc(tutorProfileModerationEvents.createdAt), desc(tutorProfileModerationEvents.id))
+      .limit(1),
   ]);
 
   const profile = {
@@ -1302,6 +1310,20 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     accountStatus: row.user.accountStatus,
     assignedRequestCount: Number(assignedCountRows[0]?.value ?? 0),
     lastUpdatedAt: row.tutor.updatedAt,
+    /**
+     * Why an Admin asked for changes, for the Tutor being asked.
+     *
+     * Only for that one decision. An approval note is not something to act on,
+     * and a suspension reason is an operational record for a support
+     * conversation rather than a correction the Tutor can make alone - so
+     * neither is handed back here.
+     */
+    moderationNote: row.tutor.profileStatus === "changes_requested" && moderationRows[0]?.nextStatus === "changes_requested"
+      ? (moderationRows[0].reason?.trim() || null)
+      : null,
+    moderationNoteAt: row.tutor.profileStatus === "changes_requested" && moderationRows[0]?.nextStatus === "changes_requested"
+      ? moderationRows[0].createdAt
+      : null,
   };
 
   return { ...profile, completionPercentage: calculateTutorProfileCompletion(profile) };
@@ -2406,6 +2428,63 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
   });
 }
 
+/**
+ * Closes a Guardian's own request, before an appointment is confirmed.
+ *
+ * Until now only an Admin could close one, so a Guardian who had found a tutor
+ * elsewhere had no way to say so - the job stayed on the board and Tutors kept
+ * applying to it. After confirmation it stops being self-serve: a coordinator
+ * is involved and a tuition may already have started, so that is a support
+ * conversation and the `appointmentConfirmedAt` guard below refuses it.
+ *
+ * The row is closed the same way an Admin closes it, and the reason is stored
+ * in the same private column - only the recorded actor differs.
+ */
+export async function cancelTutorRequestByGuardian(input: { requestId: number; guardianUserId: number; reason?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [request] = await tx.select({ id: tutorRequests.id }).from(tutorRequests)
+      .where(and(
+        eq(tutorRequests.id, input.requestId),
+        eq(tutorRequests.guardianUserId, input.guardianUserId),
+        inArray(tutorRequests.status, ["new", "reviewing", "matched"]),
+        isNull(tutorRequests.appointmentConfirmedAt),
+      )).limit(1).for("update");
+    if (!request) return { updated: false as const };
+
+    const cancelledAt = new Date();
+    await tx.update(tutorRequests).set({
+      status: "closed",
+      publicationState: "closed",
+      contactConsent: "not_required",
+      cancellationReason: input.reason?.trim() || "Cancelled by the Guardian.",
+      lastActivityAt: cancelledAt,
+    }).where(eq(tutorRequests.id, input.requestId));
+    // The public projection goes down with it, so the board stops offering a
+    // tuition nobody is going to take.
+    await tx.update(tutorJobs).set({ publicationStatus: "closed", deactivatedAt: cancelledAt })
+      .where(eq(tutorJobs.tutorRequestId, input.requestId));
+    const supersededLetters = await tx.update(confirmationLetters)
+      .set({ status: "superseded", supersededAt: cancelledAt, revisionReason: "Request cancelled by the Guardian" })
+      .where(and(
+        eq(confirmationLetters.tutorRequestId, input.requestId),
+        inArray(confirmationLetters.status, ["draft", "issued"]),
+      ));
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: input.requestId,
+      guardianUserId: input.guardianUserId,
+      actorUserId: input.guardianUserId,
+      action: "guardian_cancelled",
+      changedFields: JSON.stringify([
+        "cancelled",
+        ...(input.reason?.trim() ? ["reason_recorded"] : []),
+        ...(supersededLetters[0].affectedRows ? ["confirmation_letter_superseded"] : []),
+      ]),
+    });
+    return { updated: true as const };
+  });
+}
 /** Saves a Guardian's explicit contact-coordination decision only for their matched, pending request. */
 export async function decideGuardianTutorRequestContactConsent(input: {
   guardianUserId: number;

@@ -204,6 +204,7 @@ const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.phone.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Phone step heading", defaultText: "Start with your phone number", defaultTextClass: "text-2xl" },
   { id: "request-tutor.account.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Account step heading", defaultText: "Create your Guardian account", defaultTextClass: "text-2xl" },
   { id: "request-tutor.done.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Confirmation heading", defaultText: "Thank you. Your request is now pending review.", defaultTextClass: "text-3xl" },
+  { id: "request-tutor.sheet.title", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Hire a tutor sheet title", defaultText: "Hire a tutor", defaultTextClass: "text-base" },
 ];
 
 /**

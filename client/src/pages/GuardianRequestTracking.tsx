@@ -50,6 +50,17 @@ export function getGuardianStatusCounts(requests: Array<Pick<RequestRecord, "sta
   return counts;
 }
 
+/**
+ * Whether a Guardian may still withdraw the request themselves.
+ *
+ * Up to and including Appointed it is theirs to close. Once Confirmed a
+ * coordinator is involved and a tuition may already have started, so it stops
+ * being self-serve - the server refuses it there too, this only keeps the
+ * button from offering what would be refused.
+ */
+export function canGuardianCancelRequest(lifecycle: GuardianLifecycleKey) {
+  return lifecycle === "pending" || lifecycle === "live" || lifecycle === "appointed";
+}
 export function shouldUseDedicatedGuardianRequestDetails(viewportWidth: number) { return viewportWidth < 640; }
 
 export function getGuardianRequestStatusPresentation(status: string): { label: string; tone: GuardianRequestStatusTone } {
@@ -104,6 +115,10 @@ function Detail({ label, value, icon = false }: { label: string; value: string; 
 
 export function GuardianRequestTracking({ embedded = false, detailRequestId }: { embedded?: boolean; detailRequestId?: number }) {
   const requestsQuery = trpc.tutorRequests.mine.useQuery();
+  const utils = trpc.useUtils();
+  const cancelRequest = trpc.tutorRequests.cancel.useMutation({
+    onSuccess: () => { setExpandedId(null); void utils.tutorRequests.mine.invalidate(); },
+  });
   const [expandedId, setExpandedId] = useState<number | null>(detailRequestId ?? null);
   const requests = (requestsQuery.data ?? []) as RequestRecord[];
   const counts = useMemo(() => getGuardianStatusCounts(requests), [requests]);
@@ -207,6 +222,21 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
           <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
           {/* Only while Pending: once a tuition is Live it is out of the
               Guardian's hands and a coordinator is working on it. */}
+          {/* Their own request is theirs to withdraw until an appointment is
+              confirmed. Without this a Guardian who found a tutor elsewhere had
+              no way to say so, and the job stayed on the board collecting
+              applications nobody would answer. */}
+          {canGuardianCancelRequest(getGuardianRequestLifecycle(openRequest).key)
+            ? <button
+                type="button"
+                disabled={cancelRequest.isPending}
+                onClick={() => {
+                  if (!window.confirm("Cancel this request? Tutors will stop seeing it on the Job Board.")) return;
+                  cancelRequest.mutate({ requestId: openRequest.id });
+                }}
+                className="h-8 rounded-lg border border-[#e7c3c3] bg-white px-3.5 text-xs font-bold text-j-err hover:bg-j-err-wash disabled:opacity-50"
+              >{cancelRequest.isPending ? "Cancelling…" : "Cancel request"}</button>
+            : null}
           {getGuardianRequestLifecycle(openRequest).key === "pending"
             ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]">Update</Link>
             : null}

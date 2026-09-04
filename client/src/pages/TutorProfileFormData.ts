@@ -63,6 +63,9 @@ export type PersistedTutorProfileForForm = {
   educationRecords?: PersistedTutorEducationRecord[];
   universityIdDocumentStatus?: "uploaded" | "not_uploaded";
   uploadedSupportingDocuments?: string[];
+  /** Why an Admin asked for changes. Set only while the profile is `changes_requested`. */
+  moderationNote?: string | null;
+  moderationNoteAt?: string | Date | null;
 };
 
 export type TutorProfilePrivateDetails = {

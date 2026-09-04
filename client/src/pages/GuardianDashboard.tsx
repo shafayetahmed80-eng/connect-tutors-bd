@@ -1,7 +1,7 @@
 import { useSiteContact } from "@/lib/siteContent";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { SiteBlocks, SiteContentProvider, SiteText } from "@/lib/siteContent";
+import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentText } from "@/lib/siteContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
@@ -281,6 +281,8 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   const requestsQuery = trpc.tutorRequests.mine.useQuery();
   const requests = requestsQuery.data ?? [];
   const sectionLabel = section ? guardianDashboardNavigation.find(item => item.path.endsWith(`/${section}`))?.label : "Dashboard";
+  // The sheet is named from the Admin panel, like the headings inside it.
+  const hireSheetTitle = useSiteContentText("request-tutor.sheet.title", "Hire a tutor");
 
   if (section && section !== "hire" && section !== "profile" && section !== "posted-jobs" && section !== "notifications" && section !== "confirmation-letter" && section !== "attendance" && section !== "settings" && section !== "how-it-works") {
     return <div className="space-y-6"><GuardianWorkspaceState kind="planned" title={`${sectionLabel} is coming soon`} message="This Guardian workspace section is planned and will be introduced after its data and privacy rules are ready." /><Card className="rounded-xl border-j-border shadow-sm"><CardContent className="flex flex-col items-start gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-extrabold text-j-ink">Need help now?</p></div><div className="flex flex-wrap gap-3"><Link href="/guardian/dashboard/hire"><Button className="bg-[#1677c8] hover:bg-[#0e4f85]">Hire a tutor</Button></Link><Link href="/guardian/requests"><Button variant="outline">View requests</Button></Link></div></CardContent></Card></div>;
@@ -289,7 +291,7 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   if (section === "hire") {
     return <>
       <div className="space-y-6"><h1 className="text-3xl font-black tracking-tight text-j-ink">Posted jobs</h1><GuardianRequestTracking embedded /></div>
-      <GuardianHireSheet title="Hire a tutor" onClose={() => navigate("/guardian/dashboard/posted-jobs")}>
+      <GuardianHireSheet title={hireSheetTitle} onClose={() => navigate("/guardian/dashboard/posted-jobs")}>
         <GuardianRequestJourney embedded />
       </GuardianHireSheet>
     </>;
