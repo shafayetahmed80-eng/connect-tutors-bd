@@ -8,8 +8,8 @@ function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; lab
   return <div className="flex items-start gap-2.5">
     <Icon size={15} className="mt-0.5 shrink-0 text-[#8fa6b6]" aria-hidden={true} />
     <span className="min-w-0">
-      <span className="block text-[11px] text-[#8496a6]">{label}</span>
-      <span className={`block break-words text-[13px] ${value ? "font-medium text-j-ink" : tp.rowValueMissingTone}`}>{value || "Not given"}</span>
+      <span className="block text-2xs text-[#8496a6]">{label}</span>
+      <span className={`block break-words text-sm ${value ? "font-medium text-j-ink" : tp.rowValueMissingTone}`}>{value || "Not given"}</span>
     </span>
   </div>;
 }
@@ -99,7 +99,7 @@ export function TutorProfileIdentityRail({
       onChange={onSelectPhoto}
     />
 
-    {hasPhoto ? <p className="mt-2.5 text-[12px]">
+    {hasPhoto ? <p className="mt-2.5 text-xs">
       <button type="button" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className="rounded font-semibold text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60">
         {uploadingPhoto ? "Uploading…" : "Replace"}
       </button>
@@ -107,18 +107,18 @@ export function TutorProfileIdentityRail({
       <button type="button" disabled={uploadingPhoto} onClick={onRemovePhoto} className="rounded font-semibold text-[#bf3b3b] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60">
         Remove photo
       </button>
-    </p> : <p className="mt-2.5 text-[12px] font-semibold text-j-err">
+    </p> : <p className="mt-2.5 text-xs font-semibold text-j-err">
       {uploadingPhoto ? "Uploading…" : "Add photo · required"}
     </p>}
-    {photoError ? <p role="alert" className="mt-1 text-[11px] font-medium leading-4 text-j-err">{photoError}</p> : null}
+    {photoError ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-j-err">{photoError}</p> : null}
 
     <h2 className={`mt-3 break-words text-base ${tp.heading}`}>{name || "Your Tutor profile"}</h2>
-    <p className="mt-1 flex items-center justify-center gap-1.5 text-[12px] font-bold text-j-ink">
+    <p className="mt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-j-ink">
       <IdCard size={15} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
       Tutor ID: {tutorNumber ?? "Preparing"}
     </p>
 
-    <p className="mt-3 border-b border-j-border pb-3 text-[12px] font-bold text-j-ink">Profile completed: {completionPercentage}%</p>
+    <p className="mt-3 border-b border-j-border pb-3 text-xs font-bold text-j-ink">Profile completed: {completionPercentage}%</p>
 
     {onReturnToSelectedJob ? <Button
       type="button"

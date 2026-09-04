@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30";
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
 
@@ -219,7 +219,7 @@ export default function LocationCatalogManager() {
   const here = trail.length > 0 ? trail[trail.length - 1].label : "Bangladesh";
 
   return <div className="space-y-3">
-    <p className="text-[12px] leading-5 text-j-ink-soft">
+    <p className="text-xs leading-5 text-j-ink-soft">
       Used by <span className="font-bold text-j-ink-strong">registration, Request a tutor and the Job Board</span>. Places sit inside one another, so open a city to reach its areas. Hiding one keeps every profile that already chose it but stops it being offered on new forms.
     </p>
 
@@ -248,14 +248,14 @@ export default function LocationCatalogManager() {
         Page
       </label>
       <span className="text-xs font-bold text-j-ink-muted">{active.isFetching ? "Searching…" : `${total} found`}</span>
-      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-sm font-bold text-white disabled:opacity-40">
         {busy ? "Saving…" : dirtyRows.length > 0 ? `Save ${dirtyRows.length} change${dirtyRows.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
 
     {searching
-      ? <p className="text-[12px] font-bold text-j-ink-muted">Searching every place. <button type="button" onClick={() => openPlace(parentId)} className="text-j-accent underline">Back to {here}</button></p>
-      : <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[13px]">
+      ? <p className="text-xs font-bold text-j-ink-muted">Searching every place. <button type="button" onClick={() => openPlace(parentId)} className="text-j-accent underline">Back to {here}</button></p>
+      : <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm">
         <button type="button" onClick={() => openPlace(null)} className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 font-bold text-j-ink-muted hover:bg-j-surface-muted hover:text-j-ink-strong">
           <Home className="h-3.5 w-3.5" /> All
         </button>
@@ -272,34 +272,34 @@ export default function LocationCatalogManager() {
 
     {moving ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-2">
       <Move className="h-4 w-4 shrink-0 text-amber-700" />
-      <span className="text-[13px] text-amber-900">
+      <span className="text-sm text-amber-900">
         Carrying <span className="font-bold">{moving.label}</span>. Open the place it belongs in, then drop it there.
       </span>
       <span className="flex-1" />
       {moveBlockedBecause()
-        ? <span className="text-[12px] font-bold text-amber-800">{moveBlockedBecause()}</span>
+        ? <span className="text-xs font-bold text-amber-800">{moveBlockedBecause()}</span>
         : null}
       <button
         type="button"
         disabled={busy || moveBlockedBecause() !== null}
         onClick={dropHere}
-        className="h-8 rounded-lg bg-amber-600 px-3 text-[13px] font-bold text-white disabled:opacity-40"
+        className="h-8 rounded-lg bg-amber-600 px-3 text-sm font-bold text-white disabled:opacity-40"
       >{busy ? "Moving…" : `Drop into ${here}`}</button>
-      <button type="button" onClick={() => setMoving(null)} className="h-8 rounded-lg px-2 text-[13px] font-medium text-amber-800 hover:text-amber-950">Cancel</button>
+      <button type="button" onClick={() => setMoving(null)} className="h-8 rounded-lg px-2 text-sm font-medium text-amber-800 hover:text-amber-950">Cancel</button>
     </div> : null}
 
     {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-accent/30 bg-[#f2f9ff] p-2">
-      <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><EyeOff size={13} /> Hide</button>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40"><Eye size={13} /> Show</button>
+      <span className="text-sm font-bold text-[#0f4666]">{selected.size} selected</span>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"><EyeOff size={13} /> Hide</button>
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"><Eye size={13} /> Show</button>
       <button
         type="button"
         disabled={busy || deletableSelected.length === 0}
         onClick={() => { if (!confirmBulkDelete) { setConfirmBulkDelete(true); return; } void deleteSelected(); }}
-        className={`flex h-8 items-center gap-1 rounded-lg border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
+        className={`flex h-8 items-center gap-1 rounded-lg border px-3 text-sm font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
         title={deletableSelected.length < selected.size ? "Built-in places, places in use and places with others inside can only be hidden" : undefined}
       ><Trash2 size={13} /> {confirmBulkDelete ? `Confirm deleting ${deletableSelected.length}` : `Delete ${deletableSelected.length}`}</button>
-      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-lg px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">Clear</button>
+      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-lg px-2 text-sm font-medium text-j-ink-muted hover:text-j-ink-strong">Clear</button>
     </div> : null}
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
@@ -324,12 +324,12 @@ export default function LocationCatalogManager() {
       >
         {addableTypes.map(type => <option key={type} value={type}>{locationTypeLabels[type]}</option>)}
       </select>
-      <button type="button" disabled={busy || newLabel.trim().length === 0} onClick={addPlace} className="flex h-8 items-center gap-1 rounded-lg bg-j-ink px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={busy || newLabel.trim().length === 0} onClick={addPlace} className="flex h-8 items-center gap-1 rounded-lg bg-j-ink px-3 text-sm font-bold text-white disabled:opacity-40">
         <Plus className="h-3.5 w-3.5" /> Add
       </button>
     </div> : null}
 
-    {!searching && !parentId ? <p className="rounded-xl border border-j-border bg-j-surface-sunken px-3 py-2 text-[12px] text-j-ink-soft">
+    {!searching && !parentId ? <p className="rounded-xl border border-j-border bg-j-surface-sunken px-3 py-2 text-xs text-j-ink-soft">
       Open a place to add anything inside it. The country itself is fixed.
     </p> : null}
 
@@ -367,13 +367,13 @@ export default function LocationCatalogManager() {
               </div>
 
               <div className="hidden min-w-0 flex-col sm:flex">
-                <span className="truncate text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">
+                <span className="truncate text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
                   {locationTypeLabels[row.type as LocationType] ?? row.type}
                 </span>
                 {row.path && row.path.length > 0
-                  ? <span className="truncate text-[11px] text-j-ink-faint" title={row.path.join(" / ")}>{row.path.join(" / ")}</span>
+                  ? <span className="truncate text-2xs text-j-ink-faint" title={row.path.join(" / ")}>{row.path.join(" / ")}</span>
                   : row.usageCount > 0
-                  ? <span className="text-[11px] text-j-ink-faint">{row.usageCount} used</span>
+                  ? <span className="text-2xs text-j-ink-faint">{row.usageCount} used</span>
                   : null}
               </div>
 
@@ -415,11 +415,11 @@ export default function LocationCatalogManager() {
           })}
 
         {total > LOCATION_PAGE_SIZE ? <div className="mt-3 flex items-center justify-between gap-2 border-t border-j-border pt-2">
-          <button type="button" disabled={page <= 1 || active.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
+          <button type="button" disabled={page <= 1 || active.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
             <ChevronLeft size={14} /> Previous
           </button>
-          <span className="text-[12px] font-bold text-j-ink-muted">Page {page} of {lastPage}</span>
-          <button type="button" disabled={page >= lastPage || active.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-[13px] font-bold text-j-ink-soft disabled:opacity-30">
+          <span className="text-xs font-bold text-j-ink-muted">Page {page} of {lastPage}</span>
+          <button type="button" disabled={page >= lastPage || active.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
             Next <ChevronRight size={14} />
           </button>
         </div> : null}

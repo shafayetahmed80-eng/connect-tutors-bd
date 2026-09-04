@@ -127,7 +127,7 @@ function TutorSidebarIdentity({ identity }: { identity: ReturnType<typeof getTut
       <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
         <p className="truncate text-sm font-bold tracking-[-0.015em] text-[#173b60]">{identity.name}</p>
         <p className="mt-0.5 truncate text-xs font-medium text-[#587489]">{identity.email}</p>
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#dcebf5] pt-2 text-[10px] text-[#6c8799]">
+        <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#dcebf5] pt-2 text-2xs text-[#6c8799]">
           <span className="flex min-w-0 items-center gap-1 font-bold text-[#173b60]">
             <IdCard size={13} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
             <span className="truncate">{identity.tutorNumber.startsWith("Tutor ID") ? identity.tutorNumber : `Tutor ID: ${identity.tutorNumber}`}</span>

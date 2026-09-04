@@ -52,7 +52,7 @@ export function PasswordPolicyBanner({ password, confirmPassword }: { password: 
     <div className="mt-3" aria-live="polite">
       <div className="flex items-center justify-between gap-3">
         <p className={`font-bold ${strengthIndicator.textClass}`}>Password strength: {strengthIndicator.label}</p>
-        <span className="text-[11px] font-semibold text-j-ink-muted">{strengthIndicator.value}/3</span>
+        <span className="text-2xs font-semibold text-j-ink-muted">{strengthIndicator.value}/3</span>
       </div>
       <div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={3} aria-valuenow={strengthIndicator.value} aria-valuetext={strengthIndicator.label} className="mt-1.5 flex gap-1" data-strength={strengthIndicator.label.toLowerCase()}>
         {[1, 2, 3].map(level => <span key={level} aria-hidden="true" className={`h-1.5 flex-1 rounded-full ${level <= strengthIndicator.value ? strengthIndicator.fillClass : "bg-j-surface-muted"}`} />)}

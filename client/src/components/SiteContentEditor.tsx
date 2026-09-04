@@ -22,20 +22,20 @@ const spacingLabels: Record<SiteContentSpacing, string> = {
   roomy: "Roomy",
 };
 
-const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 /**
  * Four columns once there is room for them; below `sm` the label takes its own
  * line, because squeezing it alongside the controls leaves the text box too
  * narrow to read what you are editing.
  */
 const rowClass = "grid grid-cols-[minmax(0,1fr)_5.5rem_1.75rem] items-center gap-2 py-1 sm:grid-cols-[minmax(6rem,10rem)_minmax(0,1fr)_5.5rem_1.75rem]";
-const rowLabelClass = "col-span-3 truncate text-[13px] font-medium text-j-ink-soft sm:col-span-1";
+const rowLabelClass = "col-span-3 truncate text-sm font-medium text-j-ink-soft sm:col-span-1";
 
 /** `textPx` is the number in the box, kept as a string so it can be emptied. */
 type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
 type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
 
-const sizeInputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-[13px] tabular-nums text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const sizeInputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm tabular-nums text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
 
 /**
@@ -273,14 +273,14 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter by label or text" className={`${inputClass} pl-7`} />
       </label>
       <span className="text-xs font-bold text-j-ink-muted">{stored.size} overridden</span>
-      <button type="button" disabled={saving || dirtyIds.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={saving || dirtyIds.length === 0} onClick={() => void saveAll()} className="h-8 rounded-lg bg-j-accent px-3 text-sm font-bold text-white disabled:opacity-40">
         {saving ? "Saving…" : dirtyIds.length > 0 ? `Save ${dirtyIds.length} change${dirtyIds.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
 
     {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-j-accent/30 bg-[#f2f9ff] p-2">
-      <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
-      <label className="flex items-center gap-1.5 text-[12px] text-j-ink-soft">
+      <span className="text-sm font-bold text-[#0f4666]">{selected.size} selected</span>
+      <label className="flex items-center gap-1.5 text-xs text-j-ink-soft">
         Set size
         <input
           type="number"
@@ -294,13 +294,13 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         />
         px
       </label>
-      <button type="button" disabled={saving || bulkPx.trim() === "" || sizableSelected().length === 0} onClick={() => void applyBulkSize()} className="h-8 rounded-lg bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={saving || bulkPx.trim() === "" || sizableSelected().length === 0} onClick={() => void applyBulkSize()} className="h-8 rounded-lg bg-j-accent px-3 text-sm font-bold text-white disabled:opacity-40">
         Apply to {sizableSelected().length}
       </button>
-      <button type="button" disabled={saving || !Array.from(selected).some(id => stored.has(id))} onClick={() => void resetSelected()} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40">
+      <button type="button" disabled={saving || !Array.from(selected).some(id => stored.has(id))} onClick={() => void resetSelected()} className="flex h-8 items-center gap-1 rounded-lg border border-j-field-border bg-white px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40">
         <RotateCcw size={13} /> Reset selected
       </button>
-      <button type="button" onClick={() => setSelected(new Set())} className="h-8 rounded-lg px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">
+      <button type="button" onClick={() => setSelected(new Set())} className="h-8 rounded-lg px-2 text-sm font-medium text-j-ink-muted hover:text-j-ink-strong">
         Clear
       </button>
     </div> : null}
@@ -331,13 +331,13 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
               aria-label={`Select every row under ${surface}`}
               onChange={event => toggleMany(surfaceIds, event.target.checked)}
             />
-            <h2 className="truncate text-[13px] font-bold text-j-ink">{surface}</h2>
+            <h2 className="truncate text-sm font-bold text-j-ink">{surface}</h2>
           </label>
-          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{overriddenHere} edited</span>
+          <span className="shrink-0 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">{overriddenHere} edited</span>
         </div>
 
         {groups.map(group => <div key={group} className="mt-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{group}</p>
+          <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">{group}</p>
           {surfaceTextSlots.filter(slot => slot.group === group).map(slot => <div key={slot.id} className={rowClass}>
             {/* The checkbox lives inside the label cell rather than taking a
                 grid column of its own, which would squeeze the text box on a
@@ -384,7 +384,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         </div>)}
 
         {surfaceSizeSlots.map(slot => <div key={slot.id} className="mt-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">Text size</p>
+          <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Text size</p>
           <div className={rowClass}>
             <span className={`${rowLabelClass} flex items-center gap-2`}>
               <input
@@ -399,7 +399,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
                 {isDirty(slot.id) ? <span className="ml-1 text-j-accent" aria-label="unsaved">•</span> : null}
               </span>
             </span>
-            <span className="hidden text-[11px] leading-4 text-j-ink-muted sm:block">{slot.help}</span>
+            <span className="hidden text-2xs leading-4 text-j-ink-muted sm:block">{slot.help}</span>
             <input
               type="number"
               inputMode="numeric"
@@ -417,7 +417,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         </div>)}
 
         {surfaceSpacingSlots.map(slot => <div key={slot.id} className="mt-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">Spacing</p>
+          <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Spacing</p>
           <div className={rowClass}>
             <span className={`${rowLabelClass} flex items-center gap-2`}>
               <input

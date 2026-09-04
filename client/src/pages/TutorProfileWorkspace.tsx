@@ -33,7 +33,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-[12px] text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-xs text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
 /**
  * Two columns of controls that are all one line tall.
@@ -61,8 +61,8 @@ function FormSection({ title, description, children }: { title?: React.ReactNode
     {title ? <div className="flex items-baseline gap-2 border-b border-[#e9f2f8] bg-gradient-to-b from-[#f8fcff] to-[#f1f8fd] px-4 py-2.5">
       {/* A short accent spine, the one place the panel is coloured. */}
       <span aria-hidden="true" className="h-3.5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#4aa6f0] to-[#1677e8]" />
-      <h3 className="text-[13px] font-bold text-[#244a6a]">{title}</h3>
-      {description ? <p className="text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
+      <h3 className="text-sm font-bold text-[#244a6a]">{title}</h3>
+      {description ? <p className="text-2xs leading-4 text-[#72889a]">{description}</p> : null}
     </div> : null}
     <div className="p-4">{children}</div>
   </section>;
@@ -89,7 +89,7 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
       {options.map(([optionValue, optionLabel]) => <label
         key={optionValue}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-[#167ddd] bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-[#167ddd] bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
       >
         <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />
         {optionLabel}
@@ -244,14 +244,14 @@ function CatalogSearchField({
       </button> : null}
     </span>
     <datalist id={listId}>{(options ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
-    {hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}
-    {truncated ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
-    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}
+    {truncated ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
   </label>;
 }
 
 function FormInput({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 /** Single-select for the Education section's curated vocabularies. */
@@ -268,12 +268,12 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
       <option value="">{placeholder}</option>
       {options.map(option => <option key={option} value={option}>{option}</option>)}
     </select>
-    {error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
   </label>;
 }
 
 function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-[11px] font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 /**
@@ -999,7 +999,7 @@ function TutorProfileWorkspaceBody({
             className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
           >
             <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
-            <span><strong className="block text-[13px] font-semibold text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
+            <span><strong className="block text-sm font-semibold text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
           </label>
         </div>
       </FormSection>

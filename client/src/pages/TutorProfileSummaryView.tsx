@@ -31,9 +31,9 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h2 className={`text-sm ${tp.heading}`}>Profile preview</h2>
-          <p className="mt-0.5 text-[11px] text-[#8496a6]">Every detail on your profile, filled or still missing.</p>
+          <p className="mt-0.5 text-2xs text-[#8496a6]">Every detail on your profile, filled or still missing.</p>
         </div>
-        <p className="shrink-0 text-[11px] font-bold text-j-ink tabular-nums">
+        <p className="shrink-0 text-2xs font-bold text-j-ink tabular-nums">
           {overall.filled}<span className="text-[#8496a6]">/{overall.total} required filled</span>
         </p>
       </div>
@@ -47,8 +47,8 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
         {/* The tab bar names the section in the editor; in one long list each
             section has to name itself. */}
         <div className="flex items-baseline justify-between gap-3 px-1 pt-1">
-          <h3 className={`text-[13px] ${tp.heading}`}>{section.title}</h3>
-          <span className="shrink-0 text-[11px] font-bold text-[#8496a6] tabular-nums">
+          <h3 className={`text-sm ${tp.heading}`}>{section.title}</h3>
+          <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
             {sectionCount.total === 0 ? "Optional" : `${sectionCount.filled}/${sectionCount.total}`}
           </span>
         </div>

@@ -53,7 +53,7 @@ export function GuardianRequestSummaryView({
   return <div className={tp.stack}>
     {groups.map(group => <section key={group.title} className={`${tp.card} ${tp.cardPad}`} aria-labelledby={`request-group-${group.step}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h3 id={`request-group-${group.step}`} className={`text-[13px] ${tp.heading}`}>{group.title}</h3>
+        <h3 id={`request-group-${group.step}`} className={`text-sm ${tp.heading}`}>{group.title}</h3>
         {renderGroupAction?.(group)}
       </div>
 

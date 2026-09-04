@@ -78,7 +78,7 @@ function RequestTimeline({ request }: { request: RequestRecord }) {
     const isCurrent = lifecycle.key === step.key;
     const isComplete = lifecycle.key !== "cancelled" && index + 1 < lifecycle.activeIndex;
     const isCancelledEnd = lifecycle.key === "cancelled" && step.key === "cancelled";
-    return <li key={step.key} aria-current={isCurrent ? "step" : undefined} className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${isCurrent || isCancelledEnd ? "border-[#78c6f2] bg-[#e9f7ff] text-[#126ea9]" : isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-j-border bg-j-surface-sunken text-j-ink-faint"}`}><span className={`grid size-5 shrink-0 place-items-center rounded-full text-[10px] ${isCurrent || isCancelledEnd ? "bg-[#1677c8] text-white" : isComplete ? "bg-emerald-600 text-white" : "bg-white text-j-ink-muted ring-1 ring-j-border"}`}>{index + 1}</span>{step.label}</li>;
+    return <li key={step.key} aria-current={isCurrent ? "step" : undefined} className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${isCurrent || isCancelledEnd ? "border-[#78c6f2] bg-[#e9f7ff] text-[#126ea9]" : isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-j-border bg-j-surface-sunken text-j-ink-faint"}`}><span className={`grid size-5 shrink-0 place-items-center rounded-full text-2xs ${isCurrent || isCancelledEnd ? "bg-[#1677c8] text-white" : isComplete ? "bg-emerald-600 text-white" : "bg-white text-j-ink-muted ring-1 ring-j-border"}`}>{index + 1}</span>{step.label}</li>;
   })}</ol>;
 }
 
@@ -132,7 +132,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
               role="tab"
               aria-selected={selected}
               onClick={() => { setActiveStage(step.key); setExpandedId(null); }}
-              className={`relative pb-2.5 pt-1.5 text-[12px] font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-[#6c879e] hover:text-[#173d60]"}`}
+              className={`relative pb-2.5 pt-1.5 text-xs font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-[#6c879e] hover:text-[#173d60]"}`}
             >
               {step.label} <span className={`ml-1 tabular-nums ${selected ? "text-[#1267c8]" : "text-[#8ba3b6]"}`}>{String(counts[step.key]).padStart(2, "0")}</span>
               {selected ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
@@ -204,11 +204,11 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
         onClose={() => setExpandedId(null)}
         showMapLink={false}
         action={<>
-          <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-[12px] font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
+          <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
           {/* Only while Pending: once a tuition is Live it is out of the
               Guardian's hands and a coordinator is working on it. */}
           {getGuardianRequestLifecycle(openRequest).key === "pending"
-            ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-[12px] font-bold text-white hover:bg-[#1267c8]">Update</Link>
+            ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]">Update</Link>
             : null}
         </>}
       /> : null}

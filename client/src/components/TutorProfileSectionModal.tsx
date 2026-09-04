@@ -114,7 +114,7 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
           tinted, so where the content scrolls is obvious at a glance. */}
       <div className="flex items-start justify-between gap-4 border-b-2 border-[#d3e7f6] bg-gradient-to-b from-[#f7fbfe] to-[#e9f4fc] px-4 py-3">
         <div className="min-w-0">
-          <p aria-hidden="true" className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7595ad]">Edit section</p>
+          <p aria-hidden="true" className="text-2xs font-bold uppercase tracking-[0.14em] text-[#7595ad]">Edit section</p>
           {/* The eyebrow carries "Edit" visually; the heading keeps it for a
               screen reader, so the dialog is still announced as an editor. */}
           {/* The space has to sit outside the hidden span: the accessible name
