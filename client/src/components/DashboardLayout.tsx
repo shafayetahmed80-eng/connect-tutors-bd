@@ -20,10 +20,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { SiteContentProvider, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
+import { SiteContentProvider, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
 import {
   sidebarFontSlotId,
   sidebarGroupSlotId,
+  sidebarHeightSlotId,
   sidebarPaddingSlotId,
   sidebarTabsSlotId,
   type SidebarPanelId,
@@ -280,6 +281,7 @@ function DashboardLayoutContent({
   const resolveSlot = useSiteContentResolver();
   const sidebarFontStyle = useSiteContentTextStyle(sidebarPanel ? sidebarFontSlotId(sidebarPanel) : "");
   const sidebarPaddingStyle = useSiteContentPaddingStyle(sidebarPanel ? sidebarPaddingSlotId(sidebarPanel) : "");
+  const sidebarHeightStyle = useSiteContentHeightStyle(sidebarPanel ? sidebarHeightSlotId(sidebarPanel) : "");
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -414,7 +416,11 @@ function DashboardLayoutContent({
                       tooltip={label}
                       aria-current={isActive && !item.action ? "page" : undefined}
                       className={getDashboardNavigationItemClassName(isActive && !item.action)}
-                      style={{ ...sidebarFontStyle, ...sidebarPaddingStyle }}
+                      // Height is spread last: it is the more specific ask, so
+                      // an Owner who sets both height and padding gets the
+                      // literal number they typed for height, not the `auto`
+                      // that setting padding alone would otherwise produce.
+                      style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
                     >
                       <item.icon
                         className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}

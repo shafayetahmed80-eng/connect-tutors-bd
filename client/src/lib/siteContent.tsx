@@ -7,6 +7,7 @@ import {
   telHref,
   whatsappHref,
   resolveSiteContentSpacingClass,
+  resolveSiteContentHeightStyle,
   resolveSiteContentPaddingStyle,
   resolveSiteContentTextStyle,
   type SiteContentPageId,
@@ -71,6 +72,12 @@ export function useSiteContentTextStyle(slotId: string) {
 export function useSiteContentPaddingStyle(slotId: string) {
   const override = useOverride(slotId);
   return resolveSiteContentPaddingStyle(override?.paddingPx);
+}
+
+/** A row's height, set directly rather than by way of its padding, else `undefined`. */
+export function useSiteContentHeightStyle(slotId: string) {
+  const override = useOverride(slotId);
+  return resolveSiteContentHeightStyle(override?.textSizePx);
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   findSidebarPanel,
   sidebarFontSlotId,
   sidebarGroupSlotId,
+  sidebarHeightSlotId,
   sidebarPaddingSlotId,
   sidebarPanelIds,
   sidebarPanels,
@@ -30,6 +31,7 @@ describe("sidebar tab slot ids", () => {
       ...panel.groups.map(heading => sidebarGroupSlotId(panel.id, heading)),
       sidebarFontSlotId(panel.id),
       sidebarPaddingSlotId(panel.id),
+      sidebarHeightSlotId(panel.id),
     ]);
 
     expect(new Set(ids).size).toBe(ids.length);
@@ -44,6 +46,7 @@ describe("sidebar panel registry", () => {
       expect(panel.groups.length, panel.id).toBeGreaterThan(0);
       expect(panel.fontPx, panel.id).toBeGreaterThan(0);
       expect(panel.paddingPx, panel.id).toBeGreaterThan(0);
+      expect(panel.heightPx, panel.id).toBeGreaterThan(0);
     }
     expect(findSidebarPanel("nope")).toBeUndefined();
   });
@@ -63,6 +66,9 @@ describe("sidebar panel registry", () => {
       }
       expect(findSiteContentSizeSlot(sidebarFontSlotId(panel.id))?.metric).toBe("fontSize");
       expect(findSiteContentSizeSlot(sidebarPaddingSlotId(panel.id))?.metric).toBe("padding");
+      const heightSlot = findSiteContentSizeSlot(sidebarHeightSlotId(panel.id));
+      expect(heightSlot?.metric, panel.id).toBe("height");
+      expect(heightSlot?.defaultPx, panel.id).toBe(panel.heightPx);
     }
   });
 

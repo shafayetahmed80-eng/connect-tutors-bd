@@ -12,6 +12,7 @@
 import {
   sidebarFontSlotId,
   sidebarGroupSlotId,
+  sidebarHeightSlotId,
   sidebarPaddingSlotId,
   sidebarPanels,
   sidebarTabsSlotId,
@@ -129,7 +130,7 @@ export type SiteContentSizeSlot = {
    * stored in separate columns so a row never has to be read against the
    * registry to know what its number meant.
    */
-  metric?: "fontSize" | "padding";
+  metric?: "fontSize" | "padding" | "height";
   /** What the size is in code, and what Reset returns to. */
   defaultPx: number;
   /** Shown under the control so the Admin knows what it moves. */
@@ -137,7 +138,7 @@ export type SiteContentSizeSlot = {
 };
 
 /** A size slot's measurement; the older text-only slots predate the field. */
-export function siteContentSizeSlotMetric(slot: SiteContentSizeSlot): "fontSize" | "padding" {
+export function siteContentSizeSlotMetric(slot: SiteContentSizeSlot): "fontSize" | "padding" | "height" {
   return slot.metric ?? "fontSize";
 }
 
@@ -403,7 +404,17 @@ const siteContentSizeSlots: SiteContentSizeSlot[] = [
       label: "Menu row padding",
       metric: "padding",
       defaultPx: panel.paddingPx,
-      help: "Space above and below each menu item. Setting it replaces the fixed row height.",
+      help: "Space above and below each menu item. Setting it replaces the fixed row height, unless the height below is also set.",
+    },
+    {
+      id: sidebarHeightSlotId(panel.id),
+      page: "sidebar-tabs",
+      surface: panel.surface,
+      group: "Size",
+      label: "Menu row height",
+      metric: "height",
+      defaultPx: panel.heightPx,
+      help: "How tall each menu item stands, directly. Wins over the padding control above when both are set.",
     },
   ]),
 ];
@@ -473,13 +484,26 @@ export function resolveSiteContentTextStyle(px: number | null | undefined): { fo
 /**
  * Vertical padding for a sidebar row, or `undefined` when untouched.
  *
- * `height: auto` comes along with it: the rows ship at a fixed `h-10`, and
- * padding on a fixed-height box would change nothing at all.
+ * `height: auto` comes along with it: the rows ship at a fixed `h-[38px]`,
+ * and padding on a fixed-height box would change nothing at all. The height
+ * style below is applied after this one at the call site, so an Owner who
+ * sets both gets the literal number they typed there rather than this
+ * padding-driven `auto`.
  */
 export function resolveSiteContentPaddingStyle(px: number | null | undefined) {
   if (px == null) return undefined;
   const value = `${clampSiteContentTextPx(px)}px`;
   return { paddingTop: value, paddingBottom: value, height: "auto" as const };
+}
+
+/**
+ * A sidebar row's height, directly - or `undefined` when untouched, which
+ * leaves the shipped `h-[38px]` class (or the padding rule above, if that is
+ * the one in play) to decide.
+ */
+export function resolveSiteContentHeightStyle(px: number | null | undefined): { height: string } | undefined {
+  if (px == null) return undefined;
+  return { height: `${clampSiteContentTextPx(px)}px` };
 }
 
 export function resolveSiteContentSpacingClass(spacing: SiteContentSpacing | null | undefined): string {
