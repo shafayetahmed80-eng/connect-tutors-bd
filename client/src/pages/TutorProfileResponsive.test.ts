@@ -22,10 +22,9 @@ describe("Tutor Profile mobile responsive layout contract", () => {
     expect(tutorProfileResponsiveClasses.photoPreview).toContain("max-w-full");
   });
 
-  it("keeps the crop editor within a portrait viewport and allows vertical access to its controls", () => {
-    expect(tutorProfileResponsiveClasses.photoEditorPanel).toContain("max-h-[100dvh]");
-    expect(tutorProfileResponsiveClasses.photoEditorPanel).toContain("overflow-y-auto");
+  it("keeps the crop editor's stage bounded within a portrait viewport", () => {
     expect(tutorProfileResponsiveClasses.photoEditorCropStage).toContain("52dvh");
+    expect(tutorProfileResponsiveClasses.photoEditorCropStage).toContain("max-h-[360px]");
   });
 
   it("prevents Profile containers and selector text from expanding beyond narrow Android viewports", () => {

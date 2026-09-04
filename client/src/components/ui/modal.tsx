@@ -60,6 +60,7 @@ export function Modal({
   onClose,
   busy = false,
   isSuspended,
+  panelTestId,
   children,
 }: {
   size?: ModalSize;
@@ -68,6 +69,8 @@ export function Modal({
   busy?: boolean;
   /** A nested non-Modal overlay owns the keyboard right now (e.g. the photo cropper). */
   isSuspended?: () => boolean;
+  /** `data-testid` for the panel — for a dialog another overlay looks up by test id. */
+  panelTestId?: string;
   children: React.ReactNode;
 }) {
   const titleId = useId();
@@ -130,6 +133,7 @@ export function Modal({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
+          data-testid={panelTestId}
           tabIndex={-1}
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
