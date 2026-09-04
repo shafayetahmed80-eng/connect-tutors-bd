@@ -18,7 +18,7 @@ export function TutorWorkspaceTransition() {
         <Sparkles className="absolute -right-1 -top-1 size-5 text-[#e7a528]" />
       </div>
       <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-[#2782c7]">Tutor sign in complete</p>
-      <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[#173b60]">Preparing your Tutor Dashboard…</h3>
+      <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-j-ink">Preparing your Tutor Dashboard…</h3>
       <p className="mt-2 max-w-xs text-sm leading-6 text-[#728ba0]">Loading your private workspace securely.</p>
     </section>
   );

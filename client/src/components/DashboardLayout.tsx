@@ -458,7 +458,7 @@ function DashboardLayoutContent({
                 <span className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-[#6d8799]">
                   {mobileContext.workspace}
                 </span>
-                <span className="truncate text-sm font-semibold tracking-tight text-[#173b60]">
+                <span className="truncate text-sm font-semibold tracking-tight text-j-ink">
                   {mobileContext.destination}
                 </span>
                 </div>
@@ -511,7 +511,7 @@ function WorkspaceHeader({
         <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent md:hidden" />
         <div className="min-w-0">
           <p className="text-2xs font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-[#173b60] sm:text-lg">{heading}</h1>
+          <h1 className="truncate text-base font-semibold tracking-tight text-j-ink sm:text-lg">{heading}</h1>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -522,7 +522,7 @@ function WorkspaceHeader({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 rounded-xl p-3">
-            <p className="text-sm font-semibold text-[#173b60]">Notifications</p>
+            <p className="text-sm font-semibold text-j-ink">Notifications</p>
             <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>
           </PopoverContent>
         </Popover>
@@ -537,7 +537,7 @@ function WorkspaceHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
             <div className="px-2 py-2">
-              <p className="truncate text-sm font-bold text-[#173b60]">{identity.name}</p>
+              <p className="truncate text-sm font-bold text-j-ink">{identity.name}</p>
               {(identity.details ?? []).map(detail => <div key={detail.label}>
                 <p className="mt-1 text-2xs font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</p>
                 <p className="mt-0.5 truncate text-sm font-medium text-[#527086]">{detail.value}</p>

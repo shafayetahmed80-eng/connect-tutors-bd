@@ -53,10 +53,10 @@ export function TutorPreferenceIcon({ preference, className }: { preference: str
 
 function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; label: string; value: string; muted?: boolean; wide?: boolean }) {
   return <div className={`min-w-0 ${wide ? "col-span-2" : ""}`}>
-    <p className="flex items-center gap-1 text-2xs text-[#6c879e]"><span className="shrink-0 text-[#1677e8]">{icon}</span>{label}</p>
+    <p className="flex items-center gap-1 text-2xs text-j-ink-muted"><span className="shrink-0 text-[#1677e8]">{icon}</span>{label}</p>
     {/* Subjects and long place names wrap onto a second line rather than being
         cut; the grid stretches every card in the row to match. */}
-    <p className={`mt-0.5 break-words text-2xs leading-[1.45] ${muted ? "italic text-[#8ba3b6]" : "text-[#173d60]"}`}>{value}</p>
+    <p className={`mt-0.5 break-words text-2xs leading-[1.45] ${muted ? "italic text-j-ink-faint" : "text-[#173d60]"}`}>{value}</p>
   </div>;
 }
 
@@ -81,7 +81,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
     >
       <h3 className="text-sm font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-[#6c879e]">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-j-ink-muted">
         <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
         <span className="inline-flex items-center gap-1"><RecordIcon name="posted" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
@@ -96,7 +96,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
         <Fact icon={<MapPin size={12} />} label="Location" value={place} wide />
       </div>
 
-      <p className="mt-2.5 flex items-center gap-1.5 text-2xs text-[#6c879e]">
+      <p className="mt-2.5 flex items-center gap-1.5 text-2xs text-j-ink-muted">
         <TutorPreferenceIcon preference={job.preferredTutorGender} className="text-[#1677e8]" />
         <span><strong className="font-semibold text-[#173d60]">{formatTutorPreference(job.preferredTutorGender)}</strong> tutor preferred</span>
       </p>
@@ -109,7 +109,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
               target="_blank"
               rel="noreferrer"
               onClick={event => event.stopPropagation()}
-              className="inline-flex items-center gap-1 text-2xs font-semibold text-[#6c879e] hover:text-[#1267c8] hover:underline"
+              className="inline-flex items-center gap-1 text-2xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline"
             ><MapPin size={12} /> View on map</a>
           : <span />}
         {action}

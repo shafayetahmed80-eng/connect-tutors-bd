@@ -33,7 +33,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-xs text-[#173b60] outline-none transition placeholder:text-[#99aabb] focus:border-[#167ddd] focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-xs text-j-ink outline-none transition placeholder:text-[#99aabb] focus:border-j-accent focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
 /**
  * Two columns of controls that are all one line tall.
@@ -58,7 +58,7 @@ function FormSection({ title, description, children }: { title?: React.ReactNode
   // tinted, so each white group lifts off it the way the reference's floating
   // cards lift off their backdrop - the same layering, in the site's own blues.
   return <section className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(23,59,96,0.04),0_8px_20px_-12px_rgba(22,119,232,0.18)] ring-1 ring-[#dbe9f4]">
-    {title ? <div className="flex items-baseline gap-2 border-b border-[#e9f2f8] bg-gradient-to-b from-[#f8fcff] to-[#f1f8fd] px-4 py-2.5">
+    {title ? <div className="flex items-baseline gap-2 border-b border-[#e9f2f8] bg-gradient-to-b from-j-surface-sunken to-[#f1f8fd] px-4 py-2.5">
       {/* A short accent spine, the one place the panel is coloured. */}
       <span aria-hidden="true" className="h-3.5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#4aa6f0] to-[#1677e8]" />
       <h3 className="text-sm font-bold text-[#244a6a]">{title}</h3>
@@ -89,9 +89,9 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
       {options.map(([optionValue, optionLabel]) => <label
         key={optionValue}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-[#167ddd] bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-j-accent bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
       >
-        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-[#167ddd]" />
+        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-j-accent" />
         {optionLabel}
       </label>)}
     </div>
@@ -303,13 +303,13 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
       onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
     />
     <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]">
-      {required ? <LockKeyhole className="shrink-0 text-[#167ddd]" size={16} aria-hidden="true" /> : null}
+      {required ? <LockKeyhole className="shrink-0 text-j-accent" size={16} aria-hidden="true" /> : null}
       {label}
       {required ? <span aria-hidden="true" className="text-[#d84a4a]">*</span> : <span className="font-normal text-[#72889a]">(Optional)</span>}
     </p>
     <div className="flex items-center gap-2">
       {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
-      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-[#167ddd]"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-j-accent"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
     </div>
   </div>;
 }
@@ -898,7 +898,7 @@ function TutorProfileWorkspaceBody({
         return <div key={index} className={`overflow-hidden rounded-xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
           <div className="flex items-center gap-2 p-3 sm:px-4">
             <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
-              <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-[#167ddd] text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
+              <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-j-accent text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
               <span className="min-w-0 flex-1">
                 <span className={`block text-sm font-bold ${tp.heading}`}>{record.qualificationLevel || `Qualification ${index + 1}`}</span>
                 {!isOpen && summary ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{summary}</span> : null}
@@ -923,7 +923,7 @@ function TutorProfileWorkspaceBody({
           </div> : null}
         </div>;
       })}
-      <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-[#167ddd]"><Plus size={16} /> Add another qualification</Button>
+      <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-j-accent"><Plus size={16} /> Add another qualification</Button>
     </div>
     <div className="mt-6">
       <DocumentUploadRow
@@ -998,7 +998,7 @@ function TutorProfileWorkspaceBody({
           <label
             className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
           >
-            <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]" />
+            <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionType === "online" || form.tuitionType === "both" || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-j-accent" />
             <span><strong className="block text-sm font-semibold text-[#244a6a]">Available nationwide for online tuition{form.tuitionType === "online" || form.tuitionType === "both" ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online or Both.</span><InlineError message={fieldErrors.availableNationwide} /></span>
           </label>
         </div>

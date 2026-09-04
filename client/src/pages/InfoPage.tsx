@@ -76,7 +76,7 @@ function InfoPageContent() {
 function PolicyBody({ pageKey, fallback }: { pageKey: PolicyPageKey; fallback: string }) {
   const documents = trpc.policyDocuments.list.useQuery();
   const stored = documents.data?.find(row => row.pageKey === pageKey)?.body;
-  return <article className="mx-auto max-w-3xl rounded-[2rem] border border-[#dcecf5] bg-white p-7 shadow-[0_18px_55px_rgba(28,101,148,0.08)] sm:p-10">
+  return <article className="mx-auto max-w-3xl rounded-[2rem] border border-j-border bg-white p-7 shadow-[0_18px_55px_rgba(28,101,148,0.08)] sm:p-10">
     <PolicyDocument body={stored?.trim() ? stored : fallback} />
   </article>;
 }

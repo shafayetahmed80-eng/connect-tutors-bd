@@ -43,9 +43,9 @@ function Row({ label, value, muted, required, icon, valueIcon }: {
   icon?: React.ReactNode;
   valueIcon?: React.ReactNode;
 }) {
-  const blankTone = required ? "font-medium text-[#a43232]" : "italic text-[#8ba3b6]";
+  const blankTone = required ? "font-medium text-j-err" : "italic text-j-ink-faint";
   return <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5 last:border-b-0">
-    <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-[#6c879e]">
+    <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
       <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]">{icon}</span>{label}
     </p>
     <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-2xs leading-[1.5] ${muted ? blankTone : "text-[#173d60]"}`}>
@@ -106,7 +106,7 @@ export default function JobDetailsModal({
         <div className="flex items-start justify-between gap-3 border-b border-[#dce9f1] px-[18px] py-4">
           <div className="min-w-0">
             <h2 id="job-details-title" className="text-sm font-semibold leading-[1.35] text-[#173d60]">{job.title}</h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-[#6c879e]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-j-ink-muted">
               <span className="inline-flex items-center gap-1"><Hash aria-hidden="true" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
               <span aria-hidden className="text-[#dce9f1]">|</span>
               <span className="inline-flex items-center gap-1"><CalendarClock aria-hidden="true" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
@@ -118,7 +118,7 @@ export default function JobDetailsModal({
             type="button"
             onClick={onClose}
             aria-label="Close details"
-            className="grid size-7 shrink-0 place-items-center rounded-lg text-[#6c879e] hover:bg-[#eef4f9] hover:text-[#173d60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8]"
+            className="grid size-7 shrink-0 place-items-center rounded-lg text-j-ink-muted hover:bg-[#eef4f9] hover:text-[#173d60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8]"
           ><X size={14} /></button>
         </div>
 
@@ -144,7 +144,7 @@ export default function JobDetailsModal({
           <div className="sm:col-span-2"><Row icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
           <div className="sm:col-span-2">
             <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5">
-              <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-[#6c879e]">
+              <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
                 <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]"><MapPin size={12} /></span>Location
               </p>
               <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-2xs leading-[1.5] text-[#173d60]">

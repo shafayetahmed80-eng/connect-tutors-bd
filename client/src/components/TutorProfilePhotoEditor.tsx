@@ -61,18 +61,18 @@ export function TutorProfilePhotoEditor({ imageUrl, isSubmitting = false, onCanc
     <div className="fixed inset-0 z-50 flex items-end bg-[#102840]/65 p-0 sm:items-center sm:justify-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="photo-editor-title">
       <div data-testid="tutor-profile-photo-editor-panel" className={tutorProfileResponsiveClasses.photoEditorPanel}>
         <div className="flex items-start justify-between gap-4 border-b border-[#e1edf4] px-5 py-4">
-          <div><h2 id="photo-editor-title" className="text-base font-bold text-[#173b60]">Crop photo</h2><p className="mt-1 text-sm text-[#698399]">Keep your face within the frame. This will be a square profile photo.</p></div>
+          <div><h2 id="photo-editor-title" className="text-base font-bold text-j-ink">Crop photo</h2><p className="mt-1 text-sm text-[#698399]">Keep your face within the frame. This will be a square profile photo.</p></div>
           <Button type="button" variant="ghost" size="icon" aria-label="Close photo editor" disabled={isSubmitting} onClick={onCancel}><X size={18} /></Button>
         </div>
         <div data-testid="tutor-profile-photo-editor-crop-stage" className={tutorProfileResponsiveClasses.photoEditorCropStage}>
           <Cropper image={imageUrl} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)} />
         </div>
         <div className="space-y-3 px-5 py-4">
-          <label className="block text-sm font-semibold text-[#244a6a]">Zoom <input className="mt-2 w-full accent-[#167ddd]" type="range" min={1} max={3} step={0.05} value={zoom} onChange={event => setZoom(Number(event.target.value))} aria-label="Photo zoom" /></label>
+          <label className="block text-sm font-semibold text-[#244a6a]">Zoom <input className="mt-2 w-full accent-j-accent" type="range" min={1} max={3} step={0.05} value={zoom} onChange={event => setZoom(Number(event.target.value))} aria-label="Photo zoom" /></label>
           {error ? <p role="alert" className="text-sm font-medium text-[#bf3b3b]">{error}</p> : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); }} className="border-[#c9ddeb] text-[#42657d]"><RotateCcw size={15} /> Reset</Button>
-            <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-[#167ddd] font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : "Use this photo"}</Button>
+            <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-j-accent font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : "Use this photo"}</Button>
           </div>
         </div>
       </div>

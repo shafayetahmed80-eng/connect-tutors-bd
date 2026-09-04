@@ -969,8 +969,8 @@ export function getGuardianPasswordStrength(password: string) {
   const score = [password.length >= 8, /[a-z]/.test(password) && /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
   if (score <= 1) return { score, label: "Weak", hint: "Add mixed case, a number, and a symbol.", color: "bg-[#dc5b5b]" };
   if (score === 2) return { score, label: "Fair", hint: "Add one more character type.", color: "bg-[#df9a1d]" };
-  if (score === 3) return { score, label: "Strong", hint: "Longer is even better.", color: "bg-[#188f73]" };
-  return { score, label: "Excellent", hint: "", color: "bg-[#167ddd]" };
+  if (score === 3) return { score, label: "Strong", hint: "Longer is even better.", color: "bg-j-ok" };
+  return { score, label: "Excellent", hint: "", color: "bg-j-accent" };
 }
 
 function GuardianPasswordStrength({ password }: { password: string }) {
@@ -983,7 +983,7 @@ function GuardianPasswordStrength({ password }: { password: string }) {
 
 function getGuardianPasswordMatch(password: string, confirmPassword: string) {
   if (!confirmPassword) return null;
-  if (password === confirmPassword) return { matches: true, label: "Passwords match", hint: "Your password confirmation is ready.", color: "text-[#188f73]", dotColor: "bg-[#188f73]" };
+  if (password === confirmPassword) return { matches: true, label: "Passwords match", hint: "Your password confirmation is ready.", color: "text-j-ok", dotColor: "bg-j-ok" };
   return { matches: false, label: "Passwords do not match yet", hint: "Check both password entries and try again.", color: "text-[#b34a4a]", dotColor: "bg-[#dc5b5b]" };
 }
 

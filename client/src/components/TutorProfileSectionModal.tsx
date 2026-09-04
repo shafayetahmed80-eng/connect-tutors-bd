@@ -100,7 +100,7 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
   // The scrim settles first and the panel follows a beat later on the same
   // decelerating curve the sidebar uses, so the dialog reads as arriving rather
   // than appearing. `motion-reduce` drops both.
-  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#173b60]/35 p-4 py-8 backdrop-blur-[3px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
+  return <div onClick={onBackdropClick} className={`fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-j-ink/35 p-4 py-8 backdrop-blur-[3px] animate-in fade-in ${MODAL_MOTION} motion-reduce:animate-none sm:py-12`}>
     <div
       ref={panelRef}
       role="dialog"
