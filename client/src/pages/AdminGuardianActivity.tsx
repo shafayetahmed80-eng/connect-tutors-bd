@@ -3,7 +3,9 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { trpc } from "@/lib/trpc";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { RecordIcon } from "@/components/recordIcons";
-import { ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck } from "lucide-react";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
+import { countActiveFilters } from "@/components/activeFilterCount";
+import { ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -55,6 +57,7 @@ export function getAdminGuardianPrivateDetails(request: {
 
 function GuardianActivityContent() {
   const [filters, setFilters] = useState<GuardianFilters>(initialFilters);
+  const activeFilterCount = countActiveFilters(filters, initialFilters, { ignore: ["page", "pageSize"] });
   const [contactRequestId, setContactRequestId] = useState<number | null>(null);
   // The contact dialog is rendered inline, so the lock follows its open state.
   useBodyScrollLock(contactRequestId !== null);
@@ -69,7 +72,7 @@ function GuardianActivityContent() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#167ddd]">Action queue</p><h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[#173b60]">Choose the next protected workflow</h2></div></div>
       <div className="mt-5 grid gap-3 md:grid-cols-3">{guardianActionPresets.map(preset => "href" in preset ? <Link key={preset.id} href={preset.href} className="group flex min-h-20 items-center rounded-xl border border-[#d9e9f2] bg-white px-4 text-sm font-bold text-[#315b7d] transition hover:-translate-y-0.5 hover:border-[#8acbee] hover:shadow-sm">{preset.label}<ChevronRight className="ml-auto h-4 w-4 text-[#167ddd] transition group-hover:translate-x-0.5" /></Link> : <button type="button" key={preset.id} onClick={() => updateFilter({ status: preset.status, contactConsent: preset.contactConsent })} className="group flex min-h-20 items-center rounded-xl border border-[#d9e9f2] bg-white px-4 text-left text-sm font-bold text-[#315b7d] transition hover:-translate-y-0.5 hover:border-[#8acbee] hover:shadow-sm">{preset.label}<ChevronRight className="ml-auto h-4 w-4 text-[#167ddd] transition group-hover:translate-x-0.5" /></button>)}</div>
     </section>
-    <section className="rounded-xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
+    <CollapsiblePanel title="Filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={activeFilterCount}>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="relative sm:col-span-2"><span className="sr-only">Search requests</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" /><input value={filters.query} onChange={e => updateFilter({ query: e.target.value })} placeholder="Search subject, class, category or location" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label>
         <select value={filters.status} onChange={e => updateFilter({ status: e.target.value as GuardianFilters["status"] })} aria-label="Request status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All request statuses</option><option value="new">New</option><option value="reviewing">Reviewing</option><option value="matched">Matched</option><option value="closed">Closed</option></select>
@@ -78,7 +81,7 @@ function GuardianActivityContent() {
         <input value={filters.location} onChange={e => updateFilter({ location: e.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
         <button type="button" onClick={() => setFilters(initialFilters)} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
       </div>
-    </section>
+    </CollapsiblePanel>
     {requests.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Guardian requests…</div> : null}
     {requests.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Guardian activity could not be loaded.</div> : null}
     {!requests.isLoading && !requests.isError ? <section className="space-y-4">{(requests.data?.items ?? []).map(request => {
