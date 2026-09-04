@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSafeTutorRequestPublicationSnapshot,
+  resolvePublishedJobNote,
   validateAdminRequestPublicationAction,
 } from "./admin-request-publication";
 
@@ -53,5 +54,34 @@ describe("Admin request publication workflow", () => {
     });
     expect(JSON.stringify(snapshot)).not.toContain("Private");
     expect(JSON.stringify(snapshot)).not.toContain("Exact home address");
+  });
+});
+
+describe("the note the Job Board publishes", () => {
+  it("publishes the Guardian's own note when an Admin does not touch it", () => {
+    expect(resolvePublishedJobNote("Please start after Eid", undefined)).toBe("Please start after Eid");
+  });
+
+  it("publishes the Admin's wording once they have edited it", () => {
+    // The Guardian's note is the one free-text field a stranger reads, and it
+    // arrives carrying phone numbers and house numbers often enough to matter.
+    expect(resolvePublishedJobNote("Call me on 01712345678", "Weekday evenings preferred")).toBe("Weekday evenings preferred");
+  });
+
+  it("publishes no note when an Admin clears the box", () => {
+    // The case worth naming: clearing means "publish nothing", not "fall back
+    // to the Guardian". A `??` here would republish the text just deleted.
+    expect(resolvePublishedJobNote("Call me on 01712345678", "")).toBeNull();
+    expect(resolvePublishedJobNote("Call me on 01712345678", "   ")).toBeNull();
+  });
+
+  it("treats a Guardian who wrote nothing as no note either way", () => {
+    expect(resolvePublishedJobNote(null, undefined)).toBeNull();
+    expect(resolvePublishedJobNote("   ", undefined)).toBeNull();
+  });
+
+  it("trims what it publishes, whoever wrote it", () => {
+    expect(resolvePublishedJobNote("  spaced out  ", undefined)).toBe("spaced out");
+    expect(resolvePublishedJobNote(null, "  admin note  ")).toBe("admin note");
   });
 });

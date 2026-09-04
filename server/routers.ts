@@ -276,6 +276,10 @@ const adminTutorRequestPublicationEditSchema = z.object({
   daysPerWeek: z.number().int().min(1).max(7).optional(),
   preferredGender: z.enum(["male", "female", "any"]).optional(),
   budgetAmount: salaryAmountSchema.optional(),
+  // The Guardian's note went to the Job Board word for word. It is the one
+  // free-text field a stranger reads, so an Admin needs to be able to trim a
+  // phone number out of it before publishing. Empty string clears it.
+  notes: z.string().trim().max(2000).optional(),
 }).refine(value => Object.values(value).some(entry => entry !== undefined), {
   message: "Provide at least one approved job-facing edit.",
 });
