@@ -1,6 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { fieldLabel, filledField, primaryButton } from "@/components/journeyField";
+import { fieldLabel, filledField, optionalMark, primaryButton, requiredMark } from "@/components/journeyField";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { BANGLADESH_COUNTRY_CODE, formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -247,7 +247,7 @@ export default function JoinTutor() {
 }
 
 function RequiredMark() {
-  return <span className="text-[#dd4b4b]" aria-label="required"> *</span>;
+  return <span className={requiredMark} aria-label="required"> *</span>;
 }
 
 function FieldError({ children, id, message }: { children: React.ReactNode; id: string; message?: string }) {
@@ -344,8 +344,8 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
 
   const activeOption = open ? filteredOptions[activeIndex] : undefined;
 
-  return <div ref={selectorRef} className={`relative block text-sm font-semibold text-j-ink-soft ${open ? "z-40" : "z-0"}`}>
-    <label htmlFor={inputId}>{label} {required ? <RequiredMark /> : <span className="text-[#8aa0b2]">(if applicable)</span>}</label>
+  return <div ref={selectorRef} className={`relative block ${open ? "z-40" : "z-0"}`}>
+    <label htmlFor={inputId} className={fieldLabel}>{label}{required ? <RequiredMark /> : <span className={optionalMark}> (optional)</span>}</label>
     <span className="relative mt-2 block">
       <MapPin aria-hidden="true" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent" />
       <input

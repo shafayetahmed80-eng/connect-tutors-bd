@@ -1,7 +1,32 @@
 // Shared field + button styling for the public guardian and tutor journeys.
 // Colours resolve through the `--j-*` design tokens declared in `index.css`.
 
+/**
+ * One label style for every field in a journey.
+ *
+ * The request steps used to set their own `text-sm font-extrabold` here, so a
+ * form held 13px/600 labels beside 14px/800 ones and the eye could not tell
+ * which weight meant what. The quieter of the two wins: a section legend is
+ * `text-sm font-extrabold`, and a field label sitting under it should not
+ * shout the same volume.
+ */
 export const fieldLabel = "block text-[13px] font-semibold text-j-ink-soft";
+
+/** The red asterisk on a required field. One red, everywhere. */
+export const requiredMark = "text-[#d74545]";
+/** The grey "(optional)" note. One word for the idea, and one grey. */
+export const optionalMark = "font-normal text-[#71889b]";
+
+/**
+ * The field grid every step lays out on.
+ *
+ * Two columns from `sm` up with one gutter. The account step used to run its
+ * own `gap-x-7 md:grid-cols-2`, so the two halves of the same journey broke
+ * to one column at different widths and sat on different gutters.
+ */
+export const fieldGrid = "grid gap-x-6 gap-y-4 sm:grid-cols-2";
+/** A field that needs the full width of `fieldGrid` - a textarea, usually. */
+export const fieldGridWide = "sm:col-span-2";
 
 export const filledField =
   "h-12 w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";

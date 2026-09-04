@@ -80,7 +80,7 @@ function fillStepTwo() {
   select("Days per week", "3");
   select("Where Did You Hear About Us", "facebook");
   select("Preferred Tutor gender", "any");
-  fireEvent.change(screen.getByRole("textbox", { name: "Amount (Taka)" }), { target: { value: "5000" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Monthly salary (Taka)" }), { target: { value: "5000" } });
 }
 
 describe("GuardianRequestJourney create flow", () => {
