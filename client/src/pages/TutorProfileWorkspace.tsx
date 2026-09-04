@@ -38,7 +38,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-xs text-j-ink outline-none transition placeholder:text-[#99aabb] focus:border-j-accent focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "modal-field-profile mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-xs text-j-ink outline-none transition placeholder:text-[#99aabb] focus:border-j-accent focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
 
 /**
  * Two columns of controls that are all one line tall.

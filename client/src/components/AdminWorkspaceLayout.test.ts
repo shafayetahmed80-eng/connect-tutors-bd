@@ -38,6 +38,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Institutes & departments", path: "/admin/dynamic/institutes" }),
       expect.objectContaining({ label: "Cities & locations", path: "/admin/dynamic/locations" }),
       expect.objectContaining({ label: "Legal pages", path: "/admin/dynamic/legal-pages" }),
+      expect.objectContaining({ label: "Modals", path: "/admin/dynamic/modals" }),
       expect.objectContaining({ label: "Limits", path: "/admin/dynamic/limits" }),
     ]);
   });

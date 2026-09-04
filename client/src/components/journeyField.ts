@@ -29,7 +29,7 @@ export const fieldGrid = "grid gap-x-6 gap-y-4 sm:grid-cols-2";
 export const fieldGridWide = "sm:col-span-2";
 
 export const filledField =
-  "h-12 w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
+  "modal-field-journey w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 
 export const filledArea =
   "w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 text-sm leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";

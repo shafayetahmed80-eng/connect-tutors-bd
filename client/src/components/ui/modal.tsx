@@ -29,11 +29,12 @@ export type ModalSize = "sm" | "md" | "lg";
  * omitted when the content owns its own actions.
  */
 
-const SIZE: Record<ModalSize, string> = {
-  sm: "sm:max-w-[30rem]",
-  md: "sm:max-w-[37.5rem]",
-  lg: "sm:max-w-[47.5rem]",
-};
+/**
+ * The widths and the height cap are the Owner's, set in Admin > Modals and
+ * applied by `SiteDimensionStyle` against the `data-modal-size` tag below -
+ * a media query cannot live in an inline style, and a dialog is a full-width
+ * sheet on a phone whatever the desktop width says.
+ */
 
 const FOCUSABLE_SELECTOR =
   "a[href], button:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
@@ -134,6 +135,7 @@ export function Modal({
           aria-modal="true"
           aria-labelledby={titleId}
           data-testid={panelTestId}
+          data-modal-size={size}
           tabIndex={-1}
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
@@ -141,7 +143,6 @@ export function Modal({
             "flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-j-border bg-background text-j-ink shadow-[0_24px_48px_-24px_rgba(23,59,96,0.28)] focus:outline-none",
             "animate-in slide-in-from-bottom-4 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none",
             "sm:my-6 sm:rounded-2xl sm:zoom-in-95 sm:slide-in-from-bottom-0",
-            SIZE[size],
           )}
         >
           {children}
