@@ -83,10 +83,10 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   });
 
   if (displayState === "loading") {
-    return <div className="flex min-h-[60vh] items-center justify-center text-slate-600"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening Admin workspace…</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening Admin workspace…</div>;
   }
   if (displayState === "denied") {
-    return <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-slate-400" /><h1 className="text-2xl font-bold text-slate-900">Admin access required</h1><p className="mt-2 text-sm leading-6 text-slate-600">This workspace is available only to authorized Connect Tutors BD administrators.</p></section>;
+    return <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center rounded-3xl border border-j-border bg-white p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-j-ink-faint" /><h1 className="text-2xl font-bold text-j-ink">Admin access required</h1><p className="mt-2 text-sm leading-6 text-j-ink-soft">This workspace is available only to authorized Connect Tutors BD administrators.</p></section>;
   }
   const access = workspaceAccess.data;
   return <DashboardLayout

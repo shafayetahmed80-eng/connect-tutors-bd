@@ -14,10 +14,10 @@
 
   /* Guardian journey (`j-*`) — semantic tokens for the phone/account/request flow.
      Phase 1 values equal the previous hard-coded hex, so this change is visual-noop. */
-  --color-j-page: var(--j-page); --color-j-surface: var(--j-surface); --color-j-surface-sunken: var(--j-surface-sunken);
+  --color-j-page: var(--j-page); --color-j-surface: var(--j-surface); --color-j-surface-sunken: var(--j-surface-sunken); --color-j-surface-muted: var(--j-surface-muted);
   --color-j-rail: var(--j-rail); --color-j-rail-panel: var(--j-rail-panel);
   --color-j-border: var(--j-border); --color-j-field-border: var(--j-field-border);
-  --color-j-ink: var(--j-ink); --color-j-ink-strong: var(--j-ink-strong); --color-j-ink-soft: var(--j-ink-soft);
+  --color-j-ink: var(--j-ink); --color-j-ink-strong: var(--j-ink-strong); --color-j-ink-soft: var(--j-ink-soft); --color-j-ink-muted: var(--j-ink-muted); --color-j-ink-faint: var(--j-ink-faint);
   --color-j-accent: var(--j-accent); --color-j-accent-hover: var(--j-accent-hover); --color-j-accent-wash: var(--j-accent-wash);
   --color-j-ok: var(--j-ok); --color-j-ok-wash: var(--j-ok-wash); --color-j-ok-border: var(--j-ok-border);
   --color-j-warn: var(--j-warn);
@@ -30,6 +30,7 @@
   --j-page: #f5f8ff;
   --j-surface: #ffffff;
   --j-surface-sunken: #f8fcff;
+  --j-surface-muted: #eef4f8;
   --j-rail: #0d5d9d;
   --j-rail-panel: #0b518a;
   --j-border: #dcecf5;
@@ -37,6 +38,12 @@
   --j-ink: #173b60;
   --j-ink-strong: #234b6d;
   --j-ink-soft: #315b79;
+  /* The ramp used to stop at `soft`, which is still an ink you read a
+   * sentence in. A dense table needs two quieter steps below it - a label
+   * beside a value, and a placeholder or a disabled state. Both values were
+   * already loose in the codebase; naming them is what changes. */
+  --j-ink-muted: #6c879e;
+  --j-ink-faint: #8ba3b6;
   --j-accent: #167ddd;
   --j-accent-hover: #0b6db0;
   --j-accent-wash: #eaf6ff;
