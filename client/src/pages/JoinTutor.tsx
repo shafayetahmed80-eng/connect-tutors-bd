@@ -341,7 +341,7 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
 
   const activeOption = open ? filteredOptions[activeIndex] : undefined;
 
-  return <div ref={selectorRef} className={`relative block text-[13px] font-semibold text-j-ink-soft ${open ? "z-40" : "z-0"}`}>
+  return <div ref={selectorRef} className={`relative block text-sm font-semibold text-j-ink-soft ${open ? "z-40" : "z-0"}`}>
     <label htmlFor={inputId}>{label} {required ? <RequiredMark /> : <span className="text-[#8aa0b2]">(if applicable)</span>}</label>
     <span className="relative mt-2 block">
       <MapPin aria-hidden="true" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent" />

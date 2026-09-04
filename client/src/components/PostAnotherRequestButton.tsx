@@ -24,13 +24,13 @@ const SKIN = {
   solid: {
     shell: `${MOTION} h-9 gap-2 rounded-xl bg-j-accent pl-1.5 pr-3.5 shadow-[0_1px_2px_rgba(22,125,221,.25)] hover:bg-j-accent-hover hover:shadow-[0_10px_28px_-8px_rgba(22,125,221,.45)]`,
     chip: "grid size-6 shrink-0 place-items-center rounded-lg bg-white/20 text-white",
-    label: "text-[12px] font-bold text-white",
+    label: "text-xs font-bold text-white",
     plus: 13,
   },
   card: {
     shell: `${MOTION} gap-2.5 rounded-xl border border-[#dbe9f4] bg-white px-3.5 py-2.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)]`,
     chip: "grid size-7 shrink-0 place-items-center rounded-lg bg-j-accent-wash text-j-accent transition-colors duration-[320ms] group-hover:bg-j-accent group-hover:text-white",
-    label: "text-[13px] font-extrabold text-j-ink",
+    label: "text-sm font-extrabold text-j-ink",
     plus: 15,
   },
 } as const;

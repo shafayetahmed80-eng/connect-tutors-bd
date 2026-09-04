@@ -405,7 +405,7 @@ function DashboardLayoutContent({
                 return (
                   <SidebarMenuItem key={`${item.path}-${item.label}`}>
                     {item.dividerBefore ? <div className="mx-2 my-2.5 h-px bg-[#eaf0f5] group-data-[collapsible=icon]:mx-0" /> : null}
-                    {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
+                    {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-2xs font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
                       {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, item.sectionLabel!), item.sectionLabel!) : item.sectionLabel}
                     </p> : null}
                     <SidebarMenuButton
@@ -420,7 +420,7 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
                       />
                       <span>{label}</span>
-                      {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
+                      {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -455,7 +455,7 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d8799]">
+                <span className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-[#6d8799]">
                   {mobileContext.workspace}
                 </span>
                 <span className="truncate text-sm font-semibold tracking-tight text-[#173b60]">
@@ -510,7 +510,7 @@ function WorkspaceHeader({
       <div className="flex min-w-0 items-center gap-2">
         <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent md:hidden" />
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
+          <p className="text-2xs font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
           <h1 className="truncate text-base font-semibold tracking-tight text-[#173b60] sm:text-lg">{heading}</h1>
         </div>
       </div>
@@ -539,7 +539,7 @@ function WorkspaceHeader({
             <div className="px-2 py-2">
               <p className="truncate text-sm font-bold text-[#173b60]">{identity.name}</p>
               {(identity.details ?? []).map(detail => <div key={detail.label}>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</p>
+                <p className="mt-1 text-2xs font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</p>
                 <p className="mt-0.5 truncate text-sm font-medium text-[#527086]">{detail.value}</p>
               </div>)}
             </div>

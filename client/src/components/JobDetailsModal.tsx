@@ -45,10 +45,10 @@ function Row({ label, value, muted, required, icon, valueIcon }: {
 }) {
   const blankTone = required ? "font-medium text-[#a43232]" : "italic text-[#8ba3b6]";
   return <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5 last:border-b-0">
-    <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-[11px] text-[#6c879e]">
+    <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-[#6c879e]">
       <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]">{icon}</span>{label}
     </p>
-    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-[11px] leading-[1.5] ${muted ? blankTone : "text-[#173d60]"}`}>
+    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-2xs leading-[1.5] ${muted ? blankTone : "text-[#173d60]"}`}>
       {valueIcon}{value}
     </p>
   </div>;
@@ -105,8 +105,8 @@ export default function JobDetailsModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#dce9f1] px-[18px] py-4">
           <div className="min-w-0">
-            <h2 id="job-details-title" className="text-[13px] font-semibold leading-[1.35] text-[#173d60]">{job.title}</h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] tabular-nums text-[#6c879e]">
+            <h2 id="job-details-title" className="text-sm font-semibold leading-[1.35] text-[#173d60]">{job.title}</h2>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-[#6c879e]">
               <span className="inline-flex items-center gap-1"><Hash aria-hidden="true" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
               <span aria-hidden className="text-[#dce9f1]">|</span>
               <span className="inline-flex items-center gap-1"><CalendarClock aria-hidden="true" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
@@ -144,10 +144,10 @@ export default function JobDetailsModal({
           <div className="sm:col-span-2"><Row icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
           <div className="sm:col-span-2">
             <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5">
-              <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-[11px] text-[#6c879e]">
+              <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-[#6c879e]">
                 <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]"><MapPin size={12} /></span>Location
               </p>
-              <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-[1.5] text-[#173d60]">
+              <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-2xs leading-[1.5] text-[#173d60]">
                 {formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel, withCountry: true })}
                 {mapUrl
                   ? <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#1267c8] hover:underline"><MapPin size={12} /> View on map</a>

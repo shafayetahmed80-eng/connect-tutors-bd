@@ -1118,7 +1118,7 @@ export function RequestStage(props: RequestStageProps) {
     <ol className="mt-7 grid gap-2 sm:grid-cols-3" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
       const isActive = props.step === index + 1;
       const isComplete = index + 1 < props.step;
-      return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
+      return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-2xs ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
     })}</ol>
     {props.step === 1 ? <div className="mt-6 space-y-6">
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2"><SelectField label="Tuition type" icon={<TuitionTypeIcon type={input.tuitionType} />} value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} /></div>
@@ -1163,7 +1163,7 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
       <div className="min-w-0">
         <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-j-ok"><Check size={15} strokeWidth={3} /> Request received securely</p>
         <h2 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-j-ink"><SiteText slotId="request-tutor.done.heading" /></h2>
-        {requestId === null ? null : <p className="mt-1 text-[13px] text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
+        {requestId === null ? null : <p className="mt-1 text-sm text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
       </div>
       {/* A card rather than a filled button: `View my request` at the foot is
           the primary blue, and two competing solids would leave the Guardian

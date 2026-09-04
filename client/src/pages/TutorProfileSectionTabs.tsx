@@ -42,12 +42,12 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
         role="tab"
         aria-selected={isActive}
         onClick={() => onTabChange(section.id)}
-        className={`flex min-h-11 min-w-max flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 ${
+        className={`flex min-h-11 min-w-max flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 ${
           isActive ? "bg-white font-semibold text-j-ink shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-j-ink-soft hover:text-j-ink"
         }`}
       >
         <SiteText slotId={`tutor-profile.tab.${section.id}`} fallback={TAB_LABELS[section.id]} className="truncate" />
-        {total === 0 ? null : <span className={`shrink-0 text-[11px] font-bold tabular-nums ${
+        {total === 0 ? null : <span className={`shrink-0 text-2xs font-bold tabular-nums ${
           complete ? "text-[#1c8a5b]" : isActive ? "text-j-accent" : "text-[#94a6b4]"
         }`}>
           {complete ? <Check size={12} aria-hidden={true} /> : `${filled}/${total}`}

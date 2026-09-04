@@ -97,7 +97,7 @@ export function SearchableMultiSelect({
       {results.length === 0 ? <p className="px-2 py-4 text-sm text-[#72889a]">{emptyMessage}</p> : results.map(option => {
         const selected = activeSelectedIds.includes(option.id);
         const limitReached = Boolean(maxSelections && !selected && activeSelectedIds.length >= maxSelections);
-        return <label key={option.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#167ddd]">
+        return <label key={option.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#167ddd]">
           {/* A checkbox answers to Space but not Enter, and Enter is what a
               person reaches for after arrowing onto an option. */}
           <input
@@ -120,7 +120,7 @@ export function SearchableMultiSelect({
   </>;
   return <div className={tutorProfileResponsiveClasses.selectorRoot} onKeyDown={handleKeyDown}>
     <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
-    {description ? <p className="mt-0.5 text-[11px] leading-4 text-[#72889a]">{description}</p> : null}
+    {description ? <p className="mt-0.5 text-2xs leading-4 text-[#72889a]">{description}</p> : null}
     <button
       ref={buttonRef}
       type="button"
@@ -134,7 +134,7 @@ export function SearchableMultiSelect({
       // name has to carry it - the control is otherwise unidentifiable to a
       // screen reader, and it stays the way every test finds this button.
       aria-label={`${label}, ${selectionText}`}
-      className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-[12px] text-[#173b60] outline-none transition hover:border-[#96c9e8] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
+      className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-[#173b60] outline-none transition hover:border-[#96c9e8] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
     >
       {/* The label already sits above this control; repeating it inside meant
           every field read its own name twice. The trigger now behaves like an
@@ -142,9 +142,9 @@ export function SearchableMultiSelect({
       <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOptions.length === 0 ? "text-[#99aabb]" : "text-[#173b60]"}`}>{selectionText}</span>
       <ChevronDown aria-hidden="true" size={16} className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
     </button>
-    {error ? <p role="alert" className="mt-1 text-[11px] font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
+    {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
     {selectedOptions.length > 0 ? <div className="mt-2 flex flex-wrap gap-2" aria-label={`${label} selected items`}>
-      {selectedOptions.map(option => <span key={option.id} className={`inline-flex items-center gap-1 rounded-full bg-[#eaf7ff] py-0.5 pl-2 pr-1 text-[11px] font-semibold text-[#1a6794] ${tutorProfileResponsiveClasses.selectorChip}`}>
+      {selectedOptions.map(option => <span key={option.id} className={`inline-flex items-center gap-1 rounded-full bg-[#eaf7ff] py-0.5 pl-2 pr-1 text-2xs font-semibold text-[#1a6794] ${tutorProfileResponsiveClasses.selectorChip}`}>
         <span className={tutorProfileResponsiveClasses.selectorChipText}>{option.label}</span>
         <button type="button" onClick={() => toggle(option.id)} aria-label={`Remove ${option.label}`} className="rounded-full p-1 outline-none hover:bg-[#ccecff] focus-visible:ring-2 focus-visible:ring-[#167ddd]"><X size={12} /></button>
       </span>)}
