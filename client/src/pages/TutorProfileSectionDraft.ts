@@ -56,7 +56,7 @@ const sectionSubGroups: readonly SubGroupDefinition[] = [
     id: "c-teaching",
     section: "c",
     label: "Teaching expertise",
-    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "studentTypeIds", "academicAchievement"],
+    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "academicAchievement"],
   },
 ];
 
@@ -107,7 +107,6 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
       "teachingExperienceYears",
       "priorTeachingExperience",
       "specialExpertise",
-      "studentTypeIds",
       "academicAchievement",
     ],
   },

@@ -28,6 +28,7 @@ import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
+import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
 import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
@@ -1014,13 +1015,7 @@ function TutorProfileWorkspaceBody({
         <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
         <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
-      </div>
-    </FormSection>
-
-    <FormSection title="Who you teach">
-      <div className={compactFieldGridClassName}>
         <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.studentTypes} required options={toSelectorOptions(studentTypes.data)} selectedIds={form.studentTypeIds} onChange={value => update("studentTypeIds", value)} emptyMessage="No student types found." error={fieldErrors.studentTypeIds} />
       </div>
     </FormSection>
 
@@ -1053,7 +1048,7 @@ function TutorProfileWorkspaceBody({
           <ChoiceGroup label={tutorProfileCopy.fields.tuitionType} name="tuition-type" required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />
           <ChoiceGroup label={tutorProfileCopy.fields.preferredStudentGender} name="student-gender" required value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.classSizes} required options={[{ id: "one_to_one", label: "One-to-one" }, { id: "small_group", label: "Small group" }, { id: "group", label: "Group" }]} selectedIds={form.preferredClassSizes} onChange={value => update("preferredClassSizes", value)} emptyMessage="No class-size options found." error={fieldErrors.preferredClassSizes} />
-          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={[{ id: "monday", label: "Monday" }, { id: "tuesday", label: "Tuesday" }, { id: "wednesday", label: "Wednesday" }, { id: "thursday", label: "Thursday" }, { id: "friday", label: "Friday" }, { id: "saturday", label: "Saturday" }, { id: "sunday", label: "Sunday" }]} selectedIds={form.preferredTeachingDays} onChange={value => update("preferredTeachingDays", value)} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingDays} required options={teachingDayOptions} selectedIds={selectedTeachingDayIds(form.preferredTeachingDays)} onChange={value => update("preferredTeachingDays", expandTeachingDayIds(value))} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.timeSlots} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />
           <label
             className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}

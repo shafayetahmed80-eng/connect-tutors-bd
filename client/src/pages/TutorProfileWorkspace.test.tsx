@@ -592,3 +592,38 @@ describe("the Tutor Profile phone boxes", () => {
     expect(within(dialog).getAllByRole("alert").map(node => node.textContent).join(" ")).toMatch(/10-digit Bangladesh mobile number/);
   });
 });
+
+describe("what the Teaching expertise and Availability boxes ask for", () => {
+  afterEach(() => {
+    cleanup();
+    trpcMocks.saveDraft.mockReset();
+  });
+
+  it("no longer asks a Tutor to classify their students", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching expertise" }));
+
+    expect(within(screen.getByRole("dialog")).queryByText("Student Types")).toBeNull();
+  });
+
+  it("offers All Days, and saves it as the seven days the server accepts", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, preferredTeachingDays: [] }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Availability" }));
+    const dialog = screen.getByRole("dialog");
+
+    await user.click(within(dialog).getByRole("button", { name: /Preferred Teaching Days/ }));
+    await user.click(within(dialog).getByLabelText("All Days"));
+    await user.click(within(dialog).getAllByRole("button", { name: "Done" })[0]);
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls[0][0].preferredTeachingDays)
+      .toEqual(["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]);
+  });
+});

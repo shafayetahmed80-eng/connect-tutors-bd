@@ -137,7 +137,6 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
   if (!/^\d+$/.test(form.teachingExperienceYears) || Number(form.teachingExperienceYears) < 0 || Number(form.teachingExperienceYears) > 60) errors.teachingExperienceYears = "Enter teaching experience between 0 and 60 years.";
-  requiredSelection(errors, "studentTypeIds", "Select at least one student type.", form.studentTypeIds);
   if (!form.tuitionType) errors.tuitionType = "Select a tuition type.";
   if (!form.preferredStudentGender) errors.preferredStudentGender = "Select a preferred student gender.";
   requiredSelection(errors, "preferredClassSizes", "Select at least one class size.", form.preferredClassSizes);
@@ -159,10 +158,10 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  // 26 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // 25 unconditional checks in getTutorProfileSubmissionErrors, plus the two
   // gated ones: the study timeline only applies once a study status is chosen,
   // and nationwide availability only applies to online tuition.
-  const totalRequired = 26
+  const totalRequired = 25
     + (form.studyStatus ? 1 : 0)
     + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
   const completedCount = totalRequired - missingCount;
