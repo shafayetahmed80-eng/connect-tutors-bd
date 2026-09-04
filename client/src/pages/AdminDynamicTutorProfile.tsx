@@ -7,7 +7,7 @@ export default function AdminDynamicTutorProfile() {
     title="Tutor Profile content"
   >
     <SiteContentEditor page="tutor-profile" />
-    <h2 className="pt-2 text-sm font-bold text-slate-900">Notice blocks</h2>
+    <h2 className="pt-2 text-sm font-bold text-j-ink">Notice blocks</h2>
     <SiteContentBlocks page="tutor-profile" />
   </AdminDynamicSectionPage>;
 }
