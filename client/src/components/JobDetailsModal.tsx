@@ -10,9 +10,8 @@ import {
   formatTutorPreference,
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet, X } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { TutorPreferenceIcon, type JobCardData } from "./JobCard";
 
 export type JobDetailsData = JobCardData & {
@@ -73,56 +72,22 @@ export default function JobDetailsModal({
   /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */
   showMapLink?: boolean;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useBodyScrollLock();
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    panelRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
   return (
-    <div
-      role="presentation"
-      // Clicking the backdrop closes; clicking the panel must not, which is why
-      // the panel stops the event rather than the backdrop checking its target.
-      onClick={onClose}
-      className="fixed inset-0 z-50 grid place-items-end bg-[#0f283f]/40 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-6"
-    >
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="job-details-title"
-        tabIndex={-1}
-        onClick={event => event.stopPropagation()}
-        className="w-full max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white shadow-[0_24px_60px_rgba(15,40,63,.3)] focus:outline-none sm:max-w-[560px] sm:rounded-2xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-[#dce9f1] px-[18px] py-4">
-          <div className="min-w-0">
-            <h2 id="job-details-title" className="text-sm font-semibold leading-[1.35] text-[#173d60]">{job.title}</h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xs tabular-nums text-j-ink-muted">
-              <span className="inline-flex items-center gap-1"><Hash aria-hidden="true" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
-              <span aria-hidden className="text-[#dce9f1]">|</span>
-              <span className="inline-flex items-center gap-1"><CalendarClock aria-hidden="true" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
-              <span aria-hidden className="text-[#dce9f1]">|</span>
-              <span className="font-bold">{job.statusLabel}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close details"
-            className="grid size-7 shrink-0 place-items-center rounded-lg text-j-ink-muted hover:bg-[#eef4f9] hover:text-[#173d60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8]"
-          ><X size={14} /></button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-x-6 px-[18px] py-3 sm:grid-cols-2">
+    <Modal size="md" onClose={onClose}>
+      <ModalHeader
+        title={job.title}
+        meta={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 tabular-nums">
+          <span className="inline-flex items-center gap-1"><Hash aria-hidden="true" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
+          <span aria-hidden className="text-[#dce9f1]">|</span>
+          <span className="inline-flex items-center gap-1"><CalendarClock aria-hidden="true" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
+          <span aria-hidden className="text-[#dce9f1]">|</span>
+          <span className="font-bold">{job.statusLabel}</span>
+        </span>}
+      />
+      <ModalBody>
+        <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
           <Row icon={<House size={12} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} required />
           <Row
             icon={<UserRound size={12} />}
@@ -159,11 +124,10 @@ export default function JobDetailsModal({
             <Row icon={<AlignLeft size={12} />} label="Notes" value={formatNotes(job.notes)} muted={!job.notes?.trim()} />
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#dce9f1] bg-[#f1f6fa] px-[18px] py-3">
-          {action}
-        </div>
-      </div>
-    </div>
+      </ModalBody>
+      <ModalFooter>
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">{action}</div>
+      </ModalFooter>
+    </Modal>
   );
 }
