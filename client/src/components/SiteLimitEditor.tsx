@@ -3,7 +3,7 @@ import { siteLimits, type SiteLimitGroup, type SiteLimitId } from "@shared/site-
 import { Loader2, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const groups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text length"];
+const allGroups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text length", "Modals"];
 
 /**
  * Owner-facing editor for the numbers that used to be literals in the code.
@@ -13,7 +13,7 @@ const groups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text len
  * selection cap of zero would make a required field unfillable. Showing the
  * range turns a refusal into something the Owner can avoid.
  */
-export default function SiteLimitEditor() {
+export default function SiteLimitEditor({ groups = allGroups.filter(group => group !== "Modals") }: { groups?: SiteLimitGroup[] } = {}) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<SiteLimitId | null>(null);
   const [error, setError] = useState<string | null>(null);

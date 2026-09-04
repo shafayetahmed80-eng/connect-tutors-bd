@@ -92,18 +92,21 @@ describe("Modal", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("offers three width tiers and defaults to md", () => {
+  it("names its width tier for the stylesheet, and defaults to md", () => {
+    // The pixel widths are the Owner's, set in Admin > Modals and applied by
+    // SiteDimensionStyle against this tag — a media query cannot live in an
+    // inline style, and a dialog is a full-width sheet on a phone regardless.
     const { rerender } = render(
       <Modal onClose={vi.fn()}><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>,
     );
     const panel = () => screen.getByRole("dialog");
-    expect(panel().className).toContain("sm:max-w-[37.5rem]");
+    expect(panel().getAttribute("data-modal-size")).toBe("md");
 
     rerender(<Modal onClose={vi.fn()} size="sm"><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
-    expect(panel().className).toContain("sm:max-w-[30rem]");
+    expect(panel().getAttribute("data-modal-size")).toBe("sm");
 
     rerender(<Modal onClose={vi.fn()} size="lg"><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
-    expect(panel().className).toContain("sm:max-w-[47.5rem]");
+    expect(panel().getAttribute("data-modal-size")).toBe("lg");
   });
 
   it("dresses the panel as warm paper — no gradient, colour ring, glow, or blur", () => {

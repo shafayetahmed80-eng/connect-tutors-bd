@@ -32,11 +32,20 @@ export const siteLimitIds = [
   "photo.maxDimension",
   "tutor.headlineChars",
   "request.addressChars",
+  // Pixel sizes for the one dialog shell every panel shares. Not a domain cap
+  // like the rest, but the same thing mechanically: a named number an Owner
+  // moves between bounds without a deploy.
+  "modal.width.sm",
+  "modal.width.md",
+  "modal.width.lg",
+  "modal.maxHeight",
+  "modal.fieldHeight.profile",
+  "modal.fieldHeight.journey",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length";
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -186,6 +195,66 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 160,
     min: 40,
     max: 160,
+  },
+  {
+    id: "modal.width.sm",
+    group: "Modals",
+    label: "Small dialog width",
+    help: "Confirmations and short prompts - the Admin contact and moderation dialogs. Desktop only; every dialog fills the screen on a phone.",
+    unit: "px",
+    value: 480,
+    min: 320,
+    max: 720,
+  },
+  {
+    id: "modal.width.md",
+    group: "Modals",
+    label: "Medium dialog width",
+    help: "The default. Tutor profile section editor, job details, photo cropper.",
+    unit: "px",
+    value: 600,
+    min: 360,
+    max: 900,
+  },
+  {
+    id: "modal.width.lg",
+    group: "Modals",
+    label: "Large dialog width",
+    help: "The Hire a tutor sheet, which carries a three-step journey.",
+    unit: "px",
+    value: 760,
+    min: 420,
+    max: 1100,
+  },
+  {
+    id: "modal.maxHeight",
+    group: "Modals",
+    label: "Tallest a dialog may grow",
+    help: "On a short screen the dialog still stops at 92% of the window, whichever is smaller. Its body scrolls past this; the header and footer stay put.",
+    unit: "px",
+    value: 736,
+    min: 400,
+    max: 1200,
+  },
+  {
+    id: "modal.fieldHeight.profile",
+    group: "Modals",
+    label: "Field height, Tutor profile editor",
+    help: "Single-line inputs and dropdowns inside the profile section popup. Text boxes grow with what is typed and are not affected.",
+    unit: "px",
+    value: 30,
+    min: 24,
+    max: 64,
+  },
+  {
+    id: "modal.fieldHeight.journey",
+    group: "Modals",
+    label: "Field height, Hire a tutor sheet",
+    help: "Single-line inputs and dropdowns in the Guardian journey. Shipped taller than the profile's, which is why both are listed.",
+    unit: "px",
+    value: 48,
+    min: 32,
+    max: 72,
   },
 ];
 
