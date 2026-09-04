@@ -1329,6 +1329,48 @@ export const tutorRequestOperationEvents = mysqlTable(
  * Guardian-only inbox events for authoritative request lifecycle changes and
  * deliberate Admin follow-ups. Messages never duplicate private request values.
  */
+export const tutorNotificationTypeValues = [
+  "profile_moderation",
+  "interest_decision",
+  "appointment",
+  "confirmation_letter",
+] as const;
+export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
+
+/**
+ * What the site has told a Tutor.
+ *
+ * A Guardian has had an inbox since the request lifecycle shipped; a Tutor had
+ * nothing, so every decision an Admin made about them - approved, changes
+ * requested, shortlisted, declined - was silent, and the only way to learn one
+ * had happened was to come back and look.
+ *
+ * Keyed on the Tutor rather than on a request, because the subjects differ: a
+ * moderation decision is about the profile and belongs to no request at all.
+ * `actionPath` is what the row navigates to, so the table does not need a
+ * column per possible subject.
+ */
+export const tutorNotifications = mysqlTable(
+  "tutor_notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorId: varchar("tutorId", { length: 32 }).notNull(),
+    type: mysqlEnum("type", tutorNotificationTypeValues).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    message: varchar("message", { length: 360 }).notNull(),
+    actionPath: varchar("actionPath", { length: 240 }).notNull(),
+    /** One row per decision: a repeated write updates rather than piles up. */
+    deduplicationKey: varchar("deduplicationKey", { length: 160 }).notNull(),
+    readAt: timestamp("readAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.tutorId], foreignColumns: [tutors.id], name: "tn_tutor_fk" }),
+    uniqueIndex("tutor_notifications_dedup_unique").on(table.deduplicationKey),
+    index("tutor_notifications_tutor_created_idx").on(table.tutorId, table.createdAt),
+    index("tutor_notifications_tutor_read_idx").on(table.tutorId, table.readAt),
+  ]
+);
 export const guardianRequestNotifications = mysqlTable(
   "guardian_request_notifications",
   {

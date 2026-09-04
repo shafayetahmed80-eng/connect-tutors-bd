@@ -16,10 +16,11 @@ import {
 import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorApplicationStatus } from "./TutorApplicationStatus";
+import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
-import { BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/tutor/dashboard", sectionLabel: "Active workspace" },
   { icon: UserRound, label: "Profile", path: "/tutor/dashboard/profile", sectionLabel: "Active workspace" },
   { icon: BadgeCheck, label: "Status", path: "/tutor/dashboard/status", sectionLabel: "Active workspace" },
+  { icon: Bell, label: "Notifications", path: "/tutor/dashboard/notifications", sectionLabel: "Active workspace" },
   { icon: BookOpenCheck, label: "Tuition preferences", path: "/tutor/dashboard/preferences", sectionLabel: "Active workspace" },
   { icon: ClipboardList, label: "Tutor requests", path: "/tutor/dashboard/requests", sectionLabel: "Active workspace" },
   { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Active workspace" },
@@ -57,6 +59,7 @@ export const tutorDashboardSections = [
   "jobs",
   "profile",
   "status",
+  "notifications",
   "confirmation-letter",
   "payment",
   "certificate",
@@ -277,6 +280,7 @@ export default function TutorDashboard() {
       {section === "jobs" && <JobBoardContent embedded />}
       {section === "confirmation-letter" && <TutorConfirmationLetterPanel />}
       {section === "status" && <TutorApplicationStatus />}
+      {section === "notifications" && <TutorNotificationInbox />}
       {["payment", "certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>
   </DashboardLayout>;

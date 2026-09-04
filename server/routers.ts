@@ -1501,6 +1501,22 @@ export const appRouter = router({
         return result;
       }),
   }),
+  /** The Tutor's inbox, alongside the Guardian's so both sides are told the same way. */
+  tutorNotifications: router({
+    mine: activeTutorProcedure
+      .input(z.object({
+        limit: z.number().int().min(1).max(50).default(20),
+        cursor: z.number().int().positive().optional(),
+      }))
+      .query(async ({ ctx, input }) => db.listTutorNotifications({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), ...input })),
+    unreadCount: activeTutorProcedure
+      .query(async ({ ctx }) => db.getTutorNotificationUnreadCount({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    markRead: activeTutorProcedure
+      .input(z.object({ notificationId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => db.markTutorNotificationRead({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), ...input })),
+    markAllRead: activeTutorProcedure
+      .mutation(async ({ ctx }) => db.markAllTutorNotificationsRead({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+  }),
   guardianNotifications: router({
     mine: guardianProcedure
       .input(z.object({
