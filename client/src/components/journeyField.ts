@@ -29,10 +29,10 @@ export const fieldGrid = "grid gap-x-6 gap-y-4 sm:grid-cols-2";
 export const fieldGridWide = "sm:col-span-2";
 
 export const filledField =
-  "modal-field-journey w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-sm text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
+  "modal-field-journey input-text-journey w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 
 export const filledArea =
-  "w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 text-sm leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
+  "input-text-journey w-full rounded-xl border border-j-field-border bg-j-surface-sunken px-3.5 py-3 leading-6 text-j-ink outline-none transition placeholder:text-[#9aabbb] focus:border-j-accent focus:bg-white focus:ring-4 focus:ring-j-accent/12";
 
 const journeyButton =
   "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-j-accent/25 disabled:cursor-wait disabled:opacity-60";
