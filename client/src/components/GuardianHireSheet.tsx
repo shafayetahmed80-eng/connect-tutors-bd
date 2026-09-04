@@ -78,7 +78,7 @@ export function GuardianHireSheet({
     // Only a click that lands on the backdrop itself closes; the panel stops
     // its own clicks from reaching here.
     onClick={event => { if (event.target === event.currentTarget) onClose(); }}
-    className="fixed inset-0 z-50 flex items-end justify-center bg-[#173b60]/35 backdrop-blur-[3px] animate-in fade-in duration-300 sm:items-start sm:overflow-y-auto sm:p-4 sm:py-8 motion-reduce:animate-none"
+    className="fixed inset-0 z-50 flex items-end justify-center bg-j-ink/35 backdrop-blur-[3px] animate-in fade-in duration-300 sm:items-start sm:overflow-y-auto sm:p-4 sm:py-8 motion-reduce:animate-none"
   >
     <div
       ref={panelRef}

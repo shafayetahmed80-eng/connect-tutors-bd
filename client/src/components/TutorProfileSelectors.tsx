@@ -85,19 +85,19 @@ export function SearchableMultiSelect({
     ? `Select ${label.toLocaleLowerCase()}`
     : `${selectedIds.length} selected`;
   const selectorOptions = (activeSelectedIds: string[], onToggle: (id: string) => void, compact = false) => <>
-    <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-[#167ddd] focus-within:ring-4 focus-within:ring-[#dceffe]">
+    <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe]">
       <Search aria-hidden="true" size={16} />
       <input autoFocus type="search" aria-label={`Search ${label}`} value={query} onChange={event => {
         const nextQuery = event.target.value;
         setQuery(nextQuery);
         onSearchQueryChange?.(nextQuery);
-      }} className="min-w-0 flex-1 bg-transparent text-sm text-[#173b60] outline-none placeholder:text-[#99aabb]" placeholder={`Search ${label.toLocaleLowerCase()}`} />
+      }} className="min-w-0 flex-1 bg-transparent text-sm text-j-ink outline-none placeholder:text-[#99aabb]" placeholder={`Search ${label.toLocaleLowerCase()}`} />
     </label>
     <div role="group" aria-label={`${label} results`} className={`mt-2 overflow-y-auto px-1 pb-1 ${compact ? "max-h-52" : "min-h-0 flex-1"}`}>
       {results.length === 0 ? <p className="px-2 py-4 text-sm text-[#72889a]">{emptyMessage}</p> : results.map(option => {
         const selected = activeSelectedIds.includes(option.id);
         const limitReached = Boolean(maxSelections && !selected && activeSelectedIds.length >= maxSelections);
-        return <label key={option.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#167ddd]">
+        return <label key={option.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent">
           {/* A checkbox answers to Space but not Enter, and Enter is what a
               person reaches for after arrowing onto an option. */}
           <input
@@ -110,10 +110,10 @@ export function SearchableMultiSelect({
               event.preventDefault();
               onToggle(option.id);
             }}
-            className="h-4 w-4 rounded border-[#9fc7de] text-[#167ddd]"
+            className="h-4 w-4 rounded border-[#9fc7de] text-j-accent"
           />
           <span className="flex-1">{option.label}</span>
-          {selected ? <Check aria-label="Selected" size={15} className="text-[#167ddd]" /> : null}
+          {selected ? <Check aria-label="Selected" size={15} className="text-j-accent" /> : null}
         </label>;
       })}
     </div>
@@ -134,24 +134,24 @@ export function SearchableMultiSelect({
       // name has to carry it - the control is otherwise unidentifiable to a
       // screen reader, and it stays the way every test finds this button.
       aria-label={`${label}, ${selectionText}`}
-      className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-[#173b60] outline-none transition hover:border-[#96c9e8] focus:border-[#167ddd] focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
+      className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-j-ink outline-none transition hover:border-[#96c9e8] focus:border-j-accent focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
     >
       {/* The label already sits above this control; repeating it inside meant
           every field read its own name twice. The trigger now behaves like an
           input box and shows only what is in it. */}
-      <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOptions.length === 0 ? "text-[#99aabb]" : "text-[#173b60]"}`}>{selectionText}</span>
+      <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOptions.length === 0 ? "text-[#99aabb]" : "text-j-ink"}`}>{selectionText}</span>
       <ChevronDown aria-hidden="true" size={16} className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
     </button>
     {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
     {selectedOptions.length > 0 ? <div className="mt-2 flex flex-wrap gap-2" aria-label={`${label} selected items`}>
       {selectedOptions.map(option => <span key={option.id} className={`inline-flex items-center gap-1 rounded-full bg-[#eaf7ff] py-0.5 pl-2 pr-1 text-2xs font-semibold text-[#1a6794] ${tutorProfileResponsiveClasses.selectorChip}`}>
         <span className={tutorProfileResponsiveClasses.selectorChipText}>{option.label}</span>
-        <button type="button" onClick={() => toggle(option.id)} aria-label={`Remove ${option.label}`} className="rounded-full p-1 outline-none hover:bg-[#ccecff] focus-visible:ring-2 focus-visible:ring-[#167ddd]"><X size={12} /></button>
+        <button type="button" onClick={() => toggle(option.id)} aria-label={`Remove ${option.label}`} className="rounded-full p-1 outline-none hover:bg-[#ccecff] focus-visible:ring-2 focus-visible:ring-j-accent"><X size={12} /></button>
       </span>)}
     </div> : null}
     {isOpen && !isMobile ? <div id={searchId} role="dialog" aria-label={`${label} options`} className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-[#cae0ee] bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)]">
       {selectorOptions(selectedIds, id => toggle(id), true)}
-      <button type="button" onClick={close} className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-bold text-[#167ddd] outline-none hover:bg-[#eef8ff] focus-visible:ring-2 focus-visible:ring-[#167ddd]">Done</button>
+      <button type="button" onClick={close} className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-bold text-j-accent outline-none hover:bg-[#eef8ff] focus-visible:ring-2 focus-visible:ring-j-accent">Done</button>
     </div> : null}
     <Sheet open={isOpen && isMobile} onOpenChange={nextOpen => nextOpen ? open() : cancelMobileSelection()}>
       <SheetContent id={searchId} side="bottom" aria-label={`${label} selection`} className="h-[min(88dvh,42rem)] w-full gap-0 rounded-t-3xl border-[#cae0ee] bg-white p-0 sm:max-w-none">
@@ -163,8 +163,8 @@ export function SearchableMultiSelect({
           {selectorOptions(pendingSelectedIds, id => toggle(id, pendingSelectedIds, setPendingSelectedIds))}
         </div>
         <SheetFooter className="border-t border-[#e3edf4] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row">
-          <button type="button" onClick={cancelMobileSelection} className="min-h-11 rounded-xl border border-[#b9d2e2] px-4 text-sm font-bold text-[#315a74] outline-none hover:bg-[#f2f8fb] focus-visible:ring-2 focus-visible:ring-[#167ddd]">Cancel</button>
-          <button type="button" onClick={confirmMobileSelection} className="min-h-11 rounded-xl bg-[#167ddd] px-4 text-sm font-bold text-white outline-none hover:bg-[#116bb9] focus-visible:ring-2 focus-visible:ring-[#167ddd] focus-visible:ring-offset-2">Done</button>
+          <button type="button" onClick={cancelMobileSelection} className="min-h-11 rounded-xl border border-[#b9d2e2] px-4 text-sm font-bold text-[#315a74] outline-none hover:bg-[#f2f8fb] focus-visible:ring-2 focus-visible:ring-j-accent">Cancel</button>
+          <button type="button" onClick={confirmMobileSelection} className="min-h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white outline-none hover:bg-[#116bb9] focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Done</button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

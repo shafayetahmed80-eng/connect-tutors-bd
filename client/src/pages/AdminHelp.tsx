@@ -49,20 +49,20 @@ const setupSteps = [
 
 export default function AdminHelp() {
   return (
-    <div className="site-page min-h-screen bg-[#f5f8ff] text-[#173b60]">
+    <div className="site-page min-h-screen bg-j-page text-j-ink">
       <SiteHeader />
       <main>
         <section className="border-b border-[#d6e2eb] bg-white px-4 py-12 sm:px-6 lg:py-20">
           <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2782c7]">Admin access help</p>
-              <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight tracking-[-0.05em] text-[#173b60] sm:text-5xl">Secure sign-in and two-factor guidance.</h1>
+              <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight tracking-[-0.05em] text-j-ink sm:text-5xl">Secure sign-in and two-factor guidance.</h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-[#647f95]">This public guide explains the normal Admin access journey. It never displays account secrets, recovery codes, invitation tokens, or private Admin activity.</p>
-              <Link href="/admin/login" className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#173b60] px-5 py-3.5 text-sm font-bold !text-white shadow-[0_8px_18px_rgba(23,59,96,0.2)] transition hover:bg-[#102f4c] active:scale-[0.97]">
+              <Link href="/admin/login" className="mt-8 inline-flex items-center gap-2 rounded-lg bg-j-ink px-5 py-3.5 text-sm font-bold !text-white shadow-[0_8px_18px_rgba(23,59,96,0.2)] transition hover:bg-[#102f4c] active:scale-[0.97]">
                 Go to Admin Login <ArrowRight size={17} />
               </Link>
             </div>
-            <aside className="rounded-[1.5rem] bg-[#173b60] p-7 text-white shadow-[0_20px_55px_rgba(23,59,96,0.2)] sm:p-9">
+            <aside className="rounded-[1.5rem] bg-j-ink p-7 text-white shadow-[0_20px_55px_rgba(23,59,96,0.2)] sm:p-9">
               <div className="inline-flex rounded-xl bg-white/10 p-3 text-[#9edcff]"><ShieldCheck size={30} /></div>
               <h2 className="mt-6 text-2xl font-bold tracking-[-0.03em]">What Admin login needs</h2>
               <p className="mt-3 text-sm leading-7 text-[#c8dbea]">An invited Admin account signs in with three checks: the correct email address, the correct password, and a current authenticator code or one-time recovery code.</p>
@@ -75,14 +75,14 @@ export default function AdminHelp() {
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2782c7]">Step by step</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-[#173b60]">How the Admin access journey works</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">How the Admin access journey works</h2>
               <p className="mt-3 text-sm leading-7 text-[#647f95]">Follow these steps in order. If you have not received an invitation, contact the Project Owner instead of attempting to register a separate Admin account.</p>
             </div>
             <ol className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {setupSteps.map((step) => (
                 <li key={step.number} className="rounded-xl border border-[#d6e2eb] bg-white p-6 shadow-[0_10px_28px_rgba(23,59,96,0.05)]">
                   <span className="text-xs font-bold tracking-[0.16em] text-[#2782c7]">{step.number}</span>
-                  <h3 className="mt-3 text-lg font-bold text-[#173b60]">{step.title}</h3>
+                  <h3 className="mt-3 text-lg font-bold text-j-ink">{step.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-[#647f95]">{step.description}</p>
                 </li>
               ))}
@@ -93,13 +93,13 @@ export default function AdminHelp() {
         <section className="px-4 pb-12 sm:px-6 lg:pb-16">
           <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2">
             <article className="rounded-[1.5rem] border border-[#cfe0eb] bg-[#e9f6ff] p-7 sm:p-9">
-              <div className="inline-flex rounded-xl bg-white p-3 text-[#167ddd]"><Smartphone size={24} /></div>
-              <h2 className="mt-5 text-2xl font-bold tracking-[-0.03em] text-[#173b60]">Authenticator app setup</h2>
+              <div className="inline-flex rounded-xl bg-white p-3 text-j-accent"><Smartphone size={24} /></div>
+              <h2 className="mt-5 text-2xl font-bold tracking-[-0.03em] text-j-ink">Authenticator app setup</h2>
               <p className="mt-3 text-sm leading-7 text-[#56738d]">Install an authenticator app before starting enrollment. When the protected setup screen provides a QR code, open your app, choose to add an account, and scan that code. Enter the short-lived code from the app to finish setup.</p>
             </article>
             <article className="rounded-[1.5rem] border border-[#d6e2eb] bg-white p-7 sm:p-9">
-              <div className="inline-flex rounded-xl bg-[#f1f7fb] p-3 text-[#167ddd]"><KeyRound size={24} /></div>
-              <h2 className="mt-5 text-2xl font-bold tracking-[-0.03em] text-[#173b60]">Recovery-code guidance</h2>
+              <div className="inline-flex rounded-xl bg-[#f1f7fb] p-3 text-j-accent"><KeyRound size={24} /></div>
+              <h2 className="mt-5 text-2xl font-bold tracking-[-0.03em] text-j-ink">Recovery-code guidance</h2>
               <p className="mt-3 text-sm leading-7 text-[#647f95]">Recovery codes are emergency, one-time alternatives to a current authenticator code. Do not share, email, or store them in a public note. If none are available when your authenticator is lost, ask the Project Owner to reset your Admin two-factor access.</p>
             </article>
           </div>
@@ -107,11 +107,11 @@ export default function AdminHelp() {
 
         <section className="border-y border-[#d6e2eb] bg-white px-4 py-12 sm:px-6">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-bold tracking-[-0.03em] text-[#173b60]">Keep Admin access safe</h2>
+            <h2 className="text-2xl font-bold tracking-[-0.03em] text-j-ink">Keep Admin access safe</h2>
             <ul className="mt-5 grid gap-3 md:grid-cols-2">
               {adminHelpSafetyPoints.map((point) => <li key={point} className="rounded-xl border border-[#dce7ee] bg-[#f9fcff] px-4 py-4 text-sm leading-6 text-[#56738d]">{point}</li>)}
             </ul>
-            <Link href={adminHelpQuickLinks[0].href} className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[#167ddd] underline-offset-4 transition hover:underline">{adminHelpQuickLinks[0].label} <ArrowRight size={16} /></Link>
+            <Link href={adminHelpQuickLinks[0].href} className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-j-accent underline-offset-4 transition hover:underline">{adminHelpQuickLinks[0].label} <ArrowRight size={16} /></Link>
           </div>
         </section>
       </main>

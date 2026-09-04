@@ -13,15 +13,15 @@ function renderInline(parts: PolicyInline[]) {
   return parts.map((part, index) => {
     switch (part.kind) {
       case "bold":
-        return <strong key={index} className="font-bold text-[#173b60]">{part.text}</strong>;
+        return <strong key={index} className="font-bold text-j-ink">{part.text}</strong>;
       case "italic":
         return <em key={index}>{part.text}</em>;
       case "link":
         // External links open away from the site; `noreferrer` keeps the
         // opener out of the target's hands.
         return part.href.startsWith("/")
-          ? <a key={index} href={part.href} className="font-semibold text-[#167ddd] underline underline-offset-2">{part.text}</a>
-          : <a key={index} href={part.href} target="_blank" rel="noreferrer" className="font-semibold text-[#167ddd] underline underline-offset-2">{part.text}</a>;
+          ? <a key={index} href={part.href} className="font-semibold text-j-accent underline underline-offset-2">{part.text}</a>
+          : <a key={index} href={part.href} target="_blank" rel="noreferrer" className="font-semibold text-j-accent underline underline-offset-2">{part.text}</a>;
       default:
         return <Fragment key={index}>{part.text}</Fragment>;
     }
@@ -36,8 +36,8 @@ export default function PolicyDocument({ body, className }: { body: string; clas
     {blocks.map((block, index) => {
       if (block.kind === "heading") {
         return block.level === 2
-          ? <h2 key={index} className="pt-2 text-xl font-bold text-[#173b60]">{renderInline(block.content)}</h2>
-          : <h3 key={index} className="pt-1 text-base font-bold text-[#173b60]">{renderInline(block.content)}</h3>;
+          ? <h2 key={index} className="pt-2 text-xl font-bold text-j-ink">{renderInline(block.content)}</h2>
+          : <h3 key={index} className="pt-1 text-base font-bold text-j-ink">{renderInline(block.content)}</h3>;
       }
       if (block.kind === "list") {
         const items = block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>);
