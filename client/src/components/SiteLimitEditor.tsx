@@ -51,19 +51,19 @@ export default function SiteLimitEditor() {
   };
 
   return <div className="space-y-3">
-    <p className="text-[12px] leading-5 text-slate-600">
+    <p className="text-[12px] leading-5 text-j-ink-soft">
       These numbers used to live in the code. Each one shows the range it may move between — a text length cannot go past the column that stores it, and a selection cap cannot reach zero without making a required field unfillable. A limit left at its shipped value stores nothing.
     </p>
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
     {overrides.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-600"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the limits…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the limits…</div>
       : groups.map(group => {
         const rows = siteLimits.filter(limit => limit.group === group);
         if (rows.length === 0) return null;
-        return <section key={group} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-          <h2 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{group}</h2>
+        return <section key={group} className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
+          <h2 className="text-[11px] font-bold uppercase tracking-wide text-j-ink-faint">{group}</h2>
           <div className="mt-2 space-y-1">
             {rows.map(limit => {
               const draft = drafts[limit.id] ?? String(limit.value);
@@ -71,13 +71,13 @@ export default function SiteLimitEditor() {
               const changed = Number.isInteger(parsed) && parsed !== (stored.get(limit.id) ?? limit.value);
               const outOfRange = !Number.isInteger(parsed) || parsed < limit.min || parsed > limit.max;
               const edited = stored.has(limit.id);
-              return <div key={limit.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-50 py-1.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_11rem]">
+              return <div key={limit.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-j-border py-1.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_11rem]">
                 <div className="min-w-0">
-                  <label htmlFor={`limit-${limit.id}`} className="text-[13px] font-bold text-slate-800">{limit.label}</label>
-                  <p className="text-[11px] leading-4 text-slate-500">{limit.help}</p>
-                  <p className="text-[11px] text-slate-400">
+                  <label htmlFor={`limit-${limit.id}`} className="text-[13px] font-bold text-j-ink-strong">{limit.label}</label>
+                  <p className="text-[11px] leading-4 text-j-ink-muted">{limit.help}</p>
+                  <p className="text-[11px] text-j-ink-faint">
                     {limit.min}–{limit.max} {limit.unit}
-                    {edited ? <span className="ml-1 font-bold text-[#116fc4]">· edited, ships as {limit.value}</span> : null}
+                    {edited ? <span className="ml-1 font-bold text-j-accent">· edited, ships as {limit.value}</span> : null}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -89,19 +89,19 @@ export default function SiteLimitEditor() {
                     max={limit.max}
                     value={draft}
                     onChange={event => setDrafts(current => ({ ...current, [limit.id]: event.target.value }))}
-                    className={`h-8 w-20 rounded-md border bg-white px-2 text-[13px] text-slate-800 outline-none focus:ring-2 focus:ring-sky-100 ${outOfRange ? "border-red-300" : "border-slate-200 focus:border-[#116fc4]"}`}
+                    className={`h-8 w-20 rounded-lg border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:ring-2 focus:ring-sky-100 ${outOfRange ? "border-red-300" : "border-j-border focus:border-j-accent"}`}
                   />
                   <button
                     type="button"
                     disabled={busy !== null || !changed || outOfRange}
                     onClick={() => void run(limit.id, () => save.mutateAsync({ limitId: limit.id, value: parsed }), "The limit could not be saved.")}
-                    className="h-8 rounded-md bg-[#116fc4] px-2.5 text-[12px] font-bold text-white disabled:opacity-40"
+                    className="h-8 rounded-lg bg-j-accent px-2.5 text-[12px] font-bold text-white disabled:opacity-40"
                   >{busy === limit.id ? "…" : "Save"}</button>
                   <button
                     type="button"
                     disabled={busy !== null || !edited}
                     onClick={() => void run(limit.id, () => reset.mutateAsync({ limitId: limit.id }), "The limit could not be reset.")}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30"
                     aria-label={`Reset ${limit.label}`}
                     title={edited ? `Go back to ${limit.value}` : "Already at the shipped value"}
                   ><RotateCcw className="h-3.5 w-3.5" /></button>

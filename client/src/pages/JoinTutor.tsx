@@ -363,7 +363,7 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
       />
       <ChevronDown aria-hidden="true" size={16} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#5d7b91] transition ${open ? "-rotate-180" : ""}`} />
     </span>
-    {open ? <ul id={listId} role="listbox" aria-label={`${label} options`} className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
+    {open ? <ul id={listId} role="listbox" aria-label={`${label} options`} className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
       {filteredOptions.length ? filteredOptions.map((option, index) => <li
         key={option.id}
         id={`${listId}-${option.id}`}

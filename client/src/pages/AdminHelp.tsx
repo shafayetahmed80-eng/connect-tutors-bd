@@ -58,12 +58,12 @@ export default function AdminHelp() {
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2782c7]">Admin access help</p>
               <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight tracking-[-0.05em] text-[#173b60] sm:text-5xl">Secure sign-in and two-factor guidance.</h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-[#647f95]">This public guide explains the normal Admin access journey. It never displays account secrets, recovery codes, invitation tokens, or private Admin activity.</p>
-              <Link href="/admin/login" className="mt-8 inline-flex items-center gap-2 rounded-md bg-[#173b60] px-5 py-3.5 text-sm font-bold !text-white shadow-[0_8px_18px_rgba(23,59,96,0.2)] transition hover:bg-[#102f4c] active:scale-[0.97]">
+              <Link href="/admin/login" className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#173b60] px-5 py-3.5 text-sm font-bold !text-white shadow-[0_8px_18px_rgba(23,59,96,0.2)] transition hover:bg-[#102f4c] active:scale-[0.97]">
                 Go to Admin Login <ArrowRight size={17} />
               </Link>
             </div>
             <aside className="rounded-[1.5rem] bg-[#173b60] p-7 text-white shadow-[0_20px_55px_rgba(23,59,96,0.2)] sm:p-9">
-              <div className="inline-flex rounded-2xl bg-white/10 p-3 text-[#9edcff]"><ShieldCheck size={30} /></div>
+              <div className="inline-flex rounded-xl bg-white/10 p-3 text-[#9edcff]"><ShieldCheck size={30} /></div>
               <h2 className="mt-6 text-2xl font-bold tracking-[-0.03em]">What Admin login needs</h2>
               <p className="mt-3 text-sm leading-7 text-[#c8dbea]">An invited Admin account signs in with three checks: the correct email address, the correct password, and a current authenticator code or one-time recovery code.</p>
               <div className="mt-6 border-t border-white/15 pt-5 text-sm font-semibold text-[#bde9ff]">Two-factor verification remains mandatory for protected Admin actions.</div>
@@ -80,7 +80,7 @@ export default function AdminHelp() {
             </div>
             <ol className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {setupSteps.map((step) => (
-                <li key={step.number} className="rounded-2xl border border-[#d6e2eb] bg-white p-6 shadow-[0_10px_28px_rgba(23,59,96,0.05)]">
+                <li key={step.number} className="rounded-xl border border-[#d6e2eb] bg-white p-6 shadow-[0_10px_28px_rgba(23,59,96,0.05)]">
                   <span className="text-xs font-bold tracking-[0.16em] text-[#2782c7]">{step.number}</span>
                   <h3 className="mt-3 text-lg font-bold text-[#173b60]">{step.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-[#647f95]">{step.description}</p>

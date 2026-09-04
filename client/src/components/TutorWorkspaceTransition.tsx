@@ -7,7 +7,7 @@ export function TutorWorkspaceTransition() {
       aria-busy="true"
       aria-label="Preparing your Tutor workspace"
       aria-live="polite"
-      className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-[#d6e9f5] bg-[#f7fbfe] px-6 py-10 text-center"
+      className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-[#d6e9f5] bg-[#f7fbfe] px-6 py-10 text-center"
       role="status"
     >
       <div className="relative grid size-20 place-items-center" aria-hidden="true">

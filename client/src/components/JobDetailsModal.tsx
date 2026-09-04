@@ -118,7 +118,7 @@ export default function JobDetailsModal({
             type="button"
             onClick={onClose}
             aria-label="Close details"
-            className="grid size-7 shrink-0 place-items-center rounded-md text-[#6c879e] hover:bg-[#eef4f9] hover:text-[#173d60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8]"
+            className="grid size-7 shrink-0 place-items-center rounded-lg text-[#6c879e] hover:bg-[#eef4f9] hover:text-[#173d60] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8]"
           ><X size={14} /></button>
         </div>
 

@@ -238,7 +238,7 @@ function CatalogSearchField({
         type="button"
         onClick={clearSelection}
         aria-label={`Clear ${label}`}
-        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-[#6b8497] hover:bg-[#eef5fb] hover:text-[#244a6a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
+        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-[#6b8497] hover:bg-[#eef5fb] hover:text-[#244a6a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
       >
         <X size={14} />
       </button> : null}
@@ -895,7 +895,7 @@ function TutorProfileWorkspaceBody({
       {form.educationRecords.map((record, index) => {
         const isOpen = openQualificationIndices.has(index);
         const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
-        return <div key={index} className={`overflow-hidden rounded-2xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
+        return <div key={index} className={`overflow-hidden rounded-xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
           <div className="flex items-center gap-2 p-3 sm:px-4">
             <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
               <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-[#167ddd] text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
@@ -1074,7 +1074,7 @@ function TutorProfileWorkspaceBody({
 
       <div className={`min-w-0 ${tp.stack}`}>
 
-        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-2xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
+        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 
         {previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
           sections={readoutSections}

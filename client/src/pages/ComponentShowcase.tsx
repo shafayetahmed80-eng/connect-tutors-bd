@@ -998,13 +998,13 @@ export default function ComponentsShowcase() {
                 <CollapsibleContent>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+                      <div className="rounded-lg border px-4 py-3 font-mono text-sm">
                         @radix-ui/primitives
                       </div>
-                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+                      <div className="rounded-lg border px-4 py-3 font-mono text-sm">
                         @radix-ui/colors
                       </div>
-                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+                      <div className="rounded-lg border px-4 py-3 font-mono text-sm">
                         @stitches/react
                       </div>
                     </div>
@@ -1178,7 +1178,7 @@ export default function ComponentsShowcase() {
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  className="rounded-md border"
+                  className="rounded-lg border"
                 />
               </CardContent>
             </Card>
@@ -1269,7 +1269,7 @@ export default function ComponentsShowcase() {
                 <Separator />
                 <div className="space-y-2">
                   <Label>Scroll Area</Label>
-                  <ScrollArea className="h-[200px] w-full rounded-md border overflow-hidden">
+                  <ScrollArea className="h-[200px] w-full rounded-lg border overflow-hidden">
                     <div className="p-4">
                       <div className="space-y-4">
                         {Array.from({ length: 20 }).map((_, i) => (
