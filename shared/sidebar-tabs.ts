@@ -98,6 +98,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/tutor/dashboard", "Dashboard"],
       ["/tutor/dashboard/profile", "Profile"],
       ["/tutor/dashboard/status", "Status"],
+      ["/tutor/dashboard/notifications", "Notifications"],
       ["/tutor/dashboard/preferences", "Tuition preferences"],
       ["/tutor/dashboard/requests", "Tutor requests"],
       ["/tutor/dashboard/settings", "Settings"],

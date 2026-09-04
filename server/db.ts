@@ -28,6 +28,7 @@ import {
   facultyDepartments,
   guardianContactAccessEvents,
   guardianRequestNotifications,
+  tutorNotifications,
   guardianPhoneIntakes,
   guardianProfilePhotoEvents,
   guardianProfilePhotos,
@@ -1965,6 +1966,81 @@ export async function markAllGuardianNotificationsRead(input: { guardianUserId: 
   return { updatedCount: Number(result[0].affectedRows ?? 0) };
 }
 
+/**
+ * The Tutor's inbox, mirroring the Guardian's so both sides of the market are
+ * told the same way. Every read is scoped to the signed-in Tutor.
+ */
+export async function listTutorNotifications(input: { tutorId: string; limit: number; cursor?: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const conditions = [eq(tutorNotifications.tutorId, input.tutorId)];
+  if (input.cursor) conditions.push(lte(tutorNotifications.id, input.cursor - 1));
+  const rows = await database
+    .select({
+      id: tutorNotifications.id,
+      type: tutorNotifications.type,
+      title: tutorNotifications.title,
+      message: tutorNotifications.message,
+      actionPath: tutorNotifications.actionPath,
+      readAt: tutorNotifications.readAt,
+      createdAt: tutorNotifications.createdAt,
+    })
+    .from(tutorNotifications)
+    .where(and(...conditions))
+    .orderBy(desc(tutorNotifications.id))
+    .limit(input.limit + 1);
+  const hasNextPage = rows.length > input.limit;
+  const items = hasNextPage ? rows.slice(0, input.limit) : rows;
+  return { items, nextCursor: hasNextPage ? items.at(-1)?.id ?? null : null };
+}
+
+export async function getTutorNotificationUnreadCount(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ unreadCount: count() })
+    .from(tutorNotifications)
+    .where(and(eq(tutorNotifications.tutorId, input.tutorId), isNull(tutorNotifications.readAt)));
+  return { unreadCount: Number(row?.unreadCount ?? 0) };
+}
+
+export async function markTutorNotificationRead(input: { tutorId: string; notificationId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(tutorNotifications)
+    .set({ readAt: new Date() })
+    .where(and(
+      eq(tutorNotifications.id, input.notificationId),
+      eq(tutorNotifications.tutorId, input.tutorId),
+      isNull(tutorNotifications.readAt),
+    ));
+  return { updated: Boolean(result[0].affectedRows) };
+}
+
+export async function markAllTutorNotificationsRead(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(tutorNotifications)
+    .set({ readAt: new Date() })
+    .where(and(eq(tutorNotifications.tutorId, input.tutorId), isNull(tutorNotifications.readAt)));
+  return { updatedCount: Number(result[0].affectedRows ?? 0) };
+}
+
+/** One decision, one row. A repeat of the same decision refreshes it rather than piling up. */
+async function createTutorNotification(tx: any, input: {
+  tutorId: string;
+  type: "profile_moderation" | "interest_decision" | "appointment" | "confirmation_letter";
+  title: string;
+  message: string;
+  actionPath: string;
+  deduplicationKey: string;
+}) {
+  await tx.insert(tutorNotifications).values(input)
+    .onDuplicateKeyUpdate({ set: { title: input.title, message: input.message, actionPath: input.actionPath, readAt: null, createdAt: new Date() } });
+}
+
 async function createGuardianNotification(input: {
   guardianUserId: number;
   requestId: number;
@@ -3021,8 +3097,9 @@ export async function reviewTutorJobInterestByAdmin(input: {
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
     const [interest] = await tx
-      .select({ id: tutorJobInterests.id, status: tutorJobInterests.status })
+      .select({ id: tutorJobInterests.id, status: tutorJobInterests.status, tutorId: tutorJobInterests.tutorId, publicJobId: tutorJobs.publicJobId })
       .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
       .where(eq(tutorJobInterests.id, input.interestId))
       .limit(1)
       .for("update");
@@ -3030,6 +3107,22 @@ export async function reviewTutorJobInterestByAdmin(input: {
     const transition = transitionTutorInterest(interest.status as TutorInterestDatabaseStatus, input.status, "admin");
     if (!transition.allowed) throw new Error(`TUTOR_INTEREST_${transition.reason.toUpperCase()}`);
     await tx.update(tutorJobInterests).set({ status: input.status }).where(eq(tutorJobInterests.id, interest.id));
+    // A decline used to be indistinguishable from the Tutor's own withdrawal:
+    // the tab changed and nothing was said. No reason is given - the Admin
+    // dialog collects none for an interest - so the message says only what
+    // happened and where to look.
+    await createTutorNotification(tx, {
+      tutorId: interest.tutorId,
+      type: "interest_decision",
+      title: input.status === "shortlisted" ? `You were shortlisted for ${interest.publicJobId}`
+        : input.status === "matched" ? `You were appointed to ${interest.publicJobId}`
+        : `Your application for ${interest.publicJobId} was not taken forward`,
+      message: input.status === "declined"
+        ? "Other tuitions on the Job Board are still open to you."
+        : "Open your Status tab to see where this application now sits.",
+      actionPath: "/tutor/dashboard/status",
+      deduplicationKey: `interest:${interest.id}:${input.status}`,
+    });
     return { interestId: interest.id, status: input.status };
   });
 }
@@ -3743,6 +3836,23 @@ export async function moderateTutorProfile(input: {
       previousStatus: tutor.profileStatus,
       nextStatus: input.nextStatus,
       reason: normalizedReason,
+    });
+    // The Tutor is told their profile moved. The reason itself is only handed
+    // back for "changes requested" - see the owner DTO - so the message points
+    // at the profile rather than repeating it here.
+    await createTutorNotification(tx, {
+      tutorId: tutor.id,
+      type: "profile_moderation",
+      title: input.nextStatus === "approved" ? "Your profile has been approved"
+        : input.nextStatus === "changes_requested" ? "Changes were requested on your profile"
+        : "Your profile has been suspended",
+      message: input.nextStatus === "changes_requested"
+        ? "Open your profile to read what to change, then submit it again."
+        : input.nextStatus === "approved"
+          ? "You can now be matched with tuition requests."
+          : "Your coordinator can explain the next step.",
+      actionPath: "/tutor/dashboard/profile",
+      deduplicationKey: `moderation:${tutor.id}:${Number(result[0].insertId)}`,
     });
     return { updated: true as const, eventId: Number(result[0].insertId), previousStatus: tutor.profileStatus, nextStatus: input.nextStatus };
   });
