@@ -4,6 +4,7 @@ import { fieldLabel } from "@/components/journeyField";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { trpc } from "@/lib/trpc";
+import { RecordIcon } from "@/components/recordIcons";
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, consumeCurrentTutorPortalReauthNotice, consumeCurrentTutorSignedOutNotice, getCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
@@ -102,7 +103,7 @@ export default function TutorLogin() {
               <label htmlFor="tutor-login-identifier" className={fieldLabel}>Email or mobile number <span className="text-[#dd4b4b]">*</span><span className={fieldRow}><Mail size={16} className="text-[#5b86a3]" aria-hidden="true" /><input id="tutor-login-identifier" required type="text" inputMode="text" value={identifier} onChange={event => setIdentifier(event.target.value)} className={fieldInput} placeholder="name@example.com or 017XXXXXXXX" autoComplete="username" /></span></label>
               <div>
                 <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="tutor-login-password" className={fieldLabel}>Password <span className="text-[#dd4b4b]">*</span></label>
+                  <label htmlFor="tutor-login-password" className={fieldLabel}><span className="inline-flex items-center gap-1.5"><RecordIcon name="password" size={14} className="text-j-accent" />Password</span> <span className="text-[#dd4b4b]">*</span></label>
                   <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp(RECOVERY_MESSAGE)}>Need help signing in?</a>
                 </div>
                 <span className={fieldRow}><input id="tutor-login-password" required type={showPassword ? "text" : "password"} value={password} onChange={event => setPassword(event.target.value)} onKeyDown={capsLockWarning.updateCapsLockState} onKeyUp={capsLockWarning.updateCapsLockState} onBlur={capsLockWarning.clearCapsLockWarning} className={fieldInput} placeholder="Your password" autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(current => !current)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} className="-mr-1.5 rounded-lg p-1 text-[#5b86a3] transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span>

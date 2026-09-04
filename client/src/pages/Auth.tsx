@@ -16,6 +16,7 @@ import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarnin
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { TRPCClientError } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
+import { RecordIcon } from "@/components/recordIcons";
 import { getSafeTutorApplyReturnPath, getTutorApplyPostLoginPath, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 
@@ -243,7 +244,7 @@ export default function AuthPage() {
             {mode === "login" ? (
               <form className="mt-8 space-y-5" onSubmit={submitLogin} noValidate>
                 <div>
-                  <label htmlFor="account-identifier" className="mb-2 block text-sm font-bold text-j-ink-strong">Email or mobile number</label>
+                  <label htmlFor="account-identifier" className="mb-2 block text-sm font-bold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="email" size={14} className="text-j-accent" />Email or mobile number</span></label>
                   <input
                     id="account-identifier"
                     name="identifier"
@@ -259,7 +260,7 @@ export default function AuthPage() {
                 </div>
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-4">
-                    <label htmlFor="account-password" className="block text-sm font-bold text-j-ink-strong">Password</label>
+                    <label htmlFor="account-password" className="block text-sm font-bold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="password" size={14} className="text-j-accent" />Password</span></label>
                     <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors BD, I need help recovering my account.")}>Need help signing in?</a>
                   </div>
                   <div className="relative">
