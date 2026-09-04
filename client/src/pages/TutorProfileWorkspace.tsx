@@ -29,6 +29,7 @@ import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
 import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
+import { defaultSiteLimits } from "@shared/site-limits";
 import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
@@ -417,7 +418,10 @@ function TutorProfileWorkspaceBody({
   const subjects = trpc.catalog.searchSubjects.useQuery({ query: "", limit: 50 });
   const classLevels = trpc.catalog.searchClassLevels.useQuery({ query: "", limit: 50 });
   const curricula = trpc.catalog.searchCurricula.useQuery({ query: "", limit: 50 });
-  const studentTypes = trpc.catalog.searchStudentTypes.useQuery({ query: "", limit: 50 });
+  // The Owner-set caps. Without these the multi-selects let a Tutor pick past
+  // the limit and only the save came back refused.
+  const resolvedLimits = trpc.siteLimits.resolved.useQuery();
+  const limits = resolvedLimits.data ?? defaultSiteLimits();
   const languages = trpc.catalog.searchLanguages.useQuery({ query: "", limit: 50 });
   const bangladeshLocationTypes = useMemo<Array<"city" | "division" | "district" | "thana" | "upazila" | "subdivision" | "area">>(
     () => ["city", "division", "district", "thana", "upazila", "subdivision", "area"],
@@ -556,14 +560,13 @@ function TutorProfileWorkspaceBody({
       subject: byName(subjects.data),
       classLevel: byName(classLevels.data),
       curriculum: byName(curricula.data),
-      studentType: byName(studentTypes.data),
       language: byName(languages.data),
       university: byName(universities.data),
       department: byName(facultyDepartments.data),
       location: byLabel(currentBangladeshLocations.data),
       area: byLabel(teachingAreaLocations.data),
     };
-  }, [subjects.data, classLevels.data, curricula.data, studentTypes.data, languages.data, universities.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
+  }, [subjects.data, classLevels.data, curricula.data, languages.data, universities.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers), [form, readoutResolvers]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
@@ -1011,9 +1014,9 @@ function TutorProfileWorkspaceBody({
   const renderTeachingExpertiseFields = (): React.ReactNode => <div className="space-y-3.5">
     <FormSection title="What you teach">
       <div className={compactFieldGridClassName}>
-        <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." />
-        <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.primarySubjects} required options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} maxSelections={Math.max(1, limits["tutor.subjects"] - form.additionalSubjectIds.length)} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.additionalSubjects} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." maxSelections={Math.max(0, limits["tutor.subjects"] - form.primarySubjectIds.length)} />
+        <SearchableMultiSelect label={tutorProfileCopy.fields.classLevels} required options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} maxSelections={limits["tutor.levels"]} />
         <SearchableMultiSelect label={tutorProfileCopy.fields.curricula} required options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />
         <FormInput label={tutorProfileCopy.fields.teachingExperience} showRequiredMarker type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />
       </div>
@@ -1074,7 +1077,7 @@ function TutorProfileWorkspaceBody({
 
       <FormSection title={<SiteText slotId="tutor-profile.form.language-communication" className="text-sm" />}>
         <div className={compactFieldGridClassName}>
-          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} />
+          <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} maxSelections={limits["tutor.languages"]} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />
         </div>
       </FormSection>

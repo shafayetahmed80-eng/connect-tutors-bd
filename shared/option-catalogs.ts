@@ -1,12 +1,16 @@
 /**
  * The option catalogs an Owner can edit from the Admin panel.
  *
- * These are the lists the Tutor and Guardian forms are built from, so a missing
- * entry blocks a profile from being submitted at all - which is why they are
- * editable without a deploy. Institutes and departments are deliberately absent:
- * at 300+ rows each they need their own paginated screen.
+ * These are the lists the Tutor profile is built from, so a missing entry
+ * blocks a profile from being submitted at all - which is why they are editable
+ * without a deploy. Institutes and departments are deliberately absent: at 300+
+ * rows each they need their own paginated screen.
+ *
+ * "student-types" was here until the Tutor profile stopped asking who a Tutor
+ * teaches. The `student_types` table and every row a Tutor already chose are
+ * untouched; if the field returns, so does its line below.
  */
-export const optionCatalogIds = ["subjects", "class-levels", "curricula", "student-types", "languages"] as const;
+export const optionCatalogIds = ["subjects", "class-levels", "curricula", "languages"] as const;
 export type OptionCatalogId = (typeof optionCatalogIds)[number];
 
 export type OptionCatalogMeta = {
@@ -18,11 +22,21 @@ export type OptionCatalogMeta = {
   itemLabel: string;
 };
 
+/**
+ * `usedFor` is read by an Owner deciding whether an edit here is worth making,
+ * so it has to name the screens that actually read the catalog.
+ *
+ * These three said "Tutor profile and Request a tutor". They are not read by
+ * Request a tutor: that form's categories, levels and subjects are a tree -
+ * a category picks its levels, and the pair picks the subjects - held in
+ * `GuardianRequestJourney`, and these catalogs are flat lists with no parent
+ * to hang that off. The Guardian side has no read path to them either;
+ * `catalog.searchSubjects` and its siblings are `activeTutorProcedure`.
+ */
 export const optionCatalogs: OptionCatalogMeta[] = [
-  { id: "subjects", label: "Subjects", usedFor: "Tutor profile and Request a tutor", itemLabel: "subject" },
-  { id: "class-levels", label: "Class / level", usedFor: "Tutor profile and Request a tutor", itemLabel: "class or level" },
-  { id: "curricula", label: "Curricula", usedFor: "Tutor profile and Request a tutor", itemLabel: "curriculum" },
-  { id: "student-types", label: "Student types", usedFor: "Tutor profile", itemLabel: "student type" },
+  { id: "subjects", label: "Subjects", usedFor: "Tutor profile", itemLabel: "subject" },
+  { id: "class-levels", label: "Class / level", usedFor: "Tutor profile", itemLabel: "class or level" },
+  { id: "curricula", label: "Curricula", usedFor: "Tutor profile", itemLabel: "curriculum" },
   { id: "languages", label: "Languages", usedFor: "Tutor profile", itemLabel: "language" },
 ];
 
