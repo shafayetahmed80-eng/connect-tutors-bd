@@ -522,8 +522,6 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       teachingAreaIds: ["dhaka-uttara-sector-1"],
     })));
   });
-});
-
 
   it("scopes teaching-area catalog requests to a selected city parent", async () => {
     const cityProfile = { ...completeProfile, currentLocationId: "dhaka-city" };
@@ -541,3 +539,56 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
       parentId: "dhaka-city",
     })));
   });
+});
+
+describe("the Tutor Profile phone boxes", () => {
+  afterEach(() => {
+    cleanup();
+    trpcMocks.saveDraft.mockReset();
+  });
+
+  it("saves Family and emergency contact when the number is typed the way Bangladeshis write it", async () => {
+    // This section used to refuse to save. Its placeholder read `Ex- 01712345678`
+    // and it sent that word for word, but the server takes only `+8801712345678`
+    // and reports the rejection on a path the field-error contract drops - so the
+    // Tutor saw a popup that closed on nothing.
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Father’s Name/), { target: { value: "Abdul Karim" } });
+    fireEvent.change(within(dialog).getByLabelText("Father’s Phone Number"), { target: { value: "01712345678" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls[0][0].privateDetails).toMatchObject({
+      fatherName: "Abdul Karim",
+      fatherPhone: "+8801712345678",
+    });
+  });
+
+  it("keeps +880 out of the box, so it cannot be typed away", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const phone = within(screen.getByRole("dialog")).getByLabelText(tutorProfileCopy.fields.phone) as HTMLInputElement;
+
+    expect(phone.value).toBe("1712345678");
+    expect(phone.maxLength).toBe(10);
+  });
+
+  it("names the half-typed number instead of letting the save fail", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Mother’s Phone Number (Optional)"), { target: { value: "17123" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+    expect(within(dialog).getAllByRole("alert").map(node => node.textContent).join(" ")).toMatch(/10-digit Bangladesh mobile number/);
+  });
+});
