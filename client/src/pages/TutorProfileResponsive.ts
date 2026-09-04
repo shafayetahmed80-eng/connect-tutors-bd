@@ -18,6 +18,6 @@ export const tutorProfileResponsiveClasses = {
   completionActions: "mt-3 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-2",
   completionActionButton: "min-h-11 w-full whitespace-normal text-center leading-5",
   photoPreview: "mx-auto flex aspect-square w-28 max-w-full items-center justify-center overflow-hidden rounded-full bg-[#dcefff] text-[#167ddd] ring-4 ring-white shadow-sm sm:w-32",
-  photoEditorPanel: "max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-3xl",
+  // The crop editor's frame is the shared <Modal>; only its fixed-height stage lives here.
   photoEditorCropStage: "relative h-[52dvh] min-h-[240px] max-h-[360px] bg-[#102840] sm:h-[min(62vh,390px)]",
 } as const;

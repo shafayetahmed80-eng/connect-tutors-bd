@@ -60,7 +60,7 @@ describe("TutorProfilePhotoEditor", () => {
     const onConfirm = vi.fn();
     render(<TutorProfilePhotoEditor imageUrl="blob:source-photo" onCancel={onCancel} onConfirm={onConfirm} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /close photo editor/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
@@ -69,7 +69,8 @@ describe("TutorProfilePhotoEditor", () => {
   it("keeps the editor controls reachable within a portrait viewport", () => {
     render(<TutorProfilePhotoEditor imageUrl="blob:source-photo" onCancel={vi.fn()} onConfirm={vi.fn()} />);
 
-    expect(screen.getByTestId("tutor-profile-photo-editor-panel").className).toContain("overflow-y-auto");
+    // The shared Modal makes its body the scroll region; the crop stage stays a bounded height.
+    expect(document.querySelector("[data-modal-body]")!.className).toContain("overflow-y-auto");
     expect(screen.getByTestId("tutor-profile-photo-editor-crop-stage").className).toContain("52dvh");
   });
 });
