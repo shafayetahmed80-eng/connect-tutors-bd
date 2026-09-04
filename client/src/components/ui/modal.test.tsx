@@ -116,10 +116,26 @@ describe("Modal", () => {
 
     expect(dialog.className).toContain("bg-background");
     expect(dialog.className).not.toMatch(/gradient|ring-\[|ring-1/);
-    // one drop shadow, no coloured second layer
-    expect(dialog.className).toMatch(/shadow-\[0_24px_48px_-24px_rgba\(23,59,96,0\.28\)\]/);
     expect(dialog.className).not.toMatch(/rgba\(22,119,232/);
     expect(backdrop.className).not.toContain("backdrop-blur");
+  });
+
+  it("carries no appearance of its own, so nothing fights the Owner's settings", () => {
+    // Radius, shadow, scrim and entrance speed are all set in Admin > Modals
+    // and applied by SiteDimensionStyle against the two tags below. A utility
+    // class for the same property left here would win or lose by cascade order,
+    // which is not a thing to leave to chance.
+    renderModal();
+    const dialog = screen.getByRole("dialog");
+    const backdrop = dialog.parentElement!;
+
+    expect(dialog.getAttribute("data-modal-size")).toBe("md");
+    expect(backdrop.hasAttribute("data-modal-backdrop")).toBe(true);
+
+    for (const owned of [/rounded-/, /shadow-/, /duration-/, /max-w-/]) {
+      expect(dialog.className, String(owned)).not.toMatch(owned);
+    }
+    expect(backdrop.className).not.toMatch(/bg-j-ink|duration-/);
   });
 
   it("makes the body the only scroll region", () => {

@@ -127,7 +127,8 @@ export function Modal({
     <ModalContext.Provider value={{ titleId, onClose, busy }}>
       <div
         onClick={onBackdropClick}
-        className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-j-ink/45 p-0 animate-in fade-in duration-200 motion-reduce:animate-none sm:items-center sm:p-6"
+        data-modal-backdrop=""
+        className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-0 animate-in fade-in motion-reduce:animate-none sm:items-center sm:p-6"
       >
         <div
           ref={panelRef}
@@ -140,9 +141,9 @@ export function Modal({
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
           className={cn(
-            "flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-j-border bg-background text-j-ink shadow-[0_24px_48px_-24px_rgba(23,59,96,0.28)] focus:outline-none",
-            "animate-in slide-in-from-bottom-4 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none",
-            "sm:my-6 sm:rounded-2xl sm:zoom-in-95 sm:slide-in-from-bottom-0",
+            "flex max-h-[92vh] w-full flex-col overflow-hidden border border-j-border bg-background text-j-ink focus:outline-none",
+            "animate-in slide-in-from-bottom-4 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none",
+            "sm:my-6 sm:zoom-in-95 sm:slide-in-from-bottom-0",
           )}
         >
           {children}
