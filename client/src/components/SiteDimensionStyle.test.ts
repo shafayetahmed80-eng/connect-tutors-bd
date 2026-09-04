@@ -5,6 +5,37 @@ import { buildSiteDimensionCss } from "./SiteDimensionStyle";
 /** Every dimension the Owner is offered on Admin > Modals. */
 const modalLimitIds = siteLimits.filter(limit => limit.group === "Modals").map(limit => limit.id);
 
+describe("the letter size an Owner sets for input fields", () => {
+  const textLimitIds = siteLimits.filter(limit => limit.group === "Input Field Text").map(limit => limit.id);
+
+  it("reaches the stylesheet, every one of them", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    for (const id of textLimitIds) {
+      const meta = findSiteLimit(id)!;
+      expect(css, id).toContain(`${meta.value}${meta.unit}`);
+    }
+    expect(textLimitIds).toHaveLength(2);
+  });
+
+  it("sizes text areas along with single-line fields, unlike the height rule beside it", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "inputText.journey": 18 });
+    expect(css).toContain(".input-text-journey { font-size: 18px; }");
+  });
+
+  it("scales a value-matching icon inside a box with that box's own text", () => {
+    // Lucide sets width/height as attributes on the <svg>; a CSS property
+    // always outranks those regardless of specificity, so 1em can override
+    // them unconditionally once the marker class is in scope.
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "inputText.profile": 16, "inputText.journey": 18 });
+    expect(css).toContain(".input-text-profile svg, svg.input-text-profile { width: 1em; height: 1em; }");
+    expect(css).toContain(".input-text-journey svg, svg.input-text-journey { width: 1em; height: 1em; }");
+  });
+  it("keeps the two panels' text sizes apart, as it does their heights", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "inputText.profile": 16, "inputText.journey": 15 });
+    expect(css).toContain(".input-text-profile { font-size: 16px; }");
+    expect(css).toContain(".input-text-journey { font-size: 15px; }");
+  });
+});
 describe("the dialog sizes an Owner sets", () => {
   it("reaches the stylesheet, every one of them", () => {
     // A number offered in the Admin panel that no rule reads would be a dial

@@ -44,6 +44,19 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // its own class, so it is not matched here.
     `.modal-field-profile { height: ${limits["modal.fieldHeight.profile"]}px; }`,
     `.modal-field-journey { height: ${limits["modal.fieldHeight.journey"]}px; }`,
+    // The letters inside a box, kept apart from the box's own height above -
+    // one is type, the other is layout. Covers text areas too, which the
+    // height rule above deliberately does not.
+    `.input-text-profile { font-size: ${limits["inputText.profile"]}px; }`,
+    `.input-text-journey { font-size: ${limits["inputText.journey"]}px; }`,
+    // A value-matching icon inside a box (a location pin, a category glyph)
+    // is sized in `em`, so it tracks that same font-size - large in a big
+    // field, small in a dense one - instead of sitting fixed while the text
+    // around it moves. Lucide sets width/height as attributes, which a CSS
+    // property always outranks regardless of where the marker class lands:
+    // on the icon's own <svg>, or on a box it shares with the field.
+    `.input-text-profile svg, svg.input-text-profile { width: 1em; height: 1em; }`,
+    `.input-text-journey svg, svg.input-text-journey { width: 1em; height: 1em; }`,
   ].join("\n");
 }
 

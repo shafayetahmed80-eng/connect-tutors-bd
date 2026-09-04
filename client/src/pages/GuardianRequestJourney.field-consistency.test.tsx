@@ -113,4 +113,14 @@ describe("the Guardian request form's fields line up", () => {
     expect(screen.getByRole("textbox", { name: /Monthly salary/ })).not.toBeNull();
     expect(screen.getByRole("textbox", { name: /Additional notes/ })).not.toBeNull();
   });
+
+  it("carries the icon inside a box on the same marker as the box's own text", () => {
+    // Admin > Input Field Text scales this icon in `em`, against the marker's
+    // own font-size - so the class has to be on the icon the box actually
+    // renders, not just documented as an intention.
+    const { container } = render(<RequestStage {...props} step={1} />);
+    const tuitionTypeIcon = container.querySelector("select")!.previousElementSibling!;
+
+    expect(tuitionTypeIcon.className).toContain("input-text-journey");
+  });
 });

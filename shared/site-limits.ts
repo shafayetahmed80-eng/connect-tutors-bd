@@ -46,11 +46,16 @@ export const siteLimitIds = [
   "modal.backdropOpacity",
   "modal.shadowBlur",
   "modal.shadowOpacity",
+  // The size of the letters typed into a box, kept apart from the box's own
+  // height above - one is type, the other is layout, and an Owner moving one
+  // should not have to think about the other.
+  "inputText.profile",
+  "inputText.journey",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals";
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -310,6 +315,26 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 28,
     min: 0,
     max: 60,
+  },
+  {
+    id: "inputText.profile",
+    group: "Input Field Text",
+    label: "Tutor profile editor",
+    help: "The letters a Tutor sees inside every box in the profile section popup - inputs, dropdowns, and its own text areas. A value icon inside a box scales with it.",
+    unit: "px",
+    value: 12,
+    min: 10,
+    max: 20,
+  },
+  {
+    id: "inputText.journey",
+    group: "Input Field Text",
+    label: "Guardian journey and registration",
+    help: "The Hire a tutor sheet and the Tutor/Guardian sign-up forms, which share the same boxes. A value icon inside a box scales with it.",
+    unit: "px",
+    value: 14,
+    min: 10,
+    max: 20,
   },
 ];
 

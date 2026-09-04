@@ -1048,9 +1048,9 @@ export function AccountStage(props: GuardianAccountStageProps) {
 
       <label className="block" htmlFor="guardian-phone">
         <span className={fieldLabel}>Phone number {star}</span>
-        <span className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-[#eef3f8]">
-          <span className="flex items-center border-r border-j-border px-3.5 text-sm font-bold text-j-ink-soft">+880</span>
-          <input id="guardian-phone" readOnly aria-readonly="true" tabIndex={-1} value={displayPhone} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-sm text-j-ink-soft outline-none" />
+        <span className="input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-[#eef3f8]">
+          <span className="flex items-center border-r border-j-border px-3.5 font-bold text-j-ink-soft">+880</span>
+          <input id="guardian-phone" readOnly aria-readonly="true" tabIndex={-1} value={displayPhone} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-j-ink-soft outline-none" />
         </span>
         <span className="mt-1.5 block text-xs font-medium text-[#8496a6]">Taken from the previous step. Use “Back to phone” to change it.</span>
       </label>
@@ -1235,7 +1235,7 @@ function InputField({ label, labelIcon, labelHidden, value, onChange, type = "te
   return <label className="block">
     <FieldLabelText label={label} labelIcon={labelIcon} labelHidden={labelHidden} optional={optional} />
     <span className={`relative block ${labelHidden ? "" : "mt-2"}`}>
-      {icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
+      {icon ? <span aria-hidden="true" className="input-text-journey pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
       <input id={id} className={`${filledField} ${icon ? "pl-10" : ""}`} type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete={autoComplete} maxLength={maxLength} inputMode={inputMode} />
     </span>
   </label>;
@@ -1245,7 +1245,7 @@ function SelectField({ label, labelIcon, value, onChange, options, placeholder, 
   return <label className="block">
     <FieldLabelText label={label} labelIcon={labelIcon} optional={optional} />
     <span className="relative mt-2 block">
-      {icon ? <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
+      {icon ? <span aria-hidden="true" className="input-text-journey pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent">{icon}</span> : null}
       <select className={`${filledField} ${icon ? "pl-10" : ""}`} value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">{placeholder}</option>
         {options.map((option) => <option key={option} value={option}>{formatOption?.(option) ?? option}</option>)}
