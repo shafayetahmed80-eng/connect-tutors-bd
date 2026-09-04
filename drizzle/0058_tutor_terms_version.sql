@@ -1,0 +1,12 @@
+-- Which version of the Terms a Tutor agreed to at registration.
+--
+-- The checkbox existed from the start but its answer was only ever validated in
+-- the browser: it was not in `tutorAuthInputSchema` and never reached the
+-- server. A Guardian's answer has been recorded in
+-- `guardian_profiles.termsVersion` all along, so one side of the product could
+-- show what somebody agreed to and the other could not.
+--
+-- Nullable because every Tutor who registered before today was never asked in a
+-- way that could be recorded, and writing a version they did not see would be
+-- worse than admitting the gap.
+ALTER TABLE `tutor_registrations` ADD `termsVersion` varchar(64);

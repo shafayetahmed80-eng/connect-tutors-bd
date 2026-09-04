@@ -1,6 +1,12 @@
 import { z } from "zod";
+import { TERMS_VERSION } from "@shared/terms-version";
 
-export const GUARDIAN_TERMS_VERSION = "draft-2026-08-20";
+/**
+ * Kept as a name the Guardian code already reads, now pointing at the one
+ * shared version. A Tutor and a Guardian tick the same box and follow the
+ * same two links, so two constants could only drift apart.
+ */
+export const GUARDIAN_TERMS_VERSION = TERMS_VERSION;
 
 export class GuardianRegistrationError extends Error {
   constructor(public readonly reason: "duplicate" | "invalid-location" | "handoff-expired" | "storage") {

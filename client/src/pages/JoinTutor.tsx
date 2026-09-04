@@ -118,6 +118,7 @@ export default function JoinTutor() {
         gender: form.gender,
         cityId: form.cityId,
         locationId: form.locationId,
+        termsAccepted: agreed,
       });
       accountCreated = true;
       // Only persist the profile pre-fill once the account actually exists — a
