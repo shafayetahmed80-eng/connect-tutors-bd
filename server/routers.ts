@@ -1532,6 +1532,20 @@ export const appRouter = router({
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
     mine: guardianProcedure.query(({ ctx }) => db.listGuardianTutorRequests(ctx.user.id)),
+    /**
+     * A Guardian closing their own request, before an appointment is confirmed.
+     * After that it is a coordinator's call, so the data layer refuses it and
+     * this reports the refusal rather than pretending it worked.
+     */
+    cancel: guardianProcedure
+      .input(z.object({ requestId: z.number().int().positive(), reason: z.string().trim().max(280).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.cancelTutorRequestByGuardian({ ...input, guardianUserId: ctx.user.id });
+        if (!result.updated) {
+          throw new TRPCError({ code: "CONFLICT", message: "This request can no longer be cancelled here. Your coordinator can help." });
+        }
+        return result;
+      }),
     decideContactConsent: guardianProcedure
       .input(z.object({
         requestId: z.number().int().positive(),

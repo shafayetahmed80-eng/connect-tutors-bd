@@ -61,6 +61,7 @@ export const tutorRequestOperationActionValues = [
   "guardian_updated",
   "admin_confirmed",
   "admin_cancelled",
+  "guardian_cancelled",
 ] as const;
 export type TutorRequestOperationAction = (typeof tutorRequestOperationActionValues)[number];
 

@@ -2,7 +2,7 @@ import { SearchableMultiSelect, type SelectorOption } from "@/components/TutorPr
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { SiteContentProvider, SiteText } from "@/lib/siteContent";
+import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
 import {
@@ -29,6 +29,7 @@ import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
 import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
+import { RecordIcon } from "@/components/recordIcons";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
@@ -117,8 +118,18 @@ const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
   "c-teaching": "Teaching expertise",
 };
 
-function editTargetTitle(target: TutorProfileEditTarget): string {
-  return editTargetTitles[target as TutorProfileSectionGroupId] ?? sectionTitles[target as TutorProfileSectionId];
+/**
+ * The name on the popup, and the name in its "saved" message.
+ *
+ * A sub-group takes the same `tutor-profile.group.*` slot the card heading
+ * behind it already used - rename the card in the Admin panel and the popup
+ * that opens from it used to keep the old name. A whole-section editor has no
+ * slot of its own, so it stays on the code default.
+ */
+function editTargetTitle(target: TutorProfileEditTarget, resolveSlot?: (slotId: string, fallback: string) => string): string {
+  const fallback = editTargetTitles[target as TutorProfileSectionGroupId] ?? sectionTitles[target as TutorProfileSectionId];
+  const isGroup = target in editTargetTitles;
+  return isGroup && resolveSlot ? resolveSlot(`tutor-profile.group.${target}`, fallback) : fallback;
 }
 
 type CatalogOption = { id: number | string; name: string };
@@ -420,6 +431,7 @@ function TutorProfileWorkspaceBody({
   const curricula = trpc.catalog.searchCurricula.useQuery({ query: "", limit: 50 });
   // The Owner-set caps. Without these the multi-selects let a Tutor pick past
   // the limit and only the save came back refused.
+  const resolveSlot = useSiteContentResolver();
   const resolvedLimits = trpc.siteLimits.resolved.useQuery();
   const limits = resolvedLimits.data ?? defaultSiteLimits();
   const languages = trpc.catalog.searchLanguages.useQuery({ query: "", limit: 50 });
@@ -689,7 +701,7 @@ function TutorProfileWorkspaceBody({
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: `${editTargetTitle(target)} saved. Continue with the next section when ready.` });
+      setFeedback({ type: "success", message: `${editTargetTitle(target, resolveSlot)} saved. Continue with the next section when ready.` });
       return true;
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
@@ -1101,7 +1113,7 @@ function TutorProfileWorkspaceBody({
   return <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
     {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
     {editingSection ? <TutorProfileSectionModal
-      title={editTargetTitle(editingGroupId ?? editingSection)}
+      title={editTargetTitle(editingGroupId ?? editingSection, resolveSlot)}
       submitting={saveDraftMutation.isPending}
       notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
       onClose={closeSectionEditor}
@@ -1131,6 +1143,16 @@ function TutorProfileWorkspaceBody({
       />
 
       <div className={`min-w-0 ${tp.stack}`}>
+
+        {/* What an Admin asked for, to the Tutor being asked. It sits above the
+            tabs rather than inside one, because the changes it names can be in
+            any section. */}
+        {profile?.moderationNote ? <section role="status" className="rounded-xl border border-[#f0d9a8] bg-[#fdf8ee] px-4 py-3">
+          <p className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-[#8a6420]">
+            <RecordIcon name="notes" size={13} />Changes requested{profile.moderationNoteAt ? <span className="font-medium normal-case tracking-normal text-[#a08454]"> · {new Date(profile.moderationNoteAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> : null}
+          </p>
+          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-[#6b5326]">{profile.moderationNote}</p>
+        </section> : null}
 
         {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
 

@@ -629,3 +629,25 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
       .toEqual(["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]);
   });
 });
+
+describe("what an Admin asked the Tutor to change", () => {
+  afterEach(cleanup);
+
+  it("shows the moderation note above the tabs, with its date", () => {
+    render(<TutorProfileWorkspace
+      profile={{ ...completeProfile, profileStatus: "changes_requested", moderationNote: "Add your University ID card.\nThe headline is too short.", moderationNoteAt: "2026-09-02T00:00:00.000Z" }}
+      onboardingFallback={null}
+    />);
+
+    const note = screen.getAllByRole("status").find(node => node.textContent?.includes("Changes requested"))!;
+    expect(note.textContent).toContain("Changes requested");
+    expect(note.textContent).toMatch(/02 Sept? 2026/);
+    expect(note.textContent).toContain("Add your University ID card.");
+    expect(note.textContent).toContain("The headline is too short.");
+  });
+
+  it("says nothing when there is no note to act on", () => {
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+    expect(screen.queryByText(/Changes requested/)).toBeNull();
+  });
+});
