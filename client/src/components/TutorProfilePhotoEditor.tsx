@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { tutorProfileResponsiveClasses } from "@/pages/TutorProfileResponsive";
+import { SiteText } from "@/lib/siteContent";
 
 type TutorProfilePhotoEditorProps = {
   imageUrl: string;
@@ -65,8 +66,8 @@ export function TutorProfilePhotoEditor({ imageUrl, isSubmitting = false, onCanc
         </div>
       </ModalBody>
       <ModalFooter>
-        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); }} className="border-[#c9ddeb] text-[#42657d]"><RotateCcw size={15} /> Reset</Button>
-        <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-j-accent font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : "Use this photo"}</Button>
+        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); }} className="border-[#c9ddeb] text-[#42657d]"><RotateCcw size={15} /> <SiteText slotId="button-section.profile.photoReset" fallback="Reset" /></Button>
+        <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-j-accent font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : <SiteText slotId="button-section.profile.photoUse" fallback="Use this photo" />}</Button>
       </ModalFooter>
     </Modal>
   );

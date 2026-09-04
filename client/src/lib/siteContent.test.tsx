@@ -117,3 +117,28 @@ describe("site-wide contact slot", () => {
     expect(screen.getByTestId("wa").getAttribute("href")).toContain("8801712345678");
   });
 });
+
+describe("button labels, on their own page apart from the copy they sit beside", () => {
+  const CANCEL_SLOT = "button-section.profile.cancel";
+
+  function renderButtonLabel() {
+    return render(<SiteContentProvider page="button-section"><SiteText slotId={CANCEL_SLOT} fallback="Cancel" /></SiteContentProvider>);
+  }
+
+  it("shows the word shipped in code when nothing is overridden", () => {
+    renderButtonLabel();
+    expect(screen.getByText("Cancel")).toBeTruthy();
+  });
+
+  it("shows the Owner's word once it is set, on the same page every other button label lives on", () => {
+    // Every static button label - Continue, Back, Submit, Reset - is on
+    // "button-section" rather than scattered across tutor-profile and
+    // guardian-profile, so this one override proves the whole mechanism the
+    // rest of Button Section relies on.
+    state.data = [{ slotId: CANCEL_SLOT, text: "Close", textSizePx: null, spacing: null }];
+    renderButtonLabel();
+
+    expect(screen.getByText("Close")).toBeTruthy();
+    expect(screen.queryByText("Cancel")).toBeNull();
+  });
+});

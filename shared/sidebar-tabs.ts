@@ -83,6 +83,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/dynamic/legal-pages", "Legal pages"],
       ["/admin/dynamic/modals", "Modals"],
       ["/admin/dynamic/input-field-text", "Input Field Text"],
+      ["/admin/dynamic/button-section", "Button Section"],
       ["/admin/dynamic/limits", "Limits"],
       ["/tutors", "Public Tutor directory"],
       ["/admin/reports", "Admin activity report"],

@@ -21,7 +21,11 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        // Height and horizontal padding are the Owner's, set in Admin > Button
+        // Section and applied via the `data-size="default"` attribute above -
+        // an icon-only or explicitly sm/lg button keeps the size it was given
+        // on purpose, so only this one loses its literal h-9/px-4/py-2.
+        default: "has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
@@ -51,6 +55,10 @@ function Button({
   return (
     <Comp
       data-slot="button"
+      // Named so Admin > Button Section can scale the ordinary case - most
+      // Cancel/Submit/Save buttons never pass `size` - without touching an
+      // icon-only or explicitly `sm`/`lg` button, which was sized on purpose.
+      data-size={size ?? "default"}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

@@ -51,11 +51,21 @@ export const siteLimitIds = [
   // should not have to think about the other.
   "inputText.profile",
   "inputText.journey",
+  // Sizes for the two systematic button vocabularies - the shared Button
+  // component and the Guardian journey's own primary/ghost buttons. A fixed
+  // width is not offered for either: a button sizes to its label by design,
+  // and Cancel is not as long as Send request.
+  "button.textSize",
+  "button.height",
+  "button.paddingX",
+  "journeyButton.textSize",
+  "journeyButton.height",
+  "journeyButton.paddingX",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text";
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -336,6 +346,67 @@ export const siteLimits: SiteLimitMeta[] = [
     min: 10,
     max: 20,
   },
+  {
+    id: "button.textSize",
+    group: "Button Section",
+    label: "Button text - shared button",
+    help: "The word on an ordinary Cancel / Submit / Save button, wherever it appears - Admin dialogs, the Tutor profile popup, the photo cropper. Leaves an icon-only button and one explicitly sized sm or lg alone.",
+    unit: "px",
+    value: 14,
+    min: 10,
+    max: 20,
+  },
+  {
+    id: "button.height",
+    group: "Button Section",
+    label: "Button height - shared button",
+    help: "How tall that same ordinary button stands.",
+    unit: "px",
+    value: 36,
+    min: 28,
+    max: 56,
+  },
+  {
+    id: "button.paddingX",
+    group: "Button Section",
+    label: "Button side padding - shared button",
+    help: "A button widens or narrows with the room on either side of its label - there is no fixed width to set, since Cancel and Send request are not the same length.",
+    unit: "px",
+    value: 16,
+    min: 8,
+    max: 32,
+  },
+  {
+    id: "journeyButton.textSize",
+    group: "Button Section",
+    label: "Button text - Guardian journey",
+    help: "Continue, Back, Send request and the rest of the Hire a tutor sheet's own buttons.",
+    unit: "px",
+    value: 14,
+    min: 10,
+    max: 20,
+  },
+  {
+    id: "journeyButton.height",
+    group: "Button Section",
+    label: "Button height - Guardian journey",
+    help: "How tall a journey button stands. Ships taller than the shared button above - a public form invites a bigger target than a dialog does.",
+    unit: "px",
+    value: 48,
+    min: 36,
+    max: 72,
+  },
+  {
+    id: "journeyButton.paddingX",
+    group: "Button Section",
+    label: "Button side padding - Guardian journey",
+    help: "Same idea as the shared button's padding: it sets the width by way of the label's room to breathe, not a fixed number.",
+    unit: "px",
+    value: 20,
+    min: 8,
+    max: 40,
+  },
+
 ];
 
 export function findSiteLimit(id: string): SiteLimitMeta | undefined {

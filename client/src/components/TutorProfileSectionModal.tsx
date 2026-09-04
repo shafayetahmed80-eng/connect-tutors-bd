@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { tutorProfileTheme as tp } from "@/pages/tutorProfileTheme";
+import { SiteText } from "@/lib/siteContent";
 
 type TutorProfileSectionModalProps = {
   title: string;
@@ -33,9 +34,9 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
         {children}
       </ModalBody>
       <ModalFooter>
-        <Button type="button" variant="outline" disabled={submitting} onClick={onClose} className="rounded-xl">Cancel</Button>
+        <Button type="button" variant="outline" disabled={submitting} onClick={onClose} className="rounded-xl"><SiteText slotId="button-section.profile.cancel" fallback="Cancel" /></Button>
         <Button type="button" disabled={submitting} onClick={onSubmit} className={tp.primaryButton}>
-          {submitting ? "Submitting…" : <>Submit <ArrowRight size={16} /></>}
+          {submitting ? "Submitting…" : <><SiteText slotId="button-section.profile.submit" fallback="Submit" /> <ArrowRight size={16} /></>}
         </Button>
       </ModalFooter>
     </Modal>
