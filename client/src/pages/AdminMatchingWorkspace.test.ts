@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { createElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -62,6 +62,12 @@ const reviewingRequest: MatchingRequest = {
   notes: null,
   contactConsent: "not_required",
 };
+
+/** Saved Views collapses by default; its controls exist only once opened. */
+function openSavedViews() {
+  fireEvent.click(screen.getByRole("button", { name: /Saved Views/ }));
+}
+afterEach(cleanup);
 
 describe("AdminMatchingWorkspace helpers", () => {
   it("presents each controlled lifecycle status with a distinct Admin-readable label", () => {
@@ -139,6 +145,8 @@ describe("AdminMatchingWorkspace helpers", () => {
       selectedViewId: null, onApply, onCreate, onDelete,
     }));
 
+    openSavedViews();
+
     fireEvent.change(screen.getByLabelText("Saved View name"), { target: { value: "Today's queue" } });
     fireEvent.click(screen.getByRole("button", { name: "Save filters" }));
     expect(onCreate).toHaveBeenCalledWith("Today's queue");
@@ -159,8 +167,11 @@ describe("AdminMatchingWorkspace helpers", () => {
       selectedViewId: 18, onApply: vi.fn(), onCreate: vi.fn(), onDelete: vi.fn(), onSetDefault, onClearDefault,
     } as any));
 
+    openSavedViews();
+
     expect(screen.getAllByText("Default").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Set Dhaka follow-up as default Saved View" }));
+
     expect(onSetDefault).toHaveBeenCalledWith(19);
     fireEvent.click(screen.getByRole("button", { name: "Clear default Saved View Daily Pending Queue" }));
     expect(onClearDefault).toHaveBeenCalledOnce();
@@ -174,8 +185,11 @@ describe("AdminMatchingWorkspace helpers", () => {
       selectedViewId: null, onApply: vi.fn(), onCreate: vi.fn(), onDelete: vi.fn(), onSetDefault: vi.fn(), onClearDefault: vi.fn(), onRename,
     } as any));
 
+    openSavedViews();
+
     const viewScope = within(viewRender.container);
     fireEvent.click(viewScope.getByRole("button", { name: "Rename Saved View Pending Mirpur" }));
+
     const renameInput = viewScope.getByLabelText("New name for Saved View Pending Mirpur");
     expect((renameInput as HTMLInputElement).value).toBe("Pending Mirpur");
     fireEvent.change(renameInput, { target: { value: "  Priority Mirpur  " } });
