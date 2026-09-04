@@ -98,3 +98,22 @@ export function buildSafeTutorRequestPublicationSnapshot(request: SnapshotSource
     location: request.tuitionLocationLabel?.trim() || null,
   };
 }
+
+/**
+ * Which note the Job Board publishes: the Admin's edit, or the Guardian's own.
+ *
+ * The Guardian's note went out word for word. It is the one free-text field a
+ * stranger reads, and Guardians put phone numbers, house numbers and family
+ * detail in it - so an Admin has to be able to trim it before it is published.
+ *
+ * Three cases, and the third is the one worth naming: an Admin who clears the
+ * box means "publish no note", not "fall back to what the Guardian wrote". A
+ * `??` here would quietly republish the very text they just deleted.
+ */
+export function resolvePublishedJobNote(
+  guardianNote: string | null | undefined,
+  adminEdit: string | undefined,
+): string | null {
+  if (adminEdit === undefined) return guardianNote?.trim() || null;
+  return adminEdit.trim() || null;
+}

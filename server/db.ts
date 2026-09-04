@@ -107,6 +107,7 @@ import { validateTutorModerationAction } from "./admin-monitoring";
 import {
   buildSafeTutorRequestPublicationSnapshot,
   validateAdminRequestPublicationAction,
+  resolvePublishedJobNote,
 } from "./admin-request-publication";
 import {
   buildPublishedTutorJobProjection,
@@ -2737,6 +2738,8 @@ export type AdminTutorRequestPublicationEdit = {
   daysPerWeek?: number;
   preferredGender?: "male" | "female" | "any";
   budgetAmount?: number;
+  /** Empty string clears the note rather than leaving the Guardian's. */
+  notes?: string;
 };
 
 export type PublishedTutorJobListInput = {
@@ -3121,6 +3124,7 @@ export async function moderateTutorRequestPublication(input: {
       daysPerWeek?: number;
       preferredGender?: "male" | "female" | "any";
       budgetAmount?: number | null;
+      notes?: string | null;
       monthlyBudget?: number | null;
       guardianConfirmedAt?: Date | null;
       guardianReconfirmedAt?: Date | null;
@@ -3143,6 +3147,7 @@ export async function moderateTutorRequestPublication(input: {
       if (edit.subjects !== undefined) update.subjects = JSON.stringify(edit.subjects);
       if (edit.daysPerWeek !== undefined) update.daysPerWeek = edit.daysPerWeek;
       if (edit.preferredGender !== undefined) update.preferredGender = edit.preferredGender;
+      if (edit.notes !== undefined) update.notes = resolvePublishedJobNote(request.notes, edit.notes);
       if (edit.budgetAmount !== undefined) {
         update.budgetAmount = edit.budgetAmount;
         update.monthlyBudget = null;
@@ -3178,7 +3183,7 @@ export async function moderateTutorRequestPublication(input: {
         tuitionLocationId: request.tuitionLocationId,
         tuitionLocationLabel: request.tuitionLocationLabel,
         budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
-        notes: request.notes,
+        notes: resolvePublishedJobNote(request.notes, input.edit?.notes),
       },
     });
     const result = await tx.insert(tutorRequestPublicationEvents).values({
