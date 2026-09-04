@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
+import { TERMS_VERSION } from "../shared/terms-version";
 import type { TrpcContext } from "./_core/context";
 import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 import * as db from "./db";
@@ -207,11 +208,14 @@ describe("Tutor password authentication", () => {
       gender: "male",
       cityId: "dhaka-city",
       locationId: "dhaka-city",
+      termsAccepted: true,
     } as const;
     const result = await appRouter.createCaller(createContext(cookies)).auth.registerTutor(registrationInput);
 
     expect(result.success).toBe(true);
-    expect(registerPasswordTutor).toHaveBeenCalledWith(registrationInput);
+    // The browser says whether they agreed; the server decides which version
+    // that was, so a client cannot claim consent to a document it chose.
+    expect(registerPasswordTutor).toHaveBeenCalledWith({ ...registrationInput, termsVersion: TERMS_VERSION });
     expect(result.user).toEqual({
       id: user.id,
       name: user.name,
@@ -241,6 +245,7 @@ describe("Tutor password authentication", () => {
     gender: "male",
     cityId: "dhaka-city",
     locationId: "uttara-sector-7",
+    termsAccepted: true,
   } as const;
 
   it("reports an invalid City/location combination as a fixable BAD_REQUEST, not a 500", async () => {
@@ -431,5 +436,50 @@ describe("Admin User ID and password authentication", () => {
       }));
       vi.restoreAllMocks();
     }
+  });
+});
+
+describe("Tutor terms consent", () => {
+  afterEach(() => { vi.restoreAllMocks(); __resetAuthRateLimitsForTests(); });
+
+  const accepted = {
+    name: "Test Tutor",
+    email: "consent@example.com",
+    password: "strong-pass-123",
+    confirmPassword: "strong-pass-123",
+    phone: "+8801712345678",
+    gender: "male",
+    cityId: "dhaka-city",
+    locationId: "dhaka-city",
+    termsAccepted: true,
+  } as const;
+
+  it("refuses to create the account when the box is not ticked", async () => {
+    // The box was always on the form, but its answer never left the browser -
+    // so anything that skipped the page could register without agreeing.
+    const register = vi.spyOn(db, "registerPasswordTutor");
+
+    await expect(
+      appRouter.createCaller(createContext([])).auth.registerTutor({ ...accepted, termsAccepted: false }),
+    ).rejects.toThrow();
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("records the version rather than a bare yes", async () => {
+    // A boolean cannot answer "which document did they agree to" once the
+    // documents change, which is the question a consent record exists for.
+    const register = vi.spyOn(db, "registerPasswordTutor")
+      .mockResolvedValue({ created: true, tutorPortalToken: "t", user: { id: 1 } } as never);
+
+    await appRouter.createCaller(createContext([])).auth.registerTutor(accepted).catch(() => undefined);
+
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({ termsVersion: TERMS_VERSION }));
+  });
+
+  it("agrees with the Guardian side about which version that is", async () => {
+    // One pair of documents, so one version. Two constants would drift and a
+    // consent record would stop meaning the same thing on both sides.
+    const { GUARDIAN_TERMS_VERSION } = await import("./guardian-registration.validation");
+    expect(GUARDIAN_TERMS_VERSION).toBe(TERMS_VERSION);
   });
 });

@@ -392,6 +392,8 @@ export type TutorRegistrationInput = {
   gender: "male" | "female";
   cityId: string;
   locationId: string;
+  /** The version they ticked, stored so a consent can be shown later. */
+  termsVersion: string;
 };
 
 export type TutorProfileDefaults = {
@@ -509,7 +511,7 @@ export async function registerPasswordTutor(input: TutorRegistrationInput) {
         const user = (await tx.select().from(users).where(eq(users.id, userId)).limit(1))[0];
         if (!user) throw new Error("Tutor account could not be created");
 
-        const createdRegistration = await tx.insert(tutorRegistrations).values({ userId: user.id });
+        const createdRegistration = await tx.insert(tutorRegistrations).values({ userId: user.id, termsVersion: input.termsVersion });
         const registrationId = Number(createdRegistration[0].insertId);
         const allocatedRegistrations = await tx
           .select({ tutorNumber: tutorRegistrations.tutorNumber })

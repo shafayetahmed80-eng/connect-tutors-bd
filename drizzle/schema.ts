@@ -334,6 +334,8 @@ export const tutorRegistrations = mysqlTable("tutor_registrations", {
   tutorNumber: int("tutorNumber").unique(),
   userId: int("userId").notNull().unique(),
   registeredAt: timestamp("registeredAt").defaultNow().notNull(),
+  /** Null for anyone who registered before the answer was recorded. */
+  termsVersion: varchar("termsVersion", { length: 64 }),
 });
 
 export const guardianPhoneIntakeStatusValues = [

@@ -17,6 +17,7 @@ import {
 } from "./guardian-profile-photo";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
+import { TERMS_VERSION } from "@shared/terms-version";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
@@ -64,9 +65,14 @@ const tutorAuthInputSchema = z.object({
   gender: z.enum(["male", "female"]),
   cityId: z.string().trim().min(1).max(80),
   locationId: z.string().trim().min(1).max(80),
+  // The box was always on the form; its answer just never left the browser.
+  termsAccepted: z.boolean(),
 }).refine(value => value.password === value.confirmPassword, {
   message: "Passwords do not match.",
   path: ["confirmPassword"],
+}).refine(value => value.termsAccepted, {
+  message: "Accept the Terms of Use and Privacy Policy to create your account.",
+  path: ["termsAccepted"],
 });
 const passwordAccountLoginInputSchema = z.object({
   role: z.enum(["guardian", "tutor"]),
@@ -646,7 +652,7 @@ export const appRouter = router({
       }
       ipRegistrationRateLimiter.record(`reg:${ip}`);
 
-      const result = await db.registerPasswordTutor(input);
+      const result = await db.registerPasswordTutor({ ...input, termsVersion: TERMS_VERSION });
       if (!result.created) {
         auditAuth("registration_rejected", { role: "tutor", ip, identifier: input.email, reason: result.reason });
         if (result.reason === "invalid-location") {
