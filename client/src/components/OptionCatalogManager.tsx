@@ -7,13 +7,13 @@ import {
 import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const inputClass = "h-8 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-800 outline-none focus:border-[#116fc4] focus:ring-2 focus:ring-sky-100";
-const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 disabled:opacity-30";
+const inputClass = "h-8 w-full min-w-0 rounded-md border border-j-border bg-white px-2 text-[13px] text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-j-border text-j-ink-muted hover:border-j-field-border hover:text-j-ink-strong disabled:opacity-30";
 /**
  * Below `sm` the name takes the full width and the controls sit under it; the
  * three-column form squeezes the input too narrow to read on a phone.
  */
-const rowClass = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-slate-50 py-1 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_4.5rem_auto]";
+const rowClass = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-j-border py-1 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_4.5rem_auto]";
 
 type Entry = { id: number; name: string; active: boolean; sortOrder: number; origin: string; usageCount: number };
 
@@ -149,26 +149,26 @@ export default function OptionCatalogManager() {
         // Row ids are per-catalog, so a selection carried across tabs would
         // point at unrelated rows in the next one.
         onClick={() => { setCatalog(item.id); setQuery(""); setError(null); setSelected(new Set()); setConfirmBulkDelete(false); }}
-        className={`h-8 rounded-md px-3 text-[13px] font-bold ${item.id === catalog ? "bg-[#116fc4] text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+        className={`h-8 rounded-md px-3 text-[13px] font-bold ${item.id === catalog ? "bg-j-accent text-white" : "border border-j-border bg-white text-j-ink-soft hover:border-j-field-border"}`}
       >{item.label}</button>)}
     </div>
 
-    <p className="text-[12px] leading-5 text-slate-600">
-      Used by <span className="font-bold text-slate-800">{meta.usedFor}</span>. Hiding an option keeps every existing selection intact but stops it being offered on new forms.
+    <p className="text-[12px] leading-5 text-j-ink-soft">
+      Used by <span className="font-bold text-j-ink-strong">{meta.usedFor}</span>. Hiding an option keeps every existing selection intact but stops it being offered on new forms.
     </p>
 
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Filter {meta.label}</span>
-        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Filter ${meta.label.toLowerCase()}`} className={`${inputClass} pl-7`} />
       </label>
       {/* Ticks only what the filter leaves visible, so a bulk action can never
           reach a row the Owner cannot see. */}
-      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+      <label className="flex items-center gap-1.5 text-xs font-bold text-j-ink-muted">
         <input
           type="checkbox"
-          className="h-3.5 w-3.5 shrink-0 accent-[#116fc4]"
+          className="h-3.5 w-3.5 shrink-0 accent-j-accent"
           checked={visible.length > 0 && visible.every(row => selected.has(row.id))}
           aria-label={needle ? "Select every matching option" : `Select every ${meta.label.toLowerCase()} option`}
           onChange={event => {
@@ -183,37 +183,37 @@ export default function OptionCatalogManager() {
         />
         All
       </label>
-      <span className="text-xs font-bold text-slate-500">{rows.length} total{hiddenCount > 0 ? `, ${hiddenCount} hidden` : ""}</span>
-      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-md bg-[#116fc4] px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <span className="text-xs font-bold text-j-ink-muted">{rows.length} total{hiddenCount > 0 ? `, ${hiddenCount} hidden` : ""}</span>
+      <button type="button" disabled={busy || dirtyRows.length === 0} onClick={() => void saveAll()} className="h-8 rounded-md bg-j-accent px-3 text-[13px] font-bold text-white disabled:opacity-40">
         {busy ? "Saving…" : dirtyRows.length > 0 ? `Save ${dirtyRows.length} change${dirtyRows.length === 1 ? "" : "s"}` : "Saved"}
       </button>
     </div>
 
-    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#116fc4]/30 bg-[#f2f9ff] p-2">
+    {selected.size > 0 ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-accent/30 bg-[#f2f9ff] p-2">
       <span className="text-[13px] font-bold text-[#0f4666]">{selected.size} selected</span>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40">
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(false)} className="flex h-8 items-center gap-1 rounded-md border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40">
         <EyeOff size={13} /> Hide
       </button>
-      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 disabled:opacity-40">
+      <button type="button" disabled={busy} onClick={() => void setActiveForSelected(true)} className="flex h-8 items-center gap-1 rounded-md border border-j-field-border bg-white px-3 text-[13px] font-bold text-j-ink-soft disabled:opacity-40">
         <Eye size={13} /> Show
       </button>
       <button
         type="button"
         disabled={busy || deletableSelected.length === 0}
         onClick={() => { if (!confirmBulkDelete) { setConfirmBulkDelete(true); return; } void deleteSelected(); }}
-        className={`flex h-8 items-center gap-1 rounded-md border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-slate-300 bg-white text-slate-700"}`}
+        className={`flex h-8 items-center gap-1 rounded-md border px-3 text-[13px] font-bold disabled:opacity-40 ${confirmBulkDelete ? "border-red-300 bg-red-50 text-red-700" : "border-j-field-border bg-white text-j-ink-soft"}`}
         title={deletableSelected.length < selected.size ? "Built-in options and options in use can only be hidden" : undefined}
       >
         <Trash2 size={13} /> {confirmBulkDelete ? `Confirm deleting ${deletableSelected.length}` : `Delete ${deletableSelected.length}`}
       </button>
-      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-md px-2 text-[13px] font-medium text-slate-500 hover:text-slate-800">
+      <button type="button" onClick={() => { setSelected(new Set()); setConfirmBulkDelete(false); }} className="h-8 rounded-md px-2 text-[13px] font-medium text-j-ink-muted hover:text-j-ink-strong">
         Clear
       </button>
     </div> : null}
 
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-2 shadow-sm">
       <label htmlFor="new-option" className="sr-only">Add a {meta.itemLabel}</label>
       <input
         id="new-option"
@@ -224,18 +224,18 @@ export default function OptionCatalogManager() {
         onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); addOption(); } }}
         className={`${inputClass} min-w-0 flex-1`}
       />
-      <button type="button" disabled={busy || newName.trim().length === 0} onClick={addOption} className="flex h-8 items-center gap-1 rounded-md bg-slate-900 px-3 text-[13px] font-bold text-white disabled:opacity-40">
+      <button type="button" disabled={busy || newName.trim().length === 0} onClick={addOption} className="flex h-8 items-center gap-1 rounded-md bg-j-ink px-3 text-[13px] font-bold text-white disabled:opacity-40">
         <Plus className="h-3.5 w-3.5" /> Add
       </button>
     </div>
 
     {entries.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-600"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading {meta.label.toLowerCase()}…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-2xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading {meta.label.toLowerCase()}…</div>
       : entries.isError
       ? <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">This list could not be loaded.</div>
-      : <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      : <section className="rounded-2xl border border-j-border bg-white p-3 shadow-sm">
         {visible.length === 0
-          ? <p className="py-6 text-center text-sm text-slate-500">{needle ? "Nothing matches that filter." : "This list is empty."}</p>
+          ? <p className="py-6 text-center text-sm text-j-ink-muted">{needle ? "Nothing matches that filter." : "This list is empty."}</p>
           : visible.map((row, index) => {
             const draft = drafts[row.id] ?? { name: row.name, active: row.active };
             // A built-in option can be hidden but never deleted: the next deploy
@@ -245,7 +245,7 @@ export default function OptionCatalogManager() {
               <div className="flex min-w-0 items-center gap-1.5">
                 <input
                   type="checkbox"
-                  className="h-3.5 w-3.5 shrink-0 accent-[#116fc4]"
+                  className="h-3.5 w-3.5 shrink-0 accent-j-accent"
                   checked={selected.has(row.id)}
                   aria-label={`Select ${row.name}`}
                   onChange={event => toggleSelected(row.id, event.target.checked)}
@@ -256,12 +256,12 @@ export default function OptionCatalogManager() {
                   value={draft.name}
                   maxLength={MAX_OPTION_NAME_LENGTH}
                   onChange={event => setDrafts(current => ({ ...current, [row.id]: { ...draft, name: event.target.value } }))}
-                  className={`${inputClass} ${draft.active ? "" : "text-slate-400 line-through"}`}
+                  className={`${inputClass} ${draft.active ? "" : "text-j-ink-faint line-through"}`}
                 />
-                {isDirty(row) ? <span className="text-[#116fc4]" aria-label="unsaved">•</span> : null}
+                {isDirty(row) ? <span className="text-j-accent" aria-label="unsaved">•</span> : null}
               </div>
 
-              <span className="hidden text-[11px] font-bold uppercase tracking-wide text-slate-400 sm:block" title={`${row.usageCount} tutor${row.usageCount === 1 ? "" : "s"} use this`}>
+              <span className="hidden text-[11px] font-bold uppercase tracking-wide text-j-ink-faint sm:block" title={`${row.usageCount} tutor${row.usageCount === 1 ? "" : "s"} use this`}>
                 {row.usageCount > 0 ? `${row.usageCount} used` : row.origin === "admin" ? "Added" : "—"}
               </span>
 

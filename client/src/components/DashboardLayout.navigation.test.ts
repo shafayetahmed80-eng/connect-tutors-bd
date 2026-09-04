@@ -34,12 +34,12 @@ describe("Dashboard account-menu navigation", () => {
     expect(inactive).toContain("hover:bg-[#f1f5f9]");
     expect(inactive).toContain("hover:text-[#2b4d66]");
     expect(inactive).not.toContain("hover:bg-[#eaf7ff]");
-    expect(inactive).not.toContain("hover:text-[#116fc4]");
+    expect(inactive).not.toContain("hover:text-j-accent");
 
     // Blue belongs to the current page alone, and it carries a leading bar so
     // the cue survives being collapsed to icons.
     expect(active).toContain("!bg-[#f1f8fe]");
-    expect(active).toContain("!text-[#116fc4]");
+    expect(active).toContain("!text-j-accent");
     expect(active).toContain("before:w-[3px]");
     expect(inactive).not.toContain("bg-[#f1f8fe]");
   });

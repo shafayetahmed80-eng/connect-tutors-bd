@@ -70,7 +70,7 @@ function formatSubjects(value: unknown) { if (Array.isArray(value)) return value
 function formatBudget(request: Pick<RequestRecord, "budgetAmount">) { return formatSalaryAmount(request.budgetAmount); }
 function formatRequestDate(value: Date | string | number | null) { return value ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : ""; }
 function displayTuitionType(value: string) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : "Package Tutoring"; }
-const statusToneClass: Record<GuardianRequestStatusTone, string> = { blue: "bg-blue-50 text-blue-800 ring-blue-700/15", amber: "bg-amber-50 text-amber-800 ring-amber-700/15", green: "bg-emerald-50 text-emerald-800 ring-emerald-700/15", slate: "bg-slate-100 text-slate-700 ring-slate-500/15" };
+const statusToneClass: Record<GuardianRequestStatusTone, string> = { blue: "bg-blue-50 text-blue-800 ring-blue-700/15", amber: "bg-amber-50 text-amber-800 ring-amber-700/15", green: "bg-emerald-50 text-emerald-800 ring-emerald-700/15", slate: "bg-j-surface-muted text-j-ink-soft ring-j-ink-muted/15" };
 
 function RequestTimeline({ request }: { request: RequestRecord }) {
   const lifecycle = getGuardianRequestLifecycle(request);
@@ -78,7 +78,7 @@ function RequestTimeline({ request }: { request: RequestRecord }) {
     const isCurrent = lifecycle.key === step.key;
     const isComplete = lifecycle.key !== "cancelled" && index + 1 < lifecycle.activeIndex;
     const isCancelledEnd = lifecycle.key === "cancelled" && step.key === "cancelled";
-    return <li key={step.key} aria-current={isCurrent ? "step" : undefined} className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${isCurrent || isCancelledEnd ? "border-[#78c6f2] bg-[#e9f7ff] text-[#126ea9]" : isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-50 text-slate-400"}`}><span className={`grid size-5 shrink-0 place-items-center rounded-full text-[10px] ${isCurrent || isCancelledEnd ? "bg-[#1677c8] text-white" : isComplete ? "bg-emerald-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"}`}>{index + 1}</span>{step.label}</li>;
+    return <li key={step.key} aria-current={isCurrent ? "step" : undefined} className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-extrabold ${isCurrent || isCancelledEnd ? "border-[#78c6f2] bg-[#e9f7ff] text-[#126ea9]" : isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-j-border bg-j-surface-sunken text-j-ink-faint"}`}><span className={`grid size-5 shrink-0 place-items-center rounded-full text-[10px] ${isCurrent || isCancelledEnd ? "bg-[#1677c8] text-white" : isComplete ? "bg-emerald-600 text-white" : "bg-white text-j-ink-muted ring-1 ring-j-border"}`}>{index + 1}</span>{step.label}</li>;
   })}</ol>;
 }
 
@@ -90,7 +90,7 @@ function PrivateRequestDetails({ request, embedded }: { request: RequestRecord; 
   const editable = lifecycle.key === "pending" && request.status === "new" && request.publicationState === "submitted";
   const needsConsent = shouldShowContactConsent(request);
   const groupCapacity = getGuardianGroupCapacityDisplay(request); const packageDuration = getGuardianPackageDurationDisplay(request); const studentCount = getGuardianStudentCountDisplay(request);
-  return <div className="space-y-5 border-t border-slate-100 px-5 py-6 sm:px-7">
+  return <div className="space-y-5 border-t border-j-border px-5 py-6 sm:px-7">
     <RequestTimeline request={request} />
     <div className="grid gap-4 text-sm sm:grid-cols-2"><Detail label="Subjects" value={formatSubjects(request.subjects)} /><Detail label="Tuition type" value={displayTuitionType(request.tuitionType)} /><Detail label="Days per week" value={`${request.daysPerWeek} days`} /><Detail label="Tutor preference" value={request.preferredGender === "any" ? "Any" : request.preferredGender} /><Detail label="Salary" value={formatBudget(request)} />{studentCount ? <Detail label="Number of students" value={studentCount} /> : null}{groupCapacity ? <Detail label="Maximum students" value={groupCapacity} /> : null}{packageDuration ? <Detail label="Package duration" value={packageDuration} /> : null}{request.tuitionLocationLabel ? <Detail label="Tuition location" value={request.tuitionLocationLabel} icon /> : null}</div>
     <section className="rounded-2xl border border-[#dceaf2] bg-[#f8fcff] p-4"><p className="text-xs font-extrabold uppercase tracking-[.14em] text-[#5a819b]">Private student details</p><div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">{request.studentFirstName ? <Detail label="Student name" value={request.studentFirstName} /> : null}{request.studentGender ? <Detail label="Student gender" value={request.studentGender === "female" ? "Female" : "Male"} /> : null}{request.addressDetails ? <Detail label="Address details" value={request.addressDetails} /> : null}{request.notes ? <Detail label="Additional notes" value={request.notes} /> : null}</div></section>
@@ -100,7 +100,7 @@ function PrivateRequestDetails({ request, embedded }: { request: RequestRecord; 
   </div>;
 }
 
-function Detail({ label, value, icon = false }: { label: string; value: string; icon?: boolean }) { return <div><p className="text-xs font-bold uppercase tracking-[.12em] text-slate-500">{label}</p><p className="mt-1 flex items-start gap-1.5 font-semibold leading-6 text-slate-900">{icon ? <MapPin className="mt-1 size-4 shrink-0 text-[#1677c8]" /> : null}{value}</p></div>; }
+function Detail({ label, value, icon = false }: { label: string; value: string; icon?: boolean }) { return <div><p className="text-xs font-bold uppercase tracking-[.12em] text-j-ink-muted">{label}</p><p className="mt-1 flex items-start gap-1.5 font-semibold leading-6 text-j-ink">{icon ? <MapPin className="mt-1 size-4 shrink-0 text-[#1677c8]" /> : null}{value}</p></div>; }
 
 export function GuardianRequestTracking({ embedded = false, detailRequestId }: { embedded?: boolean; detailRequestId?: number }) {
   const requestsQuery = trpc.tutorRequests.mine.useQuery();
@@ -118,8 +118,8 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
   );
   const openRequest = expandedId ? requests.find(item => item.id === expandedId) ?? null : null;
 
-  return <div className={embedded ? "" : "site-page min-h-screen bg-slate-50"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "shell py-10"}>
-    {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
+  return <div className={embedded ? "" : "site-page min-h-screen bg-j-surface-sunken"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "shell py-10"}>
+    {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-3xl border border-j-border bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
       {/* No page hero: the workspace header already names this screen, and the
           five stages carry the counts that the old summary cards showed. */}
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dce9f1]">

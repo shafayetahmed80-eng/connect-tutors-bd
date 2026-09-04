@@ -139,9 +139,9 @@ export function getDashboardSidebarToggleLabel(isCollapsed: boolean) {
  * navigation the loudest thing on a screen whose subject is elsewhere.
  */
 export function getDashboardNavigationItemClassName(isActive: boolean) {
-  const shared = "relative h-[38px] rounded-lg px-3 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-1 motion-reduce:transition-none";
+  const shared = "relative h-[38px] rounded-lg px-3 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1 motion-reduce:transition-none";
   return isActive
-    ? `${shared} !bg-[#f1f8fe] font-semibold !text-[#116fc4] before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-[#116fc4] before:content-['']`
+    ? `${shared} !bg-[#f1f8fe] font-semibold !text-j-accent before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-j-accent before:content-['']`
     : `${shared} font-medium text-[#527086] hover:bg-[#f1f5f9] hover:text-[#2b4d66]`;
 }
 
@@ -417,7 +417,7 @@ function DashboardLayoutContent({
                       style={{ ...sidebarFontStyle, ...sidebarPaddingStyle }}
                     >
                       <item.icon
-                        className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-[#116fc4]" : "text-[#8ba1b2]"}`}
+                        className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
                       />
                       <span>{label}</span>
                       {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
@@ -508,7 +508,7 @@ function WorkspaceHeader({
   return (
     <header aria-label={`${identity.portal} workspace header`} className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-[#d9e5ed] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:backdrop-blur sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-[#116fc4] focus-visible:ring-[#116fc4] md:hidden" />
+        <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent md:hidden" />
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
           <h1 className="truncate text-base font-semibold tracking-tight text-[#173b60] sm:text-lg">{heading}</h1>
@@ -517,7 +517,7 @@ function WorkspaceHeader({
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <button type="button" aria-label="Open notifications" className="grid size-10 place-items-center rounded-xl text-[#527086] transition hover:bg-[#eef8ff] hover:text-[#116fc4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-2">
+            <button type="button" aria-label="Open notifications" className="grid size-10 place-items-center rounded-xl text-[#527086] transition hover:bg-[#eef8ff] hover:text-j-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">
               <Bell className="size-[19px]" aria-hidden="true" />
             </button>
           </PopoverTrigger>
@@ -528,7 +528,7 @@ function WorkspaceHeader({
         </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={`Open ${identity.portal} account menu`} className="rounded-full p-0.5 transition hover:bg-[#eef8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#116fc4] focus-visible:ring-offset-2">
+            <button type="button" aria-label={`Open ${identity.portal} account menu`} className="rounded-full p-0.5 transition hover:bg-[#eef8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">
               <Avatar className="size-9 border border-[#d6e5ee] sm:size-10">
                 {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
                 <AvatarFallback className="bg-[#dff3ff] text-xs font-bold text-[#126fb5]">{initials}</AvatarFallback>

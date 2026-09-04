@@ -30,7 +30,7 @@ export type JobCardData = {
 const statusToneClass: Record<JobCardData["statusTone"], string> = {
   pending: "text-[#92610b]",
   live: "text-[#0f7048]",
-  appointed: "text-[#116fc4]",
+  appointed: "text-j-accent",
   confirmed: "text-[#0f7048]",
   cancelled: "text-[#8a94a0]",
 };
