@@ -9,6 +9,7 @@ import {
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
+  resolveSiteContentHeightStyle,
   resolveSiteContentPaddingStyle,
   resolveSiteContentSpacingClass,
   resolveSiteContentTextStyle,
@@ -96,6 +97,21 @@ describe("site content slots", () => {
     // Padding on a fixed-height row would change nothing, so height gives way.
     expect(resolveSiteContentPaddingStyle(14)).toEqual({ paddingTop: "14px", paddingBottom: "14px", height: "auto" });
     expect(resolveSiteContentPaddingStyle(999)).toMatchObject({ paddingTop: `${MAX_SITE_CONTENT_TEXT_PX}px` });
+  });
+
+  it("emits a row's height only once set, as its own direct number", () => {
+    expect(resolveSiteContentHeightStyle(null)).toBeUndefined();
+    expect(resolveSiteContentHeightStyle(undefined)).toBeUndefined();
+    expect(resolveSiteContentHeightStyle(44)).toEqual({ height: "44px" });
+    expect(resolveSiteContentHeightStyle(999)).toEqual({ height: `${MAX_SITE_CONTENT_TEXT_PX}px` });
+  });
+
+  it("lets an Owner's height win over padding's auto, when a call site applies height last", () => {
+    // DashboardLayout spreads font, then padding, then height, in that order -
+    // this is the object-merge behaviour that ordering relies on to make an
+    // explicit height beat the auto that padding alone would otherwise set.
+    const merged = { ...resolveSiteContentPaddingStyle(20), ...resolveSiteContentHeightStyle(44) };
+    expect(merged.height).toBe("44px");
   });
 
   it("gives the profile record rows a size slot the admin can reach", () => {

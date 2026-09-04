@@ -24,6 +24,8 @@ export type SidebarPanelMeta = {
   fontPx: number;
   /** Vertical padding each row ships with, in pixels. */
   paddingPx: number;
+  /** Height each row ships at, in pixels - independent of the padding above. */
+  heightPx: number;
 };
 
 /** Turns a path into the stable key half of a slot id. */
@@ -52,13 +54,21 @@ export function sidebarPaddingSlotId(panel: SidebarPanelId): string {
   return `sidebar-tabs.${panel}.size.padding`;
 }
 
+export function sidebarHeightSlotId(panel: SidebarPanelId): string {
+  return `sidebar-tabs.${panel}.size.height`;
+}
+
 /**
- * `h-10` on a sidebar row works out to roughly 10px of padding around a 20px
- * line box; that is the number an Owner starts from, and setting it swaps the
- * fixed height for the padding they choose.
+ * A row ships at a fixed `h-[38px]`, which works out to roughly 10px of
+ * padding around a 20px line box; that is the number an Owner starts from in
+ * the padding control, and setting it swaps the fixed height for the padding
+ * they choose. The height control below is the direct route to the same
+ * number, for an Owner who wants the row taller or shorter without touching
+ * how much air sits around the label.
  */
 const SHIPPED_ROW_PADDING_PX = 10;
 const SHIPPED_ROW_FONT_PX = 14;
+const SHIPPED_ROW_HEIGHT_PX = 38;
 
 export const sidebarPanels: SidebarPanelMeta[] = [
   {
@@ -66,6 +76,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     surface: "Admin panel",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
+    heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"],
     items: [
       ["/admin/dashboard", "Overview"],
@@ -96,6 +107,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     surface: "Tutor dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
+    heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Active workspace", "Coming later", "Account"],
     items: [
       ["/tutor/dashboard", "Dashboard"],
@@ -121,6 +133,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     surface: "Guardian dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
+    heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Workspace", "Account"],
     items: [
       ["/guardian/dashboard", "Dashboard"],
