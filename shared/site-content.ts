@@ -159,12 +159,11 @@ const tutorProfileSlots: SiteContentSlot[] = [
   { id: "tutor-profile.group.c-education", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Education", defaultText: "Education", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.c-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching expertise", defaultText: "Teaching expertise", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.d-availability", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Availability", defaultText: "Availability", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.d-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching expertise (Tuition tab)", defaultText: "Teaching expertise", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.d-location", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Location and fee", defaultText: "Location and fee", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.d-communication", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Communication", defaultText: "Communication", defaultTextClass: "text-sm" },
 
   { id: "tutor-profile.form.qualification-history", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Qualification history heading", defaultText: "Qualification history", defaultTextClass: "text-sm" },
   { id: "tutor-profile.form.location-fee-travel", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Location, fee and travel heading", defaultText: "Location, fee and travel", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.form.language-communication", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Teaching language and communication heading", defaultText: "Teaching language and communication", defaultTextClass: "text-sm" },
 ];
 
 /** The public Tutor profile at /tutors/:id, shared under the same admin page. */

@@ -14,7 +14,10 @@ export type TutorProfileSectionId = "a" | "c" | "d" | "e";
  * `c-teaching` ships empty since Teaching expertise moved to section d, but
  * stays declared so an Owner can move fields back into it.
  */
-export type TutorProfileSectionGroupId = "a-identity" | "a-family" | "c-education" | "c-teaching";
+export type TutorProfileSectionGroupId =
+  | "a-identity" | "a-family"
+  | "c-education" | "c-teaching"
+  | "d-availability" | "d-teaching" | "d-location";
 export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
 
 export type TutorProfileSectionFormState = TutorProfileFormState & {
@@ -34,6 +37,9 @@ const subGroupLabels: Record<TutorProfileSectionGroupId, string> = {
   "a-family": "Family and emergency contact",
   "c-education": "Education",
   "c-teaching": "Teaching expertise",
+  "d-availability": "Availability",
+  "d-teaching": "Teaching expertise",
+  "d-location": "Location and fee",
 };
 
 /**
@@ -73,8 +79,8 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   },
   {
     id: "d",
-    label: "Tuition, location and communication",
-    description: "What, how and where you teach: subjects, learner levels, format, coverage, fee, languages, and contact preferences.",
+    label: "Tuition and location",
+    description: "What, how and where you teach: subjects, learner levels, format, coverage, and fee.",
   },
   {
     id: "e",

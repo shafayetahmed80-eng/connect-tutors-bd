@@ -46,8 +46,6 @@ const serverFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, string>>
   preferredTimeSlots: tutorProfileCopy.fields.timeSlots,
   feeMin: tutorProfileCopy.fields.feeMin,
   feeMax: tutorProfileCopy.fields.feeMax,
-  teachingLanguageIds: tutorProfileCopy.fields.teachingLanguages,
-  communicationPreferences: tutorProfileCopy.fields.communicationPreferences,
 };
 
 function getClientErrorKey(path: string): TutorProfileSubmissionErrorKey | undefined {

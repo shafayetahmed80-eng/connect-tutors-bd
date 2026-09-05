@@ -12,8 +12,8 @@ import type { TutorProfileEditTarget } from "./TutorProfileSectionDraft";
 export { groupFieldsByPanel };
 
 /**
- * The six places a field can live: every sub-group a section declares, or
- * the bare section itself when it has none (d, e). This is the same set
+ * The places a field can live: every sub-group a section declares, or the
+ * bare section itself when it has none (only `e`). This is the same set
  * `TutorProfileEditTarget` names on the Tutor-facing side - a "Move to"
  * destination is always one of these, never a bare section that actually
  * owns sub-groups, since a field arriving there with no sub-group chosen
@@ -30,7 +30,9 @@ export const tutorProfileFieldEditTargets: ReadonlyArray<{
   { id: "a-family", section: "a", subGroup: "a-family", label: "Personal Information: Family and emergency contact", shortLabel: "Family and emergency contact" },
   { id: "c-education", section: "c", subGroup: "c-education", label: "Education", shortLabel: "Education records" },
   { id: "c-teaching", section: "c", subGroup: "c-teaching", label: "Education: Teaching expertise", shortLabel: "Teaching expertise" },
-  { id: "d", section: "d", label: "Tuition, location and communication", shortLabel: "Tuition, location and communication" },
+  { id: "d-availability", section: "d", subGroup: "d-availability", label: "Tuition and location: Availability", shortLabel: "Availability" },
+  { id: "d-teaching", section: "d", subGroup: "d-teaching", label: "Tuition and location: Teaching expertise", shortLabel: "Teaching expertise" },
+  { id: "d-location", section: "d", subGroup: "d-location", label: "Tuition and location: Location and fee", shortLabel: "Location and fee" },
   { id: "e", section: "e", label: "Introduction and review", shortLabel: "Introduction and review" },
 ];
 

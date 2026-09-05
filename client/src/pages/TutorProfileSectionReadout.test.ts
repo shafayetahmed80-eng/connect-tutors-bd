@@ -9,7 +9,6 @@ const resolvers: TutorProfileReadoutResolvers = {
   classLevel: id => ({ "5": "SSC" }[id] ?? identity(id)),
   curriculum: identity,
   studentType: identity,
-  language: identity,
   university: id => ({ "10": "Dhaka University" }[id] ?? identity(id)),
   faculty: identity,
   department: identity,
@@ -41,7 +40,7 @@ describe("getTutorProfileReadoutSections", () => {
     expect(sections.map(section => section.title)).toEqual([
       "Personal Information",
       "Education",
-      "Tuition, location and communication",
+      "Tuition and location",
       "Introduction and review",
     ]);
     // Personal Information carries the two former sections as sub-groups.
@@ -55,16 +54,19 @@ describe("getTutorProfileReadoutSections", () => {
     // the popup its pencil opens.
     expect(sections[0].groups.map(group => group.editTarget)).toEqual(["a-identity", "a-family"]);
 
-    // Tuition & location is one popup - its cards are panels, and Teaching
-    // expertise now sits second, straight after Availability.
+    // Tuition and location now splits into three sub-groups, each its own card
+    // and its own popup. "In your own words" fields fold into Teaching
+    // expertise, the sub-group they belong to.
     expect(sections[2].groups.map(group => group.heading)).toEqual([
       "Availability",
       "Teaching expertise",
-      "In your own words",
       "Location and fee",
-      "Communication",
     ]);
-    expect(sections[2].groups.every(group => group.editTarget === undefined)).toBe(true);
+    expect(sections[2].groups.map(group => group.editTarget)).toEqual([
+      "d-availability",
+      "d-teaching",
+      "d-location",
+    ]);
   });
 
   it("marks an empty required value as missing and shows 'Not given'", () => {
@@ -116,7 +118,6 @@ describe("getTutorProfileReadoutSections", () => {
         currentLocationId: "dhaka-uttara",
         tuitionType: "both",
         preferredTeachingDays: ["monday", "friday"],
-        communicationPreferences: ["whatsapp"],
       }),
       resolvers,
     );
@@ -134,6 +135,5 @@ describe("getTutorProfileReadoutSections", () => {
     expect(teaching.find(row => row.label === "Tuition type")?.value).toBe("Home & online");
     expect(teaching.find(row => row.label === "Preferred teaching days")?.value).toBe("Monday, Friday");
     expect(teaching.find(row => row.label === "Current location")?.value).toBe("Uttara");
-    expect(teaching.find(row => row.label === "Communication preferences")?.value).toBe("WhatsApp");
   });
 });

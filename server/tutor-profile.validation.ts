@@ -8,6 +8,7 @@ import {
   qualificationEducationLevels,
 } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
+import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -73,6 +74,14 @@ function optionalTrimmedText(maximum: number) {
   }, z.string().trim().max(maximum).optional());
 }
 
+/** Empty while drafting; when set, must be one of the fixed options. */
+function optionalEnum<T extends readonly [string, ...string[]]>(options: T) {
+  return z.preprocess(value => {
+    if (typeof value === "string" && value.trim() === "") return undefined;
+    return value;
+  }, z.enum(options).optional());
+}
+
 const optionalBangladeshPhoneSchema = z.preprocess(value => {
   if (typeof value === "string" && value.trim() === "") return undefined;
   return value;
@@ -82,8 +91,8 @@ const privateDetailsSchema = z.object({
   additionalPhone: optionalBangladeshPhoneSchema,
   presentAddress: optionalTrimmedText(500),
   permanentAddress: optionalTrimmedText(500),
-  nationality: optionalTrimmedText(80),
-  religion: optionalTrimmedText(80),
+  nationality: optionalEnum(tutorNationalityOptions),
+  religion: optionalEnum(tutorReligionOptions),
   socialProfileLinks: optionalTrimmedText(1000),
   fatherName: optionalTrimmedText(160),
   fatherPhone: optionalBangladeshPhoneSchema,
@@ -176,9 +185,6 @@ const profileShape = {
   feeMin: z.number().int().min(0).max(500000).optional(),
   feeMax: z.number().int().min(0).max(500000).optional(),
   travelDistanceKm: z.number().int().min(1).max(100).optional(),
-
-  teachingLanguageIds: optionalUniqueIdList(8),
-  communicationPreferences: uniqueEnumList(["phone", "whatsapp", "platform_message"], 3).optional(),
 
   aboutMe: optionalTrimmedText(2000),
   teachingApproach: optionalTrimmedText(2000),
@@ -334,7 +340,6 @@ export type TutorProfileCatalogReferences = {
   activeClassLevelIds: ReadonlySet<number>;
   activeCurriculumIds: ReadonlySet<number>;
   activeStudentTypeIds: ReadonlySet<number>;
-  activeLanguageIds: ReadonlySet<number>;
 };
 
 export type TutorProfileCatalogReferenceIssue = {
@@ -355,7 +360,6 @@ type CatalogReferenceProfile = Pick<
   | "classLevelIds"
   | "curriculumIds"
   | "studentTypeIds"
-  | "teachingLanguageIds"
 >;
 
 function addMissingCatalogIdIssues<T>(
@@ -442,7 +446,6 @@ export function validateTutorProfileCatalogReferences(
   addMissingCatalogIdIssues(issues, "classLevelIds", profile.classLevelIds, references.activeClassLevelIds, "class level");
   addMissingCatalogIdIssues(issues, "curriculumIds", profile.curriculumIds, references.activeCurriculumIds, "curriculum");
   addMissingCatalogIdIssues(issues, "studentTypeIds", profile.studentTypeIds, references.activeStudentTypeIds, "student type");
-  addMissingCatalogIdIssues(issues, "teachingLanguageIds", profile.teachingLanguageIds, references.activeLanguageIds, "teaching language");
 
   return issues;
 }
@@ -512,8 +515,6 @@ export function calculateTutorProfileCompletion(
     { id: "preferredTeachingDays", ok: hasSelections(profile.preferredTeachingDays) },
     { id: "preferredTimeSlots", ok: hasSelections(profile.preferredTimeSlots) },
     { id: null, ok: typeof profile.feeMin === "number" && typeof profile.feeMax === "number" && profile.feeMin >= 0 && profile.feeMin <= profile.feeMax },
-    { id: "teachingLanguageIds", ok: hasSelections(profile.teachingLanguageIds) },
-    { id: "communicationPreferences", ok: hasSelections(profile.communicationPreferences) },
   ];
 
   const countedUnits = units.filter(unit => unit.id === null || (config.byId.get(unit.id)?.enabled ?? true));

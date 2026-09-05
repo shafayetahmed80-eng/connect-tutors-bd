@@ -20,7 +20,7 @@ describe("Tutor Profile section draft payloads", () => {
     expect(tutorProfileSectionDefinitions[1].label).toBe("Education");
   });
 
-  it("sends the merged tuition, location, fee, and communication fields when saving Section D", () => {
+  it("sends the merged tuition, location, and fee fields when saving Section D", () => {
     const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       headline: "Experienced Mathematics Tutor for SSC Students",
@@ -32,7 +32,6 @@ describe("Tutor Profile section draft payloads", () => {
       feeMin: "5000",
       feeMax: "8000",
       travelDistanceKm: "10",
-      communicationPreferences: ["phone"],
     });
 
     expect(payload).toMatchObject({
@@ -42,7 +41,6 @@ describe("Tutor Profile section draft payloads", () => {
       feeMin: 5000,
       feeMax: 8000,
       travelDistanceKm: 10,
-      communicationPreferences: ["phone"],
     });
     expect(payload).not.toHaveProperty("headline");
     expect(payload).not.toHaveProperty("phone");
@@ -187,7 +185,7 @@ describe("Tutor Profile section draft payloads", () => {
   it("leaves Section C with Education alone once Teaching expertise has moved out", () => {
     expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-education"]);
     expect(getTutorProfileSectionGroups("a")?.map(group => group.id)).toEqual(["a-identity", "a-family"]);
-    // Tuition & location still edits everything in one popup.
-    expect(getTutorProfileSectionGroups("d")).toBeNull();
+    // Tuition and location now edits one sub-group at a time.
+    expect(getTutorProfileSectionGroups("d")?.map(group => group.id)).toEqual(["d-availability", "d-teaching", "d-location"]);
   });
 });

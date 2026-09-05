@@ -659,7 +659,6 @@ export const subjectsCatalog = createControlledCatalog("subjects_catalog");
 export const classLevels = createControlledCatalog("class_levels");
 export const curricula = createControlledCatalog("curricula");
 export const studentTypes = createControlledCatalog("student_types");
-export const languagesCatalog = createControlledCatalog("languages_catalog");
 
 export const tutorAcademicProfiles = mysqlTable(
   "tutor_academic_profiles",
@@ -1043,39 +1042,6 @@ export const tutorPreferredTimeSlots = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [primaryKey({ columns: [table.tutorId, table.timeSlot] })]
-);
-
-export const tutorTeachingLanguages = mysqlTable(
-  "tutor_teaching_languages",
-  {
-    tutorId: varchar("tutorId", { length: 32 })
-      .notNull()
-      .references(() => tutors.id),
-    languageId: int("languageId")
-      .notNull()
-      .references(() => languagesCatalog.id),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [
-    primaryKey({ columns: [table.tutorId, table.languageId] }),
-    index("tutor_teaching_languages_catalog_idx").on(table.languageId),
-  ]
-);
-
-export const tutorCommunicationPreferences = mysqlTable(
-  "tutor_communication_preferences",
-  {
-    tutorId: varchar("tutorId", { length: 32 })
-      .notNull()
-      .references(() => tutors.id),
-    channel: mysqlEnum("channel", [
-      "phone",
-      "whatsapp",
-      "platform_message",
-    ]).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [primaryKey({ columns: [table.tutorId, table.channel] })]
 );
 
 export const tutorRequests = mysqlTable("tutor_requests", {
@@ -1590,8 +1556,6 @@ export const tutorsRelations = relations(tutors, ({ one, many }) => ({
   preferredClassSizes: many(tutorPreferredClassSizes),
   preferredTeachingDays: many(tutorPreferredTeachingDays),
   preferredTimeSlots: many(tutorPreferredTimeSlots),
-  teachingLanguageSelections: many(tutorTeachingLanguages),
-  communicationPreferences: many(tutorCommunicationPreferences),
 }));
 
 export const universitiesRelations = relations(universities, ({ many }) => ({
@@ -1699,20 +1663,6 @@ export const tutorStudentTypesRelations = relations(
     studentType: one(studentTypes, {
       fields: [tutorStudentTypes.studentTypeId],
       references: [studentTypes.id],
-    }),
-  })
-);
-
-export const tutorTeachingLanguagesRelations = relations(
-  tutorTeachingLanguages,
-  ({ one }) => ({
-    tutor: one(tutors, {
-      fields: [tutorTeachingLanguages.tutorId],
-      references: [tutors.id],
-    }),
-    language: one(languagesCatalog, {
-      fields: [tutorTeachingLanguages.languageId],
-      references: [languagesCatalog.id],
     }),
   })
 );

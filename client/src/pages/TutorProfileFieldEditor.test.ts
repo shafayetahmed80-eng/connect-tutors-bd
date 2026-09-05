@@ -15,11 +15,13 @@ import {
 } from "./TutorProfileFieldEditor";
 
 describe("Tutor Profile field editor logic", () => {
-  it("buckets every field into exactly one of the six declared edit targets, except profilePhotoUrl", () => {
+  it("buckets every field into exactly one of the declared edit targets, except profilePhotoUrl", () => {
     const config = defaultTutorProfileFieldConfig();
     const grouped = groupFieldsForEditor(config.all);
 
-    expect(new Set(grouped.keys())).toEqual(new Set(["a-identity", "a-family", "c-education", "d", "e"]));
+    expect(new Set(grouped.keys())).toEqual(new Set([
+      "a-identity", "a-family", "c-education", "d-availability", "d-teaching", "d-location", "e",
+    ]));
     // c-teaching is a declared target with nothing in it by default.
     expect(grouped.get("c-teaching")).toBeUndefined();
     expect(editTargetFor(config.byId.get("profilePhotoUrl")!)).toBeNull();
@@ -60,16 +62,19 @@ describe("Tutor Profile field editor logic", () => {
 
   it("moveTargetOverride always names both axes, even for a sub-group-free destination", () => {
     expect(moveTargetOverride("a-family")).toEqual({ section: "a", subGroup: "a-family" });
-    expect(moveTargetOverride("d")).toEqual({ section: "d", subGroup: null });
+    expect(moveTargetOverride("d-location")).toEqual({ section: "d", subGroup: "d-location" });
+    expect(moveTargetOverride("e")).toEqual({ section: "e", subGroup: null });
   });
 
   it("declares every target exactly once, covering all four sections", () => {
-    expect(tutorProfileFieldEditTargets.map(t => t.id)).toEqual(["a-identity", "a-family", "c-education", "c-teaching", "d", "e"]);
+    expect(tutorProfileFieldEditTargets.map(t => t.id)).toEqual([
+      "a-identity", "a-family", "c-education", "c-teaching", "d-availability", "d-teaching", "d-location", "e",
+    ]);
   });
 
   it("appendSortOrder lands after the last field, or at 10 for an empty group", () => {
     const config = defaultTutorProfileFieldConfig();
-    const teaching = groupFieldsForEditor(config.all).get("d") ?? [];
+    const teaching = groupFieldsForEditor(config.all).get("d-teaching") ?? [];
     expect(appendSortOrder([])).toBe(10);
     expect(appendSortOrder(teaching)).toBe(Math.max(...teaching.map(f => f.sortOrder)) + 10);
   });

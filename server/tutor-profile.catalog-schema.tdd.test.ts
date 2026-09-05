@@ -12,7 +12,6 @@ const expectedCatalogTables = [
   "classLevels",
   "curricula",
   "studentTypes",
-  "languagesCatalog",
 ] as const;
 
 const expectedTutorSelectionTables = [
@@ -25,8 +24,6 @@ const expectedTutorSelectionTables = [
   "tutorPreferredClassSizes",
   "tutorPreferredTeachingDays",
   "tutorPreferredTimeSlots",
-  "tutorTeachingLanguages",
-  "tutorCommunicationPreferences",
 ] as const;
 
 const migrationSource = readFileSync(
@@ -161,7 +158,6 @@ describe("TP-02 Tutor Profile catalog schema", () => {
       schema.classLevels,
       schema.curricula,
       schema.studentTypes,
-      schema.languagesCatalog,
     ]) {
       const config = getTableConfig(catalog);
       const indexNames = config.indexes.map(index => index.config.name);
@@ -179,9 +175,6 @@ describe("TP-02 Tutor Profile catalog schema", () => {
     expectIndexNames(schema.tutorCurricula, ["tutor_curricula_catalog_idx"]);
     expectIndexNames(schema.tutorStudentTypes, [
       "tutor_student_types_catalog_idx",
-    ]);
-    expectIndexNames(schema.tutorTeachingLanguages, [
-      "tutor_teaching_languages_catalog_idx",
     ]);
   });
 
@@ -204,10 +197,6 @@ describe("TP-02 Tutor Profile catalog schema", () => {
       "tutorId",
       "studentTypeId",
     ]);
-    expectPrimaryKeyColumns(schema.tutorTeachingLanguages, [
-      "tutorId",
-      "languageId",
-    ]);
     expectPrimaryKeyColumns(schema.tutorPreferredClassSizes, [
       "tutorId",
       "classSize",
@@ -219,10 +208,6 @@ describe("TP-02 Tutor Profile catalog schema", () => {
     expectPrimaryKeyColumns(schema.tutorPreferredTimeSlots, [
       "tutorId",
       "timeSlot",
-    ]);
-    expectPrimaryKeyColumns(schema.tutorCommunicationPreferences, [
-      "tutorId",
-      "channel",
     ]);
   });
 

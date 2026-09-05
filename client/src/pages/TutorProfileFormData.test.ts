@@ -95,8 +95,6 @@ describe("Tutor Profile form hydration", () => {
       preferredClassSizes: [],
       preferredTeachingDays: [],
       preferredTimeSlots: [],
-      teachingLanguageIds: [],
-      communicationPreferences: [],
     };
 
     const payload = createProfileDraftPayload(state);
@@ -105,8 +103,6 @@ describe("Tutor Profile form hydration", () => {
     expect(payload).not.toHaveProperty("preferredClassSizes");
     expect(payload).not.toHaveProperty("preferredTeachingDays");
     expect(payload).not.toHaveProperty("preferredTimeSlots");
-    expect(payload).not.toHaveProperty("teachingLanguageIds");
-    expect(payload).not.toHaveProperty("communicationPreferences");
   });
 
   it("hydrates persisted Sections D–G preferences and optional biography fields from the private owner DTO", () => {
@@ -120,8 +116,6 @@ describe("Tutor Profile form hydration", () => {
       feeMin: 5000,
       feeMax: 8000,
       travelDistanceKm: 10,
-      teachingLanguageIds: [1, 2],
-      communicationPreferences: ["whatsapp", "platform_message"],
       aboutMe: "I help students build confidence through structured practice.",
       teachingApproach: "I begin with concepts and reinforce them through examples.",
       whyChooseMe: "Clear feedback and patient, focused support.",
@@ -137,8 +131,6 @@ describe("Tutor Profile form hydration", () => {
       feeMin: "5000",
       feeMax: "8000",
       travelDistanceKm: "10",
-      teachingLanguageIds: ["1", "2"],
-      communicationPreferences: ["whatsapp", "platform_message"],
       aboutMe: "I help students build confidence through structured practice.",
     });
   });
@@ -154,8 +146,6 @@ describe("Tutor Profile form hydration", () => {
       feeMin: "5000",
       feeMax: "8000",
       travelDistanceKm: "10",
-      teachingLanguageIds: ["1", "2"],
-      communicationPreferences: ["whatsapp", "platform_message"],
       aboutMe: "  Structured, supportive mathematics tuition.  ",
       teachingApproach: "  Concept first, then guided practice.  ",
       whyChooseMe: "  Clear feedback for every learner.  ",
@@ -173,8 +163,6 @@ describe("Tutor Profile form hydration", () => {
       feeMin: 5000,
       feeMax: 8000,
       travelDistanceKm: 10,
-      teachingLanguageIds: [1, 2],
-      communicationPreferences: ["whatsapp", "platform_message"],
       aboutMe: "Structured, supportive mathematics tuition.",
       teachingApproach: "Concept first, then guided practice.",
       whyChooseMe: "Clear feedback for every learner.",
