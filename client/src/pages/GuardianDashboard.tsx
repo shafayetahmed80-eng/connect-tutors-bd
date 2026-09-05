@@ -110,9 +110,16 @@ function GuardianSidebarIdentity() {
   const profile = profileQuery.data;
   const approvedPhotoUrl = photoQuery.data?.photoStatus === "approved" ? photoQuery.data.photoUrl : null;
   const name = profile?.name || "Guardian";
-  return <div className="rounded-xl bg-[#f4f9fd] p-3 group-data-[collapsible=icon]:p-1.5" aria-label="Guardian account identity">
-    <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"><div className="grid size-10 shrink-0 overflow-hidden rounded-xl bg-[#1677c8] text-sm font-black text-white">{approvedPhotoUrl ? <img src={approvedPhotoUrl} alt="Approved Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div><div className="min-w-0 group-data-[collapsible=icon]:hidden"><p className="truncate text-sm font-extrabold text-j-ink">{name}</p><p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p></div></div>
-    <div className="mt-3 space-y-1.5 text-xs text-j-ink-soft group-data-[collapsible=icon]:hidden"><p><span className="font-bold text-j-ink-soft">Guardian ID:</span> {profile?.guardianId || "Loading…"}</p><p><span className="font-bold text-j-ink-soft">Created:</span> {formatGuardianDate(profile?.accountCreatedAt)}</p></div>
+  return <div className="rounded-xl bg-[#f4f9fd] p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Guardian account identity">
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{approvedPhotoUrl ? <img src={approvedPhotoUrl} alt="Approved Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
+    <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
+      <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
+      <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>
+      <div className="mt-2.5 space-y-0.5 border-t border-[#dbe9f2] pt-2 text-2xs text-j-ink-soft">
+        <p><span className="font-bold text-j-ink">Guardian ID:</span> {profile?.guardianId || "Loading…"}</p>
+        <p><span className="font-bold text-j-ink">Created:</span> {formatGuardianDate(profile?.accountCreatedAt)}</p>
+      </div>
+    </div>
   </div>;
 }
 

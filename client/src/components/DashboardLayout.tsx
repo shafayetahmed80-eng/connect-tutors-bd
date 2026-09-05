@@ -29,7 +29,7 @@ import {
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { Bell, LayoutDashboard, LoaderCircle, LogOut, PanelLeft, Users, type LucideIcon } from "lucide-react";
+import { Bell, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -377,23 +377,22 @@ function DashboardLayoutContent({
               so the sidebar scrolls as a single block rather than pinning the
               header and account card above an independently-scrolling list. */}
           <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain group-data-[collapsible=icon]:overflow-y-auto">
-            <SidebarHeader className="h-16 shrink-0 justify-center border-b border-[#e9f0f5]">
-              {/* Just the toggle. The portal name and the current tab both
-                  live in the workspace header now, so repeating either here
-                  only crowds the top of the sidebar. */}
-              <div className="flex items-center px-2 w-full">
-                <button
-                  onClick={toggleSidebar}
-                  className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                  aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
-                  aria-expanded={!isCollapsed}
-                >
-                  <PanelLeft className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
+            {/* A slim toggle row, not a full h-16 header — the portal name and
+                current tab live in the workspace header, so this only needs to
+                hold the collapse control. The chevron rotates 180° between
+                states so a glance says which way the next click goes. */}
+            <SidebarHeader className="shrink-0 flex-row items-center justify-end px-2 pb-1 pt-2 group-data-[collapsible=icon]:justify-center">
+              <button
+                onClick={toggleSidebar}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
+                aria-expanded={!isCollapsed}
+              >
+                <ChevronsLeft aria-hidden="true" className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${isCollapsed ? "rotate-180" : ""}`} />
+              </button>
             </SidebarHeader>
 
-            {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
+            {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
 
             <SidebarMenu className="gap-0.5 px-2 py-3">
               {navigationItems.map((item, index) => {

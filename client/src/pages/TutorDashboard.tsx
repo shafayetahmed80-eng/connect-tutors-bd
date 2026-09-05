@@ -115,20 +115,20 @@ function TutorSidebarIdentity({ identity }: { identity: ReturnType<typeof getTut
     .join("") || "T";
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-[#f7fbfe] p-2.5 ring-1 ring-[#dcebf5] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-xl group-data-[collapsible=icon]:p-1.5">
-      <Avatar className="h-11 w-11 shrink-0 border-2 border-white shadow-sm">
+    <div className="rounded-xl bg-[#f7fbfe] p-3 text-center ring-1 ring-[#dcebf5] group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:ring-0">
+      <Avatar className="mx-auto h-16 w-16 border-2 border-white shadow-sm group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:border">
         {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
-        <AvatarFallback className="bg-[#dff3ff] text-xs font-bold text-[#126fb5]">{initials}</AvatarFallback>
+        <AvatarFallback className="bg-[#dff3ff] text-base font-bold text-[#126fb5] group-data-[collapsible=icon]:text-2xs">{initials}</AvatarFallback>
       </Avatar>
-      <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+      <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
         <p className="truncate text-sm font-bold tracking-[-0.015em] text-j-ink">{identity.name}</p>
         <p className="mt-0.5 truncate text-xs font-medium text-[#587489]">{identity.email}</p>
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#dcebf5] pt-2 text-2xs text-[#6c8799]">
-          <span className="flex min-w-0 items-center gap-1 font-bold text-j-ink">
+        <div className="mt-2.5 space-y-0.5 border-t border-[#dcebf5] pt-2 text-2xs text-[#6c8799]">
+          <p className="flex items-center justify-center gap-1 font-bold text-j-ink">
             <IdCard size={13} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
             <span className="truncate">{identity.tutorNumber.startsWith("Tutor ID") ? identity.tutorNumber : `Tutor ID: ${identity.tutorNumber}`}</span>
-          </span>
-          <span className="shrink-0 font-semibold">{identity.joined}</span>
+          </p>
+          <p className="font-semibold">{identity.joined}</p>
         </div>
       </div>
     </div>
