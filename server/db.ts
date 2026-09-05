@@ -102,9 +102,9 @@ import {
   type RegistrationLocationRow,
 } from "@shared/registration-location-selector";
 import {
+  buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
   tutorProfileDraftSchema,
-  tutorProfileSubmissionSchema,
   validateTutorProfileCatalogReferences,
   type TutorProfileCatalogReferenceIssue,
   type TutorProfileCatalogReferences,
@@ -1337,7 +1337,8 @@ async function loadTutorProfileOwner(database: any, userId: number) {
       : null,
   };
 
-  return { ...profile, completionPercentage: calculateTutorProfileCompletion(profile) };
+  const fieldConfig = await getTutorProfileFieldConfig();
+  return { ...profile, completionPercentage: calculateTutorProfileCompletion(profile, fieldConfig) };
 }
 
 export async function getTutorAccountStatusByUserId(userId: number) {
@@ -1708,7 +1709,8 @@ export async function submitTutorProfile(userId: number) {
       educationRecords: profile.educationRecords,
       universityIdDocumentStatus: profile.universityIdDocumentStatus,
     };
-    const parsed = tutorProfileSubmissionSchema.safeParse(editableProfile);
+    const fieldConfig = await getTutorProfileFieldConfig();
+    const parsed = tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(fieldConfig)).safeParse(editableProfile);
     if (!parsed.success) {
       throw new TutorProfileValidationError(parsed.error.issues.map(issue => ({ path: issue.path.map(String), message: issue.message })));
     }
