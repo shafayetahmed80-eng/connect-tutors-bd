@@ -266,7 +266,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   const matches = (label: string, text: string) => !needle || label.toLowerCase().includes(needle) || text.toLowerCase().includes(needle);
 
   return <div className="space-y-3">
-    <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Filter content</span>
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />

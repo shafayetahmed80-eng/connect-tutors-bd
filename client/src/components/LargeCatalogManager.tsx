@@ -152,7 +152,7 @@ export default function LargeCatalogManager() {
       Used by <span className="font-bold text-j-ink-strong">{meta.usedFor}</span>. This list is searched on the server and shown a page at a time, so type to find a row rather than scrolling. Hiding one keeps every existing selection intact but stops it being offered on new forms.
     </p>
 
-    <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Search {meta.label}</span>
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
