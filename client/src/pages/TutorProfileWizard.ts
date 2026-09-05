@@ -16,7 +16,7 @@ export const tutorProfileWizardSteps: TutorProfileWizardStep[] = [
   },
   {
     id: "education",
-    title: "Education and expertise",
+    title: "Education",
     shortTitle: "Education",
     sectionIds: ["profile-section-c"],
   },
@@ -48,11 +48,13 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   studyStatus: 1,
   yearSemester: 1,
   graduationYear: 1,
-  primarySubjectIds: 1,
-  additionalSubjectIds: 1,
-  classLevelIds: 1,
-  curriculumIds: 1,
-  teachingExperienceYears: 1,
+  // Teaching expertise sits in step 2 with the rest of Tuition and location -
+  // sending a Tutor to step 1 would open a popup these fields have left.
+  primarySubjectIds: 2,
+  additionalSubjectIds: 2,
+  classLevelIds: 2,
+  curriculumIds: 2,
+  teachingExperienceYears: 2,
   currentCityId: 2,
   currentLocationId: 2,
   teachingAreaIds: 2,

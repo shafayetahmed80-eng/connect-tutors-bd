@@ -15,17 +15,19 @@ import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 
 afterEach(() => cleanup());
 
+// `editTarget` is the read-out's own answer to "which popup does this card's
+// pencil open" - absent means the whole section opens in one.
 const sections: TutorProfileReadoutSection[] = [
   { id: "a", title: "Personal Information", groups: [
-    { heading: "Identity and contact", rows: [
+    { heading: "Identity and contact", editTarget: "a-identity", rows: [
       { label: "Full name", value: "Sojib", missing: false },
       { label: "Date of birth", value: "Not given", missing: true },
     ] },
-    { heading: "Family and emergency contact", rows: [{ label: "Father's name", value: "Not given", missing: true }] },
+    { heading: "Family and emergency contact", editTarget: "a-family", rows: [{ label: "Father's name", value: "Not given", missing: true }] },
   ] },
-  { id: "c", title: "Education and teaching expertise", groups: [
-    { heading: "Education", rows: [{ label: "Institute", value: "DU", missing: false }] },
-    { heading: "Teaching expertise", rows: [{ label: "Primary subjects", value: "Not given", missing: true }] },
+  { id: "c", title: "Education", groups: [
+    { heading: "Education", editTarget: "c-education", rows: [{ label: "Institute", value: "DU", missing: false }] },
+    { heading: "Teaching expertise", editTarget: "c-teaching", rows: [{ label: "Primary subjects", value: "Not given", missing: true }] },
   ] },
   { id: "d", title: "Tuition, location and communication", groups: [{ rows: [{ label: "Tuition type", value: "Not given", missing: true }] }] },
   { id: "e", title: "Introduction and review", groups: [{ rows: [{ label: "About me", value: "Not given", missing: true }] }] },

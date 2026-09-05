@@ -1,12 +1,18 @@
 import type { z } from "zod";
+import {
+  defaultTutorProfileFieldConfig,
+  type ResolvedTutorProfileField,
+  type ResolvedTutorProfileFieldConfig,
+} from "@shared/tutor-profile-field-registry";
 import type { tutorProfileEditableDraftSchema } from "../../../server/tutor-profile.validation";
 import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfilePrivateDetails } from "./TutorProfileFormData";
 
 export type TutorProfileSectionId = "a" | "c" | "d" | "e";
 
 /**
- * The larger sections ("Personal Information" and "Education and teaching
- * expertise") open their editor one sub-group at a time.
+ * A section that owns sub-groups opens its editor one sub-group at a time.
+ * `c-teaching` ships empty since Teaching expertise moved to section d, but
+ * stays declared so an Owner can move fields back into it.
  */
 export type TutorProfileSectionGroupId = "a-identity" | "a-family" | "c-education" | "c-teaching";
 export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
@@ -23,119 +29,57 @@ export type TutorProfileSectionFormState = TutorProfileFormState & {
   academicAchievement: string;
 };
 
-type SubGroupDefinition = {
-  id: TutorProfileSectionGroupId;
-  section: TutorProfileSectionId;
-  label: string;
-  fieldKeys: readonly string[];
-  privateDetailKeys?: readonly (keyof TutorProfilePrivateDetails)[];
+const subGroupLabels: Record<TutorProfileSectionGroupId, string> = {
+  "a-identity": "Identity and contact",
+  "a-family": "Family and emergency contact",
+  "c-education": "Education",
+  "c-teaching": "Teaching expertise",
 };
 
-const sectionSubGroups: readonly SubGroupDefinition[] = [
-  {
-    id: "a-identity",
-    section: "a",
-    label: "Identity and contact",
-    fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail"],
-    privateDetailKeys: ["additionalPhone", "nationality", "religion", "socialProfileLinks"],
-  },
-  {
-    id: "a-family",
-    section: "a",
-    label: "Family and emergency contact",
-    fieldKeys: [],
-    privateDetailKeys: ["fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress"],
-  },
-  {
-    id: "c-education",
-    section: "c",
-    label: "Education",
-    fieldKeys: ["highestEducation", "universityId", "facultyDepartmentId", "degreeExamTitle", "resultGpa", "deptId", "studyStatus", "yearSemester", "graduationYear", "educationRecords"],
-  },
-  {
-    id: "c-teaching",
-    section: "c",
-    label: "Teaching expertise",
-    fieldKeys: ["primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "priorTeachingExperience", "specialExpertise", "academicAchievement"],
-  },
-];
-
-/** The sub-groups a section's read-out pencils can target, or null if it has none. */
-export function getTutorProfileSectionGroups(sectionId: TutorProfileSectionId) {
-  const groups = sectionSubGroups.filter(group => group.section === sectionId);
-  return groups.length > 0 ? groups : null;
+/**
+ * The sub-groups a section's read-out pencils can target, or null if it has
+ * none. Derived from the resolved field config rather than a fixed list, so a
+ * sub-group whose fields have all been moved or switched off stops offering an
+ * editor for nothing.
+ */
+export function getTutorProfileSectionGroups(
+  sectionId: TutorProfileSectionId,
+  config: ResolvedTutorProfileFieldConfig = defaultTutorProfileFieldConfig(),
+) {
+  const seen: TutorProfileSectionGroupId[] = [];
+  for (const field of config.bySection.get(sectionId) ?? []) {
+    if (field.subGroup && !seen.includes(field.subGroup)) seen.push(field.subGroup);
+  }
+  return seen.length > 0 ? seen.map(id => ({ id, label: subGroupLabels[id] })) : null;
 }
 
 type SectionDefinition = {
   id: TutorProfileSectionId;
   label: string;
   description: string;
-  fieldKeys: readonly string[];
-  privateDetailKeys?: readonly (keyof TutorProfilePrivateDetails)[];
 };
 
+/** Section names and blurbs. What each one *contains* comes from the field config. */
 export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   {
     id: "a",
     label: "Personal Information",
     description: "Your identity and contact details, plus family and emergency contacts.",
-    fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail", "privateDetails"],
-    privateDetailKeys: [
-      "additionalPhone", "nationality", "religion", "socialProfileLinks",
-      "fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress",
-    ],
   },
   {
     id: "c",
-    label: "Education and expertise",
-    description: "Your education, qualifications, subjects, learner levels, and teaching expertise.",
-    fieldKeys: [
-      "highestEducation",
-      "universityId",
-      "facultyDepartmentId",
-      "degreeExamTitle",
-      "resultGpa",
-      "deptId",
-      "studyStatus",
-      "yearSemester",
-      "graduationYear",
-      "educationRecords",
-      "primarySubjectIds",
-      "additionalSubjectIds",
-      "classLevelIds",
-      "curriculumIds",
-      "teachingExperienceYears",
-      "priorTeachingExperience",
-      "specialExpertise",
-      "academicAchievement",
-    ],
+    label: "Education",
+    description: "Your education, qualifications, and supporting documents.",
   },
   {
     id: "d",
     label: "Tuition, location and communication",
-    description: "How and where you teach: format, learner preferences, coverage, fee, languages, and contact preferences.",
-    fieldKeys: [
-      "tuitionType",
-      "availableNationwide",
-      "preferredStudentGender",
-      "preferredClassSizes",
-      "preferredTeachingDays",
-      "preferredTimeSlots",
-      "currentCityId",
-      "currentLocationId",
-      "teachingAreaIds",
-      "feeMin",
-      "feeMax",
-      "travelDistanceKm",
-      "teachingLanguageIds",
-      "communicationPreferences",
-    ],
+    description: "What, how and where you teach: subjects, learner levels, format, coverage, fee, languages, and contact preferences.",
   },
   {
     id: "e",
     label: "Introduction and review",
     description: "Optional teaching-style details, then submit your profile for review.",
-    fieldKeys: ["aboutMe", "teachingApproach", "whyChooseMe", "additionalNotes"],
   },
 ];
 
@@ -165,28 +109,47 @@ function createFullTutorProfileDraftPayload(form: TutorProfileSectionFormState) 
   };
 }
 
+const PRIVATE_DETAIL_PREFIX = "privateDetails.";
+
+/** The fields one editor owns: a sub-group's own, or every field in a section. */
+export function getTutorProfileEditTargetFields(
+  target: TutorProfileEditTarget,
+  config: ResolvedTutorProfileFieldConfig,
+): ResolvedTutorProfileField[] {
+  const sectionId = target.includes("-") ? (target.split("-")[0] as TutorProfileSectionId) : (target as TutorProfileSectionId);
+  const sectionFields = config.bySection.get(sectionId) ?? [];
+  return target.includes("-")
+    ? sectionFields.filter(field => field.subGroup === target)
+    : [...sectionFields];
+}
+
 /** Exact tRPC input contract; runtime validation remains server-authoritative. */
 type TutorProfileSectionDraftPayload = z.input<typeof tutorProfileEditableDraftSchema>;
 
 export function createTutorProfileSectionDraftPayload(
   target: TutorProfileEditTarget,
   form: TutorProfileSectionFormState,
+  config: ResolvedTutorProfileFieldConfig = defaultTutorProfileFieldConfig(),
 ) {
-  const subGroup = sectionSubGroups.find(group => group.id === target);
-  const definition = tutorProfileSectionDefinitions.find(section => section.id === target);
-  const fieldKeys = subGroup?.fieldKeys ?? definition?.fieldKeys;
-  const privateDetailKeys = subGroup?.privateDetailKeys ?? definition?.privateDetailKeys;
-  if (!fieldKeys) throw new Error("Unknown Tutor Profile section.");
+  const fields = getTutorProfileEditTargetFields(target, config);
+  if (fields.length === 0) throw new Error("Unknown Tutor Profile section.");
 
   const completeDraft = createFullTutorProfileDraftPayload(form) as Record<string, unknown>;
+  const privateDetailKeys = fields
+    .filter(field => field.id.startsWith(PRIVATE_DETAIL_PREFIX))
+    .map(field => field.id.slice(PRIVATE_DETAIL_PREFIX.length) as keyof TutorProfilePrivateDetails);
+
+  // Anything with a dot other than `privateDetails.` names a value inside a
+  // container (one education record's own fields, one document type) - those
+  // are carried by their container's key, never sent on their own.
   const sectionDraft = Object.fromEntries(
-    fieldKeys
-      .filter(fieldKey => fieldKey !== "privateDetails")
-      .filter(fieldKey => completeDraft[fieldKey] !== undefined)
-      .map(fieldKey => [fieldKey, completeDraft[fieldKey]]),
+    fields
+      .filter(field => !field.id.includes("."))
+      .filter(field => completeDraft[field.id] !== undefined)
+      .map(field => [field.id, completeDraft[field.id]]),
   ) as TutorProfileSectionDraftPayload;
 
-  if (privateDetailKeys) {
+  if (privateDetailKeys.length > 0) {
     const privateDetails = completeDraft.privateDetails as TutorProfilePrivateDetails;
     sectionDraft.privateDetails = Object.fromEntries(
       privateDetailKeys.map(key => [key, privateDetails[key] ?? ""]),

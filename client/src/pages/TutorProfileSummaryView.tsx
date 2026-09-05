@@ -2,7 +2,6 @@ import React from "react";
 import { SiteText, useSiteContentSpacingClass } from "@/lib/siteContent";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
-import { getTutorProfileSectionGroups } from "./TutorProfileSectionDraft";
 import type { TutorProfileReadoutRow, TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 
 /** Filled vs. required totals; optional rows never count against a section. */
@@ -40,7 +39,6 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
     </div>
 
     {sections.map(section => {
-      const groupTargets = getTutorProfileSectionGroups(section.id);
       const sectionCount = countRequired(section.groups.flatMap(group => group.rows));
 
       return <div key={section.id} className={tp.stack}>
@@ -54,7 +52,7 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
         </div>
 
         {section.groups.map((group, groupIndex) => {
-          const groupTarget = groupTargets?.[groupIndex];
+          const groupTarget = group.editTarget;
           // A group with no heading of its own would fall back to the section
           // title, which the header above already shows - so the card just
           // carries its rows rather than saying the same thing twice.
@@ -62,7 +60,7 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
             {group.heading ? <div className="mb-3 border-b border-j-border pb-3">
               <h4 className={tp.heading}>
                 {groupTarget
-                  ? <SiteText slotId={`tutor-profile.group.${groupTarget.id}`} fallback={group.heading} className="text-sm" />
+                  ? <SiteText slotId={`tutor-profile.group.${groupTarget}`} fallback={group.heading} className="text-sm" />
                   : <span className="text-sm">{group.heading}</span>}
               </h4>
             </div> : null}

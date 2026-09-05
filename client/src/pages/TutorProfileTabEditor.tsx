@@ -4,7 +4,7 @@ import { SiteBlocks, SiteText, useSiteContentSpacingClass } from "@/lib/siteCont
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { TutorProfileReadoutRows } from "./TutorProfileReadoutRows";
 import { TutorProfileSectionTabs } from "./TutorProfileSectionTabs";
-import { getTutorProfileSectionGroups, type TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
+import type { TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
@@ -20,7 +20,6 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
   onEditSection: (id: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => void;
 }) {
   const active = sections.find(section => section.id === activeTab) ?? sections[0];
-  const activeGroupTargets = getTutorProfileSectionGroups(active.id);
   const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
 
   return <div className={tp.stack}>
@@ -30,16 +29,16 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
     <div role="tabpanel" aria-label={active.title} className="space-y-4">
       {active.groups.map((group, groupIndex) => {
         const heading = group.heading ?? active.title;
-        const groupTarget = activeGroupTargets?.[groupIndex];
+        const groupTarget = group.editTarget;
         return <section key={groupIndex} className={`${tp.card} ${sectionPadding}`}>
           <div className="flex items-center justify-between gap-3 border-b border-j-border pb-3">
             <h3 className={tp.heading}>
-              {groupTarget ? <SiteText slotId={`tutor-profile.group.${groupTarget.id}`} fallback={heading} className="text-sm" /> : <span className="text-sm">{heading}</span>}
+              {groupTarget ? <SiteText slotId={`tutor-profile.group.${groupTarget}`} fallback={heading} className="text-sm" /> : <span className="text-sm">{heading}</span>}
             </h3>
             <button
               type="button"
-              aria-label={`Edit ${groupTarget?.label ?? heading}`}
-              onClick={() => onEditSection(active.id, groupTarget?.id)}
+              aria-label={`Edit ${heading}`}
+              onClick={() => onEditSection(active.id, groupTarget)}
               className={`-my-1 shrink-0 ${tp.ghostIconButton}`}
             >
               <PencilLine size={15} />

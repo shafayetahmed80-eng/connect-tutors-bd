@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   defaultTutorProfileFieldConfig,
   findTutorProfileFieldMeta,
+  groupFieldsByPanel,
   resolveTutorProfileFieldConfig,
   subGroupsForSection,
+  tutorProfileFieldPanels,
   tutorProfileFieldRegistry,
   tutorProfileFieldSections,
   tutorProfileFieldSubGroups,
@@ -31,7 +33,9 @@ describe("Tutor Profile field registry", () => {
     expect(subGroupsForSection("d")).toBeUndefined();
     expect(subGroupsForSection("e")).toBeUndefined();
     expect(subGroupsForSection("a")).toEqual(["a-identity", "a-family"]);
-    expect(subGroupsForSection("c")).toEqual(["c-education", "c-teaching"]);
+    // `c-teaching` stays a declared id an Owner could move fields back into,
+    // but no field ships in it since Teaching expertise moved to section d.
+    expect(subGroupsForSection("c")).toEqual(["c-education"]);
   });
 
   it("finds a declared field and returns undefined for an unknown one", () => {
@@ -128,5 +132,86 @@ describe("Tutor Profile field registry", () => {
   it("excludes only profilePhotoUrl from reorder", () => {
     const excluded = tutorProfileFieldRegistry.filter(field => field.excludedFromReorder);
     expect(excluded.map(field => field.id)).toEqual(["profilePhotoUrl"]);
+  });
+
+  it("names every sub-group after the section it belongs to", () => {
+    // The resolve step relies on this prefix to tell a carried-over sub-group
+    // from one that still applies after a move, so the naming is load-bearing
+    // whether or not any field currently sits in the sub-group.
+    for (const subGroup of tutorProfileFieldSubGroups) {
+      const section = tutorProfileFieldSections.find(candidate => subGroup.startsWith(`${candidate}-`));
+      expect(section, subGroup).toBeDefined();
+      // And no field may claim a sub-group from a different section.
+      for (const field of tutorProfileFieldRegistry.filter(candidate => candidate.subGroup === subGroup)) {
+        expect(field.section, field.id).toBe(section);
+      }
+    }
+  });
+
+  it("gives every field a declared panel", () => {
+    for (const field of tutorProfileFieldRegistry) {
+      expect(tutorProfileFieldPanels, field.id).toContain(field.panel);
+    }
+  });
+
+  it("keeps every sort order unique inside its section", () => {
+    // Two fields in one section sharing an order leaves their relative
+    // position to array order - which the Admin editor's move-up/move-down
+    // arithmetic would then fight.
+    for (const section of tutorProfileFieldSections) {
+      const orders = tutorProfileFieldRegistry.filter(field => field.section === section).map(field => field.sortOrder);
+      expect(new Set(orders).size, section).toBe(orders.length);
+    }
+  });
+});
+
+describe("Tutor Profile field panels", () => {
+  it("splits a section's fields into panels, keeping both orders", () => {
+    const config = defaultTutorProfileFieldConfig();
+    const panels = groupFieldsByPanel(config.bySection.get("d") ?? []);
+
+    // Teaching expertise ships in this tab now, second, straight after
+    // Availability - see the section-d entries in the registry.
+    expect(panels.map(panel => panel.panel)).toEqual([
+      "how-you-teach", "what-you-teach", "own-words", "location-fee", "communication",
+    ]);
+    expect(panels[3].fields.map(field => field.id)).toEqual([
+      "currentCityId", "currentLocationId", "teachingAreaIds", "feeMin", "feeMax", "travelDistanceKm",
+    ]);
+  });
+
+  it("drops a panel once every field in it is disabled", () => {
+    const config = resolveTutorProfileFieldConfig([
+      { fieldId: "teachingLanguageIds", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+      { fieldId: "communicationPreferences", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+    ]);
+    const panels = groupFieldsByPanel(config.bySection.get("d") ?? []);
+    expect(panels.map(panel => panel.panel)).not.toContain("communication");
+  });
+
+  it("carries a field's panel with it into another section", () => {
+    // A moved field must not scatter into whatever block comes first - it
+    // arrives under its own heading in the new section.
+    const moved = ["aboutMe", "teachingApproach", "whyChooseMe"];
+    const config = resolveTutorProfileFieldConfig(moved.map((fieldId, index) => ({
+      fieldId, section: "a", subGroup: null, sortOrder: 500 + index, enabled: null, required: null,
+    })));
+
+    const panels = groupFieldsByPanel(config.bySection.get("a") ?? []);
+    expect(panels.map(panel => panel.panel)).toEqual(["identity", "family", "introduction"]);
+    expect(panels[2].fields.map(field => field.id)).toEqual(moved);
+  });
+
+  it("drops a sub-group a moved field cannot take with it", () => {
+    // `a-identity` belongs to section a; carrying it into section d would put
+    // the field in two places at once.
+    const config = resolveTutorProfileFieldConfig([
+      { fieldId: "headline", section: "d", subGroup: null, sortOrder: 500, enabled: null, required: null },
+    ]);
+
+    expect(config.byId.get("headline")?.section).toBe("d");
+    expect(config.byId.get("headline")?.subGroup).toBeUndefined();
+    expect(config.bySubGroup.get("a-identity")?.map(field => field.id) ?? []).not.toContain("headline");
+    expect(config.bySection.get("d")?.map(field => field.id) ?? []).toContain("headline");
   });
 });

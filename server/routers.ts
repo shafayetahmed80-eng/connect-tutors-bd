@@ -1091,7 +1091,9 @@ export const appRouter = router({
    * public, since only a signed-in Tutor renders these fields at all.
    */
   tutorProfileFieldConfig: router({
-    resolved: activeTutorProcedure.query(() => db.getTutorProfileFieldConfig()),
+    // The flat list, not the lookups built from it - those repeat every field
+    // three times. `indexResolvedFields` rebuilds them on the client.
+    resolved: activeTutorProcedure.query(async () => (await db.getTutorProfileFieldConfig()).all),
     listOverrides: ownerAdminProcedure.query(() => db.listTutorProfileFieldOverrides()),
     save: ownerAdminProcedure
       .input(z.array(z.object({
