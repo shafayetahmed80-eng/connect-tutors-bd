@@ -8,6 +8,7 @@ import {
   qualificationEducationLevels,
 } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
+import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -73,6 +74,14 @@ function optionalTrimmedText(maximum: number) {
   }, z.string().trim().max(maximum).optional());
 }
 
+/** Empty while drafting; when set, must be one of the fixed options. */
+function optionalEnum<T extends readonly [string, ...string[]]>(options: T) {
+  return z.preprocess(value => {
+    if (typeof value === "string" && value.trim() === "") return undefined;
+    return value;
+  }, z.enum(options).optional());
+}
+
 const optionalBangladeshPhoneSchema = z.preprocess(value => {
   if (typeof value === "string" && value.trim() === "") return undefined;
   return value;
@@ -82,8 +91,8 @@ const privateDetailsSchema = z.object({
   additionalPhone: optionalBangladeshPhoneSchema,
   presentAddress: optionalTrimmedText(500),
   permanentAddress: optionalTrimmedText(500),
-  nationality: optionalTrimmedText(80),
-  religion: optionalTrimmedText(80),
+  nationality: optionalEnum(tutorNationalityOptions),
+  religion: optionalEnum(tutorReligionOptions),
   socialProfileLinks: optionalTrimmedText(1000),
   fatherName: optionalTrimmedText(160),
   fatherPhone: optionalBangladeshPhoneSchema,

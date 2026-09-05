@@ -8,6 +8,7 @@ import {
   type QualificationEducationLevel,
 } from "@shared/tutor-education";
 import { isTutorSupportingDocumentType, type TutorSupportingDocumentType } from "@shared/tutor-documents";
+import { DEFAULT_TUTOR_NATIONALITY } from "@shared/tutor-personal-details";
 
 export type TutorOnboardingFallback = {
   name: string;
@@ -119,7 +120,7 @@ export type PersistedTutorEducationRecord = {
 };
 
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
-  additionalPhone: "", nationality: "", religion: "", socialProfileLinks: "",
+  additionalPhone: "", nationality: DEFAULT_TUTOR_NATIONALITY, religion: "", socialProfileLinks: "",
   fatherName: "", fatherPhone: "", motherName: "", motherPhone: "", emergencyContactName: "", emergencyContactRelation: "",
   emergencyContactPhone: "", emergencyContactAddress: "",
 });
@@ -139,9 +140,13 @@ function toFormText(value: unknown): string {
  */
 function hydratePrivateDetails(details: TutorProfilePrivateDetails | undefined): TutorProfilePrivateDetails {
   const empty = emptyPrivateDetails();
-  return Object.fromEntries(
+  const hydrated = Object.fromEntries(
     (Object.keys(empty) as (keyof TutorProfilePrivateDetails)[]).map(key => [key, toFormText(details?.[key])]),
   ) as TutorProfilePrivateDetails;
+  // Nationality now comes from a fixed list and defaults to Bangladeshi -
+  // an older profile that never set it should show the default, not blank.
+  if (!hydrated.nationality) hydrated.nationality = DEFAULT_TUTOR_NATIONALITY;
+  return hydrated;
 }
 
 /**

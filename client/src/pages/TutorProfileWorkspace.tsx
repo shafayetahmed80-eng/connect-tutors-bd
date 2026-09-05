@@ -1,4 +1,5 @@
-import { SearchableMultiSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
+import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
+import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -998,8 +999,8 @@ function TutorProfileWorkspaceBody({
       case "headline": return <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />;
       case "phone": return <FormPhoneInput label={tutorProfileCopy.fields.phone} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
       case "contactEmail": return <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
-      case "privateDetails.nationality": return <FormInput label="Nationality" placeholder="Ex- Bangladeshi" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />;
-      case "privateDetails.religion": return <FormInput label="Religion" placeholder="Ex- Islam" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />;
+      case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>Nationality<span aria-hidden="true" className="text-[#d84a4a]"> *</span></span><select aria-label="Nationality" value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
+      case "privateDetails.religion": return <SearchableSingleSelect label="Religion" required options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
       case "privateDetails.additionalPhone": return <FormPhoneInput label="Additional Phone (Optional)" value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />;
       case "privateDetails.socialProfileLinks": return <FormInput label="Social Profile Links (Optional)" placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;
 
