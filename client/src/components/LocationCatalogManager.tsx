@@ -223,7 +223,7 @@ export default function LocationCatalogManager() {
       Used by <span className="font-bold text-j-ink-strong">registration, Request a tutor and the Job Board</span>. Places sit inside one another, so open a city to reach its areas. Hiding one keeps every profile that already chose it but stops it being offered on new forms.
     </p>
 
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white/95 p-2 shadow-sm backdrop-blur">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Search every place</span>
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
