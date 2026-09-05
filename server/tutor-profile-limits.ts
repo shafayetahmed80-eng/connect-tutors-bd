@@ -8,7 +8,6 @@ export type TutorProfileDraftLimitInput = {
   primarySubjectIds?: readonly unknown[];
   additionalSubjectIds?: readonly unknown[];
   classLevelIds?: readonly unknown[];
-  teachingLanguageIds?: readonly unknown[];
 };
 
 /**
@@ -16,9 +15,9 @@ export type TutorProfileDraftLimitInput = {
  *
  * The zod schema holds each limit's *ceiling* - the highest an Owner could
  * ever set - because it is built when the module loads, long before the stored
- * numbers can be read. `tutor.subjects`, `tutor.levels` and `tutor.languages`
- * had only that ceiling and nothing else, so setting "Subjects per Tutor: 5"
- * in the Admin panel changed nothing at all.
+ * numbers can be read. `tutor.subjects` and `tutor.levels` had only that
+ * ceiling and nothing else, so setting "Subjects per Tutor: 5" in the Admin
+ * panel changed nothing at all.
  *
  * A section popup sends only its own fields, so every check is skipped when
  * its key is absent rather than treated as an empty list.
@@ -37,8 +36,5 @@ export function assertTutorProfileDraftWithinLimits(limits: SiteLimitValues, inp
   }
   if (input.classLevelIds !== undefined) {
     assertWithinLimit(limits, "tutor.levels", input.classLevelIds.length, "class levels");
-  }
-  if (input.teachingLanguageIds !== undefined) {
-    assertWithinLimit(limits, "tutor.languages", input.teachingLanguageIds.length, "languages");
   }
 }

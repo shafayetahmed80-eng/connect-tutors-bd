@@ -83,7 +83,6 @@ describe("Tutor Profile academic catalog seed plan", () => {
       plan.classLevels,
       plan.curricula,
       plan.studentTypes,
-      plan.languages,
     ];
 
     expect(plan.departments.length).toBeGreaterThan(100);

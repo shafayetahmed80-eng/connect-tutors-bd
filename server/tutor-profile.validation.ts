@@ -186,9 +186,6 @@ const profileShape = {
   feeMax: z.number().int().min(0).max(500000).optional(),
   travelDistanceKm: z.number().int().min(1).max(100).optional(),
 
-  teachingLanguageIds: optionalUniqueIdList(8),
-  communicationPreferences: uniqueEnumList(["phone", "whatsapp", "platform_message"], 3).optional(),
-
   aboutMe: optionalTrimmedText(2000),
   teachingApproach: optionalTrimmedText(2000),
   whyChooseMe: optionalTrimmedText(2000),
@@ -343,7 +340,6 @@ export type TutorProfileCatalogReferences = {
   activeClassLevelIds: ReadonlySet<number>;
   activeCurriculumIds: ReadonlySet<number>;
   activeStudentTypeIds: ReadonlySet<number>;
-  activeLanguageIds: ReadonlySet<number>;
 };
 
 export type TutorProfileCatalogReferenceIssue = {
@@ -364,7 +360,6 @@ type CatalogReferenceProfile = Pick<
   | "classLevelIds"
   | "curriculumIds"
   | "studentTypeIds"
-  | "teachingLanguageIds"
 >;
 
 function addMissingCatalogIdIssues<T>(
@@ -451,7 +446,6 @@ export function validateTutorProfileCatalogReferences(
   addMissingCatalogIdIssues(issues, "classLevelIds", profile.classLevelIds, references.activeClassLevelIds, "class level");
   addMissingCatalogIdIssues(issues, "curriculumIds", profile.curriculumIds, references.activeCurriculumIds, "curriculum");
   addMissingCatalogIdIssues(issues, "studentTypeIds", profile.studentTypeIds, references.activeStudentTypeIds, "student type");
-  addMissingCatalogIdIssues(issues, "teachingLanguageIds", profile.teachingLanguageIds, references.activeLanguageIds, "teaching language");
 
   return issues;
 }
@@ -521,8 +515,6 @@ export function calculateTutorProfileCompletion(
     { id: "preferredTeachingDays", ok: hasSelections(profile.preferredTeachingDays) },
     { id: "preferredTimeSlots", ok: hasSelections(profile.preferredTimeSlots) },
     { id: null, ok: typeof profile.feeMin === "number" && typeof profile.feeMax === "number" && profile.feeMin >= 0 && profile.feeMin <= profile.feeMax },
-    { id: "teachingLanguageIds", ok: hasSelections(profile.teachingLanguageIds) },
-    { id: "communicationPreferences", ok: hasSelections(profile.communicationPreferences) },
   ];
 
   const countedUnits = units.filter(unit => unit.id === null || (config.byId.get(unit.id)?.enabled ?? true));

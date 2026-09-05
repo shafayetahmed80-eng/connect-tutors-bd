@@ -40,12 +40,10 @@ import {
   guardianProfilePhotos,
   guardianProfiles,
   guardianProfileUpdateEvents,
-  languagesCatalog,
   locations,
   studentTypes,
   subjectsCatalog,
   tutorAcademicProfiles,
-  tutorCommunicationPreferences,
   tutorCurricula,
   tutorClassLevels,
   tutorEducationRecords,
@@ -68,7 +66,6 @@ import {
   tutorStudentTypes,
   tutorSubjects,
   tutorTeachingAreas,
-  tutorTeachingLanguages,
   tutorRequestPublicationEvents,
   tutorRequestOperationEvents,
   tutorRequestAssignmentNotes,
@@ -1199,7 +1196,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
   if (!row) return undefined;
 
   const tutorId = row.tutor.id;
-  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, teachingDayRows, timeSlotRows, languageRows, communicationRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
+  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, teachingDayRows, timeSlotRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
     database.select().from(tutorTeachingAreas).where(eq(tutorTeachingAreas.tutorId, tutorId)),
     database.select().from(tutorSubjects).where(eq(tutorSubjects.tutorId, tutorId)),
     database.select().from(tutorClassLevels).where(eq(tutorClassLevels.tutorId, tutorId)),
@@ -1208,8 +1205,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     database.select().from(tutorPreferredClassSizes).where(eq(tutorPreferredClassSizes.tutorId, tutorId)),
     database.select().from(tutorPreferredTeachingDays).where(eq(tutorPreferredTeachingDays.tutorId, tutorId)),
     database.select().from(tutorPreferredTimeSlots).where(eq(tutorPreferredTimeSlots.tutorId, tutorId)),
-    database.select().from(tutorTeachingLanguages).where(eq(tutorTeachingLanguages.tutorId, tutorId)),
-    database.select().from(tutorCommunicationPreferences).where(eq(tutorCommunicationPreferences.tutorId, tutorId)),
     database.select().from(tutorEducationRecords).where(eq(tutorEducationRecords.tutorId, tutorId)),
     // Types only — the storage keys stay out of every profile DTO.
     database.select({ documentType: tutorSupportingDocuments.documentType }).from(tutorSupportingDocuments).where(eq(tutorSupportingDocuments.tutorId, tutorId)),
@@ -1271,8 +1266,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     feeMin: row.tutor.monthlyFeeMin ?? undefined,
     feeMax: row.tutor.monthlyFeeMax ?? undefined,
     travelDistanceKm: row.tutor.travelDistanceKm ?? undefined,
-    teachingLanguageIds: languageRows.map((selection: typeof tutorTeachingLanguages.$inferSelect) => selection.languageId),
-    communicationPreferences: communicationRows.map((selection: typeof tutorCommunicationPreferences.$inferSelect) => selection.channel),
     aboutMe: row.tutor.about ?? undefined,
     // Transitional compatibility values used by the existing dashboard while
     // the structured Profile editor is delivered in TP-07.
@@ -1410,7 +1403,7 @@ export async function saveTutorUniversityIdDocument(userId: number, storageKey: 
 }
 
 async function getTutorProfileCatalogReferences(database: any): Promise<TutorProfileCatalogReferences> {
-  const [locationRows, universityRows, facultyDepartmentRows, degreeRows, subjectRows, classLevelRows, curriculumRows, studentTypeRows, languageRows] = await Promise.all([
+  const [locationRows, universityRows, facultyDepartmentRows, degreeRows, subjectRows, classLevelRows, curriculumRows, studentTypeRows] = await Promise.all([
     database.select({ id: locations.id }).from(locations).where(eq(locations.enabled, 1)),
     database.select({ id: universities.id }).from(universities).where(eq(universities.active, 1)),
     database.select({ id: facultyDepartments.id }).from(facultyDepartments).where(eq(facultyDepartments.active, 1)),
@@ -1419,7 +1412,6 @@ async function getTutorProfileCatalogReferences(database: any): Promise<TutorPro
     database.select({ id: classLevels.id }).from(classLevels).where(eq(classLevels.active, 1)),
     database.select({ id: curricula.id }).from(curricula).where(eq(curricula.active, 1)),
     database.select({ id: studentTypes.id }).from(studentTypes).where(eq(studentTypes.active, 1)),
-    database.select({ id: languagesCatalog.id }).from(languagesCatalog).where(eq(languagesCatalog.active, 1)),
   ]);
 
   return {
@@ -1431,7 +1423,6 @@ async function getTutorProfileCatalogReferences(database: any): Promise<TutorPro
     activeClassLevelIds: new Set(classLevelRows.map((row: { id: number }) => row.id)),
     activeCurriculumIds: new Set(curriculumRows.map((row: { id: number }) => row.id)),
     activeStudentTypeIds: new Set(studentTypeRows.map((row: { id: number }) => row.id)),
-    activeLanguageIds: new Set(languageRows.map((row: { id: number }) => row.id)),
   };
 }
 
@@ -1491,8 +1482,6 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     feeMin: input.feeMin ?? existing.feeMin,
     feeMax: input.feeMax ?? existing.feeMax,
     travelDistanceKm: input.travelDistanceKm ?? existing.travelDistanceKm,
-    teachingLanguageIds: keepList(input.teachingLanguageIds, existing.teachingLanguageIds),
-    communicationPreferences: keepList(input.communicationPreferences, existing.communicationPreferences),
     aboutMe: input.aboutMe ?? existing.aboutMe,
     teachingApproach: input.teachingApproach ?? existing.teachingApproach,
     whyChooseMe: input.whyChooseMe ?? existing.whyChooseMe,
@@ -1643,8 +1632,6 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     await replaceSelections(tutorPreferredClassSizes, input.preferredClassSizes?.map(classSize => ({ tutorId, classSize })));
     await replaceSelections(tutorPreferredTeachingDays, input.preferredTeachingDays?.map(dayOfWeek => ({ tutorId, dayOfWeek })));
     await replaceSelections(tutorPreferredTimeSlots, input.preferredTimeSlots?.map(timeSlot => ({ tutorId, timeSlot })));
-    await replaceSelections(tutorTeachingLanguages, input.teachingLanguageIds?.map(languageId => ({ tutorId, languageId })));
-    await replaceSelections(tutorCommunicationPreferences, input.communicationPreferences?.map(channel => ({ tutorId, channel })));
   });
 
   return getTutorProfileByUserId(userId);
@@ -1699,8 +1686,6 @@ export async function submitTutorProfile(userId: number) {
       feeMin: profile.feeMin,
       feeMax: profile.feeMax,
       travelDistanceKm: profile.travelDistanceKm,
-      teachingLanguageIds: profile.teachingLanguageIds,
-      communicationPreferences: profile.communicationPreferences,
       aboutMe: profile.aboutMe,
       teachingApproach: profile.teachingApproach,
       whyChooseMe: profile.whyChooseMe,
@@ -1781,7 +1766,6 @@ export const searchSubjects = (input: CatalogSearchInput) => searchControlledCat
 export const searchClassLevels = (input: CatalogSearchInput) => searchControlledCatalog(classLevels, input);
 export const searchCurricula = (input: CatalogSearchInput) => searchControlledCatalog(curricula, input);
 export const searchStudentTypes = (input: CatalogSearchInput) => searchControlledCatalog(studentTypes, input);
-export const searchLanguages = (input: CatalogSearchInput) => searchControlledCatalog(languagesCatalog, input);
 
 type BangladeshLocationCatalogType = "city" | "division" | "district" | "thana" | "upazila" | "subdivision" | "area";
 type BangladeshLocationSearchInput = CatalogSearchInput & {
@@ -4409,10 +4393,11 @@ export async function reorderSiteContentBlocks(anchorId: string, orderedIds: num
 /* ------------------------------------------------------------------ *
  * Option catalog administration
  *
- * The Owner-editable side of the five small catalogs the Tutor and
- * Request-a-tutor forms are built from. The searches above only ever return
- * active rows, because a form must not offer a retired option; these read and
- * write the whole table instead, hidden rows included.
+ * The Owner-editable side of the small catalogs the Tutor form is built from.
+ * The searches above only ever return active rows, because a form must not
+ * offer a retired option; these read and write the whole table instead,
+ * hidden rows included. `student-types` stays here, dormant, after its field
+ * was dropped - the table kept its rows so it can return without a migration.
  * ------------------------------------------------------------------ */
 
 const optionCatalogTables = {
@@ -4420,7 +4405,6 @@ const optionCatalogTables = {
   "class-levels": { table: classLevels, usage: { table: tutorClassLevels, column: tutorClassLevels.classLevelId } },
   curricula: { table: curricula, usage: { table: tutorCurricula, column: tutorCurricula.curriculumId } },
   "student-types": { table: studentTypes, usage: { table: tutorStudentTypes, column: tutorStudentTypes.studentTypeId } },
-  languages: { table: languagesCatalog, usage: { table: tutorTeachingLanguages, column: tutorTeachingLanguages.languageId } },
 } as const;
 
 export type OptionCatalogKey = keyof typeof optionCatalogTables;

@@ -29,13 +29,13 @@ describe("Tutor Profile field registry", () => {
     }
   });
 
-  it("gives sections d and e no sub-groups, matching their single-popup editor", () => {
-    expect(subGroupsForSection("d")).toBeUndefined();
+  it("gives only section e no sub-groups, matching its single-popup editor", () => {
     expect(subGroupsForSection("e")).toBeUndefined();
     expect(subGroupsForSection("a")).toEqual(["a-identity", "a-family"]);
     // `c-teaching` stays a declared id an Owner could move fields back into,
     // but no field ships in it since Teaching expertise moved to section d.
     expect(subGroupsForSection("c")).toEqual(["c-education"]);
+    expect(subGroupsForSection("d")).toEqual(["d-availability", "d-teaching", "d-location"]);
   });
 
   it("finds a declared field and returns undefined for an unknown one", () => {
@@ -173,7 +173,7 @@ describe("Tutor Profile field panels", () => {
     // Teaching expertise ships in this tab now, second, straight after
     // Availability - see the section-d entries in the registry.
     expect(panels.map(panel => panel.panel)).toEqual([
-      "how-you-teach", "what-you-teach", "own-words", "location-fee", "communication",
+      "how-you-teach", "what-you-teach", "own-words", "location-fee",
     ]);
     expect(panels[3].fields.map(field => field.id)).toEqual([
       "currentCityId", "currentLocationId", "teachingAreaIds", "feeMin", "feeMax", "travelDistanceKm",
@@ -181,12 +181,13 @@ describe("Tutor Profile field panels", () => {
   });
 
   it("drops a panel once every field in it is disabled", () => {
-    const config = resolveTutorProfileFieldConfig([
-      { fieldId: "teachingLanguageIds", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
-      { fieldId: "communicationPreferences", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
-    ]);
+    const config = resolveTutorProfileFieldConfig(
+      ["priorTeachingExperience", "specialExpertise", "academicAchievement"].map(fieldId => ({
+        fieldId, section: null, subGroup: null, sortOrder: null, enabled: 0, required: null,
+      })),
+    );
     const panels = groupFieldsByPanel(config.bySection.get("d") ?? []);
-    expect(panels.map(panel => panel.panel)).not.toContain("communication");
+    expect(panels.map(panel => panel.panel)).not.toContain("own-words");
   });
 
   it("carries a field's panel with it into another section", () => {

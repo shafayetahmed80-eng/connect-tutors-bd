@@ -39,8 +39,6 @@ const completeSubmission = {
   preferredTimeSlots: ["evening"],
   feeMin: 5000,
   feeMax: 7000,
-  teachingLanguageIds: [1],
-  communicationPreferences: ["phone"],
 };
 
 const approvedExpandedSubmission = {
@@ -168,14 +166,13 @@ describe("Tutor Profile domain validation", () => {
     const result = tutorProfileDraftSchema.safeParse({
       preferredTeachingDays: ["monday", "monday"],
       preferredTimeSlots: ["evening", "evening"],
-      communicationPreferences: ["phone", "phone"],
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
       const invalidFields = result.error.issues.map(issue => String(issue.path[0]));
       expect(invalidFields).toEqual(
-        expect.arrayContaining(["preferredTeachingDays", "preferredTimeSlots", "communicationPreferences"]),
+        expect.arrayContaining(["preferredTeachingDays", "preferredTimeSlots"]),
       );
     }
   });
@@ -190,7 +187,6 @@ describe("Tutor Profile domain validation", () => {
       activeClassLevelIds: new Set([1]),
       activeCurriculumIds: new Set([1]),
       activeStudentTypeIds: new Set([1]),
-      activeLanguageIds: new Set([1]),
     });
 
     expect(issues.map(issue => issue.path[0])).toEqual(

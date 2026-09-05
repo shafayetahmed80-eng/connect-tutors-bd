@@ -35,8 +35,6 @@ export const tutorProfileCopy = {
     timeSlots: "Preferred Time Slots",
     feeMin: "Minimum Monthly Fee",
     feeMax: "Maximum Monthly Fee",
-    teachingLanguages: "Teaching Languages",
-    communicationPreferences: "Communication Preferences",
   },
   actions: {
     saveDraft: "Save Draft",
@@ -95,8 +93,6 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   preferredTimeSlots: tutorProfileCopy.fields.timeSlots,
   feeMin: tutorProfileCopy.fields.feeMin,
   feeMax: tutorProfileCopy.fields.feeMax,
-  teachingLanguageIds: tutorProfileCopy.fields.teachingLanguages,
-  communicationPreferences: tutorProfileCopy.fields.communicationPreferences,
 };
 
 function isCalendarDate(value: string) {
@@ -148,8 +144,6 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!Number.isInteger(feeMin) || (feeMin ?? 0) < 0) errors.feeMin = "Enter a minimum monthly fee.";
   if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
   else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
-  requiredSelection(errors, "teachingLanguageIds", "Select at least one teaching language.", form.teachingLanguageIds);
-  requiredSelection(errors, "communicationPreferences", "Select at least one communication preference.", form.communicationPreferences);
   if ((form.tuitionType === "online" || form.tuitionType === "both") && !form.availableNationwide) errors.availableNationwide = "Enable available nationwide when you select Online or Both.";
 
   return errors;
@@ -161,10 +155,10 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  // 26 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // 24 unconditional checks in getTutorProfileSubmissionErrors, plus the two
   // gated ones: the study timeline only applies once a study status is chosen,
   // and nationwide availability only applies to online tuition.
-  const totalRequired = 26
+  const totalRequired = 24
     + (form.studyStatus ? 1 : 0)
     + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
   const completedCount = totalRequired - missingCount;

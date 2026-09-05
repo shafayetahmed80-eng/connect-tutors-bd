@@ -22,7 +22,7 @@ export const tutorProfileWizardSteps: TutorProfileWizardStep[] = [
   },
   {
     id: "teaching",
-    title: "Tuition, location and communication",
+    title: "Tuition and location",
     shortTitle: "Teaching",
     sectionIds: ["profile-section-d"],
   },
@@ -66,8 +66,6 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   preferredTimeSlots: 2,
   feeMin: 2,
   feeMax: 2,
-  teachingLanguageIds: 2,
-  communicationPreferences: 2,
 };
 
 /** Returns the earliest wizard step containing an inline submission error. */

@@ -4,7 +4,6 @@ import {
   classLevels,
   curricula,
   facultyDepartments,
-  languagesCatalog,
   studentTypes,
   subjectsCatalog,
   universities,
@@ -29,7 +28,6 @@ export type TutorProfileCatalogSeedPlan = {
   classLevels: CatalogOptionSeed[];
   curricula: CatalogOptionSeed[];
   studentTypes: CatalogOptionSeed[];
-  languages: CatalogOptionSeed[];
 };
 
 /** Matches the normalized-name uniqueness convention for all searchable selectors. */
@@ -149,7 +147,6 @@ export function buildTutorProfileCatalogSeedPlan(): TutorProfileCatalogSeedPlan 
       "Adult Learner",
       "Professional Learner",
     ]),
-    languages: createOptions(["Bangla", "English", "Arabic", "Hindi", "Urdu", "French"]),
   };
 }
 
@@ -203,7 +200,6 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
     upsertOptions(db, classLevels, plan.classLevels),
     upsertOptions(db, curricula, plan.curricula),
     upsertOptions(db, studentTypes, plan.studentTypes),
-    upsertOptions(db, languagesCatalog, plan.languages),
   ]);
 
   return {
@@ -213,7 +209,6 @@ async function seedTutorProfileCatalogInTransaction(db: SeedDatabase) {
     classLevels: plan.classLevels.length,
     curricula: plan.curricula.length,
     studentTypes: plan.studentTypes.length,
-    languages: plan.languages.length,
   };
 }
 

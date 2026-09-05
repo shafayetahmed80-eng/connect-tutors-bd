@@ -23,7 +23,6 @@ const staticLabels = {
     friday: "Friday", saturday: "Saturday", sunday: "Sunday",
   },
   timeSlot: { morning: "Morning", afternoon: "Afternoon", evening: "Evening", flexible: "Flexible" },
-  communication: { phone: "Phone", whatsapp: "WhatsApp", platform_message: "Platform message" },
 } as const;
 
 /** Name maps built from the loaded catalogs; each returns the display name for an id. */
@@ -31,7 +30,6 @@ export type TutorProfileReadoutResolvers = {
   subject: (id: string) => string;
   classLevel: (id: string) => string;
   curriculum: (id: string) => string;
-  language: (id: string) => string;
   university: (id: string) => string;
   department: (id: string) => string;
   location: (id: string) => string;
@@ -85,7 +83,7 @@ function educationSummary(form: TeachingProfileState): string {
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
   c: "Education",
-  d: "Tuition, location and communication",
+  d: "Tuition and location",
   e: "Introduction and review",
 };
 
@@ -95,6 +93,9 @@ const subGroupHeadings: Record<TutorProfileFieldSubGroup, string> = {
   "a-family": "Family and emergency contact",
   "c-education": "Education",
   "c-teaching": "Teaching expertise",
+  "d-availability": "Availability",
+  "d-teaching": "Teaching expertise",
+  "d-location": "Location and fee",
 };
 
 /** A card's heading when the section has no sub-groups, so each panel is its own card. */
@@ -108,7 +109,6 @@ const panelHeadings: Record<TutorProfileFieldPanel, string> = {
   "own-words": "In your own words",
   "how-you-teach": "Availability",
   "location-fee": "Location and fee",
-  communication: "Communication",
   introduction: "Your introduction",
   review: "For the review team",
 };
@@ -188,8 +188,6 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   feeMin: form => ({ label: "Minimum monthly fee", value: text(form.feeMin) }),
   feeMax: form => ({ label: "Maximum monthly fee", value: text(form.feeMax) }),
   travelDistanceKm: form => ({ label: "Travel distance (km)", value: text(form.travelDistanceKm) }),
-  teachingLanguageIds: (form, resolve) => ({ label: "Teaching languages", value: list(form.teachingLanguageIds, resolve.language) }),
-  communicationPreferences: form => ({ label: "Communication preferences", value: list(form.communicationPreferences, id => fromMap(staticLabels.communication, id)) }),
 
   aboutMe: form => ({ label: "About me", value: text(form.aboutMe) }),
   teachingApproach: form => ({ label: "Teaching approach", value: text(form.teachingApproach) }),
@@ -206,8 +204,8 @@ function toRow(field: ResolvedTutorProfileField, content: ReadoutRowContent): Tu
 /**
  * A card groups the fields that are edited together: the sub-group where a
  * section has them, otherwise the panel. That is why Personal Information
- * shows two cards with their own popups while Tuition & location shows three
- * cards that all open the same one.
+ * shows two cards and Tuition and location shows three (Availability,
+ * Teaching expertise, Location and fee) - each with its own pencil and popup.
  */
 export function getTutorProfileReadoutSections(
   form: TeachingProfileState,

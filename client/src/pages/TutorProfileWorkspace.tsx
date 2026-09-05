@@ -115,7 +115,7 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
   c: "Education",
-  d: "Tuition, location and communication",
+  d: "Tuition and location",
   e: "Introduction and review",
 };
 
@@ -124,6 +124,9 @@ const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
   "a-family": "Family and emergency contact",
   "c-education": "Education",
   "c-teaching": "Teaching expertise",
+  "d-availability": "Availability",
+  "d-teaching": "Teaching expertise",
+  "d-location": "Location and fee",
 };
 
 /**
@@ -449,7 +452,6 @@ function TutorProfileWorkspaceBody({
   const resolveSlot = useSiteContentResolver();
   const resolvedLimits = trpc.siteLimits.resolved.useQuery();
   const limits = resolvedLimits.data ?? defaultSiteLimits();
-  const languages = trpc.catalog.searchLanguages.useQuery({ query: "", limit: 50 });
   // Which fields this profile shows, in which section and order, and which of
   // them submission requires. Until it loads, the shipped defaults stand in -
   // they are what the code was written against, so the form is never blank.
@@ -638,13 +640,12 @@ function TutorProfileWorkspaceBody({
       subject: byName(subjects.data),
       classLevel: byName(classLevels.data),
       curriculum: byName(curricula.data),
-      language: byName(languages.data),
       university: byName(universities.data),
       department: byName(facultyDepartments.data),
       location: byLabel(Array.from(resolvedLocationLabels, ([id, location]) => ({ id, label: location.label }))),
       area: byLabel(teachingAreaLocations.data),
     };
-  }, [subjects.data, classLevels.data, curricula.data, languages.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
+  }, [subjects.data, classLevels.data, curricula.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers, fieldConfig), [form, readoutResolvers, fieldConfig]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
@@ -1064,8 +1065,6 @@ function TutorProfileWorkspaceBody({
       case "feeMin": return <FormInput label={tutorProfileCopy.fields.feeMin} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />;
       case "feeMax": return <FormInput label={tutorProfileCopy.fields.feeMax} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
       case "travelDistanceKm": return <FormInput label="Travel Distance (km) (Optional)" placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
-      case "teachingLanguageIds": return <SearchableMultiSelect label={tutorProfileCopy.fields.teachingLanguages} required options={toSelectorOptions(languages.data)} selectedIds={form.teachingLanguageIds} onChange={value => update("teachingLanguageIds", value)} emptyMessage="No languages found." error={fieldErrors.teachingLanguageIds} maxSelections={limits["tutor.languages"]} />;
-      case "communicationPreferences": return <SearchableMultiSelect label={tutorProfileCopy.fields.communicationPreferences} required options={[{ id: "phone", label: "Phone" }, { id: "whatsapp", label: "WhatsApp" }, { id: "platform_message", label: "Platform message" }]} selectedIds={form.communicationPreferences} onChange={value => update("communicationPreferences", value)} emptyMessage="No communication options found." error={fieldErrors.communicationPreferences} />;
 
       case "aboutMe": return <FormTextArea label="About Me" rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />;
       case "teachingApproach": return <FormTextArea label="Teaching Approach" rows={5} maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />;
@@ -1146,7 +1145,6 @@ function TutorProfileWorkspaceBody({
     "own-words": "In your own words",
     "how-you-teach": "How you teach",
     "location-fee": <SiteText slotId="tutor-profile.form.location-fee-travel" className="text-sm" />,
-    communication: <SiteText slotId="tutor-profile.form.language-communication" className="text-sm" />,
     introduction: "Your introduction",
     review: "For the review team",
   };

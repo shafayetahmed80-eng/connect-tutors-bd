@@ -53,9 +53,9 @@ describe("option catalog manager", () => {
     render(<OptionCatalogManager />);
     expect(state.lastQueryInput).toEqual({ catalog: "subjects" });
 
-    fireEvent.click(screen.getByRole("tab", { name: "Languages" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Curricula" }));
 
-    expect(state.lastQueryInput).toEqual({ catalog: "languages" });
+    expect(state.lastQueryInput).toEqual({ catalog: "curricula" });
   });
 
   it("saves renames and hides together, one row at a time", async () => {
@@ -184,7 +184,7 @@ describe("option catalog manager", () => {
 
     // Row ids are per-catalog, so a carried-over selection would point at
     // unrelated rows in the next tab.
-    fireEvent.click(screen.getByRole("tab", { name: "Languages" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Curricula" }));
 
     expect(screen.queryByText("1 selected")).toBeNull();
   });

@@ -56,8 +56,6 @@ export type PersistedTutorProfileForForm = {
   feeMin?: number | null;
   feeMax?: number | null;
   travelDistanceKm?: number | null;
-  teachingLanguageIds?: number[];
-  communicationPreferences?: string[];
   aboutMe?: string | null;
   teachingApproach?: string | null;
   whyChooseMe?: string | null;
@@ -201,8 +199,6 @@ export type TutorProfileFormState = {
   feeMin: string;
   feeMax: string;
   travelDistanceKm: string;
-  teachingLanguageIds: string[];
-  communicationPreferences: string[];
   aboutMe: string;
   teachingApproach: string;
   whyChooseMe: string;
@@ -277,8 +273,6 @@ export function hydrateTutorProfileForm(
       feeMin: "",
       feeMax: "",
       travelDistanceKm: "",
-      teachingLanguageIds: [],
-      communicationPreferences: [],
       aboutMe: "",
       teachingApproach: "",
       whyChooseMe: "",
@@ -321,8 +315,6 @@ export function hydrateTutorProfileForm(
     feeMin: profile.feeMin === null || profile.feeMin === undefined ? "" : String(profile.feeMin),
     feeMax: profile.feeMax === null || profile.feeMax === undefined ? "" : String(profile.feeMax),
     travelDistanceKm: profile.travelDistanceKm === null || profile.travelDistanceKm === undefined ? "" : String(profile.travelDistanceKm),
-    teachingLanguageIds: toStringList(profile.teachingLanguageIds),
-    communicationPreferences: toStringList(profile.communicationPreferences),
     aboutMe: profile.aboutMe ?? "",
     teachingApproach: profile.teachingApproach ?? "",
     whyChooseMe: profile.whyChooseMe ?? "",
@@ -370,12 +362,6 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     feeMin: optionalInteger(form.feeMin),
     feeMax: optionalInteger(form.feeMax),
     travelDistanceKm: optionalInteger(form.travelDistanceKm),
-    ...(form.teachingLanguageIds.length > 0
-      ? { teachingLanguageIds: form.teachingLanguageIds.map(Number).filter(Number.isInteger) }
-      : {}),
-    ...(form.communicationPreferences.length > 0
-      ? { communicationPreferences: form.communicationPreferences }
-      : {}),
     aboutMe: optionalText(form.aboutMe),
     teachingApproach: optionalText(form.teachingApproach),
     whyChooseMe: optionalText(form.whyChooseMe),

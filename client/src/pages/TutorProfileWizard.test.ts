@@ -6,7 +6,7 @@ describe("Tutor Profile mobile wizard", () => {
     expect(tutorProfileWizardSteps.map(step => step.title)).toEqual([
       "Personal Information",
       "Education",
-      "Tuition, location and communication",
+      "Tuition and location",
       "Introduction and review",
     ]);
   });
@@ -16,7 +16,6 @@ describe("Tutor Profile mobile wizard", () => {
     expect(getTutorProfileWizardStepForErrors({ universityId: "Select your institute." })).toBe(1);
     expect(getTutorProfileWizardStepForErrors({ currentLocationId: "Select your current location." })).toBe(2);
     expect(getTutorProfileWizardStepForErrors({ feeMax: "Enter a maximum monthly fee." })).toBe(2);
-    expect(getTutorProfileWizardStepForErrors({ communicationPreferences: "Select at least one communication preference." })).toBe(2);
   });
 
   it("sends a missing Teaching expertise field to the section it now lives in", () => {

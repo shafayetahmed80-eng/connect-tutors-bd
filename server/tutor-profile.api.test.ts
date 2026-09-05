@@ -62,8 +62,6 @@ const completeDraftPayload = {
   feeMin: 5000,
   feeMax: 8000,
   travelDistanceKm: 10,
-  teachingLanguageIds: [1],
-  communicationPreferences: ["whatsapp" as const],
   aboutMe: "I provide structured lessons, exam preparation, and constructive feedback.",
 };
 

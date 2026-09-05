@@ -792,7 +792,6 @@ export const appRouter = router({
     searchClassLevels: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchClassLevels(input)),
     searchCurricula: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchCurricula(input)),
     searchStudentTypes: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchStudentTypes(input)),
-    searchLanguages: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchLanguages(input)),
     searchBangladeshLocations: activeTutorProcedure
       .input(catalogSearchInputSchema.extend({
         types: z.array(z.enum(["city", "division", "district", "thana", "upazila", "subdivision", "area"])).max(7).optional(),

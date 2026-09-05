@@ -9,8 +9,15 @@
  * "student-types" was here until the Tutor profile stopped asking who a Tutor
  * teaches. The `student_types` table and every row a Tutor already chose are
  * untouched; if the field returns, so does its line below.
+ *
+ * "languages" was here until the Tutor profile dropped the Language &
+ * communication sub-section. Its table and the two junction tables it fed
+ * (`languages_catalog`, `tutor_teaching_languages`,
+ * `tutor_communication_preferences`) were all dropped in the same change - the
+ * site was pre-launch with only demo data - so this one does not come back for
+ * free.
  */
-export const optionCatalogIds = ["subjects", "class-levels", "curricula", "languages"] as const;
+export const optionCatalogIds = ["subjects", "class-levels", "curricula"] as const;
 export type OptionCatalogId = (typeof optionCatalogIds)[number];
 
 export type OptionCatalogMeta = {
@@ -37,7 +44,6 @@ export const optionCatalogs: OptionCatalogMeta[] = [
   { id: "subjects", label: "Subjects", usedFor: "Tutor profile", itemLabel: "subject" },
   { id: "class-levels", label: "Class / level", usedFor: "Tutor profile", itemLabel: "class or level" },
   { id: "curricula", label: "Curricula", usedFor: "Tutor profile", itemLabel: "curriculum" },
-  { id: "languages", label: "Languages", usedFor: "Tutor profile", itemLabel: "language" },
 ];
 
 export function findOptionCatalog(id: string): OptionCatalogMeta | undefined {
