@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
   tutorProfileDraftSchema,
   tutorProfileSubmissionSchema,
   validateTutorProfileCatalogReferences,
 } from "./tutor-profile.validation";
+import { defaultTutorProfileFieldConfig, resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 
 const completeSubmission = {
   profilePhotoKey: "tutors/1503/profile/photo.webp",
@@ -252,5 +254,86 @@ describe("Tutor Profile domain validation", () => {
 
     // An ongoing record may leave the end year out entirely.
     expect(parseWithRecord({ currentlyStudying: true, studyEndYear: undefined }).success).toBe(true);
+  });
+});
+
+describe("Tutor Profile field config drives submission requiredness", () => {
+  function submissionSchemaWithConfig(overrides: Parameters<typeof resolveTutorProfileFieldConfig>[0]) {
+    return tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(resolveTutorProfileFieldConfig(overrides)));
+  }
+
+  it("matches the shipped-default schema when nothing is overridden", () => {
+    const schema = submissionSchemaWithConfig([]);
+    expect(schema.safeParse(approvedExpandedSubmission).success).toBe(true);
+    expect(schema.safeParse(completeSubmission).success).toBe(false);
+  });
+
+  it("stops requiring a field an Owner disables", () => {
+    const feeMinDisabled = submissionSchemaWithConfig([
+      { fieldId: "feeMin", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+    ]);
+    const { feeMin: _feeMin, ...withoutFeeMin } = approvedExpandedSubmission;
+    expect(feeMinDisabled.safeParse(withoutFeeMin).success).toBe(true);
+  });
+
+  it("starts requiring a field an Owner flips to required", () => {
+    const resultGpaRequired = submissionSchemaWithConfig([
+      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
+    ]);
+    const { resultGpa: _resultGpa, ...withoutResultGpa } = approvedExpandedSubmission;
+    const result = resultGpaRequired.safeParse(withoutResultGpa);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map(issue => issue.path.join("."))).toContain("resultGpa");
+    }
+    expect(resultGpaRequired.safeParse({ ...withoutResultGpa, resultGpa: "3.80" }).success).toBe(true);
+  });
+
+  it("cannot flip a code-owned field's requiredness, even with a stored override attempting it", () => {
+    // yearSemester's requiredness branches on studyStatus; a stored override
+    // is ignored by resolveTutorProfileFieldConfig for a non-configurable
+    // field, so this must behave exactly like the default config.
+    const attemptedOverride = submissionSchemaWithConfig([
+      { fieldId: "yearSemester", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+    ]);
+    const studying = { ...approvedExpandedSubmission, studyStatus: "studying", graduationYear: undefined, yearSemester: undefined };
+    expect(attemptedOverride.safeParse(studying).success).toBe(false);
+  });
+
+  it("requires at least one education record only when that toggle is on, and stops enforcing per-record fields once disabled", () => {
+    const educationOptional = submissionSchemaWithConfig([
+      { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+    ]);
+    const { educationRecords: _educationRecords, ...withoutRecords } = approvedExpandedSubmission;
+    expect(educationOptional.safeParse(withoutRecords).success).toBe(true);
+
+    const majorGroupOptional = submissionSchemaWithConfig([
+      { fieldId: "educationRecords.majorGroup", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+    ]);
+    const record = approvedExpandedSubmission.educationRecords[0];
+    const { majorGroup: _majorGroup, ...recordWithoutMajor } = record;
+    expect(majorGroupOptional.safeParse({ ...approvedExpandedSubmission, educationRecords: [recordWithoutMajor] }).success).toBe(true);
+  });
+});
+
+describe("Tutor Profile completion respects a disabled field", () => {
+  it("drops a disabled field's unit from both the numerator and the denominator", () => {
+    const full = calculateTutorProfileCompletion(completeSubmission, defaultTutorProfileFieldConfig());
+    expect(full).toBe(100);
+
+    const config = resolveTutorProfileFieldConfig([
+      { fieldId: "feeMax", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+    ]);
+    // feeMax's own unit is a joint feeMin+feeMax check (id: null) and is never
+    // gated - disabling one half must not change the total this time.
+    expect(calculateTutorProfileCompletion(completeSubmission, config)).toBe(full);
+
+    const withoutName = { ...completeSubmission, name: undefined };
+    const nameDisabled = resolveTutorProfileFieldConfig([
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+    ]);
+    // With `name` dropped from both parts of the fraction, a profile missing
+    // only `name` still reads 100%.
+    expect(calculateTutorProfileCompletion(withoutName, nameDisabled)).toBe(100);
   });
 });

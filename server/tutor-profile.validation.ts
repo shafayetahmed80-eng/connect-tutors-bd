@@ -7,6 +7,7 @@ import {
   qualificationCurricula,
   qualificationEducationLevels,
 } from "@shared/tutor-education";
+import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -97,13 +98,16 @@ const privateDetailsSchema = z.object({
 const studyYearSchema = z.number().int().min(MIN_STUDY_YEAR).max(maxStudyYear());
 
 const educationRecordSchema = z.object({
-  qualificationLevel: z.enum(qualificationEducationLevels),
-  instituteName: z.string().trim().min(2).max(200),
-  degreeExamTitle: z.string().trim().min(2).max(160),
-  majorGroup: z.string().trim().min(2).max(160),
+  // Optional here so an incomplete record can still be saved as a draft -
+  // whether one is actually required to *submit* is decided per field by the
+  // resolved Tutor Profile field config, the same as every top-level field.
+  qualificationLevel: z.enum(qualificationEducationLevels).optional(),
+  instituteName: z.string().trim().min(2).max(200).optional(),
+  degreeExamTitle: z.string().trim().min(2).max(160).optional(),
+  majorGroup: z.string().trim().min(2).max(160).optional(),
   resultGpa: optionalTrimmedText(80),
-  curriculum: z.enum(qualificationCurricula),
-  studyStartYear: studyYearSchema,
+  curriculum: z.enum(qualificationCurricula).optional(),
+  studyStartYear: studyYearSchema.optional(),
   studyEndYear: studyYearSchema.optional(),
   currentlyStudying: z.boolean(),
   instituteIdCardNumber: optionalTrimmedText(160),
@@ -116,7 +120,7 @@ const educationRecordSchema = z.object({
     });
   }
 
-  if (value.studyEndYear !== undefined && value.studyEndYear < value.studyStartYear) {
+  if (value.studyEndYear !== undefined && value.studyStartYear !== undefined && value.studyEndYear < value.studyStartYear) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["studyEndYear"],
@@ -231,77 +235,91 @@ export const tutorProfileDraftSchema = z.object(profileShape).strict().superRefi
 /** Client profile edits cannot set a storage key; only the protected upload route may do so. */
 export const tutorProfileEditableDraftSchema = z.object(editableProfileShape).strict().superRefine(addCrossFieldIssues);
 
-const submissionRequiredKeys = [
-  "profilePhotoKey",
-  "name",
-  "gender",
-  "dateOfBirth",
-  "headline",
-  "phone",
-  "contactEmail",
-  "currentCityId",
-  "currentLocationId",
-  "teachingAreaIds",
-  "availableNationwide",
-  "universityId",
-  "facultyDepartmentId",
-  "degreeExamTitle",
-  "studyStatus",
-  "primarySubjectIds",
-  "classLevelIds",
-  "curriculumIds",
-  "teachingExperienceYears",
-  "tuitionType",
-  "preferredStudentGender",
-  "preferredClassSizes",
-  "preferredTeachingDays",
-  "preferredTimeSlots",
-  "feeMin",
-  "feeMax",
-  "teachingLanguageIds",
-  "communicationPreferences",
-] as const;
+/**
+ * A registry id like `"profilePhotoUrl"` doesn't always name the schema key
+ * it governs - the profile form's photo *value* is `profilePhotoKey` here.
+ * Every other id matches its schema key (or its `privateDetails.`/
+ * `educationRecords.` prefix) directly.
+ */
+const registryIdToSchemaKey: Record<string, string> = {
+  profilePhotoUrl: "profilePhotoKey",
+};
 
-export const tutorProfileSubmissionSchema = tutorProfileDraftSchema.superRefine((value, ctx) => {
-  for (const key of submissionRequiredKeys) {
-    if (value[key] === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [key],
-        message: "This field is required before profile submission.",
-      });
-    }
+function isSubmissionFieldPresent(value: TutorProfileDraftInput, fieldId: string): boolean {
+  if (fieldId === "universityIdDocumentStatus") return value.universityIdDocumentStatus === "uploaded";
+  if (fieldId.startsWith("privateDetails.")) {
+    const key = fieldId.slice("privateDetails.".length) as keyof NonNullable<TutorProfileDraftInput["privateDetails"]>;
+    return value.privateDetails?.[key] !== undefined;
   }
+  const schemaKey = registryIdToSchemaKey[fieldId] ?? fieldId;
+  return (value as Record<string, unknown>)[schemaKey] !== undefined;
+}
 
-  const privateDetails = value.privateDetails;
-  if (!privateDetails) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["privateDetails"], message: "Private identity information is required before profile submission." });
-  } else {
-    for (const field of ["nationality", "religion", "fatherName", "fatherPhone"] as const) {
-      if (privateDetails[field] === undefined) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["privateDetails", field], message: "This field is required before profile submission." });
+/**
+ * Builds the submission-required check from the resolved Tutor Profile field
+ * config instead of a fixed list, so an Owner's reorder/enable/required
+ * overrides (see `shared/tutor-profile-field-registry.ts`) take effect.
+ *
+ * `yearSemester`/`graduationYear` and `educationRecords.studyEndYear` stay
+ * unconditional code logic, never config-driven - their requiredness already
+ * branches on another field (`studyStatus`, `currentlyStudying`), and the
+ * registry marks them `requiredConfigurable: false` for exactly that reason.
+ * `supportingDocument.*` overrides are accepted by the save mutation but not
+ * enforced here yet - there is no "attempted but not uploaded" state to check
+ * against, only "which types have been uploaded".
+ */
+export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfileFieldConfig) {
+  return (value: TutorProfileDraftInput, ctx: z.RefinementCtx) => {
+    for (const field of Array.from(config.byId.values())) {
+      // A `requiredConfigurable: false` field's requiredness already branches
+      // on another field in code (below) - the generic loop must leave it
+      // alone entirely, not treat `requiredByDefault` as a flat requirement.
+      if (!field.requiredConfigurable) continue;
+      if (!field.enabled || !field.required) continue;
+      if (field.id === "educationRecords" || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.")) continue;
+      if (!isSubmissionFieldPresent(value, field.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: field.id.split("."),
+          message: "This field is required before profile submission.",
+        });
       }
     }
-  }
 
-  // Study status decides which half of the study timeline the Tutor must fill:
-  // an in-progress year/semester, or the year they finished.
-  if (value.studyStatus === "studying" && value.yearSemester === undefined) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearSemester"], message: "This field is required before profile submission." });
-  }
+    // Study status decides which half of the study timeline the Tutor must fill:
+    // an in-progress year/semester, or the year they finished. Code-owned.
+    if (value.studyStatus === "studying" && value.yearSemester === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearSemester"], message: "This field is required before profile submission." });
+    }
+    if ((value.studyStatus === "graduated" || value.studyStatus === "professional") && value.graduationYear === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["graduationYear"], message: "This field is required before profile submission." });
+    }
 
-  if ((value.studyStatus === "graduated" || value.studyStatus === "professional") && value.graduationYear === undefined) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["graduationYear"], message: "This field is required before profile submission." });
-  }
+    const educationRecordsField = config.byId.get("educationRecords");
+    if (educationRecordsField?.enabled && educationRecordsField.required && !value.educationRecords?.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: "Add at least one education record before profile submission." });
+    }
 
-  if (!value.educationRecords?.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: "Add at least one education record before profile submission." });
-  }
+    if (value.educationRecords?.length) {
+      const requiredRecordFields = Array.from(config.byId.values()).filter(
+        field => field.id.startsWith("educationRecords.") && field.requiredConfigurable && field.enabled && field.required,
+      );
+      value.educationRecords.forEach((record, index) => {
+        for (const field of requiredRecordFields) {
+          const key = field.id.slice("educationRecords.".length) as keyof typeof record;
+          if (record[key] === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords", index, key], message: "This field is required before profile submission." });
+          }
+        }
+      });
+    }
+  };
+}
 
-  if (value.universityIdDocumentStatus !== "uploaded") {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["universityIdDocumentStatus"], message: "Upload your University ID image before profile submission." });
-  }
-});
+/** The submission schema at the shipped defaults - what every existing test validates against. */
+export const tutorProfileSubmissionSchema = tutorProfileDraftSchema.superRefine(
+  buildTutorProfileSubmissionRefinement(defaultTutorProfileFieldConfig()),
+);
 
 export type TutorProfileDraftInput = z.infer<typeof tutorProfileDraftSchema>;
 export type TutorProfileEditableDraftInput = z.infer<typeof tutorProfileEditableDraftSchema>;
@@ -454,38 +472,51 @@ function hasStudyTimeline(profile: Record<string, unknown>) {
   return false;
 }
 
-export function calculateTutorProfileCompletion(profile: Record<string, unknown>) {
-  const completedUnits = [
-    hasNonEmptyString(profile.profilePhotoKey),
-    hasNonEmptyString(profile.name),
-    profile.gender === "male" || profile.gender === "female",
-    hasNonEmptyString(profile.dateOfBirth),
-    hasNonEmptyString(profile.headline),
-    hasNonEmptyString(profile.phone),
-    hasNonEmptyString(profile.contactEmail),
-    hasLocationId(profile.currentCityId),
-    hasLocationId(profile.currentLocationId),
-    hasSelections(profile.teachingAreaIds),
-    typeof profile.availableNationwide === "boolean",
-    hasPositiveId(profile.universityId),
-    hasPositiveId(profile.facultyDepartmentId),
-    hasNonEmptyString(profile.degreeExamTitle),
-    profile.studyStatus === "studying" || profile.studyStatus === "graduated" || profile.studyStatus === "professional",
-    hasStudyTimeline(profile),
-    hasSelections(profile.primarySubjectIds),
-    hasSelections(profile.classLevelIds),
-    hasSelections(profile.curriculumIds),
-    typeof profile.teachingExperienceYears === "number" && Number.isInteger(profile.teachingExperienceYears) && profile.teachingExperienceYears >= 0,
-    profile.tuitionType === "home" || profile.tuitionType === "online" || profile.tuitionType === "both",
-    profile.preferredStudentGender === "male" || profile.preferredStudentGender === "female" || profile.preferredStudentGender === "both",
-    hasSelections(profile.preferredClassSizes),
-    hasSelections(profile.preferredTeachingDays),
-    hasSelections(profile.preferredTimeSlots),
-    typeof profile.feeMin === "number" && typeof profile.feeMax === "number" && profile.feeMin >= 0 && profile.feeMin <= profile.feeMax,
-    hasSelections(profile.teachingLanguageIds),
-    hasSelections(profile.communicationPreferences),
+/**
+ * Each unit names the single registry field it represents, so a field an
+ * Owner disables drops out of both the numerator and the denominator instead
+ * of permanently counting against - or for - completion. `id: null` marks a
+ * unit that doesn't reduce to one field (the study timeline is whichever of
+ * two fields `studyStatus` selects; the fee check spans both `feeMin` and
+ * `feeMax`) - those stay unconditionally counted, same as before this config
+ * awareness existed.
+ */
+export function calculateTutorProfileCompletion(
+  profile: Record<string, unknown>,
+  config: ResolvedTutorProfileFieldConfig = defaultTutorProfileFieldConfig(),
+) {
+  const units: Array<{ id: string | null; ok: boolean }> = [
+    { id: "profilePhotoUrl", ok: hasNonEmptyString(profile.profilePhotoKey) },
+    { id: "name", ok: hasNonEmptyString(profile.name) },
+    { id: "gender", ok: profile.gender === "male" || profile.gender === "female" },
+    { id: "dateOfBirth", ok: hasNonEmptyString(profile.dateOfBirth) },
+    { id: "headline", ok: hasNonEmptyString(profile.headline) },
+    { id: "phone", ok: hasNonEmptyString(profile.phone) },
+    { id: "contactEmail", ok: hasNonEmptyString(profile.contactEmail) },
+    { id: "currentCityId", ok: hasLocationId(profile.currentCityId) },
+    { id: "currentLocationId", ok: hasLocationId(profile.currentLocationId) },
+    { id: "teachingAreaIds", ok: hasSelections(profile.teachingAreaIds) },
+    { id: "availableNationwide", ok: typeof profile.availableNationwide === "boolean" },
+    { id: "universityId", ok: hasPositiveId(profile.universityId) },
+    { id: "facultyDepartmentId", ok: hasPositiveId(profile.facultyDepartmentId) },
+    { id: "degreeExamTitle", ok: hasNonEmptyString(profile.degreeExamTitle) },
+    { id: "studyStatus", ok: profile.studyStatus === "studying" || profile.studyStatus === "graduated" || profile.studyStatus === "professional" },
+    { id: null, ok: hasStudyTimeline(profile) },
+    { id: "primarySubjectIds", ok: hasSelections(profile.primarySubjectIds) },
+    { id: "classLevelIds", ok: hasSelections(profile.classLevelIds) },
+    { id: "curriculumIds", ok: hasSelections(profile.curriculumIds) },
+    { id: "teachingExperienceYears", ok: typeof profile.teachingExperienceYears === "number" && Number.isInteger(profile.teachingExperienceYears) && profile.teachingExperienceYears >= 0 },
+    { id: "tuitionType", ok: profile.tuitionType === "home" || profile.tuitionType === "online" || profile.tuitionType === "both" },
+    { id: "preferredStudentGender", ok: profile.preferredStudentGender === "male" || profile.preferredStudentGender === "female" || profile.preferredStudentGender === "both" },
+    { id: "preferredClassSizes", ok: hasSelections(profile.preferredClassSizes) },
+    { id: "preferredTeachingDays", ok: hasSelections(profile.preferredTeachingDays) },
+    { id: "preferredTimeSlots", ok: hasSelections(profile.preferredTimeSlots) },
+    { id: null, ok: typeof profile.feeMin === "number" && typeof profile.feeMax === "number" && profile.feeMin >= 0 && profile.feeMin <= profile.feeMax },
+    { id: "teachingLanguageIds", ok: hasSelections(profile.teachingLanguageIds) },
+    { id: "communicationPreferences", ok: hasSelections(profile.communicationPreferences) },
   ];
 
+  const countedUnits = units.filter(unit => unit.id === null || (config.byId.get(unit.id)?.enabled ?? true));
   // Derived from the list itself so adding a unit can never leave a stale divisor.
-  return Math.round((completedUnits.filter(Boolean).length / completedUnits.length) * 100);
+  return Math.round((countedUnits.filter(unit => unit.ok).length / countedUnits.length) * 100);
 }

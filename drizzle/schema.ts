@@ -734,16 +734,20 @@ export const tutorEducationRecords = mysqlTable(
     tutorId: varchar("tutorId", { length: 32 })
       .notNull()
       .references(() => tutors.id),
-    /** Education Level — a curated vocabulary, see `@shared/tutor-education`. */
-    qualificationLevel: varchar("qualificationLevel", { length: 80 }).notNull(),
-    instituteName: varchar("instituteName", { length: 200 }).notNull(),
-    degreeExamTitle: varchar("degreeExamTitle", { length: 160 }).notNull(),
-    majorGroup: varchar("majorGroup", { length: 160 }).notNull(),
+    /**
+     * Education Level — a curated vocabulary, see `@shared/tutor-education`.
+     * Nullable, same as `curriculum` below: required at submission per the
+     * Tutor Profile field config, but a draft may save an incomplete record.
+     */
+    qualificationLevel: varchar("qualificationLevel", { length: 80 }),
+    instituteName: varchar("instituteName", { length: 200 }),
+    degreeExamTitle: varchar("degreeExamTitle", { length: 160 }),
+    majorGroup: varchar("majorGroup", { length: 160 }),
     resultGpa: varchar("resultGpa", { length: 80 }),
     /** Required at submission, but nullable so legacy records still load. */
     curriculum: varchar("curriculum", { length: 80 }),
     /** Plain four-digit years; Tutors type them rather than picking a date. */
-    studyStartYear: int("studyStartYear").notNull(),
+    studyStartYear: int("studyStartYear"),
     studyEndYear: int("studyEndYear"),
     currentlyStudying: int("currentlyStudying").default(0).notNull(),
     instituteIdCardNumber: varchar("instituteIdCardNumber", { length: 160 }),
