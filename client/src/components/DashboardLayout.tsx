@@ -378,7 +378,10 @@ function DashboardLayoutContent({
               header and account card above an independently-scrolling list. */}
           <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain group-data-[collapsible=icon]:overflow-y-auto">
             <SidebarHeader className="h-16 shrink-0 justify-center border-b border-[#e9f0f5]">
-              <div className="flex items-center gap-3 px-2 transition-all w-full">
+              {/* Just the toggle. The portal name and the current tab both
+                  live in the workspace header now, so repeating either here
+                  only crowds the top of the sidebar. */}
+              <div className="flex items-center px-2 w-full">
                 <button
                   onClick={toggleSidebar}
                   className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
@@ -387,13 +390,6 @@ function DashboardLayoutContent({
                 >
                   <PanelLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
-                {!isCollapsed ? (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold tracking-tight truncate">
-                      {title}
-                    </span>
-                  </div>
-                ) : null}
               </div>
             </SidebarHeader>
 

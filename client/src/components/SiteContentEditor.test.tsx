@@ -125,7 +125,7 @@ describe("Site content editor", () => {
     const dashboard = screen.getByRole("heading", { name: "Guardian dashboard" }).closest("section")!;
     const journey = screen.getByRole("heading", { name: "Request a tutor" }).closest("section")!;
 
-    expect(within(dashboard).getAllByLabelText("Page heading", { selector: "input" }).length).toBe(1);
+    expect(within(dashboard).getAllByLabelText("Photo card title", { selector: "input" }).length).toBe(1);
     expect(within(journey).getAllByLabelText("Phone step heading", { selector: "input" }).length).toBe(1);
     expect(within(dashboard).queryByLabelText("Phone step heading", { selector: "input" })).toBeNull();
   });
