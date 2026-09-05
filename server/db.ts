@@ -7,6 +7,12 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
+import {
+  defaultTutorProfileFieldConfig,
+  resolveTutorProfileFieldConfig,
+  type ResolvedTutorProfileFieldConfig,
+  type TutorProfileFieldOverrideRow,
+} from "@shared/tutor-profile-field-registry";
 import type { RequestSource } from "@shared/request-source";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
@@ -49,6 +55,7 @@ import {
   siteContentOverrides,
   siteContentBlocks,
   siteLimits as siteLimitsTable,
+  tutorProfileFieldOverrides as tutorProfileFieldOverridesTable,
   sitePolicyDocuments,
   tutorPreferredClassSizes,
   tutorPreferredTeachingDays,
@@ -5150,6 +5157,64 @@ export async function resetSiteLimit(limitId: string) {
   await database.delete(siteLimitsTable).where(eq(siteLimitsTable.limitId, limitId));
   siteLimitCache = null;
   return { limitId };
+}
+
+/**
+ * The Owner's per-field section/order/enabled/required, folded onto the
+ * registry defaults - same short-cache reasoning as `getSiteLimits`: every
+ * profile load and every save/submit validation reads this.
+ */
+let tutorProfileFieldConfigCache: { config: ResolvedTutorProfileFieldConfig; readAt: number } | null = null;
+const TUTOR_PROFILE_FIELD_CONFIG_CACHE_MS = 15_000;
+
+export async function getTutorProfileFieldConfig(): Promise<ResolvedTutorProfileFieldConfig> {
+  if (tutorProfileFieldConfigCache && Date.now() - tutorProfileFieldConfigCache.readAt < TUTOR_PROFILE_FIELD_CONFIG_CACHE_MS) {
+    return tutorProfileFieldConfigCache.config;
+  }
+  const database = await getDb();
+  if (!database) return defaultTutorProfileFieldConfig();
+  const rows: TutorProfileFieldOverrideRow[] = await database.select().from(tutorProfileFieldOverridesTable);
+  const config = resolveTutorProfileFieldConfig(rows);
+  tutorProfileFieldConfigCache = { config, readAt: Date.now() };
+  return config;
+}
+
+/** Rows as stored, for the editor - which must show what was saved, not what was resolved. */
+export async function listTutorProfileFieldOverrides(): Promise<TutorProfileFieldOverrideRow[]> {
+  const database = await getDb();
+  if (!database) return [];
+  return database.select().from(tutorProfileFieldOverridesTable);
+}
+
+export type TutorProfileFieldOverrideWrite = TutorProfileFieldOverrideRow;
+
+/**
+ * Applies every changed field's full override row in one transaction - a
+ * save here can touch dozens of rows across all 4 sections (a reorder plus
+ * several cross-section moves at once), and a half-applied batch would leave
+ * fields in an inconsistent order or pointed at a section their sub-group
+ * doesn't belong to.
+ */
+export async function saveTutorProfileFieldOverrides(changes: readonly TutorProfileFieldOverrideWrite[]) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.transaction(async tx => {
+    for (const change of changes) {
+      await tx
+        .insert(tutorProfileFieldOverridesTable)
+        .values(change)
+        .onDuplicateKeyUpdate({
+          set: {
+            section: change.section,
+            subGroup: change.subGroup,
+            sortOrder: change.sortOrder,
+            enabled: change.enabled,
+            required: change.required,
+          },
+        });
+    }
+  });
+  tutorProfileFieldConfigCache = null;
 }
 
 /**
