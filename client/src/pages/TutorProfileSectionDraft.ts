@@ -10,8 +10,9 @@ import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfil
 export type TutorProfileSectionId = "a" | "c" | "d" | "e";
 
 /**
- * The larger sections ("Personal Information" and "Education and teaching
- * expertise") open their editor one sub-group at a time.
+ * A section that owns sub-groups opens its editor one sub-group at a time.
+ * `c-teaching` ships empty since Teaching expertise moved to section d, but
+ * stays declared so an Owner can move fields back into it.
  */
 export type TutorProfileSectionGroupId = "a-identity" | "a-family" | "c-education" | "c-teaching";
 export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
@@ -68,12 +69,12 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   {
     id: "c",
     label: "Education",
-    description: "Your education, qualifications, subjects, learner levels, and teaching expertise.",
+    description: "Your education, qualifications, and supporting documents.",
   },
   {
     id: "d",
     label: "Tuition, location and communication",
-    description: "How and where you teach: format, learner preferences, coverage, fee, languages, and contact preferences.",
+    description: "What, how and where you teach: subjects, learner levels, format, coverage, fee, languages, and contact preferences.",
   },
   {
     id: "e",
