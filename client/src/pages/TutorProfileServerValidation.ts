@@ -23,6 +23,7 @@ const serverFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, string>>
   headline: tutorProfileCopy.fields.headline,
   phone: tutorProfileCopy.fields.phone,
   contactEmail: tutorProfileCopy.fields.email,
+  currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
   availableNationwide: "Available Nationwide",

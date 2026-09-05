@@ -134,6 +134,7 @@ const profileShape = {
 
   phone: bangladeshPhoneSchema.optional(),
   contactEmail: z.string().trim().email("Enter a valid email address.").max(320).optional(),
+  currentCityId: locationIdSchema.optional(),
   currentLocationId: locationIdSchema.optional(),
   teachingAreaIds: optionalUniqueLocationIdList(15),
   availableNationwide: z.boolean().optional(),
@@ -238,6 +239,7 @@ const submissionRequiredKeys = [
   "headline",
   "phone",
   "contactEmail",
+  "currentCityId",
   "currentLocationId",
   "teachingAreaIds",
   "availableNationwide",
@@ -275,7 +277,7 @@ export const tutorProfileSubmissionSchema = tutorProfileDraftSchema.superRefine(
   if (!privateDetails) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["privateDetails"], message: "Private identity information is required before profile submission." });
   } else {
-    for (const field of ["presentAddress", "permanentAddress", "nationality", "religion", "fatherName", "fatherPhone"] as const) {
+    for (const field of ["nationality", "religion", "fatherName", "fatherPhone"] as const) {
       if (privateDetails[field] === undefined) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["privateDetails", field], message: "This field is required before profile submission." });
       }
@@ -324,6 +326,7 @@ export type TutorProfileCatalogReferenceIssue = {
 
 type CatalogReferenceProfile = Pick<
   TutorProfileDraftInput,
+  | "currentCityId"
   | "currentLocationId"
   | "teachingAreaIds"
   | "universityId"
@@ -367,6 +370,13 @@ export function validateTutorProfileCatalogReferences(
   references: TutorProfileCatalogReferences,
 ): TutorProfileCatalogReferenceIssue[] {
   const issues: TutorProfileCatalogReferenceIssue[] = [];
+
+  if (profile.currentCityId !== undefined && !references.activeLocationIds.has(profile.currentCityId)) {
+    issues.push({
+      path: ["currentCityId"],
+      message: "The selected current city is unavailable. Please choose an active option.",
+    });
+  }
 
   if (profile.currentLocationId !== undefined && !references.activeLocationIds.has(profile.currentLocationId)) {
     issues.push({
@@ -453,6 +463,7 @@ export function calculateTutorProfileCompletion(profile: Record<string, unknown>
     hasNonEmptyString(profile.headline),
     hasNonEmptyString(profile.phone),
     hasNonEmptyString(profile.contactEmail),
+    hasLocationId(profile.currentCityId),
     hasLocationId(profile.currentLocationId),
     hasSelections(profile.teachingAreaIds),
     typeof profile.availableNationwide === "boolean",

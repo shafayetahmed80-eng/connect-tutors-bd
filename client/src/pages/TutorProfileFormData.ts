@@ -14,6 +14,7 @@ export type TutorOnboardingFallback = {
   phone: string;
   contactEmail: string;
   gender: "male" | "female";
+  cityId: string;
   locationId: string;
 };
 
@@ -22,6 +23,7 @@ export type PersistedTutorProfileForForm = {
   phone: string | null;
   contactEmail: string | null;
   gender: "male" | "female";
+  currentCityId: string | null;
   currentLocationId: string | null;
   tutorNumber: number | null;
   registeredAt: Date | string | null;
@@ -70,8 +72,6 @@ export type PersistedTutorProfileForForm = {
 
 export type TutorProfilePrivateDetails = {
   additionalPhone?: string;
-  presentAddress?: string;
-  permanentAddress?: string;
   nationality?: string;
   religion?: string;
   socialProfileLinks?: string;
@@ -119,7 +119,7 @@ export type PersistedTutorEducationRecord = {
 };
 
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
-  additionalPhone: "", presentAddress: "", permanentAddress: "", nationality: "", religion: "", socialProfileLinks: "",
+  additionalPhone: "", nationality: "", religion: "", socialProfileLinks: "",
   fatherName: "", fatherPhone: "", motherName: "", motherPhone: "", emergencyContactName: "", emergencyContactRelation: "",
   emergencyContactPhone: "", emergencyContactAddress: "",
 });
@@ -175,6 +175,7 @@ export type TutorProfileFormState = {
   headline: string;
   phone: string;
   contactEmail: string;
+  currentCityId: string;
   currentLocationId: string;
   teachingAreaIds: string[];
   availableNationwide: boolean;
@@ -250,6 +251,7 @@ export function hydrateTutorProfileForm(
       headline: "",
       phone: onboardingFallback?.phone ?? "",
       contactEmail: onboardingFallback?.contactEmail ?? "",
+      currentCityId: onboardingFallback?.cityId ?? "",
       currentLocationId: onboardingFallback?.locationId ?? "",
       teachingAreaIds: [],
       availableNationwide: false,
@@ -293,6 +295,7 @@ export function hydrateTutorProfileForm(
     headline: profile.headline ?? "",
     phone: profile.phone ?? "",
     contactEmail: profile.contactEmail ?? "",
+    currentCityId: profile.currentCityId ?? "",
     currentLocationId: profile.currentLocationId ?? "",
     teachingAreaIds: profile.teachingAreaIds,
     availableNationwide: profile.availableNationwide,
@@ -341,6 +344,7 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     headline: optionalText(form.headline),
     phone: form.phone.trim(),
     contactEmail: form.contactEmail.trim(),
+    currentCityId: optionalText(form.currentCityId),
     currentLocationId: optionalText(form.currentLocationId),
     ...(form.teachingAreaIds.length > 0 ? { teachingAreaIds: form.teachingAreaIds } : {}),
     availableNationwide: form.availableNationwide,
@@ -373,8 +377,10 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     additionalNotes: optionalText(form.additionalNotes),
     privateDetails: {
       additionalPhone: form.privateDetails.additionalPhone?.trim() ?? "",
-      presentAddress: form.privateDetails.presentAddress?.trim() ?? "",
-      permanentAddress: form.privateDetails.permanentAddress?.trim() ?? "",
+      // The server keeps these two columns (existing rows are untouched); the
+      // form no longer collects them, so nothing is ever sent for them.
+      presentAddress: undefined,
+      permanentAddress: undefined,
       nationality: form.privateDetails.nationality?.trim() ?? "",
       religion: form.privateDetails.religion?.trim() ?? "",
       socialProfileLinks: form.privateDetails.socialProfileLinks?.trim() ?? "",

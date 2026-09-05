@@ -14,6 +14,7 @@ const completeSubmission = {
   headline: "Experienced Mathematics Tutor for SSC Students",
   phone: "+8801516131411",
   contactEmail: "aminul@example.com",
+  currentCityId: "bd-dhaka-city",
   currentLocationId: "bd-dhaka",
   teachingAreaIds: ["bd-mirpur"],
   availableNationwide: true,
@@ -179,7 +180,7 @@ describe("Tutor Profile domain validation", () => {
 
   it("reports inactive selections and mismatched academic catalog parents with field-specific paths", () => {
     const issues = validateTutorProfileCatalogReferences(completeSubmission, {
-      activeLocationIds: new Set(["bd-dhaka", "bd-mirpur"]),
+      activeLocationIds: new Set(["bd-dhaka-city", "bd-dhaka", "bd-mirpur"]),
       activeUniversityIds: new Set([1]),
       activeFacultyDepartmentIds: new Set<number>(),
       activeDegreeMajorFacultyDepartmentIds: new Map([[111, 12]]),

@@ -402,6 +402,7 @@ export type TutorProfileDefaults = {
   phone: string;
   contactEmail: string;
   gender: "male" | "female";
+  cityLocationId: string;
   locationId: string;
   profileStatus: "draft";
 };
@@ -413,6 +414,7 @@ export function createTutorProfileDefaults(input: TutorRegistrationInput): Tutor
     phone: normalizeBangladeshMobile(input.phone),
     contactEmail: normalizeEmail(input.email),
     gender: input.gender,
+    cityLocationId: input.cityId.trim(),
     locationId: input.locationId.trim(),
     profileStatus: "draft",
   };
@@ -1226,6 +1228,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     headline: row.tutor.headline ?? undefined,
     phone: row.tutor.phone ?? undefined,
     contactEmail: row.tutor.contactEmail ?? undefined,
+    currentCityId: row.tutor.cityLocationId ?? undefined,
     currentLocationId: row.tutor.locationId,
     currentLocationLabel: row.location?.label ?? row.tutor.locationId,
     locationId: row.tutor.locationId,
@@ -1449,6 +1452,7 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     headline: input.headline ?? existing.headline,
     phone: input.phone ?? existing.phone,
     contactEmail: input.contactEmail ?? existing.contactEmail,
+    currentCityId: input.currentCityId ?? existing.currentCityId,
     currentLocationId: input.currentLocationId ?? existing.currentLocationId,
     teachingAreaIds: keepList(input.teachingAreaIds, existing.teachingAreaIds),
     availableNationwide: input.availableNationwide ?? existing.availableNationwide,
@@ -1527,6 +1531,7 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (input.headline !== undefined) tutorValues.headline = input.headline;
     if (input.phone !== undefined) tutorValues.phone = input.phone;
     if (input.contactEmail !== undefined) tutorValues.contactEmail = input.contactEmail;
+    if (input.currentCityId !== undefined) tutorValues.cityLocationId = input.currentCityId;
     if (input.currentLocationId !== undefined) tutorValues.locationId = input.currentLocationId;
     if (input.availableNationwide !== undefined) tutorValues.nationwideAvailability = input.availableNationwide ? 1 : 0;
     if (input.teachingExperienceYears !== undefined) tutorValues.teachingExperienceYears = input.teachingExperienceYears;
@@ -1655,6 +1660,7 @@ export async function submitTutorProfile(userId: number) {
       headline: profile.headline,
       phone: profile.phone,
       contactEmail: profile.contactEmail,
+      currentCityId: profile.currentCityId,
       currentLocationId: profile.currentLocationId,
       teachingAreaIds: profile.teachingAreaIds,
       availableNationwide: profile.availableNationwide,
@@ -4699,14 +4705,16 @@ export async function deleteLargeCatalogEntry(catalog: LargeCatalogKey, id: numb
 /**
  * Every column that names a location, whether or not a foreign key backs it.
  *
- * Five of these are real foreign keys; `tutors.locationId` and the two on
- * `tutor_jobs` are not, so the database would let a delete orphan them without
- * complaint. Counting only the constrained ones would mean the screen reports
- * "nothing uses this" while five tutor profiles quietly lose their district.
+ * Five of these are real foreign keys; `tutors.locationId`, `tutors.cityLocationId`,
+ * and the two on `tutor_jobs` are not, so the database would let a delete orphan
+ * them without complaint. Counting only the constrained ones would mean the
+ * screen reports "nothing uses this" while five tutor profiles quietly lose
+ * their district.
  */
 const locationUsageColumns = [
   { table: guardianProfiles, column: guardianProfiles.cityLocationId },
   { table: guardianProfiles, column: guardianProfiles.locationId },
+  { table: tutors, column: tutors.cityLocationId },
   { table: tutors, column: tutors.locationId },
   { table: tutorTeachingAreas, column: tutorTeachingAreas.locationId },
   { table: tutorRequests, column: tutorRequests.tuitionCityLocationId },
@@ -4715,7 +4723,7 @@ const locationUsageColumns = [
   { table: tutorJobs, column: tutorJobs.locationId },
 ] as const;
 
-/** `count(*)` across all eight of them, as one expression. */
+/** `count(*)` across all nine of them, as one expression. */
 function locationUsageSql() {
   const id = outerId(locations);
   const parts = locationUsageColumns.map(

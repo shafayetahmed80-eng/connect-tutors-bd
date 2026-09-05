@@ -9,6 +9,7 @@ const trpcMocks = vi.hoisted(() => ({
   saveDraft: vi.fn(),
   submitProfile: vi.fn(),
   searchBangladeshLocations: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
+  searchRegistrationLocations: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
 }));
 
 vi.mock("@/lib/trpc", () => {
@@ -38,6 +39,7 @@ vi.mock("@/lib/trpc", () => {
         searchStudentTypes: { useQuery: emptyQuery },
         searchLanguages: { useQuery: emptyQuery },
         searchBangladeshLocations: { useQuery: trpcMocks.searchBangladeshLocations },
+        searchRegistrationLocations: { useQuery: trpcMocks.searchRegistrationLocations },
       },
     },
   };
@@ -69,6 +71,7 @@ const completeProfile = {
   headline: "Experienced Mathematics Tutor",
   phone: "+8801712345678",
   contactEmail: "tutor@example.test",
+  currentCityId: "dhaka-city",
   currentLocationId: "1",
   teachingAreaIds: ["1"],
   availableNationwide: true,
@@ -464,10 +467,11 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     cleanup();
     vi.restoreAllMocks();
     trpcMocks.searchBangladeshLocations.mockClear();
+    trpcMocks.searchRegistrationLocations.mockClear();
   });
 
   it("forwards current-location and teaching-area queries to the Bangladesh hierarchy catalog", async () => {
-    trpcMocks.searchBangladeshLocations.mockImplementation(({ query }: { query: string }) => ({
+    trpcMocks.searchRegistrationLocations.mockImplementation(({ query }: { query: string }) => ({
       data: query ? [{ id: "dhaka-thana-uttara", label: "Uttara", type: "thana" }] : [],
     }));
     const user = userEvent.setup({ document: window.document });
@@ -476,9 +480,10 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
-    const currentLocationSearch = within(dialog).getAllByRole("combobox")[0];
+    // Current City is the first combobox, Current Location the second.
+    const currentLocationSearch = within(dialog).getAllByRole("combobox")[1];
     await user.type(currentLocationSearch, "Uttara");
-    await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Uttara" })));
+    await waitFor(() => expect(trpcMocks.searchRegistrationLocations).toHaveBeenCalledWith(expect.objectContaining({ cityId: "dhaka-city", query: "Uttara" }), expect.anything()));
 
     fireEvent.click(within(dialog).getAllByRole("button", { name: /Teaching Areas/ })[0]);
     fireEvent.change(within(dialog).getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}` }), { target: { value: "Uttara" } });
@@ -488,15 +493,19 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
   it("hydrates persisted hierarchy identifiers through the catalog before a draft is saved", async () => {
     const hierarchyProfile = {
       ...completeProfile,
+      currentCityId: "dhaka-city",
       currentLocationId: "dhaka-thana-uttara",
       teachingAreaIds: ["dhaka-uttara-sector-1"],
     };
-    trpcMocks.searchBangladeshLocations.mockImplementation(({ ids }: { ids?: string[] }) => ({
-      data: ids?.includes("dhaka-thana-uttara")
-        ? [{ id: "dhaka-thana-uttara", label: "Uttara", type: "thana" }]
+    trpcMocks.searchBangladeshLocations.mockImplementation(({ ids, types }: { ids?: string[]; types?: string[] }) => ({
+      data: types?.includes("city") && ids?.includes("dhaka-city")
+        ? [{ id: "dhaka-city", label: "Dhaka", type: "city" }]
         : ids?.includes("dhaka-uttara-sector-1")
           ? [{ id: "dhaka-uttara-sector-1", label: "Uttara Sector 1", type: "subdivision" }]
           : [],
+    }));
+    trpcMocks.searchRegistrationLocations.mockImplementation(({ cityId }: { cityId?: string }) => ({
+      data: cityId === "dhaka-city" ? [{ id: "dhaka-thana-uttara", label: "Uttara", type: "thana" }] : [],
     }));
     trpcMocks.saveDraft.mockResolvedValue(undefined);
 
@@ -505,8 +514,13 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
 
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({
       query: "",
-      ids: ["dhaka-thana-uttara"],
+      ids: ["dhaka-city"],
+      types: ["city"],
     })));
+    await waitFor(() => expect(trpcMocks.searchRegistrationLocations).toHaveBeenCalledWith(expect.objectContaining({
+      cityId: "dhaka-city",
+      query: "",
+    }), expect.anything()));
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({
       query: "",
       ids: ["dhaka-uttara-sector-1"],
@@ -515,27 +529,46 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByDisplayValue("Dhaka · city")).toBeTruthy();
     expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
     expect(within(dialog).getByText("Uttara Sector 1 · subdivision")).toBeTruthy();
 
     await user.click(within(dialog).getByRole("button", { name: "Submit" }));
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalledWith(expect.objectContaining({
+      currentCityId: "dhaka-city",
       currentLocationId: "dhaka-thana-uttara",
       teachingAreaIds: ["dhaka-uttara-sector-1"],
     })));
   });
 
-  it("scopes teaching-area catalog requests to a selected city parent", async () => {
-    const cityProfile = { ...completeProfile, currentLocationId: "dhaka-city" };
-    trpcMocks.searchBangladeshLocations.mockImplementation(({ ids, parentId }: { ids?: string[]; parentId?: string }) => ({
-      data: ids?.includes("dhaka-city")
-        ? [{ id: "dhaka-city", label: "Dhaka", type: "city" }]
-        : parentId === "dhaka-city"
-          ? [{ id: "mirpur-1", label: "Mirpur 1", type: "subdivision" }]
-          : [],
+  it("keeps a resolved City's read-out label once its own search box seeds a query the catalog cannot match", async () => {
+    const hierarchyProfile = { ...completeProfile, currentCityId: "dhaka-city" };
+    trpcMocks.searchBangladeshLocations.mockImplementation(({ ids, types }: { ids?: string[]; types?: string[] }) => ({
+      // Only the id-hydration lookup resolves "Dhaka" - every other search,
+      // including the box seeding itself with "Dhaka · city", finds nothing,
+      // the same way a real label never literally contains " · city".
+      data: types?.includes("city") && ids?.includes("dhaka-city") ? [{ id: "dhaka-city", label: "Dhaka", type: "city" }] : [],
     }));
 
-    render(<TutorProfileWorkspace profile={cityProfile} onboardingFallback={null} />);
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={hierarchyProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    const tabPanel = screen.getByRole("tabpanel");
+    expect(await within(tabPanel).findByText("Dhaka")).toBeTruthy();
+
+    // Opening the editor mounts the City box, which seeds its own text from
+    // the resolved label and re-searches the catalog with that literal text.
+    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Dhaka · city" })));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+
+    // The read view must keep showing the label, not fall back to "Not given".
+    expect(within(tabPanel).getByText("Dhaka")).toBeTruthy();
+  });
+
+  it("scopes teaching-area catalog requests to a selected city parent", async () => {
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({
       parentId: "dhaka-city",

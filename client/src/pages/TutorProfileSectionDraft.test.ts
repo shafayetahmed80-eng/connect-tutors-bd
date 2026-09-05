@@ -7,6 +7,7 @@ const onboardingFallback = {
   phone: "+8801516131411",
   contactEmail: "amina@example.com",
   gender: "female" as const,
+  cityId: "dhaka-city",
   locationId: "dhaka-uttara",
 };
 
@@ -35,6 +36,7 @@ describe("Tutor Profile section draft payloads", () => {
 
     expect(payload).toMatchObject({
       tuitionType: "home",
+      currentCityId: "dhaka-city",
       currentLocationId: "dhaka-uttara",
       feeMin: 5000,
       feeMax: 8000,
@@ -82,8 +84,6 @@ describe("Tutor Profile section draft payloads", () => {
       ...baseState,
       name: "Rahim Uddin",
       privateDetails: {
-        presentAddress: "House 7, Uttara",
-        permanentAddress: "Rajshahi",
         nationality: "Bangladeshi",
         religion: "Islam",
         fatherName: "Abdul Rahman",
@@ -94,8 +94,6 @@ describe("Tutor Profile section draft payloads", () => {
 
     expect(payload).toMatchObject({ name: "Rahim Uddin" });
     expect(payload.privateDetails).toMatchObject({
-      presentAddress: "House 7, Uttara",
-      permanentAddress: "Rajshahi",
       nationality: "Bangladeshi",
       religion: "Islam",
     });
@@ -108,7 +106,6 @@ describe("Tutor Profile section draft payloads", () => {
       ...baseState,
       name: "Rahim Uddin",
       privateDetails: {
-        presentAddress: "House 7, Uttara",
         nationality: "Bangladeshi",
         fatherName: "Abdul Rahman",
         fatherPhone: "+8801712345678",
@@ -122,7 +119,6 @@ describe("Tutor Profile section draft payloads", () => {
       fatherPhone: "+8801712345678",
       emergencyContactName: "Nusrat Rahman",
     });
-    expect(payload.privateDetails).not.toHaveProperty("presentAddress");
     expect(payload.privateDetails).not.toHaveProperty("nationality");
   });
 
@@ -130,14 +126,12 @@ describe("Tutor Profile section draft payloads", () => {
     const payload = createTutorProfileSectionDraftPayload("a", {
       ...baseState,
       privateDetails: {
-        presentAddress: "House 7, Uttara",
         fatherName: "Abdul Rahman",
         emergencyContactName: "Nusrat Rahman",
       },
     });
 
     expect(payload.privateDetails).toMatchObject({
-      presentAddress: "House 7, Uttara",
       fatherName: "Abdul Rahman",
       emergencyContactName: "Nusrat Rahman",
     });

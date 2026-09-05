@@ -6,6 +6,7 @@ type RegistrationProfileDefaults = {
   phone: string;
   contactEmail: string;
   gender: "male" | "female";
+  cityLocationId: string;
   locationId: string;
   profileStatus: "draft";
 };
@@ -17,6 +18,7 @@ type FutureRegistrationDefaultMapper = (input: {
   confirmPassword: string;
   phone: string;
   gender: "male" | "female";
+  cityId: string;
   locationId: string;
 }) => RegistrationProfileDefaults;
 
@@ -38,7 +40,8 @@ describe("Tutor registration Profile defaults — TP-01 red test", () => {
       confirmPassword: "strong-pass-123",
       phone: "+8801712345678",
       gender: "female" as const,
-      locationId: "dhaka-city",
+      cityId: "dhaka-city",
+      locationId: "dhaka-uttara",
     };
 
     expect(createTutorProfileDefaults).toBeTypeOf("function");
@@ -49,7 +52,8 @@ describe("Tutor registration Profile defaults — TP-01 red test", () => {
       phone: "+8801712345678",
       contactEmail: "amina@example.com",
       gender: "female",
-      locationId: "dhaka-city",
+      cityLocationId: "dhaka-city",
+      locationId: "dhaka-uttara",
       profileStatus: "draft",
     });
     expect(defaults).not.toHaveProperty("password");
