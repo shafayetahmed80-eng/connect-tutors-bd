@@ -67,7 +67,7 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   },
   {
     id: "c",
-    label: "Education and expertise",
+    label: "Education",
     description: "Your education, qualifications, subjects, learner levels, and teaching expertise.",
   },
   {

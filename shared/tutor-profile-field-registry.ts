@@ -131,14 +131,14 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "supportingDocument.hons_ms_certificate", label: "Hons/MS Certificate", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 160, requiredByDefault: false, requiredConfigurable: true },
 
   // c-teaching
-  { id: "primarySubjectIds", label: "Primary Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 200, requiredByDefault: true, requiredConfigurable: true },
-  { id: "additionalSubjectIds", label: "Additional Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 210, requiredByDefault: false, requiredConfigurable: true },
-  { id: "classLevelIds", label: "Class / Level", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 220, requiredByDefault: true, requiredConfigurable: true },
-  { id: "curriculumIds", label: "Curriculum", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 230, requiredByDefault: true, requiredConfigurable: true },
-  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 240, requiredByDefault: true, requiredConfigurable: true },
-  { id: "priorTeachingExperience", label: "Prior Teaching Experience", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 250, requiredByDefault: false, requiredConfigurable: true },
-  { id: "specialExpertise", label: "Special Expertise", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 260, requiredByDefault: false, requiredConfigurable: true },
-  { id: "academicAchievement", label: "Academic Achievement", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 270, requiredByDefault: false, requiredConfigurable: true },
+  { id: "primarySubjectIds", label: "Primary Subjects", section: "d", panel: "what-you-teach", sortOrder: 71, requiredByDefault: true, requiredConfigurable: true },
+  { id: "additionalSubjectIds", label: "Additional Subjects", section: "d", panel: "what-you-teach", sortOrder: 72, requiredByDefault: false, requiredConfigurable: true },
+  { id: "classLevelIds", label: "Class / Level", section: "d", panel: "what-you-teach", sortOrder: 73, requiredByDefault: true, requiredConfigurable: true },
+  { id: "curriculumIds", label: "Curriculum", section: "d", panel: "what-you-teach", sortOrder: 74, requiredByDefault: true, requiredConfigurable: true },
+  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "d", panel: "what-you-teach", sortOrder: 75, requiredByDefault: true, requiredConfigurable: true },
+  { id: "priorTeachingExperience", label: "Prior Teaching Experience", section: "d", panel: "own-words", sortOrder: 76, requiredByDefault: false, requiredConfigurable: true },
+  { id: "specialExpertise", label: "Special Expertise", section: "d", panel: "own-words", sortOrder: 77, requiredByDefault: false, requiredConfigurable: true },
+  { id: "academicAchievement", label: "Academic Achievement", section: "d", panel: "own-words", sortOrder: 78, requiredByDefault: false, requiredConfigurable: true },
 
   // Section d - Tuition, location and communication (no sub-groups)
   { id: "tuitionType", label: "Tuition Type", section: "d", panel: "how-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },

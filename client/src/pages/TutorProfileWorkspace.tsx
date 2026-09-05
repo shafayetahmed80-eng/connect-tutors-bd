@@ -113,7 +113,7 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
-  c: "Education and teaching expertise",
+  c: "Education",
   d: "Tuition, location and communication",
   e: "Introduction and review",
 };

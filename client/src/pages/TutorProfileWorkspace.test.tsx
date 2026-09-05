@@ -640,10 +640,14 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    // Teaching expertise sits in Tuition & location now, in the one popup
+    // that tab opens.
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Teaching expertise" }));
 
-    expect(within(screen.getByRole("dialog")).queryByText("Student Types")).toBeNull();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByText("Student Types")).toBeNull();
+    expect(within(dialog).getByText("Primary Subjects")).toBeTruthy();
   });
 
   it("offers All Days, and saves it as the seven days the server accepts", async () => {

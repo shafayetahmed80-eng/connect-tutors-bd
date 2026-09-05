@@ -84,7 +84,7 @@ function educationSummary(form: TeachingProfileState): string {
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
-  c: "Education and teaching expertise",
+  c: "Education",
   d: "Tuition, location and communication",
   e: "Introduction and review",
 };

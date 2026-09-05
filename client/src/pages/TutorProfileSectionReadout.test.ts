@@ -40,12 +40,31 @@ describe("getTutorProfileReadoutSections", () => {
     expect(sections.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
     expect(sections.map(section => section.title)).toEqual([
       "Personal Information",
-      "Education and teaching expertise",
+      "Education",
       "Tuition, location and communication",
       "Introduction and review",
     ]);
     // Personal Information carries the two former sections as sub-groups.
     expect(sections[0].groups.map(group => group.heading)).toEqual(["Identity and contact", "Family and emergency contact"]);
+  });
+
+  it("cards a section by its sub-groups, or by its panels where it has none", () => {
+    const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
+
+    // Personal Information edits one sub-group at a time, so each card names
+    // the popup its pencil opens.
+    expect(sections[0].groups.map(group => group.editTarget)).toEqual(["a-identity", "a-family"]);
+
+    // Tuition & location is one popup - its cards are panels, and Teaching
+    // expertise now sits second, straight after Availability.
+    expect(sections[2].groups.map(group => group.heading)).toEqual([
+      "Availability",
+      "Teaching expertise",
+      "In your own words",
+      "Location and fee",
+      "Communication",
+    ]);
+    expect(sections[2].groups.every(group => group.editTarget === undefined)).toBe(true);
   });
 
   it("marks an empty required value as missing and shows 'Not given'", () => {
@@ -82,7 +101,9 @@ describe("getTutorProfileReadoutSections", () => {
     );
     const education = sections[1].groups.flatMap(group => group.rows);
     expect(education.find(row => row.label === "Institute")).toEqual({ label: "Institute", value: "Not given", missing: true });
-    expect(education.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics");
+    // Subjects live in Tuition & location now, not with the Tutor's own degree.
+    const tuition = sections[2].groups.flatMap(group => group.rows);
+    expect(tuition.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics");
   });
 
   it("resolves id lists and enum codes to human labels", () => {
@@ -104,8 +125,9 @@ describe("getTutorProfileReadoutSections", () => {
     expect(identityRows.find(row => row.label === "Full name")).toEqual({ label: "Full name", value: "Rahim", missing: false });
 
     const education = sections[1].groups.flatMap(group => group.rows);
-    expect(education.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics, Physics");
-    expect(education.find(row => row.label === "Class / level")?.value).toBe("SSC");
+    const tuition = sections[2].groups.flatMap(group => group.rows);
+    expect(tuition.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics, Physics");
+    expect(tuition.find(row => row.label === "Class / level")?.value).toBe("SSC");
     expect(education.find(row => row.label === "Institute")?.value).toBe("Dhaka University");
 
     const teaching = sections[2].groups.flatMap(group => group.rows);

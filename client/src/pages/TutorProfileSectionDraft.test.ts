@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTutorProfileSectionDraftPayload, tutorProfileSectionDefinitions } from "./TutorProfileSectionDraft";
+import { createTutorProfileSectionDraftPayload, getTutorProfileSectionGroups, tutorProfileSectionDefinitions } from "./TutorProfileSectionDraft";
 import { hydrateTutorProfileForm } from "./TutorProfileFormData";
 
 const onboardingFallback = {
@@ -17,6 +17,7 @@ describe("Tutor Profile section draft payloads", () => {
   it("defines the four profile sections (Personal / Education / Tuition / Introduction)", () => {
     expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
     expect(tutorProfileSectionDefinitions[0].label).toBe("Personal Information");
+    expect(tutorProfileSectionDefinitions[1].label).toBe("Education");
   });
 
   it("sends the merged tuition, location, fee, and communication fields when saving Section D", () => {
@@ -154,8 +155,8 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload).not.toHaveProperty("academicAchievement");
   });
 
-  it("saves only the teaching half of Section C for the Teaching expertise sub-group", () => {
-    const payload = createTutorProfileSectionDraftPayload("c-teaching", {
+  it("saves what a Tutor teaches with Section D, since Teaching expertise moved there", () => {
+    const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       highestEducation: "Bachelor of Science",
       studyStatus: "graduated",
@@ -163,11 +164,30 @@ describe("Tutor Profile section draft payloads", () => {
       additionalSubjectIds: ["3"],
       teachingExperienceYears: "4",
       priorTeachingExperience: "Two years of home tuition.",
+      tuitionType: "home",
+      preferredStudentGender: "both",
+      preferredClassSizes: ["one_to_one"],
+      preferredTeachingDays: ["monday"],
+      preferredTimeSlots: ["evening"],
     });
 
-    expect(payload).toMatchObject({ primarySubjectIds: [1, 2], additionalSubjectIds: [3], teachingExperienceYears: 4, priorTeachingExperience: "Two years of home tuition." });
+    expect(payload).toMatchObject({
+      primarySubjectIds: [1, 2],
+      additionalSubjectIds: [3],
+      teachingExperienceYears: 4,
+      priorTeachingExperience: "Two years of home tuition.",
+      tuitionType: "home",
+    });
+    // Section C keeps the Tutor's own education, and nothing else.
     expect(payload).not.toHaveProperty("highestEducation");
     expect(payload).not.toHaveProperty("studyStatus");
     expect(payload).not.toHaveProperty("educationRecords");
+  });
+
+  it("leaves Section C with Education alone once Teaching expertise has moved out", () => {
+    expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-education"]);
+    expect(getTutorProfileSectionGroups("a")?.map(group => group.id)).toEqual(["a-identity", "a-family"]);
+    // Tuition & location still edits everything in one popup.
+    expect(getTutorProfileSectionGroups("d")).toBeNull();
   });
 });
