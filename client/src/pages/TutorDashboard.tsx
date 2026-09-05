@@ -205,6 +205,7 @@ export default function TutorDashboard() {
       // Existing forms use this initial selection. Legacy accounts must still
       // review it and select their real current Bangladesh location before save.
       gender: "male",
+      cityId: "",
       locationId: "",
     };
   }, [draftAtLoad, profile?.contactEmail, user]);

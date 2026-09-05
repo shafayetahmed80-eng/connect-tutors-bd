@@ -37,7 +37,7 @@ const sectionSubGroups: readonly SubGroupDefinition[] = [
     section: "a",
     label: "Identity and contact",
     fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail"],
-    privateDetailKeys: ["additionalPhone", "presentAddress", "permanentAddress", "nationality", "religion", "socialProfileLinks"],
+    privateDetailKeys: ["additionalPhone", "nationality", "religion", "socialProfileLinks"],
   },
   {
     id: "a-family",
@@ -78,10 +78,10 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   {
     id: "a",
     label: "Personal Information",
-    description: "Your identity, contact and private address details, plus family and emergency contacts.",
+    description: "Your identity and contact details, plus family and emergency contacts.",
     fieldKeys: ["name", "gender", "dateOfBirth", "headline", "phone", "contactEmail", "privateDetails"],
     privateDetailKeys: [
-      "additionalPhone", "presentAddress", "permanentAddress", "nationality", "religion", "socialProfileLinks",
+      "additionalPhone", "nationality", "religion", "socialProfileLinks",
       "fatherName", "fatherPhone", "motherName", "motherPhone", "emergencyContactName", "emergencyContactRelation", "emergencyContactPhone", "emergencyContactAddress",
     ],
   },
@@ -121,6 +121,7 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
       "preferredClassSizes",
       "preferredTeachingDays",
       "preferredTimeSlots",
+      "currentCityId",
       "currentLocationId",
       "teachingAreaIds",
       "feeMin",

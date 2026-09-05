@@ -130,6 +130,7 @@ export default function JoinTutor() {
         phone: formatBangladeshMobile(form.phone),
         contactEmail: form.contactEmail.trim(),
         gender: form.gender as "male" | "female",
+        cityId: form.cityId,
         locationId: form.locationId,
       });
       if (!result.tutorPortalToken) throw new Error("Tutor portal proof was not issued.");

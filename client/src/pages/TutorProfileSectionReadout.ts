@@ -91,8 +91,6 @@ export function getTutorProfileReadoutSections(
             row("Professional headline", text(form.headline)),
             row("Mobile number", text(form.phone)),
             row("Email address", text(form.contactEmail)),
-            row("Present address", text(pd.presentAddress)),
-            row("Permanent address", text(pd.permanentAddress)),
             row("Nationality", text(pd.nationality)),
             row("Religion", text(pd.religion)),
             row("Additional phone", text(pd.additionalPhone), true),
@@ -170,6 +168,7 @@ export function getTutorProfileReadoutSections(
         {
           heading: "Location and fee",
           rows: [
+            row("Current City", form.currentCityId ? resolve.location(form.currentCityId) : ""),
             row("Current location", form.currentLocationId ? resolve.location(form.currentLocationId) : ""),
             row("Teaching areas", list(form.teachingAreaIds, resolve.area)),
             row("Minimum monthly fee", text(form.feeMin)),

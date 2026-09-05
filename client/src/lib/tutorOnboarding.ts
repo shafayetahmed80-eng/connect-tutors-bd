@@ -25,6 +25,7 @@ export type TutorOnboardingDraft = {
   phone: string;
   contactEmail: string;
   gender: "male" | "female";
+  cityId: string;
   locationId: string;
 };
 

@@ -390,6 +390,7 @@ function TutorProfileWorkspaceBody({
   const [form, setForm] = useState(() => hydrateTeachingProfile(profile, onboardingFallback));
   const [universityQuery, setUniversityQuery] = useState("");
   const [departmentQuery, setDepartmentQuery] = useState("");
+  const [currentCityQuery, setCurrentCityQuery] = useState("");
   const [currentLocationQuery, setCurrentLocationQuery] = useState("");
   const [teachingAreaQuery, setTeachingAreaQuery] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -417,6 +418,12 @@ function TutorProfileWorkspaceBody({
     const nextForm = hydrateTeachingProfile(profile, onboardingFallback);
     setForm(nextForm);
     setSavedDraftFingerprint(getProfileDraftFingerprint(nextForm));
+    // A typed selection leaves the search box holding "Label · type" text,
+    // which then keeps searching for that literal string forever instead of
+    // hydrating the label by id - resetting on every fresh profile lets the
+    // id-based hydration take over again and resolve the saved value's label.
+    setCurrentCityQuery("");
+    setCurrentLocationQuery("");
   }, [profile, onboardingFallback]);
 
   useEffect(() => {
@@ -439,26 +446,35 @@ function TutorProfileWorkspaceBody({
     () => ["city", "division", "district", "thana", "upazila", "subdivision", "area"],
     [],
   );
-  const currentLocationHydrationIds = useMemo(
-    () => currentLocationQuery.trim() === "" && form.currentLocationId ? [form.currentLocationId] : undefined,
-    [currentLocationQuery, form.currentLocationId],
+  const currentCityHydrationIds = useMemo(
+    () => currentCityQuery.trim() === "" && form.currentCityId ? [form.currentCityId] : undefined,
+    [currentCityQuery, form.currentCityId],
   );
+  const cityLocationTypes = useMemo<Array<"city">>(() => ["city"], []);
+  const currentCitySearchInput = useMemo(() => ({
+    query: currentCityQuery,
+    limit: 50,
+    types: cityLocationTypes,
+    ids: currentCityHydrationIds,
+  }), [cityLocationTypes, currentCityHydrationIds, currentCityQuery]);
+  const currentCityLocations = trpc.catalog.searchBangladeshLocations.useQuery(currentCitySearchInput);
+  // Scoped to the chosen City, same two-level descendant search Registration
+  // uses — a bare `parentId` search only reaches one level and would miss the
+  // Sub-division/Area rows nested under a City's Thana/Upazila.
+  const currentLocationSearchInput = useMemo(() => ({
+    cityId: form.currentCityId,
+    query: currentLocationQuery,
+    limit: 300,
+  }), [currentLocationQuery, form.currentCityId]);
+  const currentBangladeshLocations = trpc.catalog.searchRegistrationLocations.useQuery(
+    currentLocationSearchInput,
+    { enabled: Boolean(form.currentCityId) },
+  );
+  const teachingAreaParentId = form.currentCityId || undefined;
   const teachingAreaHydrationIds = useMemo(
     () => teachingAreaQuery.trim() === "" && form.teachingAreaIds.length > 0 ? form.teachingAreaIds : undefined,
     [teachingAreaQuery, form.teachingAreaIds],
   );
-  const currentLocationSearchInput = useMemo(() => ({
-    query: currentLocationQuery,
-    limit: 50,
-    types: bangladeshLocationTypes,
-    ids: currentLocationHydrationIds,
-  }), [bangladeshLocationTypes, currentLocationHydrationIds, currentLocationQuery]);
-  const currentBangladeshLocations = trpc.catalog.searchBangladeshLocations.useQuery(currentLocationSearchInput);
-  const selectedCurrentLocation = useMemo(
-    () => currentBangladeshLocations.data?.find(location => location.id === form.currentLocationId),
-    [currentBangladeshLocations.data, form.currentLocationId],
-  );
-  const teachingAreaParentId = selectedCurrentLocation?.type === "city" ? selectedCurrentLocation.id : undefined;
   const teachingAreaSearchInput = useMemo(() => ({
     query: teachingAreaQuery,
     limit: 50,
@@ -468,12 +484,46 @@ function TutorProfileWorkspaceBody({
   }), [bangladeshLocationTypes, teachingAreaHydrationIds, teachingAreaParentId, teachingAreaQuery]);
   const teachingAreaLocations = trpc.catalog.searchBangladeshLocations.useQuery(teachingAreaSearchInput);
 
-  const toLocationCatalogOptions = (locations: typeof currentBangladeshLocations.data): CatalogOption[] =>
+  // Once a City or Location is picked, the search box shows its name and that
+  // name becomes the live search text - which the catalog cannot match back to
+  // an id, so the freshest query result can go empty even though the choice is
+  // still selected. Remembering every label seen keeps the read view and the
+  // identity rail resolving a selection made earlier in the same visit.
+  const [resolvedLocationLabels, setResolvedLocationLabels] = useState<Map<string, { label: string; type: string }>>(() => new Map());
+  useEffect(() => {
+    const seen = [...(currentCityLocations.data ?? []), ...(currentBangladeshLocations.data ?? [])];
+    if (seen.length === 0) return;
+    setResolvedLocationLabels(current => {
+      const next = new Map(current);
+      let changed = false;
+      for (const location of seen) {
+        const existing = next.get(location.id);
+        if (existing?.label !== location.label || existing?.type !== location.type) {
+          next.set(location.id, { label: location.label, type: location.type });
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [currentCityLocations.data, currentBangladeshLocations.data]);
+
+  const toLocationCatalogOptions = (locations: readonly { id: string; label: string; type: string }[] | undefined): CatalogOption[] =>
     (locations ?? []).map(location => ({ id: location.id, name: `${location.label} · ${location.type}` }));
   const toTeachingAreaOptions = (locations: typeof teachingAreaLocations.data): SelectorOption[] =>
     (locations ?? []).map(location => ({ id: String(location.id), label: `${location.label} · ${location.type}` }));
+  const currentCityOptions = useMemo(() => toLocationCatalogOptions(currentCityLocations.data), [currentCityLocations.data]);
   const currentLocationOptions = useMemo(() => toLocationCatalogOptions(currentBangladeshLocations.data), [currentBangladeshLocations.data]);
   const teachingAreaOptions = useMemo(() => toTeachingAreaOptions(teachingAreaLocations.data), [teachingAreaLocations.data]);
+  const handleCurrentCityChange = (value: string) => {
+    setForm(current => ({ ...current, currentCityId: value, currentLocationId: "" }));
+    setCurrentLocationQuery("");
+    setFieldErrors(current => {
+      const next = { ...current };
+      delete next.currentCityId;
+      delete next.currentLocationId;
+      return next;
+    });
+  };
   const update = <Key extends keyof TeachingProfileState>(key: Key, value: TeachingProfileState[Key]) => {
     setForm(current => ({ ...current, [key]: value }));
     setFieldErrors(current => {
@@ -575,10 +625,10 @@ function TutorProfileWorkspaceBody({
       language: byName(languages.data),
       university: byName(universities.data),
       department: byName(facultyDepartments.data),
-      location: byLabel(currentBangladeshLocations.data),
+      location: byLabel(Array.from(resolvedLocationLabels, ([id, location]) => ({ id, label: location.label }))),
       area: byLabel(teachingAreaLocations.data),
     };
-  }, [subjects.data, classLevels.data, curricula.data, languages.data, universities.data, facultyDepartments.data, currentBangladeshLocations.data, teachingAreaLocations.data]);
+  }, [subjects.data, classLevels.data, curricula.data, languages.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers), [form, readoutResolvers]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
@@ -931,8 +981,6 @@ function TutorProfileWorkspaceBody({
       <FormInput label={tutorProfileCopy.fields.headline} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />
       <FormPhoneInput label={tutorProfileCopy.fields.phone} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />
       <FormInput label={tutorProfileCopy.fields.email} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />
-      <FormTextArea label="Present Address" rows={2} required value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} />
-      <FormTextArea label="Permanent Address" rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />
       <FormInput label="Nationality" placeholder="Ex- Bangladeshi" required value={form.privateDetails.nationality} onChange={event => updatePrivateDetail("nationality", event.target.value)} />
       <FormInput label="Religion" placeholder="Ex- Islam" required value={form.privateDetails.religion} onChange={event => updatePrivateDetail("religion", event.target.value)} />
       <FormPhoneInput label="Additional Phone (Optional)" value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />
@@ -1076,7 +1124,8 @@ function TutorProfileWorkspaceBody({
 
       <FormSection title={<SiteText slotId="tutor-profile.form.location-fee-travel" className="text-sm" />}>
         <div className={compactFieldGridClassName}>
-          <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} required error={fieldErrors.currentLocationId} />
+          <CatalogSearchField label={tutorProfileCopy.fields.currentCity} query={currentCityQuery} onQueryChange={setCurrentCityQuery} options={currentCityOptions} selectedId={form.currentCityId} onSelectedIdChange={handleCurrentCityChange} required error={fieldErrors.currentCityId} />
+          <CatalogSearchField label={tutorProfileCopy.fields.currentLocation} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} disabled={!form.currentCityId} required error={fieldErrors.currentLocationId} />
           <SearchableMultiSelect label={tutorProfileCopy.fields.teachingAreas} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
           {/* The fee pair and the distance read as one line of numbers. */}
           <div className={`${wideFieldClassName} grid gap-x-5 gap-y-4 sm:grid-cols-3`}>
@@ -1134,7 +1183,10 @@ function TutorProfileWorkspaceBody({
         completionPercentage={completionPercentage}
         email={form.contactEmail}
         phone={form.phone}
-        address={form.privateDetails.presentAddress ?? ""}
+        address={[
+          form.currentLocationId ? readoutResolvers.location(form.currentLocationId) : "",
+          form.currentCityId ? readoutResolvers.location(form.currentCityId) : "",
+        ].filter(Boolean).join(", ")}
         universityName={form.universityId ? readoutResolvers.university(form.universityId) : ""}
         subjectName={form.facultyDepartmentId ? readoutResolvers.department(form.facultyDepartmentId) : ""}
         onReturnToSelectedJob={statusCard.action === "return" ? onReturnToSelectedJob : undefined}

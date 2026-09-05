@@ -37,6 +37,7 @@ vi.mock("@/lib/trpc", () => {
         searchStudentTypes: { useQuery: emptyQuery },
         searchLanguages: { useQuery: emptyQuery },
         searchBangladeshLocations: { useQuery: emptyQuery },
+        searchRegistrationLocations: { useQuery: emptyQuery },
       },
     },
   };
@@ -63,6 +64,7 @@ const completeProfile = {
   headline: "Experienced Mathematics Tutor",
   phone: "+8801712345678",
   contactEmail: "tutor@example.test",
+  currentCityId: "dhaka-city",
   currentLocationId: "1",
   teachingAreaIds: ["1"],
   availableNationwide: true,

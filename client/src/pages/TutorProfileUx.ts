@@ -10,6 +10,7 @@ export const tutorProfileCopy = {
     headline: "Professional Headline",
     phone: "Mobile Number",
     email: "Email Address",
+    currentCity: "Current City",
     currentLocation: "Current Location",
     teachingAreas: "Teaching Areas",
     university: "Institute",
@@ -73,6 +74,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   headline: tutorProfileCopy.fields.headline,
   phone: tutorProfileCopy.fields.phone,
   contactEmail: tutorProfileCopy.fields.email,
+  currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
   universityId: tutorProfileCopy.fields.university,
@@ -121,6 +123,7 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (form.headline.trim().length < 10) errors.headline = "Enter a headline with at least 10 characters.";
   if (!/^\+8801[3-9]\d{8}$/.test(form.phone.trim())) errors.phone = "Enter a valid Bangladesh mobile number.";
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";
+  if (!form.currentCityId) errors.currentCityId = "Select your current city.";
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
   requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
   if (!form.universityId) errors.universityId = "Select your institute.";
@@ -158,10 +161,10 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  // 25 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // 26 unconditional checks in getTutorProfileSubmissionErrors, plus the two
   // gated ones: the study timeline only applies once a study status is chosen,
   // and nationwide availability only applies to online tuition.
-  const totalRequired = 25
+  const totalRequired = 26
     + (form.studyStatus ? 1 : 0)
     + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
   const completedCount = totalRequired - missingCount;

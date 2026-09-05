@@ -33,6 +33,7 @@ vi.mock("@/lib/trpc", () => {
         searchStudentTypes: { useQuery: empty },
         searchLanguages: { useQuery: empty },
         searchBangladeshLocations: { useQuery: empty },
+        searchRegistrationLocations: { useQuery: empty },
       },
     },
   };

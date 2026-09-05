@@ -546,6 +546,8 @@ export const tutors = mysqlTable("tutors", {
     "female",
     "both",
   ]),
+  /** Nullable: existing accounts predate this field, and it is set from registration going forward. */
+  cityLocationId: varchar("cityLocationId", { length: 80 }),
   locationId: varchar("locationId", { length: 80 }).notNull(),
   availability: varchar("availability", { length: 160 }),
   profileStatus: mysqlEnum("profileStatus", tutorProfileStatusValues)
