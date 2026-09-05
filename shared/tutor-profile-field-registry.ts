@@ -94,14 +94,14 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "privateDetails.socialProfileLinks", label: "Social Profile Links", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 100, requiredByDefault: false, requiredConfigurable: true },
 
   // a-family
-  { id: "privateDetails.fatherName", label: "Father's Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
-  { id: "privateDetails.fatherPhone", label: "Father's Phone Number", section: "a", subGroup: "a-family", panel: "family", sortOrder: 20, requiredByDefault: true, requiredConfigurable: true },
-  { id: "privateDetails.motherName", label: "Mother's Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 30, requiredByDefault: false, requiredConfigurable: true },
-  { id: "privateDetails.motherPhone", label: "Mother's Phone Number", section: "a", subGroup: "a-family", panel: "family", sortOrder: 40, requiredByDefault: false, requiredConfigurable: true },
-  { id: "privateDetails.emergencyContactName", label: "Emergency Contact Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 50, requiredByDefault: false, requiredConfigurable: true },
-  { id: "privateDetails.emergencyContactRelation", label: "Emergency Contact Relation", section: "a", subGroup: "a-family", panel: "family", sortOrder: 60, requiredByDefault: false, requiredConfigurable: true },
-  { id: "privateDetails.emergencyContactPhone", label: "Emergency Contact Phone", section: "a", subGroup: "a-family", panel: "family", sortOrder: 70, requiredByDefault: false, requiredConfigurable: true },
-  { id: "privateDetails.emergencyContactAddress", label: "Emergency Contact Address", section: "a", subGroup: "a-family", panel: "family", sortOrder: 80, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.fatherName", label: "Father's Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 110, requiredByDefault: true, requiredConfigurable: true },
+  { id: "privateDetails.fatherPhone", label: "Father's Phone Number", section: "a", subGroup: "a-family", panel: "family", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
+  { id: "privateDetails.motherName", label: "Mother's Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 130, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.motherPhone", label: "Mother's Phone Number", section: "a", subGroup: "a-family", panel: "family", sortOrder: 140, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.emergencyContactName", label: "Emergency Contact Name", section: "a", subGroup: "a-family", panel: "family", sortOrder: 150, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.emergencyContactRelation", label: "Emergency Contact Relation", section: "a", subGroup: "a-family", panel: "family", sortOrder: 160, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.emergencyContactPhone", label: "Emergency Contact Phone", section: "a", subGroup: "a-family", panel: "family", sortOrder: 170, requiredByDefault: false, requiredConfigurable: true },
+  { id: "privateDetails.emergencyContactAddress", label: "Emergency Contact Address", section: "a", subGroup: "a-family", panel: "family", sortOrder: 180, requiredByDefault: false, requiredConfigurable: true },
 
   // c-education
   { id: "highestEducation", label: "Education Level", section: "c", subGroup: "c-education", panel: "education", sortOrder: 10, requiredByDefault: false, requiredConfigurable: true },
@@ -110,7 +110,7 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "degreeExamTitle", label: "Degree / Exam Title", section: "c", subGroup: "c-education", panel: "education", sortOrder: 40, requiredByDefault: true, requiredConfigurable: true },
   { id: "resultGpa", label: "Result / GPA", section: "c", subGroup: "c-education", panel: "education", sortOrder: 50, requiredByDefault: false, requiredConfigurable: true },
   { id: "deptId", label: "Dept ID", section: "c", subGroup: "c-education", panel: "education", sortOrder: 60, requiredByDefault: false, requiredConfigurable: true },
-  { id: "studyStatus", label: "Current Study Status", section: "c", subGroup: "c-education", panel: "education", sortOrder: 70, requiredByDefault: true, requiredConfigurable: true },
+  { id: "studyStatus", label: "Current Study Status", section: "c", subGroup: "c-education", panel: "education", sortOrder: 15, requiredByDefault: true, requiredConfigurable: true },
   { id: "yearSemester", label: "Year/Semester", section: "c", subGroup: "c-education", panel: "education", sortOrder: 80, requiredByDefault: true, requiredConfigurable: false },
   { id: "graduationYear", label: "Graduation Year", section: "c", subGroup: "c-education", panel: "education", sortOrder: 90, requiredByDefault: true, requiredConfigurable: false },
   { id: "educationRecords", label: "Qualification History", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
@@ -119,10 +119,10 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "educationRecords.degreeExamTitle", label: "Degree / Exam Title (record)", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 103, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.majorGroup", label: "Major / Group", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 104, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.curriculum", label: "Curriculum (record)", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 105, requiredByDefault: true, requiredConfigurable: true },
-  { id: "educationRecords.studyStartYear", label: "Study Start Year", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 106, requiredByDefault: true, requiredConfigurable: true },
-  { id: "educationRecords.studyEndYear", label: "Study End Year", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 107, requiredByDefault: true, requiredConfigurable: false },
-  { id: "educationRecords.currentlyStudying", label: "Currently Studying", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 108, requiredByDefault: false, requiredConfigurable: false },
-  { id: "educationRecords.resultGpa", label: "Result / GPA (record)", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 109, requiredByDefault: false, requiredConfigurable: true },
+  { id: "educationRecords.studyStartYear", label: "Study Start Year", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 107, requiredByDefault: true, requiredConfigurable: true },
+  { id: "educationRecords.studyEndYear", label: "Study End Year", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 108, requiredByDefault: true, requiredConfigurable: false },
+  { id: "educationRecords.currentlyStudying", label: "Currently Studying", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 109, requiredByDefault: false, requiredConfigurable: false },
+  { id: "educationRecords.resultGpa", label: "Result / GPA (record)", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 106, requiredByDefault: false, requiredConfigurable: true },
   { id: "educationRecords.instituteIdCardNumber", label: "Institute ID Card Number", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 110, requiredByDefault: false, requiredConfigurable: true },
   { id: "universityIdDocumentStatus", label: "University ID Card", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
   { id: "supportingDocument.nid_card", label: "NID Card Image", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 130, requiredByDefault: false, requiredConfigurable: true },
@@ -131,30 +131,30 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "supportingDocument.hons_ms_certificate", label: "Hons/MS Certificate", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 160, requiredByDefault: false, requiredConfigurable: true },
 
   // c-teaching
-  { id: "primarySubjectIds", label: "Primary Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
-  { id: "additionalSubjectIds", label: "Additional Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 20, requiredByDefault: false, requiredConfigurable: true },
-  { id: "classLevelIds", label: "Class / Level", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 30, requiredByDefault: true, requiredConfigurable: true },
-  { id: "curriculumIds", label: "Curriculum", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 40, requiredByDefault: true, requiredConfigurable: true },
-  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 50, requiredByDefault: true, requiredConfigurable: true },
-  { id: "priorTeachingExperience", label: "Prior Teaching Experience", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 60, requiredByDefault: false, requiredConfigurable: true },
-  { id: "specialExpertise", label: "Special Expertise", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 70, requiredByDefault: false, requiredConfigurable: true },
-  { id: "academicAchievement", label: "Academic Achievement", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 80, requiredByDefault: false, requiredConfigurable: true },
+  { id: "primarySubjectIds", label: "Primary Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 200, requiredByDefault: true, requiredConfigurable: true },
+  { id: "additionalSubjectIds", label: "Additional Subjects", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 210, requiredByDefault: false, requiredConfigurable: true },
+  { id: "classLevelIds", label: "Class / Level", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 220, requiredByDefault: true, requiredConfigurable: true },
+  { id: "curriculumIds", label: "Curriculum", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 230, requiredByDefault: true, requiredConfigurable: true },
+  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "c", subGroup: "c-teaching", panel: "what-you-teach", sortOrder: 240, requiredByDefault: true, requiredConfigurable: true },
+  { id: "priorTeachingExperience", label: "Prior Teaching Experience", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 250, requiredByDefault: false, requiredConfigurable: true },
+  { id: "specialExpertise", label: "Special Expertise", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 260, requiredByDefault: false, requiredConfigurable: true },
+  { id: "academicAchievement", label: "Academic Achievement", section: "c", subGroup: "c-teaching", panel: "own-words", sortOrder: 270, requiredByDefault: false, requiredConfigurable: true },
 
   // Section d - Tuition, location and communication (no sub-groups)
   { id: "tuitionType", label: "Tuition Type", section: "d", panel: "how-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
-  { id: "availableNationwide", label: "Available Nationwide", section: "d", panel: "how-you-teach", sortOrder: 20, requiredByDefault: true, requiredConfigurable: true },
+  { id: "availableNationwide", label: "Available Nationwide", section: "d", panel: "how-you-teach", sortOrder: 70, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredStudentGender", label: "Preferred Student Gender", section: "d", panel: "how-you-teach", sortOrder: 30, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredClassSizes", label: "Preferred Class Size", section: "d", panel: "how-you-teach", sortOrder: 40, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredTeachingDays", label: "Preferred Teaching Days", section: "d", panel: "how-you-teach", sortOrder: 50, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredTimeSlots", label: "Preferred Time Slots", section: "d", panel: "how-you-teach", sortOrder: 60, requiredByDefault: true, requiredConfigurable: true },
-  { id: "currentCityId", label: "Current City", section: "d", panel: "location-fee", sortOrder: 70, requiredByDefault: true, requiredConfigurable: true },
-  { id: "currentLocationId", label: "Current Location", section: "d", panel: "location-fee", sortOrder: 80, requiredByDefault: true, requiredConfigurable: true },
-  { id: "teachingAreaIds", label: "Teaching Areas", section: "d", panel: "location-fee", sortOrder: 90, requiredByDefault: true, requiredConfigurable: true },
-  { id: "feeMin", label: "Minimum Monthly Fee", section: "d", panel: "location-fee", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
-  { id: "feeMax", label: "Maximum Monthly Fee", section: "d", panel: "location-fee", sortOrder: 110, requiredByDefault: true, requiredConfigurable: true },
-  { id: "travelDistanceKm", label: "Travel Distance (km)", section: "d", panel: "location-fee", sortOrder: 120, requiredByDefault: false, requiredConfigurable: true },
-  { id: "teachingLanguageIds", label: "Teaching Languages", section: "d", panel: "communication", sortOrder: 130, requiredByDefault: true, requiredConfigurable: true },
-  { id: "communicationPreferences", label: "Communication Preferences", section: "d", panel: "communication", sortOrder: 140, requiredByDefault: true, requiredConfigurable: true },
+  { id: "currentCityId", label: "Current City", section: "d", panel: "location-fee", sortOrder: 80, requiredByDefault: true, requiredConfigurable: true },
+  { id: "currentLocationId", label: "Current Location", section: "d", panel: "location-fee", sortOrder: 90, requiredByDefault: true, requiredConfigurable: true },
+  { id: "teachingAreaIds", label: "Teaching Areas", section: "d", panel: "location-fee", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
+  { id: "feeMin", label: "Minimum Monthly Fee", section: "d", panel: "location-fee", sortOrder: 110, requiredByDefault: true, requiredConfigurable: true },
+  { id: "feeMax", label: "Maximum Monthly Fee", section: "d", panel: "location-fee", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
+  { id: "travelDistanceKm", label: "Travel Distance (km)", section: "d", panel: "location-fee", sortOrder: 130, requiredByDefault: false, requiredConfigurable: true },
+  { id: "teachingLanguageIds", label: "Teaching Languages", section: "d", panel: "communication", sortOrder: 140, requiredByDefault: true, requiredConfigurable: true },
+  { id: "communicationPreferences", label: "Communication Preferences", section: "d", panel: "communication", sortOrder: 150, requiredByDefault: true, requiredConfigurable: true },
 
   // Section e - Introduction and review (no sub-groups)
   { id: "aboutMe", label: "About Me", section: "e", panel: "introduction", sortOrder: 10, requiredByDefault: false, requiredConfigurable: true },
@@ -197,6 +197,8 @@ export type ResolvedTutorProfileField = TutorProfileFieldMeta & {
 };
 
 export type ResolvedTutorProfileFieldConfig = {
+  /** Every field, enabled or not, in registry order - the shape sent over the wire. */
+  all: readonly ResolvedTutorProfileField[];
   byId: ReadonlyMap<string, ResolvedTutorProfileField>;
   /** Enabled fields only, sorted by resolved `sortOrder`. */
   bySection: ReadonlyMap<TutorProfileFieldSection, readonly ResolvedTutorProfileField[]>;
@@ -245,10 +247,20 @@ export function resolveTutorProfileFieldConfig(overrides: readonly TutorProfileF
     return { ...field, section, subGroup, sortOrder, enabled, required };
   });
 
-  const byId = new Map(resolved.map(field => [field.id, field] as const));
+  return indexResolvedFields(resolved);
+}
+
+/**
+ * Rebuilds the by-id/by-section/by-sub-group lookups from a flat field list.
+ *
+ * The wire format is the flat list - sending the lookups instead would repeat
+ * every field three times - so the client calls this on what it receives.
+ */
+export function indexResolvedFields(fields: readonly ResolvedTutorProfileField[]): ResolvedTutorProfileFieldConfig {
+  const byId = new Map(fields.map(field => [field.id, field] as const));
   const bySection = new Map<TutorProfileFieldSection, ResolvedTutorProfileField[]>();
   const bySubGroup = new Map<TutorProfileFieldSubGroup, ResolvedTutorProfileField[]>();
-  for (const field of resolved) {
+  for (const field of fields) {
     if (!field.enabled) continue;
     (bySection.get(field.section) ?? bySection.set(field.section, []).get(field.section)!).push(field);
     if (field.subGroup) {
@@ -258,7 +270,7 @@ export function resolveTutorProfileFieldConfig(overrides: readonly TutorProfileF
   for (const list of Array.from(bySection.values())) list.sort((a, b) => a.sortOrder - b.sortOrder);
   for (const list of Array.from(bySubGroup.values())) list.sort((a, b) => a.sortOrder - b.sortOrder);
 
-  return { byId, bySection, bySubGroup };
+  return { all: fields, byId, bySection, bySubGroup };
 }
 
 export function defaultTutorProfileFieldConfig(): ResolvedTutorProfileFieldConfig {

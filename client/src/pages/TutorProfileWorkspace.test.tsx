@@ -30,6 +30,8 @@ vi.mock("@/lib/trpc", () => {
       siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
       // The Owner-set caps the profile reads to bound its multi-selects.
       siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
+      // No data means the shipped field defaults, which is what these tests expect.
+      tutorProfileFieldConfig: { resolved: { useQuery: () => ({ data: undefined }) } },
       catalog: {
         searchUniversities: { useQuery: emptyQuery },
         searchFacultyDepartments: { useQuery: emptyQuery },

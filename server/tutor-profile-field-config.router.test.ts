@@ -47,9 +47,11 @@ describe("tutorProfileFieldConfig router", () => {
     fieldConfigDbMocks.saveTutorProfileFieldOverrides.mockResolvedValue(undefined);
   });
 
-  it("lets a signed-in, active Tutor read the resolved config", async () => {
-    const config = await createTutorCaller().tutorProfileFieldConfig.resolved();
-    expect(config.byId.get("name")?.section).toBe("a");
+  it("lets a signed-in, active Tutor read the resolved config as a flat list", async () => {
+    const fields = await createTutorCaller().tutorProfileFieldConfig.resolved();
+    expect(fields.find(field => field.id === "name")?.section).toBe("a");
+    // Sent flat rather than as the three lookups, which would repeat each field.
+    expect(Array.isArray(fields)).toBe(true);
     expect(fieldConfigDbMocks.getTutorProfileFieldConfig).toHaveBeenCalledOnce();
   });
 

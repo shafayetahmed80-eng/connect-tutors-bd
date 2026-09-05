@@ -146,6 +146,16 @@ describe("Tutor Profile field registry", () => {
       expect(tutorProfileFieldPanels, field.id).toContain(field.panel);
     }
   });
+
+  it("keeps every sort order unique inside its section", () => {
+    // Two fields in one section sharing an order leaves their relative
+    // position to array order - which the Admin editor's move-up/move-down
+    // arithmetic would then fight.
+    for (const section of tutorProfileFieldSections) {
+      const orders = tutorProfileFieldRegistry.filter(field => field.section === section).map(field => field.sortOrder);
+      expect(new Set(orders).size, section).toBe(orders.length);
+    }
+  });
 });
 
 describe("Tutor Profile field panels", () => {
