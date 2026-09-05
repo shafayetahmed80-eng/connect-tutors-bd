@@ -54,7 +54,7 @@ describe("Guardian dashboard working tabs", () => {
   it("embeds Guardian-owned request tracking under Posted jobs without public job detail claims", () => {
     render(<GuardianDashboardContent section="posted-jobs" />);
 
-    expect(screen.getByRole("heading", { name: "Posted jobs" })).toBeTruthy();
+    // The page title lives in the workspace header now, not the body.
     expect(screen.getByTestId("guardian-request-tracking").textContent).toContain("Embedded private request history");
   });
 
@@ -63,7 +63,6 @@ describe("Guardian dashboard working tabs", () => {
 
     // The list sits behind the sheet, so dismissing the sheet lands the
     // Guardian on the tab where the new request will appear.
-    expect(screen.getByRole("heading", { name: "Posted jobs" })).toBeTruthy();
     expect(screen.getByTestId("guardian-request-tracking").textContent).toContain("Embedded private request history");
 
     // The journey rides inside the dialog, not the page itself.
@@ -74,7 +73,6 @@ describe("Guardian dashboard working tabs", () => {
   it("shows a truthful Attendance deferral when no Tutor match is confirmed", () => {
     render(<GuardianDashboardContent section="attendance" />);
 
-    expect(screen.getByRole("heading", { name: "Attendance" })).toBeTruthy();
     expect(screen.getByText("Available after a Tutor is confirmed")).toBeTruthy();
     expect(screen.getByText(/does not show attendance schedules, percentages, payments, or session records/i)).toBeTruthy();
   });
@@ -90,7 +88,6 @@ describe("Guardian dashboard working tabs", () => {
   it("renders controlled Profile fields without presenting email or phone as editable", () => {
     render(<GuardianDashboardContent section="profile" />);
 
-    expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
     expect(screen.getByDisplayValue("GDN-9H4K-2M8Q")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save profile" })).toBeTruthy();
     expect(screen.queryByText(/mobile or email change, contact support/i)).toBeNull();
@@ -105,7 +102,6 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.queryByText(/require support-assisted verification/i)).toBeNull();
 
     rerender(<GuardianDashboardContent section="how-it-works" />);
-    expect(screen.getByRole("heading", { name: "How it works" })).toBeTruthy();
     expect(screen.getByText("Job Board publication")).toBeTruthy();
     expect(screen.getByText(/phone, email, exact address, student identity, and notes are never public/i)).toBeTruthy();
   });

@@ -29,7 +29,7 @@ import {
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { Bell, LayoutDashboard, LoaderCircle, LogOut, PanelLeft, Users, type LucideIcon } from "lucide-react";
+import { Bell, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -373,29 +373,27 @@ function DashboardLayoutContent({
             className={`border-r border-[#e6eef4] bg-[#fbfdff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             disableTransition={isResizing}
           >
-          <SidebarHeader className="h-16 justify-center border-b border-[#e9f0f5]">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
+          {/* Header, identity, and nav all live inside the one scroll region,
+              so the sidebar scrolls as a single block rather than pinning the
+              header and account card above an independently-scrolling list. */}
+          <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain group-data-[collapsible=icon]:overflow-y-auto">
+            {/* A slim toggle row, not a full h-16 header — the portal name and
+                current tab live in the workspace header, so this only needs to
+                hold the collapse control. The chevron rotates 180° between
+                states so a glance says which way the next click goes. */}
+            <SidebarHeader className="shrink-0 flex-row items-center justify-end px-2 pb-1 pt-2 group-data-[collapsible=icon]:justify-center">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
                 aria-expanded={!isCollapsed}
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <ChevronsLeft aria-hidden="true" className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${isCollapsed ? "rotate-180" : ""}`} />
               </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    {title}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </SidebarHeader>
+            </SidebarHeader>
 
-          {sidebarIdentity ? <div className="border-b border-[#e9f0f5] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
+            {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
 
-          <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain">
             <SidebarMenu className="gap-0.5 px-2 py-3">
               {navigationItems.map((item, index) => {
                 const isActive = location === item.path;

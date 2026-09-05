@@ -195,7 +195,6 @@ const publicTutorProfileSlots: SiteContentSlot[] = [
 
 /** Guardian dashboard profile at /guardian/dashboard/profile. */
 const guardianProfileSlots: SiteContentSlot[] = [
-  { id: "guardian-profile.heading", page: "guardian-profile", surface: "Guardian dashboard", group: "Profile page", label: "Page heading", defaultText: "Profile", defaultTextClass: "text-3xl" },
   { id: "guardian-profile.photo.title", page: "guardian-profile", surface: "Guardian dashboard", group: "Profile page", label: "Photo card title", defaultText: "Profile photo", defaultTextClass: "text-xl" },
   { id: "guardian-profile.photo.help", page: "guardian-profile", surface: "Guardian dashboard", group: "Profile page", label: "Photo help text", defaultText: "JPEG, PNG, or WebP only; up to 5 MB; minimum 300 × 300 pixels. Uploads are private and must be approved before they appear in your Guardian identity header.", defaultTextClass: "text-xs" },
 ];
