@@ -488,7 +488,9 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     await waitFor(() => expect(trpcMocks.searchRegistrationLocations).toHaveBeenCalledWith(expect.objectContaining({ cityId: "dhaka-city", query: "Uttara" }), expect.anything()));
 
     fireEvent.click(within(dialog).getAllByRole("button", { name: /Teaching Areas/ })[0]);
-    fireEvent.change(within(dialog).getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}` }), { target: { value: "Uttara" } });
+    // The options list is a Radix Popover portalled to document.body, so it is
+    // outside the modal's own subtree - query it from `screen`, not `dialog`.
+    fireEvent.change(screen.getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}` }), { target: { value: "Uttara" } });
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Uttara" })));
   });
 
@@ -659,8 +661,10 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     const dialog = screen.getByRole("dialog");
 
     await user.click(within(dialog).getByRole("button", { name: /Preferred Teaching Days/ }));
-    await user.click(within(dialog).getByLabelText("All Days"));
-    await user.click(within(dialog).getAllByRole("button", { name: "Done" })[0]);
+    // The options list is a Radix Popover portalled to document.body - query it
+    // from `screen`, not the modal `dialog` subtree.
+    await user.click(screen.getByLabelText("All Days"));
+    await user.click(screen.getAllByRole("button", { name: "Done" })[0]);
     await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
 
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());

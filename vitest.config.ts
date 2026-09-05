@@ -19,6 +19,7 @@ export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
+    setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
     // The heavier jsdom component tests (full Tutor Profile workspace render with
     // many mocked queries + several userEvent steps) run close to the 5s default
