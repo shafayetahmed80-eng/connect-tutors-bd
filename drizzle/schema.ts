@@ -873,6 +873,24 @@ export const siteLimits = mysqlTable("site_limits", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Owner overrides for one Tutor Profile field's section/order/enabled/
+ * required, on top of the shipped defaults in
+ * `shared/tutor-profile-field-registry.ts`. Every axis is independently
+ * nullable - a row only needs to exist once one axis differs from its
+ * default, and NULL always means "use the default for this axis", the same
+ * sparse-overrides shape as `siteLimits`.
+ */
+export const tutorProfileFieldOverrides = mysqlTable("tutor_profile_field_overrides", {
+  fieldId: varchar("fieldId", { length: 120 }).primaryKey(),
+  section: varchar("section", { length: 10 }),
+  subGroup: varchar("subGroup", { length: 20 }),
+  sortOrder: int("sortOrder"),
+  enabled: int("enabled"),
+  required: int("required"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const sitePolicyDocuments = mysqlTable("site_policy_documents", {
   pageKey: varchar("pageKey", { length: 60 }).primaryKey(),
   body: mediumtext("body").notNull(),

@@ -22,6 +22,11 @@ import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
+import {
+  findTutorProfileFieldMeta,
+  tutorProfileFieldSections,
+  tutorProfileFieldSubGroups,
+} from "@shared/tutor-profile-field-registry";
 import { assertWithinLengthLimit, assertWithinLimit } from "./site-limit-guard";
 import {
   isEmptySiteContentOverride,
@@ -1079,6 +1084,37 @@ export const appRouter = router({
     reset: ownerAdminProcedure
       .input(z.object({ limitId: z.enum(siteLimitIdValues) }))
       .mutation(({ input }) => db.resetSiteLimit(input.limitId)),
+  }),
+  /**
+   * Owner overrides for the Tutor Profile's field section/order/enabled/
+   * required. `resolved` is read by the Tutor's own profile editor - not
+   * public, since only a signed-in Tutor renders these fields at all.
+   */
+  tutorProfileFieldConfig: router({
+    resolved: activeTutorProcedure.query(() => db.getTutorProfileFieldConfig()),
+    listOverrides: ownerAdminProcedure.query(() => db.listTutorProfileFieldOverrides()),
+    save: ownerAdminProcedure
+      .input(z.array(z.object({
+        fieldId: z.string().trim().min(1).max(120),
+        section: z.enum(tutorProfileFieldSections).nullable(),
+        subGroup: z.enum(tutorProfileFieldSubGroups).nullable(),
+        sortOrder: z.number().int().nullable(),
+        enabled: z.union([z.literal(0), z.literal(1)]).nullable(),
+        required: z.union([z.literal(0), z.literal(1)]).nullable(),
+      })).min(1).max(200))
+      .mutation(async ({ input }) => {
+        for (const change of input) {
+          const meta = findTutorProfileFieldMeta(change.fieldId);
+          if (!meta) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown Tutor Profile field "${change.fieldId}".` });
+          }
+          if (change.required !== null && !meta.requiredConfigurable) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: `${meta.label} does not support a required/optional override.` });
+          }
+        }
+        await db.saveTutorProfileFieldOverrides(input);
+        return { saved: input.length };
+      }),
   }),
   /**
    * The legal pages. `list` is public because the pages that render these are:
