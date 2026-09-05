@@ -373,29 +373,32 @@ function DashboardLayoutContent({
             className={`border-r border-[#e6eef4] bg-[#fbfdff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             disableTransition={isResizing}
           >
-          <SidebarHeader className="h-16 justify-center border-b border-[#e9f0f5]">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
-                aria-expanded={!isCollapsed}
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    {title}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </SidebarHeader>
+          {/* Header, identity, and nav all live inside the one scroll region,
+              so the sidebar scrolls as a single block rather than pinning the
+              header and account card above an independently-scrolling list. */}
+          <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain group-data-[collapsible=icon]:overflow-y-auto">
+            <SidebarHeader className="h-16 shrink-0 justify-center border-b border-[#e9f0f5]">
+              <div className="flex items-center gap-3 px-2 transition-all w-full">
+                <button
+                  onClick={toggleSidebar}
+                  className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                  aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
+                  aria-expanded={!isCollapsed}
+                >
+                  <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
+                {!isCollapsed ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold tracking-tight truncate">
+                      {title}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </SidebarHeader>
 
-          {sidebarIdentity ? <div className="border-b border-[#e9f0f5] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
+            {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 py-3 group-data-[collapsible=icon]:px-2">{sidebarIdentity}</div> : null}
 
-          <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain">
             <SidebarMenu className="gap-0.5 px-2 py-3">
               {navigationItems.map((item, index) => {
                 const isActive = location === item.path;
