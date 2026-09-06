@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowRight, Camera, Eye, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 
@@ -29,6 +30,7 @@ export function TutorProfileIdentityRail({
   photoUrl,
   photoPreviewFailed,
   photoError,
+  photoSuccessAt,
   uploadingPhoto,
   photoInputRef,
   onSelectPhoto,
@@ -49,6 +51,8 @@ export function TutorProfileIdentityRail({
   photoUrl: string | null;
   photoPreviewFailed: boolean;
   photoError?: string;
+  /** Upload time of the last successful photo upload, or null. Drives the badge. */
+  photoSuccessAt: number | null;
   uploadingPhoto: boolean;
   photoInputRef: React.RefObject<HTMLInputElement | null>;
   onSelectPhoto: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -86,6 +90,12 @@ export function TutorProfileIdentityRail({
       >
         <Camera size={15} aria-hidden={true} />
       </button>
+      {photoSuccessAt ? (
+        <PhotoUploadSuccess
+          key={photoSuccessAt}
+          className="absolute left-1/2 top-[calc(100%+0.5rem)] -translate-x-1/2 whitespace-nowrap"
+        />
+      ) : null}
     </div>
     <input
       ref={photoInputRef}

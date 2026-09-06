@@ -26,6 +26,7 @@ import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./T
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
 import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
+import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
@@ -410,6 +411,9 @@ function TutorProfileWorkspaceBody({
   const [uploadingDocumentType, setUploadingDocumentType] = useState<TutorSupportingDocumentType | null>(null);
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(null);
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
+  // Set to the upload time on success so the "Upload Successful" badge mounts,
+  // replays its motion on a repeat upload, and clears itself shortly after.
+  const [photoSuccessAt, setPhotoSuccessAt] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
   // Kept apart from `fieldErrors`, which the server’s narrow issue contract fills
@@ -424,6 +428,12 @@ function TutorProfileWorkspaceBody({
   const saveDraftMutation = trpc.tutor.saveProfileDraft.useMutation();
   const submitProfileMutation = trpc.tutor.submitProfile.useMutation();
   const isTutorProfileApproved = profile?.profileStatus === "approved";
+
+  useEffect(() => {
+    if (!photoSuccessAt) return;
+    const timer = window.setTimeout(() => setPhotoSuccessAt(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [photoSuccessAt]);
 
   useEffect(() => {
     if (!profile) return;
@@ -902,6 +912,7 @@ function TutorProfileWorkspaceBody({
       });
       await utils.tutor.getMyProfile.invalidate();
       setFeedback({ type: "success", message: "Photo uploaded." });
+      setPhotoSuccessAt(Date.now());
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the profile photo." });
     } finally {
@@ -1213,6 +1224,7 @@ function TutorProfileWorkspaceBody({
         photoUrl={form.profilePhotoUrl}
         photoPreviewFailed={photoPreviewFailed}
         photoError={fieldErrors.profilePhotoUrl}
+        photoSuccessAt={photoSuccessAt}
         uploadingPhoto={uploadingPhoto}
         photoInputRef={photoInputRef}
         onSelectPhoto={selectPhoto}

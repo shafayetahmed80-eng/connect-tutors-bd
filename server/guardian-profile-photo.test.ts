@@ -51,7 +51,7 @@ const activeGuardian = {
 };
 
 describe("Guardian profile photo uploads and moderation contract", () => {
-  it("validates JPEG, PNG, and WebP by signature and image dimensions", () => {
+  it("validates JPEG, PNG, and WebP by binary signature and reports dimensions", () => {
     expect(
       validateGuardianProfilePhoto({
         buffer: pngFixture(300, 420),
@@ -95,23 +95,7 @@ describe("Guardian profile photo uploads and moderation contract", () => {
       },
     ],
     [
-      "an undersized image",
-      {
-        buffer: pngFixture(299, 300),
-        mimetype: "image/png",
-        originalname: "portrait.png",
-      },
-    ],
-    [
-      "an unsafe image dimension",
-      {
-        buffer: pngFixture(10_001, 300),
-        mimetype: "image/png",
-        originalname: "portrait.png",
-      },
-    ],
-    [
-      "a file larger than 5 MB",
+      "a file larger than 20 MB",
       {
         buffer: Buffer.concat([
           pngFixture(300, 300),
@@ -123,6 +107,16 @@ describe("Guardian profile photo uploads and moderation contract", () => {
     ],
   ])("rejects %s before any storage access", (_reason, file) => {
     expect(() => validateGuardianProfilePhoto(file)).toThrow(GuardianProfilePhotoError);
+  });
+
+  it("accepts a small image now that pixel dimensions no longer gate the upload", () => {
+    expect(
+      validateGuardianProfilePhoto({
+        buffer: pngFixture(48, 48),
+        mimetype: "image/png",
+        originalname: "tiny.png",
+      }),
+    ).toMatchObject({ contentType: "image/png", width: 48, height: 48 });
   });
 
   it("uploads to the Guardian-scoped key and persists only the generated opaque object key", async () => {

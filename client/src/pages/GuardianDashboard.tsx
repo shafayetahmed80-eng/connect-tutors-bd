@@ -10,6 +10,7 @@ import { GuardianWorkspaceSkeleton, GuardianWorkspaceState } from "@/components/
 import { Bell, Clock3, FileText, HelpCircle, ImagePlus, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
 import { GuardianHireSheet } from "@/components/GuardianHireSheet";
+import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -155,8 +156,17 @@ function GuardianPhotoPanel() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  // Upload time of the last successful upload, or null - drives the "Upload
+  // Successful" badge, which clears itself a couple of seconds later.
+  const [photoSuccessAt, setPhotoSuccessAt] = useState<number | null>(null);
   const photo = photoQuery.data;
   const photoUrl = photo?.photoUrl ?? null;
+
+  useEffect(() => {
+    if (!photoSuccessAt) return;
+    const timer = window.setTimeout(() => setPhotoSuccessAt(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [photoSuccessAt]);
 
   const uploadPhoto = async (file: File) => {
     const acceptedTypes = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"];
@@ -164,8 +174,8 @@ function GuardianPhotoPanel() {
       setFeedback({ type: "error", message: "Choose a JPEG, PNG, or WebP image. HEIC images are not supported." });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setFeedback({ type: "error", message: "Profile photos must be 5 MB or smaller." });
+    if (file.size > 20 * 1024 * 1024) {
+      setFeedback({ type: "error", message: "Profile photos must be 20 MB or smaller." });
       return;
     }
     setFeedback(null);
@@ -178,6 +188,7 @@ function GuardianPhotoPanel() {
       if (!response.ok || result.photoStatus !== "photo") throw new Error(result.error || "Unable to upload the profile photo.");
       await utils.guardianProfile.photo.invalidate();
       setFeedback({ type: "success", message: "Your profile photo is now shown in your Guardian identity header." });
+      setPhotoSuccessAt(Date.now());
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the profile photo." });
     } finally {
@@ -208,7 +219,7 @@ function GuardianPhotoPanel() {
   const photoAlt = "Guardian profile photo";
   const uploadLabel = photoUrl ? "Replace profile photo" : "Upload profile photo";
 
-  return <Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><ImagePlus className="size-5 text-[#1677c8]" /> <SiteText slotId="guardian-profile.photo.title" /></CardTitle></CardHeader><CardContent className="p-7 pt-0"><div className="grid gap-6 sm:grid-cols-[8rem_1fr]"><div className="grid aspect-square size-32 place-items-center overflow-hidden rounded-xl border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">{photoUrl ? <img src={photoUrl} alt={photoAlt} className="size-full object-cover" /> : initials(profileQuery.data?.name || "Guardian")}</div><div className="min-w-0"><div className={`rounded-xl border p-4 text-sm leading-6 ${status.tone}`}><p className="font-extrabold">{status.title}</p><p className="mt-1">{status.detail}</p></div><input ref={photoInputRef} className="sr-only" id="guardian-profile-photo" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload Guardian profile photo" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} /><div className="mt-4 flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => photoInputRef.current?.click()} className="border-[#9dcde7] text-[#1677c8]"><ImagePlus className="size-4" /> {isUploading ? "Uploading…" : uploadLabel}</Button>{photoUrl ? <Button type="button" variant="ghost" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => void removePhoto()} className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 className="size-4" /> Remove photo</Button> : null}</div><p className="mt-3 leading-5 text-j-ink-muted"><SiteText slotId="guardian-profile.photo.help" className="text-xs" /></p>{feedback ? <p role="status" className={`mt-3 text-sm font-semibold ${feedback.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{feedback.message}</p> : null}</div></div></CardContent></Card>;
+  return <Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><ImagePlus className="size-5 text-[#1677c8]" /> <SiteText slotId="guardian-profile.photo.title" /></CardTitle></CardHeader><CardContent className="p-7 pt-0"><div className="grid gap-6 sm:grid-cols-[8rem_1fr]"><div className="relative size-32"><div className="grid size-full place-items-center overflow-hidden rounded-xl border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">{photoUrl ? <img src={photoUrl} alt={photoAlt} className="size-full object-cover" /> : initials(profileQuery.data?.name || "Guardian")}</div>{photoSuccessAt ? <PhotoUploadSuccess key={photoSuccessAt} className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap" /> : null}</div><div className="min-w-0"><div className={`rounded-xl border p-4 text-sm leading-6 ${status.tone}`}><p className="font-extrabold">{status.title}</p><p className="mt-1">{status.detail}</p></div><input ref={photoInputRef} className="sr-only" id="guardian-profile-photo" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload Guardian profile photo" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} /><div className="mt-4 flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => photoInputRef.current?.click()} className="border-[#9dcde7] text-[#1677c8]"><ImagePlus className="size-4" /> {isUploading ? "Uploading…" : uploadLabel}</Button>{photoUrl ? <Button type="button" variant="ghost" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => void removePhoto()} className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 className="size-4" /> Remove photo</Button> : null}</div><p className="mt-3 leading-5 text-j-ink-muted"><SiteText slotId="guardian-profile.photo.help" className="text-xs" /></p>{feedback ? <p role="status" className={`mt-3 text-sm font-semibold ${feedback.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{feedback.message}</p> : null}</div></div></CardContent></Card>;
 }
 
 function GuardianProfileWorkspace() {
