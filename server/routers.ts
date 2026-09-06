@@ -12,7 +12,7 @@ import { guardianRegistrationSchema, GuardianRegistrationError, GUARDIAN_TERMS_V
 import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
-import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions } from "@shared/guardian-profile";
+import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions, guardianVerificationStatusValues } from "@shared/guardian-profile";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
@@ -1381,6 +1381,29 @@ export const appRouter = router({
         const detail = await db.getGuardianContactForAdmin({ requestId: input.requestId, adminUserId: ctx.user.id });
         if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Guardian details are unavailable." });
         return detail;
+      }),
+    getGuardianProfile: adminProcedure
+      .input(z.object({ guardianUserId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const profile = await db.getGuardianProfileByUserId(input.guardianUserId);
+        if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Guardian profile is unavailable." });
+        const nidDocuments = await getGuardianNidDocumentUrls({ userId: input.guardianUserId });
+        return { ...profile, nidDocuments };
+      }),
+    setGuardianVerification: adminProcedure
+      .input(z.object({
+        guardianUserId: z.number().int().positive(),
+        status: z.enum(guardianVerificationStatusValues),
+        reason: z.string().trim().max(GUARDIAN_PROFILE_LIMITS.verificationRejectionReason).optional(),
+      }).superRefine((value, context) => {
+        if (value.status === "rejected" && (value.reason?.trim().length ?? 0) < 3) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ["reason"], message: "Give a short reason the Guardian will see." });
+        }
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.setGuardianVerification({ ...input, adminUserId: ctx.user.id });
+        if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "That Guardian could not be updated." });
+        return result;
       }),
     listTutorRequests: adminProcedure.query(() => db.listTutorRequestsForAdmin()),
     listMatchingRequests: adminProcedure

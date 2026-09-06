@@ -1,4 +1,8 @@
-import { AlertCircle, Camera, IdCard, Mail, MapPin, PencilLine, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import {
+  AlertCircle, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, Link2, MapPin,
+  Megaphone, IdCard, Mail, PencilLine, Phone, ShieldCheck, UserRound, Users,
+  type LucideIcon,
+} from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -50,11 +54,18 @@ function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "G";
 }
 
-function ReadRow({ label, value }: { label: string; value: string }) {
+/**
+ * One read-out line: an icon-led label column with the value beside it, not
+ * pushed to the opposite edge. An empty value takes the same red "missing"
+ * tone the Tutor profile uses.
+ */
+function ReadRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-[#eef4f9] py-2 last:border-b-0">
-      <span className="shrink-0 text-xs text-j-ink-muted">{label}</span>
-      <span className={`min-w-0 break-words text-right text-sm ${value ? "font-medium text-j-ink" : "italic text-j-ink-faint"}`}>{value || "Not added"}</span>
+    <div className="flex items-baseline gap-3 border-b border-[#eef4f9] py-2 last:border-b-0">
+      <span className="flex w-[152px] shrink-0 items-center gap-1.5 text-xs text-j-ink-muted">
+        <Icon size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />{label}
+      </span>
+      <span className={`min-w-0 flex-1 break-words text-sm font-medium ${value ? "text-j-ink" : "text-j-err"}`}>{value || "Not set"}</span>
     </div>
   );
 }
@@ -85,7 +96,7 @@ export default function GuardianProfileWorkspace() {
       locationId: profile.locationId ?? "",
       additionalPhone: profile.additionalPhone ?? "",
       religion: profile.religion ?? "",
-      nationality: profile.nationality ?? "",
+      nationality: profile.nationality || "Bangladeshi",
       socialLinks: profile.socialLinks ?? "",
       addressDetails: profile.addressDetails ?? "",
       profession: profile.profession ?? "",
@@ -251,7 +262,7 @@ export default function GuardianProfileWorkspace() {
               <Icon size={15} className="mt-0.5 shrink-0 text-[#8fb4d0]" aria-hidden={true} />
               <span className="min-w-0">
                 <span className="block text-2xs text-j-ink-muted">{label}</span>
-                <span className={`block break-words text-sm ${value ? "font-medium text-j-ink" : "text-j-ink-faint"}`}>{value || "Not added"}</span>
+                <span className={`block break-words text-sm font-medium ${value ? "text-j-ink" : "text-j-err"}`}>{value || "Not set"}</span>
               </span>
             </div>
           ))}
@@ -282,25 +293,25 @@ export default function GuardianProfileWorkspace() {
 
           {activeTab === "personal" ? (
             <div>
-              <ReadRow label="Gender" value={profile.gender === "male" ? "Male" : "Female"} />
-              <ReadRow label="Religion" value={profile.religion ?? ""} />
-              <ReadRow label="Nationality" value={profile.nationality ?? ""} />
-              <ReadRow label="Social profile links" value={profile.socialLinks ?? ""} />
-              <ReadRow label="City" value={cityLabel} />
-              <ReadRow label="Location" value={areaLabel} />
-              <ReadRow label="Address details" value={profile.addressDetails ?? ""} />
-              <ReadRow label="Profession" value={profile.profession ?? ""} />
-              <ReadRow label="NID card image (front)" value={profile.nidFrontUploaded ? "Uploaded" : ""} />
-              <ReadRow label="NID card image (back)" value={profile.nidBackUploaded ? "Uploaded" : ""} />
+              <ReadRow icon={UserRound} label="Gender" value={profile.gender === "male" ? "Male" : "Female"} />
+              <ReadRow icon={BookMarked} label="Religion" value={profile.religion ?? ""} />
+              <ReadRow icon={Flag} label="Nationality" value={profile.nationality || "Bangladeshi"} />
+              <ReadRow icon={Link2} label="Social profile links" value={profile.socialLinks ?? ""} />
+              <ReadRow icon={MapPin} label="City" value={cityLabel} />
+              <ReadRow icon={MapPin} label="Location" value={areaLabel} />
+              <ReadRow icon={Home} label="Address details" value={profile.addressDetails ?? ""} />
+              <ReadRow icon={Briefcase} label="Profession" value={profile.profession ?? ""} />
+              <ReadRow icon={CreditCard} label="NID card image (front)" value={profile.nidFrontUploaded ? "Uploaded" : ""} />
+              <ReadRow icon={CreditCard} label="NID card image (back)" value={profile.nidBackUploaded ? "Uploaded" : ""} />
             </div>
           ) : (
             <div>
-              <ReadRow label="Contact name" value={profile.emergencyContactName ?? ""} />
-              <ReadRow label="Contact number" value={profile.emergencyContactPhone ?? ""} />
-              <ReadRow label="Relation" value={profile.emergencyContactRelation ?? ""} />
-              <ReadRow label="Contact address" value={profile.emergencyContactAddress ?? ""} />
-              <ReadRow label="Contact profession" value={profile.emergencyContactProfession ?? ""} />
-              <ReadRow label="How did you hear about us" value={formatRequestSource(profile.heardAboutUs) === "Not set" ? "" : formatRequestSource(profile.heardAboutUs)} />
+              <ReadRow icon={Contact} label="Contact name" value={profile.emergencyContactName ?? ""} />
+              <ReadRow icon={Phone} label="Contact number" value={profile.emergencyContactPhone ?? ""} />
+              <ReadRow icon={Users} label="Relation" value={profile.emergencyContactRelation ?? ""} />
+              <ReadRow icon={Home} label="Contact address" value={profile.emergencyContactAddress ?? ""} />
+              <ReadRow icon={Briefcase} label="Contact profession" value={profile.emergencyContactProfession ?? ""} />
+              <ReadRow icon={Megaphone} label="How did you hear about us" value={formatRequestSource(profile.heardAboutUs) === "Not set" ? "" : formatRequestSource(profile.heardAboutUs)} />
             </div>
           )}
         </section>
@@ -319,7 +330,7 @@ export default function GuardianProfileWorkspace() {
               <Field label="Gender"><select value={form.gender} onChange={event => set({ gender: event.target.value as "male" | "female" })} className={inputClass}><option value="female">Female</option><option value="male">Male</option></select></Field>
               <Field label="Additional phone"><input value={form.additionalPhone} maxLength={16} onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} placeholder="Optional" /></Field>
               <Field label="Religion"><select value={form.religion} onChange={event => set({ religion: event.target.value })} className={inputClass}><option value="">Not set</option>{guardianReligionOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
-              <Field label="Nationality"><select value={form.nationality} onChange={event => set({ nationality: event.target.value })} className={inputClass}><option value="">Not set</option>{guardianNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
+              <Field label="Nationality"><select value={form.nationality || "Bangladeshi"} onChange={event => set({ nationality: event.target.value })} className={inputClass}>{guardianNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
               <Field label="City"><select value={form.cityLocationId} onChange={event => set({ cityLocationId: event.target.value, locationId: "" })} className={inputClass}><option value="">Select city</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></Field>
               <Field label="Location"><select value={form.locationId} disabled={!form.cityLocationId} onChange={event => set({ locationId: event.target.value })} className={`${inputClass} disabled:bg-j-surface-muted`}><option value="">Select location</option>{areas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></Field>
               <Field label="Profession"><input value={form.profession} maxLength={120} onChange={event => set({ profession: event.target.value })} className={inputClass} placeholder="Ex. Banker" /></Field>
