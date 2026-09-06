@@ -1676,7 +1676,11 @@ export async function submitTutorProfile(userId: number) {
       teachingExperienceYears: profile.teachingExperienceYears,
       priorTeachingExperience: profile.priorTeachingExperience,
       specialExpertise: profile.specialExpertise,
-      studentTypeIds: profile.studentTypeIds,
+      // Student Types left the profile UI, so `loadTutorProfileOwner` returns
+      // `[]` here for every Tutor. The schema's list validator rejects an empty
+      // array (it only accepts a non-empty list or `undefined`), which would
+      // block every submission - send `undefined` when there is nothing.
+      studentTypeIds: profile.studentTypeIds?.length ? profile.studentTypeIds : undefined,
       academicAchievement: profile.academicAchievement,
       tuitionType: profile.tuitionType,
       preferredStudentGender: profile.preferredStudentGender,
