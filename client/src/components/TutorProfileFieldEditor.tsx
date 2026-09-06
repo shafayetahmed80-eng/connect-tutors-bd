@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import {
+  findTutorProfileFieldMeta,
   resolveTutorProfileFieldConfig,
   tutorProfileFieldRegistry,
   type ResolvedTutorProfileField,
@@ -13,6 +14,7 @@ import {
   enabledOverrideValue,
   groupFieldsByPanel,
   groupFieldsForEditor,
+  labelOverrideValue,
   moveTargetOverride,
   overrideRowsEqual,
   requiredOverrideValue,
@@ -69,7 +71,7 @@ export default function TutorProfileFieldEditor() {
   const isDirty = (fieldId: string) => {
     const draft = drafts[fieldId];
     const savedRow = stored.get(fieldId);
-    return Boolean(draft) && !overrideRowsEqual(draft, savedRow ? toEditorRow(savedRow) : { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null });
+    return Boolean(draft) && !overrideRowsEqual(draft, savedRow ? toEditorRow(savedRow) : { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null });
   };
   const dirtyIds = allFieldIds.filter(isDirty);
 
@@ -126,10 +128,17 @@ export default function TutorProfileFieldEditor() {
 
   const renderField = (field: ResolvedTutorProfileField, panelFields: readonly ResolvedTutorProfileField[], movable: boolean, nested: boolean) => {
     const index = panelFields.findIndex(candidate => candidate.id === field.id);
+    const defaultLabel = findTutorProfileFieldMeta(field.id)?.label ?? field.label;
     return <div key={field.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-j-border py-1.5 last:border-b-0 ${nested ? "pl-4" : ""}`}>
-      <span className={`min-w-0 flex-1 truncate text-sm ${field.enabled ? "text-j-ink-strong" : "text-j-ink-faint line-through"}`} title={field.label}>
-        {field.label}
-        {isDirty(field.id) ? <span className="ml-1 text-j-accent" aria-label="unsaved">•</span> : null}
+      <span className="flex min-w-0 flex-1 items-center gap-1">
+        <input
+          type="text"
+          aria-label={`Label for ${defaultLabel}`}
+          value={drafts[field.id]?.label ?? field.label}
+          onChange={event => update(field.id, { label: labelOverrideValue(event.target.value, defaultLabel) })}
+          className={`min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm outline-none hover:border-j-border focus:border-j-accent focus:bg-white focus:ring-2 focus:ring-sky-100 ${field.enabled ? "text-j-ink-strong" : "text-j-ink-faint line-through"}`}
+        />
+        {isDirty(field.id) ? <span className="text-j-accent" aria-label="unsaved">•</span> : null}
       </span>
 
       <label className="flex items-center gap-1 text-2xs font-bold uppercase tracking-wide text-j-ink-muted">

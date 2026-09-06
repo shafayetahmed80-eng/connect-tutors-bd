@@ -36,7 +36,7 @@ function createAdminCaller(user: typeof ownerUser | typeof nonOwnerAdminUser | n
   } as any);
 }
 
-const validChange = { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 as const };
+const validChange = { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 as const, label: null };
 
 describe("tutorProfileFieldConfig router", () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe("tutorProfileFieldConfig router", () => {
   it("rejects a save naming a field the registry does not declare", async () => {
     const caller = createAdminCaller(ownerUser);
     await expect(caller.tutorProfileFieldConfig.save([
-      { fieldId: "not-a-real-field", section: null, subGroup: null, sortOrder: null, enabled: null, required: null },
+      { fieldId: "not-a-real-field", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null },
     ])).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(fieldConfigDbMocks.saveTutorProfileFieldOverrides).not.toHaveBeenCalled();
   });
@@ -92,7 +92,7 @@ describe("tutorProfileFieldConfig router", () => {
     // never accept a flat required/optional override.
     const caller = createAdminCaller(ownerUser);
     await expect(caller.tutorProfileFieldConfig.save([
-      { fieldId: "yearSemester", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+      { fieldId: "yearSemester", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0, label: null },
     ])).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(fieldConfigDbMocks.saveTutorProfileFieldOverrides).not.toHaveBeenCalled();
   });

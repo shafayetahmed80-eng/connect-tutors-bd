@@ -1102,6 +1102,7 @@ export const appRouter = router({
         sortOrder: z.number().int().nullable(),
         enabled: z.union([z.literal(0), z.literal(1)]).nullable(),
         required: z.union([z.literal(0), z.literal(1)]).nullable(),
+        label: z.string().trim().min(1).max(120).nullable(),
       })).min(1).max(200))
       .mutation(async ({ input }) => {
         for (const change of input) {

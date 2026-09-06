@@ -5196,6 +5196,7 @@ export async function saveTutorProfileFieldOverrides(changes: readonly TutorProf
             sortOrder: change.sortOrder,
             enabled: change.enabled,
             required: change.required,
+            label: change.label,
           },
         });
     }

@@ -97,6 +97,18 @@ describe("Tutor Profile field registry", () => {
     expect(config.bySection.get("d")?.some(f => f.id === "travelDistanceKm")).toBe(false);
   });
 
+  it("uses a stored label override, and ignores a blank one", () => {
+    const renamed = resolveTutorProfileFieldConfig([
+      { fieldId: "privateDetails.nationality", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Citizenship" },
+    ]);
+    expect(renamed.byId.get("privateDetails.nationality")?.label).toBe("Citizenship");
+
+    const blank = resolveTutorProfileFieldConfig([
+      { fieldId: "privateDetails.nationality", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "   " },
+    ]);
+    expect(blank.byId.get("privateDetails.nationality")?.label).toBe(findTutorProfileFieldMeta("privateDetails.nationality")?.label);
+  });
+
   it("flips a configurable field required, and ignores the same override on a code-owned one", () => {
     const configurable = resolveTutorProfileFieldConfig([
       { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },

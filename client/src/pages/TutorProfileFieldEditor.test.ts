@@ -6,6 +6,7 @@ import {
   emptyOverrideRow,
   enabledOverrideValue,
   groupFieldsForEditor,
+  labelOverrideValue,
   moveTargetOverride,
   overrideRowsEqual,
   requiredOverrideValue,
@@ -32,7 +33,7 @@ describe("Tutor Profile field editor logic", () => {
 
   it("keeps a disabled field in its group, so the editor can turn it back on", () => {
     const config = resolveTutorProfileFieldConfig([
-      { fieldId: "headline", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+      { fieldId: "headline", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null },
     ]);
     const grouped = groupFieldsForEditor(config.all);
     expect(grouped.get("a-identity")?.some(f => f.id === "headline" && f.enabled === false)).toBe(true);
@@ -40,7 +41,7 @@ describe("Tutor Profile field editor logic", () => {
 
   it("reflects a not-yet-saved draft move immediately", () => {
     const draftRows = [
-      { fieldId: "aboutMe", section: "a" as const, subGroup: "a-family" as const, sortOrder: 500, enabled: null, required: null },
+      { fieldId: "aboutMe", section: "a" as const, subGroup: "a-family" as const, sortOrder: 500, enabled: null, required: null, label: null },
     ];
     const config = resolveTutorProfileFieldConfig(draftRows);
     const grouped = groupFieldsForEditor(config.all);
@@ -58,6 +59,14 @@ describe("Tutor Profile field editor logic", () => {
     expect(requiredOverrideValue(false, false)).toBeNull();
     expect(requiredOverrideValue(false, true)).toBe(0);
     expect(requiredOverrideValue(true, false)).toBe(1);
+  });
+
+  it("labelOverrideValue: keeps a real rename, clears an empty box or one typed back to the default", () => {
+    expect(labelOverrideValue("Citizenship", "Nationality")).toBe("Citizenship");
+    expect(labelOverrideValue("  Legal Name  ", "Full Name")).toBe("Legal Name");
+    expect(labelOverrideValue("Full Name", "Full Name")).toBeNull();
+    expect(labelOverrideValue("   ", "Full Name")).toBeNull();
+    expect(labelOverrideValue("", "Full Name")).toBeNull();
   });
 
   it("moveTargetOverride always names both axes, even for a sub-group-free destination", () => {
@@ -95,15 +104,16 @@ describe("Tutor Profile field editor logic", () => {
     expect(swapSortOrder(group, "not-in-group", 1)).toBeNull();
   });
 
-  it("overrideRowsEqual compares all five axes", () => {
+  it("overrideRowsEqual compares every axis, label included", () => {
     const base = emptyOverrideRow("name");
     expect(overrideRowsEqual(base, emptyOverrideRow("name"))).toBe(true);
     expect(overrideRowsEqual(base, { ...base, enabled: 0 })).toBe(false);
     expect(overrideRowsEqual(base, { ...base, required: 1 })).toBe(false);
+    expect(overrideRowsEqual(base, { ...base, label: "Renamed" })).toBe(false);
   });
 
   it("seeds an empty row for a field with no stored override, and the stored row otherwise", () => {
-    const stored = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null }];
+    const stored = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null }];
     const drafts = seedFieldEditorDrafts(["name", "gender"], stored);
     expect(drafts.name).toEqual(stored[0]);
     expect(drafts.gender).toEqual(emptyOverrideRow("gender"));

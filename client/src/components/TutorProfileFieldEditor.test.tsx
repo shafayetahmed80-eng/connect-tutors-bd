@@ -47,7 +47,7 @@ describe("Tutor Profile field editor", () => {
   it("shows Fixed instead of a Required checkbox for a field whose requiredness is code-owned", () => {
     render(<TutorProfileFieldEditor />);
     expect(screen.queryByLabelText(/^Make (required|optional) Year\/Semester$/)).toBeNull();
-    const row = screen.getByText("Year/Semester").closest("div")!;
+    const row = screen.getByDisplayValue("Year/Semester").closest("div")!;
     expect(within(row).getByText("Fixed")).toBeTruthy();
   });
 
@@ -56,6 +56,33 @@ describe("Tutor Profile field editor", () => {
     expect(screen.getByLabelText("Disable Profile Photo")).toBeTruthy();
     expect(screen.queryByLabelText("Move Profile Photo up")).toBeNull();
     expect(screen.queryByLabelText("Move Profile Photo to a different section")).toBeNull();
+  });
+
+  it("renames a field's label and sends the new wording in the batch", async () => {
+    render(<TutorProfileFieldEditor />);
+
+    const labelBox = screen.getByLabelText("Label for Full Name") as HTMLInputElement;
+    expect(labelBox.value).toBe("Full Name");
+    fireEvent.change(labelBox, { target: { value: "Legal Name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name" },
+    ]));
+  });
+
+  it("clears the label override when the box is typed back to the shipped wording", async () => {
+    mocks.rows = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name" }];
+    render(<TutorProfileFieldEditor />);
+
+    const labelBox = screen.getByLabelText("Label for Full Name") as HTMLInputElement;
+    expect(labelBox.value).toBe("Legal Name");
+    fireEvent.change(labelBox, { target: { value: "Full Name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null },
+    ]));
   });
 
   it("marks a toggled field dirty and saves it as a single batched change", async () => {
@@ -67,14 +94,14 @@ describe("Tutor Profile field editor", () => {
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null },
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null },
     ]);
     await waitFor(() => expect(mocks.invalidateOverrides).toHaveBeenCalled());
     expect(mocks.invalidateResolved).toHaveBeenCalled();
   });
 
   it("clears an override back to null when a toggle returns to the field's own default", async () => {
-    mocks.rows = [{ fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 }];
+    mocks.rows = [{ fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1, label: null }];
     render(<TutorProfileFieldEditor />);
 
     // resultGpa defaults to optional; the stored row already flipped it required.
@@ -82,7 +109,7 @@ describe("Tutor Profile field editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: null },
+      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null },
     ]));
   });
 
