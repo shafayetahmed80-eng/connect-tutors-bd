@@ -1175,7 +1175,15 @@ export function RequestStage(props: RequestStageProps) {
         two actions and none of the journey's - there is nothing left to go
         Back to and nothing left to send. */}
     {props.step === 3 ? <SuccessState requestId={props.requestId ?? null} input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onPostAnother={props.onPostAnother ?? (() => undefined)} /> : null}
-    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1 ? <button type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /> <ArrowRight size={17} /></button> : <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
+    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1
+      // Distinct keys, so React mounts a fresh node for each rather than reusing
+      // one and only flipping `type`. Reusing it means the click that runs
+      // `onAdvance` (setting step 2) leaves the very same element as a
+      // `type="submit"` button, whose default action then submits the form -
+      // in edit mode every step-2 field is prefilled, so that stray submit
+      // saves and leaves the journey the instant "Continue" is pressed.
+      ? <button key="advance" type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /> <ArrowRight size={17} /></button>
+      : <button key="submit" type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
   </form>;
 }
 
