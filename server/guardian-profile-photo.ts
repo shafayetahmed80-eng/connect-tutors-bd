@@ -3,16 +3,8 @@ import {
   clearGuardianProfilePhoto,
   getSiteLimits,
   getGuardianProfilePhotoByUserId,
-  getGuardianProfilePhotoForReview,
-  listPendingGuardianProfilePhotos,
-  reviewGuardianProfilePhotoByAdmin,
   saveGuardianProfilePhoto,
 } from "./db";
-import {
-  guardianProfilePhotoRejectionReasonValues,
-  type GuardianProfilePhotoRejectionReason,
-  type GuardianProfilePhotoStatus,
-} from "../drizzle/schema";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
 export const MAX_GUARDIAN_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -192,39 +184,6 @@ function assertAuthorizedGuardian(user: UploadUser | null): asserts user is Uplo
   }
 }
 
-export function validateGuardianPhotoReview(input: {
-  currentStatus: GuardianProfilePhotoStatus;
-  nextStatus: "approved" | "rejected";
-  rejectionReason?: GuardianProfilePhotoRejectionReason;
-  moderationNote?: string;
-}) {
-  if (input.currentStatus !== "pending_review") {
-    invalidPhoto("Only photos pending review can be moderated.");
-  }
-  const moderationNote = input.moderationNote?.trim() || null;
-  if (moderationNote && moderationNote.length > 280) {
-    invalidPhoto("Moderation notes must be 280 characters or fewer.");
-  }
-  if (input.nextStatus === "approved") {
-    if (input.rejectionReason || moderationNote) {
-      invalidPhoto("Approved photos cannot include a rejection reason or moderation note.");
-    }
-    return {
-      nextStatus: "approved" as const,
-      rejectionReason: null,
-      moderationNote: null,
-    };
-  }
-  if (!input.rejectionReason || !guardianProfilePhotoRejectionReasonValues.includes(input.rejectionReason)) {
-    invalidPhoto("Select a valid rejection reason.");
-  }
-  return {
-    nextStatus: "rejected" as const,
-    rejectionReason: input.rejectionReason,
-    moderationNote,
-  };
-}
-
 type PhotoUploadDependencies = {
   storagePut: typeof storagePut;
   saveGuardianProfilePhoto: typeof saveGuardianProfilePhoto;
@@ -256,12 +215,8 @@ export async function uploadGuardianProfilePhoto({
     file.buffer,
     photo.contentType,
   );
-  await save({
-    guardianUserId: user.id,
-    storageKey: stored.key,
-    actorUserId: user.id,
-  });
-  return { photoStatus: "pending_review" as const, width: photo.width, height: photo.height };
+  await save({ guardianUserId: user.id, storageKey: stored.key });
+  return { photoStatus: "photo" as const, width: photo.width, height: photo.height };
 }
 
 export async function removeGuardianProfilePhoto({
@@ -271,7 +226,7 @@ export async function removeGuardianProfilePhoto({
   user: UploadUser | null;
 } & Partial<PhotoRemovalDependencies>) {
   assertAuthorizedGuardian(user);
-  await clear({ guardianUserId: user.id, actorUserId: user.id });
+  await clear({ guardianUserId: user.id });
   return { photoStatus: "no_photo" as const };
 }
 
@@ -279,13 +234,9 @@ function toSafeOwnerPhotoDto(
   record: Awaited<ReturnType<typeof getGuardianProfilePhotoByUserId>>,
   photoUrl: string | null,
 ) {
-  if (!record) return { photoStatus: "no_photo" as const, photoUrl: null, rejectionReason: null, moderationNote: null };
-  return {
-    photoStatus: record.status,
-    photoUrl,
-    rejectionReason: record.rejectionReason,
-    moderationNote: record.moderationNote,
-  };
+  return record
+    ? { photoStatus: "photo" as const, photoUrl }
+    : { photoStatus: "no_photo" as const, photoUrl: null };
 }
 
 export async function getGuardianProfilePhotoForOwner({
@@ -299,51 +250,4 @@ export async function getGuardianProfilePhotoForOwner({
   const record = await getGuardianProfilePhotoByUserId(user.id);
   const photoUrl = record ? await getSignedUrl(record.storageKey) : null;
   return toSafeOwnerPhotoDto(record, photoUrl);
-}
-
-export async function getPendingGuardianPhotoModerationQueue({
-  getSignedUrl = storageGetSignedUrl,
-}: {
-  getSignedUrl?: typeof storageGetSignedUrl;
-} = {}) {
-  const records = await listPendingGuardianProfilePhotos();
-  return Promise.all(
-    records.map(async record => ({
-      photoId: record.id,
-      guardianId: record.guardianId,
-      status: record.status,
-      submittedAt: record.createdAt,
-      photoUrl: await getSignedUrl(record.storageKey),
-    })),
-  );
-}
-
-export async function reviewGuardianProfilePhoto({
-  photoId,
-  adminUserId,
-  nextStatus,
-  rejectionReason,
-  moderationNote,
-}: {
-  photoId: number;
-  adminUserId: number;
-  nextStatus: "approved" | "rejected";
-  rejectionReason?: GuardianProfilePhotoRejectionReason;
-  moderationNote?: string;
-}) {
-  const record = await getGuardianProfilePhotoForReview(photoId);
-  if (!record) invalidPhoto("This Guardian photo is no longer available for review.");
-  const decision = validateGuardianPhotoReview({
-    currentStatus: record.status,
-    nextStatus,
-    rejectionReason,
-    moderationNote,
-  });
-  const result = await reviewGuardianProfilePhotoByAdmin({
-    photoId,
-    adminUserId,
-    ...decision,
-  });
-  if (!result.updated) invalidPhoto("This Guardian photo is no longer available for review.");
-  return { photoId, photoStatus: decision.nextStatus };
 }

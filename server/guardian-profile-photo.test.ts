@@ -4,7 +4,6 @@ import {
   GuardianProfilePhotoError,
   removeGuardianProfilePhoto,
   uploadGuardianProfilePhoto,
-  validateGuardianPhotoReview,
   validateGuardianProfilePhoto,
 } from "./guardian-profile-photo";
 
@@ -126,7 +125,7 @@ describe("Guardian profile photo uploads and moderation contract", () => {
     expect(() => validateGuardianProfilePhoto(file)).toThrow(GuardianProfilePhotoError);
   });
 
-  it("uploads to the Guardian-scoped key and persists only the generated opaque object key as pending review", async () => {
+  it("uploads to the Guardian-scoped key and persists only the generated opaque object key", async () => {
     const storagePut = vi.fn().mockResolvedValue({
       key: "guardians/501/profile-photo_9fd18ca2.png",
       url: "/manus-storage/guardians/501/profile-photo_9fd18ca2.png",
@@ -145,7 +144,7 @@ describe("Guardian profile photo uploads and moderation contract", () => {
         saveGuardianProfilePhoto,
       }),
     ).resolves.toEqual({
-      photoStatus: "pending_review",
+      photoStatus: "photo",
       width: 640,
       height: 640,
     });
@@ -158,7 +157,6 @@ describe("Guardian profile photo uploads and moderation contract", () => {
     expect(saveGuardianProfilePhoto).toHaveBeenCalledWith({
       guardianUserId: 501,
       storageKey: "guardians/501/profile-photo_9fd18ca2.png",
-      actorUserId: 501,
     });
   });
 
@@ -204,52 +202,6 @@ describe("Guardian profile photo uploads and moderation contract", () => {
       }),
     ).resolves.toEqual({ photoStatus: "no_photo" });
 
-    expect(clearGuardianProfilePhoto).toHaveBeenCalledWith({
-      guardianUserId: 501,
-      actorUserId: 501,
-    });
-  });
-
-  it("allows only pending-review photos to receive a controlled Admin decision", () => {
-    expect(
-      validateGuardianPhotoReview({
-        currentStatus: "pending_review",
-        nextStatus: "approved",
-      }),
-    ).toEqual({ nextStatus: "approved", rejectionReason: null, moderationNote: null });
-
-    expect(
-      validateGuardianPhotoReview({
-        currentStatus: "pending_review",
-        nextStatus: "rejected",
-        rejectionReason: "contains_contact_or_promotional_content",
-        moderationNote: "Please upload a photo without contact details.",
-      }),
-    ).toEqual({
-      nextStatus: "rejected",
-      rejectionReason: "contains_contact_or_promotional_content",
-      moderationNote: "Please upload a photo without contact details.",
-    });
-
-    expect(() =>
-      validateGuardianPhotoReview({
-        currentStatus: "approved",
-        nextStatus: "rejected",
-        rejectionReason: "low_quality_or_unrelated_image",
-      }),
-    ).toThrow(GuardianProfilePhotoError);
-    expect(() =>
-      validateGuardianPhotoReview({
-        currentStatus: "pending_review",
-        nextStatus: "rejected",
-      }),
-    ).toThrow(GuardianProfilePhotoError);
-    expect(() =>
-      validateGuardianPhotoReview({
-        currentStatus: "pending_review",
-        nextStatus: "approved",
-        moderationNote: "Any note is disallowed when approving.",
-      }),
-    ).toThrow(GuardianProfilePhotoError);
+    expect(clearGuardianProfilePhoto).toHaveBeenCalledWith({ guardianUserId: 501 });
   });
 });

@@ -14,10 +14,8 @@ const mocks = vi.hoisted(() => ({
     accountCreatedAt: new Date("2026-08-21T00:00:00.000Z"),
   },
   photo: {
-    photoStatus: "no_photo" as "no_photo" | "pending_review" | "approved" | "rejected",
+    photoStatus: "no_photo" as "no_photo" | "photo",
     photoUrl: null as string | null,
-    rejectionReason: null as string | null,
-    moderationNote: null as string | null,
   },
   invalidatePhoto: vi.fn(),
 }));
@@ -50,53 +48,34 @@ import { GuardianDashboardContent } from "./GuardianDashboard";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  mocks.photo = { photoStatus: "no_photo", photoUrl: null, rejectionReason: null, moderationNote: null };
+  mocks.photo = { photoStatus: "no_photo", photoUrl: null };
 });
 
 describe("Guardian photo profile experience", () => {
-  it("uses the Guardian's initials instead of a photo until a photo is approved", () => {
+  it("uses the Guardian's initials until a photo is uploaded", () => {
     render(<GuardianDashboardContent section="profile" />);
 
     expect(screen.getByText("RA")).toBeTruthy();
-    expect(screen.queryByAltText("Approved Guardian profile photo")).toBeNull();
+    expect(screen.queryByAltText("Guardian profile photo")).toBeNull();
+    expect(screen.getByText("No profile photo yet")).toBeTruthy();
   });
 
-  it("offers a private profile-photo upload with truthful pending-review guidance", () => {
-    mocks.photo = {
-      photoStatus: "pending_review",
-      photoUrl: "https://signed.example/pending-photo",
-      rejectionReason: null,
-      moderationNote: null,
-    };
+  it("shows the uploaded photo at once, with no moderation wording", () => {
+    mocks.photo = { photoStatus: "photo", photoUrl: "https://signed.example/photo" };
 
     render(<GuardianDashboardContent section="profile" />);
 
     expect(screen.getByRole("button", { name: /replace profile photo/i })).toBeTruthy();
-    expect(screen.getByText("Photo pending Admin review")).toBeTruthy();
-    expect(screen.getByText(/is not shown in the Guardian identity header until it is approved/i)).toBeTruthy();
-    expect(screen.getByAltText("Guardian photo pending review")).toBeTruthy();
-  });
-
-  it("explains rejection safely and allows a new photo without exposing reviewer identity", () => {
-    mocks.photo = {
-      photoStatus: "rejected",
-      photoUrl: "https://signed.example/rejected-photo",
-      rejectionReason: "low_quality_or_unrelated_image",
-      moderationNote: "Please use a clear, recent portrait.",
-    };
-
-    render(<GuardianDashboardContent section="profile" />);
-
-    expect(screen.getByText("Photo needs replacement")).toBeTruthy();
-    expect(screen.getByText(/clear, recent portrait/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /upload a new profile photo/i })).toBeTruthy();
-    expect(screen.queryByText(/reviewed by/i)).toBeNull();
+    expect(screen.getByAltText("Guardian profile photo")).toBeTruthy();
+    expect(screen.getByText("Profile photo added")).toBeTruthy();
+    expect(screen.queryByText(/pending/i)).toBeNull();
+    expect(screen.queryByText(/review/i)).toBeNull();
   });
 
   it("uploads one selected image through the authenticated private endpoint then refreshes photo state", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ photoStatus: "pending_review" }),
+      json: async () => ({ photoStatus: "photo" }),
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<GuardianDashboardContent section="profile" />);
@@ -110,6 +89,6 @@ describe("Guardian photo profile experience", () => {
       expect.objectContaining({ method: "POST", credentials: "same-origin" }),
     ));
     await waitFor(() => expect(mocks.invalidatePhoto).toHaveBeenCalled());
-    expect(screen.getByText(/submitted for Admin review/i)).toBeTruthy();
+    expect(screen.getByText(/shown in your Guardian identity header/i)).toBeTruthy();
   });
 });
