@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
 import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
-import { GuardianWorkspaceSkeleton, GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
-import { Bell, Clock3, FileText, HelpCircle, ImagePlus, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
+import { GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
+import { Bell, Clock3, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
 import { GuardianHireSheet } from "@/components/GuardianHireSheet";
-import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const guardianDashboardNavigation: DashboardNavigationItem[] = [
@@ -124,111 +124,12 @@ function GuardianSidebarIdentity() {
   </div>;
 }
 
-function GuardianProfilePanel() {
-  const profileQuery = trpc.guardianProfile.me.useQuery();
-  const locationsQuery = trpc.locations.list.useQuery();
-  const utils = trpc.useUtils();
-  const profile = profileQuery.data;
-  const [form, setForm] = useState({ name: "", gender: "female" as "male" | "female", cityLocationId: "", locationId: "" });
-
-  useEffect(() => {
-    if (!profile) return;
-    setForm({ name: profile.name ?? "", gender: profile.gender ?? "female", cityLocationId: profile.cityLocationId ?? "", locationId: profile.locationId ?? "" });
-  }, [profile]);
-
-  const locations = locationsQuery.data ?? [];
-  const cities = useMemo(() => locations.filter(location => location.type === "city"), [locations]);
-  const areas = useMemo(() => locations.filter(location => location.parentId === form.cityLocationId), [locations, form.cityLocationId]);
-  const updateMutation = trpc.guardianProfile.update.useMutation({
-    onSuccess: async () => { await utils.guardianProfile.me.invalidate(); toast.success("Your Guardian profile has been updated."); },
-    onError: error => toast.error(error.message),
-  });
-
-  if (profileQuery.isLoading) return <GuardianWorkspaceSkeleton label="Loading your private Guardian profile" />;
-  if (profileQuery.error) return <GuardianWorkspaceState kind="error" title="Profile is temporarily unavailable" message="We could not load your private profile details. Please try again." onRetry={() => { void profileQuery.refetch(); }} />;
-  return <div className="space-y-6"><Card className="rounded-xl border-j-border shadow-sm"><CardContent className="p-7"><form className="grid gap-5 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); updateMutation.mutate(form); }}><label className="grid gap-2 text-sm font-bold text-j-ink-strong sm:col-span-2">Full name<input required minLength={2} maxLength={120} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} className="rounded-xl border border-j-field-border px-3 py-2.5 font-medium outline-none ring-[#1677c8] focus:ring-2" /></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">Guardian ID<input value={profile?.guardianId || ""} readOnly aria-readonly className="rounded-xl border border-j-border bg-j-surface-sunken px-3 py-2.5 font-semibold text-j-ink-soft" /></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">Gender<select value={form.gender} onChange={event => setForm(current => ({ ...current, gender: event.target.value as "male" | "female" }))} className="rounded-xl border border-j-field-border bg-white px-3 py-2.5 font-medium outline-none ring-[#1677c8] focus:ring-2"><option value="female">Female</option><option value="male">Male</option></select></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">City<select required value={form.cityLocationId} onChange={event => setForm(current => ({ ...current, cityLocationId: event.target.value, locationId: "" }))} className="rounded-xl border border-j-field-border bg-white px-3 py-2.5 font-medium outline-none ring-[#1677c8] focus:ring-2"><option value="">Select city</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">Location<select required value={form.locationId} onChange={event => setForm(current => ({ ...current, locationId: event.target.value }))} disabled={!form.cityLocationId} className="rounded-xl border border-j-field-border bg-white px-3 py-2.5 font-medium outline-none ring-[#1677c8] focus:ring-2 disabled:bg-j-surface-muted"><option value="">Select location</option>{areas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></label><div className="sm:col-span-2 flex flex-wrap items-center gap-3 border-t border-j-border pt-5"><Button type="submit" disabled={updateMutation.isPending} aria-busy={updateMutation.isPending} data-motion={updateMutation.isPending ? "pending" : undefined} className="bg-[#1677c8] hover:bg-[#0e4f85]">{updateMutation.isPending ? "Saving…" : "Save profile"}</Button></div></form></CardContent></Card></div>;
-}
-
-function GuardianPhotoPanel() {
-  const profileQuery = trpc.guardianProfile.me.useQuery();
-  const photoQuery = trpc.guardianProfile.photo.useQuery();
-  const utils = trpc.useUtils();
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  // Upload time of the last successful upload, or null - drives the "Upload
-  // Successful" badge, which clears itself a couple of seconds later.
-  const [photoSuccessAt, setPhotoSuccessAt] = useState<number | null>(null);
-  const photo = photoQuery.data;
-  const photoUrl = photo?.photoUrl ?? null;
-
-  useEffect(() => {
-    if (!photoSuccessAt) return;
-    const timer = window.setTimeout(() => setPhotoSuccessAt(null), 2800);
-    return () => window.clearTimeout(timer);
-  }, [photoSuccessAt]);
-
-  const uploadPhoto = async (file: File) => {
-    const acceptedTypes = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"];
-    if (!acceptedTypes.includes(file.type.toLowerCase())) {
-      setFeedback({ type: "error", message: "Choose a JPEG, PNG, or WebP image. HEIC images are not supported." });
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      setFeedback({ type: "error", message: "Profile photos must be 20 MB or smaller." });
-      return;
-    }
-    setFeedback(null);
-    setIsUploading(true);
-    try {
-      const data = new FormData();
-      data.append("photo", file);
-      const response = await fetch("/api/guardian/profile-photo", { method: "POST", body: data, credentials: "same-origin" });
-      const result = await response.json().catch(() => ({})) as { error?: string; photoStatus?: string };
-      if (!response.ok || result.photoStatus !== "photo") throw new Error(result.error || "Unable to upload the profile photo.");
-      await utils.guardianProfile.photo.invalidate();
-      setFeedback({ type: "success", message: "Your profile photo is now shown in your Guardian identity header." });
-      setPhotoSuccessAt(Date.now());
-    } catch (error) {
-      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the profile photo." });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const removePhoto = async () => {
-    if (!photo || !window.confirm("Remove this profile photo? Your Guardian identity header will use your initials until you upload another.")) return;
-    setFeedback(null);
-    setIsUploading(true);
-    try {
-      const response = await fetch("/api/guardian/profile-photo", { method: "DELETE", credentials: "same-origin" });
-      const result = await response.json().catch(() => ({})) as { error?: string; photoStatus?: string };
-      if (!response.ok || result.photoStatus !== "no_photo") throw new Error(result.error || "Unable to remove the profile photo.");
-      await utils.guardianProfile.photo.invalidate();
-      setFeedback({ type: "success", message: "Your profile photo was removed. Your Guardian identity header now uses initials." });
-    } catch (error) {
-      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to remove the profile photo." });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const status = photoUrl
-    ? { title: "Profile photo added", detail: "This photo is shown in your Guardian identity header. It is not shown on the public Job Board.", tone: "border-emerald-200 bg-emerald-50 text-emerald-950" }
-    : { title: "No profile photo yet", detail: "Upload a clear, recent portrait. Your initials are shown until you add one.", tone: "border-sky-200 bg-sky-50 text-sky-950" };
-  const photoAlt = "Guardian profile photo";
-  const uploadLabel = photoUrl ? "Replace profile photo" : "Upload profile photo";
-
-  return <Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><ImagePlus className="size-5 text-[#1677c8]" /> <SiteText slotId="guardian-profile.photo.title" /></CardTitle></CardHeader><CardContent className="p-7 pt-0"><div className="grid gap-6 sm:grid-cols-[8rem_1fr]"><div className="relative size-32"><div className="grid size-full place-items-center overflow-hidden rounded-xl border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">{photoUrl ? <img src={photoUrl} alt={photoAlt} className="size-full object-cover" /> : initials(profileQuery.data?.name || "Guardian")}</div>{photoSuccessAt ? <PhotoUploadSuccess key={photoSuccessAt} className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap" /> : null}</div><div className="min-w-0"><div className={`rounded-xl border p-4 text-sm leading-6 ${status.tone}`}><p className="font-extrabold">{status.title}</p><p className="mt-1">{status.detail}</p></div><input ref={photoInputRef} className="sr-only" id="guardian-profile-photo" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload Guardian profile photo" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} /><div className="mt-4 flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => photoInputRef.current?.click()} className="border-[#9dcde7] text-[#1677c8]"><ImagePlus className="size-4" /> {isUploading ? "Uploading…" : uploadLabel}</Button>{photoUrl ? <Button type="button" variant="ghost" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => void removePhoto()} className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 className="size-4" /> Remove photo</Button> : null}</div><p className="mt-3 leading-5 text-j-ink-muted"><SiteText slotId="guardian-profile.photo.help" className="text-xs" /></p>{feedback ? <p role="status" className={`mt-3 text-sm font-semibold ${feedback.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{feedback.message}</p> : null}</div></div></CardContent></Card>;
-}
-
 function GuardianProfileWorkspace() {
   // Provider scoped to this section: the rest of the dashboard has no slots yet.
   return <SiteContentProvider page="guardian-profile">
     <div className="space-y-6">
       <SiteBlocks anchorId="guardian-profile.top" />
-      <GuardianProfilePanel />
-      <GuardianPhotoPanel />
+      <GuardianProfileWorkspaceBody />
     </div>
   </SiteContentProvider>;
 }

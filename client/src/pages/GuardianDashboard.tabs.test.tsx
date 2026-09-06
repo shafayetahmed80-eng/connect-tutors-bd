@@ -13,6 +13,14 @@ const mocks = vi.hoisted(() => ({
     gender: "female",
     cityLocationId: "dhaka",
     locationId: "mirpur",
+    additionalPhone: null,
+    religion: null, nationality: null, socialLinks: null, addressDetails: null, profession: null,
+    emergencyContactName: null, emergencyContactPhone: null, emergencyContactRelation: null,
+    emergencyContactAddress: null, emergencyContactProfession: null, heardAboutUs: null,
+    verificationStatus: "unverified",
+    verificationRejectionReason: null,
+    nidFrontUploaded: false,
+    nidBackUploaded: false,
     accountCreatedAt: new Date("2026-08-01T00:00:00.000Z"),
   },
 }));
@@ -28,13 +36,14 @@ vi.mock("@/lib/trpc", () => ({
       siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     guardianProfile: {
       me: { useQuery: () => ({ data: mocks.profile, isLoading: false }) },
-      photo: { useQuery: () => ({ data: { photoStatus: "no_photo", photoUrl: null, rejectionReason: null, moderationNote: null }, isLoading: false }) },
+      photo: { useQuery: () => ({ data: { photoUrl: null }, isLoading: false }) },
+      identityDocuments: { useQuery: () => ({ data: { front: null, back: null }, isLoading: false }) },
       update: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
     locations: { list: { useQuery: () => ({ data: [{ id: "dhaka", type: "city", label: "Dhaka" }, { id: "mirpur", type: "area", parentId: "dhaka", label: "Mirpur" }] }) } },
     tutorRequests: { mine: { useQuery: () => ({ data: mocks.requests, isLoading: false }) } },
-    useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() }, identityDocuments: { invalidate: vi.fn() } } }),
   },
 }));
 
@@ -85,12 +94,19 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByText(/does not create an attendance schedule, percentage, payment record, or session log/i)).toBeTruthy();
   });
 
-  it("renders controlled Profile fields without presenting email or phone as editable", () => {
+  it("renders the profile workspace with registration identity read-only and no page-level save", () => {
     render(<GuardianDashboardContent section="profile" />);
 
-    expect(screen.getByDisplayValue("GDN-9H4K-2M8Q")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save profile" })).toBeTruthy();
-    expect(screen.queryByText(/mobile or email change, contact support/i)).toBeNull();
+    // Guardian ID, name, email and phone are shown as text, never as inputs.
+    expect(screen.getByText("Guardian ID: GDN-9H4K-2M8Q")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Rina Akter" })).toBeTruthy();
+    expect(screen.getByText("rina@example.test")).toBeTruthy();
+    expect(screen.queryByDisplayValue("rina@example.test")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    expect(screen.getByText(/Contact support on WhatsApp to change them/i)).toBeTruthy();
+    // Editing happens per section behind a pencil, not on the page.
+    expect(screen.getAllByRole("button", { name: "Edit" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("tab", { name: "Personal Information" })).toBeTruthy();
   });
 
   it("renders current-password settings and keeps the support contact reachable", () => {
