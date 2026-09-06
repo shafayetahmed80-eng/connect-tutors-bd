@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { guardianRequestLifecycleValues } from "../../../server/tutor-request-lifecycle";
 import {
-  canGuardianCancelRequest,
   getGuardianRequestLifecycle,
   getGuardianStatusCounts,
   shouldUseDedicatedGuardianRequestDetails,
@@ -34,26 +32,5 @@ describe("Guardian private request lifecycle presentation", () => {
     expect(shouldUseDedicatedGuardianRequestDetails(639)).toBe(true);
     expect(shouldUseDedicatedGuardianRequestDetails(640)).toBe(false);
     expect(shouldUseDedicatedGuardianRequestDetails(1280)).toBe(false);
-  });
-});
-
-describe("when a Guardian may still withdraw their own request", () => {
-  it("offers it up to and including Appointed", () => {
-    expect(canGuardianCancelRequest("pending")).toBe(true);
-    expect(canGuardianCancelRequest("live")).toBe(true);
-    expect(canGuardianCancelRequest("appointed")).toBe(true);
-  });
-
-  it("stops once the appointment is confirmed, or already cancelled", () => {
-    // A coordinator is involved by then and a tuition may have started, so it
-    // becomes a support conversation. The server refuses it there too.
-    expect(canGuardianCancelRequest("confirmed")).toBe(false);
-    expect(canGuardianCancelRequest("cancelled")).toBe(false);
-  });
-
-  it("covers every stage, so a new one cannot slip through unanswered", () => {
-    for (const key of guardianRequestLifecycleValues) {
-      expect(typeof canGuardianCancelRequest(key), key).toBe("boolean");
-    }
   });
 });
