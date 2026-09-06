@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { registerGuardianProfilePhotoRoute } from "../guardian-profile-photo-route";
+import { registerGuardianNidDocumentRoute } from "../guardian-nid-document-route";
 import { registerTutorProfilePhotoRoute } from "../tutor-profile-photo-route";
 import { registerTutorUniversityIdDocumentRoute } from "../tutor-university-id-document-route";
 import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-document-route";
@@ -41,6 +42,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerGuardianProfilePhotoRoute(app);
+  registerGuardianNidDocumentRoute(app);
   registerTutorProfilePhotoRoute(app);
   registerTutorUniversityIdDocumentRoute(app);
   registerTutorSupportingDocumentRoute(app);

@@ -32,6 +32,9 @@ export type TutorProfileStatus = (typeof tutorProfileStatusValues)[number];
 export const guardianContactAccessContextValues = ["guardian_request"] as const;
 export type GuardianContactAccessContext = (typeof guardianContactAccessContextValues)[number];
 
+export const guardianVerificationStatusValues = ["unverified", "verified", "rejected"] as const;
+export type GuardianVerificationStatus = (typeof guardianVerificationStatusValues)[number];
+
 export const tutorRequestPublicationStateValues = [
   "submitted",
   "reviewing",
@@ -360,6 +363,31 @@ export const guardianProfiles = mysqlTable(
     cityLocationId: varchar("cityLocationId", { length: 80 }).notNull().references(() => locations.id),
     locationId: varchar("locationId", { length: 80 }).notNull().references(() => locations.id),
     termsVersion: varchar("termsVersion", { length: 64 }).notNull(),
+    // Added with the Guardian profile/verification build (migration 0067).
+    // Every one is nullable and optional; the profile is always editable and
+    // none of this gates posting a request.
+    additionalPhone: varchar("additionalPhone", { length: 16 }),
+    religion: varchar("religion", { length: 40 }),
+    nationality: varchar("nationality", { length: 60 }),
+    socialLinks: varchar("socialLinks", { length: 500 }),
+    addressDetails: varchar("addressDetails", { length: 255 }),
+    profession: varchar("profession", { length: 120 }),
+    /** Private NID-card image keys - server-only, never in a client/Admin DTO as a raw key. */
+    nidFrontKey: varchar("nidFrontKey", { length: 512 }),
+    nidBackKey: varchar("nidBackKey", { length: 512 }),
+    emergencyContactName: varchar("emergencyContactName", { length: 120 }),
+    emergencyContactPhone: varchar("emergencyContactPhone", { length: 16 }),
+    emergencyContactRelation: varchar("emergencyContactRelation", { length: 60 }),
+    emergencyContactAddress: varchar("emergencyContactAddress", { length: 255 }),
+    emergencyContactProfession: varchar("emergencyContactProfession", { length: 120 }),
+    heardAboutUs: varchar("heardAboutUs", { length: 60 }),
+    /** Light anti-fraud marker an Admin flips; no submit-for-review workflow. */
+    verificationStatus: mysqlEnum("verificationStatus", guardianVerificationStatusValues)
+      .default("unverified")
+      .notNull(),
+    verificationRejectionReason: varchar("verificationRejectionReason", { length: 280 }),
+    verifiedByAdminId: int("verifiedByAdminId").references(() => users.id),
+    verifiedAt: timestamp("verifiedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
