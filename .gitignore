@@ -105,6 +105,9 @@ temp/
 *.sqlite
 *.sqlite3
 
+# Local dev storage fallback (used when Forge storage keys are absent)
+.local-storage/
+
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
