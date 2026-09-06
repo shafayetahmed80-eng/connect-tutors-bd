@@ -90,5 +90,6 @@ describe("Guardian photo profile experience", () => {
     ));
     await waitFor(() => expect(mocks.invalidatePhoto).toHaveBeenCalled());
     expect(screen.getByText(/shown in your Guardian identity header/i)).toBeTruthy();
+    expect(await screen.findByText("Upload Successful")).toBeTruthy();
   });
 });

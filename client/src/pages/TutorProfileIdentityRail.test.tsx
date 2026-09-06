@@ -14,6 +14,7 @@ function renderRail(overrides: Partial<React.ComponentProps<typeof TutorProfileI
     photoUrl: null,
     photoPreviewFailed: false,
     photoError: undefined,
+    photoSuccessAt: null,
     uploadingPhoto: false,
     photoInputRef: { current: null },
     onSelectPhoto: vi.fn(),
@@ -78,6 +79,15 @@ describe("TutorProfileIdentityRail", () => {
     expect(screen.getByRole("button", { name: "Replace photo" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Remove photo" }));
     expect(onRemovePhoto).toHaveBeenCalledOnce();
+  });
+
+  it("shows the Upload Successful badge only once a photo upload has just succeeded", () => {
+    const { unmount } = renderRail();
+    expect(screen.queryByText("Upload Successful")).toBeNull();
+    unmount();
+
+    renderRail({ photoSuccessAt: 1_700_000_000_000 });
+    expect(screen.getByText("Upload Successful")).toBeTruthy();
   });
 
   it("flags a missing photo on the upload input so the error scroll can find it", () => {

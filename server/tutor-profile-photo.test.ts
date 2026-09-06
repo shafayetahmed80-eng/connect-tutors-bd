@@ -35,12 +35,20 @@ function webpFixture(width = 300, height = 300) {
 const allowedTutor = { id: 101, role: "tutor" as const, accountStatus: "active" as const };
 
 describe("TP-06 Tutor Profile photo uploads", () => {
-  it("detects a permitted PNG from its binary signature and enforces the minimum dimensions", () => {
+  it("detects a permitted PNG from its binary signature and reports its dimensions", () => {
     expect(validateTutorProfilePhoto({
       buffer: pngFixture(300, 420),
       mimetype: "image/png",
       originalname: "portrait.png",
     })).toEqual({ contentType: "image/png", extension: "png", width: 300, height: 420 });
+  });
+
+  it("accepts a small image now that pixel dimensions no longer gate the upload", () => {
+    expect(validateTutorProfilePhoto({
+      buffer: pngFixture(48, 48),
+      mimetype: "image/png",
+      originalname: "tiny.png",
+    })).toMatchObject({ contentType: "image/png", width: 48, height: 48 });
   });
 
   it.each([
@@ -67,9 +75,7 @@ describe("TP-06 Tutor Profile photo uploads", () => {
   it.each([
     ["a mismatched declared MIME type", { buffer: pngFixture(300, 300), mimetype: "image/jpeg", originalname: "portrait.jpg" }],
     ["an invalid binary signature", { buffer: Buffer.from("not an image"), mimetype: "image/png", originalname: "portrait.png" }],
-    ["an undersized image", { buffer: pngFixture(299, 300), mimetype: "image/png", originalname: "portrait.png" }],
-    ["an image with unsafe dimensions", { buffer: pngFixture(10_001, 300), mimetype: "image/png", originalname: "portrait.png" }],
-    ["a file larger than 5 MB", { buffer: Buffer.concat([pngFixture(300, 300), Buffer.alloc(MAX_TUTOR_PROFILE_PHOTO_BYTES)]), mimetype: "image/png", originalname: "portrait.png" }],
+    ["a file larger than 20 MB", { buffer: Buffer.concat([pngFixture(300, 300), Buffer.alloc(MAX_TUTOR_PROFILE_PHOTO_BYTES)]), mimetype: "image/png", originalname: "portrait.png" }],
   ])("rejects %s before storage access", (_reason, file) => {
     expect(() => validateTutorProfilePhoto(file)).toThrow(TutorProfilePhotoError);
   });

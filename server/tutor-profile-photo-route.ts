@@ -30,7 +30,7 @@ type TutorProfilePhotoRouteDependencies = {
 function sendUploadError(response: Response, error: unknown) {
   if (error instanceof MulterError) {
     const message = error.code === "LIMIT_FILE_SIZE"
-      ? "Profile photos must be 5 MB or smaller."
+      ? "Profile photos must be 20 MB or smaller."
       : "Upload exactly one photo using the photo field.";
     return response.status(400).json({ error: message });
   }

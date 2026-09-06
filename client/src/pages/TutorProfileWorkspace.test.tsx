@@ -438,6 +438,7 @@ describe("TutorProfileWorkspace photo flow", () => {
     await user.click(screen.getByRole("button", { name: "Confirm cropped photo" }));
 
     expect(await screen.findByText("Photo uploaded.")).toBeTruthy();
+    expect(await screen.findByText("Upload Successful")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/tutor/profile-photo", expect.objectContaining({ method: "POST", credentials: "same-origin" }));
     expect(screen.getByAltText("Current Tutor profile photo").getAttribute("src")).toBe("https://example.test/private-replacement.jpg");
     expect(screen.getAllByRole("button", { name: /replace photo/i }).length).toBeGreaterThan(0);

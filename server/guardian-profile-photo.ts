@@ -1,17 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import {
   clearGuardianProfilePhoto,
-  getSiteLimits,
   getGuardianProfilePhotoByUserId,
   saveGuardianProfilePhoto,
 } from "./db";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
-export const MAX_GUARDIAN_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024;
-import type { PhotoDimensionBounds } from "./tutor-profile-photo";
-
-export const MIN_GUARDIAN_PROFILE_PHOTO_DIMENSION = 300;
-export const MAX_GUARDIAN_PROFILE_PHOTO_DIMENSION = 10_000;
+export const MAX_GUARDIAN_PROFILE_PHOTO_BYTES = 20 * 1024 * 1024;
 
 type UploadUser = {
   id: number;
@@ -111,15 +106,17 @@ function readWebpDimensions(buffer: Buffer) {
   return undefined;
 }
 
-export function validateGuardianProfilePhoto(
-  file: GuardianProfilePhotoFile,
-  bounds: PhotoDimensionBounds = { min: MIN_GUARDIAN_PROFILE_PHOTO_DIMENSION, max: MAX_GUARDIAN_PROFILE_PHOTO_DIMENSION },
-): ValidatedGuardianProfilePhoto {
+/**
+ * The photo has to be a real JPEG/PNG/WebP whose declared type matches its
+ * bytes, and no larger than the size cap. Pixel dimensions are read for the
+ * caller's return value but no longer gate the upload.
+ */
+export function validateGuardianProfilePhoto(file: GuardianProfilePhotoFile): ValidatedGuardianProfilePhoto {
   if (!file?.buffer || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
     invalidPhoto("Upload one non-empty profile photo.");
   }
   if (file.buffer.length > MAX_GUARDIAN_PROFILE_PHOTO_BYTES) {
-    invalidPhoto("Profile photos must be 5 MB or smaller.");
+    invalidPhoto("Profile photos must be 20 MB or smaller.");
   }
 
   const png =
@@ -162,12 +159,6 @@ export function validateGuardianProfilePhoto(
   if (normalizeDeclaredImageMimeType(file.mimetype) !== detected.contentType) {
     invalidPhoto("The uploaded image type does not match its binary signature.");
   }
-  if (detected.dimensions.width < bounds.min || detected.dimensions.height < bounds.min) {
-    invalidPhoto(`Profile photos must be at least ${bounds.min} × ${bounds.min} pixels.`);
-  }
-  if (detected.dimensions.width > bounds.max || detected.dimensions.height > bounds.max) {
-    invalidPhoto(`Profile photos must not exceed ${bounds.max.toLocaleString("en-US")} × ${bounds.max.toLocaleString("en-US")} pixels.`);
-  }
 
   return { contentType: detected.contentType, extension: detected.extension, ...detected.dimensions };
 }
@@ -193,12 +184,6 @@ type PhotoRemovalDependencies = {
   clearGuardianProfilePhoto: typeof clearGuardianProfilePhoto;
 };
 
-/** The Owner's pixel bounds, read once per upload. */
-async function resolvePhotoBounds(): Promise<PhotoDimensionBounds> {
-  const limits = await getSiteLimits();
-  return { min: limits["photo.minDimension"], max: limits["photo.maxDimension"] };
-}
-
 export async function uploadGuardianProfilePhoto({
   user,
   file,
@@ -209,7 +194,7 @@ export async function uploadGuardianProfilePhoto({
   file: GuardianProfilePhotoFile;
 } & Partial<PhotoUploadDependencies>) {
   assertAuthorizedGuardian(user);
-  const photo = validateGuardianProfilePhoto(file, await resolvePhotoBounds());
+  const photo = validateGuardianProfilePhoto(file);
   const stored = await put(
     `guardians/${user.id}/profile-photo.${photo.extension}`,
     file.buffer,
