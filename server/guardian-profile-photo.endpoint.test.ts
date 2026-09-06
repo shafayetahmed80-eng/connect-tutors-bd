@@ -35,7 +35,7 @@ describe("Guardian profile photo multipart endpoint", () => {
     endpointMocks.authenticateRequest.mockResolvedValue(currentUser.value);
     endpointMocks.getGuardianAccountStatusByUserId.mockResolvedValue("active");
     endpointMocks.uploadGuardianProfilePhoto.mockResolvedValue({
-      photoStatus: "pending_review",
+      photoStatus: "photo",
       width: 300,
       height: 300,
     });
@@ -48,7 +48,7 @@ describe("Guardian profile photo multipart endpoint", () => {
       .attach("photo", pngFixture(), { filename: "portrait.png", contentType: "image/png" })
       .expect(201);
 
-    expect(response.body).toEqual({ photoStatus: "pending_review", width: 300, height: 300 });
+    expect(response.body).toEqual({ photoStatus: "photo", width: 300, height: 300 });
     expect(response.body).not.toHaveProperty("storageKey");
     expect(response.body).not.toHaveProperty("photoUrl");
     expect(endpointMocks.uploadGuardianProfilePhoto).toHaveBeenCalledWith(

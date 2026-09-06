@@ -93,32 +93,6 @@ export type ConfirmationLetterStatus = (typeof confirmationLetterStatusValues)[n
 export const tutorJobPublicationStatusValues = ["published", "unpublished", "closed"] as const;
 export type TutorJobPublicationStatus = (typeof tutorJobPublicationStatusValues)[number];
 
-export const guardianProfilePhotoStatusValues = [
-  "pending_review",
-  "approved",
-  "rejected",
-] as const;
-export type GuardianProfilePhotoStatus = (typeof guardianProfilePhotoStatusValues)[number];
-
-export const guardianProfilePhotoRejectionReasonValues = [
-  "not_clear_guardian_portrait",
-  "contains_child_or_sensitive_personal_data",
-  "contains_contact_or_promotional_content",
-  "inappropriate_or_unsafe_content",
-  "low_quality_or_unrelated_image",
-] as const;
-export type GuardianProfilePhotoRejectionReason =
-  (typeof guardianProfilePhotoRejectionReasonValues)[number];
-
-export const guardianProfilePhotoEventActionValues = [
-  "submitted",
-  "replaced",
-  "removed",
-  "approved",
-  "rejected",
-] as const;
-export type GuardianProfilePhotoEventAction =
-  (typeof guardianProfilePhotoEventActionValues)[number];
 
 export const users = mysqlTable(
   "users",
@@ -416,6 +390,7 @@ export const guardianProfileUpdateEvents = mysqlTable(
 /**
  * Current Guardian-owned profile photo reference. The object key is private
  * infrastructure metadata and must never leave authorized server contracts.
+ * A photo goes live as soon as it is uploaded - there is no moderation step.
  */
 export const guardianProfilePhotos = mysqlTable(
   "guardian_profile_photos",
@@ -425,57 +400,11 @@ export const guardianProfilePhotos = mysqlTable(
       .notNull()
       .references(() => users.id),
     storageKey: varchar("storageKey", { length: 512 }).notNull(),
-    status: mysqlEnum("status", guardianProfilePhotoStatusValues)
-      .default("pending_review")
-      .notNull(),
-    rejectionReason: mysqlEnum(
-      "rejectionReason",
-      guardianProfilePhotoRejectionReasonValues,
-    ),
-    moderationNote: varchar("moderationNote", { length: 280 }),
-    moderatedByAdminId: int("moderatedByAdminId").references(() => users.id),
-    moderatedAt: timestamp("moderatedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
     uniqueIndex("guardian_profile_photos_guardian_unique").on(table.guardianUserId),
-    index("guardian_profile_photos_status_updated_idx").on(table.status, table.updatedAt),
-  ],
-);
-
-/**
- * Append-only, minimal Guardian-photo operations history. It deliberately
- * excludes storage keys, image bytes, contact data, and free-text notes.
- */
-export const guardianProfilePhotoEvents = mysqlTable(
-  "guardian_profile_photo_events",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    guardianUserId: int("guardianUserId")
-      .notNull()
-      .references(() => users.id),
-    actorUserId: int("actorUserId")
-      .notNull()
-      .references(() => users.id),
-    action: mysqlEnum("action", guardianProfilePhotoEventActionValues).notNull(),
-    previousStatus: mysqlEnum("previousStatus", guardianProfilePhotoStatusValues),
-    nextStatus: mysqlEnum("nextStatus", guardianProfilePhotoStatusValues),
-    rejectionReason: mysqlEnum(
-      "rejectionReason",
-      guardianProfilePhotoRejectionReasonValues,
-    ),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [
-    index("guardian_photo_events_guardian_created_idx").on(
-      table.guardianUserId,
-      table.createdAt,
-    ),
-    index("guardian_photo_events_actor_created_idx").on(
-      table.actorUserId,
-      table.createdAt,
-    ),
   ],
 );
 

@@ -105,29 +105,6 @@ export type AdminTutorInterest = {
   jobTitle: string;
 };
 
-export type AdminGuardianPhotoReview = {
-  photoId: number;
-  guardianId: string;
-  status: "pending_review";
-  submittedAt: Date;
-  photoUrl: string;
-};
-
-type GuardianPhotoRejectionReason =
-  | "not_clear_guardian_portrait"
-  | "contains_child_or_sensitive_personal_data"
-  | "contains_contact_or_promotional_content"
-  | "inappropriate_or_unsafe_content"
-  | "low_quality_or_unrelated_image";
-
-const guardianPhotoRejectionOptions: Array<{ value: GuardianPhotoRejectionReason; label: string }> = [
-  { value: "not_clear_guardian_portrait", label: "Not a clear Guardian portrait" },
-  { value: "contains_child_or_sensitive_personal_data", label: "Contains a child or sensitive personal data" },
-  { value: "contains_contact_or_promotional_content", label: "Contains contact details or promotional content" },
-  { value: "inappropriate_or_unsafe_content", label: "Inappropriate or unsafe content" },
-  { value: "low_quality_or_unrelated_image", label: "Low-quality or unrelated image" },
-];
-
 type PublicationAction = "verify" | "guardian_confirmed" | "guardian_reconfirmed" | "approve" | "publish" | "extend_expiry" | "unpublish";
 
 const initialFilters: AdminMatchingFilters = {
@@ -404,30 +381,6 @@ export function TutorInterestQueue({ interests, isLoading, isError, isSaving, on
   </section>;
 }
 
-export function GuardianPhotoModerationQueue({ photos, isLoading, isError, isSaving, onReview }: {
-  photos: AdminGuardianPhotoReview[];
-  isLoading: boolean;
-  isError: boolean;
-  isSaving: boolean;
-  onReview: (photoId: number, nextStatus: "approved" | "rejected", rejectionReason?: GuardianPhotoRejectionReason, moderationNote?: string) => void;
-}) {
-  const [rejections, setRejections] = useState<Record<number, { reason: GuardianPhotoRejectionReason; note: string }>>({});
-  const getRejection = (photoId: number) => rejections[photoId] ?? { reason: "not_clear_guardian_portrait" as const, note: "" };
-  const setRejection = (photoId: number, next: Partial<{ reason: GuardianPhotoRejectionReason; note: string }>) => {
-    setRejections(current => ({ ...current, [photoId]: { ...getRejection(photoId), ...next } }));
-  };
-  return <section role="region" aria-label="Guardian photo moderation queue" className="rounded-xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-700"><ShieldCheck className="h-4 w-4" /> Guardian photo moderation</div><h2 className="mt-1 text-lg font-bold text-j-ink">Guardian photos awaiting review</h2></div><span className="rounded-full bg-violet-50 px-3 py-1 text-sm font-bold text-violet-800">{isLoading ? "—" : photos.length} awaiting</span></div>
-    {isLoading ? <p className="mt-4 flex items-center gap-2 rounded-xl bg-j-surface-sunken p-4 text-sm text-j-ink-soft"><Loader2 className="h-4 w-4 animate-spin" /> Loading Guardian photo review queue…</p> : null}
-    {isError ? <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Guardian photos could not be loaded. Refresh before making a moderation decision.</p> : null}
-    {!isLoading && !isError && photos.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-j-field-border bg-j-surface-sunken p-4 text-sm text-j-ink-soft">No Guardian profile photos are awaiting review.</p> : null}
-    {!isLoading && !isError && photos.length ? <div className="mt-4 grid gap-4 lg:grid-cols-2">{photos.map(photo => {
-      const rejection = getRejection(photo.photoId);
-      return <article key={photo.photoId} className="overflow-hidden rounded-xl border border-j-border bg-j-surface-sunken/60"><img src={photo.photoUrl} alt={`Guardian ${photo.guardianId} profile photo awaiting review`} className="h-52 w-full bg-j-surface-muted object-contain" referrerPolicy="no-referrer" /><div className="p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-bold text-j-ink">{photo.guardianId}</p><span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">Pending review</span></div><p className="mt-1 text-xs text-j-ink-muted">Submitted {new Date(photo.submittedAt).toLocaleString()}</p><div className="mt-4 grid gap-3"><label className="text-xs font-semibold text-j-ink-soft">Rejection reason for {photo.guardianId}<select value={rejection.reason} onChange={event => setRejection(photo.photoId, { reason: event.target.value as GuardianPhotoRejectionReason })} className="mt-1.5 h-10 w-full rounded-xl border border-j-border bg-white px-3 text-sm text-j-ink-strong"><option value="not_clear_guardian_portrait">Select if rejecting</option>{guardianPhotoRejectionOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="text-xs font-semibold text-j-ink-soft">Optional note for {photo.guardianId}<textarea value={rejection.note} onChange={event => setRejection(photo.photoId, { note: event.target.value })} maxLength={280} placeholder="A short, practical instruction for the Guardian" className="mt-1.5 min-h-20 w-full rounded-xl border border-j-border bg-white p-3 text-sm text-j-ink-strong" /></label><div className="grid gap-2 sm:grid-cols-2"><button type="button" disabled={isSaving} onClick={() => onReview(photo.photoId, "approved")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><BadgeCheck className="h-4 w-4" /> Approve photo</button><button type="button" disabled={isSaving} onClick={() => onReview(photo.photoId, "rejected", rejection.reason, rejection.note.trim() || undefined)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"><XCircle className="h-4 w-4" /> Reject photo</button></div></div></div></article>;
-    })}</div> : null}
-  </section>;
-}
-
 export type AdminMatchingSavedView = {
   id: number;
   name: string;
@@ -556,7 +509,6 @@ function MatchingWorkspaceContent() {
   const matchingQueue = trpc.admin.listMatchingRequests.useQuery(matchingInput);
   const tutors = trpc.admin.listMatchingTutors.useQuery();
   const tutorInterests = trpc.admin.listTutorJobInterests.useQuery({});
-  const guardianPhotos = trpc.admin.listPendingGuardianPhotos.useQuery();
   const savedViews = trpc.admin.listMatchingSavedViews.useQuery();
   const assignTutor = trpc.admin.assignTutorRequest.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
   const confirmAppointment = trpc.admin.confirmTutorRequestAppointment.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
@@ -567,7 +519,6 @@ function MatchingWorkspaceContent() {
     },
   });
   const reviewTutorInterest = trpc.admin.reviewTutorJobInterest.useMutation({ onSuccess: () => void utils.admin.listTutorJobInterests.invalidate() });
-  const reviewGuardianPhoto = trpc.admin.reviewGuardianPhoto.useMutation({ onSuccess: () => void utils.admin.listPendingGuardianPhotos.invalidate() });
   const createSavedView = trpc.admin.createMatchingSavedView.useMutation({
     onSuccess: result => {
       setSelectedSavedViewId(result.id);
@@ -643,8 +594,6 @@ function MatchingWorkspaceContent() {
     } });
   };
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-    
-    <GuardianPhotoModerationQueue photos={(guardianPhotos.data ?? []) as AdminGuardianPhotoReview[]} isLoading={guardianPhotos.isLoading} isError={guardianPhotos.isError} isSaving={reviewGuardianPhoto.isPending} onReview={(photoId, nextStatus, rejectionReason, moderationNote) => reviewGuardianPhoto.mutate({ photoId, nextStatus, ...(rejectionReason ? { rejectionReason } : {}), ...(moderationNote ? { moderationNote } : {}) })} />
     <TutorInterestQueue interests={(tutorInterests.data ?? []) as AdminTutorInterest[]} isLoading={tutorInterests.isLoading} isError={tutorInterests.isError} isSaving={reviewTutorInterest.isPending} onReview={(interestId, status) => reviewTutorInterest.mutate({ interestId, status })} />
     <AdminMatchingSavedViews views={(savedViews.data ?? []) as AdminMatchingSavedView[]} isLoading={savedViews.isLoading} isError={savedViews.isError} isSaving={createSavedView.isPending || deleteSavedView.isPending || setDefaultSavedView.isPending || clearDefaultSavedView.isPending || renameSavedView.isPending} errorMessage={createSavedView.error?.message ?? deleteSavedView.error?.message ?? setDefaultSavedView.error?.message ?? clearDefaultSavedView.error?.message ?? renameSavedView.error?.message} selectedViewId={selectedSavedViewId} onApply={applySavedView} onCreate={name => createSavedView.mutate({ name, filters: serializeAdminMatchingSavedViewFilters(filters) })} onDelete={savedViewId => deleteSavedView.mutate({ savedViewId })} onSetDefault={savedViewId => setDefaultSavedView.mutate({ savedViewId })} onClearDefault={() => clearDefaultSavedView.mutate()} onRename={(savedViewId, name) => renameSavedView.mutate({ savedViewId, name })} />
     <CollapsiblePanel title="Advanced filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={advancedFilterCount}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="relative sm:col-span-2"><span className="sr-only">Search requests</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" /><input value={filters.query} onChange={event => applyFilters({ query: event.target.value })} placeholder="Search subject, class, category or location" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none transition focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><select aria-label="Request status" value={filters.status} onChange={event => applyFilters({ status: event.target.value as AdminStatusFilter })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">All statuses</option><option value="new">New</option><option value="reviewing">Reviewing</option><option value="matched">Matched</option><option value="closed">Closed</option></select><select aria-label="Tuition type" value={filters.tuitionType} onChange={event => applyFilters({ tuitionType: event.target.value as AdminMatchingFilters["tuitionType"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">All tuition modes</option><option value="home">Home Tutoring</option><option value="online">Online Tutoring</option><option value="group">Group Tutoring</option><option value="package">Package Tutoring</option><option value="both">Home and Online Tutoring (legacy)</option></select><input value={filters.subject} onChange={event => applyFilters({ subject: event.target.value })} placeholder="Subject contains" className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><input value={filters.category} onChange={event => applyFilters({ category: event.target.value })} placeholder="Category" className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><select aria-label="Tutor gender preference" value={filters.preferredGender} onChange={event => applyFilters({ preferredGender: event.target.value as AdminMatchingFilters["preferredGender"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">Any Tutor gender</option><option value="male">Male Tutor</option><option value="female">Female Tutor</option><option value="any">Any</option></select><select aria-label="Contact consent" value={filters.contactConsent} onChange={event => applyFilters({ contactConsent: event.target.value as AdminMatchingFilters["contactConsent"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">Any contact state</option><option value="not_required">Not required</option><option value="pending">Consent pending</option><option value="approved">Consent approved</option><option value="declined">Consent declined</option></select><div className="flex min-w-0 gap-2"><MoneyAmountField ariaLabel="Minimum budget in Taka" value={filters.budgetMinimum === undefined ? "" : String(filters.budgetMinimum)} onChange={value => { const digits = value.replace(/D/g, ""); applyFilters({ budgetMinimum: digits ? Number(digits) : undefined }); }} placeholder="Min budget" inputClassName="h-11 min-w-0 flex-1 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><MoneyAmountField ariaLabel="Maximum budget in Taka" value={filters.budgetMaximum === undefined ? "" : String(filters.budgetMaximum)} onChange={value => { const digits = value.replace(/D/g, ""); applyFilters({ budgetMaximum: digits ? Number(digits) : undefined }); }} placeholder="Max budget" inputClassName="h-11 min-w-0 flex-1 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></div></div><div className="mt-4 flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg px-3 py-2 text-sm font-semibold text-j-accent hover:bg-sky-50">Clear filters</button></div></CollapsiblePanel>

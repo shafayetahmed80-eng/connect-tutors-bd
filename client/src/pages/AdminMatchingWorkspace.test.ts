@@ -26,7 +26,6 @@ import {
   getAdminPublicationActions,
   getAdminPublicationStatePresentation,
   getAdminRequestStatusPresentation,
-  GuardianPhotoModerationQueue,
   PublicationControls,
   serializeAdminMatchingSavedViewFilters,
   shouldAutoApplyDefaultSavedView,
@@ -342,32 +341,5 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(onReview).toHaveBeenCalledWith(71, "shortlisted");
     expect(screen.getByRole("button", { name: /decline application/i })).not.toBeNull();
     expect(screen.queryByRole("button", { name: /mark matched/i })).toBeNull();
-  });
-
-  it("keeps Guardian photo moderation private while allowing 2FA-gated Admin decisions", () => {
-    const onReview = vi.fn();
-    render(createElement(GuardianPhotoModerationQueue, {
-      photos: [{
-        photoId: 31,
-        guardianId: "GD-8K4M29",
-        status: "pending_review",
-        submittedAt: new Date("2026-08-21T08:00:00.000Z"),
-        photoUrl: "https://signed.example/guardian-photo",
-      }],
-      isLoading: false,
-      isError: false,
-      isSaving: false,
-      onReview,
-    }));
-
-    expect(screen.getByRole("region", { name: /guardian photo moderation queue/i })).not.toBeNull();
-    expect(screen.getByText("GD-8K4M29")).not.toBeNull();
-    expect(screen.queryByText(/@/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /approve photo/i }));
-    expect(onReview).toHaveBeenCalledWith(31, "approved");
-    fireEvent.change(screen.getByLabelText(/rejection reason for gd-8k4m29/i), { target: { value: "low_quality_or_unrelated_image" } });
-    fireEvent.change(screen.getByLabelText(/optional note for gd-8k4m29/i), { target: { value: "Please upload a clear, recent portrait." } });
-    fireEvent.click(screen.getByRole("button", { name: /reject photo/i }));
-    expect(onReview).toHaveBeenLastCalledWith(31, "rejected", "low_quality_or_unrelated_image", "Please upload a clear, recent portrait.");
   });
 });

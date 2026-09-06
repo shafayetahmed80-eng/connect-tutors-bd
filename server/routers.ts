@@ -10,11 +10,7 @@ import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff, verifyGuardianIntakeHandoff } from "./guardian-intake-handoff";
 import { guardianRegistrationSchema, GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
 import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guardian-intake.validation";
-import {
-  getGuardianProfilePhotoForOwner,
-  getPendingGuardianPhotoModerationQueue,
-  reviewGuardianProfilePhoto,
-} from "./guardian-profile-photo";
+import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
@@ -49,7 +45,6 @@ import { notifyTelegramAdmin } from "./telegram-notification";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema } from "./tutor-profile.validation";
-import { guardianProfilePhotoRejectionReasonValues } from "../drizzle/schema";
 import { generateAdminInviteToken, hashAdminInviteToken } from "./admin-security";
 import {
   createTutorPortalExpiry,
@@ -1467,31 +1462,6 @@ export const appRouter = router({
     listTutorJobInterests: adminProcedure
       .input(z.object({ tutorJobId: z.number().int().positive().optional() }))
       .query(({ input }) => db.listTutorJobInterestsForAdmin(input)),
-    listPendingGuardianPhotos: adminProcedure
-      .query(() => getPendingGuardianPhotoModerationQueue()),
-    reviewGuardianPhoto: adminProcedure
-      .input(z.object({
-        photoId: z.number().int().positive(),
-        nextStatus: z.enum(["approved", "rejected"]),
-        rejectionReason: z.enum(guardianProfilePhotoRejectionReasonValues).optional(),
-        moderationNote: z.string().trim().max(280).optional(),
-      }).superRefine((input, context) => {
-        if (input.nextStatus === "rejected" && !input.rejectionReason) {
-          context.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["rejectionReason"],
-            message: "Select a rejection reason.",
-          });
-        }
-        if (input.nextStatus === "approved" && (input.rejectionReason || input.moderationNote)) {
-          context.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["nextStatus"],
-            message: "Approved photos cannot include rejection details.",
-          });
-        }
-      }))
-      .mutation(({ ctx, input }) => reviewGuardianProfilePhoto({ ...input, adminUserId: ctx.user.id })),
     reviewTutorJobInterest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive(), status: z.enum(["shortlisted", "declined", "matched"]) }))
       .mutation(async ({ input }) => {

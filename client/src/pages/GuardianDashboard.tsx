@@ -108,10 +108,10 @@ function GuardianSidebarIdentity() {
   const profileQuery = trpc.guardianProfile.me.useQuery();
   const photoQuery = trpc.guardianProfile.photo.useQuery();
   const profile = profileQuery.data;
-  const approvedPhotoUrl = photoQuery.data?.photoStatus === "approved" ? photoQuery.data.photoUrl : null;
+  const photoUrl = photoQuery.data?.photoUrl ?? null;
   const name = profile?.name || "Guardian";
   return <div className="rounded-xl bg-[#f4f9fd] p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Guardian account identity">
-    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{approvedPhotoUrl ? <img src={approvedPhotoUrl} alt="Approved Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{photoUrl ? <img src={photoUrl} alt="Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
     <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
       <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
       <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>
@@ -156,10 +156,7 @@ function GuardianPhotoPanel() {
   const [isUploading, setIsUploading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const photo = photoQuery.data;
-  const photoStatus = photo?.photoStatus ?? "no_photo";
   const photoUrl = photo?.photoUrl ?? null;
-  const rejectionReason = photo?.rejectionReason ?? null;
-  const moderationNote = photo?.moderationNote ?? null;
 
   const uploadPhoto = async (file: File) => {
     const acceptedTypes = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"];
@@ -178,9 +175,9 @@ function GuardianPhotoPanel() {
       data.append("photo", file);
       const response = await fetch("/api/guardian/profile-photo", { method: "POST", body: data, credentials: "same-origin" });
       const result = await response.json().catch(() => ({})) as { error?: string; photoStatus?: string };
-      if (!response.ok || result.photoStatus !== "pending_review") throw new Error(result.error || "Unable to upload the profile photo.");
+      if (!response.ok || result.photoStatus !== "photo") throw new Error(result.error || "Unable to upload the profile photo.");
       await utils.guardianProfile.photo.invalidate();
-      setFeedback({ type: "success", message: "Your profile photo was submitted for Admin review. It will replace your initials after approval." });
+      setFeedback({ type: "success", message: "Your profile photo is now shown in your Guardian identity header." });
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the profile photo." });
     } finally {
@@ -189,7 +186,7 @@ function GuardianPhotoPanel() {
   };
 
   const removePhoto = async () => {
-    if (!photo || !window.confirm("Remove this profile photo? Your Guardian identity header will use initials until another photo is approved.")) return;
+    if (!photo || !window.confirm("Remove this profile photo? Your Guardian identity header will use your initials until you upload another.")) return;
     setFeedback(null);
     setIsUploading(true);
     try {
@@ -205,17 +202,13 @@ function GuardianPhotoPanel() {
     }
   };
 
-  const status = photoStatus === "approved"
-    ? { title: "Photo approved", detail: "Your approved photo is shown in the Guardian identity header. It is not shown on the public Job Board.", tone: "border-emerald-200 bg-emerald-50 text-emerald-950" }
-    : photoStatus === "pending_review"
-      ? { title: "Photo pending Admin review", detail: "This private preview is not shown in the Guardian identity header until it is approved.", tone: "border-amber-200 bg-amber-50 text-amber-950" }
-      : photoStatus === "rejected"
-        ? { title: "Photo needs replacement", detail: moderationNote || "Please upload a clear, recent portrait that follows the photo guidelines.", tone: "border-rose-200 bg-rose-50 text-rose-950" }
-        : { title: "No profile photo yet", detail: "Upload a clear, recent portrait. Your initials remain visible until an Admin approves the photo.", tone: "border-sky-200 bg-sky-50 text-sky-950" };
-  const photoAlt = photoStatus === "approved" ? "Approved Guardian profile photo" : photoStatus === "pending_review" ? "Guardian photo pending review" : "Guardian photo awaiting replacement";
-  const uploadLabel = photoStatus === "rejected" ? "Upload a new profile photo" : photoUrl ? "Replace profile photo" : "Upload profile photo";
+  const status = photoUrl
+    ? { title: "Profile photo added", detail: "This photo is shown in your Guardian identity header. It is not shown on the public Job Board.", tone: "border-emerald-200 bg-emerald-50 text-emerald-950" }
+    : { title: "No profile photo yet", detail: "Upload a clear, recent portrait. Your initials are shown until you add one.", tone: "border-sky-200 bg-sky-50 text-sky-950" };
+  const photoAlt = "Guardian profile photo";
+  const uploadLabel = photoUrl ? "Replace profile photo" : "Upload profile photo";
 
-  return <Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><ImagePlus className="size-5 text-[#1677c8]" /> <SiteText slotId="guardian-profile.photo.title" /></CardTitle></CardHeader><CardContent className="p-7 pt-0"><div className="grid gap-6 sm:grid-cols-[8rem_1fr]"><div className="grid aspect-square size-32 place-items-center overflow-hidden rounded-xl border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">{photoUrl ? <img src={photoUrl} alt={photoAlt} className="size-full object-cover" /> : initials(profileQuery.data?.name || "Guardian")}</div><div className="min-w-0"><div className={`rounded-xl border p-4 text-sm leading-6 ${status.tone}`}><p className="font-extrabold">{status.title}</p><p className="mt-1">{status.detail}</p>{photoStatus === "rejected" && rejectionReason ? <p className="mt-2 text-xs font-semibold">Reason: {rejectionReason.replaceAll("_", " ")}</p> : null}</div><input ref={photoInputRef} className="sr-only" id="guardian-profile-photo" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload Guardian profile photo" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} /><div className="mt-4 flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => photoInputRef.current?.click()} className="border-[#9dcde7] text-[#1677c8]"><ImagePlus className="size-4" /> {isUploading ? "Uploading…" : uploadLabel}</Button>{photoUrl ? <Button type="button" variant="ghost" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => void removePhoto()} className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 className="size-4" /> Remove photo</Button> : null}</div><p className="mt-3 leading-5 text-j-ink-muted"><SiteText slotId="guardian-profile.photo.help" className="text-xs" /></p>{feedback ? <p role="status" className={`mt-3 text-sm font-semibold ${feedback.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{feedback.message}</p> : null}</div></div></CardContent></Card>;
+  return <Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><ImagePlus className="size-5 text-[#1677c8]" /> <SiteText slotId="guardian-profile.photo.title" /></CardTitle></CardHeader><CardContent className="p-7 pt-0"><div className="grid gap-6 sm:grid-cols-[8rem_1fr]"><div className="grid aspect-square size-32 place-items-center overflow-hidden rounded-xl border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">{photoUrl ? <img src={photoUrl} alt={photoAlt} className="size-full object-cover" /> : initials(profileQuery.data?.name || "Guardian")}</div><div className="min-w-0"><div className={`rounded-xl border p-4 text-sm leading-6 ${status.tone}`}><p className="font-extrabold">{status.title}</p><p className="mt-1">{status.detail}</p></div><input ref={photoInputRef} className="sr-only" id="guardian-profile-photo" type="file" accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp" aria-label="Upload Guardian profile photo" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} /><div className="mt-4 flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => photoInputRef.current?.click()} className="border-[#9dcde7] text-[#1677c8]"><ImagePlus className="size-4" /> {isUploading ? "Uploading…" : uploadLabel}</Button>{photoUrl ? <Button type="button" variant="ghost" disabled={isUploading} aria-busy={isUploading} data-motion={isUploading ? "pending" : undefined} onClick={() => void removePhoto()} className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 className="size-4" /> Remove photo</Button> : null}</div><p className="mt-3 leading-5 text-j-ink-muted"><SiteText slotId="guardian-profile.photo.help" className="text-xs" /></p>{feedback ? <p role="status" className={`mt-3 text-sm font-semibold ${feedback.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>{feedback.message}</p> : null}</div></div></CardContent></Card>;
 }
 
 function GuardianProfileWorkspace() {
@@ -338,9 +331,7 @@ function useGuardianWorkspaceHeader() {
   return {
     portal: "Guardian Portal",
     name: profile?.name || "Guardian",
-    // Only an approved photo is shown, the same rule the rest of the site
-    // follows - one awaiting review must not appear as if it had passed.
-    profilePhotoUrl: photoQuery.data?.photoStatus === "approved" ? photoQuery.data.photoUrl : null,
+    profilePhotoUrl: photoQuery.data?.photoUrl ?? null,
     details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
   };
 }

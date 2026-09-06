@@ -36,7 +36,6 @@ import {
   guardianRequestNotifications,
   tutorNotifications,
   guardianPhoneIntakes,
-  guardianProfilePhotoEvents,
   guardianProfilePhotos,
   guardianProfiles,
   guardianProfileUpdateEvents,
@@ -77,8 +76,6 @@ import {
   type InsertTutorRequest,
   type AdminAuditEvent,
   type AuthEventType,
-  type GuardianProfilePhotoRejectionReason,
-  type GuardianProfilePhotoStatus,
   type TutorRequestPublicationAction,
   type GuardianRequestFollowUpKind,
   type TutorRequestAssignmentNoteCategory,
@@ -718,9 +715,6 @@ export async function getGuardianProfilePhotoByUserId(userId: number) {
     .select({
       id: guardianProfilePhotos.id,
       storageKey: guardianProfilePhotos.storageKey,
-      status: guardianProfilePhotos.status,
-      rejectionReason: guardianProfilePhotos.rejectionReason,
-      moderationNote: guardianProfilePhotos.moderationNote,
       createdAt: guardianProfilePhotos.createdAt,
       updatedAt: guardianProfilePhotos.updatedAt,
     })
@@ -729,154 +723,24 @@ export async function getGuardianProfilePhotoByUserId(userId: number) {
     .limit(1))[0];
 }
 
-/** Internal Admin-review lookup. It intentionally excludes Guardian contact and request data. */
-export async function getGuardianProfilePhotoForReview(photoId: number) {
-  const database = await getDb();
-  if (!database) return undefined;
-  return (await database
-    .select({
-      id: guardianProfilePhotos.id,
-      guardianUserId: guardianProfilePhotos.guardianUserId,
-      status: guardianProfilePhotos.status,
-    })
-    .from(guardianProfilePhotos)
-    .where(eq(guardianProfilePhotos.id, photoId))
-    .limit(1))[0];
-}
-
-/** Creates/replaces the single current photo record and records a minimal audit event. */
+/** Creates or replaces the single current photo record. The photo is live at once. */
 export async function saveGuardianProfilePhoto(input: {
   guardianUserId: number;
   storageKey: string;
-  actorUserId: number;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  await database.transaction(async tx => {
-    const existing = (await tx
-      .select({ id: guardianProfilePhotos.id, status: guardianProfilePhotos.status })
-      .from(guardianProfilePhotos)
-      .where(eq(guardianProfilePhotos.guardianUserId, input.guardianUserId))
-      .limit(1))[0];
-    if (existing) {
-      await tx
-        .update(guardianProfilePhotos)
-        .set({
-          storageKey: input.storageKey,
-          status: "pending_review",
-          rejectionReason: null,
-          moderationNote: null,
-          moderatedByAdminId: null,
-          moderatedAt: null,
-        })
-        .where(eq(guardianProfilePhotos.id, existing.id));
-      await tx.insert(guardianProfilePhotoEvents).values({
-        guardianUserId: input.guardianUserId,
-        actorUserId: input.actorUserId,
-        action: "replaced",
-        previousStatus: existing.status,
-        nextStatus: "pending_review",
-      });
-      return;
-    }
-    await tx.insert(guardianProfilePhotos).values({
-      guardianUserId: input.guardianUserId,
-      storageKey: input.storageKey,
-      status: "pending_review",
-    });
-    await tx.insert(guardianProfilePhotoEvents).values({
-      guardianUserId: input.guardianUserId,
-      actorUserId: input.actorUserId,
-      action: "submitted",
-      nextStatus: "pending_review",
-    });
-  });
+  await database
+    .insert(guardianProfilePhotos)
+    .values({ guardianUserId: input.guardianUserId, storageKey: input.storageKey })
+    .onDuplicateKeyUpdate({ set: { storageKey: input.storageKey } });
 }
 
-/** Removes only the active Guardian-owned reference, preserving a key-free audit record. */
-export async function clearGuardianProfilePhoto(input: {
-  guardianUserId: number;
-  actorUserId: number;
-}) {
+/** Removes the Guardian-owned photo reference. */
+export async function clearGuardianProfilePhoto(input: { guardianUserId: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  await database.transaction(async tx => {
-    const existing = (await tx
-      .select({ id: guardianProfilePhotos.id, status: guardianProfilePhotos.status })
-      .from(guardianProfilePhotos)
-      .where(eq(guardianProfilePhotos.guardianUserId, input.guardianUserId))
-      .limit(1))[0];
-    if (!existing) return;
-    await tx.delete(guardianProfilePhotos).where(eq(guardianProfilePhotos.id, existing.id));
-    await tx.insert(guardianProfilePhotoEvents).values({
-      guardianUserId: input.guardianUserId,
-      actorUserId: input.actorUserId,
-      action: "removed",
-      previousStatus: existing.status,
-    });
-  });
-}
-
-/** Internal pending-review queue; it selects neither Guardian contacts nor request contents. */
-export async function listPendingGuardianProfilePhotos() {
-  const database = await getDb();
-  if (!database) return [];
-  return database
-    .select({
-      id: guardianProfilePhotos.id,
-      storageKey: guardianProfilePhotos.storageKey,
-      status: guardianProfilePhotos.status,
-      createdAt: guardianProfilePhotos.createdAt,
-      guardianId: guardianProfiles.guardianId,
-    })
-    .from(guardianProfilePhotos)
-    .innerJoin(guardianProfiles, eq(guardianProfiles.userId, guardianProfilePhotos.guardianUserId))
-    .where(eq(guardianProfilePhotos.status, "pending_review"))
-    .orderBy(asc(guardianProfilePhotos.createdAt));
-}
-
-/** Writes an Admin decision only when the record remains pending and logs no free-text audit data. */
-export async function reviewGuardianProfilePhotoByAdmin(input: {
-  photoId: number;
-  adminUserId: number;
-  nextStatus: "approved" | "rejected";
-  rejectionReason: GuardianProfilePhotoRejectionReason | null;
-  moderationNote: string | null;
-}): Promise<{ updated: true } | { updated: false }> {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
-    const record = (await tx
-      .select({
-        id: guardianProfilePhotos.id,
-        guardianUserId: guardianProfilePhotos.guardianUserId,
-        status: guardianProfilePhotos.status,
-      })
-      .from(guardianProfilePhotos)
-      .where(eq(guardianProfilePhotos.id, input.photoId))
-      .limit(1))[0];
-    if (!record || record.status !== "pending_review") return { updated: false } as const;
-    const updateResult = await tx
-      .update(guardianProfilePhotos)
-      .set({
-        status: input.nextStatus,
-        rejectionReason: input.rejectionReason,
-        moderationNote: input.moderationNote,
-        moderatedByAdminId: input.adminUserId,
-        moderatedAt: new Date(),
-      })
-      .where(and(eq(guardianProfilePhotos.id, input.photoId), eq(guardianProfilePhotos.status, "pending_review")));
-    if (!updateResult[0].affectedRows) return { updated: false } as const;
-    await tx.insert(guardianProfilePhotoEvents).values({
-      guardianUserId: record.guardianUserId,
-      actorUserId: input.adminUserId,
-      action: input.nextStatus,
-      previousStatus: "pending_review",
-      nextStatus: input.nextStatus,
-      rejectionReason: input.rejectionReason,
-    });
-    return { updated: true } as const;
-  });
+  await database.delete(guardianProfilePhotos).where(eq(guardianProfilePhotos.guardianUserId, input.guardianUserId));
 }
 
 export class TutorRequestLocationError extends Error {
