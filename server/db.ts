@@ -778,6 +778,31 @@ export async function clearGuardianNidDocumentKey(userId: number, side: "front" 
     .where(eq(guardianProfiles.userId, userId));
 }
 
+/**
+ * An Admin's light identity check: flips `verificationStatus`, records who and
+ * when, and keeps a rejection reason only while the state is `rejected`. There
+ * is no review queue and this never gates anything the Guardian can do.
+ */
+export async function setGuardianVerification(input: {
+  guardianUserId: number;
+  status: "unverified" | "verified" | "rejected";
+  reason?: string | null;
+  adminUserId: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(guardianProfiles)
+    .set({
+      verificationStatus: input.status,
+      verificationRejectionReason: input.status === "rejected" ? (input.reason?.trim() || null) : null,
+      verifiedByAdminId: input.adminUserId,
+      verifiedAt: new Date(),
+    })
+    .where(eq(guardianProfiles.userId, input.guardianUserId));
+  return { updated: Boolean(result[0]?.affectedRows) };
+}
+
 /** Confirms the current credential before replacing a Guardian password hash. */
 export async function changeGuardianPasswordByUserId(input: {
   userId: number;
@@ -3917,6 +3942,7 @@ function getAdminGuardianRequestConditions(filters: AdminGuardianRequestFilters)
 
 const adminGuardianRequestFields = {
   id: tutorRequests.id,
+  guardianUserId: tutorRequests.guardianUserId,
   tutorId: tutorRequests.tutorId,
   tuitionType: tutorRequests.tuitionType,
   category: tutorRequests.category,

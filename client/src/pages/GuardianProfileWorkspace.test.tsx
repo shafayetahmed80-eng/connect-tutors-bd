@@ -63,7 +63,9 @@ describe("GuardianProfileWorkspace", () => {
     render(<GuardianProfileWorkspace />);
 
     expect(screen.getByText("Guardian ID: GD-8K4M29")).toBeTruthy();
-    expect(screen.getAllByText("Not added").length).toBeGreaterThan(3);
+    expect(screen.getAllByText("Not set").length).toBeGreaterThan(3);
+    // Nationality defaults to Bangladeshi, so it is never a "Not set" row.
+    expect(screen.getByText("Bangladeshi")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: "Emergency Contact" }));
     expect(screen.getByText("Relation")).toBeTruthy();

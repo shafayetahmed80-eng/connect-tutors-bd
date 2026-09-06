@@ -1,14 +1,18 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
+import { formatRequestSource } from "@shared/request-source";
+import { guardianVerificationStatusValues } from "@shared/guardian-profile";
 import { trpc } from "@/lib/trpc";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
 import { RecordIcon } from "@/components/recordIcons";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { countActiveFilters } from "@/components/activeFilterCount";
-import { ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 
 type GuardianFilters = {
   query: string;
@@ -56,10 +60,123 @@ export function getAdminGuardianPrivateDetails(request: {
   ];
 }
 
+function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-[#eef4f9] py-1.5 last:border-b-0">
+      <span className="shrink-0 text-xs text-j-ink-muted">{label}</span>
+      <span className={`min-w-0 break-words text-right text-sm ${value ? "font-medium text-j-ink" : "italic text-j-ink-faint"}`}>{value || "Not added"}</span>
+    </div>
+  );
+}
+
+/**
+ * The Admin's light identity check for one Guardian - view what they gave
+ * (including the private NID images) and flip verified / rejected. No review
+ * queue; nothing here gates the Guardian.
+ */
+export function GuardianVerificationModal({ guardianUserId, onClose }: { guardianUserId: number; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const profileQuery = trpc.admin.getGuardianProfile.useQuery({ guardianUserId }, { retry: false });
+  const profile = profileQuery.data;
+  const [status, setStatus] = useState<(typeof guardianVerificationStatusValues)[number]>("unverified");
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!profile) return;
+    setStatus(profile.verificationStatus);
+    setReason(profile.verificationRejectionReason ?? "");
+  }, [profile]);
+
+  const save = trpc.admin.setGuardianVerification.useMutation({
+    onSuccess: async () => {
+      await Promise.all([utils.admin.getGuardianProfile.invalidate({ guardianUserId }), utils.admin.listGuardianRequests.invalidate()]);
+      toast.success("Guardian verification updated.");
+      onClose();
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const rejectionInvalid = status === "rejected" && reason.trim().length < 3;
+
+  return (
+    <Modal size="md" onClose={onClose} busy={save.isPending}>
+      <ModalHeader title="Guardian verification" eyebrow="Identity check" />
+      <ModalBody className="space-y-4">
+        {profileQuery.isLoading ? (
+          <div className="flex min-h-40 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading profile…</div>
+        ) : profileQuery.isError || !profile ? (
+          <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{profileQuery.error?.message ?? "This Guardian profile is unavailable."}</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-j-ink">{profile.name}</p>
+                <p className="text-xs text-j-ink-muted">Guardian ID {profile.guardianId}</p>
+              </div>
+              <GuardianVerificationBadge status={profile.verificationStatus} rejectionReason={profile.verificationRejectionReason} />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["front", "back"] as const).map(side => {
+                const url = profile.nidDocuments[side];
+                return (
+                  <div key={side} className="rounded-xl border border-j-border bg-j-surface-sunken p-2">
+                    <p className="mb-1 text-xs font-bold text-j-ink-strong">NID card — {side}</p>
+                    {url ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={`NID card ${side}`} className="h-28 w-full rounded-lg border border-j-border object-cover" /></a> : <div className="grid h-28 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">No image</div>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="rounded-xl bg-j-surface-sunken p-3">
+              <DetailRow label="Phone" value={profile.phone} />
+              <DetailRow label="Additional phone" value={profile.additionalPhone} />
+              <DetailRow label="Email" value={profile.email} />
+              <DetailRow label="Religion" value={profile.religion} />
+              <DetailRow label="Nationality" value={profile.nationality} />
+              <DetailRow label="Profession" value={profile.profession} />
+              <DetailRow label="Address details" value={profile.addressDetails} />
+              <DetailRow label="Social profile links" value={profile.socialLinks} />
+              <DetailRow label="Emergency contact" value={[profile.emergencyContactName, profile.emergencyContactPhone].filter(Boolean).join(" · ")} />
+              <DetailRow label="Emergency relation" value={profile.emergencyContactRelation} />
+              <DetailRow label="How did you hear" value={profile.heardAboutUs ? formatRequestSource(profile.heardAboutUs) : ""} />
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-j-ink-muted">Set verification</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {guardianVerificationStatusValues.map(option => (
+                  <button key={option} type="button" onClick={() => setStatus(option)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-bold capitalize transition ${status === option ? "border-j-accent bg-j-accent text-white" : "border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken"}`}>
+                    {option}
+                  </button>
+                ))}
+              </div>
+              {status === "rejected" ? (
+                <textarea value={reason} onChange={event => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Reason the Guardian will see (e.g. NID name does not match)"
+                  className="mt-2 w-full rounded-xl border border-j-field-border p-2 text-sm text-j-ink outline-none ring-[#1677c8] focus:ring-2" />
+              ) : null}
+            </div>
+          </>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Cancel</button>
+        <button type="button" disabled={!profile || save.isPending || rejectionInvalid}
+          onClick={() => save.mutate({ guardianUserId, status, reason: status === "rejected" ? reason.trim() : undefined })}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">
+          <BadgeCheck size={16} /> {save.isPending ? "Saving…" : "Save verification"}
+        </button>
+      </ModalFooter>
+    </Modal>
+  );
+}
+
 function GuardianActivityContent() {
   const [filters, setFilters] = useState<GuardianFilters>(initialFilters);
   const activeFilterCount = countActiveFilters(filters, initialFilters, { ignore: ["page", "pageSize"] });
   const [contactRequestId, setContactRequestId] = useState<number | null>(null);
+  const [verifyGuardianUserId, setVerifyGuardianUserId] = useState<number | null>(null);
   const requests = trpc.admin.listGuardianRequests.useQuery(filters);
   const contact = trpc.admin.getGuardianContact.useQuery({ requestId: contactRequestId ?? 1 }, { enabled: contactRequestId !== null, retry: false });
   const updateFilter = (change: Partial<GuardianFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
@@ -85,7 +202,7 @@ function GuardianActivityContent() {
     {requests.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Guardian activity could not be loaded.</div> : null}
     {!requests.isLoading && !requests.isError ? <section className="space-y-4">{(requests.data?.items ?? []).map(request => {
       const privateDetails = getAdminGuardianPrivateDetails(request);
-      return <article key={request.id} className="rounded-xl border border-j-border bg-white p-5 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-bold capitalize text-j-ink-soft">{request.status}</span><span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800">{request.contactConsent.replaceAll("_", " ")}</span></div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="created" size={12} className="text-j-ink-faint" />Created</dt><dd className="mt-1 text-j-ink-strong">{new Date(request.createdAt).toLocaleDateString()}</dd></div>{privateDetails.map(detail => <div key={detail.label}><dt className="text-xs font-bold uppercase tracking-wide text-j-ink-muted">{detail.label}</dt><dd className="mt-1 whitespace-pre-wrap text-j-ink-strong">{detail.value}</dd></div>)}</dl></div><button type="button" disabled={contact.isFetching} onClick={() => setContactRequestId(request.id)} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-j-accent bg-white px-3 text-sm font-bold text-j-accent hover:bg-sky-50 disabled:opacity-50"><Eye size={16} /> View Guardian contact</button></div></article>;
+      return <article key={request.id} className="rounded-xl border border-j-border bg-white p-5 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-bold capitalize text-j-ink-soft">{request.status}</span><span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800">{request.contactConsent.replaceAll("_", " ")}</span></div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="created" size={12} className="text-j-ink-faint" />Created</dt><dd className="mt-1 text-j-ink-strong">{new Date(request.createdAt).toLocaleDateString()}</dd></div>{privateDetails.map(detail => <div key={detail.label}><dt className="text-xs font-bold uppercase tracking-wide text-j-ink-muted">{detail.label}</dt><dd className="mt-1 whitespace-pre-wrap text-j-ink-strong">{detail.value}</dd></div>)}</dl></div><div className="flex shrink-0 flex-col gap-2"><button type="button" disabled={contact.isFetching} onClick={() => setContactRequestId(request.id)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-j-accent bg-white px-3 text-sm font-bold text-j-accent hover:bg-sky-50 disabled:opacity-50"><Eye size={16} /> View Guardian contact</button><button type="button" onClick={() => setVerifyGuardianUserId(request.guardianUserId)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-j-border bg-white px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"><ShieldCheck size={16} /> Verify Guardian</button></div></div></article>;
     })}{requests.data?.items.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center text-sm text-j-ink-soft">No Guardian request matches the active filters.</div> : null}</section> : null}
     {totalPages > 1 ? <nav aria-label="Guardian request pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm"><p className="text-sm text-j-ink-soft">Page {filters.page} of {totalPages}</p><div className="flex gap-2"><button type="button" disabled={filters.page <= 1} onClick={() => updateFilter({ page: filters.page - 1 })} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40"><ChevronLeft size={15} /> Previous</button><button type="button" disabled={filters.page >= totalPages} onClick={() => updateFilter({ page: filters.page + 1 })} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40">Next <ChevronRight size={15} /></button></div></nav> : null}
     {contactRequestId !== null ? <Modal size="sm" onClose={() => setContactRequestId(null)}>
@@ -101,6 +218,7 @@ function GuardianActivityContent() {
         <button type="button" onClick={() => setContactRequestId(null)} className="h-11 w-full rounded-xl bg-j-accent px-4 text-sm font-bold text-white">Close contact view</button>
       </ModalFooter>
     </Modal> : null}
+    {verifyGuardianUserId !== null ? <GuardianVerificationModal guardianUserId={verifyGuardianUserId} onClose={() => setVerifyGuardianUserId(null)} /> : null}
   </div>;
 }
 
