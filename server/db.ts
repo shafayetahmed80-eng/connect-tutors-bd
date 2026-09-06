@@ -2371,63 +2371,6 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
   });
 }
 
-/**
- * Closes a Guardian's own request, before an appointment is confirmed.
- *
- * Until now only an Admin could close one, so a Guardian who had found a tutor
- * elsewhere had no way to say so - the job stayed on the board and Tutors kept
- * applying to it. After confirmation it stops being self-serve: a coordinator
- * is involved and a tuition may already have started, so that is a support
- * conversation and the `appointmentConfirmedAt` guard below refuses it.
- *
- * The row is closed the same way an Admin closes it, and the reason is stored
- * in the same private column - only the recorded actor differs.
- */
-export async function cancelTutorRequestByGuardian(input: { requestId: number; guardianUserId: number; reason?: string }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
-    const [request] = await tx.select({ id: tutorRequests.id }).from(tutorRequests)
-      .where(and(
-        eq(tutorRequests.id, input.requestId),
-        eq(tutorRequests.guardianUserId, input.guardianUserId),
-        inArray(tutorRequests.status, ["new", "reviewing", "matched"]),
-        isNull(tutorRequests.appointmentConfirmedAt),
-      )).limit(1).for("update");
-    if (!request) return { updated: false as const };
-
-    const cancelledAt = new Date();
-    await tx.update(tutorRequests).set({
-      status: "closed",
-      publicationState: "closed",
-      contactConsent: "not_required",
-      cancellationReason: input.reason?.trim() || "Cancelled by the Guardian.",
-      lastActivityAt: cancelledAt,
-    }).where(eq(tutorRequests.id, input.requestId));
-    // The public projection goes down with it, so the board stops offering a
-    // tuition nobody is going to take.
-    await tx.update(tutorJobs).set({ publicationStatus: "closed", deactivatedAt: cancelledAt })
-      .where(eq(tutorJobs.tutorRequestId, input.requestId));
-    const supersededLetters = await tx.update(confirmationLetters)
-      .set({ status: "superseded", supersededAt: cancelledAt, revisionReason: "Request cancelled by the Guardian" })
-      .where(and(
-        eq(confirmationLetters.tutorRequestId, input.requestId),
-        inArray(confirmationLetters.status, ["draft", "issued"]),
-      ));
-    await tx.insert(tutorRequestOperationEvents).values({
-      tutorRequestId: input.requestId,
-      guardianUserId: input.guardianUserId,
-      actorUserId: input.guardianUserId,
-      action: "guardian_cancelled",
-      changedFields: JSON.stringify([
-        "cancelled",
-        ...(input.reason?.trim() ? ["reason_recorded"] : []),
-        ...(supersededLetters[0].affectedRows ? ["confirmation_letter_superseded"] : []),
-      ]),
-    });
-    return { updated: true as const };
-  });
-}
 /** Saves a Guardian's explicit contact-coordination decision only for their matched, pending request. */
 export async function decideGuardianTutorRequestContactConsent(input: {
   guardianUserId: number;
