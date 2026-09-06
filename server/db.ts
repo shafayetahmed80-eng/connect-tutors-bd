@@ -644,6 +644,23 @@ export async function getGuardianProfileByUserId(userId: number) {
       cityLocationId: guardianProfiles.cityLocationId,
       locationId: guardianProfiles.locationId,
       termsVersion: guardianProfiles.termsVersion,
+      additionalPhone: guardianProfiles.additionalPhone,
+      religion: guardianProfiles.religion,
+      nationality: guardianProfiles.nationality,
+      socialLinks: guardianProfiles.socialLinks,
+      addressDetails: guardianProfiles.addressDetails,
+      profession: guardianProfiles.profession,
+      nidFrontKey: guardianProfiles.nidFrontKey,
+      nidBackKey: guardianProfiles.nidBackKey,
+      emergencyContactName: guardianProfiles.emergencyContactName,
+      emergencyContactPhone: guardianProfiles.emergencyContactPhone,
+      emergencyContactRelation: guardianProfiles.emergencyContactRelation,
+      emergencyContactAddress: guardianProfiles.emergencyContactAddress,
+      emergencyContactProfession: guardianProfiles.emergencyContactProfession,
+      heardAboutUs: guardianProfiles.heardAboutUs,
+      verificationStatus: guardianProfiles.verificationStatus,
+      verificationRejectionReason: guardianProfiles.verificationRejectionReason,
+      verifiedAt: guardianProfiles.verifiedAt,
       createdAt: guardianProfiles.createdAt,
       updatedAt: guardianProfiles.updatedAt,
       name: users.name,
@@ -654,7 +671,11 @@ export async function getGuardianProfileByUserId(userId: number) {
     .innerJoin(users, eq(users.id, guardianProfiles.userId))
     .where(eq(guardianProfiles.userId, userId))
     .limit(1))[0];
-  return row;
+  if (!row) return undefined;
+  // The raw NID storage keys are server-only; the owner sees a boolean here and
+  // gets a signed preview URL from `getGuardianNidDocumentUrlsForOwner`.
+  const { nidFrontKey, nidBackKey, ...safe } = row;
+  return { ...safe, nidFrontUploaded: Boolean(nidFrontKey), nidBackUploaded: Boolean(nidBackKey) };
 }
 
 export async function getGuardianAccountStatusByUserId(userId: number) {
@@ -668,14 +689,38 @@ export async function getGuardianAccountStatusByUserId(userId: number) {
   return result[0]?.role === "guardian" ? result[0].accountStatus : undefined;
 }
 
-/** Updates only Guardian-controlled profile attributes; login identity and phone remain protected. */
-export async function updateGuardianProfileByUserId(input: {
+/** A trimmed value, or null when it is blank - so a cleared field becomes NULL, not "". */
+function guardianProfileText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export type GuardianProfileUpdateInput = {
   userId: number;
   name: string;
   gender: "male" | "female";
   cityLocationId: string;
   locationId: string;
-}) {
+  additionalPhone?: string | null;
+  religion?: string | null;
+  nationality?: string | null;
+  socialLinks?: string | null;
+  addressDetails?: string | null;
+  profession?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  emergencyContactAddress?: string | null;
+  emergencyContactProfession?: string | null;
+  heardAboutUs?: string | null;
+};
+
+/**
+ * Updates only Guardian-controlled profile attributes; login identity, phone,
+ * and `verificationStatus` stay protected. Every field except name / gender /
+ * location is optional and a blank clears it to NULL.
+ */
+export async function updateGuardianProfileByUserId(input: GuardianProfileUpdateInput) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const location = await getTutorRequestLocation({ cityLocationId: input.cityLocationId, locationId: input.locationId });
@@ -685,10 +730,52 @@ export async function updateGuardianProfileByUserId(input: {
       gender: input.gender,
       cityLocationId: location.cityLocationId,
       locationId: location.locationId,
+      additionalPhone: guardianProfileText(input.additionalPhone),
+      religion: guardianProfileText(input.religion),
+      nationality: guardianProfileText(input.nationality),
+      socialLinks: guardianProfileText(input.socialLinks),
+      addressDetails: guardianProfileText(input.addressDetails),
+      profession: guardianProfileText(input.profession),
+      emergencyContactName: guardianProfileText(input.emergencyContactName),
+      emergencyContactPhone: guardianProfileText(input.emergencyContactPhone),
+      emergencyContactRelation: guardianProfileText(input.emergencyContactRelation),
+      emergencyContactAddress: guardianProfileText(input.emergencyContactAddress),
+      emergencyContactProfession: guardianProfileText(input.emergencyContactProfession),
+      heardAboutUs: guardianProfileText(input.heardAboutUs),
     }).where(eq(guardianProfiles.userId, input.userId));
     await tx.insert(guardianProfileUpdateEvents).values({ guardianUserId: input.userId });
   });
   return { updated: true } as const;
+}
+
+/** Server-only current NID image keys. Never returned to a client or Admin DTO as a raw key. */
+export async function getGuardianNidDocumentKeys(userId: number) {
+  const database = await getDb();
+  if (!database) return { frontKey: null as string | null, backKey: null as string | null };
+  const row = (await database
+    .select({ frontKey: guardianProfiles.nidFrontKey, backKey: guardianProfiles.nidBackKey })
+    .from(guardianProfiles)
+    .where(eq(guardianProfiles.userId, userId))
+    .limit(1))[0];
+  return { frontKey: row?.frontKey ?? null, backKey: row?.backKey ?? null };
+}
+
+export async function saveGuardianNidDocumentKey(userId: number, side: "front" | "back", storageKey: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .update(guardianProfiles)
+    .set(side === "front" ? { nidFrontKey: storageKey } : { nidBackKey: storageKey })
+    .where(eq(guardianProfiles.userId, userId));
+}
+
+export async function clearGuardianNidDocumentKey(userId: number, side: "front" | "back") {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .update(guardianProfiles)
+    .set(side === "front" ? { nidFrontKey: null } : { nidBackKey: null })
+    .where(eq(guardianProfiles.userId, userId));
 }
 
 /** Confirms the current credential before replacing a Guardian password hash. */

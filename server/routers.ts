@@ -11,6 +11,8 @@ import { createGuardianIntakeHandoff, verifyGuardianIntakeHandoff } from "./guar
 import { guardianRegistrationSchema, GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
 import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
+import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
+import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions } from "@shared/guardian-profile";
 import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
@@ -190,6 +192,30 @@ const salaryAmountSchema = z
   .int("Enter the salary as a whole number.")
   .positive("Enter a salary greater than zero.")
   .max(MAX_SALARY_AMOUNT, `Enter a salary of ${MAX_SALARY_AMOUNT.toLocaleString("en-US")} Taka or less.`);
+
+/**
+ * An optional Guardian-profile text field: trimmed, length-capped to its DB
+ * column, and normalised so a blank arrives as `null` (a cleared field), not
+ * `""`. `undefined` (field simply not sent) is left alone.
+ */
+function guardianOptionalText(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max)
+    .transform(value => (value.length ? value : null))
+    .nullish();
+}
+
+/** Like `guardianOptionalText` but the non-empty value must be one of `choices`. */
+function guardianOptionalChoice(choices: readonly string[]) {
+  return z
+    .string()
+    .trim()
+    .transform(value => (value.length ? value : null))
+    .nullish()
+    .refine(value => value == null || choices.includes(value), "Choose one of the listed options.");
+}
 
 const catalogSearchInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
@@ -599,11 +625,27 @@ export const appRouter = router({
       return profile;
     }),
     photo: guardianProcedure.query(({ ctx }) => getGuardianProfilePhotoForOwner({ user: ctx.user })),
+    identityDocuments: guardianProcedure.query(({ ctx }) => getGuardianNidDocumentUrls({ userId: ctx.user.id })),
     update: guardianProcedure.input(z.object({
       name: z.string().trim().min(2, "Enter your full name.").max(120),
       gender: z.enum(["male", "female"]),
       cityLocationId: z.string().trim().min(1).max(80),
       locationId: z.string().trim().min(1).max(80),
+      // Every field below is optional; a blank clears it. The client dropdowns
+      // constrain religion / nationality / source, and the server rejects a
+      // non-empty value that is off the list.
+      additionalPhone: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.additionalPhone),
+      religion: guardianOptionalChoice(guardianReligionOptions),
+      nationality: guardianOptionalChoice(guardianNationalityOptions),
+      socialLinks: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.socialLinks),
+      addressDetails: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.addressDetails),
+      profession: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.profession),
+      emergencyContactName: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.emergencyContactName),
+      emergencyContactPhone: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.emergencyContactPhone),
+      emergencyContactRelation: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.emergencyContactRelation),
+      emergencyContactAddress: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.emergencyContactAddress),
+      emergencyContactProfession: guardianOptionalText(GUARDIAN_PROFILE_LIMITS.emergencyContactProfession),
+      heardAboutUs: guardianOptionalChoice(guardianHeardAboutUsValues),
     })).mutation(async ({ ctx, input }) => {
       try {
         return await db.updateGuardianProfileByUserId({ userId: ctx.user.id, ...input });

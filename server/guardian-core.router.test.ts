@@ -37,6 +37,23 @@ describe("Guardian core workspace procedures", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
       termsVersion: "guardian-v1",
+      additionalPhone: null,
+      religion: null,
+      nationality: null,
+      socialLinks: null,
+      addressDetails: null,
+      profession: null,
+      emergencyContactName: null,
+      emergencyContactPhone: null,
+      emergencyContactRelation: null,
+      emergencyContactAddress: null,
+      emergencyContactProfession: null,
+      heardAboutUs: null,
+      verificationStatus: "unverified",
+      verificationRejectionReason: null,
+      verifiedAt: null,
+      nidFrontUploaded: false,
+      nidBackUploaded: false,
       createdAt: guardianUser.createdAt,
       updatedAt: guardianUser.updatedAt,
       name: guardianUser.name,
@@ -49,6 +66,9 @@ describe("Guardian core workspace procedures", () => {
     expect(result).toMatchObject({ guardianId: "GD-8K4M29", name: "Rahima Begum", email: "rahima@example.com" });
     expect(result.guardianId).not.toBe(String(guardianUser.id));
     expect(result.accountCreatedAt).toEqual(guardianUser.createdAt);
+    // The raw NID storage keys never reach the client - only booleans.
+    expect(result).not.toHaveProperty("nidFrontKey");
+    expect(result).toMatchObject({ verificationStatus: "unverified", nidFrontUploaded: false });
   });
 
   it("allows a Guardian to update only their own approved non-login profile fields", async () => {
@@ -77,6 +97,46 @@ describe("Guardian core workspace procedures", () => {
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
     });
+  });
+
+  it("carries the optional identity and emergency-contact fields through, dropping blanks to null and rejecting an off-list choice", async () => {
+    const update = vi.spyOn(db, "updateGuardianProfileByUserId").mockResolvedValue({ updated: true });
+
+    await appRouter.createCaller(guardianContext()).guardianProfile.update({
+      name: "Rahima Akter",
+      gender: "female",
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      additionalPhone: " +8801777777777 ",
+      religion: "Islam",
+      nationality: "Bangladeshi",
+      socialLinks: "https://fb.com/rahima",
+      addressDetails: "House 4, Road 2",
+      profession: "Homemaker",
+      emergencyContactName: "Karim",
+      emergencyContactPhone: "+8801888888888",
+      emergencyContactRelation: "Brother",
+      emergencyContactAddress: "  ",
+      emergencyContactProfession: "",
+      heardAboutUs: "facebook",
+    });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      additionalPhone: "+8801777777777",
+      religion: "Islam",
+      emergencyContactName: "Karim",
+      emergencyContactAddress: null,
+      emergencyContactProfession: null,
+      heardAboutUs: "facebook",
+    }));
+
+    await expect(appRouter.createCaller(guardianContext()).guardianProfile.update({
+      name: "Rahima Akter",
+      gender: "female",
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      religion: "Pastafarian",
+    })).rejects.toThrow();
   });
 
   it("requires the current password before changing a Guardian password and never returns password material", async () => {
