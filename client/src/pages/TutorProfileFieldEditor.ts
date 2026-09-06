@@ -80,10 +80,11 @@ export type TutorProfileFieldEditorRow = {
   sortOrder: number | null;
   enabled: 0 | 1 | null;
   required: 0 | 1 | null;
+  label: string | null;
 };
 
 export function emptyOverrideRow(fieldId: string): TutorProfileFieldEditorRow {
-  return { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null };
+  return { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null };
 }
 
 /**
@@ -97,11 +98,12 @@ export function toEditorRow(row: TutorProfileFieldOverrideRow): TutorProfileFiel
   const subGroup = (tutorProfileFieldSubGroups as readonly string[]).includes(row.subGroup ?? "") ? (row.subGroup as TutorProfileFieldSubGroup) : null;
   const enabled = row.enabled === 0 ? 0 : row.enabled === 1 ? 1 : null;
   const required = row.required === 0 ? 0 : row.required === 1 ? 1 : null;
-  return { fieldId: row.fieldId, section, subGroup, sortOrder: row.sortOrder, enabled, required };
+  const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : null;
+  return { fieldId: row.fieldId, section, subGroup, sortOrder: row.sortOrder, enabled, required, label };
 }
 
 export function overrideRowsEqual(a: TutorProfileFieldEditorRow, b: TutorProfileFieldEditorRow): boolean {
-  return a.section === b.section && a.subGroup === b.subGroup && a.sortOrder === b.sortOrder && a.enabled === b.enabled && a.required === b.required;
+  return a.section === b.section && a.subGroup === b.subGroup && a.sortOrder === b.sortOrder && a.enabled === b.enabled && a.required === b.required && a.label === b.label;
 }
 
 /**
@@ -128,6 +130,12 @@ export function enabledOverrideValue(checked: boolean): 0 | null {
 /** `null` clears back to the field's own shipped required/optional default, so toggling back to where it started leaves no stray override. */
 export function requiredOverrideValue(checked: boolean, requiredByDefault: boolean): 0 | 1 | null {
   return checked === requiredByDefault ? null : (checked ? 1 : 0);
+}
+
+/** `null` when the box is empty or matches the shipped label, so clearing a rename removes the override rather than pinning the default. */
+export function labelOverrideValue(text: string, defaultLabel: string): string | null {
+  const trimmed = text.trim();
+  return trimmed === "" || trimmed === defaultLabel ? null : trimmed;
 }
 
 /**

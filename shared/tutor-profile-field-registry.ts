@@ -195,6 +195,8 @@ export type TutorProfileFieldOverrideRow = {
   sortOrder: number | null;
   enabled: number | null;
   required: number | null;
+  /** Owner's own wording for the label; `null` (or blank) keeps the registry default. */
+  label: string | null;
 };
 
 export type ResolvedTutorProfileField = TutorProfileFieldMeta & {
@@ -250,7 +252,8 @@ export function resolveTutorProfileFieldConfig(overrides: readonly TutorProfileF
     const required = field.requiredConfigurable && (override?.required === 0 || override?.required === 1)
       ? override.required === 1
       : field.requiredByDefault;
-    return { ...field, section, subGroup, sortOrder, enabled, required };
+    const label = typeof override?.label === "string" && override.label.trim() !== "" ? override.label.trim() : field.label;
+    return { ...field, section, subGroup, sortOrder, enabled, required, label };
   });
 
   return indexResolvedFields(resolved);

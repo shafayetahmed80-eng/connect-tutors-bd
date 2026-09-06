@@ -18,7 +18,7 @@ describe("Tutor Profile field config, against the real database", () => {
     await deleteTestOverride();
 
     await saveTutorProfileFieldOverrides([
-      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 999, enabled: null, required: 1 },
+      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 999, enabled: null, required: 1, label: null },
     ]);
 
     const config = await getTutorProfileFieldConfig();
@@ -32,10 +32,10 @@ describe("Tutor Profile field config, against the real database", () => {
 
   it("upserts on a second save rather than duplicating the row", async () => {
     await saveTutorProfileFieldOverrides([
-      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 1, enabled: null, required: null },
+      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 1, enabled: null, required: null, label: null },
     ]);
     await saveTutorProfileFieldOverrides([
-      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 2, enabled: null, required: null },
+      { fieldId: testFieldId, section: null, subGroup: null, sortOrder: 2, enabled: null, required: null, label: null },
     ]);
 
     const config = await getTutorProfileFieldConfig();

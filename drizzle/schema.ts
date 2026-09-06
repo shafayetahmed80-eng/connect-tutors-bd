@@ -891,6 +891,8 @@ export const tutorProfileFieldOverrides = mysqlTable("tutor_profile_field_overri
   sortOrder: int("sortOrder"),
   enabled: int("enabled"),
   required: int("required"),
+  /** Owner's own wording for the field's label; NULL keeps the registry default. */
+  label: varchar("label", { length: 120 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
