@@ -124,6 +124,15 @@ describe("Tutor Profile domain validation", () => {
     }
   });
 
+  it("treats an absent Student Types list as fine, but still rejects an empty one", () => {
+    // Student Types left the profile UI, so a real Tutor always has `[]` here.
+    // The list validator only accepts a non-empty array or `undefined` - so
+    // `submitTutorProfile` must send `undefined`, never `[]`, or no Tutor could
+    // ever submit.
+    expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, studentTypeIds: undefined }).success).toBe(true);
+    expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, studentTypeIds: [] }).success).toBe(false);
+  });
+
   it("requires approved private identity/family information, one complete education record, and University ID upload before final review", () => {
     expect(tutorProfileSubmissionSchema.safeParse(approvedExpandedSubmission).success).toBe(true);
 
