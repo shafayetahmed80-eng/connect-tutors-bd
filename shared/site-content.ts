@@ -204,6 +204,37 @@ const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.account.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Account step heading", defaultText: "Create your Guardian account", defaultTextClass: "text-2xl" },
   { id: "request-tutor.done.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Confirmation heading", defaultText: "Thank you. Your request is now pending review.", defaultTextClass: "text-3xl" },
   { id: "request-tutor.sheet.title", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Hire a tutor sheet title", defaultText: "Hire a tutor", defaultTextClass: "text-base" },
+
+  // One slot per input label in the journey, so an Owner can reword any field
+  // without a deploy. The wording resolves through `useSiteContentResolver`
+  // at each field; an untouched slot renders the shipped label below.
+  { id: "request-tutor.field.phone", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Phone step — mobile number", defaultText: "Bangladesh mobile number", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.fullName", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Full name", defaultText: "Full name", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.gender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Gender", defaultText: "Gender", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.accountPhone", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Phone number", defaultText: "Phone number", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.email", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Email", defaultText: "Email", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.password", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Password", defaultText: "Password", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.confirmPassword", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Confirm password", defaultText: "Confirm password", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.accountCity", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — City", defaultText: "City", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.accountLocation", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Location", defaultText: "Location", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.tuitionType", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Tuition type", defaultText: "Tuition type", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.tuitionCity", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Tuition City", defaultText: "Tuition City", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.tuitionLocation", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Location", defaultText: "Location", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.category", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Curriculum / category", defaultText: "Curriculum / category", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.curriculumType", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Curriculum Type", defaultText: "Curriculum Type", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.classCourse", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Class / level", defaultText: "Class / level", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.studentGender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Student gender", defaultText: "Student gender", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.addressDetails", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Address Details", defaultText: "Address Details", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.subjects", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Subject selection", defaultText: "Subject selection", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.studentCount", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Number of students", defaultText: "Number of students", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.groupCapacity", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Maximum students (group)", defaultText: "Maximum students", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.packageDuration", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Package duration", defaultText: "Package duration (months)", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.daysPerWeek", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Days per week", defaultText: "Days per week", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.instituteName", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Institute Name", defaultText: "Institute Name", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.heardAboutUs", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Where Did You Hear About Us", defaultText: "Where Did You Hear About Us", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.preferredGender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Preferred Tutor gender", defaultText: "Preferred Tutor gender", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.salary", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Monthly salary", defaultText: "Monthly salary", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.notes", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Additional notes", defaultText: "Additional notes", defaultTextClass: "text-sm" },
 ];
 
 /**

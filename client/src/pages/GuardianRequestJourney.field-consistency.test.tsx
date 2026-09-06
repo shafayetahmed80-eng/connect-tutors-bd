@@ -3,6 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getSiteContentSlots } from "@shared/site-content";
+
 import { fieldGrid, fieldLabel, optionalMark, requiredMark } from "@/components/journeyField";
 import { RequestStage } from "./GuardianRequestJourney";
 
@@ -112,6 +114,34 @@ describe("the Guardian request form's fields line up", () => {
     expect(screen.getByRole("spinbutton", { name: /Package duration/ })).not.toBeNull();
     expect(screen.getByRole("textbox", { name: /Monthly salary/ })).not.toBeNull();
     expect(screen.getByRole("textbox", { name: /Additional notes/ })).not.toBeNull();
+  });
+
+  it("routes every request-step field label through a rewordable site-content slot", () => {
+    // Each label resolves through `request-tutor.field.*`, so an Owner can
+    // reword any field from Admin > Guardian Profile content without a deploy.
+    const slotDefaults = new Set(
+      getSiteContentSlots("guardian-profile")
+        .filter(slot => slot.id.startsWith("request-tutor.field."))
+        .map(slot => slot.defaultText),
+    );
+
+    for (const step of [1, 2] as const) {
+      const { container, unmount } = render(<RequestStage {...props} step={step} />);
+      const labelTexts = Array.from(container.querySelectorAll("label"))
+        // The label's wording sits on whichever node carries the shared voice
+        // class - the <label> itself (location combobox) or a <span> inside it.
+        .map(label => [label as Element, ...Array.from(label.querySelectorAll("*"))]
+          .find(node => node.className.toString().includes("text-[13px]")))
+        .filter((node): node is Element => Boolean(node))
+        .map(node => (node.textContent ?? "").replace(/\s*\*\s*$/, "").replace(/\s*\(optional\)\s*$/, "").trim())
+        .filter(Boolean);
+
+      expect(labelTexts.length, `step ${step} has field labels`).toBeGreaterThan(3);
+      for (const text of labelTexts) {
+        expect(slotDefaults, `step ${step}: "${text}" needs a request-tutor.field.* slot`).toContain(text);
+      }
+      unmount();
+    }
   });
 
   it("carries the icon inside a box on the same marker as the box's own text", () => {

@@ -3,6 +3,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { fieldLabel, filledField, optionalMark, primaryButton, requiredMark } from "@/components/journeyField";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { useSiteContentResolver } from "@/lib/siteContent";
 import { BANGLADESH_COUNTRY_CODE, formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, getCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
@@ -273,9 +274,11 @@ function PasswordInput({ id, value, onChange, show, onToggle, placeholder, error
  * screen reader agree about which place is highlighted. The chevron is
  * decorative and lets clicks fall through to the input behind it.
  */
-export function SearchableLocationSelect({ triggerId, label, required, value, options, disabled, placeholder, searchPlaceholder, emptyMessage, onChange }: {
+export function SearchableLocationSelect({ triggerId, label, slotId, required, value, options, disabled, placeholder, searchPlaceholder, emptyMessage, onChange }: {
   triggerId?: string;
   label: string;
+  /** A site-content slot that lets an Owner reword the label; falls back to `label`. */
+  slotId?: string;
   required?: boolean;
   value: string;
   options: Array<{ id: string; label: string }>;
@@ -295,6 +298,8 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
   // Callers do not always name the field, but it always needs a label to be
   // announced by - and a label that focuses it when clicked.
   const inputId = triggerId ?? `${listId}-field`;
+  const resolveSlot = useSiteContentResolver();
+  const labelText = resolveSlot(slotId ?? "", label);
   const selected = options.find((option) => option.id === value);
   const normalizedSearch = query.trim().toLocaleLowerCase();
   // An open field with nothing typed offers the whole list; a closed one reads
@@ -346,7 +351,7 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
   const activeOption = open ? filteredOptions[activeIndex] : undefined;
 
   return <div ref={selectorRef} className={`relative block ${open ? "z-40" : "z-0"}`}>
-    <label htmlFor={inputId} className={fieldLabel}>{label}{required ? <RequiredMark /> : <span className={optionalMark}> (optional)</span>}</label>
+    <label htmlFor={inputId} className={fieldLabel}>{labelText}{required ? <RequiredMark /> : <span className={optionalMark}> (optional)</span>}</label>
     <span className="relative mt-2 block">
       <MapPin aria-hidden="true" size={16} className="input-text-journey pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent" />
       <input
@@ -367,7 +372,7 @@ export function SearchableLocationSelect({ triggerId, label, required, value, op
       />
       <ChevronDown aria-hidden="true" size={16} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#5d7b91] transition ${open ? "-rotate-180" : ""}`} />
     </span>
-    {open ? <ul id={listId} role="listbox" aria-label={`${label} options`} className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
+    {open ? <ul id={listId} role="listbox" aria-label={`${labelText} options`} className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-j-border bg-white p-2 shadow-[0_18px_42px_rgba(22,78,117,0.2)]">
       {filteredOptions.length ? filteredOptions.map((option, index) => <li
         key={option.id}
         id={`${listId}-${option.id}`}
