@@ -32,7 +32,7 @@ export type JobDetailsData = JobCardData & {
  * same distinction the Tutor profile draws between an unanswered optional
  * field and a missing required one.
  */
-function Row({ label, value, muted, required, icon, valueIcon }: {
+export function JobDetailRow({ label, value, muted, required, icon, valueIcon }: {
   label: string;
   value: string;
   /** The value is a blank rather than an answer. */
@@ -65,12 +65,19 @@ export default function JobDetailsModal({
   onClose,
   action,
   showMapLink = true,
+  extraRows,
 }: {
   job: JobDetailsData;
   onClose: () => void;
   action: React.ReactNode;
   /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */
   showMapLink?: boolean;
+  /**
+   * Rows appended after Notes, in the same `<Row>` shape. The Admin copy of
+   * this dialog uses it for the fields only an Admin sees - the private
+   * address, and the Guardian's own name and number at the end.
+   */
+  extraRows?: React.ReactNode;
 }) {
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
@@ -88,25 +95,25 @@ export default function JobDetailsModal({
       />
       <ModalBody>
         <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-          <Row icon={<House size={12} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} required />
-          <Row
+          <JobDetailRow icon={<House size={12} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} required />
+          <JobDetailRow
             icon={<UserRound size={12} />}
             label="Student Gender"
             value={formatStudentGender(job.studentGender)}
             muted={!job.studentGender}
             valueIcon={job.studentGender ? <TutorPreferenceIcon preference={job.studentGender} className="text-[#1677e8]" /> : undefined}
           />
-          <Row
+          <JobDetailRow
             icon={<UsersRound size={12} />}
             label="Preferred Tutor"
             value={formatTutorPreference(job.preferredTutorGender)}
             required
             valueIcon={<TutorPreferenceIcon preference={job.preferredTutorGender} className="text-[#1677e8]" />}
           />
-          <Row icon={<CalendarDays size={12} />} label="Days / Week" value={formatDaysPerWeek(job.daysPerWeek)} required />
-          <Row icon={<Users size={12} />} label="No. of Students" value={formatStudentCount(job.studentCount)} required />
-          <Row icon={<Wallet size={12} />} label="Salary" value={formatSalaryAmount(job.budgetAmount)} muted={job.budgetAmount === null} required />
-          <div className="sm:col-span-2"><Row icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
+          <JobDetailRow icon={<CalendarDays size={12} />} label="Days / Week" value={formatDaysPerWeek(job.daysPerWeek)} required />
+          <JobDetailRow icon={<Users size={12} />} label="No. of Students" value={formatStudentCount(job.studentCount)} required />
+          <JobDetailRow icon={<Wallet size={12} />} label="Salary" value={formatSalaryAmount(job.budgetAmount)} muted={job.budgetAmount === null} required />
+          <div className="sm:col-span-2"><JobDetailRow icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
           <div className="sm:col-span-2">
             <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5">
               <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
@@ -121,8 +128,9 @@ export default function JobDetailsModal({
             </div>
           </div>
           <div className="sm:col-span-2">
-            <Row icon={<AlignLeft size={12} />} label="Notes" value={formatNotes(job.notes)} muted={!job.notes?.trim()} />
+            <JobDetailRow icon={<AlignLeft size={12} />} label="Notes" value={formatNotes(job.notes)} muted={!job.notes?.trim()} />
           </div>
+          {extraRows}
         </div>
       </ModalBody>
       <ModalFooter>

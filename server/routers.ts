@@ -1382,6 +1382,14 @@ export const appRouter = router({
         if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Guardian details are unavailable." });
         return detail;
       }),
+    listPostedJobs: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(100).default(""),
+        stage: z.enum(["all", "pending", "live", "appointed", "confirmed", "cancelled"]).default("all"),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().min(1).max(50).default(12),
+      }))
+      .query(({ input }) => db.listAdminPostedJobsPage(input)),
     getGuardianProfile: adminProcedure
       .input(z.object({ guardianUserId: z.number().int().positive() }))
       .query(async ({ input }) => {

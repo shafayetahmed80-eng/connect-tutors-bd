@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableName, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableName, gte, inArray, isNotNull, isNull, like, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import {
   MAX_LOCATION_ID_LENGTH,
@@ -84,7 +84,7 @@ import {
   type UserRole,
 } from "../drizzle/schema";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
-import { getGuardianRequestLifecycle } from "./tutor-request-lifecycle";
+import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -3980,6 +3980,125 @@ export async function listAdminGuardianRequestPage(filters: AdminGuardianRequest
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+}
+
+export type AdminPostedJobFilters = {
+  query: string;
+  stage: "all" | GuardianRequestLifecycle;
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * The Admin's copy of the Guardian "Posted jobs" board, across every Guardian.
+ * The five stages are derived, not stored, so each one is expressed here as the
+ * same column predicates `getGuardianRequestLifecycle` reads - keep the two in
+ * step or a card will sit under a tab its own badge disagrees with.
+ */
+function adminPostedJobStageCondition(stage: GuardianRequestLifecycle): SQL {
+  const cancelled = or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed"))!;
+  const live = and(ne(tutorRequests.status, "closed"), ne(tutorRequests.publicationState, "closed"))!;
+  const unconfirmed = isNull(tutorRequests.appointmentConfirmedAt);
+  const notAppointed = or(ne(tutorRequests.status, "matched"), isNull(tutorRequests.tutorId))!;
+  switch (stage) {
+    case "cancelled": return cancelled;
+    case "confirmed": return and(live, isNotNull(tutorRequests.appointmentConfirmedAt))!;
+    case "appointed": return and(live, unconfirmed, eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.tutorId))!;
+    case "live": return and(live, unconfirmed, notAppointed, eq(tutorRequests.publicationState, "published"))!;
+    default: return and(live, unconfirmed, notAppointed, ne(tutorRequests.publicationState, "published"))!;
+  }
+}
+
+const adminPostedJobFields = {
+  id: tutorRequests.id,
+  guardianUserId: tutorRequests.guardianUserId,
+  guardianName: users.name,
+  guardianPhone: guardianProfiles.phone,
+  guardianId: guardianProfiles.guardianId,
+  tuitionType: tutorRequests.tuitionType,
+  category: tutorRequests.category,
+  classCourse: tutorRequests.classCourse,
+  subjects: tutorRequests.subjects,
+  daysPerWeek: tutorRequests.daysPerWeek,
+  preferredGender: tutorRequests.preferredGender,
+  studentGender: tutorRequests.studentGender,
+  studentCount: tutorRequests.studentCount,
+  groupCapacity: tutorRequests.groupCapacity,
+  packageDurationMonths: tutorRequests.packageDurationMonths,
+  budgetAmount: tutorRequests.budgetAmount,
+  tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
+  locationText: tutorRequests.locationText,
+  addressDetails: tutorRequests.addressDetails,
+  instituteName: tutorRequests.instituteName,
+  heardAboutUs: tutorRequests.heardAboutUs,
+  notes: tutorRequests.notes,
+  status: tutorRequests.status,
+  publicationState: tutorRequests.publicationState,
+  tutorId: tutorRequests.tutorId,
+  appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+  cancellationReason: tutorRequests.cancellationReason,
+  contactConsent: tutorRequests.contactConsent,
+  createdAt: tutorRequests.createdAt,
+};
+
+export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const search = filters.query.trim();
+  const searchCondition = search
+    ? or(
+        like(tutorRequests.category, `%${search}%`),
+        like(tutorRequests.classCourse, `%${search}%`),
+        like(tutorRequests.subjects, `%${search}%`),
+        like(tutorRequests.tuitionLocationLabel, `%${search}%`),
+        like(tutorRequests.locationText, `%${search}%`),
+        like(users.name, `%${search}%`),
+      )
+    : undefined;
+
+  // Counts span every stage for the current search, so the tab bar keeps
+  // showing where the rest of the results are while one stage is open. The
+  // five stages are derived, so they are counted with the same function that
+  // labels a card rather than a second set of SQL rules.
+  const countRows = await database
+    .select({
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorRequests)
+    .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .where(searchCondition);
+
+  const counts: Record<GuardianRequestLifecycle, number> = { pending: 0, live: 0, appointed: 0, confirmed: 0, cancelled: 0 };
+  for (const row of countRows) counts[getGuardianRequestLifecycle(row)] += 1;
+
+  const conditions = [
+    ...(searchCondition ? [searchCondition] : []),
+    ...(filters.stage === "all" ? [] : [adminPostedJobStageCondition(filters.stage)]),
+  ];
+  const where = conditions.length ? and(...conditions) : undefined;
+  const offset = (filters.page - 1) * filters.pageSize;
+  const items = await database
+    .select(adminPostedJobFields)
+    .from(tutorRequests)
+    .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .where(where)
+    .orderBy(desc(tutorRequests.createdAt))
+    .limit(filters.pageSize)
+    .offset(offset);
+  const totals = await database
+    .select({ value: count() })
+    .from(tutorRequests)
+    .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .where(where);
+  const total = Number(totals[0]?.value ?? 0);
+
+  return { items, counts, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
 /** Resolves one requested Guardian contact record and appends exactly one successful access event. */

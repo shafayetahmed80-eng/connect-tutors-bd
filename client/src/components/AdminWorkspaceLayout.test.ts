@@ -15,6 +15,7 @@ describe("Admin workspace navigation", () => {
       "Overview",
       "Tutor management",
       "Guardian activity",
+      "Posted jobs",
       "Matching workspace",
     ]);
     expect(adminItems.find(item => item.path === "/tutors")).toMatchObject({ sectionLabel: "Public reference" });
