@@ -1,0 +1,1 @@
+ALTER TABLE `tutor_request_publication_events` MODIFY COLUMN `action` enum('verify','edit','guardian_confirmed','guardian_reconfirmed','request_changes','approve','publish','go_live','extend_expiry','unpublish','close') NOT NULL;

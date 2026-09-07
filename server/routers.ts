@@ -319,7 +319,7 @@ const adminTutorRequestPublicationEditSchema = z.object({
 
 const adminTutorRequestPublicationInputSchema = z.object({
   requestId: z.number().int().positive(),
-  action: z.enum(["verify", "edit", "guardian_confirmed", "guardian_reconfirmed", "request_changes", "approve", "publish", "extend_expiry", "unpublish", "close"]),
+  action: z.enum(["verify", "edit", "guardian_confirmed", "guardian_reconfirmed", "request_changes", "approve", "publish", "go_live", "extend_expiry", "unpublish", "close"]),
   reason: z.string().trim().max(1000).optional(),
   edit: adminTutorRequestPublicationEditSchema.optional(),
 }).superRefine((value, context) => {

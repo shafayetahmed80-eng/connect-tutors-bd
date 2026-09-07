@@ -13,6 +13,28 @@ describe("Admin request publication workflow", () => {
     expect(validateAdminRequestPublicationAction({ from: "approved", action: "publish", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "published" });
   });
 
+  it("lets the Posted jobs board go straight Live from anywhere before it", () => {
+    // One click from the board, from wherever the request had got to.
+    for (const from of ["submitted", "reviewing", "changes_requested", "approved", "unpublished"] as const) {
+      expect(validateAdminRequestPublicationAction({ from, action: "go_live", guardianConfirmed: false }))
+        .toMatchObject({ valid: true, nextState: "published" });
+    }
+  });
+
+  it("does not hold go_live behind the Guardian call that gates approve and publish", () => {
+    // The gate stays exactly where it was for the Matching workspace...
+    expect(validateAdminRequestPublicationAction({ from: "approved", action: "publish", guardianConfirmed: false }))
+      .toMatchObject({ valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" });
+    // ...and the board button is deliberately outside it.
+    expect(validateAdminRequestPublicationAction({ from: "approved", action: "go_live", guardianConfirmed: false }))
+      .toMatchObject({ valid: true, nextState: "published" });
+  });
+
+  it("has nowhere left to go once a job is already live or closed", () => {
+    expect(validateAdminRequestPublicationAction({ from: "published", action: "go_live", guardianConfirmed: true })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
+    expect(validateAdminRequestPublicationAction({ from: "closed", action: "go_live", guardianConfirmed: true })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
+  });
+
   it("keeps unpublish and close controls explicit while rejecting invalid transitions", () => {
     expect(validateAdminRequestPublicationAction({ from: "published", action: "unpublish", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "unpublished" });
     expect(validateAdminRequestPublicationAction({ from: "unpublished", action: "publish", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "published" });
