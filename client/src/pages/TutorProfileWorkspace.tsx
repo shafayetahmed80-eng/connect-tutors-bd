@@ -159,7 +159,13 @@ export type TeachingProfileState = TutorProfileFormState & {
   academicAchievement: string;
 };
 
-function hydrateTeachingProfile(
+/**
+ * Exported because the Admin's read-only copy of this profile
+ * (`AdminTutorProfileDetail`) feeds the very same `TutorProfileSummaryView`,
+ * and that needs a `TeachingProfileState` built the same way - the readout
+ * already imports its type from here for the same reason.
+ */
+export function hydrateTeachingProfile(
   profile: (PersistedTutorProfileForForm & Record<string, unknown>) | null | undefined,
   onboardingFallback: TutorOnboardingDraft | null,
 ): TeachingProfileState {

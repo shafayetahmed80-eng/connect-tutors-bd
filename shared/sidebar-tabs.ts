@@ -81,6 +81,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     items: [
       ["/admin/dashboard", "Overview"],
       ["/admin/tutors", "Tutor management"],
+      ["/admin/tutor-profiles", "Tutor Profiles"],
       ["/admin/guardians", "Guardian activity"],
       ["/admin/posted-jobs", "Posted jobs"],
       ["/admin/matching", "Matching workspace"],

@@ -14,6 +14,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.filter(item => item.sectionLabel === "Operations").map(item => item.label)).toEqual([
       "Overview",
       "Tutor management",
+      "Tutor Profiles",
       "Guardian activity",
       "Posted jobs",
       "Matching workspace",
