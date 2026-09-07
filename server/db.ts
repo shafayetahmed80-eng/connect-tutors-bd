@@ -1333,6 +1333,98 @@ export async function getTutorProfileByUserId(userId: number) {
   return toTutorProfileOwnerDto(await loadTutorProfileOwner(db, userId));
 }
 
+function catalogLabelMap(rows: Array<{ id: number | string; label: string }>): Record<string, string> {
+  return Object.fromEntries(rows.map(row => [String(row.id), row.label]));
+}
+
+/**
+ * One Tutor's whole profile for an Admin, by public Tutor id.
+ *
+ * Reuses the Tutor's own loader so the Admin reads exactly what the Tutor
+ * wrote, then adds the two things the Tutor's screen gets from procedures an
+ * Admin cannot call:
+ *
+ * - `catalogLabels` - id-to-name for every catalog id actually on this
+ *   profile, so the Admin page can build pass-through resolvers and render the
+ *   shared `TutorProfileSummaryView` unchanged. Looking up only the used ids
+ *   also sidesteps the 50-row search cap the Tutor page has to work around.
+ * - `fieldConfig` - the resolved field registry the read-out needs to know
+ *   which rows are optional.
+ *
+ * Private document keys never leave: they are signed here and returned as
+ * URLs, Admin-only.
+ */
+export async function getTutorProfileForAdmin(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [owner] = await database
+    .select({ userId: tutors.userId })
+    .from(tutors)
+    .where(eq(tutors.id, input.tutorId))
+    .limit(1);
+  // `tutors.userId` is nullable for seeded directory rows that never had an
+  // account; those carry no editable profile to show.
+  if (owner?.userId == null) return undefined;
+  const profile = toTutorProfileOwnerDto(await loadTutorProfileOwner(database, owner.userId));
+  if (!profile) return undefined;
+
+  const numericIds = (ids: Array<number | null>) => ids.filter((id): id is number => id != null);
+  const subjectIds = numericIds([...profile.primarySubjectIds, ...profile.additionalSubjectIds]);
+  const levelIds = numericIds(profile.classLevelIds);
+  const curriculumIds = numericIds(profile.curriculumIds);
+  const locationIds = [profile.currentCityId, profile.currentLocationId, ...profile.teachingAreaIds]
+    .filter((id): id is string => Boolean(id));
+  const [subjectRows, levelRows, curriculumRows, universityRows, departmentRows, locationRows] = await Promise.all([
+    subjectIds.length
+      ? database.select({ id: subjectsCatalog.id, label: subjectsCatalog.name }).from(subjectsCatalog).where(inArray(subjectsCatalog.id, subjectIds))
+      : [],
+    profile.classLevelIds.length
+      ? database.select({ id: classLevels.id, label: classLevels.name }).from(classLevels).where(inArray(classLevels.id, profile.classLevelIds))
+      : [],
+    profile.curriculumIds.length
+      ? database.select({ id: curricula.id, label: curricula.name }).from(curricula).where(inArray(curricula.id, profile.curriculumIds))
+      : [],
+    profile.universityId
+      ? database.select({ id: universities.id, label: universities.name }).from(universities).where(eq(universities.id, profile.universityId))
+      : [],
+    profile.facultyDepartmentId
+      ? database.select({ id: facultyDepartments.id, label: facultyDepartments.name }).from(facultyDepartments).where(eq(facultyDepartments.id, profile.facultyDepartmentId))
+      : [],
+    locationIds.length
+      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, locationIds))
+      : [],
+  ]);
+
+  const [universityIdRow] = await database
+    .select({ storageKey: tutorUniversityIdDocuments.storageKey })
+    .from(tutorUniversityIdDocuments)
+    .where(eq(tutorUniversityIdDocuments.tutorId, input.tutorId))
+    .limit(1);
+  const supportingRows = await database
+    .select({ documentType: tutorSupportingDocuments.documentType, storageKey: tutorSupportingDocuments.storageKey })
+    .from(tutorSupportingDocuments)
+    .where(eq(tutorSupportingDocuments.tutorId, input.tutorId));
+
+  return {
+    ...profile,
+    catalogLabels: {
+      subjects: catalogLabelMap(subjectRows),
+      classLevels: catalogLabelMap(levelRows),
+      curricula: catalogLabelMap(curriculumRows),
+      universities: catalogLabelMap(universityRows),
+      facultyDepartments: catalogLabelMap(departmentRows),
+      locations: catalogLabelMap(locationRows),
+    },
+    documents: {
+      universityId: universityIdRow?.storageKey ? await storageGetSignedUrl(universityIdRow.storageKey) : null,
+      supporting: Object.fromEntries(
+        await Promise.all(supportingRows.map(async row => [row.documentType, await storageGetSignedUrl(row.storageKey)] as const)),
+      ) as Record<string, string>,
+    },
+    fieldConfig: await getTutorProfileFieldConfig(),
+  };
+}
+
 export async function saveTutorProfilePhotoKey(userId: number, key: string) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");

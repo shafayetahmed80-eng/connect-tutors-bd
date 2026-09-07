@@ -1359,6 +1359,13 @@ export const appRouter = router({
         if (!tutor) throw new TRPCError({ code: "NOT_FOUND", message: "Tutor profile is unavailable." });
         return tutor;
       }),
+    getTutorProfile: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(async ({ input }) => {
+        const profile = await db.getTutorProfileForAdmin(input);
+        if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Tutor profile is unavailable." });
+        return profile;
+      }),
     getTutorModerationHistory: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.listTutorModerationEvents(input.tutorId)),
