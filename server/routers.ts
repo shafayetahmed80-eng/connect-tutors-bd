@@ -1352,6 +1352,13 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    listAppliedTutors: adminProcedure
+      .input(adminTutorDirectoryInputSchema.extend({ requestId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const page = await db.listAppliedTutorsForRequest(input);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        return page;
+      }),
     getTutorReview: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(async ({ input }) => {

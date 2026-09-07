@@ -3997,6 +3997,46 @@ function pickDirectoryInstitute(
   return named("Honours") ?? named("Masters");
 }
 
+/**
+ * Fills in the two directory columns no single join can produce: the institute
+ * (a priority pick across a Tutor's education records) and the City (a second
+ * hop into the same `locations` table the row already joins for its area).
+ *
+ * Two page-sized lookups rather than more joins, and shared so the directory
+ * and the applied-Tutor list cannot render the same Tutor differently.
+ */
+async function enrichAdminTutorDirectoryRows<
+  Row extends { id: string; cityLocationId: string | null; institution: string | null },
+>(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  rows: Row[],
+) {
+  const tutorIds = rows.map(row => row.id);
+  const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
+  const [educationRows, cityRows] = await Promise.all([
+    tutorIds.length
+      ? database
+          .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
+          .from(tutorEducationRecords)
+          .where(inArray(tutorEducationRecords.tutorId, tutorIds))
+      : [],
+    cityIds.length
+      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+      : [],
+  ]);
+  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
+  for (const record of educationRows) {
+    const list = educationByTutor.get(record.tutorId) ?? [];
+    list.push({ qualificationLevel: record.qualificationLevel, instituteName: record.instituteName });
+    educationByTutor.set(record.tutorId, list);
+  }
+  const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
+  return rows.map(row => ({
+    ...row,
+    cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
+    instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
+  }));
+}
 /** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
 export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFilters) {
   const database = await getDb();
@@ -4016,38 +4056,94 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
 
-  // Two page-sized lookups rather than more joins: the institute needs a
-  // priority pick across a Tutor's education records, and the City is a second
-  // hop into the same `locations` table the row already joins for its area.
-  const pageTutorIds = rows.map(row => row.id);
-  const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
-  const [educationRows, cityRows] = await Promise.all([
-    pageTutorIds.length
-      ? database
-          .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
-          .from(tutorEducationRecords)
-          .where(inArray(tutorEducationRecords.tutorId, pageTutorIds))
-      : [],
-    cityIds.length
-      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
-      : [],
-  ]);
-  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
-  for (const record of educationRows) {
-    const list = educationByTutor.get(record.tutorId) ?? [];
-    list.push({ qualificationLevel: record.qualificationLevel, instituteName: record.instituteName });
-    educationByTutor.set(record.tutorId, list);
-  }
-  const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
-
-  const items = rows.map(row => ({
-    ...row,
-    cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
-    instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
-  }));
+  const items = await enrichAdminTutorDirectoryRows(database, rows);
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
+export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };
+
+/**
+ * Every Tutor who applied to one tuition, as the Admin's Tutor Profiles rows.
+ *
+ * The Tutors come back in the shape the directory uses, enriched by the very
+ * same helper, so a Tutor reads identically on both screens. The header block
+ * above them needs the job itself, so it is resolved here in the same round
+ * trip rather than making the page ask twice for one screen.
+ *
+ * Ordered oldest first: on an applicant list the row number is application
+ * order, so #1 is the Tutor who applied first.
+ */
+export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [job] = await database
+    .select({
+      id: tutorRequests.id,
+      classCourse: tutorRequests.classCourse,
+      category: tutorRequests.category,
+      subjects: tutorRequests.subjects,
+      preferredGender: tutorRequests.preferredGender,
+      daysPerWeek: tutorRequests.daysPerWeek,
+      budgetAmount: tutorRequests.budgetAmount,
+      // Already stored as "Area, City", which is how the header shows it.
+      tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
+      locationText: tutorRequests.locationText,
+      tuitionType: tutorRequests.tuitionType,
+      guardianName: users.name,
+      guardianPhone: guardianProfiles.phone,
+    })
+    .from(tutorRequests)
+    .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .where(eq(tutorRequests.id, filters.requestId))
+    .limit(1);
+  if (!job) return undefined;
+
+  const conditions = [
+    eq(tutorJobs.tutorRequestId, filters.requestId),
+    // A withdrawn interest is not an application any more - the same rule the
+    // count on the Posted jobs card follows, so the two agree.
+    ne(tutorJobInterests.status, "withdrawn"),
+    ...getAdminTutorDirectoryConditions(filters),
+  ];
+  const where = and(...conditions);
+  const offset = (filters.page - 1) * filters.pageSize;
+  const rows = await database
+    .select({ ...adminTutorDirectoryFields, appliedAt: tutorJobInterests.createdAt })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .where(where)
+    .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
+    .limit(filters.pageSize)
+    .offset(offset);
+  const totals = await database
+    .select({ value: count() })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .where(where);
+  const total = Number(totals[0]?.value ?? 0);
+
+  // The applied count in the header is every applicant, not the filtered page:
+  // "Applied: 26" is a fact about the tuition, and a filter must not change it.
+  const appliedTotal = (await countAppliedTutorsByRequest(database, [filters.requestId])).get(filters.requestId) ?? 0;
+
+  return {
+    job,
+    appliedTotal,
+    items: await enrichAdminTutorDirectoryRows(database, rows),
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+  };
+}
 /** Single-Tutor review context deliberately excludes private contact and document references. */
 export async function getAdminTutorReview(tutorId: string) {
   const database = await getDb();

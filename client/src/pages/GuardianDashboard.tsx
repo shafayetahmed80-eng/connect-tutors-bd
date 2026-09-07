@@ -20,6 +20,7 @@ export const guardianDashboardNavigation: DashboardNavigationItem[] = [
   { icon: UserRound, label: "Profile", path: "/guardian/dashboard/profile" },
   { icon: Clock3, label: "Attendance", path: "/guardian/dashboard/attendance" },
   { icon: FileText, label: "Posted jobs", path: "/guardian/dashboard/posted-jobs" },
+  { icon: Users, label: "Applied Tutors", path: "/guardian/dashboard/applied-tutors" },
   { icon: Bell, label: "Notifications", path: "/guardian/dashboard/notifications" },
   { icon: ShieldCheck, label: "Confirmation Letter", path: "/guardian/dashboard/confirmation-letter" },
   { icon: Settings, label: "Settings", path: "/guardian/dashboard/settings", sectionLabel: "Account" },
@@ -196,7 +197,7 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   // The sheet is named from the Admin panel, like the headings inside it.
   const hireSheetTitle = useSiteContentText("request-tutor.sheet.title", "Hire a tutor");
 
-  if (section && section !== "hire" && section !== "profile" && section !== "posted-jobs" && section !== "notifications" && section !== "confirmation-letter" && section !== "attendance" && section !== "settings" && section !== "how-it-works") {
+  if (section && section !== "hire" && section !== "profile" && section !== "posted-jobs" && section !== "applied-tutors" && section !== "notifications" && section !== "confirmation-letter" && section !== "attendance" && section !== "settings" && section !== "how-it-works") {
     return <div className="space-y-6"><GuardianWorkspaceState kind="planned" title={`${sectionLabel} is coming soon`} message="This Guardian workspace section is planned and will be introduced after its data and privacy rules are ready." /><Card className="rounded-xl border-j-border shadow-sm"><CardContent className="flex flex-col items-start gap-4 p-7 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-extrabold text-j-ink">Need help now?</p></div><div className="flex flex-wrap gap-3"><Link href="/guardian/dashboard/hire"><Button className="bg-[#1677c8] hover:bg-[#0e4f85]">Hire a tutor</Button></Link><Link href="/guardian/requests"><Button variant="outline">View requests</Button></Link></div></CardContent></Card></div>;
   }
 
@@ -218,6 +219,9 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
   if (section === "notifications") return <GuardianNotificationInbox />;
 
   if (section === "confirmation-letter") return <GuardianConfirmationLetterPanel />;
+
+  // Applied Tutors is a tab with no layout yet; its design is a later step.
+  if (section === "applied-tutors") return <div data-testid="guardian-applied-tutors" className="space-y-6" />;
 
   if (section === "posted-jobs") {
     return <div className="space-y-6"><GuardianRequestTracking embedded detailRequestId={requestId} /></div>;

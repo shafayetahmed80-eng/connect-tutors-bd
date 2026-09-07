@@ -11,6 +11,7 @@ describe("Guardian workspace navigation", () => {
       "/guardian/dashboard/profile",
       "/guardian/dashboard/attendance",
       "/guardian/dashboard/posted-jobs",
+      "/guardian/dashboard/applied-tutors",
       "/guardian/dashboard/notifications",
       "/guardian/dashboard/confirmation-letter",
       "/guardian/dashboard/settings",
