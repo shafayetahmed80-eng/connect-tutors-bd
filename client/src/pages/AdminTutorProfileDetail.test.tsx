@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  moderate: vi.fn(),
   profile: {
     tutorId: "tutor-175",
     tutorNumber: 175,
@@ -59,6 +60,9 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.profile, isLoading: false, isError: false, error: null };
         },
       },
+      moderateTutorProfile: {
+        useMutation: () => ({ mutate: mocks.moderate, isPending: false, isError: false, error: null }),
+      },
     },
     // The shared workspace module this page borrows `hydrateTeachingProfile`
     // from touches these at import time.
@@ -68,14 +72,19 @@ vi.mock("@/lib/trpc", () => ({
       list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
       listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
     },
-    useUtils: () => ({}),
+    useUtils: () => ({
+      admin: {
+        getTutorProfile: { invalidate: vi.fn() },
+        listTutorDirectory: { invalidate: vi.fn() },
+      },
+    }),
   },
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { AdminTutorProfileDetailContent } from "./AdminTutorProfileDetail";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.profile.profileStatus = "approved"; });
 
 describe("Admin Tutor profile detail", () => {
   it("asks for that Tutor and heads the page with the Admin's own identity strip", () => {
@@ -106,6 +115,37 @@ describe("Admin Tutor profile detail", () => {
     expect(within(documents).getByAltText("NID Card Image").getAttribute("src")).toBe("https://signed.example/nid.png");
     // The three the Tutor never uploaded.
     expect(within(documents).getAllByText("Not uploaded")).toHaveLength(3);
+  });
+
+  it("offers only the decisions the lifecycle allows from the current status", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    // Approved: suspension is the one move left.
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    const options = within(screen.getByLabelText(/Next status/i)).getAllByRole("option");
+    expect(options.map(option => option.textContent)).toEqual(["Suspend profile"]);
+  });
+
+  it("holds the suspension until a reason is written, then sends it", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Admin reason/i), { target: { value: "  Repeated no-shows  " } });
+    expect(save.disabled).toBe(false);
+
+    fireEvent.click(save);
+    expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "suspended", reason: "Repeated no-shows" });
+  });
+
+  it("says plainly when a profile has no Admin action left", () => {
+    mocks.profile.profileStatus = "draft";
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    expect(screen.queryByRole("button", { name: /Review & moderate/i })).toBeNull();
+    expect(screen.getByText(/No Admin status action is currently available/i)).toBeTruthy();
   });
 
   it("renders the Tutor's own read-only view, with the server-resolved labels", () => {

@@ -4,7 +4,7 @@ import { ADMIN_WORKSPACE_SECURITY_BADGE, buildAdminPriorityQueue } from "./Admin
 describe("Admin monitoring priority queue", () => {
   it("maps live operational counts to safe internal queues without exposing Guardian contact data", () => {
     expect(buildAdminPriorityQueue({ pendingTutorReviews: 4, newRequests: 2, consentBacklog: 1 })).toEqual([
-      { count: 4, label: "Review Tutor profiles", href: "/admin/tutors" },
+      { count: 4, label: "Review Tutor profiles", href: "/admin/tutor-profiles" },
       { count: 2, label: "Review new Guardian requests", href: "/admin/matching" },
       { count: 1, label: "Resolve consent decisions", href: "/admin/matching" },
     ]);
