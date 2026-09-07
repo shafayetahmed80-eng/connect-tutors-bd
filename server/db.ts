@@ -1358,7 +1358,7 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
   const database = await getDb();
   if (!database) return undefined;
   const [owner] = await database
-    .select({ userId: tutors.userId })
+    .select({ userId: tutors.userId, createdAt: tutors.createdAt, updatedAt: tutors.updatedAt })
     .from(tutors)
     .where(eq(tutors.id, input.tutorId))
     .limit(1);
@@ -1421,7 +1421,13 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
         await Promise.all(supportingRows.map(async row => [row.documentType, await storageGetSignedUrl(row.storageKey)] as const)),
       ) as Record<string, string>,
     },
-    fieldConfig: await getTutorProfileFieldConfig(),
+    // The flat list, matching `tutorProfileFieldConfig.resolved`: the lookups
+    // built from it repeat every field three times, and `indexResolvedFields`
+    // rebuilds them on the client.
+    fieldConfig: (await getTutorProfileFieldConfig()).all,
+    // Record dates, an Admin-only concern: the Tutor's own view never shows them.
+    createdAt: owner.createdAt ?? null,
+    updatedAt: owner.updatedAt ?? null,
   };
 }
 
@@ -3942,7 +3948,8 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   return conditions;
 }
 
-const adminTutorDirectoryFields = {
+/** What both Admin Tutor reads share; joins `locations` and nothing else. */
+const adminTutorRecordFields = {
   id: tutors.id,
   name: tutors.name,
   initials: tutors.initials,
@@ -3960,7 +3967,31 @@ const adminTutorDirectoryFields = {
   createdAt: tutors.createdAt,
 };
 
-/** Operational Tutor directory deliberately excludes phone, email, documents, and photo keys. */
+/**
+ * The directory row on top of that. The mobile number is here on purpose - it
+ * is what an Admin looks a Tutor up by - and so is the department, which needs
+ * its own join and so cannot live in the shared set above.
+ */
+const adminTutorDirectoryFields = {
+  ...adminTutorRecordFields,
+  phone: tutors.phone,
+  cityLocationId: tutors.cityLocationId,
+  departmentName: facultyDepartments.name,
+};
+
+/**
+ * The institute an Admin means when they say "প্রতিষ্ঠান": the one on the
+ * Tutor's Honours record, falling back to Masters, and only then to the loose
+ * `tutors.institution` text the older directory rows carry.
+ */
+function pickDirectoryInstitute(
+  records: Array<{ qualificationLevel: string | null; instituteName: string | null }>,
+): string | null {
+  const named = (level: string) => records.find(record => record.qualificationLevel === level && record.instituteName?.trim())?.instituteName ?? null;
+  return named("Honours") ?? named("Masters");
+}
+
+/** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
 export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -3969,13 +4000,45 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
   const itemQuery = database
     .select(adminTutorDirectoryFields)
     .from(tutors)
-    .leftJoin(locations, eq(tutors.locationId, locations.id));
-  const items = conditions.length
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId));
+  const rows = conditions.length
     ? await itemQuery.where(and(...conditions)).orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset)
     : await itemQuery.orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset);
   const totalQuery = database.select({ value: count() }).from(tutors).leftJoin(locations, eq(tutors.locationId, locations.id));
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
+
+  // Two page-sized lookups rather than more joins: the institute needs a
+  // priority pick across a Tutor's education records, and the City is a second
+  // hop into the same `locations` table the row already joins for its area.
+  const pageTutorIds = rows.map(row => row.id);
+  const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
+  const [educationRows, cityRows] = await Promise.all([
+    pageTutorIds.length
+      ? database
+          .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
+          .from(tutorEducationRecords)
+          .where(inArray(tutorEducationRecords.tutorId, pageTutorIds))
+      : [],
+    cityIds.length
+      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+      : [],
+  ]);
+  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
+  for (const record of educationRows) {
+    const list = educationByTutor.get(record.tutorId) ?? [];
+    list.push({ qualificationLevel: record.qualificationLevel, instituteName: record.instituteName });
+    educationByTutor.set(record.tutorId, list);
+  }
+  const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
+
+  const items = rows.map(row => ({
+    ...row,
+    cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
+    instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
+  }));
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
@@ -3985,7 +4048,7 @@ export async function getAdminTutorReview(tutorId: string) {
   if (!database) throw new Error("Database is not available");
   const rows = await database
     .select({
-      ...adminTutorDirectoryFields,
+      ...adminTutorRecordFields,
       experience: tutors.experience,
       priorTeachingExperience: tutors.priorTeachingExperience,
       specialExpertise: tutors.specialExpertise,

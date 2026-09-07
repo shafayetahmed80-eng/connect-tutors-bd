@@ -38,6 +38,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
   return [
     { icon: LayoutDashboard, label: "Overview", path: "/admin/dashboard", sectionLabel: "Operations" },
     { icon: UserRoundCog, label: "Tutor management", path: "/admin/tutors", sectionLabel: "Operations" },
+    { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian activity", path: "/admin/guardians", sectionLabel: "Operations" },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
     { icon: ClipboardList, label: "Matching workspace", path: "/admin/matching", sectionLabel: "Operations" },
