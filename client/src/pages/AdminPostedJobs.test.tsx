@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  publish: vi.fn(),
   data: {
     items: [
       {
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
         cancellationReason: null,
         contactConsent: "not_required",
         createdAt: new Date("2026-09-06T00:00:00.000Z"),
+        appliedTutorCount: 7,
       },
     ],
     counts: { pending: 4, live: 9, appointed: 0, confirmed: 0, cancelled: 0 },
@@ -57,14 +59,18 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
+      moderateTutorRequestPublication: {
+        useMutation: () => ({ mutate: mocks.publish, isPending: false }),
+      },
     },
+    useUtils: () => ({ admin: { listPostedJobs: { invalidate: vi.fn() } } }),
   },
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { AdminPostedJobsContent } from "./AdminPostedJobs";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.data.items[0].publicationState = "submitted"; });
 
 describe("Admin Posted jobs board", () => {
   it("mirrors the Guardian's five stages with counts across every Guardian", () => {
@@ -111,5 +117,50 @@ describe("Admin Posted jobs board", () => {
     expect(within(dialog).queryByRole("button", { name: "Update" })).toBeNull();
     expect(within(dialog).getByRole("button", { name: /Change Status/ })).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: /Edit/ })).toBeTruthy();
+  });
+
+  it("takes a Pending tuition Live in one click", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
+
+    // Pending offers exactly one move, and it is the whole dialog.
+    const status = screen.getByRole("dialog");
+    expect(within(status).getByRole("heading", { name: /Change status of Job ID 6812/ })).toBeTruthy();
+    await user.click(within(status).getByRole("button", { name: "Live" }));
+    expect(mocks.publish).toHaveBeenCalledWith({ requestId: 13, action: "go_live" });
+  });
+
+  it("offers no status move once the tuition is past Pending", async () => {
+    mocks.data.items[0].publicationState = "published";
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
+    const status = screen.getByRole("dialog");
+    expect(within(status).queryByRole("button", { name: "Live" })).toBeNull();
+    expect(within(status).getByText(/No status change is available from Live/)).toBeTruthy();
+  });
+
+  it("shows the applied Tutor count on a live tuition, on the card and in the dialog", async () => {
+    mocks.data.items[0].publicationState = "published";
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    const card = screen.getByRole("button", { name: /Job ID 6812/ });
+    const cardLink = within(card).getByRole("link", { name: /Applied Tutors/ });
+    expect(cardLink.textContent).toContain("(7)");
+    expect(cardLink.getAttribute("href")).toBe("/admin/applied-tutors/13");
+
+    await user.click(card);
+    expect(within(screen.getByRole("dialog")).getByRole("link", { name: /Applied Tutors/ })).toBeTruthy();
+  });
+
+  it("keeps the applied count off a tuition that is not live yet", () => {
+    render(<AdminPostedJobsContent />);
+    expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
   });
 });

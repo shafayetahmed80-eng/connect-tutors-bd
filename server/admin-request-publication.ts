@@ -18,6 +18,7 @@ export const ADMIN_REQUEST_PUBLICATION_ACTIONS = [
   "request_changes",
   "approve",
   "publish",
+  "go_live",
   "extend_expiry",
   "unpublish",
   "close",
@@ -44,6 +45,10 @@ const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminReq
   request_changes: { reviewing: "changes_requested" },
   approve: { reviewing: "approved" },
   publish: { approved: "published", unpublished: "published" },
+  // The Posted jobs board takes a job Live in one click, from wherever the
+  // request had got to. Same destination as `publish`, no review path in front
+  // of it - which is why it is a separate action rather than a wider `publish`.
+  go_live: { submitted: "published", reviewing: "published", changes_requested: "published", approved: "published", unpublished: "published" },
   extend_expiry: { published: "published" },
   unpublish: { published: "unpublished" },
   close: { submitted: "closed", reviewing: "closed", changes_requested: "closed", approved: "closed", unpublished: "closed", published: "closed" },
@@ -51,7 +56,10 @@ const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminReq
 
 /**
  * Publishing policy: an Admin must record a completed Guardian call before
- * approving or publishing. This preserves the user-approved manual process.
+ * `approve` or `publish`. This preserves the user-approved manual process of
+ * the Matching workspace. `go_live` is deliberately outside that gate: it is
+ * the Posted jobs board button, where the Admin is taking the job live as a
+ * single deliberate act rather than at the end of a review.
  */
 export function validateAdminRequestPublicationAction(input: PublicationValidationInput): PublicationValidationResult {
   const nextState = transitions[input.action][input.from];

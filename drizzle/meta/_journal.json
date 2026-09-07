@@ -477,6 +477,13 @@
       "when": 1789700000000,
       "tag": "0067_guardian_profile_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1789800000000,
+      "tag": "0068_publication_go_live_action",
+      "breakpoints": true
     }
   ]
 }

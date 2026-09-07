@@ -1970,8 +1970,11 @@ export async function listGuardianTutorRequests(userId: number) {
     .where(eq(tutorRequests.guardianUserId, userId))
     .orderBy(desc(tutorRequests.createdAt));
 
+  const appliedByRequest = await countAppliedTutorsByRequest(database, requests.map(request => request.id));
+
   return requests.map(request => ({
     ...request,
+    appliedTutorCount: appliedByRequest.get(request.id) ?? 0,
     lifecycle: getGuardianRequestLifecycle(request),
     nextAction: request.status === "matched" && request.contactConsent === "pending"
       ? "decide_contact_consent" as const
@@ -3184,7 +3187,10 @@ async function synchronizePublishedTutorJob(
     };
   },
 ): Promise<{ publicJobId?: string }> {
-  if (input.action !== "publish" && input.action !== "extend_expiry" && input.action !== "unpublish" && input.action !== "close") return {};
+  // `go_live` is `publish` with a shorter road to it, so the projection treats
+  // the two the same from here on.
+  const publishes = input.action === "publish" || input.action === "go_live";
+  if (!publishes && input.action !== "extend_expiry" && input.action !== "unpublish" && input.action !== "close") return {};
   const now = new Date();
   const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
   const [existingJob] = await tx
@@ -3194,7 +3200,7 @@ async function synchronizePublishedTutorJob(
     .limit(1)
     .for("update");
 
-  if (input.action === "publish") {
+  if (publishes) {
     // A job on the public board with no salary is the thing the single-amount
     // change was made to end, so a request that still carries none - the two
     // that predate it - cannot be published until its Guardian names one.
@@ -4196,6 +4202,33 @@ const adminPostedJobFields = {
   createdAt: tutorRequests.createdAt,
 };
 
+/**
+ * How many Tutors have applied to each of these requests.
+ *
+ * A Tutor applies to the public job, not to the request, so the count hops
+ * through `tutor_jobs` - one row per request, by its unique key. Withdrawn
+ * interest is not an application any more and is left out; a declined one
+ * still happened, and stays counted.
+ *
+ * One page-sized query rather than a correlated subquery per row: the same
+ * shape the Admin Tutor directory uses for its own per-page lookups.
+ */
+export async function countAppliedTutorsByRequest(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  requestIds: number[],
+): Promise<Map<number, number>> {
+  if (requestIds.length === 0) return new Map();
+  const rows = await database
+    .select({ requestId: tutorJobs.tutorRequestId, applied: count(tutorJobInterests.id) })
+    .from(tutorJobs)
+    .leftJoin(
+      tutorJobInterests,
+      and(eq(tutorJobInterests.tutorJobId, tutorJobs.id), ne(tutorJobInterests.status, "withdrawn")),
+    )
+    .where(inArray(tutorJobs.tutorRequestId, requestIds))
+    .groupBy(tutorJobs.tutorRequestId);
+  return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
+}
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -4252,8 +4285,16 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where);
   const total = Number(totals[0]?.value ?? 0);
+  const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
 
-  return { items, counts, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+  return {
+    items: items.map(item => ({ ...item, appliedTutorCount: appliedByRequest.get(item.id) ?? 0 })),
+    counts,
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+  };
 }
 
 /** Resolves one requested Guardian contact record and appends exactly one successful access event. */

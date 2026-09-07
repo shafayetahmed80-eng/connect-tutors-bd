@@ -54,6 +54,13 @@ export const tutorRequestPublicationActionValues = [
   "request_changes",
   "approve",
   "publish",
+  /**
+   * The Posted jobs board's one-click move to Live. It reaches the same
+   * `published` state as `publish` and leaves the same audit event, but it
+   * is its own action because it is allowed from every stage before Live,
+   * where `publish` is the last step of the Matching workspace gated review.
+   */
+  "go_live",
   "extend_expiry",
   "unpublish",
   "close",

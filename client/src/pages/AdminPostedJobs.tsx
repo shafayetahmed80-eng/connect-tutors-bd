@@ -1,4 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import AppliedTutorsButton from "@/components/AppliedTutorsButton";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
 import JobDetailsModal, { JobDetailRow } from "@/components/JobDetailsModal";
 import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
@@ -7,7 +9,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { buildJobTitle } from "@shared/job-title";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { trpc } from "@/lib/trpc";
-import { AlignLeft, ChevronLeft, ChevronRight, FilePenLine, Loader2, MapPin, Phone, Plus, RefreshCcw, School, Search, UserRound } from "lucide-react";
+import { AlignLeft, ChevronLeft, ChevronRight, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -25,20 +27,35 @@ const PAGE_SIZE = 12;
  * the same cards and the same details dialog, but across every Guardian, with
  * a search box and paging the Guardian's own short list does not need.
  *
- * Add Tuition / Change Status / Edit are placed but not wired yet; their
- * behaviour is still being specified.
+ * Change Status carries the one move the board owns: a Pending tuition goes
+ * Live in a single click, which publishes it to the Job Board and moves the
+ * card here and on the Guardian's own board. Add Tuition and Edit are placed
+ * but not wired yet; their behaviour is still being specified.
  */
 export function AdminPostedJobsContent() {
   const [stage, setStage] = useState<StageKey>("pending");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [statusJobId, setStatusJobId] = useState<number | null>(null);
 
   const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE });
   const items = jobs.data?.items ?? [];
   const counts = jobs.data?.counts;
   const totalPages = jobs.data?.totalPages ?? 1;
   const openJob = expandedId ? items.find(item => item.id === expandedId) ?? null : null;
+  const statusJob = statusJobId ? items.find(item => item.id === statusJobId) ?? null : null;
+
+  const utils = trpc.useUtils();
+  const goLive = trpc.admin.moderateTutorRequestPublication.useMutation({
+    onSuccess: () => {
+      void utils.admin.listPostedJobs.invalidate();
+      setStatusJobId(null);
+      setExpandedId(null);
+      toast.success("The tuition is live on the Job Board.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const notWiredYet = () => toast("Coming soon.");
   const changeStage = (next: StageKey) => { setStage(next); setPage(1); setExpandedId(null); };
@@ -106,7 +123,10 @@ export function AdminPostedJobsContent() {
                 preferredTutorGender: job.preferredGender,
               }}
               onOpen={() => setExpandedId(job.id)}
-              action={<DetailsAction />}
+              action={<span className="flex items-center gap-3.5">
+                {lifecycle.key === "live" ? <AppliedTutorsButton href={`/admin/applied-tutors/${job.id}`} count={job.appliedTutorCount} /> : null}
+                <DetailsAction />
+              </span>}
               showMapLink={false}
             />;
           })}
@@ -151,10 +171,30 @@ export function AdminPostedJobsContent() {
       </>}
       action={<>
         <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
-        <button type="button" onClick={notWiredYet} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
+        <button type="button" onClick={() => { setStatusJobId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
         <button type="button" onClick={notWiredYet} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]"><FilePenLine size={13} /> Edit</button>
+        {getGuardianRequestLifecycle(openJob).key === "live"
+          ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
+          : null}
       </>}
     /> : null}
+
+    {statusJob ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
+      <ModalHeader title={`Change status of Job ID ${jobIdForRequest(statusJob.id)}`} />
+      <ModalBody>
+        {getGuardianRequestLifecycle(statusJob).key === "pending"
+          ? <button
+              type="button"
+              disabled={goLive.isPending}
+              onClick={() => goLive.mutate({ requestId: statusJob.id, action: "go_live" })}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
+            ><RadioTower size={16} /> {goLive.isPending ? "Going live…" : "Live"}</button>
+          : <p className="rounded-xl bg-j-surface-sunken px-3 py-2.5 text-center text-xs font-medium text-j-ink-soft">No status change is available from {getGuardianRequestLifecycle(statusJob).label}.</p>}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setStatusJobId(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      </ModalFooter>
+    </Modal> : null}
   </div>;
 }
 
