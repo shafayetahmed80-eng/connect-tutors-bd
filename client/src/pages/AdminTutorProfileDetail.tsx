@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { SiteContentProvider } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { hydrateTeachingProfile } from "./TutorProfileWorkspace";
@@ -6,8 +7,8 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, IdCard, Loader2, UserRound } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, IdCard, Loader2, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 
 const statusStyles: Record<string, string> = {
@@ -20,6 +21,27 @@ const statusStyles: Record<string, string> = {
 
 const recordDate = (value: Date | string | null | undefined) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+type ModerationTarget = "approved" | "changes_requested" | "suspended";
+
+/**
+ * The client's half of the lifecycle the server enforces in
+ * `validateTutorModerationAction`: which decisions an Admin may take from the
+ * status a profile is in right now. A status not listed here offers none.
+ */
+const moderationOptions: Record<string, ModerationTarget[]> = {
+  draft: [],
+  pending: ["approved", "changes_requested", "suspended"],
+  changes_requested: [],
+  approved: ["suspended"],
+  suspended: [],
+};
+
+const moderationLabels: Record<ModerationTarget, string> = {
+  approved: "Approve profile",
+  changes_requested: "Request changes",
+  suspended: "Suspend profile",
+};
 
 function DocumentTile({ label, url }: { label: string; url: string | null }) {
   return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
@@ -39,12 +61,28 @@ function DocumentTile({ label, url }: { label: string; url: string | null }) {
  * "View Profile" - not a copy. It can be, because `admin.getTutorProfile`
  * ships the catalog labels and the field config the shared component needs,
  * which the Tutor's screen otherwise fetches from procedures only a Tutor can
- * call. Above it sits what only an Admin gets: the identity strip and the
- * private documents.
+ * call. Above it sits what only an Admin gets: the identity strip, the
+ * moderation decision, and the private documents.
+ *
+ * Moderation lives here rather than on the row because the decision is made
+ * after reading the profile, and this is the screen the whole profile is on.
  */
 export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string }) {
+  const utils = trpc.useUtils();
   const profileQuery = trpc.admin.getTutorProfile.useQuery({ tutorId }, { retry: false });
   const profile = profileQuery.data;
+
+  const [moderating, setModerating] = useState(false);
+  const [nextStatus, setNextStatus] = useState<ModerationTarget>("approved");
+  const [reason, setReason] = useState("");
+  const moderation = trpc.admin.moderateTutorProfile.useMutation({
+    onSuccess: () => {
+      void utils.admin.getTutorProfile.invalidate({ tutorId });
+      void utils.admin.listTutorDirectory.invalidate();
+      setModerating(false);
+      setReason("");
+    },
+  });
 
   const sections = useMemo(() => {
     if (!profile) return [];
@@ -73,6 +111,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   }
 
   const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
+  const decisions = moderationOptions[profile.profileStatus] ?? [];
 
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-10">
     <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
@@ -108,6 +147,11 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
             <span className="inline-flex items-center gap-1"><CalendarClock size={13} />Updated: {recordDate(profile.updatedAt)}</span>
           </p>
         </div>
+        {decisions.length > 0
+          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover">
+              <UserRoundCog size={16} /> Review &amp; moderate
+            </button>
+          : <p className="shrink-0 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft">No Admin status action is currently available for this profile.</p>}
       </div>
     </section>
 
@@ -124,6 +168,29 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     <SiteContentProvider page="tutor-profile">
       <TutorProfileSummaryView sections={sections} />
     </SiteContentProvider>
+
+    {moderating ? <Modal size="md" onClose={() => setModerating(false)} busy={moderation.isPending}>
+      <ModalHeader title={`Moderate ${profile.name}`} />
+      <ModalBody className="space-y-4">
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-j-accent" />
+          <p className="text-sm leading-6 text-j-ink-soft">Correction requests and suspensions require an Admin reason that is stored in the moderation history.</p>
+        </div>
+        <label className="block text-sm font-bold text-j-ink-strong">Next status
+          <select value={nextStatus} onChange={event => setNextStatus(event.target.value as ModerationTarget)} className="mt-2 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal">
+            {decisions.map(status => <option key={status} value={status}>{moderationLabels[status]}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-bold text-j-ink-strong">Admin reason {nextStatus === "approved" ? "(optional)" : "(required)"}
+          <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? "Optional approval note" : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        </label>
+        {moderation.isError ? <p className="text-sm text-red-700">{moderation.error.message}</p> : null}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setModerating(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={moderation.isPending || (nextStatus !== "approved" && !reason.trim())} onClick={() => moderation.mutate({ tutorId, nextStatus, reason: reason.trim() || undefined })} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{moderation.isPending ? "Saving…" : "Save moderation"}</button>
+      </ModalFooter>
+    </Modal> : null}
   </div>;
 }
 
