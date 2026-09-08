@@ -158,6 +158,7 @@ export function ModalHeader({
   eyebrow,
   srPrefix,
   meta,
+  action,
 }: {
   title: string;
   /** Small uppercase kicker above the title. Decorative — hidden from a screen reader. */
@@ -166,6 +167,12 @@ export function ModalHeader({
   srPrefix?: string;
   /** A muted line under the title — an id/date row, a one-line subtitle. Stays pinned with the header. */
   meta?: React.ReactNode;
+  /**
+   * A control beside the close button, for a dialog whose main action belongs
+   * at the top rather than at the foot — a long form an Admin fills in, where
+   * the foot is a scroll away.
+   */
+  action?: React.ReactNode;
 }) {
   const { titleId, onClose, busy } = useModalContext("ModalHeader");
   return (
@@ -180,9 +187,12 @@ export function ModalHeader({
         </h2>
         {meta ? <div className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
       </div>
-      <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton)}>
-        <X size={18} />
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {action}
+        <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton)}>
+          <X size={18} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -366,10 +366,16 @@ export const guardianProfiles = mysqlTable(
     /** Opaque support-facing ID; intentionally distinct from any database primary key. */
     guardianId: varchar("guardianId", { length: 12 }).notNull(),
     phone: varchar("phone", { length: 16 }).notNull(),
-    gender: mysqlEnum("gender", ["male", "female"]).notNull(),
+    /**
+     * Nullable since migration 0069: an Admin posting an off-site tuition
+     * creates the Guardian record from a name and a number alone, and null is
+     * the honest value for a question nobody was asked.
+     */
+    gender: mysqlEnum("gender", ["male", "female"]),
     cityLocationId: varchar("cityLocationId", { length: 80 }).notNull().references(() => locations.id),
     locationId: varchar("locationId", { length: 80 }).notNull().references(() => locations.id),
-    termsVersion: varchar("termsVersion", { length: 64 }).notNull(),
+    /** Null for the same reason: an Admin-posted Guardian accepted no terms. */
+    termsVersion: varchar("termsVersion", { length: 64 }),
     // Added with the Guardian profile/verification build (migration 0067).
     // Every one is nullable and optional; the profile is always editable and
     // none of this gates posting a request.
