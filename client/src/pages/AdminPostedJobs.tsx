@@ -1,5 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
-import AdminAddTuitionModal from "@/components/AdminAddTuitionModal";
+import AdminAddTuitionModal, { type AdminTuitionDraft } from "@/components/AdminAddTuitionModal";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
@@ -31,7 +31,8 @@ const PAGE_SIZE = 12;
  * Change Status carries the one move the board owns: a Pending tuition goes
  * Live in a single click, which publishes it to the Job Board and moves the
  * card here and on the Guardian's own board. Add Tuition posts a tuition that
- * came from off the site, straight to Live. Edit is placed but not wired yet.
+ * came from off the site, straight to Live, and Edit reopens that same form
+ * filled in - so a tuition is written and corrected in one place.
  */
 export function AdminPostedJobsContent() {
   const [stage, setStage] = useState<StageKey>("pending");
@@ -40,6 +41,7 @@ export function AdminPostedJobsContent() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusJobId, setStatusJobId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE });
   const items = jobs.data?.items ?? [];
@@ -47,6 +49,7 @@ export function AdminPostedJobsContent() {
   const totalPages = jobs.data?.totalPages ?? 1;
   const openJob = expandedId ? items.find(item => item.id === expandedId) ?? null : null;
   const statusJob = statusJobId ? items.find(item => item.id === statusJobId) ?? null : null;
+  const editJob = editingId ? items.find(item => item.id === editingId) ?? null : null;
 
   const utils = trpc.useUtils();
   const goLive = trpc.admin.moderateTutorRequestPublication.useMutation({
@@ -59,7 +62,6 @@ export function AdminPostedJobsContent() {
     onError: error => toast.error(error.message),
   });
 
-  const notWiredYet = () => toast("Coming soon.");
   const changeStage = (next: StageKey) => { setStage(next); setPage(1); setExpandedId(null); };
 
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
@@ -174,11 +176,17 @@ export function AdminPostedJobsContent() {
       action={<>
         <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
         <button type="button" onClick={() => { setStatusJobId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
-        <button type="button" onClick={notWiredYet} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]"><FilePenLine size={13} /> Edit</button>
+        <button type="button" onClick={() => { setEditingId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]"><FilePenLine size={13} /> Edit</button>
         {getGuardianRequestLifecycle(openJob).key === "live"
           ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
           : null}
       </>}
+    /> : null}
+
+    {editJob ? <AdminAddTuitionModal
+      draft={{ ...editJob, requestId: editJob.id } satisfies AdminTuitionDraft}
+      onClose={() => setEditingId(null)}
+      onPosted={() => { setEditingId(null); void utils.admin.listPostedJobs.invalidate(); }}
     /> : null}
 
     {adding ? <AdminAddTuitionModal

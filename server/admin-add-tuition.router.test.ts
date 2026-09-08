@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 const dbMocks = vi.hoisted(() => ({
   createAdminPostedTuition: vi.fn(),
+  updateAdminPostedTuition: vi.fn(),
   getTutorRequestLocation: vi.fn(),
 }));
 
@@ -105,5 +106,41 @@ describe("admin.createPostedTuition", () => {
     await expect(
       createCaller({ ...adminUser, role: "user", openId: "someone-else" }).admin.createPostedTuition(homeTuition),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("admin.updatePostedTuition", () => {
+  it("builds the row the same way posting does, and names which tuition", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: true, guardianEdited: true });
+
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, classCourse: "Class 6", budgetAmount: 8000 });
+
+    const call = dbMocks.updateAdminPostedTuition.mock.calls[0][0];
+    expect(call).toMatchObject({ adminUserId: 42, requestId: 14 });
+    expect(call.request).toMatchObject({ classCourse: "Class 6", budgetAmount: 8000, locationText: "Shyamoli, Dhaka" });
+    // The name and number travel; whether they are honoured is the server's
+    // call, not the caller's - a Guardian who registered owns both.
+    expect(call.guardian).toEqual({ name: "Off-site Guardian", phone: "+8801999888777" });
+  });
+
+  it("holds an edit to the same rules a new tuition is held to", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+
+    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, subjects: [] }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
+  });
+
+  it("is a 404 for a tuition that is gone", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: false, reason: "REQUEST_NOT_FOUND" });
+    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 9999 }))
+      .rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("is closed to anyone who is not an Admin", async () => {
+    await expect(createCaller(null).admin.updatePostedTuition({ ...homeTuition, requestId: 14 }))
+      .rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });

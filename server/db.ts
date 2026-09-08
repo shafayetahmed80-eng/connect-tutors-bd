@@ -1992,7 +1992,7 @@ async function resolveAdminPostedGuardian(
 export async function createAdminPostedTuition(input: {
   adminUserId: number;
   guardian: AdminPostedTuitionGuardian;
-  request: Omit<InsertTutorRequest, "guardianUserId">;
+  request: AdminPostedTuitionRequest;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -2012,6 +2012,139 @@ export async function createAdminPostedTuition(input: {
     action: "go_live",
   });
   return { id: requestId, live: published.updated };
+}
+/**
+ * Marks the Guardian records an Admin created for an off-site tuition.
+ *
+ * Their name and number are the Admin's own entry, so the Admin may correct
+ * them. A Guardian who registered themselves owns both - and the number is
+ * their sign-in - so those stay read-only however the job is edited.
+ */
+export const ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX = "admin-posted:guardian:";
+
+/** The request half of an Admin-posted tuition, whether it is new or an edit. */
+export type AdminPostedTuitionRequest = {
+  tuitionType: "home" | "online" | "both" | "group" | "package";
+  category: string;
+  curriculumType: string | null;
+  classCourse: string;
+  subjects: string;
+  groupCapacity: number | null;
+  packageDurationMonths: number | null;
+  studentCount: number | null;
+  daysPerWeek: number;
+  preferredGender: "male" | "female" | "any";
+  studentGender: "male" | "female" | null;
+  addressDetails: string | null;
+  tuitionCityLocationId: string | null;
+  tuitionLocationId: string | null;
+  tuitionLocationLabel: string | null;
+  budgetAmount: number | null;
+  instituteName: string | null;
+  heardAboutUs: RequestSource | null;
+  notes: string | null;
+  contactConsent: "not_required";
+  monthlyBudget: number | null;
+  locationText: string;
+};
+
+/**
+ * An Admin's edit of a posted tuition, from any stage.
+ *
+ * Deliberately not the Matching workspace's `edit` publication action: that
+ * one runs only from `reviewing`, touches seven fields and clears the recorded
+ * Guardian call. This is the whole record, from wherever the job has got to,
+ * and it leaves the call alone.
+ *
+ * A job already on the Job Board is re-projected in the same transaction, or
+ * the board would keep showing what the tuition used to say.
+ */
+export async function updateAdminPostedTuition(input: {
+  adminUserId: number;
+  requestId: number;
+  /** Only for a Guardian the Admin created; ignored for one who registered. */
+  guardian?: { name: string; phone: string };
+  // Spelled out rather than `Omit<InsertTutorRequest, ...>`: every field is
+  // written on every edit, and the Job Board projection below needs the
+  // required ones to actually be there.
+  request: AdminPostedTuitionRequest;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
+
+  return database.transaction(async tx => {
+    const [existing] = await tx
+      .select({
+        id: tutorRequests.id,
+        guardianUserId: tutorRequests.guardianUserId,
+        publicationState: tutorRequests.publicationState,
+        openId: users.openId,
+      })
+      .from(tutorRequests)
+      .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+      .where(eq(tutorRequests.id, input.requestId))
+      .limit(1)
+      .for("update");
+    if (!existing) return { updated: false as const, reason: "REQUEST_NOT_FOUND" as const };
+
+    await tx.update(tutorRequests)
+      .set({ ...input.request, lastActivityAt: new Date() })
+      .where(eq(tutorRequests.id, existing.id));
+
+    const adminPosted = existing.openId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX);
+    if (input.guardian && adminPosted) {
+      const loginPhone = normalizeBangladeshMobile(input.guardian.phone);
+      await tx.update(users)
+        .set({ name: input.guardian.name.trim(), loginPhone })
+        .where(eq(users.id, existing.guardianUserId));
+      await tx.update(guardianProfiles)
+        .set({ phone: loginPhone })
+        .where(eq(guardianProfiles.userId, existing.guardianUserId));
+    }
+
+    // Live means the Job Board is already showing this tuition, so the
+    // projection is rebuilt from what was just saved. An expired or unpublished
+    // job is left alone: republishing it is a status change, not an edit.
+    if (existing.publicationState === "published" && input.request.budgetAmount !== null) {
+      const [job] = await tx
+        .select({ id: tutorJobs.id })
+        .from(tutorJobs)
+        .where(eq(tutorJobs.tutorRequestId, existing.id))
+        .limit(1)
+        .for("update");
+      if (job) {
+        const projection = buildPublishedTutorJobProjection({
+          requestId: existing.id,
+          tuitionType: input.request.tuitionType,
+          category: input.request.category,
+          classCourse: input.request.classCourse,
+          subjects: safeJsonStringArray(input.request.subjects),
+          groupCapacity: input.request.groupCapacity ?? null,
+          studentCount: input.request.studentCount ?? null,
+          studentGender: input.request.studentGender ?? null,
+          daysPerWeek: input.request.daysPerWeek,
+          preferredTutorGender: input.request.preferredGender,
+          cityLocationId: input.request.tuitionCityLocationId ?? null,
+          locationId: input.request.tuitionLocationId ?? null,
+          locationLabel: input.request.tuitionLocationLabel ?? null,
+          budgetAmount: input.request.budgetAmount,
+          notes: input.request.notes ?? null,
+          publishedAt: new Date(),
+        }, jobExpiryDays);
+        await tx.update(tutorJobs).set(getPublishedTutorJobRefresh(projection)).where(eq(tutorJobs.id, job.id));
+      }
+    }
+
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: existing.id,
+      guardianUserId: existing.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_updated",
+      changedFields: JSON.stringify(input.guardian && adminPosted ? ["request", "guardian"] : ["request"]),
+    });
+    return { updated: true as const, guardianEdited: Boolean(input.guardian && adminPosted) };
+  });
 }
 export async function createTutorRequest(request: InsertTutorRequest) {
   const db = await getDb();
@@ -4292,6 +4425,7 @@ const adminGuardianRequestFields = {
   tutorId: tutorRequests.tutorId,
   tuitionType: tutorRequests.tuitionType,
   category: tutorRequests.category,
+  curriculumType: tutorRequests.curriculumType,
   classCourse: tutorRequests.classCourse,
   subjects: tutorRequests.subjects,
   daysPerWeek: tutorRequests.daysPerWeek,
@@ -4361,13 +4495,20 @@ const adminPostedJobFields = {
   guardianName: users.name,
   guardianPhone: guardianProfiles.phone,
   guardianId: guardianProfiles.guardianId,
+  // Server-side only: mapped to `guardianIsAdminPosted` before it leaves.
+  guardianOpenId: users.openId,
   tuitionType: tutorRequests.tuitionType,
   category: tutorRequests.category,
+  curriculumType: tutorRequests.curriculumType,
   classCourse: tutorRequests.classCourse,
   subjects: tutorRequests.subjects,
   daysPerWeek: tutorRequests.daysPerWeek,
   preferredGender: tutorRequests.preferredGender,
   studentGender: tutorRequests.studentGender,
+  // The two ids the Edit form re-selects from: a label alone cannot fill a
+  // location picker back in.
+  tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
+  tuitionLocationId: tutorRequests.tuitionLocationId,
   studentCount: tutorRequests.studentCount,
   groupCapacity: tutorRequests.groupCapacity,
   packageDurationMonths: tutorRequests.packageDurationMonths,
@@ -4473,7 +4614,14 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
   const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
 
   return {
-    items: items.map(item => ({ ...item, appliedTutorCount: appliedByRequest.get(item.id) ?? 0 })),
+    // `guardianOpenId` is a server-side identifier and does not leave: what
+    // the Edit form needs from it is the one fact of whether the Admin wrote
+    // this Guardian's name and number, and so may correct them.
+    items: items.map(({ guardianOpenId, ...item }) => ({
+      ...item,
+      appliedTutorCount: appliedByRequest.get(item.id) ?? 0,
+      guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
+    })),
     counts,
     total,
     page: filters.page,
