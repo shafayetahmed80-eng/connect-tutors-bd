@@ -69,6 +69,8 @@ export type TutorRequestPublicationAction = (typeof tutorRequestPublicationActio
 
 export const tutorRequestOperationActionValues = [
   "guardian_updated",
+  /** An Admin edited the request from the Posted jobs board. */
+  "admin_updated",
   "admin_confirmed",
   "admin_cancelled",
   "guardian_cancelled",

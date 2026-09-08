@@ -536,6 +536,20 @@ const adminPostedTuitionInputSchema = z.object({
   } = value as Record<string, unknown>;
   return requestInput;
 }, tutorRequestInputSchema));
+/**
+ * The same shape as posting one, plus which tuition is being edited.
+ *
+ * `requestId` is stripped before the request half is parsed: those union
+ * members are `.strict()`, so an extra key is a rejection rather than an
+ * ignored field. Same shape as the Guardian's own pending-edit schema.
+ */
+const adminPostedTuitionUpdateSchema = z.object({
+  requestId: z.number().int().positive(),
+}).passthrough().and(z.preprocess(value => {
+  if (!value || typeof value !== "object") return value;
+  const { requestId: _requestId, ...rest } = value as Record<string, unknown>;
+  return rest;
+}, adminPostedTuitionInputSchema));
 const guardianPendingTutorRequestUpdateSchema = z.object({
   requestId: z.number().int().positive(),
 }).passthrough().and(z.preprocess(value => {
@@ -562,6 +576,73 @@ export const tutorProfileInputSchema = z.object({
   about: z.string().trim().min(20).max(2000),
 });
 
+/**
+ * The row an Admin-posted tuition writes, whether it is new or an edit, plus
+ * the Guardian's own City resolved the way both paths resolve it.
+ *
+ * Shared so a field cannot be saved one way when posting and another when
+ * editing - the bug that shape invites.
+ */
+async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionInputSchema>) {
+  const limits = await db.getSiteLimits();
+  assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+  assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
+
+  let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
+  if (input.tuitionType !== "online") {
+    try {
+      tuitionLocation = await db.getTutorRequestLocation({
+        cityLocationId: input.tuitionCityLocationId,
+        locationId: input.tuitionLocationId,
+      });
+    } catch (error) {
+      if (error instanceof db.TutorRequestLocationError) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "The chosen City and tuition location do not match." });
+      }
+      throw error;
+    }
+  }
+
+  // The Guardian lives where the tuition is, unless the tuition is online -
+  // then there is no location to take it from and the form asked.
+  const guardianCityLocationId = tuitionLocation?.cityLocationId ?? input.guardianCityLocationId;
+  const guardianLocationId = tuitionLocation?.locationId ?? input.guardianLocationId;
+  if (!guardianCityLocationId || !guardianLocationId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the Guardian's City and location." });
+  }
+  const phone = normalizeBangladeshMobile(input.guardianPhone);
+  if (!phone) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid Bangladesh mobile number." });
+
+  return {
+    guardian: { name: input.guardianName, phone, cityLocationId: guardianCityLocationId, locationId: guardianLocationId },
+    request: {
+      tuitionType: input.tuitionType,
+      category: input.category,
+      curriculumType: input.curriculumType || null,
+      classCourse: input.classCourse,
+      subjects: JSON.stringify(input.subjects),
+      groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
+      packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
+      // Narrowed on the tuition type rather than with `in`: an `in` check
+      // cannot see through the intersection this schema is built from.
+      studentCount: input.tuitionType === "group" || input.tuitionType === "both" ? null : input.studentCount,
+      daysPerWeek: input.daysPerWeek,
+      preferredGender: input.preferredGender,
+      studentGender: input.studentGender ?? null,
+      addressDetails: input.addressDetails ?? null,
+      tuitionCityLocationId: tuitionLocation?.cityLocationId ?? null,
+      tuitionLocationId: tuitionLocation?.locationId ?? null,
+      tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
+      budgetAmount: input.budgetAmount,
+      instituteName: input.instituteName || null,
+      heardAboutUs: input.heardAboutUs,
+      notes: input.notes ?? null,
+      contactConsent: "not_required" as const,
+      monthlyBudget: null,
+      locationText: tuitionLocation?.locationLabel ?? "Online tuition",
+    },
+  };
+}
 export const appRouter = router({
   system: router({}),
   guardianIntake: router({
@@ -1377,74 +1458,23 @@ export const appRouter = router({
     createPostedTuition: adminProcedure
       .input(adminPostedTuitionInputSchema)
       .mutation(async ({ ctx, input }) => {
-        const limits = await db.getSiteLimits();
-        assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
-        assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
-
-        let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
-        if (input.tuitionType !== "online") {
-          try {
-            tuitionLocation = await db.getTutorRequestLocation({
-              cityLocationId: input.tuitionCityLocationId,
-              locationId: input.tuitionLocationId,
-            });
-          } catch (error) {
-            if (error instanceof db.TutorRequestLocationError) {
-              throw new TRPCError({ code: "BAD_REQUEST", message: "The chosen City and tuition location do not match." });
-            }
-            throw error;
-          }
-        }
-
-        // The Guardian lives where the tuition is, unless the tuition is
-        // online - then there is no location to take it from and the form
-        // asked for one.
-        const guardianCityLocationId = tuitionLocation?.cityLocationId ?? input.guardianCityLocationId;
-        const guardianLocationId = tuitionLocation?.locationId ?? input.guardianLocationId;
-        if (!guardianCityLocationId || !guardianLocationId) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the Guardian's City and location." });
-        }
-
-        const normalizedPhone = normalizeBangladeshMobile(input.guardianPhone);
-        if (!normalizedPhone) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid Bangladesh mobile number." });
-        }
-
-        return db.createAdminPostedTuition({
+        const { guardian, request } = await buildAdminPostedTuition(input);
+        return db.createAdminPostedTuition({ adminUserId: ctx.user.id, guardian, request });
+      }),
+    updatePostedTuition: adminProcedure
+      .input(adminPostedTuitionUpdateSchema)
+      .mutation(async ({ ctx, input }) => {
+        const { guardian, request } = await buildAdminPostedTuition(input);
+        const result = await db.updateAdminPostedTuition({
           adminUserId: ctx.user.id,
-          guardian: {
-            name: input.guardianName,
-            phone: normalizedPhone,
-            cityLocationId: guardianCityLocationId,
-            locationId: guardianLocationId,
-          },
-          request: {
-            tuitionType: input.tuitionType,
-            category: input.category,
-            curriculumType: input.curriculumType || null,
-            classCourse: input.classCourse,
-            subjects: JSON.stringify(input.subjects),
-            groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
-            packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
-            // Narrowed on the tuition type like its neighbours: an `in` check
-            // cannot see through the intersection this schema is built from.
-            studentCount: input.tuitionType === "group" || input.tuitionType === "both" ? null : input.studentCount,
-            daysPerWeek: input.daysPerWeek,
-            preferredGender: input.preferredGender,
-            studentGender: input.studentGender ?? null,
-            addressDetails: input.addressDetails ?? null,
-            tuitionCityLocationId: tuitionLocation?.cityLocationId ?? null,
-            tuitionLocationId: tuitionLocation?.locationId ?? null,
-            tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
-            budgetAmount: input.budgetAmount,
-            instituteName: input.instituteName || null,
-            heardAboutUs: input.heardAboutUs,
-            notes: input.notes ?? null,
-            contactConsent: "not_required",
-            monthlyBudget: null,
-            locationText: tuitionLocation?.locationLabel ?? "Online tuition",
-          },
+          requestId: input.requestId,
+          // Only honoured for a Guardian the Admin created; the server checks,
+          // so a hand-made request cannot rename someone who registered.
+          guardian: { name: guardian.name, phone: guardian.phone },
+          request,
         });
+        if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        return result;
       }),
     listAppliedTutors: adminProcedure
       .input(adminTutorDirectoryInputSchema.extend({ requestId: z.number().int().positive() }))

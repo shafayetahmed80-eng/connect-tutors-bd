@@ -8,6 +8,7 @@ import {
 } from "@/pages/GuardianRequestJourney";
 import { formatRequestSource, INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { formatStudentGender, formatTuitionType } from "@shared/job-card";
+import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { trpc } from "@/lib/trpc";
@@ -53,12 +54,23 @@ function Select({ title, required, value, onChange, options, placeholder, format
   </Field>;
 }
 
-function Text({ title, required, value, onChange, placeholder, maxLength, inputMode }: {
+function Text({ title, required, value, onChange, placeholder, maxLength, inputMode, readOnly }: {
   title: string; required?: boolean; value: string; onChange: (value: string) => void;
   placeholder?: string; maxLength?: number; inputMode?: "numeric" | "tel" | "text";
+  /** Shown, but not the Admin's to change. */
+  readOnly?: boolean;
 }) {
   return <Field title={title} required={required}>
-    <input value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} maxLength={maxLength} inputMode={inputMode} className={control} />
+    <input
+      value={value}
+      onChange={event => onChange(event.target.value)}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      inputMode={inputMode}
+      readOnly={readOnly}
+      aria-readonly={readOnly}
+      className={`${control} ${readOnly ? "cursor-not-allowed bg-j-surface-sunken text-j-ink-soft" : ""}`}
+    />
   </Field>;
 }
 
@@ -71,29 +83,85 @@ function CompactLocation({ children }: { children: ReactNode }) {
   return <div className="[&_button]:h-8 [&_button]:text-[11px] [&_label>span:first-child]:text-[11px] [&_label>span:first-child]:font-semibold">{children}</div>;
 }
 
-export default function AdminAddTuitionModal({ onClose, onPosted }: { onClose: () => void; onPosted: () => void }) {
-  const [guardianName, setGuardianName] = useState("");
-  const [guardianPhone, setGuardianPhone] = useState("");
-  const [tuitionType, setTuitionType] = useState<TuitionType>("home");
-  const [tuitionCityId, setTuitionCityId] = useState("");
-  const [tuitionLocationId, setTuitionLocationId] = useState("");
+/**
+ * The tuition an Edit is starting from. Every field the form owns, as the
+ * Posted jobs board already holds it - so opening Edit needs no second fetch.
+ */
+export type AdminTuitionDraft = {
+  requestId: number;
+  guardianName: string | null;
+  guardianPhone: string;
+  /**
+   * Whether the Admin wrote this Guardian's name and number in the first
+   * place. A Guardian who registered owns both, and the number is their
+   * sign-in, so for them the two boxes are shown but not writable.
+   */
+  guardianIsAdminPosted: boolean;
+  tuitionType: string;
+  tuitionCityLocationId: string | null;
+  tuitionLocationId: string | null;
+  category: string;
+  curriculumType: string | null;
+  classCourse: string;
+  subjects: unknown;
+  studentGender: string | null;
+  addressDetails: string | null;
+  studentCount: number | null;
+  groupCapacity: number | null;
+  packageDurationMonths: number | null;
+  daysPerWeek: number;
+  preferredGender: string;
+  budgetAmount: number | null;
+  instituteName: string | null;
+  heardAboutUs: string | null;
+  notes: string | null;
+};
+
+function draftSubjects(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof value !== "string") return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
+  onClose: () => void;
+  onPosted: () => void;
+  /** Absent when posting a new tuition; present when editing one. */
+  draft?: AdminTuitionDraft;
+}) {
+  const editing = draft !== undefined;
+  // A Guardian who registered owns their name and their number, and the
+  // number is how they sign in - so an Admin sees both and changes neither.
+  const guardianLocked = editing && !draft.guardianIsAdminPosted;
+  const [guardianName, setGuardianName] = useState(draft?.guardianName ?? "");
+  const [guardianPhone, setGuardianPhone] = useState(draft?.guardianPhone ?? "");
+  const [tuitionType, setTuitionType] = useState<TuitionType>((draft?.tuitionType as TuitionType) ?? "home");
+  const [tuitionCityId, setTuitionCityId] = useState(draft?.tuitionCityLocationId ?? "");
+  const [tuitionLocationId, setTuitionLocationId] = useState(draft?.tuitionLocationId ?? "");
+  // An online tuition has no place of its own, so an Admin editing one is
+  // asked again where the Guardian is - the record does not carry it here.
   const [guardianCityId, setGuardianCityId] = useState("");
   const [guardianLocationId, setGuardianLocationId] = useState("");
-  const [category, setCategory] = useState("");
-  const [curriculumType, setCurriculumType] = useState("");
-  const [classCourse, setClassCourse] = useState("");
-  const [studentGender, setStudentGender] = useState<StudentGender>("");
-  const [addressDetails, setAddressDetails] = useState("");
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [studentCount, setStudentCount] = useState("1");
-  const [groupCapacity, setGroupCapacity] = useState("");
-  const [packageDurationMonths, setPackageDurationMonths] = useState("");
-  const [daysPerWeek, setDaysPerWeek] = useState("");
-  const [preferredGender, setPreferredGender] = useState<PreferredGender>("any");
-  const [salaryAmount, setSalaryAmount] = useState("");
-  const [instituteName, setInstituteName] = useState("");
-  const [heardAboutUs, setHeardAboutUs] = useState<RequestSource | "">("");
-  const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState(draft?.category ?? "");
+  const [curriculumType, setCurriculumType] = useState(draft?.curriculumType ?? "");
+  const [classCourse, setClassCourse] = useState(draft?.classCourse ?? "");
+  const [studentGender, setStudentGender] = useState<StudentGender>((draft?.studentGender as StudentGender) ?? "");
+  const [addressDetails, setAddressDetails] = useState(draft?.addressDetails ?? "");
+  const [subjects, setSubjects] = useState<string[]>(draftSubjects(draft?.subjects));
+  const [studentCount, setStudentCount] = useState(draft?.studentCount ? String(draft.studentCount) : "1");
+  const [groupCapacity, setGroupCapacity] = useState(draft?.groupCapacity ? String(draft.groupCapacity) : "");
+  const [packageDurationMonths, setPackageDurationMonths] = useState(draft?.packageDurationMonths ? String(draft.packageDurationMonths) : "");
+  const [daysPerWeek, setDaysPerWeek] = useState(draft ? String(draft.daysPerWeek) : "");
+  const [preferredGender, setPreferredGender] = useState<PreferredGender>((draft?.preferredGender as PreferredGender) ?? "any");
+  const [salaryAmount, setSalaryAmount] = useState(draft?.budgetAmount ? String(draft.budgetAmount) : "");
+  const [instituteName, setInstituteName] = useState(draft?.instituteName ?? "");
+  const [heardAboutUs, setHeardAboutUs] = useState<RequestSource | "">((draft?.heardAboutUs as RequestSource) ?? "");
+  const [notes, setNotes] = useState(draft?.notes ?? "");
 
   const online = tuitionType === "online";
   const cities = trpc.catalog.searchGuardianLocations.useQuery({ query: "", limit: 50, types: ["city"] });
@@ -107,10 +175,15 @@ export default function AdminAddTuitionModal({ onClose, onPosted }: { onClose: (
   const resolvedLimits = trpc.siteLimits.resolved.useQuery();
   const subjectLimit = resolvedLimits.data?.["request.subjects"] ?? defaultSiteLimits()["request.subjects"];
 
-  const post = trpc.admin.createPostedTuition.useMutation({
+  const create = trpc.admin.createPostedTuition.useMutation({
     onSuccess: () => { toast.success("The tuition is live on the Job Board."); onPosted(); },
     onError: error => toast.error(error.message),
   });
+  const update = trpc.admin.updatePostedTuition.useMutation({
+    onSuccess: () => { toast.success("The tuition has been updated."); onPosted(); },
+    onError: error => toast.error(error.message),
+  });
+  const post = editing ? update : create;
 
   const changeCategory = (value: string) => {
     setCategory(value);
@@ -148,13 +221,18 @@ export default function AdminAddTuitionModal({ onClose, onPosted }: { onClose: (
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     };
     const place = { tuitionCityLocationId: tuitionCityId, tuitionLocationId };
-    if (tuitionType === "online") {
-      post.mutate({ ...base, tuitionType: "online", studentCount: Number(studentCount), guardianCityLocationId: guardianCityId, guardianLocationId });
-      return;
-    }
-    if (tuitionType === "group") { post.mutate({ ...base, ...place, tuitionType: "group", groupCapacity: Number(groupCapacity) }); return; }
-    if (tuitionType === "package") { post.mutate({ ...base, ...place, tuitionType: "package", packageDurationMonths: Number(packageDurationMonths), studentCount: Number(studentCount) }); return; }
-    post.mutate({ ...base, ...place, tuitionType: "home", studentCount: Number(studentCount) });
+    // The tuition type decides which extra fields travel; the server's schema
+    // is a discriminated union on exactly this.
+    const payload = tuitionType === "online"
+      ? { ...base, tuitionType: "online" as const, studentCount: Number(studentCount), guardianCityLocationId: guardianCityId, guardianLocationId }
+      : tuitionType === "group"
+        ? { ...base, ...place, tuitionType: "group" as const, groupCapacity: Number(groupCapacity) }
+        : tuitionType === "package"
+          ? { ...base, ...place, tuitionType: "package" as const, packageDurationMonths: Number(packageDurationMonths), studentCount: Number(studentCount) }
+          : { ...base, ...place, tuitionType: "home" as const, studentCount: Number(studentCount) };
+
+    if (draft) update.mutate({ ...payload, requestId: draft.requestId });
+    else create.mutate(payload);
   };
 
   const postButton = <button
@@ -162,16 +240,18 @@ export default function AdminAddTuitionModal({ onClose, onPosted }: { onClose: (
     disabled={post.isPending}
     onClick={submit}
     className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#0f7048] px-4 text-xs font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
-  >{post.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}{post.isPending ? "Posting…" : "Post"}</button>;
+  >{post.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+    {post.isPending ? (editing ? "Updating…" : "Posting…") : editing ? "Update" : "Post"}
+  </button>;
 
   return <Modal size="lg" onClose={onClose} busy={post.isPending}>
     {/* On a laptop the Post button sits in the header, top right. On a phone
         the header has no room for it, so it moves to the foot instead. */}
-    <ModalHeader title="Add Tuition" action={<span className="hidden sm:inline-flex">{postButton}</span>} />
+    <ModalHeader title={editing ? `Edit Job ID ${jobIdForRequest(draft.requestId)}` : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
     <ModalBody>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-        <Text title="Guardian name" required value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />
-        <Text title="Mobile number" required value={guardianPhone} onChange={setGuardianPhone} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
+        <Text title="Guardian name" required readOnly={guardianLocked} value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />
+        <Text title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={setGuardianPhone} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
         <Select title="Tuition type" required value={tuitionType} onChange={value => setTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose" format={value => formatTuitionType(value)} />
 
         {online ? <>
