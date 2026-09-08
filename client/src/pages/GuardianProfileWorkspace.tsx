@@ -293,7 +293,10 @@ export default function GuardianProfileWorkspace() {
 
           {activeTab === "personal" ? (
             <div>
-              <ReadRow icon={UserRound} label="Gender" value={profile.gender === "male" ? "Male" : "Female"} />
+              {/* A Guardian an Admin created for an off-site tuition was never
+                  asked, so an unset gender reads as the same red "Not set"
+                  every other unanswered row uses. */}
+              <ReadRow icon={UserRound} label="Gender" value={profile.gender === "male" ? "Male" : profile.gender === "female" ? "Female" : ""} />
               <ReadRow icon={BookMarked} label="Religion" value={profile.religion ?? ""} />
               <ReadRow icon={Flag} label="Nationality" value={profile.nationality || "Bangladeshi"} />
               <ReadRow icon={Link2} label="Social profile links" value={profile.socialLinks ?? ""} />

@@ -514,6 +514,28 @@ export const tutorRequestInputSchema = z.discriminatedUnion("tuitionType", [
   }
 });
 
+/**
+ * An off-site tuition an Admin types in. It is the Guardian journey's own
+ * request schema with a name and a number in front of it, so an Admin-posted
+ * tuition cannot carry anything a Guardian-posted one could not.
+ *
+ * `guardianCityLocationId` / `guardianLocationId` are only sent for an online
+ * tuition, where there is no tuition location to take the Guardian's own from.
+ */
+const adminPostedTuitionInputSchema = z.object({
+  guardianName: z.string().trim().min(1).max(160),
+  guardianPhone: z.string().trim().min(1).max(20),
+  guardianCityLocationId: z.string().trim().min(1).max(80).optional(),
+  guardianLocationId: z.string().trim().min(1).max(80).optional(),
+}).passthrough().and(z.preprocess(value => {
+  if (!value || typeof value !== "object") return value;
+  const {
+    guardianName: _name, guardianPhone: _phone,
+    guardianCityLocationId: _city, guardianLocationId: _location,
+    ...requestInput
+  } = value as Record<string, unknown>;
+  return requestInput;
+}, tutorRequestInputSchema));
 const guardianPendingTutorRequestUpdateSchema = z.object({
   requestId: z.number().int().positive(),
 }).passthrough().and(z.preprocess(value => {
@@ -1352,6 +1374,78 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    createPostedTuition: adminProcedure
+      .input(adminPostedTuitionInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const limits = await db.getSiteLimits();
+        assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+        assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
+
+        let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
+        if (input.tuitionType !== "online") {
+          try {
+            tuitionLocation = await db.getTutorRequestLocation({
+              cityLocationId: input.tuitionCityLocationId,
+              locationId: input.tuitionLocationId,
+            });
+          } catch (error) {
+            if (error instanceof db.TutorRequestLocationError) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "The chosen City and tuition location do not match." });
+            }
+            throw error;
+          }
+        }
+
+        // The Guardian lives where the tuition is, unless the tuition is
+        // online - then there is no location to take it from and the form
+        // asked for one.
+        const guardianCityLocationId = tuitionLocation?.cityLocationId ?? input.guardianCityLocationId;
+        const guardianLocationId = tuitionLocation?.locationId ?? input.guardianLocationId;
+        if (!guardianCityLocationId || !guardianLocationId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the Guardian's City and location." });
+        }
+
+        const normalizedPhone = normalizeBangladeshMobile(input.guardianPhone);
+        if (!normalizedPhone) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid Bangladesh mobile number." });
+        }
+
+        return db.createAdminPostedTuition({
+          adminUserId: ctx.user.id,
+          guardian: {
+            name: input.guardianName,
+            phone: normalizedPhone,
+            cityLocationId: guardianCityLocationId,
+            locationId: guardianLocationId,
+          },
+          request: {
+            tuitionType: input.tuitionType,
+            category: input.category,
+            curriculumType: input.curriculumType || null,
+            classCourse: input.classCourse,
+            subjects: JSON.stringify(input.subjects),
+            groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
+            packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
+            // Narrowed on the tuition type like its neighbours: an `in` check
+            // cannot see through the intersection this schema is built from.
+            studentCount: input.tuitionType === "group" || input.tuitionType === "both" ? null : input.studentCount,
+            daysPerWeek: input.daysPerWeek,
+            preferredGender: input.preferredGender,
+            studentGender: input.studentGender ?? null,
+            addressDetails: input.addressDetails ?? null,
+            tuitionCityLocationId: tuitionLocation?.cityLocationId ?? null,
+            tuitionLocationId: tuitionLocation?.locationId ?? null,
+            tuitionLocationLabel: tuitionLocation?.locationLabel ?? null,
+            budgetAmount: input.budgetAmount,
+            instituteName: input.instituteName || null,
+            heardAboutUs: input.heardAboutUs,
+            notes: input.notes ?? null,
+            contactConsent: "not_required",
+            monthlyBudget: null,
+            locationText: tuitionLocation?.locationLabel ?? "Online tuition",
+          },
+        });
+      }),
     listAppliedTutors: adminProcedure
       .input(adminTutorDirectoryInputSchema.extend({ requestId: z.number().int().positive() }))
       .query(async ({ input }) => {

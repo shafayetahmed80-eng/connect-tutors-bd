@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import AdminAddTuitionModal from "@/components/AdminAddTuitionModal";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
@@ -29,8 +30,8 @@ const PAGE_SIZE = 12;
  *
  * Change Status carries the one move the board owns: a Pending tuition goes
  * Live in a single click, which publishes it to the Job Board and moves the
- * card here and on the Guardian's own board. Add Tuition and Edit are placed
- * but not wired yet; their behaviour is still being specified.
+ * card here and on the Guardian's own board. Add Tuition posts a tuition that
+ * came from off the site, straight to Live. Edit is placed but not wired yet.
  */
 export function AdminPostedJobsContent() {
   const [stage, setStage] = useState<StageKey>("pending");
@@ -38,6 +39,7 @@ export function AdminPostedJobsContent() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusJobId, setStatusJobId] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE });
   const items = jobs.data?.items ?? [];
@@ -89,7 +91,7 @@ export function AdminPostedJobsContent() {
             className="h-10 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
           />
         </label>
-        <button type="button" onClick={notWiredYet} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
+        <button type="button" onClick={() => setAdding(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
           <Plus size={16} /> Add Tuition
         </button>
       </div>
@@ -177,6 +179,16 @@ export function AdminPostedJobsContent() {
           ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
           : null}
       </>}
+    /> : null}
+
+    {adding ? <AdminAddTuitionModal
+      onClose={() => setAdding(false)}
+      onPosted={() => {
+        setAdding(false);
+        // It went straight Live, so send the Admin to where it now is.
+        changeStage("live");
+        void utils.admin.listPostedJobs.invalidate();
+      }}
     /> : null}
 
     {statusJob ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>

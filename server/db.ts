@@ -1924,6 +1924,95 @@ export async function getTutorDashboardStats(userId: number) {
   } as const;
 }
 
+export type AdminPostedTuitionGuardian = {
+  name: string;
+  phone: string;
+  /** Where the Guardian lives. Off an online tuition it is asked for, because
+   *  there is no tuition location to take it from. */
+  cityLocationId: string;
+  locationId: string;
+};
+
+/**
+ * The Guardian behind an off-site tuition an Admin is posting.
+ *
+ * Off-site tuitions still need a Guardian - the whole panel reads a job
+ * through one - so the Admin's name and number become a real Guardian record
+ * rather than two loose columns every screen would have to fall back on. It
+ * carries no password: that person can claim the account later through the
+ * normal sign-in, and until then it is just where their tuitions hang.
+ *
+ * Posting twice for the same number reuses the account rather than making a
+ * second one, so one Guardian's tuitions stay together.
+ */
+async function resolveAdminPostedGuardian(
+  tx: JobProjectionTransaction,
+  guardian: AdminPostedTuitionGuardian,
+) {
+  const loginPhone = normalizeBangladeshMobile(guardian.phone);
+  const [existing] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, "guardian"), eq(users.loginPhone, loginPhone)))
+    .limit(1);
+  if (existing) return existing.id;
+
+  const created = await tx.insert(users).values({
+    openId: `admin-posted:guardian:${loginPhone}`,
+    name: guardian.name.trim(),
+    loginPhone,
+    role: "guardian",
+    lastSignedIn: new Date(),
+  });
+  const userId = Number(created[0].insertId);
+  await tx.insert(guardianProfiles).values({
+    userId,
+    guardianId: String(getNextAvailableGuardianNumber(
+      (await tx.select({ guardianId: guardianProfiles.guardianId }).from(guardianProfiles).for("update"))
+        .map(profile => profile.guardianId),
+    )),
+    phone: loginPhone,
+    // Gender and the accepted terms version stay null: nobody was asked, and
+    // a made-up answer would read as a real one. Migration 0069 allows it.
+    cityLocationId: guardian.cityLocationId,
+    locationId: guardian.locationId,
+  });
+  return userId;
+}
+
+/**
+ * An off-site tuition, posted by an Admin straight to the Job Board.
+ *
+ * One transaction: the Guardian record, the request, and the move to Live.
+ * It goes Live rather than Pending because there is nothing to review - the
+ * Admin typing it in is the review - and it reaches `published` through the
+ * same `go_live` action the Posted jobs board uses, so it leaves the same
+ * audit event and the same Job Board projection as every other live job.
+ */
+export async function createAdminPostedTuition(input: {
+  adminUserId: number;
+  guardian: AdminPostedTuitionGuardian;
+  request: Omit<InsertTutorRequest, "guardianUserId">;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const requestId = await database.transaction(async tx => {
+    const guardianUserId = await resolveAdminPostedGuardian(tx as JobProjectionTransaction, input.guardian);
+    const created = await tx.insert(tutorRequests).values({ ...input.request, guardianUserId });
+    return Number(created[0].insertId);
+  });
+
+  // Publishing is its own transaction on purpose: it is the same call the
+  // Change Status button makes, so the two paths cannot drift, and a failure
+  // here leaves a Pending tuition an Admin can take Live by hand rather than
+  // losing everything they typed.
+  const published = await moderateTutorRequestPublication({
+    requestId,
+    adminUserId: input.adminUserId,
+    action: "go_live",
+  });
+  return { id: requestId, live: published.updated };
+}
 export async function createTutorRequest(request: InsertTutorRequest) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
