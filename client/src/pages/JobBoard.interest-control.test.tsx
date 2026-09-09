@@ -19,12 +19,12 @@ describe("TutorInterestControl", () => {
 
   it("offers withdrawal while review is open and no control after a match is in progress", () => {
     const onAction = vi.fn();
-    const { rerender } = render(<TutorInterestControl interest={{ interestId: 24, status: "shortlisted" }} isInterestSaving={false} onAction={onAction} />);
+    const { rerender } = render(<TutorInterestControl interest={{ interestId: 24, status: "shortlisted", appliedAt: new Date("2026-09-01T00:00:00.000Z") }} isInterestSaving={false} onAction={onAction} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
     expect(onAction).toHaveBeenCalledOnce();
 
-    rerender(<TutorInterestControl interest={{ interestId: 24, status: "matched" }} isInterestSaving={false} onAction={onAction} />);
+    rerender(<TutorInterestControl interest={{ interestId: 24, status: "matched", appliedAt: new Date("2026-09-01T00:00:00.000Z") }} isInterestSaving={false} onAction={onAction} />);
     expect(screen.getByText("Matched")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
   });

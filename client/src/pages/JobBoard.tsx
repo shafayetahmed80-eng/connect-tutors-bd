@@ -9,7 +9,7 @@ import { MoneyAmountField } from "@/components/MoneyAmountField";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Compass, ExternalLink, Filter, HeartHandshake, MapPinned, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { BriefcaseBusiness, Check, ChevronLeft, ChevronRight, Compass, ExternalLink, Filter, HeartHandshake, MapPinned, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -18,7 +18,7 @@ import { useLocation } from "wouter";
 type TutorGender = "male" | "female" | "any";
 type TuitionType = "home" | "online" | "both" | "group" | "package";
 type TutorInterestStatus = "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
-type TutorJobInterest = { interestId: number; status: TutorInterestStatus };
+type TutorJobInterest = { interestId: number; status: TutorInterestStatus; appliedAt: Date | string };
 
 type JobBoardFilterState = {
   page: number;
@@ -152,6 +152,24 @@ export function getJobBoardDetailFacts(input: JobBoardStudentFacts) {
   ];
 }
 
+/**
+ * What the card's action shows once a Tutor has applied.
+ *
+ * An application already made is a fact, not an invitation, so the button
+ * gives way to the word and the day it was made. Withdrawing stays in the
+ * details dialog, where the application's own stage already is - it is the
+ * rarer act, and it should not sit under the thumb on every card in the grid.
+ *
+ * A withdrawn application is not one any more, so that card offers the button
+ * back, saying "Apply again" as the dialog does.
+ */
+export function getJobBoardAppliedState(interest?: { status: TutorInterestStatus; appliedAt: Date | string }) {
+  if (!interest || interest.status === "withdrawn") return null;
+  // `formatPostedDate`, not this page's own formatter: the chip sits on the
+  // card beside "Posted : 09 Sep 2026" and the two dates are read together.
+  return { label: "Applied", appliedOn: formatPostedDate(interest.appliedAt) };
+}
+
 export function getJobBoardApplicationCopy({ isTutor, isApprovedTutor }: { isTutor: boolean; isApprovedTutor: boolean }) {
   if (isTutor && isApprovedTutor) return { label: "Apply Now", description: null };
   return isTutor
@@ -188,7 +206,17 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const pageLinks = buildJobBoardPageLinks({ page: queryInput.page, totalPages: pagination.totalPages });
   const cities = citiesQuery.data ?? [];
   const locations = locationsQuery.data ?? [];
-  const tutorInterestByJobId = useMemo(() => new Map((tutorInterestsQuery.data ?? []).map(interest => [interest.publicJobId, { interestId: interest.interestId, status: interest.status as TutorInterestStatus }])), [tutorInterestsQuery.data]);
+  const tutorInterestByJobId = useMemo(() => new Map((tutorInterestsQuery.data ?? []).map(interest => [interest.publicJobId, { interestId: interest.interestId, status: interest.status as TutorInterestStatus, appliedAt: interest.createdAt }])), [tutorInterestsQuery.data]);
+  /**
+   * Which job is being applied to, not merely whether one is.
+   *
+   * A single page-wide "saving" flag put every card in the grid into the
+   * pending state at once, so one click read as though every button had been
+   * pressed. Only the card whose job id is here reacts; the rest stay as they
+   * were, and the guard below still stops a second application landing while
+   * the first is in flight.
+   */
+  const [savingJobId, setSavingJobId] = useState<number | null>(null);
   const isInterestSaving = expressInterest.isPending || withdrawInterest.isPending;
   const isApprovedTutor = isTutor && tutorProfileQuery.data?.profileStatus === "approved";
 
@@ -214,9 +242,13 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
     const presentation = getTutorInterestPresentation(interest?.status);
     if (!presentation.action || isInterestSaving) return;
     setInterestError(null);
-    const onError = (error: unknown) => setInterestError(error instanceof Error ? error.message : "Your application could not be updated. Please try again.");
-    if (presentation.action === "withdraw" && interest) withdrawInterest.mutate({ interestId: interest.interestId }, { onError });
-    else expressInterest.mutate({ tutorJobId: job.id }, { onError });
+    setSavingJobId(job.id);
+    const settle = {
+      onError: (error: unknown) => setInterestError(error instanceof Error ? error.message : "Your application could not be updated. Please try again."),
+      onSettled: () => setSavingJobId(null),
+    };
+    if (presentation.action === "withdraw" && interest) withdrawInterest.mutate({ interestId: interest.interestId }, settle);
+    else expressInterest.mutate({ tutorJobId: job.id }, settle);
   };
 
   const startApplication = (job: JobBoardJob) => {
@@ -247,10 +279,10 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         {interestError ? <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-bold">Your Job Board application was not updated.</p><p className="mt-1">{interestError}</p></div> : null}
         {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? reset : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
-      {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map(job => <JobCard key={job.id} job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={isInterestSaving} onInterestAction={() => startApplication(job)} />)}</div> : null}
+      {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map(job => <JobCard key={job.id} job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} />)}</div> : null}
       {totalCount > PAGE_SIZE ? <nav className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white p-3" aria-label="Job Board pagination" aria-busy={jobsQuery.isFetching}><button type="button" disabled={!pagination.previousPage || jobsQuery.isFetching} onClick={() => update("page", pagination.previousPage ?? 1)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><ol className="flex items-center gap-1" aria-label={`Page ${queryInput.page} of ${pagination.totalPages}`}>{pageLinks.map((pageLink, index) => pageLink === "ellipsis" ? <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-sm font-bold text-[#7893a6]">…</li> : <li key={pageLink}><button type="button" onClick={() => update("page", pageLink)} disabled={jobsQuery.isFetching} aria-current={pageLink === queryInput.page ? "page" : undefined} aria-label={`Go to page ${pageLink}`} className={`motion-interactive grid min-h-10 min-w-10 place-items-center rounded-xl px-2 text-sm font-bold disabled:cursor-progress ${pageLink === queryInput.page ? "bg-j-accent text-white" : "text-[#245676] hover:bg-[#f4fbff]"}`}>{pageLink}</button></li>)}</ol><button type="button" disabled={!pagination.nextPage || jobsQuery.isFetching} onClick={() => update("page", pagination.nextPage ?? queryInput.page)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></nav> : null}
     </div>
-    {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={isInterestSaving} onInterestAction={() => startApplication(activeJob)} /> : null}
+    {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
   </section>;
 }
 
@@ -290,6 +322,8 @@ function ApplicationControl({ interest, isTutor, isApprovedTutor, isInterestSavi
  */
 function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onDetails: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
   const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
+  const applied = getJobBoardAppliedState(interest);
+  const interestCopy = getTutorInterestPresentation(interest?.status);
   return <SharedJobCard
     job={{
       jobId: job.jobId,
@@ -304,12 +338,16 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
       preferredTutorGender: job.preferredTutorGender,
     }}
     onOpen={onDetails}
-    action={<button
-      type="button"
-      disabled={isInterestSaving}
-      onClick={event => { event.stopPropagation(); onInterestAction(); }}
-      className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
-    >{isInterestSaving ? "Saving…" : applyCopy.label}</button>}
+    action={applied
+      ? <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
+          <Check size={13} aria-hidden={true} />{applied.label} <span className="font-semibold text-[#3f8468]">{applied.appliedOn}</span>
+        </span>
+      : <button
+          type="button"
+          disabled={isInterestSaving}
+          onClick={event => { event.stopPropagation(); onInterestAction(); }}
+          className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
+        >{isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}</button>}
   />;
 }
 
@@ -329,6 +367,7 @@ function EmptyBoard({ onClear }: { onClear?: () => void }) {
 function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onClose: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
   const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
   const interestCopy = getTutorInterestPresentation(interest?.status);
+  const applied = getJobBoardAppliedState(interest);
   const label = interestCopy.actionLabel ?? applyCopy.label;
   const reason = interestCopy.description ?? applyCopy.description;
 
@@ -351,7 +390,10 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
     }}
     onClose={onClose}
     action={<>
-      {reason ? <span className="mr-auto text-2xs text-j-ink-muted">{reason}</span> : null}
+      {/* The day the application was made, beside the reason it cannot be made
+          again - only one of the two is ever set. */}
+      {applied ? <span className="mr-auto inline-flex items-center gap-1.5 text-2xs font-bold text-[#0f7048]"><Check size={12} aria-hidden={true} />{applied.label} {applied.appliedOn}</span> : null}
+      {reason ? <span className={`text-2xs text-j-ink-muted ${applied ? "" : "mr-auto"}`}>{reason}</span> : null}
       <button type="button" onClick={onClose} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
       <button
         type="button"
