@@ -69,3 +69,57 @@ being offered while existing tutor selections still resolve.
 **Deploy:** run `node scripts/seed-tutor-profile-catalog.mjs` (or
 `scripts/apply-bd-university-hierarchy.mjs`) against each environment after
 deploy — no schema migration is required.
+
+## 2026-09-10 expansion — the institutes UGC's list never had, and Master's fields
+
+A Tutor reported Islamic University of Technology missing. The cause was
+structural, not a typo: the 2026-09-01 pass was built from UGC's registers, and
+IUT is not on them — it is run by the Organisation of Islamic Cooperation under
+its own charter. Cross-checking the consolidated Wikipedia list of universities
+in Bangladesh showed it names a third category, "International universities",
+holding exactly two institutions, and both were absent here.
+
+| New `bangladesh-universities.json` key | Count | Source |
+|---|---|---|
+| `international_universities` | 2 | Islamic University of Technology (OIC, Gazipur); Asian University for Women (own Act, Chattogram) |
+| `textile_engineering_colleges` | 12 | The 9 BUTEX-affiliated colleges plus Tangail and Narsingdi (BUTEX academic supervision), and the DU-affiliated NITER, Savar |
+| `alternative_medicine_colleges` | 2 | The two government degree colleges at Mirpur, Dhaka |
+
+Institutes: **311 → 327** (295 → 311 selectable; the 16 non-Active entries are
+unchanged). The 37 government / 68 private / 7 military medical colleges and 13
+dental colleges were re-checked against the same Wikipedia list and match
+exactly, so nothing was missing there.
+
+**Not added, deliberately.** Nursing colleges and the private homeopathic /
+Unani / Ayurvedic colleges run to several hundred, and no list of them could be
+verified against a source. A college name invented here is worse than one
+absent: a Tutor cannot find their own and cannot tell why. They reach "Others"
+until an authoritative list (BNMC; the Board of Homoeopathic and Ayurvedic
+Systems of Medicine) can be worked through.
+
+### Department/Subject: Honours only → Honours and Master's
+
+The vocabulary's own metadata said it covered "Honours/Bachelor/Undergraduate
+fields", and it did — which meant every postgraduate-only discipline was
+missing. Checking it against the departments the large universities actually
+run also turned up Honours-level gaps, the worst being **Psychology**: the list
+had "Educational Psychology and Guidance" and nothing else, while Dhaka,
+Rajshahi, Chattogram and Jahangirnagar all run a Psychology department and
+Dhaka runs Clinical and Educational & Counselling Psychology besides.
+
+**267 → 356** (89 added, none duplicating an existing name):
+
+| Block | Count | Examples |
+|---|---|---|
+| Honours-level gaps | 17 | Psychology, Clinical Psychology, Museology, Printing and Publication Studies, Meteorology, Glass and Ceramic Engineering, Forestry and Wood Technology, Government and Politics, Al-Fiqh and Legal Studies |
+| Medical specialities (MD/MS/MPhil) | 36 | Medicine, Surgery, Cardiology, Neurology, Anaesthesiology, Pathology, Community Medicine, Forensic Medicine |
+| Dental specialities | 8 | Oral and Maxillofacial Surgery, Orthodontics, Prosthodontics, Periodontology |
+| Public health and health sciences | 8 | Epidemiology, Biostatistics, Health Informatics, Hospital Management |
+| Engineering specialisations (MSc) | 12 | Structural, Geotechnical, Transportation, Power Systems, Water Resources Development |
+| Social science, education and other | 8 | Counselling Psychology, Security Studies, Diplomacy and International Affairs, Educational Administration |
+
+"Others" stays last in the department list — the seed derives `sortOrder` from
+array index, so anything appended after it would sort below the catch-all.
+
+**Deploy per environment:** `npm run db:seed:tutor-profile-catalog`. No
+migration; the seed is an idempotent upsert and deactivates rather than deletes.

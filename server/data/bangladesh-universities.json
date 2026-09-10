@@ -2,7 +2,7 @@
   "meta": {
     "country": "Bangladesh",
     "hierarchy": "Institute > Department/Subject",
-    "total_institutes": 311,
+    "total_institutes": 327,
     "public_universities": 63,
     "private_universities": 115,
     "government_medical_colleges": 37,
@@ -11,9 +11,12 @@
     "dental_colleges": 13,
     "affiliated_colleges": 7,
     "other": 1,
-    "departments": 267,
+    "departments": 356,
     "generated_by": "Manus AI; 2026-09 additions from UGC/BMDC/DGHS-sourced compilation; Faculty layer removed, one global Department/Subject vocabulary",
-    "notes": "Institutes carry name/location/status only. Department/Subject is one flat global list (Honours/Bachelor/Undergraduate fields), applied to every institute. 'Others' is the catch-all in both lists. Non-functional institutes have status != Active and are not selectable."
+    "notes": "Institutes carry name/location/status only. Department/Subject is one flat global list covering both Honours/Bachelor and Master's-level fields, applied to every institute. 'Others' is the catch-all in both lists and sorts last among departments. Non-functional institutes have status != Active and are not selectable.",
+    "international_universities": 2,
+    "textile_engineering_colleges": 12,
+    "alternative_medicine_colleges": 2
   },
   "public_universities": [
     {
@@ -1853,6 +1856,181 @@
     "Al-Hadith and Islamic Studies",
     "Dawah and Islamic Studies",
     "Aqeedah and Philosophy",
+    "Psychology",
+    "Clinical Psychology",
+    "Educational and Counselling Psychology",
+    "Museology",
+    "Printing and Publication Studies",
+    "Meteorology",
+    "Glass and Ceramic Engineering",
+    "Forestry and Environmental Science",
+    "Forestry and Wood Technology",
+    "Government and Politics",
+    "Public Health and Informatics",
+    "Food Engineering and Tea Technology",
+    "Al-Fiqh and Legal Studies",
+    "Islamic Economics and Finance",
+    "Islamic Banking and Finance",
+    "Apparel Merchandising and Management",
+    "Textile Engineering Management",
+    "Medicine",
+    "Surgery",
+    "Gynaecology and Obstetrics",
+    "Paediatrics",
+    "Cardiology",
+    "Neurology",
+    "Neurosurgery",
+    "Nephrology",
+    "Urology",
+    "Gastroenterology",
+    "Hepatology",
+    "Endocrinology",
+    "Rheumatology",
+    "Dermatology and Venereology",
+    "Psychiatry",
+    "Ophthalmology",
+    "Otolaryngology (ENT)",
+    "Orthopaedic Surgery",
+    "Anaesthesiology",
+    "Radiology and Imaging",
+    "Radiotherapy and Oncology",
+    "Nuclear Medicine",
+    "Transfusion Medicine",
+    "Haematology",
+    "Plastic Surgery",
+    "Paediatric Surgery",
+    "Cardiac Surgery",
+    "Respiratory Medicine",
+    "Physical Medicine and Rehabilitation",
+    "Critical Care Medicine",
+    "Pharmacology",
+    "Pathology",
+    "Community Medicine",
+    "Forensic Medicine",
+    "Virology",
+    "Medical Education",
+    "Oral and Maxillofacial Surgery",
+    "Orthodontics",
+    "Prosthodontics",
+    "Conservative Dentistry and Endodontics",
+    "Periodontology",
+    "Oral and Maxillofacial Pathology",
+    "Paedodontics",
+    "Dental Public Health",
+    "Epidemiology",
+    "Biostatistics",
+    "Health Informatics",
+    "Hospital Management",
+    "Health Systems Management",
+    "Reproductive and Child Health",
+    "Public Health Nutrition",
+    "Occupational Health and Safety",
+    "Structural Engineering",
+    "Geotechnical Engineering",
+    "Transportation Engineering",
+    "Environmental Engineering",
+    "Water Resources Development",
+    "Power Systems Engineering",
+    "Telecommunication Engineering",
+    "Renewable Energy Technology",
+    "Thermal Engineering",
+    "Manufacturing Engineering",
+    "Computer Networks and Communication",
+    "Information Security",
+    "Counselling Psychology",
+    "Organizational Psychology",
+    "Security Studies",
+    "Diplomacy and International Affairs",
+    "Educational Administration",
+    "Sustainable Development",
+    "Project Management",
+    "Development Practice",
     "Others"
+  ],
+  "international_universities": [
+    {
+      "name": "Islamic University of Technology (IUT)",
+      "location": "Board Bazar, Gazipur",
+      "status": "Active"
+    },
+    {
+      "name": "Asian University for Women (AUW)",
+      "location": "Chattogram",
+      "status": "Active"
+    }
+  ],
+  "textile_engineering_colleges": [
+    {
+      "name": "National Institute of Textile Engineering and Research (NITER)",
+      "location": "Savar, Dhaka",
+      "status": "Active"
+    },
+    {
+      "name": "Textile Engineering College, Chittagong",
+      "location": "Mirsharai, Chattogram",
+      "status": "Active"
+    },
+    {
+      "name": "Textile Engineering College, Noakhali",
+      "location": "Begumganj, Noakhali",
+      "status": "Active"
+    },
+    {
+      "name": "Pabna Textile Engineering College",
+      "location": "Pabna",
+      "status": "Active"
+    },
+    {
+      "name": "Barishal Textile Engineering College",
+      "location": "Barishal",
+      "status": "Active"
+    },
+    {
+      "name": "Jhenaidah Textile Engineering College",
+      "location": "Jhenaidah",
+      "status": "Active"
+    },
+    {
+      "name": "Rangpur Textile Engineering College",
+      "location": "Pirganj, Rangpur",
+      "status": "Active"
+    },
+    {
+      "name": "Gopalganj Textile Engineering College",
+      "location": "Gopalganj",
+      "status": "Active"
+    },
+    {
+      "name": "Jamalpur Textile Engineering College",
+      "location": "Melandaha, Jamalpur",
+      "status": "Active"
+    },
+    {
+      "name": "Madaripur Textile Engineering College",
+      "location": "Madaripur",
+      "status": "Active"
+    },
+    {
+      "name": "Tangail Textile Engineering College",
+      "location": "Tangail",
+      "status": "Active"
+    },
+    {
+      "name": "Narsingdi Textile Engineering College",
+      "location": "Narsingdi",
+      "status": "Active"
+    }
+  ],
+  "alternative_medicine_colleges": [
+    {
+      "name": "Government Homoeopathic Degree College, Dhaka",
+      "location": "Mirpur, Dhaka",
+      "status": "Active"
+    },
+    {
+      "name": "Government Unani and Ayurvedic Degree College, Dhaka",
+      "location": "Mirpur, Dhaka",
+      "status": "Active"
+    }
   ]
 }
