@@ -3144,15 +3144,24 @@ export type AdminTutorRequestPublicationEdit = {
   notes?: string;
 };
 
+/**
+ * The Job Board's filters. Six of them take several values at once, because
+ * a Tutor looks for more than one class or area in a single search; an empty
+ * array means the filter was not used, exactly as `undefined` does elsewhere.
+ */
 export type PublishedTutorJobListInput = {
+  postedFrom?: Date;
+  postedTo?: Date;
+  country?: string;
   cityId?: string;
-  locationId?: string;
-  tuitionType?: "home" | "online" | "both" | "group" | "package";
+  locationIds?: string[];
+  tuitionTypes?: Array<"home" | "online" | "both" | "group" | "package">;
+  daysPerWeek?: number[];
+  categories?: string[];
+  classCourses?: string[];
+  subjects?: string[];
+  studentGender?: "male" | "female";
   preferredTutorGender?: "male" | "female" | "any";
-  category?: string;
-  subject?: string;
-  budgetMinimum?: number;
-  budgetMaximum?: number;
   jobId?: string;
   page: number;
   pageSize: number;
@@ -3164,19 +3173,116 @@ function activePublishedTutorJobConditions(input: PublishedTutorJobListInput) {
     eq(tutorJobs.publicationStatus, "published"),
     gte(tutorJobs.expiresAt, now),
   ];
+  if (input.postedFrom) conditions.push(gte(tutorJobs.publishedAt, input.postedFrom));
+  if (input.postedTo) conditions.push(lte(tutorJobs.publishedAt, input.postedTo));
+  if (input.country) conditions.push(eq(tutorJobs.country, input.country));
   if (input.cityId) conditions.push(eq(tutorJobs.cityLocationId, input.cityId));
-  if (input.locationId) conditions.push(eq(tutorJobs.locationId, input.locationId));
-  if (input.tuitionType) conditions.push(eq(tutorJobs.tuitionType, input.tuitionType));
+  if (input.locationIds?.length) conditions.push(inArray(tutorJobs.locationId, input.locationIds));
+  if (input.tuitionTypes?.length) conditions.push(inArray(tutorJobs.tuitionType, input.tuitionTypes));
+  if (input.daysPerWeek?.length) conditions.push(inArray(tutorJobs.daysPerWeek, input.daysPerWeek));
+  if (input.categories?.length) conditions.push(inArray(tutorJobs.category, input.categories));
+  if (input.classCourses?.length) conditions.push(inArray(tutorJobs.classCourse, input.classCourses));
+  // `subjects` is a JSON array in one column, so each chosen subject is a
+  // separate LIKE and any one of them may match - the same OR the other
+  // multi-value filters get from IN.
+  if (input.subjects?.length) {
+    const anySubject = or(...input.subjects.map(subject => like(tutorJobs.subjects, `%\"${subject}\"%`)));
+    if (anySubject) conditions.push(anySubject);
+  }
+  if (input.studentGender) conditions.push(eq(tutorJobs.studentGender, input.studentGender));
   if (input.preferredTutorGender) conditions.push(eq(tutorJobs.preferredTutorGender, input.preferredTutorGender));
-  if (input.category) conditions.push(eq(tutorJobs.category, input.category));
-  if (input.subject) conditions.push(like(tutorJobs.subjects, `%${input.subject}%`));
-  if (input.budgetMinimum !== undefined) conditions.push(gte(tutorJobs.budgetAmount, input.budgetMinimum));
-  if (input.budgetMaximum !== undefined) conditions.push(lte(tutorJobs.budgetAmount, input.budgetMaximum));
   if (input.jobId) conditions.push(eq(tutorJobs.publicJobId, input.jobId));
   return and(...conditions);
 }
 
 /** Public/Tutor Job Board read: an explicit column allow-list prevents private request data exposure. */
+/**
+ * What the Job Board's filters may offer, read from the jobs that are
+ * actually live.
+ *
+ * Derived rather than declared, so a Tutor is never offered a class or an
+ * area that would return nothing. The parent-to-child pairs come back whole
+ * - city to location, category to class, class to subject - and the page
+ * narrows them as selections are made, which keeps choosing a category from
+ * costing a round trip.
+ *
+ * All of it is small: distinct pairs stay in the hundreds even when the board
+ * runs to thousands of jobs.
+ */
+export async function getJobBoardFilterOptions() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const live = and(eq(tutorJobs.publicationStatus, "published"), gte(tutorJobs.expiresAt, new Date()))!;
+
+  const rows = await database
+    .select({
+      country: tutorJobs.country,
+      cityLocationId: tutorJobs.cityLocationId,
+      locationId: tutorJobs.locationId,
+      locationLabel: tutorJobs.locationLabel,
+      tuitionType: tutorJobs.tuitionType,
+      daysPerWeek: tutorJobs.daysPerWeek,
+      category: tutorJobs.category,
+      classCourse: tutorJobs.classCourse,
+      subjects: tutorJobs.subjects,
+      studentGender: tutorJobs.studentGender,
+      preferredTutorGender: tutorJobs.preferredTutorGender,
+    })
+    .from(tutorJobs)
+    .where(live);
+
+  const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
+  const cityRows = cityIds.length
+    ? await database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+    : [];
+  const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
+
+  const countries = new Set<string>();
+  const tuitionTypes = new Set<string>();
+  const daysPerWeek = new Set<number>();
+  const cities = new Map<string, string>();
+  const locationsByCity = new Map<string, Map<string, string>>();
+  const classesByCategory = new Map<string, Set<string>>();
+  const subjectsByClass = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    countries.add(row.country);
+    tuitionTypes.add(row.tuitionType);
+    daysPerWeek.add(row.daysPerWeek);
+    if (row.cityLocationId) {
+      cities.set(row.cityLocationId, cityLabelById.get(row.cityLocationId) ?? row.cityLocationId);
+      if (row.locationId) {
+        const areas = locationsByCity.get(row.cityLocationId) ?? new Map<string, string>();
+        // Stored as "Area, City", and the City is already chosen above this
+        // filter, so the chip carries the area alone.
+        const cityLabel = cityLabelById.get(row.cityLocationId);
+        const label = row.locationLabel ?? row.locationId;
+        areas.set(row.locationId, cityLabel && label.endsWith(`, ${cityLabel}`) ? label.slice(0, -(cityLabel.length + 2)) : label);
+        locationsByCity.set(row.cityLocationId, areas);
+      }
+    }
+    const classes = classesByCategory.get(row.category) ?? new Set<string>();
+    classes.add(row.classCourse);
+    classesByCategory.set(row.category, classes);
+    const forClass = subjectsByClass.get(row.classCourse) ?? new Set<string>();
+    for (const subject of safeJsonStringArray(row.subjects)) forClass.add(subject);
+    subjectsByClass.set(row.classCourse, forClass);
+  }
+
+  const sorted = (values: Iterable<string>) => Array.from(values).sort((left, right) => left.localeCompare(right));
+  return {
+    countries: sorted(countries),
+    tuitionTypes: sorted(tuitionTypes),
+    daysPerWeek: Array.from(daysPerWeek).sort((left, right) => left - right),
+    cities: Array.from(cities, ([id, label]) => ({ id, label })).sort((left, right) => left.label.localeCompare(right.label)),
+    locationsByCity: Object.fromEntries(Array.from(locationsByCity, ([cityId, areas]) => [
+      cityId,
+      Array.from(areas, ([id, label]) => ({ id, label })).sort((left, right) => left.label.localeCompare(right.label)),
+    ])),
+    classesByCategory: Object.fromEntries(Array.from(classesByCategory, ([category, classes]) => [category, sorted(classes)])),
+    subjectsByClass: Object.fromEntries(Array.from(subjectsByClass, ([classCourse, subjects]) => [classCourse, sorted(subjects)])),
+  };
+}
 export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");

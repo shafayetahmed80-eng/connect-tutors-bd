@@ -331,21 +331,33 @@ const adminTutorRequestPublicationInputSchema = z.object({
   }
 });
 
+/**
+ * The Job Board's filters. The six multi-value ones carry their own ceilings
+ * here as well as in the picker: a client-side limit is what the Tutor sees,
+ * never what enforces it.
+ */
+export const JOB_BOARD_LOCATION_LIMIT = 10;
+export const JOB_BOARD_SUBJECT_LIMIT = 12;
+
 const publishedTutorJobBoardInputSchema = z.object({
+  postedFrom: z.coerce.date().optional(),
+  postedTo: z.coerce.date().optional(),
+  country: z.string().trim().min(1).max(120).optional(),
   cityId: z.string().trim().min(1).max(80).optional(),
-  locationId: z.string().trim().min(1).max(80).optional(),
-  tuitionType: guardianRequestTuitionTypeSchema.optional(),
+  locationIds: z.array(z.string().trim().min(1).max(80)).max(JOB_BOARD_LOCATION_LIMIT).optional(),
+  tuitionTypes: z.array(guardianRequestTuitionTypeSchema).max(5).optional(),
+  daysPerWeek: z.array(z.number().int().min(1).max(7)).max(7).optional(),
+  categories: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  classCourses: z.array(z.string().trim().min(1).max(120)).max(40).optional(),
+  subjects: z.array(z.string().trim().min(1).max(120)).max(JOB_BOARD_SUBJECT_LIMIT).optional(),
+  studentGender: z.enum(["male", "female"]).optional(),
   preferredTutorGender: z.enum(["male", "female", "any"]).optional(),
-  category: z.string().trim().min(1).max(120).optional(),
-  subject: z.string().trim().min(1).max(120).optional(),
-  budgetMinimum: z.number().int().min(0).max(1000000).optional(),
-  budgetMaximum: z.number().int().min(0).max(1000000).optional(),
   jobId: z.string().trim().min(3).max(32).optional(),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(50).default(20),
-}).refine(value => value.budgetMinimum === undefined || value.budgetMaximum === undefined || value.budgetMinimum <= value.budgetMaximum, {
-  message: "Minimum budget cannot exceed maximum budget.",
-  path: ["budgetMinimum"],
+}).refine(value => !value.postedFrom || !value.postedTo || value.postedFrom <= value.postedTo, {
+  message: "The 'from' date cannot be later than the 'to' date.",
+  path: ["postedFrom"],
 });
 
 const adminTutorDirectoryInputSchema = z.object({
@@ -961,6 +973,9 @@ export const appRouter = router({
   }),
   jobBoard: router({
     list: publicProcedure.input(publishedTutorJobBoardInputSchema).query(({ input }) => db.listPublishedTutorJobs(input)),
+    // Public, like the board itself: the options are only the distinct values
+    // of jobs anyone can already see.
+    filterOptions: publicProcedure.query(() => db.getJobBoardFilterOptions()),
     expressInterest: activeTutorProcedure
       .input(z.object({ tutorJobId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
