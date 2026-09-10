@@ -110,7 +110,9 @@ describe("Admin Tutor profile detail", () => {
   it("shows the private documents, and says plainly which are missing", () => {
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 
-    const documents = screen.getByRole("heading", { name: "Documents" }).parentElement!;
+    // The Tutor read-out below carries a "Documents" panel of its own now; the
+    // Admin-only tiles are the first.
+    const documents = screen.getAllByRole("heading", { name: "Documents" })[0].parentElement!;
     expect(within(documents).getByAltText("University ID").getAttribute("src")).toBe("https://signed.example/university-id.png");
     expect(within(documents).getByAltText("NID Card Image").getAttribute("src")).toBe("https://signed.example/nid.png");
     // The three the Tutor never uploaded.

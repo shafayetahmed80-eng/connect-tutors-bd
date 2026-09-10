@@ -34,13 +34,14 @@ function baseForm(overrides: Partial<TeachingProfileState> = {}): TeachingProfil
 }
 
 describe("getTutorProfileReadoutSections", () => {
-  it("returns the four sections in order with the shared titles", () => {
+  it("returns every section in order with the shared titles", () => {
     const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
-    expect(sections.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
+    expect(sections.map(section => section.id)).toEqual(["a", "c", "d", "f", "e"]);
     expect(sections.map(section => section.title)).toEqual([
       "Personal Information",
       "Education",
-      "Tuition and location",
+      "Tuition Related",
+      "Credential",
       "Introduction and review",
     ]);
     // Personal Information carries the two former sections as sub-groups.
@@ -54,18 +55,23 @@ describe("getTutorProfileReadoutSections", () => {
     // the popup its pencil opens.
     expect(sections[0].groups.map(group => group.editTarget)).toEqual(["a-identity", "a-family"]);
 
-    // Tuition and location now splits into three sub-groups, each its own card
-    // and its own popup. "In your own words" fields fold into Teaching
-    // expertise, the sub-group they belong to.
+    // Tuition Related splits into two sub-groups, each its own card and its
+    // own popup. "In your own words" and the old Location and fee fields both
+    // fold into Teaching Expertise, the sub-group they belong to.
     expect(sections[2].groups.map(group => group.heading)).toEqual([
       "Availability",
-      "Teaching expertise",
-      "Location and fee",
+      "Teaching Expertise",
     ]);
     expect(sections[2].groups.map(group => group.editTarget)).toEqual([
       "d-availability",
       "d-teaching",
-      "d-location",
+    ]);
+
+    // Education stages are cards of their own, newest first.
+    expect(sections[1].groups.map(group => group.editTarget)).toEqual([
+      "c-university",
+      "c-higher-secondary",
+      "c-secondary",
     ]);
   });
 
@@ -85,7 +91,7 @@ describe("getTutorProfileReadoutSections", () => {
     expect(additionalPhone).toEqual({ label: "Additional phone", value: "Not given", missing: true, optional: true });
 
     // Every "Introduction and review" field is optional for submission.
-    const sectionE = sections[3].groups.flatMap(group => group.rows);
+    const sectionE = sections[4].groups.flatMap(group => group.rows);
     expect(sectionE.every(row => row.optional === true)).toBe(true);
     expect(sectionE.map(row => row.value)).toEqual(["Not given", "Not given", "Not given", "Not given"]);
 

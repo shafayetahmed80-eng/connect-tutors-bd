@@ -151,16 +151,17 @@ const siteSlots: SiteContentSlot[] = [
 const tutorProfileSlots: SiteContentSlot[] = [
   { id: "tutor-profile.tab.a", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Personal tab", defaultText: "Personal", defaultTextClass: "text-sm" },
   { id: "tutor-profile.tab.c", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Education tab", defaultText: "Education", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.tab.d", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Tuition tab", defaultText: "Tuition & location", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.tab.d", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Tuition tab", defaultText: "Tuition Related", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.tab.f", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Credential tab", defaultText: "Credential", defaultTextClass: "text-sm" },
   { id: "tutor-profile.tab.e", page: "tutor-profile", surface: "Tutor dashboard", group: "Section tabs", label: "Introduction tab", defaultText: "Introduction", defaultTextClass: "text-sm" },
 
   { id: "tutor-profile.group.a-identity", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Identity and contact", defaultText: "Identity and contact", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.a-family", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Family and emergency contact", defaultText: "Family and emergency contact", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.c-education", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Education", defaultText: "Education", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.c-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching expertise", defaultText: "Teaching expertise", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.c-university", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "University Section", defaultText: "University Section", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.c-higher-secondary", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Higher Secondary", defaultText: "Higher Secondary", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.c-secondary", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Secondary", defaultText: "Secondary", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.d-availability", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Availability", defaultText: "Availability", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.d-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching expertise (Tuition tab)", defaultText: "Teaching expertise", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.d-location", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Location and fee", defaultText: "Location and fee", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.d-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching Expertise", defaultText: "Teaching Expertise", defaultTextClass: "text-sm" },
 
   { id: "tutor-profile.form.qualification-history", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Qualification history heading", defaultText: "Qualification history", defaultTextClass: "text-sm" },
   { id: "tutor-profile.form.location-fee-travel", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Location, fee and travel heading", defaultText: "Location, fee and travel", defaultTextClass: "text-sm" },

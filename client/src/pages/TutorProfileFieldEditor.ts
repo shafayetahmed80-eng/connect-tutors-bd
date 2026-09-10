@@ -28,11 +28,12 @@ export const tutorProfileFieldEditTargets: ReadonlyArray<{
 }> = [
   { id: "a-identity", section: "a", subGroup: "a-identity", label: "Personal Information: Identity and contact", shortLabel: "Identity and contact" },
   { id: "a-family", section: "a", subGroup: "a-family", label: "Personal Information: Family and emergency contact", shortLabel: "Family and emergency contact" },
-  { id: "c-education", section: "c", subGroup: "c-education", label: "Education", shortLabel: "Education records" },
-  { id: "c-teaching", section: "c", subGroup: "c-teaching", label: "Education: Teaching expertise", shortLabel: "Teaching expertise" },
-  { id: "d-availability", section: "d", subGroup: "d-availability", label: "Tuition and location: Availability", shortLabel: "Availability" },
-  { id: "d-teaching", section: "d", subGroup: "d-teaching", label: "Tuition and location: Teaching expertise", shortLabel: "Teaching expertise" },
-  { id: "d-location", section: "d", subGroup: "d-location", label: "Tuition and location: Location and fee", shortLabel: "Location and fee" },
+  { id: "c-university", section: "c", subGroup: "c-university", label: "Education: University Section", shortLabel: "University Section" },
+  { id: "c-higher-secondary", section: "c", subGroup: "c-higher-secondary", label: "Education: Higher Secondary", shortLabel: "Higher Secondary" },
+  { id: "c-secondary", section: "c", subGroup: "c-secondary", label: "Education: Secondary", shortLabel: "Secondary" },
+  { id: "d-availability", section: "d", subGroup: "d-availability", label: "Tuition Related: Availability", shortLabel: "Availability" },
+  { id: "d-teaching", section: "d", subGroup: "d-teaching", label: "Tuition Related: Teaching Expertise", shortLabel: "Teaching Expertise" },
+  { id: "f", section: "f", label: "Credential", shortLabel: "Credential" },
   { id: "e", section: "e", label: "Introduction and review", shortLabel: "Introduction and review" },
 ];
 

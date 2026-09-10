@@ -27,7 +27,7 @@ describe("Tutor Profile field config, against the real database", () => {
     expect(resolved?.required).toBe(true);
     // Untouched axes keep the registry default.
     expect(resolved?.section).toBe("c");
-    expect(resolved?.subGroup).toBe("c-education");
+    expect(resolved?.subGroup).toBe("c-university");
   });
 
   it("upserts on a second save rather than duplicating the row", async () => {

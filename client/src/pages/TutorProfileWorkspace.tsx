@@ -57,7 +57,7 @@ const fieldClassName = "modal-field-profile input-text-profile mt-1 w-full round
  * a textarea beside a one-line select stretches its row to the taller of the
  * two, which is what made these panels look ragged.
  */
-const compactFieldGridClassName = "grid gap-x-5 gap-y-4 md:grid-cols-2";
+const compactFieldGridClassName = "grid gap-x-5 gap-y-3.5 md:grid-cols-2";
 /** Full-width row inside `compactFieldGridClassName`. */
 const wideFieldClassName = "md:col-span-2";
 
@@ -117,18 +117,19 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
   c: "Education",
-  d: "Tuition and location",
+  d: "Tuition Related",
+  f: "Credential",
   e: "Introduction and review",
 };
 
 const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
   "a-identity": "Identity and contact",
   "a-family": "Family and emergency contact",
-  "c-education": "Education",
-  "c-teaching": "Teaching expertise",
+  "c-university": "University Section",
+  "c-higher-secondary": "Higher Secondary",
+  "c-secondary": "Secondary",
   "d-availability": "Availability",
-  "d-teaching": "Teaching expertise",
-  "d-location": "Location and fee",
+  "d-teaching": "Teaching Expertise",
 };
 
 /**
@@ -1171,7 +1172,7 @@ function TutorProfileWorkspaceBody({
     const index = form.educationRecords.findIndex(entry => entry.qualificationLevel === level);
     if (index < 0) return null;
     const record = form.educationRecords[index];
-    return <div className="grid gap-5 md:grid-cols-2">
+    return <div className="grid gap-x-5 gap-y-3.5 md:grid-cols-2">
       {recordFields
         .filter(field => field.id !== "educationRecords.qualificationLevel")
         .map(field => <React.Fragment key={field.id}>{renderEducationRecordField(field.id, record, index)}</React.Fragment>)}
@@ -1199,7 +1200,7 @@ function TutorProfileWorkspaceBody({
           {<Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button>}
         </div>
         {isOpen ? <div className="border-t border-j-border bg-[#fbfdfe] p-4">
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-x-5 gap-y-3.5 md:grid-cols-2">
             {recordFields.map(field => <React.Fragment key={field.id}>{renderEducationRecordField(field.id, record, index)}</React.Fragment>)}
           </div>
         </div> : null}
@@ -1242,7 +1243,7 @@ function TutorProfileWorkspaceBody({
     }
     if (panel === "documents") return <div>{fields.map(field => <React.Fragment key={field.id}>{renderField(field.id)}</React.Fragment>)}</div>;
 
-    const layout = stackedPanels.has(panel) ? "space-y-4" : twoColumnPanels.has(panel) ? "grid gap-5 md:grid-cols-2" : compactFieldGridClassName;
+    const layout = stackedPanels.has(panel) ? "space-y-3.5" : twoColumnPanels.has(panel) ? "grid gap-x-5 gap-y-3.5 md:grid-cols-2" : compactFieldGridClassName;
     return <div className={layout}>
       {fields.map(field => <React.Fragment key={field.id}>{renderField(field.id)}</React.Fragment>)}
     </div>;

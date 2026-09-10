@@ -26,8 +26,8 @@ const sections: TutorProfileReadoutSection[] = [
     { heading: "Family and emergency contact", editTarget: "a-family", rows: [{ label: "Father's name", value: "Not given", missing: true }] },
   ] },
   { id: "c", title: "Education", groups: [
-    { heading: "Education", editTarget: "c-education", rows: [{ label: "Institute", value: "DU", missing: false }] },
-    { heading: "Teaching expertise", editTarget: "c-teaching", rows: [{ label: "Primary subjects", value: "Not given", missing: true }] },
+    { heading: "University Section", editTarget: "c-university", rows: [{ label: "Institute", value: "DU", missing: false }] },
+    { heading: "Higher Secondary", editTarget: "c-higher-secondary", rows: [{ label: "Institute Name", value: "Not given", missing: true }] },
   ] },
   { id: "d", title: "Tuition, location and communication", groups: [{ rows: [{ label: "Tuition type", value: "Not given", missing: true }] }] },
   { id: "e", title: "Introduction and review", groups: [{ rows: [{ label: "About me", value: "Not given", missing: true }] }] },
@@ -73,14 +73,14 @@ describe("TutorProfileTabEditor", () => {
     const onEditSection = vi.fn();
     render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={vi.fn()} onEditSection={onEditSection} />);
 
-    expect(screen.getByRole("heading", { name: "Education" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Teaching expertise" })).toBeTruthy();
-    expect(screen.getByText("Primary subjects")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "University Section" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Higher Secondary" })).toBeTruthy();
+    expect(screen.getByText("Institute Name")).toBeTruthy();
     expect(screen.getByText("Institute")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit Teaching expertise" }));
-    expect(onEditSection).toHaveBeenCalledWith("c", "c-teaching");
-    fireEvent.click(screen.getByRole("button", { name: "Edit Education" }));
-    expect(onEditSection).toHaveBeenCalledWith("c", "c-education");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Higher Secondary" }));
+    expect(onEditSection).toHaveBeenCalledWith("c", "c-higher-secondary");
+    fireEvent.click(screen.getByRole("button", { name: "Edit University Section" }));
+    expect(onEditSection).toHaveBeenCalledWith("c", "c-university");
   });
 });

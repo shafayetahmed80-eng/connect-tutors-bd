@@ -1,6 +1,6 @@
 import React from "react";
 import { Check } from "lucide-react";
-import { SiteText } from "@/lib/siteContent";
+import { useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 
@@ -8,7 +8,8 @@ import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
 const TAB_LABELS: Record<TutorProfileSectionId, string> = {
   a: "Personal",
   c: "Education",
-  d: "Tuition & location",
+  d: "Tuition Related",
+  f: "Credential",
   e: "Introduction",
 };
 
@@ -33,26 +34,49 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
     aria-label="Profile sections"
     className="sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-j-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur"
   >
-    {sections.map(section => {
-      const { filled, total, complete } = requiredCount(section.groups.flatMap(group => group.rows));
-      const isActive = section.id === activeTab;
-      return <button
-        key={section.id}
-        type="button"
-        role="tab"
-        aria-selected={isActive}
-        onClick={() => onTabChange(section.id)}
-        className={`flex min-h-11 min-w-max flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 ${
-          isActive ? "bg-white font-semibold text-j-ink shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-j-ink-soft hover:text-j-ink"
-        }`}
-      >
-        <SiteText slotId={`tutor-profile.tab.${section.id}`} fallback={TAB_LABELS[section.id]} className="truncate" />
-        {total === 0 ? null : <span className={`shrink-0 text-2xs font-bold tabular-nums ${
-          complete ? "text-[#1c8a5b]" : isActive ? "text-j-accent" : "text-[#94a6b4]"
-        }`}>
-          {complete ? <Check size={12} aria-hidden={true} /> : `${filled}/${total}`}
-        </span>}
-      </button>;
-    })}
+    {sections.map(section => <SectionTab
+      key={section.id}
+      section={section}
+      isActive={section.id === activeTab}
+      onSelect={() => onTabChange(section.id)}
+    />)}
   </div>;
+}
+
+/**
+ * One tab, sized by its own text.
+ *
+ * The Owner sets the tab label's size, and the chip has to follow it: with a
+ * fixed 44px height and 12px padding, shrinking the text only grew the empty
+ * space around it. So the chosen size goes on the button rather than on an
+ * inner span, and every measurement below is in `em` - halve the text and the
+ * chip halves with it, raise it and the chip grows.
+ */
+function SectionTab({ section, isActive, onSelect }: {
+  section: TutorProfileReadoutSection;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const slotId = `tutor-profile.tab.${section.id}`;
+  const label = useSiteContentText(slotId, TAB_LABELS[section.id]);
+  const textStyle = useSiteContentTextStyle(slotId);
+  const { filled, total, complete } = requiredCount(section.groups.flatMap(group => group.rows));
+
+  return <button
+    type="button"
+    role="tab"
+    aria-selected={isActive}
+    onClick={onSelect}
+    style={textStyle}
+    className={`flex min-w-max flex-1 items-center justify-center gap-[0.4em] rounded-lg px-[0.85em] py-[0.5em] text-sm leading-[1.4] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 ${
+      isActive ? "bg-white font-semibold text-j-ink shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-j-ink-soft hover:text-j-ink"
+    }`}
+  >
+    <span className="truncate">{label}</span>
+    {total === 0 ? null : <span className={`shrink-0 text-[0.8em] font-bold tabular-nums ${
+      complete ? "text-[#1c8a5b]" : isActive ? "text-j-accent" : "text-[#94a6b4]"
+    }`}>
+      {complete ? <Check size="1em" aria-hidden={true} /> : `${filled}/${total}`}
+    </span>}
+  </button>;
 }
