@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   educationRecordFieldApplies,
+  fixedSchoolRecords,
+  historyQualificationLevels,
   isSchoolQualification,
   schoolQualificationLevels,
   schoolSubjectGroups,
@@ -52,5 +54,26 @@ describe("which qualification-history fields a record draws", () => {
 
   it("offers the three groups a board exam is sat under", () => {
     expect(schoolSubjectGroups).toEqual(["Science", "Arts", "Commerce"]);
+  });
+});
+
+describe("the two fixed school sections", () => {
+  it("names them by stage, not by the Bangla-board exam", () => {
+    // A Tutor who read English Medium sat O and A Levels and has no SSC, so the
+    // headings have to fit them too; what they sat is carried by the record's
+    // own Curriculum and Degree / Exam Title.
+    expect(fixedSchoolRecords.map(record => record.heading)).toEqual(["Secondary", "Higher Secondary"]);
+  });
+
+  it("still stores the levels the rest of the system already knows", () => {
+    expect(fixedSchoolRecords.map(record => record.level)).toEqual(["SSC", "HSC"]);
+    for (const { level } of fixedSchoolRecords) expect(isSchoolQualification(level)).toBe(true);
+  });
+
+  it("offers degrees only in the repeatable history", () => {
+    // Secondary and Higher Secondary have sections of their own; offering them
+    // here would invite a second, contradictory copy of a filled-in record.
+    expect(historyQualificationLevels).toEqual(["Honours", "Masters"]);
+    for (const level of historyQualificationLevels) expect(isSchoolQualification(level)).toBe(false);
   });
 });

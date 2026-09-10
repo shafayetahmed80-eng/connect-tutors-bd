@@ -41,6 +41,8 @@ export const tutorProfileFieldPanels = [
   "identity",
   "family",
   "education",
+  "secondary",
+  "higher-secondary",
   "qualifications",
   "documents",
   "what-you-teach",
@@ -115,6 +117,11 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "studyStatus", label: "Current Study Status", section: "c", subGroup: "c-education", panel: "education", sortOrder: 15, requiredByDefault: true, requiredConfigurable: true },
   { id: "yearSemester", label: "Year/Semester", section: "c", subGroup: "c-education", panel: "education", sortOrder: 80, requiredByDefault: true, requiredConfigurable: false },
   { id: "graduationYear", label: "Graduation Year", section: "c", subGroup: "c-education", panel: "education", sortOrder: 90, requiredByDefault: true, requiredConfigurable: false },
+  // The two school records every Tutor fills in, each its own section above
+  // the history. They draw the same educationRecords fields; these entries
+  // exist so the panels have somewhere to hang and an Owner can reorder them.
+  { id: "secondaryRecord", label: "Secondary", section: "c", subGroup: "c-education", panel: "secondary", sortOrder: 92, requiredByDefault: true, requiredConfigurable: true },
+  { id: "higherSecondaryRecord", label: "Higher Secondary", section: "c", subGroup: "c-education", panel: "higher-secondary", sortOrder: 94, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords", label: "Qualification History", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.qualificationLevel", label: "Qualification Level", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 101, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.instituteName", label: "Institute Name", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 102, requiredByDefault: true, requiredConfigurable: true },

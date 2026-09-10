@@ -103,6 +103,8 @@ const panelHeadings: Record<TutorProfileFieldPanel, string> = {
   identity: "Identity and contact",
   family: "Family and emergency contact",
   education: "Education",
+  secondary: "Secondary",
+  "higher-secondary": "Higher Secondary",
   qualifications: "Qualifications",
   documents: "Documents",
   "what-you-teach": "Teaching expertise",

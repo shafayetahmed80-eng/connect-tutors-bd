@@ -212,8 +212,11 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     // The completed qualification is collapsed to its summary; its fields are not rendered.
     expect(within(dialog).getByText("BSc Physics · Dhaka University · 2020")).toBeTruthy();
     expect(within(dialog).queryByDisplayValue("BSc Physics")).toBeNull();
-    // The empty one stays open for editing.
-    expect(within(dialog).getAllByLabelText(/Institute Name/).length).toBe(1);
+    // Three Institute Name boxes are open: the empty degree, plus the Secondary
+    // and Higher Secondary sections, which are always shown and never collapse.
+    expect(within(dialog).getAllByLabelText(/Institute Name/).length).toBe(3);
+    expect(within(dialog).getByRole("heading", { name: "Secondary" })).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Higher Secondary" })).toBeTruthy();
 
     // Collapsed cards are titled by their education level, so they stay scannable.
     await user.click(within(dialog).getByRole("button", { name: /Honours/ }));

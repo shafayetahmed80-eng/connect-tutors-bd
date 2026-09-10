@@ -7,8 +7,7 @@ import {
   isSchoolQualification,
   maxStudyYear,
   qualificationCurricula,
-  qualificationEducationLevels,
-} from "@shared/tutor-education";
+  qualificationEducationLevels, fixedSchoolRecords } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 
@@ -106,6 +105,12 @@ const privateDetailsSchema = z.object({
   emergencyContactAddress: optionalTrimmedText(500),
 }).strict();
 
+/**
+ * Fields that head a block rather than hold a value of their own. The generic
+ * required-field sweep would read them off the payload, find nothing, and
+ * report every profile incomplete; each is checked by its own rule instead.
+ */
+const BLOCK_FIELD_IDS = new Set(["educationRecords", "secondaryRecord", "higherSecondaryRecord"]);
 const studyYearSchema = z.number().int().min(MIN_STUDY_YEAR).max(maxStudyYear());
 
 const educationRecordSchema = z.object({
@@ -293,7 +298,7 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       // alone entirely, not treat `requiredByDefault` as a flat requirement.
       if (!field.requiredConfigurable) continue;
       if (!field.enabled || !field.required) continue;
-      if (field.id === "educationRecords" || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.")) continue;
+      if (BLOCK_FIELD_IDS.has(field.id) || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.")) continue;
       if (!isSubmissionFieldPresent(value, field.id)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -315,6 +320,18 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
     const educationRecordsField = config.byId.get("educationRecords");
     if (educationRecordsField?.enabled && educationRecordsField.required && !value.educationRecords?.length) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: "Add at least one education record before profile submission." });
+    }
+
+    // Secondary and Higher Secondary each have their own section, so each has
+    // to actually be there - a Tutor cannot submit having filled only the
+    // degree history. What they sat is carried by the record's Curriculum, so
+    // an English-Medium Tutor puts their O and A Levels in these two.
+    for (const { level, heading } of fixedSchoolRecords) {
+      const blockField = config.byId.get(level === "SSC" ? "secondaryRecord" : "higherSecondaryRecord");
+      if (!blockField?.enabled || !blockField.required) continue;
+      if (!value.educationRecords?.some(record => record.qualificationLevel === level)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: `Add your ${heading} qualification before profile submission.` });
+      }
     }
 
     if (value.educationRecords?.length) {
