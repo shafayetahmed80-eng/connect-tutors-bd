@@ -5,8 +5,7 @@ import {
   qualificationEducationLevels,
   type AcademicEducationLevel,
   type QualificationCurriculum,
-  type QualificationEducationLevel,
-} from "@shared/tutor-education";
+  type QualificationEducationLevel, isSchoolQualification } from "@shared/tutor-education";
 import { isTutorSupportingDocumentType, type TutorSupportingDocumentType } from "@shared/tutor-documents";
 import { DEFAULT_TUTOR_NATIONALITY } from "@shared/tutor-personal-details";
 
@@ -96,6 +95,10 @@ export type TutorProfileEducationRecord = {
   studyEndYear: string;
   currentlyStudying: boolean;
   instituteIdCardNumber: string;
+  /** School records (SSC, HSC) only; the four above are for university ones. */
+  passingYear: string;
+  rollNumber: string;
+  registrationNumber: string;
 };
 
 /**
@@ -115,6 +118,9 @@ export type PersistedTutorEducationRecord = {
   studyEndYear?: number | string;
   currentlyStudying?: boolean;
   instituteIdCardNumber?: string;
+  passingYear?: number | string;
+  rollNumber?: string;
+  registrationNumber?: string;
 };
 
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
@@ -123,9 +129,11 @@ const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
   emergencyContactPhone: "", emergencyContactAddress: "",
 });
 
-const emptyEducationRecord = (): TutorProfileEducationRecord => ({
+/** One blank record, so the workspace never spells the shape out a second time. */
+export const emptyEducationRecord = (): TutorProfileEducationRecord => ({
   qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "",
   studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "",
+  passingYear: "", rollNumber: "", registrationNumber: "",
 });
 
 function toFormText(value: unknown): string {
@@ -165,6 +173,9 @@ function hydrateEducationRecord(record: PersistedTutorEducationRecord): TutorPro
     studyEndYear: toFormText(record.studyEndYear),
     currentlyStudying: Boolean(record.currentlyStudying),
     instituteIdCardNumber: toFormText(record.instituteIdCardNumber),
+    passingYear: toFormText(record.passingYear),
+    rollNumber: toFormText(record.rollNumber),
+    registrationNumber: toFormText(record.registrationNumber),
   };
 }
 
@@ -384,7 +395,9 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
       emergencyContactPhone: form.privateDetails.emergencyContactPhone?.trim() ?? "",
       emergencyContactAddress: form.privateDetails.emergencyContactAddress?.trim() ?? "",
     },
-    educationRecords: form.educationRecords.filter(record => [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup, record.studyStartYear].some(Boolean)).map(record => ({
+    educationRecords: form.educationRecords.filter(record => [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup, record.studyStartYear, record.passingYear].some(Boolean)).map(record => {
+      const schoolRecord = isSchoolQualification(record.qualificationLevel);
+      return {
       // A half-filled record is still sent so the server can answer with a
       // field-level error the editor can show. Casting here keeps that path:
       // dropping the record instead would silently discard what was typed.
@@ -394,11 +407,18 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
       majorGroup: record.majorGroup.trim(),
       resultGpa: optionalText(record.resultGpa),
       curriculum: record.curriculum as QualificationCurriculum,
-      studyStartYear: optionalInteger(record.studyStartYear) as number,
-      studyEndYear: record.currentlyStudying ? undefined : optionalInteger(record.studyEndYear),
-      currentlyStudying: record.currentlyStudying,
-      instituteIdCardNumber: optionalText(record.instituteIdCardNumber),
-    })),
+      // Only the half its own level asks for carries a value; the other half
+      // goes as undefined. Sending a school record's blank study years would
+      // have the server validate fields the Tutor was never shown.
+      studyStartYear: (schoolRecord ? undefined : optionalInteger(record.studyStartYear)) as number,
+      studyEndYear: schoolRecord || record.currentlyStudying ? undefined : optionalInteger(record.studyEndYear),
+      currentlyStudying: schoolRecord ? false : record.currentlyStudying,
+      instituteIdCardNumber: schoolRecord ? undefined : optionalText(record.instituteIdCardNumber),
+      passingYear: (schoolRecord ? optionalInteger(record.passingYear) : undefined) as number,
+      rollNumber: schoolRecord ? optionalText(record.rollNumber) : undefined,
+      registrationNumber: schoolRecord ? optionalText(record.registrationNumber) : undefined,
+      };
+    }),
   };
 }
 

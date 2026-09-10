@@ -3,6 +3,8 @@ import { siteLimitCeiling } from "@shared/site-limits";
 import {
   MIN_STUDY_YEAR,
   academicEducationLevels,
+  educationRecordFieldApplies,
+  isSchoolQualification,
   maxStudyYear,
   qualificationCurricula,
   qualificationEducationLevels,
@@ -120,7 +122,16 @@ const educationRecordSchema = z.object({
   studyEndYear: studyYearSchema.optional(),
   currentlyStudying: z.boolean(),
   instituteIdCardNumber: optionalTrimmedText(160),
+  // School records carry these three instead of the four above.
+  passingYear: studyYearSchema.optional(),
+  rollNumber: optionalTrimmedText(60),
+  registrationNumber: optionalTrimmedText(60),
 }).strict().superRefine((value, ctx) => {
+  // A board exam has no span to check and no ongoing state: SSC and HSC are
+  // passed in one year, so the university rules below would be asking a school
+  // record for fields it does not have.
+  if (isSchoolQualification(value.qualificationLevel)) return;
+
   if (!value.currentlyStudying && value.studyEndYear === undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -313,6 +324,9 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       value.educationRecords.forEach((record, index) => {
         for (const field of requiredRecordFields) {
           const key = field.id.slice("educationRecords.".length) as keyof typeof record;
+          // Only the fields this record's own level actually asks for. A school
+          // record left without a study start year has not omitted anything.
+          if (!educationRecordFieldApplies(field.id, record.qualificationLevel)) continue;
           if (record[key] === undefined) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords", index, key], message: "This field is required before profile submission." });
           }

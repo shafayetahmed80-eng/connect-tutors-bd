@@ -1283,6 +1283,9 @@ async function loadTutorProfileOwner(database: any, userId: number) {
       studyEndYear: record.studyEndYear ?? undefined,
       currentlyStudying: Boolean(record.currentlyStudying),
       instituteIdCardNumber: record.instituteIdCardNumber ?? undefined,
+      passingYear: record.passingYear ?? undefined,
+      rollNumber: record.rollNumber ?? undefined,
+      registrationNumber: record.registrationNumber ?? undefined,
     })),
     universityIdDocumentStatus: row.universityIdDocument?.documentStatus === "uploaded" ? "uploaded" as const : "not_uploaded" as const,
     uploadedSupportingDocuments: supportingDocumentRows.map((document: { documentType: string }) => document.documentType),
@@ -1671,6 +1674,9 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
           studyEndYear: record.studyEndYear ?? null,
           currentlyStudying: record.currentlyStudying ? 1 : 0,
           instituteIdCardNumber: record.instituteIdCardNumber ?? null,
+          passingYear: record.passingYear ?? null,
+          rollNumber: record.rollNumber ?? null,
+          registrationNumber: record.registrationNumber ?? null,
         })));
       }
     }

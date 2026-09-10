@@ -126,6 +126,12 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "educationRecords.currentlyStudying", label: "Currently Studying", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 109, requiredByDefault: false, requiredConfigurable: false },
   { id: "educationRecords.resultGpa", label: "Result / GPA (record)", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 106, requiredByDefault: false, requiredConfigurable: true },
   { id: "educationRecords.instituteIdCardNumber", label: "Institute ID Card Number", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 110, requiredByDefault: false, requiredConfigurable: true },
+  // School records only. Their required-ness is not configurable for the same
+  // reason the university year fields are not: which of the two sets a record
+  // asks for is decided by its own level, not by an Owner toggle.
+  { id: "educationRecords.passingYear", label: "Passing Year", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 111, requiredByDefault: true, requiredConfigurable: false },
+  { id: "educationRecords.rollNumber", label: "Roll Number", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 112, requiredByDefault: false, requiredConfigurable: true },
+  { id: "educationRecords.registrationNumber", label: "Registration Number", section: "c", subGroup: "c-education", panel: "qualifications", sortOrder: 113, requiredByDefault: false, requiredConfigurable: true },
   { id: "universityIdDocumentStatus", label: "University ID Card", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
   { id: "supportingDocument.nid_card", label: "NID Card Image", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 130, requiredByDefault: false, requiredConfigurable: true },
   { id: "supportingDocument.ssc_certificate", label: "SSC Certificate", section: "c", subGroup: "c-education", panel: "documents", sortOrder: 140, requiredByDefault: false, requiredConfigurable: true },

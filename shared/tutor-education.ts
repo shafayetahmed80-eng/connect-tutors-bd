@@ -21,6 +21,27 @@ export const qualificationCurricula = ["Bangla Version", "English Version", "Eng
 export type QualificationCurriculum = (typeof qualificationCurricula)[number];
 
 /**
+ * A school record is a public-board one - SSC or HSC - and it is a different
+ * shape of fact from a university one.
+ *
+ * A board exam is passed in a single year and identified by a roll and a
+ * registration number, so those are what the record asks for. A degree is read
+ * over a span of years and may still be in progress, which is what the start
+ * year, end year and "currently studying" between them describe. One record
+ * type cannot ask both sets without asking half of every Tutor for something
+ * that does not exist.
+ */
+export const schoolQualificationLevels = ["SSC", "HSC"] as const;
+
+export function isSchoolQualification(level: string | null | undefined): boolean {
+  return typeof level === "string" && (schoolQualificationLevels as readonly string[]).includes(level);
+}
+
+/** The three groups a board exam is sat under. */
+export const schoolSubjectGroups = ["Science", "Arts", "Commerce"] as const;
+export type SchoolSubjectGroup = (typeof schoolSubjectGroups)[number];
+
+/**
  * Narrows a stored value to one of `options`, or to `""` when it predates the
  * list (or was never set). Lets the form hydrate legacy free-text answers
  * without crashing: the Tutor simply re-picks from the dropdown.
@@ -41,3 +62,31 @@ export function maxStudyYear(now: Date = new Date()) {
 export function isStudyYear(value: number, now?: Date) {
   return Number.isInteger(value) && value >= MIN_STUDY_YEAR && value <= maxStudyYear(now);
 }
+
+/**
+ * Whether one qualification-history field belongs to a record of this level.
+ *
+ * SSC and HSC are board exams - one passing year, a roll and a registration
+ * number. Honours and Masters are read over a span and may be in progress.
+ * Both the form and the submission check read this, so a field can never be
+ * demanded on a record that does not draw it.
+ */
+export function educationRecordFieldApplies(fieldId: string, qualificationLevel: string | null | undefined): boolean {
+  const school = isSchoolQualification(qualificationLevel);
+  if (SCHOOL_ONLY_RECORD_FIELDS.has(fieldId)) return school;
+  if (UNIVERSITY_ONLY_RECORD_FIELDS.has(fieldId)) return !school;
+  return true;
+}
+
+const SCHOOL_ONLY_RECORD_FIELDS = new Set([
+  "educationRecords.passingYear",
+  "educationRecords.rollNumber",
+  "educationRecords.registrationNumber",
+]);
+
+const UNIVERSITY_ONLY_RECORD_FIELDS = new Set([
+  "educationRecords.studyStartYear",
+  "educationRecords.studyEndYear",
+  "educationRecords.currentlyStudying",
+  "educationRecords.instituteIdCardNumber",
+]);

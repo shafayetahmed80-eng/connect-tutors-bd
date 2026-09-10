@@ -260,6 +260,30 @@ describe("Tutor Profile domain validation", () => {
     // An ongoing record may leave the end year out entirely.
     expect(parseWithRecord({ currentlyStudying: true, studyEndYear: undefined }).success).toBe(true);
   });
+
+  it("validates a board-exam record by its own rules, not a degree's", () => {
+    const school = {
+      qualificationLevel: "SSC",
+      instituteName: "Dhaka Residential Model College",
+      degreeExamTitle: "SSC",
+      majorGroup: "Science",
+      curriculum: "Bangla Version",
+      currentlyStudying: false,
+      passingYear: 2016,
+      rollNumber: "123456",
+      registrationNumber: "1234567890",
+    };
+    const parse = (overrides: Record<string, unknown> = {}) =>
+      tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [{ ...school, ...overrides }] });
+
+    // No study span, no "currently studying", and it still passes - those are
+    // a degree's fields, and demanding them here is the bug this guards.
+    expect(parse().success).toBe(true);
+    // The roll and registration numbers are optional.
+    expect(parse({ rollNumber: undefined, registrationNumber: undefined }).success).toBe(true);
+    // The passing year is still a real four-digit year.
+    expect(parse({ passingYear: 1800 }).success).toBe(false);
+  });
 });
 
 describe("Tutor Profile field config drives submission requiredness", () => {
