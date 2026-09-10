@@ -20,7 +20,7 @@ describe("Tutor Profile academic catalog seed plan", () => {
       university => university.normalizedName
     );
 
-    expect(plan.universities).toHaveLength(311);
+    expect(plan.universities).toHaveLength(327);
     expect(new Set(normalizedUniversities).size).toBe(plan.universities.length);
     expect(normalizedUniversities).toEqual(
       expect.arrayContaining([
