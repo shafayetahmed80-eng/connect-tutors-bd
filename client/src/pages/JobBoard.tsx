@@ -5,14 +5,13 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
-import { MoneyAmountField } from "@/components/MoneyAmountField";
+import ChipMultiSelect, { type ChipOption } from "@/components/ChipMultiSelect";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
-import { BriefcaseBusiness, Check, ChevronLeft, ChevronRight, Compass, ExternalLink, Filter, HeartHandshake, MapPinned, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { BriefcaseBusiness, Check, ChevronLeft, ChevronRight, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useLocation } from "wouter";
 
 type TutorGender = "male" | "female" | "any";
@@ -20,15 +19,26 @@ type TuitionType = "home" | "online" | "both" | "group" | "package";
 type TutorInterestStatus = "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
 type TutorJobInterest = { interestId: number; status: TutorInterestStatus; appliedAt: Date | string };
 
-type JobBoardFilterState = {
+/**
+ * What the filter panel holds. Six fields take several values, and every one
+ * of them is a list of ids rather than a joined string, so the panel and the
+ * server input agree on what "empty" means.
+ */
+export type JobBoardFilterState = {
   page: number;
+  /** `yyyy-mm-dd`, as a date input gives it. */
+  postedFrom: string;
+  postedTo: string;
+  country: string;
   cityId: string;
-  locationId: string;
-  tuitionType: "" | TuitionType;
+  locationIds: string[];
+  tuitionTypes: string[];
+  daysPerWeek: string[];
+  categories: string[];
+  classCourses: string[];
+  subjects: string[];
+  studentGender: "" | "male" | "female";
   preferredTutorGender: "" | TutorGender;
-  category: string;
-  subject: string;
-  budgetMaximum: string;
   jobId: string;
 };
 
@@ -56,17 +66,26 @@ export type JobBoardJob = {
   expiresAt: Date | string;
 };
 
-const DEFAULT_FILTERS: JobBoardFilterState = {
+export const DEFAULT_FILTERS: JobBoardFilterState = {
   page: 1,
+  postedFrom: "",
+  postedTo: "",
+  country: "",
   cityId: "",
-  locationId: "",
-  tuitionType: "",
+  locationIds: [],
+  tuitionTypes: [],
+  daysPerWeek: [],
+  categories: [],
+  classCourses: [],
+  subjects: [],
+  studentGender: "",
   preferredTutorGender: "",
-  category: "",
-  subject: "",
-  budgetMaximum: "",
   jobId: "",
 };
+
+/** The two ceilings the panel enforces; the server carries them as well. */
+export const JOB_BOARD_LOCATION_LIMIT = 10;
+export const JOB_BOARD_SUBJECT_LIMIT = 12;
 
 const PAGE_SIZE = 20;
 
@@ -75,20 +94,64 @@ function optionalTrimmed(value: string) {
   return trimmed || undefined;
 }
 
+/**
+ * The panel's state as the server wants it.
+ *
+ * An unused filter is left out rather than sent empty, so the server's own
+ * `if (input.x)` reads the same for a blank box and a missing key. Dates go as
+ * whole days: `from` from its first moment, `to` through its last, or a job
+ * posted at noon on the `to` date would fall outside its own range.
+ */
 export function buildJobBoardQuery(filters: JobBoardFilterState) {
-  const parsedBudget = Number(filters.budgetMaximum);
+  const list = (values: string[]) => (values.length ? values : undefined);
+  const from = optionalTrimmed(filters.postedFrom);
+  const to = optionalTrimmed(filters.postedTo);
   return {
     page: Math.max(1, Math.floor(filters.page || 1)),
     pageSize: PAGE_SIZE,
+    ...(from ? { postedFrom: new Date(`${from}T00:00:00`) } : {}),
+    ...(to ? { postedTo: new Date(`${to}T23:59:59.999`) } : {}),
+    ...(optionalTrimmed(filters.country) ? { country: optionalTrimmed(filters.country) } : {}),
     ...(optionalTrimmed(filters.cityId) ? { cityId: optionalTrimmed(filters.cityId) } : {}),
-    ...(optionalTrimmed(filters.locationId) ? { locationId: optionalTrimmed(filters.locationId) } : {}),
-    ...(filters.tuitionType ? { tuitionType: filters.tuitionType } : {}),
+    ...(list(filters.locationIds) ? { locationIds: filters.locationIds } : {}),
+    ...(list(filters.tuitionTypes) ? { tuitionTypes: filters.tuitionTypes as TuitionType[] } : {}),
+    ...(list(filters.daysPerWeek) ? { daysPerWeek: filters.daysPerWeek.map(Number) } : {}),
+    ...(list(filters.categories) ? { categories: filters.categories } : {}),
+    ...(list(filters.classCourses) ? { classCourses: filters.classCourses } : {}),
+    ...(list(filters.subjects) ? { subjects: filters.subjects } : {}),
+    ...(filters.studentGender ? { studentGender: filters.studentGender } : {}),
     ...(filters.preferredTutorGender ? { preferredTutorGender: filters.preferredTutorGender } : {}),
-    ...(optionalTrimmed(filters.category) ? { category: optionalTrimmed(filters.category) } : {}),
-    ...(optionalTrimmed(filters.subject) ? { subject: optionalTrimmed(filters.subject) } : {}),
-    ...(Number.isInteger(parsedBudget) && parsedBudget > 0 ? { budgetMaximum: parsedBudget } : {}),
     ...(optionalTrimmed(filters.jobId) ? { jobId: optionalTrimmed(filters.jobId) } : {}),
   };
+}
+
+/**
+ * Keeps a selection honest when what it depends on changes.
+ *
+ * Choosing a City is what makes areas meaningful, and a Category is what makes
+ * a Class meaningful, so dropping either has to take its children with it -
+ * otherwise a filter no one can see goes on narrowing the board.
+ */
+export function reconcileJobBoardFilters(
+  filters: JobBoardFilterState,
+  options: { locationsByCity: Record<string, ChipOption[]>; classesByCategory: Record<string, string[]>; subjectsByClass: Record<string, string[]> },
+): JobBoardFilterState {
+  const allowedLocations = new Set((filters.cityId ? options.locationsByCity[filters.cityId] ?? [] : []).map(option => option.id));
+  const allowedClasses = new Set(filters.categories.flatMap(category => options.classesByCategory[category] ?? []));
+  const classCourses = filters.classCourses.filter(classCourse => allowedClasses.has(classCourse));
+  const allowedSubjects = new Set(classCourses.flatMap(classCourse => options.subjectsByClass[classCourse] ?? []));
+  return {
+    ...filters,
+    locationIds: filters.locationIds.filter(id => allowedLocations.has(id)),
+    classCourses,
+    subjects: filters.subjects.filter(subject => allowedSubjects.has(subject)),
+  };
+}
+
+/** How many filters are actually narrowing the board. */
+export function countJobBoardFilters(filters: JobBoardFilterState) {
+  const { page, ...rest } = filters;
+  return Object.values(rest).filter(value => (Array.isArray(value) ? value.length > 0 : Boolean(value))).length;
 }
 
 export function buildMapsDirectionUrl(directionLabel: string | null) {
@@ -186,7 +249,11 @@ function formatJobBoardDate(value: Date | string) {
 export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
+  // Two states, because the panel has an Apply button: `draft` is what the
+  // panel holds and `filters` is what the board is actually showing. Only
+  // Apply and Clear move one into the other.
   const [filters, setFilters] = useState<JobBoardFilterState>(DEFAULT_FILTERS);
+  const [draft, setDraft] = useState<JobBoardFilterState>(DEFAULT_FILTERS);
   const [activeJob, setActiveJob] = useState<JobBoardJob | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
@@ -196,6 +263,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const citiesQuery = trpc.catalog.searchGuardianLocations.useQuery({ query: "", limit: 50, types: ["city"] });
   const locationsQuery = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: filters.cityId, query: "", limit: 300 }, { enabled: Boolean(filters.cityId) });
   const jobsQuery = trpc.jobBoard.list.useQuery(queryInput);
+  const filterOptionsQuery = trpc.jobBoard.filterOptions.useQuery();
   const tutorInterestsQuery = trpc.tutor.myJobInterests.useQuery(undefined, { enabled: isTutor, retry: false });
   const tutorProfileQuery = trpc.tutor.getMyProfile.useQuery(undefined, { enabled: isTutor, retry: false });
   const expressInterest = trpc.jobBoard.expressInterest.useMutation({ onSuccess: () => utils.tutor.myJobInterests.invalidate() });
@@ -232,11 +300,13 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
     if (matchingJob) setActiveJob(matchingJob);
   }, [activeJob, jobs, location]);
 
-  const update = <K extends keyof JobBoardFilterState>(key: K, value: JobBoardFilterState[K]) => {
-    setFilters(current => ({ ...current, [key]: key === "page" ? value : value, ...(key === "cityId" ? { locationId: "" } : {}), ...(key === "page" ? {} : { page: 1 }) }));
-  };
-  const reset = () => setFilters(DEFAULT_FILTERS);
-  const appliedFilterCount = [filters.cityId, filters.locationId, filters.tuitionType, filters.preferredTutorGender, filters.category, filters.subject, filters.budgetMaximum, filters.jobId].filter(Boolean).length;
+  const goToPage = (page: number) => setFilters(current => ({ ...current, page }));
+  const applyFilters = () => setFilters(draft);
+  const clearFilters = () => { setDraft(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); };
+  const appliedFilterCount = countJobBoardFilters(filters);
+  // The 'from' date cannot be later than the 'to' date; the server refuses it
+  // too, so this only saves the round trip.
+  const datesOutOfOrder = Boolean(draft.postedFrom && draft.postedTo && draft.postedFrom > draft.postedTo);
   const updateInterest = (job: JobBoardJob) => {
     const interest = tutorInterestByJobId.get(job.jobId);
     const presentation = getTutorInterestPresentation(interest?.status);
@@ -270,17 +340,41 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   return <section className={embedded ? "space-y-5" : "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12"} aria-label="Available tuition Job Board">
     <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:px-5">
       <div><p className="text-2xs font-extrabold uppercase tracking-[0.14em] text-[#5a88a8]">Live Jobs</p><p aria-live="polite" className="mt-0.5 text-2xl font-extrabold tracking-[-0.03em] text-j-ink">{jobsQuery.isLoading ? "—" : totalCount}</p><p className="text-xs font-semibold text-[#55738a]">{appliedFilterCount ? "matching live jobs" : "currently live"}</p></div>
-      <Sheet open={filterOpen} onOpenChange={setFilterOpen}><button type="button" onClick={() => setFilterOpen(true)} aria-label="Open advanced filters" aria-haspopup="dialog" aria-expanded={filterOpen} className="motion-interactive inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#cfe0eb] bg-j-surface-sunken px-3 text-sm font-bold text-[#245676] hover:border-[#9fcbe6] hover:bg-[#eef8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" /><span>Advanced filters</span>{appliedFilterCount ? <span className="grid size-5 place-items-center rounded-full bg-j-accent text-2xs text-white">{appliedFilterCount}</span> : null}</button><SheetContent side="right" className="w-full overflow-y-auto border-[#dce8f0] p-0 sm:max-w-md"><SheetHeader className="border-b border-[#e4edf3] pr-12"><SheetTitle className="flex items-center gap-2 text-j-ink"><Filter className="h-4 w-4 text-j-accent" />Advanced filters</SheetTitle><SheetDescription>Refine live jobs without exposing private Guardian contact or address details.</SheetDescription></SheetHeader><div className="px-4 py-5"><JobBoardFilters filters={filters} update={update} cities={cities} locations={locations} /></div><SheetFooter className="border-t border-[#e4edf3] bg-white"><button type="button" onClick={reset} disabled={!appliedFilterCount} className="motion-interactive min-h-10 rounded-xl border border-[#cfe0eb] px-4 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-50">Clear all</button><SheetClose asChild><button type="button" className="motion-interactive min-h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button></SheetClose></SheetFooter></SheetContent></Sheet>
+      <button
+        type="button"
+        onClick={() => setFilterOpen(current => !current)}
+        aria-expanded={filterOpen}
+        aria-controls="job-board-filters"
+        className="motion-interactive inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#cfe0eb] bg-j-surface-sunken px-3 text-sm font-bold text-[#245676] hover:border-[#9fcbe6] hover:bg-[#eef8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2"
+      ><SlidersHorizontal className="h-4 w-4" aria-hidden="true" /><span>Filter</span>{appliedFilterCount ? <span className="grid size-5 place-items-center rounded-full bg-j-accent text-2xs text-white">{appliedFilterCount}</span> : null}</button>
     </header>
+
+    {/* Inline rather than a drawer: twelve fields want the width of the page,
+        and the panel carries its own count and its own way out. */}
+    {filterOpen ? <section id="job-board-filters" aria-label="Job Board filters" className="rounded-xl border border-[#dce8f0] bg-[#f7fbfe] p-4 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#e4edf3] pb-3">
+        <p className="inline-flex items-center gap-2 text-sm text-[#55738a]"><LayoutGrid className="h-4 w-4 text-j-accent" aria-hidden="true" /><strong className="font-extrabold text-j-ink">{jobsQuery.isLoading ? "—" : totalCount}</strong> jobs found</p>
+        <button type="button" onClick={() => setFilterOpen(false)} className="motion-interactive inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover"><XCircle className="h-4 w-4" aria-hidden="true" /> Close</button>
+      </div>
+
+      <JobBoardFilters draft={draft} setDraft={setDraft} options={filterOptionsQuery.data ?? EMPTY_OPTIONS} />
+
+      {datesOutOfOrder ? <p role="alert" className="mt-3 text-xs font-semibold text-[#bd3535]">The 'from' date cannot be later than the 'to' date.</p> : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={clearFilters} className="motion-interactive min-h-10 rounded-xl bg-[#d43c3c] px-5 text-sm font-bold text-white hover:bg-[#b93232]">Clear</button>
+        <button type="button" onClick={applyFilters} disabled={datesOutOfOrder} className="motion-interactive min-h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50">Apply</button>
+      </div>
+    </section> : null}
 
     <div className="min-w-0">
         {jobsQuery.isError ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800"><p className="font-bold">Available tuition could not be loaded right now.</p><p className="mt-1">Please try again shortly. No private Guardian details are displayed in this view.</p><button type="button" onClick={() => jobsQuery.refetch()} disabled={jobsQuery.isFetching} data-motion={jobsQuery.isFetching ? "pending" : undefined} className="motion-interactive mt-4 inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 font-bold text-rose-800 ring-1 ring-inset ring-rose-200 hover:bg-rose-100 disabled:cursor-progress disabled:opacity-60">{jobsQuery.isFetching ? "Trying again…" : "Try again"}</button></div> : null}
         {jobsQuery.isFetching && !jobsQuery.isLoading ? <div role="status" aria-live="polite" className="mb-4 flex items-center gap-2 rounded-xl border border-[#cfe8f7] bg-[#f2faff] px-4 py-3 text-sm font-semibold text-[#245676]"><span className="inline-block size-2 animate-pulse rounded-full bg-j-accent" aria-hidden="true" />Updating results…</div> : null}
         {interestError ? <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-bold">Your Job Board application was not updated.</p><p className="mt-1">{interestError}</p></div> : null}
-        {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? reset : undefined} /> : null}
+        {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? clearFilters : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
       {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map(job => <JobCard key={job.id} job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} />)}</div> : null}
-      {totalCount > PAGE_SIZE ? <nav className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white p-3" aria-label="Job Board pagination" aria-busy={jobsQuery.isFetching}><button type="button" disabled={!pagination.previousPage || jobsQuery.isFetching} onClick={() => update("page", pagination.previousPage ?? 1)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><ol className="flex items-center gap-1" aria-label={`Page ${queryInput.page} of ${pagination.totalPages}`}>{pageLinks.map((pageLink, index) => pageLink === "ellipsis" ? <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-sm font-bold text-[#7893a6]">…</li> : <li key={pageLink}><button type="button" onClick={() => update("page", pageLink)} disabled={jobsQuery.isFetching} aria-current={pageLink === queryInput.page ? "page" : undefined} aria-label={`Go to page ${pageLink}`} className={`motion-interactive grid min-h-10 min-w-10 place-items-center rounded-xl px-2 text-sm font-bold disabled:cursor-progress ${pageLink === queryInput.page ? "bg-j-accent text-white" : "text-[#245676] hover:bg-[#f4fbff]"}`}>{pageLink}</button></li>)}</ol><button type="button" disabled={!pagination.nextPage || jobsQuery.isFetching} onClick={() => update("page", pagination.nextPage ?? queryInput.page)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></nav> : null}
+      {totalCount > PAGE_SIZE ? <nav className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white p-3" aria-label="Job Board pagination" aria-busy={jobsQuery.isFetching}><button type="button" disabled={!pagination.previousPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.previousPage ?? 1)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><ol className="flex items-center gap-1" aria-label={`Page ${queryInput.page} of ${pagination.totalPages}`}>{pageLinks.map((pageLink, index) => pageLink === "ellipsis" ? <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-sm font-bold text-[#7893a6]">…</li> : <li key={pageLink}><button type="button" onClick={() => goToPage(pageLink)} disabled={jobsQuery.isFetching} aria-current={pageLink === queryInput.page ? "page" : undefined} aria-label={`Go to page ${pageLink}`} className={`motion-interactive grid min-h-10 min-w-10 place-items-center rounded-xl px-2 text-sm font-bold disabled:cursor-progress ${pageLink === queryInput.page ? "bg-j-accent text-white" : "text-[#245676] hover:bg-[#f4fbff]"}`}>{pageLink}</button></li>)}</ol><button type="button" disabled={!pagination.nextPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.nextPage ?? queryInput.page)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></nav> : null}
     </div>
     {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
   </section>;
@@ -290,17 +384,102 @@ function FilterLabel({ label, children }: { label: string; children: React.React
   return <label className="block text-xs font-bold text-[#496a82]"><span>{label}</span><span className="mt-1.5 block">{children}</span></label>;
 }
 
-function JobBoardFilters({ filters, update, cities, locations }: { filters: JobBoardFilterState; update: <K extends keyof JobBoardFilterState>(key: K, value: JobBoardFilterState[K]) => void; cities: Array<{ id: string; label: string }>; locations: Array<{ id: string; label: string }> }) {
-  return <div className="space-y-4">
-    <FilterLabel label="Job ID"><input value={filters.jobId} onChange={event => update("jobId", event.target.value)} placeholder="e.g. CT-JOB-000042" className="job-board-input" /></FilterLabel>
-    <FilterLabel label="Tuition type"><select value={filters.tuitionType} onChange={event => update("tuitionType", event.target.value as JobBoardFilterState["tuitionType"])} className="job-board-input"><option value="">All types</option><option value="home">Home Tutoring</option><option value="online">Online Tutoring</option><option value="group">Group Tutoring</option><option value="package">Package Tutoring</option><option value="both">Home and Online Tutoring (legacy)</option></select></FilterLabel>
-    <FilterLabel label="Curriculum / category"><input value={filters.category} onChange={event => update("category", event.target.value)} placeholder="e.g. English Medium" className="job-board-input" /></FilterLabel>
-    <FilterLabel label="Subject"><input value={filters.subject} onChange={event => update("subject", event.target.value)} placeholder="e.g. Mathematics" className="job-board-input" /></FilterLabel>
-    <FilterLabel label="Preferred Tutor"><select value={filters.preferredTutorGender} onChange={event => update("preferredTutorGender", event.target.value as JobBoardFilterState["preferredTutorGender"])} className="job-board-input"><option value="">Any Tutor</option><option value="female">Female Tutor</option><option value="male">Male Tutor</option></select></FilterLabel>
-    <FilterLabel label="Maximum monthly budget"><MoneyAmountField value={filters.budgetMaximum} onChange={value => update("budgetMaximum", value.replace(/\D/g, ""))} placeholder="e.g. 10000" inputClassName="job-board-input" /></FilterLabel>
-    <FilterLabel label="City"><select value={filters.cityId} onChange={event => update("cityId", event.target.value)} className="job-board-input"><option value="">All Cities</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></FilterLabel>
-    <FilterLabel label="Area / Sub-area"><select disabled={!filters.cityId} value={filters.locationId} onChange={event => update("locationId", event.target.value)} className="job-board-input disabled:cursor-not-allowed disabled:bg-j-surface-sunken"><option value="">{filters.cityId ? "All areas" : "Choose a City first"}</option>{locations.map(location => <option key={location.id} value={location.id}>{location.label}</option>)}</select></FilterLabel>
-    <p className="rounded-xl bg-[#f5faff] p-3 text-xs leading-5 text-[#52748d]"><ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-j-accent" />Locations are shown at area level only. Exact family addresses are coordinated privately.</p>
+type JobBoardFilterOptions = {
+  countries: string[];
+  tuitionTypes: string[];
+  daysPerWeek: number[];
+  cities: ChipOption[];
+  locationsByCity: Record<string, ChipOption[]>;
+  classesByCategory: Record<string, string[]>;
+  subjectsByClass: Record<string, string[]>;
+};
+
+const EMPTY_OPTIONS: JobBoardFilterOptions = { countries: [], tuitionTypes: [], daysPerWeek: [], cities: [], locationsByCity: {}, classesByCategory: {}, subjectsByClass: {} };
+
+const asChips = (values: readonly string[]): ChipOption[] => values.map(value => ({ id: value, label: value }));
+
+/**
+ * A date box that says what it is for.
+ *
+ * A native date input has no placeholder - it shows the locale mask instead,
+ * so two of them side by side both read "mm/dd/yyyy" and neither says which
+ * end of the range it is. It starts as a text box carrying its own label and
+ * becomes a date picker the moment it is focused or holds a value.
+ */
+function DateField({ label, value, onChange, min, max }: { label: string; value: string; onChange: (value: string) => void; min?: string; max?: string }) {
+  const [focused, setFocused] = useState(false);
+  return <input
+    type={focused || value ? "date" : "text"}
+    aria-label={label}
+    placeholder={label}
+    value={value}
+    min={min}
+    max={max}
+    onFocus={() => setFocused(true)}
+    onBlur={() => setFocused(false)}
+    onChange={event => onChange(event.target.value)}
+    className={`h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100 ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}
+  />;
+}
+function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: ChipOption[] }) {
+  return <select aria-label={label} value={value} onChange={event => onChange(event.target.value)} className={`h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}>
+    <option value="">{label}</option>
+    {options.map(option => <option key={option.id} value={option.id} className="text-j-ink">{option.label}</option>)}
+  </select>;
+}
+
+/**
+ * The Job Board's filters, all of them on one panel.
+ *
+ * The four that depend on something else say so by going quiet rather than by
+ * explaining themselves: Location waits for a City, Class for a Category,
+ * Subject for a Class. What each one may offer comes from the jobs that are
+ * actually live, so nothing here can be chosen that returns an empty board.
+ */
+export function JobBoardFilters({ draft, setDraft, options }: {
+  draft: JobBoardFilterState;
+  setDraft: (next: JobBoardFilterState) => void;
+  options: JobBoardFilterOptions;
+}) {
+  const set = (change: Partial<JobBoardFilterState>) =>
+    setDraft(reconcileJobBoardFilters({ ...draft, ...change, page: 1 }, options));
+
+  const locationOptions = draft.cityId ? options.locationsByCity[draft.cityId] ?? [] : [];
+  const classOptions = asChips(Array.from(new Set(draft.categories.flatMap(category => options.classesByCategory[category] ?? []))).sort());
+  const subjectOptions = asChips(Array.from(new Set(draft.classCourses.flatMap(classCourse => options.subjectsByClass[classCourse] ?? []))).sort());
+
+  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <DateField label="Posted Date From" value={draft.postedFrom} max={draft.postedTo || undefined} onChange={postedFrom => set({ postedFrom })} />
+    <DateField label="Posted Date To" value={draft.postedTo} min={draft.postedFrom || undefined} onChange={postedTo => set({ postedTo })} />
+    <div className="lg:col-span-2">
+      <ChipMultiSelect label="Tuition Type" options={asChips(options.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType)))} selectedIds={draft.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType))} onChange={labels => set({ tuitionTypes: options.tuitionTypes.filter(type => labels.includes(formatJobBoardTuitionType(type as TuitionType))) })} />
+    </div>
+
+    <FilterSelect label="Country" value={draft.country} onChange={country => set({ country })} options={asChips(options.countries)} />
+    <FilterSelect label="City" value={draft.cityId} onChange={cityId => set({ cityId })} options={options.cities} />
+    <div className="lg:col-span-2">
+      <ChipMultiSelect label="Tutoring Days Per Week" options={options.daysPerWeek.map(days => ({ id: String(days), label: `${days} day${days === 1 ? "" : "s"}` }))} selectedIds={draft.daysPerWeek} onChange={daysPerWeek => set({ daysPerWeek })} />
+    </div>
+
+    <div className="sm:col-span-2">
+      <ChipMultiSelect label="Category" options={asChips(Object.keys(options.classesByCategory).sort())} selectedIds={draft.categories} onChange={categories => set({ categories })} />
+    </div>
+    <div className="sm:col-span-2">
+      <ChipMultiSelect label="Location" options={locationOptions} selectedIds={draft.locationIds} onChange={locationIds => set({ locationIds })} disabled={!draft.cityId} disabledPlaceholder="Location - select a City first" maxSelections={JOB_BOARD_LOCATION_LIMIT} />
+    </div>
+
+    <div className="sm:col-span-2">
+      <FilterSelect label="Student Gender" value={draft.studentGender} onChange={value => set({ studentGender: value as JobBoardFilterState["studentGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }]} />
+    </div>
+    <div className="sm:col-span-2">
+      <ChipMultiSelect label="Class" options={classOptions} selectedIds={draft.classCourses} onChange={classCourses => set({ classCourses })} disabled={draft.categories.length === 0} disabledPlaceholder="Class - select a Category first" />
+    </div>
+
+    <div className="sm:col-span-2">
+      <ChipMultiSelect label="Subject" options={subjectOptions} selectedIds={draft.subjects} onChange={subjects => set({ subjects })} disabled={draft.classCourses.length === 0} disabledPlaceholder="Subject - select a Class first" maxSelections={JOB_BOARD_SUBJECT_LIMIT} />
+    </div>
+    <FilterSelect label="Tutor Gender" value={draft.preferredTutorGender} onChange={value => set({ preferredTutorGender: value as JobBoardFilterState["preferredTutorGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "any", label: "Any" }]} />
+    <input aria-label="Job ID" value={draft.jobId} onChange={event => set({ jobId: event.target.value })} placeholder="Job ID" className="h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm text-j-ink outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
   </div>;
 }
 

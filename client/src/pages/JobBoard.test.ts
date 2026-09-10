@@ -1,31 +1,89 @@
 import { describe, expect, it } from "vitest";
-import { buildJobBoardPageLinks, buildJobBoardQuery, buildMapsDirectionUrl, formatJobBoardTuitionType, formatJobBudget, getJobBoardPagination, getTutorInterestPresentation } from "./JobBoard";
+import { DEFAULT_FILTERS, buildJobBoardPageLinks, buildJobBoardQuery, buildMapsDirectionUrl, countJobBoardFilters, formatJobBoardTuitionType, formatJobBudget, getJobBoardPagination, getTutorInterestPresentation, reconcileJobBoardFilters } from "./JobBoard";
 
 describe("Job Board view helpers", () => {
-  it("normalizes optional filters and clamps the requested page for a safe public query", () => {
+  it("sends only the filters actually in use, and whole days for a date range", () => {
     expect(buildJobBoardQuery({
+      ...DEFAULT_FILTERS,
       page: -4,
       cityId: "  dhaka-city ",
-      locationId: "",
-      tuitionType: "home",
+      locationIds: ["dhaka-adabor", "dhaka-gulshan"],
+      tuitionTypes: ["home", "online"],
+      daysPerWeek: ["3", "4"],
+      categories: ["Bangla Medium"],
+      classCourses: ["Class 4"],
+      subjects: ["General Maths"],
+      studentGender: "female",
       preferredTutorGender: "female",
-      category: " English Medium ",
-      subject: "  English ",
-      budgetMaximum: "10000",
-      jobId: "  CT-JOB-000042 ",
+      country: "Bangladesh",
+      jobId: "  6812 ",
     })).toEqual({
       page: 1,
       pageSize: 20,
+      country: "Bangladesh",
       cityId: "dhaka-city",
-      tuitionType: "home",
+      locationIds: ["dhaka-adabor", "dhaka-gulshan"],
+      tuitionTypes: ["home", "online"],
+      // Sent as numbers, though the chips carry them as ids.
+      daysPerWeek: [3, 4],
+      categories: ["Bangla Medium"],
+      classCourses: ["Class 4"],
+      subjects: ["General Maths"],
+      studentGender: "female",
       preferredTutorGender: "female",
-      category: "English Medium",
-      subject: "English",
-      budgetMaximum: 10000,
-      jobId: "CT-JOB-000042",
+      jobId: "6812",
     });
   });
 
+  it("leaves an untouched filter out rather than sending it empty", () => {
+    // The server reads `if (input.x)`, so a blank box and a missing key have
+    // to mean the same thing.
+    expect(buildJobBoardQuery(DEFAULT_FILTERS)).toEqual({ page: 1, pageSize: 20 });
+  });
+
+  it("covers the whole of both days a range names", () => {
+    // A job posted at noon on the 'to' date belongs inside a range that ends
+    // on it, so 'to' runs to the last moment of its day rather than midnight.
+    const query = buildJobBoardQuery({ ...DEFAULT_FILTERS, postedFrom: "2026-11-01", postedTo: "2026-11-20" });
+    expect(query.postedFrom).toEqual(new Date("2026-11-01T00:00:00"));
+    expect(query.postedTo).toEqual(new Date("2026-11-20T23:59:59.999"));
+  });
+
+  it("drops a Location when its City goes, and a Class when its Category goes", () => {
+    const options = {
+      locationsByCity: { "dhaka-city": [{ id: "dhaka-adabor", label: "Adabor" }] },
+      classesByCategory: { "Bangla Medium": ["Class 4"], "English Medium": ["O Level"] },
+      subjectsByClass: { "Class 4": ["General Maths"], "O Level": ["Physics"] },
+    };
+    const chosen = {
+      ...DEFAULT_FILTERS,
+      cityId: "dhaka-city",
+      locationIds: ["dhaka-adabor"],
+      categories: ["Bangla Medium"],
+      classCourses: ["Class 4"],
+      subjects: ["General Maths"],
+    };
+    // Nothing to reconcile while the parents stand.
+    expect(reconcileJobBoardFilters(chosen, options)).toMatchObject({
+      locationIds: ["dhaka-adabor"], classCourses: ["Class 4"], subjects: ["General Maths"],
+    });
+
+    // Clearing the City takes its areas; dropping the Category takes its
+    // classes, and the subjects those classes were offering.
+    expect(reconcileJobBoardFilters({ ...chosen, cityId: "" }, options).locationIds).toEqual([]);
+    const withoutCategory = reconcileJobBoardFilters({ ...chosen, categories: [] }, options);
+    expect(withoutCategory.classCourses).toEqual([]);
+    expect(withoutCategory.subjects).toEqual([]);
+  });
+
+  it("counts the filters that are narrowing the board, and no others", () => {
+    expect(countJobBoardFilters(DEFAULT_FILTERS)).toBe(0);
+    // The page number is not a filter.
+    expect(countJobBoardFilters({ ...DEFAULT_FILTERS, page: 4 })).toBe(0);
+    expect(countJobBoardFilters({ ...DEFAULT_FILTERS, cityId: "dhaka-city", subjects: ["Bangla"] })).toBe(2);
+    // An emptied list stops counting.
+    expect(countJobBoardFilters({ ...DEFAULT_FILTERS, subjects: [] })).toBe(0);
+  });
   it("constructs only an area-level Google Maps search URL and never falls back to an exact address", () => {
     expect(buildMapsDirectionUrl("Mirpur 10, Dhaka")).toBe("https://www.google.com/maps/search/?api=1&query=Mirpur%2010%2C%20Dhaka%2C%20Bangladesh");
     expect(buildMapsDirectionUrl(null)).toBeNull();

@@ -45,6 +45,7 @@ vi.mock("@/lib/trpc", () => ({
       searchRegistrationLocations: { useQuery: () => ({ data: [] }) },
     },
     jobBoard: {
+      filterOptions: { useQuery: () => ({ data: undefined, isLoading: false }) },
       list: { useQuery: () => ({ data: { items: [job(1, "6801", "Need a Tutor for Class 8"), job(2, "6802", "Need a Tutor for Class 9")], totalCount: 2 }, isLoading: false }) },
       expressInterest: { useMutation: () => ({ mutate: mocks.express, isPending: mocks.expressPending }) },
       withdrawInterest: { useMutation: () => ({ mutate: mocks.withdraw, isPending: false }) },
