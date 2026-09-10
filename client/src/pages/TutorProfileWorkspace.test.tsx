@@ -206,17 +206,16 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     />);
 
     await user.click(screen.getByRole("tab", { name: /Education/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
     const dialog = screen.getByRole("dialog");
 
     // The completed qualification is collapsed to its summary; its fields are not rendered.
     expect(within(dialog).getByText("BSc Physics · Dhaka University · 2020")).toBeTruthy();
     expect(within(dialog).queryByDisplayValue("BSc Physics")).toBeNull();
-    // Three Institute Name boxes are open: the empty degree, plus the Secondary
-    // and Higher Secondary sections, which are always shown and never collapse.
-    expect(within(dialog).getAllByLabelText(/Institute Name/).length).toBe(3);
-    expect(within(dialog).getByRole("heading", { name: "Secondary" })).toBeTruthy();
-    expect(within(dialog).getByRole("heading", { name: "Higher Secondary" })).toBeTruthy();
+    // Only the empty degree is open - Secondary and Higher Secondary have
+    // their own popups now.
+    expect(within(dialog).getAllByLabelText(/Institute Name/).length).toBe(1);
+    expect(within(dialog).queryByRole("heading", { name: "Secondary" })).toBeNull();
 
     // Collapsed cards are titled by their education level, so they stay scannable.
     await user.click(within(dialog).getByRole("button", { name: /Honours/ }));
@@ -228,8 +227,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Education/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Upload University ID card");
     expect(within(dialog).getByRole("button", { name: /Upload Both Side/ })).toBeTruthy();
@@ -248,8 +247,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Education/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
     const dialog = screen.getByRole("dialog");
 
     // All four are offered, and all four are clearly optional.
@@ -272,8 +271,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    await user.click(screen.getByRole("tab", { name: /Education/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Education" }));
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
     const dialog = screen.getByRole("dialog");
 
     fireEvent.change(within(dialog).getByLabelText("Upload NID Card Image"), {
@@ -321,7 +320,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     dialog = screen.getByRole("dialog");
     const teachingAreas = within(dialog).getByRole("button", { name: /Teaching Areas/ });
     expect(teachingAreas.parentElement?.textContent).toContain("Teaching Areas *");
@@ -338,7 +337,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     // The remaining incomplete section surfaces its errors when opened from its tab.
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     const teachingDialog = screen.getByRole("dialog");
     expect(within(teachingDialog).getByText("Select your current location.")).toBeTruthy();
     expect(within(teachingDialog).getByText("Select at least one teaching area.")).toBeTruthy();
@@ -484,7 +483,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     const dialog = screen.getByRole("dialog");
     // Current City is the first combobox, Current Location the second.
     const currentLocationSearch = within(dialog).getAllByRole("combobox")[1];
@@ -535,7 +534,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     })));
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByDisplayValue("Dhaka · city")).toBeTruthy();
     expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
@@ -567,7 +566,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
 
     // Opening the editor mounts the City box, which seeds its own text from
     // the resolved label and re-searches the catalog with that literal text.
-    await user.click(screen.getByRole("button", { name: "Edit Location and fee" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Dhaka · city" })));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
 
@@ -649,7 +648,7 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     // Teaching expertise sits in Tuition & location now, in the one popup
     // that tab opens.
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).queryByText("Student Types")).toBeNull();

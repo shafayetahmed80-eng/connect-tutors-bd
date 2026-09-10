@@ -14,8 +14,8 @@ const onboardingFallback = {
 const baseState = hydrateTutorProfileForm(null, onboardingFallback);
 
 describe("Tutor Profile section draft payloads", () => {
-  it("defines the four profile sections (Personal / Education / Tuition / Introduction)", () => {
-    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "c", "d", "e"]);
+  it("defines the profile sections (Personal / Education / Tuition / Credential / Introduction)", () => {
+    expect(tutorProfileSectionDefinitions.map(section => section.id)).toEqual(["a", "c", "d", "f", "e"]);
     expect(tutorProfileSectionDefinitions[0].label).toBe("Personal Information");
     expect(tutorProfileSectionDefinitions[1].label).toBe("Education");
   });
@@ -137,7 +137,7 @@ describe("Tutor Profile section draft payloads", () => {
   });
 
   it("saves only the academic half of Section C for the Education sub-group", () => {
-    const payload = createTutorProfileSectionDraftPayload("c-education", {
+    const payload = createTutorProfileSectionDraftPayload("c-university", {
       ...baseState,
       highestEducation: "Bachelor of Science",
       studyStatus: "graduated",
@@ -182,10 +182,10 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload).not.toHaveProperty("educationRecords");
   });
 
-  it("leaves Section C with Education alone once Teaching expertise has moved out", () => {
-    expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-education"]);
+  it("splits Section C into its three stages", () => {
+    expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-university", "c-higher-secondary", "c-secondary"]);
     expect(getTutorProfileSectionGroups("a")?.map(group => group.id)).toEqual(["a-identity", "a-family"]);
     // Tuition and location now edits one sub-group at a time.
-    expect(getTutorProfileSectionGroups("d")?.map(group => group.id)).toEqual(["d-availability", "d-teaching", "d-location"]);
+    expect(getTutorProfileSectionGroups("d")?.map(group => group.id)).toEqual(["d-availability", "d-teaching"]);
   });
 });

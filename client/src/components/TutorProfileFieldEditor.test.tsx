@@ -36,7 +36,7 @@ describe("Tutor Profile field editor", () => {
   it("renders every section heading and shows an untouched field as on and at its default required state", () => {
     render(<TutorProfileFieldEditor />);
 
-    for (const label of ["Personal Information", "Education", "Tuition and location", "Introduction and review"]) {
+    for (const label of ["Personal Information", "Education", "Tuition Related", "Credential", "Introduction and review"]) {
       expect(screen.getByRole("heading", { name: label })).toBeTruthy();
     }
     expect(screen.getByLabelText("Disable Full Name")).toHaveProperty("checked", true);
@@ -117,13 +117,13 @@ describe("Tutor Profile field editor", () => {
     render(<TutorProfileFieldEditor />);
 
     const select = screen.getByLabelText("Move Additional Notes to a different section") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "d-location" } });
+    fireEvent.change(select, { target: { value: "d-teaching" } });
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     const [payload] = mocks.save.mock.calls[0] as [TutorProfileFieldOverrideRow[]];
     expect(payload).toHaveLength(1);
-    expect(payload[0]).toMatchObject({ fieldId: "additionalNotes", section: "d", subGroup: "d-location" });
+    expect(payload[0]).toMatchObject({ fieldId: "additionalNotes", section: "d", subGroup: "d-teaching" });
     expect(typeof payload[0].sortOrder).toBe("number");
   });
 

@@ -29,13 +29,14 @@ describe("Tutor Profile field registry", () => {
     }
   });
 
-  it("gives only section e no sub-groups, matching its single-popup editor", () => {
+  it("gives the single-popup sections no sub-groups, and splits the rest", () => {
+    // Introduction and Credential are each edited as one popup.
     expect(subGroupsForSection("e")).toBeUndefined();
+    expect(subGroupsForSection("f")).toBeUndefined();
     expect(subGroupsForSection("a")).toEqual(["a-identity", "a-family"]);
-    // `c-teaching` stays a declared id an Owner could move fields back into,
-    // but no field ships in it since Teaching expertise moved to section d.
-    expect(subGroupsForSection("c")).toEqual(["c-education"]);
-    expect(subGroupsForSection("d")).toEqual(["d-availability", "d-teaching", "d-location"]);
+    // Education opens one stage at a time, university first.
+    expect(subGroupsForSection("c")).toEqual(["c-university", "c-higher-secondary", "c-secondary"]);
+    expect(subGroupsForSection("d")).toEqual(["d-availability", "d-teaching"]);
   });
 
   it("finds a declared field and returns undefined for an unknown one", () => {

@@ -7,17 +7,13 @@ import {
 import type { tutorProfileEditableDraftSchema } from "../../../server/tutor-profile.validation";
 import { createProfileDraftPayload, type TutorProfileFormState, type TutorProfilePrivateDetails } from "./TutorProfileFormData";
 
-export type TutorProfileSectionId = "a" | "c" | "d" | "e";
+export type TutorProfileSectionId = "a" | "c" | "d" | "f" | "e";
 
-/**
- * A section that owns sub-groups opens its editor one sub-group at a time.
- * `c-teaching` ships empty since Teaching expertise moved to section d, but
- * stays declared so an Owner can move fields back into it.
- */
+/** A section that owns sub-groups opens its editor one sub-group at a time. */
 export type TutorProfileSectionGroupId =
   | "a-identity" | "a-family"
-  | "c-education" | "c-teaching"
-  | "d-availability" | "d-teaching" | "d-location";
+  | "c-university" | "c-higher-secondary" | "c-secondary"
+  | "d-availability" | "d-teaching";
 export type TutorProfileEditTarget = TutorProfileSectionId | TutorProfileSectionGroupId;
 
 export type TutorProfileSectionFormState = TutorProfileFormState & {
@@ -35,11 +31,11 @@ export type TutorProfileSectionFormState = TutorProfileFormState & {
 const subGroupLabels: Record<TutorProfileSectionGroupId, string> = {
   "a-identity": "Identity and contact",
   "a-family": "Family and emergency contact",
-  "c-education": "Education",
-  "c-teaching": "Teaching expertise",
+  "c-university": "University Section",
+  "c-higher-secondary": "Higher Secondary",
+  "c-secondary": "Secondary",
   "d-availability": "Availability",
-  "d-teaching": "Teaching expertise",
-  "d-location": "Location and fee",
+  "d-teaching": "Teaching Expertise",
 };
 
 /**
@@ -75,12 +71,17 @@ export const tutorProfileSectionDefinitions: readonly SectionDefinition[] = [
   {
     id: "c",
     label: "Education",
-    description: "Your education, qualifications, and supporting documents.",
+    description: "Your university study, then your Higher Secondary and Secondary records.",
   },
   {
     id: "d",
-    label: "Tuition and location",
+    label: "Tuition Related",
     description: "What, how and where you teach: subjects, learner levels, format, coverage, and fee.",
+  },
+  {
+    id: "f",
+    label: "Credential",
+    description: "Your University ID and the optional certificates that support it.",
   },
   {
     id: "e",

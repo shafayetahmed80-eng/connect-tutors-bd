@@ -1,3 +1,4 @@
+import { isSchoolQualification } from "@shared/tutor-education";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
 import {
   defaultTutorProfileFieldConfig,
@@ -72,18 +73,31 @@ function fromMap<K extends string>(map: Record<K, string>, key: string): string 
 }
 
 function educationSummary(form: TeachingProfileState): string {
+  // Secondary and Higher Secondary are read out by their own cards.
   const filled = form.educationRecords.filter(record =>
-    [record.qualificationLevel, record.instituteName, record.degreeExamTitle].some(part => part.trim()));
+    !isSchoolQualification(record.qualificationLevel)
+    && [record.qualificationLevel, record.instituteName, record.degreeExamTitle].some(part => part.trim()));
   if (filled.length === 0) return "";
   return filled
     .map(record => [record.degreeExamTitle || record.qualificationLevel, record.instituteName].filter(Boolean).join(" · "))
     .join("; ");
 }
 
+/**
+ * The one row a fixed school section shows. Its record is found by level, not
+ * by position, the same way the editor finds it.
+ */
+function schoolSummary(form: TeachingProfileState, level: "SSC" | "HSC"): string {
+  const record = form.educationRecords.find(entry => entry.qualificationLevel === level);
+  if (!record) return "";
+  return [record.instituteName, record.majorGroup, record.passingYear].map(part => (part ?? "").trim()).filter(Boolean).join(" · ");
+}
+
 const sectionTitles: Record<TutorProfileSectionId, string> = {
   a: "Personal Information",
   c: "Education",
-  d: "Tuition and location",
+  d: "Tuition Related",
+  f: "Credential",
   e: "Introduction and review",
 };
 
@@ -91,18 +105,18 @@ const sectionTitles: Record<TutorProfileSectionId, string> = {
 const subGroupHeadings: Record<TutorProfileFieldSubGroup, string> = {
   "a-identity": "Identity and contact",
   "a-family": "Family and emergency contact",
-  "c-education": "Education",
-  "c-teaching": "Teaching expertise",
+  "c-university": "University Section",
+  "c-higher-secondary": "Higher Secondary",
+  "c-secondary": "Secondary",
   "d-availability": "Availability",
-  "d-teaching": "Teaching expertise",
-  "d-location": "Location and fee",
+  "d-teaching": "Teaching Expertise",
 };
 
 /** A card's heading when the section has no sub-groups, so each panel is its own card. */
 const panelHeadings: Record<TutorProfileFieldPanel, string> = {
   identity: "Identity and contact",
   family: "Family and emergency contact",
-  education: "Education",
+  education: "University Section",
   secondary: "Secondary",
   "higher-secondary": "Higher Secondary",
   qualifications: "Qualifications",
@@ -162,6 +176,8 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   // Only the half of the study timeline that the chosen status asks for.
   yearSemester: form => form.studyStatus === "studying" ? { label: "Year/semester", value: text(form.yearSemester) } : null,
   graduationYear: form => form.studyStatus === "studying" ? null : { label: "Graduation year", value: text(form.graduationYear) },
+  secondaryRecord: form => ({ label: "Qualification", value: schoolSummary(form, "SSC") }),
+  higherSecondaryRecord: form => ({ label: "Qualification", value: schoolSummary(form, "HSC") }),
   educationRecords: form => ({ label: "Qualification history", value: educationSummary(form) }),
   universityIdDocumentStatus: form => ({ label: "University ID card", value: form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : "" }),
   "supportingDocument.nid_card": documentRowBuilder("nid_card"),
@@ -206,8 +222,8 @@ function toRow(field: ResolvedTutorProfileField, content: ReadoutRowContent): Tu
 /**
  * A card groups the fields that are edited together: the sub-group where a
  * section has them, otherwise the panel. That is why Personal Information
- * shows two cards and Tuition and location shows three (Availability,
- * Teaching expertise, Location and fee) - each with its own pencil and popup.
+ * shows two cards and Education shows three (University Section, Higher
+ * Secondary, Secondary) - each with its own pencil and popup.
  */
 export function getTutorProfileReadoutSections(
   form: TeachingProfileState,

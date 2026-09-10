@@ -12,7 +12,7 @@ vi.mock("@/lib/trpc", () => ({
 
 import { SiteContentProvider, SiteText, useSiteContact, useSiteContentSpacingClass } from "./siteContent";
 
-const HEADING_SLOT = "tutor-profile.group.c-education";
+const HEADING_SLOT = "tutor-profile.group.c-university";
 
 function Spacing() {
   return <p data-testid="spacing">{useSiteContentSpacingClass("tutor-profile.spacing.section-card")}</p>;
@@ -31,7 +31,7 @@ describe("site content rendering", () => {
   it("shows the copy shipped in code when nothing is overridden", () => {
     renderSlot();
 
-    const slot = screen.getByText("Education");
+    const slot = screen.getByText("University Section");
     // No size class is emitted, so the call site's own styling survives.
     expect(slot.className).toContain("text-sm");
     expect(slot.className).toContain("font-bold");
@@ -42,7 +42,7 @@ describe("site content rendering", () => {
     renderSlot();
 
     const slot = screen.getByText("Academic background");
-    expect(screen.queryByText("Education")).toBeNull();
+    expect(screen.queryByText("University Section")).toBeNull();
     // Inline, so it beats the size class the call site already applied.
     expect(slot.style.fontSize).toBe("18px");
     // The rest of the call site's styling survives.
@@ -61,7 +61,7 @@ describe("site content rendering", () => {
     state.data = [{ slotId: HEADING_SLOT, text: "   ", textSizePx: null, spacing: null }];
     renderSlot();
 
-    expect(screen.getByText("Education")).toBeTruthy();
+    expect(screen.getByText("University Section")).toBeTruthy();
   });
 
   it("ignores an override for a slot the registry no longer declares", () => {
@@ -69,7 +69,7 @@ describe("site content rendering", () => {
     renderSlot();
 
     expect(screen.queryByText("Ghost")).toBeNull();
-    expect(screen.getByText("Education")).toBeTruthy();
+    expect(screen.getByText("University Section")).toBeTruthy();
   });
 
   it("applies a spacing override and falls back to the default padding without one", () => {

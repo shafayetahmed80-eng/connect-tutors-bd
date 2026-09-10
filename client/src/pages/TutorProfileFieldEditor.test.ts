@@ -21,10 +21,9 @@ describe("Tutor Profile field editor logic", () => {
     const grouped = groupFieldsForEditor(config.all);
 
     expect(new Set(grouped.keys())).toEqual(new Set([
-      "a-identity", "a-family", "c-education", "d-availability", "d-teaching", "d-location", "e",
+      "a-identity", "a-family", "c-university", "c-higher-secondary", "c-secondary",
+      "d-availability", "d-teaching", "f", "e",
     ]));
-    // c-teaching is a declared target with nothing in it by default.
-    expect(grouped.get("c-teaching")).toBeUndefined();
     expect(editTargetFor(config.byId.get("profilePhotoUrl")!)).toBeNull();
     for (const [, fields] of Array.from(grouped.entries())) {
       expect(fields.map(f => f.sortOrder)).toEqual([...fields.map(f => f.sortOrder)].sort((a, b) => a - b));
@@ -71,13 +70,14 @@ describe("Tutor Profile field editor logic", () => {
 
   it("moveTargetOverride always names both axes, even for a sub-group-free destination", () => {
     expect(moveTargetOverride("a-family")).toEqual({ section: "a", subGroup: "a-family" });
-    expect(moveTargetOverride("d-location")).toEqual({ section: "d", subGroup: "d-location" });
+    expect(moveTargetOverride("d-teaching")).toEqual({ section: "d", subGroup: "d-teaching" });
     expect(moveTargetOverride("e")).toEqual({ section: "e", subGroup: null });
   });
 
-  it("declares every target exactly once, covering all four sections", () => {
+  it("declares every target exactly once, covering every section", () => {
     expect(tutorProfileFieldEditTargets.map(t => t.id)).toEqual([
-      "a-identity", "a-family", "c-education", "c-teaching", "d-availability", "d-teaching", "d-location", "e",
+      "a-identity", "a-family", "c-university", "c-higher-secondary", "c-secondary",
+      "d-availability", "d-teaching", "f", "e",
     ]);
   });
 

@@ -62,7 +62,7 @@ async function openEducationEditor() {
   const user = userEvent.setup({ document: window.document });
   render(<TutorProfileWorkspace profile={profile} onboardingFallback={null} />);
   await user.click(screen.getByRole("tab", { name: /Education/ }));
-  await user.click(screen.getByRole("button", { name: "Edit Education" }));
+  await user.click(screen.getByRole("button", { name: "Edit University Section" }));
   const dialog = screen.getByRole("dialog");
   return { user, dialog, input: within(dialog).getByRole("combobox", { name: /Institute/ }) as HTMLInputElement };
 }
