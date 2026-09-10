@@ -266,7 +266,9 @@ describe("Tutor Profile form hydration", () => {
     } as never;
 
     const form = hydrateTutorProfileForm(savedProfile, onboardingFallback);
-    const record = form.educationRecords[0];
+    // Found by level, not position: hydration puts the Secondary and Higher
+    // Secondary records first, so the degree is no longer index 0.
+    const record = form.educationRecords.find(entry => entry.qualificationLevel === "Honours")!;
 
     expect(record.studyStartYear).toBe("2020");
     expect(record.studyEndYear).toBe("2024");
@@ -276,10 +278,18 @@ describe("Tutor Profile form hydration", () => {
     expect(form.privateDetails.motherName).toBe("");
 
     expect(() => createProfileDraftPayload(form)).not.toThrow();
-    expect(createProfileDraftPayload(form).educationRecords[0]).toMatchObject({
+    expect(createProfileDraftPayload(form).educationRecords.find(entry => entry.qualificationLevel === "Honours")).toMatchObject({
       studyStartYear: 2020,
       studyEndYear: 2024,
     });
+  });
+
+  it("always carries a Secondary and a Higher Secondary record, however the profile was saved", () => {
+    // Each has its own section in the Education tab, so the form has to hold
+    // exactly one of each even for a profile saved before they existed.
+    const form = hydrateTutorProfileForm({ ...serverProfile, educationRecords: [] } as never, onboardingFallback);
+
+    expect(form.educationRecords.map(record => record.qualificationLevel)).toEqual(["SSC", "HSC"]);
   });
 
   it("counts the study timeline as one required detail only once a study status is chosen", () => {

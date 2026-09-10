@@ -5,7 +5,7 @@ import {
   qualificationEducationLevels,
   type AcademicEducationLevel,
   type QualificationCurriculum,
-  type QualificationEducationLevel, isSchoolQualification } from "@shared/tutor-education";
+  type QualificationEducationLevel, isSchoolQualification, fixedSchoolRecords } from "@shared/tutor-education";
 import { isTutorSupportingDocumentType, type TutorSupportingDocumentType } from "@shared/tutor-documents";
 import { DEFAULT_TUTOR_NATIONALITY } from "@shared/tutor-personal-details";
 
@@ -179,6 +179,20 @@ function hydrateEducationRecord(record: PersistedTutorEducationRecord): TutorPro
   };
 }
 
+/**
+ * Guarantees the one Secondary and one Higher Secondary record the Education
+ * tab always shows, in that order, ahead of the degree history.
+ *
+ * They are ordinary rows of the same table - the form is what makes them
+ * exactly one each, so nothing downstream needs a second shape for them.
+ */
+export function withFixedSchoolRecords(records: TutorProfileEducationRecord[]): TutorProfileEducationRecord[] {
+  const fixed = fixedSchoolRecords.map(({ level }) =>
+    records.find(record => record.qualificationLevel === level)
+      ?? { ...emptyEducationRecord(), qualificationLevel: level });
+  const history = records.filter(record => !fixedSchoolRecords.some(({ level }) => level === record.qualificationLevel));
+  return [...fixed, ...history];
+}
 export type TutorProfileFormState = {
   tutorNumber: number | null;
   registeredAt: Date | string | null;
@@ -289,7 +303,7 @@ export function hydrateTutorProfileForm(
       whyChooseMe: "",
       additionalNotes: "",
       privateDetails: emptyPrivateDetails(),
-      educationRecords: [emptyEducationRecord()],
+      educationRecords: withFixedSchoolRecords([]),
       universityIdDocumentStatus: "not_uploaded",
       uploadedSupportingDocuments: [],
     };
@@ -331,9 +345,7 @@ export function hydrateTutorProfileForm(
     whyChooseMe: profile.whyChooseMe ?? "",
     additionalNotes: profile.additionalNotes ?? "",
     privateDetails: hydratePrivateDetails(profile.privateDetails),
-    educationRecords: profile.educationRecords?.length
-      ? profile.educationRecords.map(hydrateEducationRecord)
-      : [emptyEducationRecord()],
+    educationRecords: withFixedSchoolRecords((profile.educationRecords ?? []).map(hydrateEducationRecord)),
     universityIdDocumentStatus: profile.universityIdDocumentStatus ?? "not_uploaded",
     uploadedSupportingDocuments: (profile.uploadedSupportingDocuments ?? []).filter(isTutorSupportingDocumentType),
   };

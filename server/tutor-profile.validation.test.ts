@@ -52,6 +52,24 @@ const approvedExpandedSubmission = {
     fatherPhone: "+8801712345678",
   },
   educationRecords: [{
+    // Secondary and Higher Secondary each have their own section now, and both
+    // are required to submit - so a complete submission carries all three.
+    qualificationLevel: "SSC",
+    instituteName: "Dhaka Residential Model College",
+    degreeExamTitle: "SSC",
+    majorGroup: "Science",
+    curriculum: "Bangla Version",
+    currentlyStudying: false,
+    passingYear: 2014,
+  }, {
+    qualificationLevel: "HSC",
+    instituteName: "Notre Dame College",
+    degreeExamTitle: "HSC",
+    majorGroup: "Science",
+    curriculum: "Bangla Version",
+    currentlyStudying: false,
+    passingYear: 2016,
+  }, {
     qualificationLevel: "Honours",
     instituteName: "University of Dhaka",
     degreeExamTitle: "BSc",
@@ -64,6 +82,10 @@ const approvedExpandedSubmission = {
   universityIdDocumentStatus: "uploaded",
 };
 
+/** The three records a complete submission carries, by name rather than index. */
+const [sscRecord, hscRecord, honoursRecord] = approvedExpandedSubmission.educationRecords;
+/** Every submission needs the two school records; a test varies the degree.  */
+const withDegreeRecord = (overrides: Record<string, unknown>) => [sscRecord, hscRecord, { ...honoursRecord, ...overrides }];
 describe("Tutor Profile domain validation", () => {
   it("accepts a valid partial draft and normalizes trimmed free text", () => {
     const result = tutorProfileDraftSchema.safeParse({
@@ -142,10 +164,7 @@ describe("Tutor Profile domain validation", () => {
         ...approvedExpandedSubmission.privateDetails,
         fatherPhone: undefined,
       },
-      educationRecords: [{
-        ...approvedExpandedSubmission.educationRecords[0],
-        studyEndYear: undefined,
-      }],
+      educationRecords: withDegreeRecord({ studyEndYear: undefined }),
       universityIdDocumentStatus: "not_uploaded",
     });
 
@@ -154,7 +173,7 @@ describe("Tutor Profile domain validation", () => {
       const paths = result.error.issues.map(issue => issue.path.join("."));
       expect(paths).toEqual(expect.arrayContaining([
         "privateDetails.fatherPhone",
-        "educationRecords.0.studyEndYear",
+        "educationRecords.2.studyEndYear",
         "universityIdDocumentStatus",
       ]));
     }
@@ -240,11 +259,10 @@ describe("Tutor Profile domain validation", () => {
   });
 
   it("rejects qualification records outside the curated vocabularies or with an inverted year range", () => {
-    const record = approvedExpandedSubmission.educationRecords[0];
     const parseWithRecord = (overrides: Record<string, unknown>) =>
       tutorProfileSubmissionSchema.safeParse({
         ...approvedExpandedSubmission,
-        educationRecords: [{ ...record, ...overrides }],
+        educationRecords: withDegreeRecord(overrides),
       });
 
     expect(parseWithRecord({ qualificationLevel: "Bachelor" }).success).toBe(false);
@@ -254,7 +272,7 @@ describe("Tutor Profile domain validation", () => {
     const inverted = parseWithRecord({ studyStartYear: 2022, studyEndYear: 2018 });
     expect(inverted.success).toBe(false);
     if (!inverted.success) {
-      expect(inverted.error.issues.map(issue => issue.path.join("."))).toContain("educationRecords.0.studyEndYear");
+      expect(inverted.error.issues.map(issue => issue.path.join("."))).toContain("educationRecords.2.studyEndYear");
     }
 
     // An ongoing record may leave the end year out entirely.
@@ -274,7 +292,7 @@ describe("Tutor Profile domain validation", () => {
       registrationNumber: "1234567890",
     };
     const parse = (overrides: Record<string, unknown> = {}) =>
-      tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [{ ...school, ...overrides }] });
+      tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [{ ...school, ...overrides }, hscRecord, honoursRecord] });
 
     // No study span, no "currently studying", and it still passes - those are
     // a degree's fields, and demanding them here is the bug this guards.
@@ -332,6 +350,10 @@ describe("Tutor Profile field config drives submission requiredness", () => {
   it("requires at least one education record only when that toggle is on, and stops enforcing per-record fields once disabled", () => {
     const educationOptional = submissionSchemaWithConfig([
       { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+      // Secondary and Higher Secondary are their own required sections now, so
+      // dropping the history alone still leaves those two demanded.
+      { fieldId: "secondaryRecord", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
+      { fieldId: "higherSecondaryRecord", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
     ]);
     const { educationRecords: _educationRecords, ...withoutRecords } = approvedExpandedSubmission;
     expect(educationOptional.safeParse(withoutRecords).success).toBe(true);
@@ -339,9 +361,8 @@ describe("Tutor Profile field config drives submission requiredness", () => {
     const majorGroupOptional = submissionSchemaWithConfig([
       { fieldId: "educationRecords.majorGroup", section: null, subGroup: null, sortOrder: null, enabled: null, required: 0 },
     ]);
-    const record = approvedExpandedSubmission.educationRecords[0];
-    const { majorGroup: _majorGroup, ...recordWithoutMajor } = record;
-    expect(majorGroupOptional.safeParse({ ...approvedExpandedSubmission, educationRecords: [recordWithoutMajor] }).success).toBe(true);
+    const { majorGroup: _majorGroup, ...degreeWithoutMajor } = honoursRecord;
+    expect(majorGroupOptional.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, degreeWithoutMajor] }).success).toBe(true);
   });
 });
 

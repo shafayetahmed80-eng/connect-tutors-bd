@@ -42,6 +42,29 @@ export const schoolSubjectGroups = ["Science", "Arts", "Commerce"] as const;
 export type SchoolSubjectGroup = (typeof schoolSubjectGroups)[number];
 
 /**
+ * The two school records every Tutor fills in, each in its own section.
+ *
+ * Headed "Secondary" and "Higher Secondary" rather than SSC and HSC, because a
+ * Tutor who read English Medium sat O and A Levels and has neither. What they
+ * sat is carried by the record's own Curriculum and Degree / Exam Title; the
+ * stored level stays SSC and HSC so nothing downstream has to learn a new
+ * vocabulary.
+ */
+export const fixedSchoolRecords = [
+  { level: "SSC", heading: "Secondary" },
+  { level: "HSC", heading: "Higher Secondary" },
+] as const;
+
+/**
+ * What the repeatable Qualification history offers.
+ *
+ * Secondary and Higher Secondary have sections of their own, so the history is
+ * for degrees alone - offering SSC there would invite a second, contradictory
+ * copy of a record the Tutor has already filled in above.
+ */
+export const historyQualificationLevels = ["Honours", "Masters"] as const;
+
+/**
  * Narrows a stored value to one of `options`, or to `""` when it predates the
  * list (or was never set). Lets the form hydrate legacy free-text answers
  * without crashing: the Tutor simply re-picks from the dropdown.

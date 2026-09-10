@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
-import { academicEducationLevels, educationRecordFieldApplies, isSchoolQualification, qualificationCurricula, qualificationEducationLevels, schoolSubjectGroups } from "@shared/tutor-education";
+import { academicEducationLevels, educationRecordFieldApplies, historyQualificationLevels, isSchoolQualification, qualificationCurricula, schoolSubjectGroups } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
   TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
@@ -597,7 +597,11 @@ function TutorProfileWorkspaceBody({
     });
   };
   const removeEducationRecord = (index: number) => {
-    setForm(current => ({ ...current, educationRecords: current.educationRecords.length === 1 ? current.educationRecords : current.educationRecords.filter((_, recordIndex) => recordIndex !== index) }));
+    // Secondary and Higher Secondary are sections of their own and are always
+    // present; only a degree record can be taken away.
+    setForm(current => isSchoolQualification(current.educationRecords[index]?.qualificationLevel)
+      ? current
+      : { ...current, educationRecords: current.educationRecords.filter((_, recordIndex) => recordIndex !== index) });
     setOpenQualificationIndices(current => {
       const next = new Set<number>();
       current.forEach(openIndex => {
@@ -1132,7 +1136,7 @@ function TutorProfileWorkspaceBody({
     if (!educationRecordFieldApplies(fieldId, record.qualificationLevel)) return null;
     const school = isSchoolQualification(record.qualificationLevel);
     switch (fieldId) {
-      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker options={qualificationEducationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
+      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker options={historyQualificationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
       case "educationRecords.instituteName": return <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder={school ? "Ex- Dhaka Residential Model College" : "Ex- University of Dhaka"} />;
       case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
       // A board exam is sat under one of three groups; a degree's subject is
@@ -1154,10 +1158,32 @@ function TutorProfileWorkspaceBody({
     }
   };
 
+  /**
+   * One of the two school sections - Secondary or Higher Secondary.
+   *
+   * Its record is found by level rather than by position, because the array
+   * also holds the degree history and an Owner may reorder the sections. The
+   * level itself is fixed by the section, so the record never draws the level
+   * dropdown; what the Tutor actually sat is carried by Curriculum and
+   * Degree / Exam Title.
+   */
+  const renderFixedSchoolRecord = (level: "SSC" | "HSC", recordFields: readonly ResolvedTutorProfileField[]): React.ReactNode => {
+    const index = form.educationRecords.findIndex(entry => entry.qualificationLevel === level);
+    if (index < 0) return null;
+    const record = form.educationRecords[index];
+    return <div className="grid gap-5 md:grid-cols-2">
+      {recordFields
+        .filter(field => field.id !== "educationRecords.qualificationLevel")
+        .map(field => <React.Fragment key={field.id}>{renderEducationRecordField(field.id, record, index)}</React.Fragment>)}
+    </div>;
+  };
   /** The repeatable Qualification history block, drawn for the `educationRecords` field. */
   const renderQualificationHistory = (recordFields: readonly ResolvedTutorProfileField[]): React.ReactNode => <div className="space-y-3">
     <h3 className="font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
-    {form.educationRecords.map((record, index) => {
+    {form.educationRecords.map((record, index) => ({ record, index }))
+      // Secondary and Higher Secondary have sections of their own above.
+      .filter(({ record }) => !isSchoolQualification(record.qualificationLevel))
+      .map(({ record, index }) => {
       const isOpen = openQualificationIndices.has(index);
       const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, isSchoolQualification(record.qualificationLevel) ? record.passingYear : record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
       return <div key={index} className={`overflow-hidden rounded-xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
@@ -1170,7 +1196,7 @@ function TutorProfileWorkspaceBody({
             </span>
             <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
           </button>
-          {form.educationRecords.length > 1 ? <Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button> : null}
+          {<Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button>}
         </div>
         {isOpen ? <div className="border-t border-j-border bg-[#fbfdfe] p-4">
           <div className="grid gap-5 md:grid-cols-2">
@@ -1189,6 +1215,8 @@ function TutorProfileWorkspaceBody({
    */
   const panelTitles: Partial<Record<TutorProfileFieldPanel, React.ReactNode>> = {
     identity: "Identity and contact",
+    secondary: "Secondary",
+    "higher-secondary": "Higher Secondary",
     family: "Family and emergency contact",
     "what-you-teach": "What you teach",
     "own-words": "In your own words",
@@ -1202,6 +1230,12 @@ function TutorProfileWorkspaceBody({
   const twoColumnPanels = new Set<TutorProfileFieldPanel>(["identity", "education"]);
 
   const renderPanelBody = (panel: TutorProfileFieldPanel, fields: readonly ResolvedTutorProfileField[]): React.ReactNode => {
+    if (panel === "secondary" || panel === "higher-secondary") {
+      // Both school sections draw the qualification fields, so they read them
+      // from the history panel rather than declaring a second copy.
+      const recordFields = fieldConfig.all.filter(field => field.id.startsWith("educationRecords."));
+      return renderFixedSchoolRecord(panel === "secondary" ? "SSC" : "HSC", recordFields);
+    }
     if (panel === "qualifications") {
       if (!fields.some(field => field.id === "educationRecords")) return null;
       return renderQualificationHistory(fields.filter(field => field.id.startsWith("educationRecords.")));
