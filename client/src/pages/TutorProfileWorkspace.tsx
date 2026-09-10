@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
-import { academicEducationLevels, qualificationCurricula, qualificationEducationLevels } from "@shared/tutor-education";
+import { academicEducationLevels, educationRecordFieldApplies, isSchoolQualification, qualificationCurricula, qualificationEducationLevels, schoolSubjectGroups } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
   TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
@@ -18,7 +18,7 @@ import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react"
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
-import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
+import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
@@ -589,7 +589,7 @@ function TutorProfileWorkspaceBody({
   });
   const addEducationRecord = () => {
     const newIndex = form.educationRecords.length;
-    setForm(current => ({ ...current, educationRecords: [...current.educationRecords, { qualificationLevel: "", instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "", studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }));
+    setForm(current => ({ ...current, educationRecords: [...current.educationRecords, emptyEducationRecord()] }));
     setOpenQualificationIndices(current => {
       const next = new Set(current);
       next.add(newIndex);
@@ -1118,12 +1118,28 @@ function TutorProfileWorkspaceBody({
   };
 
   /** One field inside one qualification card, by the same registry id. */
+  /**
+   * One field of one qualification record.
+   *
+   * Which fields a record draws follows its own level, not the Owner's field
+   * order alone: SSC and HSC are board exams with a passing year, a roll and a
+   * registration number, while Honours and Masters are read over a span and may
+   * still be in progress. `educationRecordFieldApplies` is the same rule the
+   * server validates by, so a Tutor is never asked for a field that will not be
+   * checked, nor checked on one they were never asked.
+   */
   const renderEducationRecordField = (fieldId: string, record: TeachingProfileState["educationRecords"][number], index: number): React.ReactNode => {
+    if (!educationRecordFieldApplies(fieldId, record.qualificationLevel)) return null;
+    const school = isSchoolQualification(record.qualificationLevel);
     switch (fieldId) {
       case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker options={qualificationEducationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
-      case "educationRecords.instituteName": return <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- Dhaka College" />;
+      case "educationRecords.instituteName": return <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder={school ? "Ex- Dhaka Residential Model College" : "Ex- University of Dhaka"} />;
       case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
-      case "educationRecords.majorGroup": return <FormInput label={fieldLabel(fieldId, "Subject / Group")} required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Science" />;
+      // A board exam is sat under one of three groups; a degree's subject is
+      // whatever the department is called, so that one stays free text.
+      case "educationRecords.majorGroup": return school
+        ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
+        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
       case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
       case "educationRecords.resultGpa": return <FormInput label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa} (Optional)`)} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />;
       case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
@@ -1131,6 +1147,9 @@ function TutorProfileWorkspaceBody({
       case "educationRecords.studyEndYear": return record.currentlyStudying ? null : <FormInput label={fieldLabel(fieldId, "Study End Year")} required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       case "educationRecords.currentlyStudying": return <label className="flex items-center gap-2 self-end rounded-lg border border-[#dce8f0] px-3 py-2 text-sm font-medium text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />{fieldLabel(fieldId, "Currently studying")}</label>;
       case "educationRecords.instituteIdCardNumber": return <FormInput label={fieldLabel(fieldId, "Institute ID Card Number (Optional)")} placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />;
+      case "educationRecords.passingYear": return <FormInput label={fieldLabel(fieldId, "Passing Year")} required inputMode="numeric" maxLength={4} value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
+      case "educationRecords.rollNumber": return <FormInput label={fieldLabel(fieldId, "Roll Number (Optional)")} placeholder="Ex- 123456" value={record.rollNumber} onChange={event => updateEducationRecord(index, "rollNumber", event.target.value)} />;
+      case "educationRecords.registrationNumber": return <FormInput label={fieldLabel(fieldId, "Registration Number (Optional)")} placeholder="Ex- 1234567890" value={record.registrationNumber} onChange={event => updateEducationRecord(index, "registrationNumber", event.target.value)} />;
       default: return null;
     }
   };
@@ -1140,7 +1159,7 @@ function TutorProfileWorkspaceBody({
     <h3 className="font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
     {form.educationRecords.map((record, index) => {
       const isOpen = openQualificationIndices.has(index);
-      const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
+      const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, isSchoolQualification(record.qualificationLevel) ? record.passingYear : record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
       return <div key={index} className={`overflow-hidden rounded-xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
         <div className="flex items-center gap-2 p-3 sm:px-4">
           <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">

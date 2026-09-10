@@ -717,11 +717,24 @@ export const tutorEducationRecords = mysqlTable(
     resultGpa: varchar("resultGpa", { length: 80 }),
     /** Required at submission, but nullable so legacy records still load. */
     curriculum: varchar("curriculum", { length: 80 }),
-    /** Plain four-digit years; Tutors type them rather than picking a date. */
+    /**
+     * Plain four-digit years; Tutors type them rather than picking a date.
+     * University records only - a board exam is passed in one year, and uses
+     * `passingYear` below instead.
+     */
     studyStartYear: int("studyStartYear"),
     studyEndYear: int("studyEndYear"),
     currentlyStudying: int("currentlyStudying").default(0).notNull(),
     instituteIdCardNumber: varchar("instituteIdCardNumber", { length: 160 }),
+    /**
+     * School records (SSC, HSC) only, added by migration 0071. A board exam is
+     * passed in a single year and identified by a roll and a registration
+     * number; the university columns above stay for Honours and Masters, so
+     * neither kind of record has to carry the other's fields.
+     */
+    passingYear: int("passingYear"),
+    rollNumber: varchar("rollNumber", { length: 60 }),
+    registrationNumber: varchar("registrationNumber", { length: 60 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
