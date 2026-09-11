@@ -19,7 +19,7 @@ function Harness({ options = fruit, initial = [], ...rest }: { options?: ChipOpt
 }
 
 const box = () => screen.getByRole("combobox", { name: /^Fruit/ });
-const openList = () => fireEvent.focus(box());
+const openList = () => fireEvent.click(box());
 const type = (text: string) => fireEvent.change(box(), { target: { value: text } });
 const list = () => screen.getByRole("listbox", { name: "Fruit" });
 

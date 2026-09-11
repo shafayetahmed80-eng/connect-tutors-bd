@@ -1,11 +1,12 @@
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import React from "react";
-import { KeyboardEvent, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { tutorProfileResponsiveClasses } from "@/pages/TutorProfileResponsive";
 import { tutorProfileTheme } from "@/pages/tutorProfileTheme";
+import ChipMultiSelect from "@/components/ChipMultiSelect";
 
 export type SelectorOption = { id: string; label: string; disabled?: boolean };
 
@@ -23,6 +24,20 @@ type SearchableMultiSelectProps = {
   maxSelections?: number;
 };
 
+/**
+ * Several values in one profile field.
+ *
+ * This is the profile's chrome - label, required marker, error line - around
+ * the same chip box the Job Board filters use. It used to be its own thing: a
+ * popover of checkboxes on desktop, a full-height sheet with Cancel and Done
+ * on a phone, chosen values staying in the list behind a tick, and the chips
+ * stacked underneath the field. Two controls for one job, each with its own
+ * rules, and the tick was answering a question the chip already answered.
+ *
+ * What the chip box does instead: the chosen values sit inside the box, a
+ * value that has been chosen leaves the list, and typing narrows it. There is
+ * nothing left for a checkbox to say.
+ */
 export function SearchableMultiSelect({
   label,
   required = false,
@@ -36,217 +51,25 @@ export function SearchableMultiSelect({
   disabled = false,
   maxSelections,
 }: SearchableMultiSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [pendingSelectedIds, setPendingSelectedIds] = useState<string[]>([]);
-  const isMobile = useIsMobile();
-  const searchId = useId();
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  /** Set while `close` hands focus back, so that focus does not reopen the list. */
-  const closingRef = useRef(false);
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const selectedOptions = useMemo(() => options.filter(option => selectedIds.includes(option.id)), [options, selectedIds]);
-  const results = useMemo(() => options.filter(option => option.label.toLocaleLowerCase().includes(normalizedQuery)), [normalizedQuery, options]);
-
-  const close = () => {
-    setIsOpen(false);
-    setQuery("");
-    onSearchQueryChange?.("");
-    closingRef.current = true;
-    (buttonRef.current ?? inputRef.current)?.focus();
-    closingRef.current = false;
-  };
-  const open = () => {
-    if (isMobile) setPendingSelectedIds(selectedIds);
-    setIsOpen(true);
-  };
-  const cancelMobileSelection = () => close();
-  const confirmMobileSelection = () => {
-    onChange(pendingSelectedIds);
-    close();
-  };
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
-  };
-  const toggle = (id: string, currentSelectedIds = selectedIds, updateSelectedIds = onChange) => {
-    if (currentSelectedIds.includes(id)) {
-      updateSelectedIds(currentSelectedIds.filter(selectedId => selectedId !== id));
-      return;
-    }
-    if (maxSelections && currentSelectedIds.length >= maxSelections) return;
-    updateSelectedIds([...currentSelectedIds, id]);
-  };
-
-  /**
-   * What the closed trigger shows: a placeholder, then a count.
-   *
-   * Deliberately not the chosen names - the chips underneath already list them,
-   * and repeating them here put the same text on screen twice.
-   */
-  const selectionText = selectedIds.length === 0
-    ? `Select ${label.toLocaleLowerCase()}`
-    : `${selectedIds.length} selected`;
-  const selectorOptions = (activeSelectedIds: string[], onToggle: (id: string) => void, compact = false) => <>
-    {/*
-      Only the mobile Sheet carries a search row of its own. On desktop the
-      field itself is the search box, so a second one here would ask the same
-      question twice, one line apart.
-    */}
-    {compact ? null : <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe]">
-      <Search aria-hidden="true" size={16} />
-      <input autoFocus type="search" aria-label={`Search ${label}`} value={query} onChange={event => {
-        const nextQuery = event.target.value;
-        setQuery(nextQuery);
-        onSearchQueryChange?.(nextQuery);
-      }} className="min-w-0 flex-1 bg-transparent text-sm text-j-ink outline-none placeholder:text-[#99aabb]" placeholder={`Search ${label.toLocaleLowerCase()}`} />
-    </label>}
-    <div role="group" aria-label={`${label} results`} className={`overflow-y-auto px-1 pb-1 ${compact ? "max-h-52" : "mt-2 min-h-0 flex-1"}`}>
-      {results.length === 0 ? <p className="px-2 py-4 text-sm text-[#72889a]">{emptyMessage}</p> : results.map(option => {
-        const selected = activeSelectedIds.includes(option.id);
-        const limitReached = Boolean(maxSelections && !selected && activeSelectedIds.length >= maxSelections);
-        return <label
-          key={option.id}
-          // The search box keeps the caret so the next name can be typed
-          // straight away; without this the click would take focus out of it.
-          onMouseDown={compact ? event => event.preventDefault() : undefined}
-          className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent"
-        >
-          {/* A checkbox answers to Space but not Enter, and Enter is what a
-              person reaches for after arrowing onto an option. */}
-          <input
-            type="checkbox"
-            checked={selected}
-            disabled={option.disabled || limitReached}
-            onChange={() => onToggle(option.id)}
-            onKeyDown={event => {
-              if (event.key !== "Enter" || option.disabled || limitReached) return;
-              event.preventDefault();
-              onToggle(option.id);
-            }}
-            className="h-4 w-4 rounded border-[#9fc7de] text-j-accent"
-          />
-          <span className="flex-1">{option.label}</span>
-          {selected ? <Check aria-label="Selected" size={15} className="text-j-accent" /> : null}
-        </label>;
-      })}
-    </div>
-  </>;
-  const fieldClassName = `mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-j-ink outline-none transition hover:border-[#96c9e8] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe] ${tutorProfileResponsiveClasses.selectorTrigger} ${disabled ? "bg-[#f4f8fb]" : ""} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`;
-
-  /**
-   * The desktop field: a search box, not a button.
-   *
-   * Teaching areas draws on 597 Bangladesh locations and Subjects on 30, and
-   * the search that narrows them used to live one click away, inside the
-   * panel. It is the field now, so the first keystroke does the work the first
-   * click used to. The mobile Sheet keeps its own search row - a full-height
-   * sheet has the room, and typing into a field that then covers itself with a
-   * sheet is a worse trade.
-   */
-  const searchField = <div className={fieldClassName}>
-    <input
-      ref={inputRef}
-      type="text"
-      role="combobox"
-      autoComplete="off"
-      disabled={disabled}
-      aria-expanded={isOpen}
-      aria-controls={isOpen ? searchId : undefined}
-      aria-autocomplete="list"
-      aria-required={required || undefined}
-      aria-invalid={Boolean(error)}
-      aria-label={`${label}, ${selectionText}`}
-      value={query}
-      placeholder={selectionText}
-      onChange={event => {
-        const nextQuery = event.target.value;
-        setQuery(nextQuery);
-        onSearchQueryChange?.(nextQuery);
-        setIsOpen(true);
-      }}
-      onFocus={() => { if (!closingRef.current) setIsOpen(true); }}
-      onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); setIsOpen(true); } }}
-      className={`${tutorProfileResponsiveClasses.selectorText} bg-transparent outline-none placeholder:text-[#99aabb] disabled:cursor-not-allowed`}
-    />
-    <ChevronDown aria-hidden="true" size={16} className={`shrink-0 text-[#59788e] transition-transform ${isOpen ? "rotate-180" : ""}`} />
-  </div>;
-
-  // The label already sits above this control; the visible text no longer
-  // repeats the field name, so the accessible name has to carry it - the
-  // control is otherwise unidentifiable to a screen reader. The mobile Sheet
-  // still opens from a button, and needs its own click handler.
-  const triggerButton = <button
-    ref={buttonRef}
-    type="button"
-    disabled={disabled}
-    aria-expanded={isOpen}
-    aria-controls={searchId}
-    aria-required={required || undefined}
-    onClick={isMobile ? () => (isOpen ? close() : open()) : undefined}
-    aria-invalid={Boolean(error)}
-    aria-label={`${label}, ${selectionText}`}
-    className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-j-ink outline-none transition hover:border-[#96c9e8] focus:border-j-accent focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
-  >
-    <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOptions.length === 0 ? "text-[#99aabb]" : "text-j-ink"}`}>{selectionText}</span>
-    <ChevronDown aria-hidden="true" size={16} className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-  </button>;
-
-  return <div className={tutorProfileResponsiveClasses.selectorRoot} onKeyDown={handleKeyDown}>
+  return <div className={tutorProfileResponsiveClasses.selectorRoot}>
     <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
     {description ? <p className="mt-0.5 text-2xs leading-4 text-[#72889a]">{description}</p> : null}
-    {isMobile ? triggerButton : (
-      <Popover.Root open={isOpen} onOpenChange={nextOpen => (nextOpen ? open() : close())}>
-        {/* An anchor rather than a trigger: the field is a text box, so what
-            opens the list is typing or focusing it, not a click that toggles. */}
-        <Popover.Anchor asChild>{searchField}</Popover.Anchor>
-        <Popover.Portal>
-          {/* Portalled out of the scrolling ModalBody so the list is never
-              clipped by its overflow or hidden behind the modal footer;
-              Radix flips it above the trigger when there is no room below. */}
-          <Popover.Content
-            id={searchId}
-            role="group"
-            aria-label={`${label} options`}
-            align="start"
-            side="bottom"
-            sideOffset={8}
-            collisionPadding={12}
-            // Focus stays in the field, which is where the typing goes.
-            onOpenAutoFocus={event => event.preventDefault()}
-            className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-[#cae0ee] bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
-          >
-            {selectorOptions(selectedIds, id => toggle(id), true)}
-            <button type="button" onClick={close} className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-bold text-j-accent outline-none hover:bg-[#eef8ff] focus-visible:ring-2 focus-visible:ring-j-accent">Done</button>
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
-    )}
+    <div className="mt-1">
+      <ChipMultiSelect
+        label={label}
+        options={options}
+        selectedIds={selectedIds}
+        onChange={onChange}
+        onSearchQueryChange={onSearchQueryChange}
+        disabled={disabled}
+        maxSelections={maxSelections}
+        required={required}
+        invalid={Boolean(error)}
+        dense
+        emptyMessage={emptyMessage}
+      />
+    </div>
     {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
-    {selectedOptions.length > 0 ? <div className="mt-2 flex flex-wrap gap-2" aria-label={`${label} selected items`}>
-      {selectedOptions.map(option => <span key={option.id} className={`inline-flex items-center gap-1 rounded-full bg-[#eaf7ff] py-0.5 pl-2 pr-1 text-2xs font-semibold text-[#1a6794] ${tutorProfileResponsiveClasses.selectorChip}`}>
-        <span className={tutorProfileResponsiveClasses.selectorChipText}>{option.label}</span>
-        <button type="button" onClick={() => toggle(option.id)} aria-label={`Remove ${option.label}`} className="rounded-full p-1 outline-none hover:bg-[#ccecff] focus-visible:ring-2 focus-visible:ring-j-accent"><X size={12} /></button>
-      </span>)}
-    </div> : null}
-    <Sheet open={isOpen && isMobile} onOpenChange={nextOpen => nextOpen ? open() : cancelMobileSelection()}>
-      <SheetContent id={searchId} side="bottom" aria-label={`${label} selection`} className="h-[min(88dvh,42rem)] w-full gap-0 rounded-t-3xl border-[#cae0ee] bg-white p-0 sm:max-w-none">
-        <SheetHeader className="border-b border-[#e3edf4] px-5 pb-3 pt-5">
-          <SheetTitle>{label}</SheetTitle>
-          <SheetDescription>{pendingSelectedIds.length} selected · Search and select all that apply.</SheetDescription>
-        </SheetHeader>
-        <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
-          {selectorOptions(pendingSelectedIds, id => toggle(id, pendingSelectedIds, setPendingSelectedIds))}
-        </div>
-        <SheetFooter className="border-t border-[#e3edf4] bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row">
-          <button type="button" onClick={cancelMobileSelection} className="min-h-11 rounded-xl border border-[#b9d2e2] px-4 text-sm font-bold text-[#315a74] outline-none hover:bg-[#f2f8fb] focus-visible:ring-2 focus-visible:ring-j-accent">Cancel</button>
-          <button type="button" onClick={confirmMobileSelection} className="min-h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white outline-none hover:bg-[#116bb9] focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Done</button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   </div>;
 }
 

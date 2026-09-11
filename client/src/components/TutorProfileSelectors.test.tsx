@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { useState } from "react";
@@ -35,13 +35,15 @@ describe("Tutor Profile selector controls", () => {
 
     await user.tab();
     const field = screen.getByRole("combobox", { name: /teaching areas/i });
-    expect(field.getAttribute("aria-expanded")).toBe("true");
+    // Focus alone must not open it - see the autofocus test below.
+    expect(field.getAttribute("aria-expanded")).toBe("false");
     await user.type(field, "uttara");
+    expect(field.getAttribute("aria-expanded")).toBe("true");
 
-    expect(screen.getByRole("checkbox", { name: /uttara, dhaka/i })).toBeTruthy();
-    expect(screen.queryByRole("checkbox", { name: /mirpur, dhaka/i })).toBeNull();
+    expect(screen.getByRole("option", { name: /uttara, dhaka/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /mirpur, dhaka/i })).toBeNull();
 
-    await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
+    await user.click(screen.getByRole("button", { name: /uttara, dhaka/i }));
     expect(screen.getByRole("combobox", { name: /teaching areas.*1 selected/i })).toBeTruthy();
   });
 
@@ -62,7 +64,24 @@ describe("Tutor Profile selector controls", () => {
     expect(onSearchQueryChange).toHaveBeenLastCalledWith("uttara");
   });
 
-  it("opens a focus-contained, touch-friendly selector sheet on a mobile viewport", async () => {
+  it("does not open itself when something else moves focus into the field", async () => {
+    // `useIsMobile` reports false on the first render and corrects itself in
+    // an effect, so on a phone this input is what a modal autofocuses. Opening
+    // from that focus popped the first field's Sheet the moment the section
+    // modal appeared.
+    render(<TeachingAreaHarness />);
+    const field = screen.getByRole("combobox", { name: /teaching areas/i });
+
+    field.focus();
+    expect(field.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(field);
+    expect(field.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("shows the same chip box on a phone, with no sheet to open", async () => {
+    // The full-height Sheet is gone: it came with Cancel/Done staging and a
+    // list of ticks, and the chip box answers all of that in the field itself.
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
     vi.stubGlobal("matchMedia", () => ({
       addEventListener: vi.fn(),
@@ -72,39 +91,28 @@ describe("Tutor Profile selector controls", () => {
     const user = userEvent.setup();
     render(<TeachingAreaHarness />);
 
-    await user.click(screen.getByRole("button", { name: /teaching areas/i }));
+    const field = screen.getByRole("combobox", { name: /teaching areas/i });
+    await user.click(field);
 
-    expect(await screen.findByRole("dialog", { name: /teaching areas/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /done/i })).toBeTruthy();
-    expect(screen.getByText(/0 selected/i)).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^done$/i })).toBeNull();
+    expect(screen.getByRole("listbox", { name: /teaching areas/i })).toBeTruthy();
   });
 
-  it("stages mobile selections until Done and discards them on Cancel", async () => {
-    Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
-    vi.stubGlobal("matchMedia", () => ({
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      matches: true,
-    }));
+  it("puts a chosen value in the box and takes it out of the list, on any screen", async () => {
     const user = userEvent.setup();
     render(<TeachingAreaHarness />);
 
-    const trigger = screen.getByRole("button", { name: /teaching areas/i });
-    await user.click(trigger);
-    await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
-    // Staged-but-uncommitted picks must not show on the closed trigger.
-    expect(trigger.textContent).toMatch(/^Select teaching areas$/i);
+    await user.click(screen.getByRole("combobox", { name: /teaching areas/i }));
+    await user.click(screen.getByRole("button", { name: /uttara, dhaka/i }));
 
-    await user.click(screen.getByRole("button", { name: /cancel/i }));
-    // Staged-but-uncommitted picks must not show on the closed trigger.
-    expect(trigger.textContent).toMatch(/^Select teaching areas$/i);
+    expect(screen.getByRole("button", { name: /^Remove Uttara, Dhaka$/i })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /uttara, dhaka/i })).toBeNull();
 
-    await user.click(trigger);
-    await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
-    await user.click(screen.getByRole("button", { name: /done/i }));
-    expect(trigger.textContent).toMatch(/1 selected/i);
+    await user.click(screen.getByRole("button", { name: /^Remove Uttara, Dhaka$/i }));
+    expect(screen.queryByRole("button", { name: /^Remove Uttara, Dhaka$/i })).toBeNull();
   });
+
 
   it("single-select: opens the desktop popover, filters, and picks one value", async () => {
     const user = userEvent.setup();
