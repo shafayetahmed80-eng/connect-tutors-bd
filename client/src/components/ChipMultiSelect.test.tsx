@@ -18,14 +18,17 @@ function Harness({ options = fruit, initial = [], ...rest }: { options?: ChipOpt
   return <ChipMultiSelect label="Fruit" options={options} selectedIds={selected} onChange={setSelected} {...rest} />;
 }
 
-const openList = () => fireEvent.click(screen.getByRole("button", { name: /^Fruit/ }));
+const box = () => screen.getByRole("combobox", { name: /^Fruit/ });
+const openList = () => fireEvent.focus(box());
+const type = (text: string) => fireEvent.change(box(), { target: { value: text } });
 const list = () => screen.getByRole("listbox", { name: "Fruit" });
 
 describe("ChipMultiSelect", () => {
   it("shows the label inside the empty box, and the list only once opened", () => {
     render(<Harness />);
 
-    expect(screen.getByRole("button", { name: "Fruit" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Fruit" })).toBeTruthy();
+    expect(screen.getByPlaceholderText("Fruit")).toBeTruthy();
     expect(screen.queryByRole("listbox")).toBeNull();
 
     openList();
@@ -74,7 +77,7 @@ describe("ChipMultiSelect", () => {
   it("will not open while it is waiting on something else", () => {
     render(<Harness disabled disabledPlaceholder="Fruit - pick a basket first" />);
 
-    expect(screen.getByText("Fruit - pick a basket first")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Fruit - pick a basket first")).toBeTruthy();
     openList();
     expect(screen.queryByRole("listbox")).toBeNull();
   });
@@ -85,6 +88,53 @@ describe("ChipMultiSelect", () => {
     render(<ChipMultiSelect label="Fruit" options={[{ id: "a", label: "Apple" }]} selectedIds={["a", "z"]} onChange={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Remove Apple" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Remove z" })).toBeTruthy();
+  });
+
+  it("narrows the list to what was typed, and takes the first match on Enter", () => {
+    // Location can offer a hundred areas; scrolling that to find one name is
+    // the slowest way to answer a question you could have typed.
+    render(<Harness />);
+    openList();
+
+    type("an");
+    expect(within(list()).getAllByRole("option").map(option => option.textContent)).toEqual(["Banana"]);
+
+    fireEvent.keyDown(box(), { key: "Enter" });
+    expect(screen.getByRole("button", { name: "Remove Banana" })).toBeTruthy();
+    // The typed text goes with it, so the next name starts from a clean box.
+    expect((box() as HTMLInputElement).value).toBe("");
+  });
+
+  it("says when the typed text matches nothing, without saying the box is empty", () => {
+    render(<Harness />);
+    openList();
+    type("zzz");
+
+    expect(within(list()).getByText("Nothing matches that")).toBeTruthy();
+    expect(within(list()).queryByText("Nothing left to choose")).toBeNull();
+  });
+
+  it("takes back the last chip on Backspace, but only from an empty box", () => {
+    render(<Harness initial={["a", "b"]} />);
+    openList();
+
+    type("che");
+    fireEvent.keyDown(box(), { key: "Backspace" });
+    expect(screen.getByRole("button", { name: "Remove Banana" })).toBeTruthy();
+
+    type("");
+    fireEvent.keyDown(box(), { key: "Backspace" });
+    expect(screen.queryByRole("button", { name: "Remove Banana" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Remove Apple" })).toBeTruthy();
+  });
+
+  it("closes when focus leaves the field, so tabbing does not leave lists open behind it", () => {
+    render(<><Harness /><button type="button">Elsewhere</button></>);
+    openList();
+    expect(screen.getByRole("listbox")).toBeTruthy();
+
+    fireEvent.blur(box(), { relatedTarget: screen.getByRole("button", { name: "Elsewhere" }) });
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("says so when everything has already been chosen", () => {
