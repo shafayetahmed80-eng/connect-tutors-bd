@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, ContactRound, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, ContactRound, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -17,6 +17,7 @@ export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
  * editing published copy changes what every visitor sees.
  */
 const dynamicSectionItems: DashboardNavigationItem[] = [
+  { icon: Compass, label: "Section guide", path: "/admin/dynamic", sectionLabel: "Dynamic Section" },
   { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section" },
   { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section" },
   { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section" },
