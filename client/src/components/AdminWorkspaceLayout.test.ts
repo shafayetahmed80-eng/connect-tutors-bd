@@ -33,6 +33,7 @@ describe("Admin workspace navigation", () => {
   it("gives the Owner a Dynamic Section for content control and the form option lists", () => {
     const ownerItems = buildAdminWorkspaceNavigation(true);
     expect(ownerItems.filter(item => item.sectionLabel === "Dynamic Section")).toEqual([
+      expect.objectContaining({ label: "Section guide", path: "/admin/dynamic" }),
       expect.objectContaining({ label: "Tutor Profile", path: "/admin/dynamic/tutor-profile" }),
       expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
       expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),

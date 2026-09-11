@@ -1,3 +1,4 @@
+import { siteContentSurfacePath } from "@shared/admin-dynamic-guide";
 import { trpc } from "@/lib/trpc";
 import {
   MAX_SITE_CONTENT_TEXT_LENGTH,
@@ -13,7 +14,7 @@ import {
   type SiteContentPageId,
   type SiteContentSpacing,
 } from "@shared/site-content";
-import { Loader2, RotateCcw, Search } from "lucide-react";
+import { ExternalLink, Loader2, RotateCcw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const spacingLabels: Record<SiteContentSpacing, string> = {
@@ -320,6 +321,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       // row the Owner cannot see.
       const surfaceIds = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].map(slot => slot.id);
       const allSelected = surfaceIds.length > 0 && surfaceIds.every(id => selected.has(id));
+      const surfacePath = siteContentSurfacePath(page, surface);
 
       return <section key={surface} className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-j-border pb-1.5">
@@ -333,7 +335,12 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
             />
             <h2 className="truncate text-sm font-bold text-j-ink">{surface}</h2>
           </label>
-          <span className="shrink-0 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">{overriddenHere} edited</span>
+          <span className="flex shrink-0 items-center gap-2 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
+            {/* Where this surface is published - the Owner's first question
+                on every heading here is "which screen is that?". */}
+            {surfacePath ? <a href={surfacePath} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-j-border px-2 py-0.5 normal-case tracking-normal text-j-accent hover:bg-j-accent-wash">দেখুন <ExternalLink size={10} aria-hidden={true} /></a> : null}
+            {overriddenHere} edited
+          </span>
         </div>
 
         {groups.map(group => <div key={group} className="mt-2">
