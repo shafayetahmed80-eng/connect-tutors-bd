@@ -34,6 +34,10 @@ export default function ChipMultiSelect({
   maxSelections,
   emptyMessage = "Nothing left to choose",
   noMatchMessage = "Nothing matches that",
+  onSearchQueryChange,
+  required = false,
+  invalid = false,
+  dense = false,
 }: {
   /** Shown inside the empty box, and as the field's accessible name. */
   label: string;
@@ -47,6 +51,18 @@ export default function ChipMultiSelect({
   emptyMessage?: string;
   /** Shown when everything is still available but the typed text finds none of it. */
   noMatchMessage?: string;
+  /**
+   * Told what was typed, for a list too long to hold: Teaching areas searches
+   * 597 Bangladesh locations server-side and is handed back 50 at a time.
+   * Without it the component filters only what it was given, which is right
+   * for every list that arrives whole.
+   */
+  onSearchQueryChange?: (query: string) => void;
+  required?: boolean;
+  /** Draws the box in the error colour; the message itself belongs to the caller. */
+  invalid?: boolean;
+  /** The tighter scale the Tutor Profile modal uses. */
+  dense?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -84,16 +100,20 @@ export default function ChipMultiSelect({
 
   useEffect(() => { if (disabled) close(); }, [disabled]);
 
+  const search = (next: string) => {
+    setQuery(next);
+    onSearchQueryChange?.(next);
+  };
   /** Closing always drops the typed text, so the box never reopens mid-search. */
   function close() {
     setOpen(false);
-    setQuery("");
+    search("");
   }
 
   const add = (id: string) => {
     if (full) return;
     onChange([...selectedIds, id]);
-    setQuery("");
+    search("");
     // Closing on the last allowed pick says the box is full without a message.
     if (maxSelections !== undefined && selectedIds.length + 1 >= maxSelections) close();
   };
@@ -124,7 +144,7 @@ export default function ChipMultiSelect({
     // a keyboard user collects one open list per field they pass through.
     onBlur={event => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) close(); }}
   >
-    <div className={`flex min-h-11 w-full items-start gap-1.5 rounded-xl border border-[#dbe7ef] px-3 py-2 transition focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${disabled ? "bg-[#f4f8fb]" : "bg-white"}`}>
+    <div className={`flex w-full items-start gap-1.5 border transition focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${dense ? "min-h-9 rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${invalid ? "border-[#d84a4a]" : "border-[#dbe7ef]"} ${disabled ? "bg-[#f4f8fb]" : "bg-white"}`}>
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         {selected.map(option => <span key={option.id} className="inline-flex max-w-full items-center gap-1 rounded-lg bg-[#eaf4fd] py-0.5 pl-2 pr-1 text-xs font-semibold text-[#1267c8]">
           <span className="truncate">{option.label}</span>
@@ -145,13 +165,18 @@ export default function ChipMultiSelect({
           aria-controls={open ? listId : undefined}
           aria-autocomplete="list"
           aria-label={`${label}${selected.length ? `, ${selected.length} selected` : ""}`}
+          aria-required={required || undefined}
+          aria-invalid={invalid || undefined}
           disabled={disabled}
           value={query}
           placeholder={selected.length === 0 ? (disabled ? disabledPlaceholder ?? label : label) : "Type to search"}
-          onChange={event => { setQuery(event.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+          onChange={event => { search(event.target.value); setOpen(true); }}
+          // A click, not focus. The Tutor Profile section modal autofocuses
+          // its first control, and opening from that focus put a list up over
+          // the editor the moment it appeared.
+          onClick={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className="min-w-[6rem] flex-1 bg-transparent py-0.5 text-sm text-j-ink outline-none placeholder:text-[#8fa3b4] disabled:cursor-not-allowed"
+          className={`min-w-[6rem] flex-1 bg-transparent py-0.5 text-j-ink outline-none placeholder:text-[#8fa3b4] disabled:cursor-not-allowed ${dense ? "text-xs" : "text-sm"}`}
         />
       </span>
       <button

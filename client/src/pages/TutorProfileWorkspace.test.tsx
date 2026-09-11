@@ -324,7 +324,9 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     dialog = screen.getByRole("dialog");
     const teachingAreas = within(dialog).getByRole("combobox", { name: /Teaching Areas/ });
-    expect(teachingAreas.closest("div")?.parentElement?.textContent).toContain("Teaching Areas *");
+    // The marker is drawn by the profile's own label above the chip box, so it
+    // is asserted on the panel rather than by walking up from the input.
+    expect(within(dialog).getByText(/Teaching Areas/).textContent).toContain("Teaching Areas *");
     expect(teachingAreas.getAttribute("aria-required")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
@@ -655,6 +657,23 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     expect(within(dialog).getByText("Primary Subjects")).toBeTruthy();
   });
 
+  it("opens the editor with every list shut, whatever the modal autofocuses", async () => {
+    // The section modal moves focus to the first control inside it. When that
+    // control opened its own list on focus, the Teaching Expertise editor came
+    // up with Primary Subjects already hanging open over it - on a phone, as a
+    // full-height sheet, because `useIsMobile` reports false for one render.
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+
+    expect(screen.queryByRole("group", { name: /results$/ })).toBeNull();
+    for (const box of screen.getAllByRole("combobox")) {
+      expect(box.getAttribute("aria-expanded"), box.getAttribute("aria-label") ?? "").not.toBe("true");
+    }
+  });
+
   it("offers All Days, and saves it as the seven days the server accepts", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={{ ...completeProfile, preferredTeachingDays: [] }} onboardingFallback={null} />);
@@ -663,11 +682,10 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     await user.click(screen.getByRole("button", { name: "Edit Availability" }));
     const dialog = screen.getByRole("dialog");
 
-    fireEvent.focus(within(dialog).getByRole("combobox", { name: /Preferred Teaching Days/ }));
+    fireEvent.click(within(dialog).getByRole("combobox", { name: /Preferred Teaching Days/ }));
     // The options list is a Radix Popover portalled to document.body - query it
     // from `screen`, not the modal `dialog` subtree.
-    await user.click(screen.getByLabelText("All Days"));
-    await user.click(screen.getAllByRole("button", { name: "Done" })[0]);
+    await user.click(screen.getByRole("button", { name: "All Days" }));
     await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
 
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
