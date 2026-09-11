@@ -11,13 +11,15 @@ export const tutorProfileResponsiveClasses = {
   /** Two-column profile shell: identity rail beside the workspace from `lg` up. */
   workspaceShell: "grid min-w-0 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]",
   /**
-   * The identity rail: a narrow centred card on phones, pinned under the
-   * dashboard header from `lg` up where it fills the grid's fixed column.
+   * The identity rail: full width on phones, where it reads as a header above
+   * the tabs and has to share their edges - a `max-w-xs` here left a 320px
+   * card sitting above cards that ran to both margins. Pinned under the
+   * dashboard header from `lg` up, where it fills the grid's fixed column.
    */
-  identityRail: "mx-auto w-full min-w-0 max-w-xs lg:mx-0 lg:max-w-none lg:sticky lg:top-16 lg:self-start",
+  identityRail: "w-full min-w-0 lg:sticky lg:top-16 lg:self-start",
   completionActions: "mt-3 grid grid-cols-1 gap-2 sm:mt-0 sm:grid-cols-2",
   completionActionButton: "min-h-11 w-full whitespace-normal text-center leading-5",
-  photoPreview: "mx-auto flex aspect-square w-28 max-w-full items-center justify-center overflow-hidden rounded-full bg-[#dcefff] text-[#167ddd] ring-4 ring-white shadow-sm sm:w-32",
+  photoPreview: "mx-auto flex aspect-square w-24 max-w-full items-center justify-center overflow-hidden rounded-full bg-[#dcefff] text-[#167ddd] ring-4 ring-white shadow-sm sm:w-28 lg:w-32",
   // The crop editor's frame is the shared <Modal>; only its fixed-height stage lives here.
   photoEditorCropStage: "relative h-[52dvh] min-h-[240px] max-h-[360px] bg-[#102840] sm:h-[min(62vh,390px)]",
 } as const;
