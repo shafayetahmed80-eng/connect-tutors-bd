@@ -289,7 +289,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     expect(within(rail).getByRole("heading", { name: "Test Tutor" })).toBeTruthy();
     expect(within(rail).getByText("Tutor ID: 1504")).toBeTruthy();
-    expect(within(rail).getByText("Profile completed: 100%")).toBeTruthy();
+    expect(within(rail).getByText("Profile completed:")).toBeTruthy();
+    expect(within(rail).getByText("100%")).toBeTruthy();
     // The rail carries no completion CTA; the sole submit lives at the page end.
     expect(within(rail).queryByRole("button", { name: /submit|complete profile|save/i })).toBeNull();
     expect(screen.getByRole("button", { name: "Submit profile for review" })).toBeTruthy();

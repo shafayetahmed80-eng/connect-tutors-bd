@@ -40,7 +40,9 @@ describe("TutorProfileIdentityRail", () => {
 
     expect(within(rail).getByRole("heading", { name: "Tania Sultana" })).toBeTruthy();
     expect(within(rail).getByText("Tutor ID: 565462")).toBeTruthy();
-    expect(within(rail).getByText("Profile completed: 48%")).toBeTruthy();
+    // The percentage carries the weight now, so it is its own element.
+    expect(within(rail).getByText("Profile completed:")).toBeTruthy();
+    expect(within(rail).getByText("48%")).toBeTruthy();
 
     for (const [label, value] of [
       ["Email", "tania@example.test"],
@@ -54,7 +56,11 @@ describe("TutorProfileIdentityRail", () => {
     }
   });
 
-  it("carries no completion action button — the rail is identity only", () => {
+  it("carries no completion action button, and says the percentage only once", () => {
+    // The rail is identity, not a task list: the sole "Submit profile for
+    // review" lives at the page end. The completion bar came back with the
+    // 2026-09-11 mobile pass, but purely as a picture of the number beside
+    // it - it takes no role and announces nothing of its own.
     renderRail();
     expect(screen.queryByRole("button", { name: /Complete profile|Submit for review|Save changes/ })).toBeNull();
     expect(screen.queryByRole("progressbar")).toBeNull();
