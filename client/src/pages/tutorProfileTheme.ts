@@ -32,10 +32,15 @@ export const tutorProfileTheme = {
   /** Value shown for an empty required field. */
   rowValueMissing: "text-[12px] font-medium text-j-err",
   /**
-   * The same "missing" treatment without a size, for call sites that set their
-   * own. Combining `rowValueMissing` with another `text-*` class leaves two
-   * font sizes on one element and no reliable winner.
+   * The same treatments without a size, for call sites that set their own.
+   * Combining one of the sized tokens above with another `text-*` class
+   * leaves two font sizes on one element and no reliable winner - the Tutor
+   * read-out needs that, because on a phone its label and value are
+   * deliberately two different sizes.
    */
+  rowLabelTone: "text-[#6b8497]",
+  rowValueTone: "font-medium text-[#243b52]",
+  rowValueMutedTone: "text-[#9aabbb]",
   rowValueMissingTone: "font-medium text-j-err",
 
   /**
