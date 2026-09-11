@@ -53,12 +53,12 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.lastQuery = null; });
 const openPanel = () => fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
 // Anchored at both ends: the "Class" field and a "Class 4" option in its own
 // list would both answer to a loose prefix.
-const chipField = (label: string) => screen.getByRole("button", { name: new RegExp(`^${label}(, \\d+ selected)?$`) });
+const chipField = (label: string) => screen.getByRole("combobox", { name: new RegExp(`^${label}(, \\d+ selected)?$`) });
 const listFor = (label: string) => screen.getByRole("listbox", { name: label });
-// The field toggles, and a list with no limit stays open after a pick, so it
-// is only clicked when actually shut.
+// The box opens on focus and a list with no limit stays open after a pick, so
+// it is only focused when actually shut.
 const openIfShut = (label: string) => {
-  if (!screen.queryByRole("listbox", { name: label })) fireEvent.click(chipField(label));
+  if (!screen.queryByRole("listbox", { name: label })) fireEvent.focus(chipField(label));
 };
 const pick = (label: string, option: string) => {
   openIfShut(label);
