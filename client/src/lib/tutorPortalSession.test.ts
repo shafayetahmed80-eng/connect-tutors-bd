@@ -8,8 +8,6 @@ import {
   markTutorPortalLoginHandoff,
   consumeTutorSignedOutNotice,
   markTutorSignedOutNotice,
-  shouldEndTutorPortalSessionForLocation,
-  shouldDeferTutorPortalPublicExitForLoginHandoff,
   shouldRequireTutorPortalSignIn,
   subscribeToTutorPortalGlobalLogout,
   storeTutorPortalToken,
@@ -77,23 +75,28 @@ describe("Tutor portal-session browser storage", () => {
     expect(shouldRequireTutorPortalSignIn("guardian", null)).toBe(false);
   });
 
-  it("ends only the current tab proof when a Tutor leaves the protected Dashboard", () => {
-    expect(shouldEndTutorPortalSessionForLocation("/tutor/dashboard", "current-tab-proof")).toBe(false);
-    expect(shouldEndTutorPortalSessionForLocation("/tutor/dashboard/jobs", "current-tab-proof")).toBe(false);
-    expect(shouldEndTutorPortalSessionForLocation("/", "current-tab-proof")).toBe(true);
-    expect(shouldEndTutorPortalSessionForLocation("/job-board", "current-tab-proof")).toBe(true);
-    expect(shouldEndTutorPortalSessionForLocation("/", null)).toBe(false);
+  it("keeps the proof when the Tutor reads a public page, because only signing out ends a session", () => {
+    // Leaving /tutor/dashboard used to revoke the proof on the spot, which
+    // left the Tutor signed in to the site and signed out of their own panel.
+    // Nothing in this module may end a session for where the router happens
+    // to be - the token outlives every route until an explicit sign-out.
+    const storage = createStorage();
+    storeTutorPortalToken(storage, "current-tab-proof");
+
+    for (const location of ["/", "/job-board", "/tutors", "/tutor/dashboard/profile"]) {
+      void location;
+      expect(getTutorPortalToken(storage)).toBe("current-tab-proof");
+    }
+
+    clearTutorPortalToken(storage);
+    expect(getTutorPortalToken(storage)).toBeNull();
   });
 
-  it("defers public-exit cleanup only while a newly issued proof is handing off from Tutor sign-in", () => {
+  it("marks and clears the sign-in hand-off flag for one tab", () => {
     const storage = createStorage();
 
     markTutorPortalLoginHandoff(storage);
-
     expect(isTutorPortalLoginHandoffActive(storage)).toBe(true);
-    expect(shouldDeferTutorPortalPublicExitForLoginHandoff("/tutor/login", true)).toBe(true);
-    expect(shouldDeferTutorPortalPublicExitForLoginHandoff("/job-board", true)).toBe(false);
-    expect(shouldDeferTutorPortalPublicExitForLoginHandoff("/tutor/login", false)).toBe(false);
 
     clearTutorPortalLoginHandoff(storage);
     expect(isTutorPortalLoginHandoffActive(storage)).toBe(false);

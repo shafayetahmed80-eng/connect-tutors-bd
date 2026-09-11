@@ -25,15 +25,20 @@ export function shouldRequireTutorPortalSignIn(role: string | null | undefined, 
   return role === "tutor" && !token;
 }
 
-export function shouldEndTutorPortalSessionForLocation(location: string, token: string | null) {
-  return Boolean(token) && !location.startsWith("/tutor/dashboard");
-}
-
-/** A newly issued proof survives only during the authenticated route transition. */
-export function shouldDeferTutorPortalPublicExitForLoginHandoff(location: string, handoffActive: boolean) {
-  const pathname = location.split("?", 1)[0];
-  return handoffActive && ["/tutor/login", "/auth", "/login", "/become-tutor", "/join-tutor"].includes(pathname);
-}
+/*
+ * There is deliberately no "this location ends the session" rule here any
+ * more. Reading the Job Board, or following a link to the home page, used to
+ * revoke the portal proof the moment the route left /tutor/dashboard - and
+ * since the account cookie stayed valid, the Tutor was left signed in to the
+ * site but signed out of their own panel, with no idea why. It also fought
+ * the TTL directly: that was raised to a year so that "only an explicit
+ * sign-out ends a session", which this rule then quietly contradicted.
+ *
+ * What the proof protects is unchanged. A session cookie taken on its own
+ * still cannot open the Tutor Dashboard, because the paired token never
+ * leaves the browser that signed in - and that is just as true while the
+ * Tutor is reading a public page.
+ */
 
 export function getTutorPortalRenewalIntervalMs() {
   return TUTOR_PORTAL_RENEWAL_INTERVAL_MS;
