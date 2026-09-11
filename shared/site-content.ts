@@ -256,6 +256,8 @@ const buttonSectionSlots: SiteContentSlot[] = [
   { id: "button-section.journey.stepContinue", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
   { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },
+  { id: "button-section.auth.signIn", page: "button-section", surface: "Registration page", group: "Account access mode", label: "Sign in tab", defaultText: "Sign in", defaultTextClass: "text-sm" },
+  { id: "button-section.auth.register", page: "button-section", surface: "Registration page", group: "Account access mode", label: "Register tab", defaultText: "Register", defaultTextClass: "text-sm" },
   { id: "button-section.profile.cancel", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Cancel button", defaultText: "Cancel", defaultTextClass: "text-sm" },
   { id: "button-section.profile.submit", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Submit button", defaultText: "Submit", defaultTextClass: "text-sm" },
   { id: "button-section.profile.photoReset", page: "button-section", surface: "Tutor profile editor", group: "Photo cropper", label: "Reset button", defaultText: "Reset", defaultTextClass: "text-sm" },
