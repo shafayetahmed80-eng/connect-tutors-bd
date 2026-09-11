@@ -42,6 +42,9 @@ export function SearchableMultiSelect({
   const isMobile = useIsMobile();
   const searchId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  /** Set while `close` hands focus back, so that focus does not reopen the list. */
+  const closingRef = useRef(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const selectedOptions = useMemo(() => options.filter(option => selectedIds.includes(option.id)), [options, selectedIds]);
   const results = useMemo(() => options.filter(option => option.label.toLocaleLowerCase().includes(normalizedQuery)), [normalizedQuery, options]);
@@ -50,7 +53,9 @@ export function SearchableMultiSelect({
     setIsOpen(false);
     setQuery("");
     onSearchQueryChange?.("");
-    buttonRef.current?.focus();
+    closingRef.current = true;
+    (buttonRef.current ?? inputRef.current)?.focus();
+    closingRef.current = false;
   };
   const open = () => {
     if (isMobile) setPendingSelectedIds(selectedIds);
@@ -86,19 +91,30 @@ export function SearchableMultiSelect({
     ? `Select ${label.toLocaleLowerCase()}`
     : `${selectedIds.length} selected`;
   const selectorOptions = (activeSelectedIds: string[], onToggle: (id: string) => void, compact = false) => <>
-    <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe]">
+    {/*
+      Only the mobile Sheet carries a search row of its own. On desktop the
+      field itself is the search box, so a second one here would ask the same
+      question twice, one line apart.
+    */}
+    {compact ? null : <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe]">
       <Search aria-hidden="true" size={16} />
       <input autoFocus type="search" aria-label={`Search ${label}`} value={query} onChange={event => {
         const nextQuery = event.target.value;
         setQuery(nextQuery);
         onSearchQueryChange?.(nextQuery);
       }} className="min-w-0 flex-1 bg-transparent text-sm text-j-ink outline-none placeholder:text-[#99aabb]" placeholder={`Search ${label.toLocaleLowerCase()}`} />
-    </label>
-    <div role="group" aria-label={`${label} results`} className={`mt-2 overflow-y-auto px-1 pb-1 ${compact ? "max-h-52" : "min-h-0 flex-1"}`}>
+    </label>}
+    <div role="group" aria-label={`${label} results`} className={`overflow-y-auto px-1 pb-1 ${compact ? "max-h-52" : "mt-2 min-h-0 flex-1"}`}>
       {results.length === 0 ? <p className="px-2 py-4 text-sm text-[#72889a]">{emptyMessage}</p> : results.map(option => {
         const selected = activeSelectedIds.includes(option.id);
         const limitReached = Boolean(maxSelections && !selected && activeSelectedIds.length >= maxSelections);
-        return <label key={option.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent">
+        return <label
+          key={option.id}
+          // The search box keeps the caret so the next name can be typed
+          // straight away; without this the click would take focus out of it.
+          onMouseDown={compact ? event => event.preventDefault() : undefined}
+          className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#284e6d] hover:bg-[#f1f9ff] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent"
+        >
           {/* A checkbox answers to Space but not Enter, and Enter is what a
               person reaches for after arrowing onto an option. */}
           <input
@@ -119,11 +135,50 @@ export function SearchableMultiSelect({
       })}
     </div>
   </>;
+  const fieldClassName = `mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-j-ink outline-none transition hover:border-[#96c9e8] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe] ${tutorProfileResponsiveClasses.selectorTrigger} ${disabled ? "bg-[#f4f8fb]" : ""} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`;
+
+  /**
+   * The desktop field: a search box, not a button.
+   *
+   * Teaching areas draws on 597 Bangladesh locations and Subjects on 30, and
+   * the search that narrows them used to live one click away, inside the
+   * panel. It is the field now, so the first keystroke does the work the first
+   * click used to. The mobile Sheet keeps its own search row - a full-height
+   * sheet has the room, and typing into a field that then covers itself with a
+   * sheet is a worse trade.
+   */
+  const searchField = <div className={fieldClassName}>
+    <input
+      ref={inputRef}
+      type="text"
+      role="combobox"
+      autoComplete="off"
+      disabled={disabled}
+      aria-expanded={isOpen}
+      aria-controls={isOpen ? searchId : undefined}
+      aria-autocomplete="list"
+      aria-required={required || undefined}
+      aria-invalid={Boolean(error)}
+      aria-label={`${label}, ${selectionText}`}
+      value={query}
+      placeholder={selectionText}
+      onChange={event => {
+        const nextQuery = event.target.value;
+        setQuery(nextQuery);
+        onSearchQueryChange?.(nextQuery);
+        setIsOpen(true);
+      }}
+      onFocus={() => { if (!closingRef.current) setIsOpen(true); }}
+      onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); setIsOpen(true); } }}
+      className={`${tutorProfileResponsiveClasses.selectorText} bg-transparent outline-none placeholder:text-[#99aabb] disabled:cursor-not-allowed`}
+    />
+    <ChevronDown aria-hidden="true" size={16} className={`shrink-0 text-[#59788e] transition-transform ${isOpen ? "rotate-180" : ""}`} />
+  </div>;
+
   // The label already sits above this control; the visible text no longer
   // repeats the field name, so the accessible name has to carry it - the
-  // control is otherwise unidentifiable to a screen reader, and it stays the
-  // way every test finds this button. On desktop `<Popover.Trigger asChild>`
-  // owns the click; the mobile Sheet needs its own handler.
+  // control is otherwise unidentifiable to a screen reader. The mobile Sheet
+  // still opens from a button, and needs its own click handler.
   const triggerButton = <button
     ref={buttonRef}
     type="button"
@@ -145,7 +200,9 @@ export function SearchableMultiSelect({
     {description ? <p className="mt-0.5 text-2xs leading-4 text-[#72889a]">{description}</p> : null}
     {isMobile ? triggerButton : (
       <Popover.Root open={isOpen} onOpenChange={nextOpen => (nextOpen ? open() : close())}>
-        <Popover.Trigger asChild>{triggerButton}</Popover.Trigger>
+        {/* An anchor rather than a trigger: the field is a text box, so what
+            opens the list is typing or focusing it, not a click that toggles. */}
+        <Popover.Anchor asChild>{searchField}</Popover.Anchor>
         <Popover.Portal>
           {/* Portalled out of the scrolling ModalBody so the list is never
               clipped by its overflow or hidden behind the modal footer;
@@ -158,6 +215,8 @@ export function SearchableMultiSelect({
             side="bottom"
             sideOffset={8}
             collisionPadding={12}
+            // Focus stays in the field, which is where the typing goes.
+            onOpenAutoFocus={event => event.preventDefault()}
             className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-[#cae0ee] bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
           >
             {selectorOptions(selectedIds, id => toggle(id), true)}
