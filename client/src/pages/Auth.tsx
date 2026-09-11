@@ -1,4 +1,4 @@
-import { useSiteContact } from "@/lib/siteContent";
+import { useSiteContact, useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import React, { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -93,6 +93,28 @@ function getInitialMode(location: string): AuthMode {
   return location.split("?")[0] === "/register" ? "register" : "login";
 }
 
+/**
+ * One of the two access-mode pills, sized by its own text.
+ *
+ * The Owner sets the label size from the Button Section, so the pill has to
+ * follow it: with a fixed `px-4 py-3` the chip kept its height and width no
+ * matter how small the label got, leaving the empty space around it. Every
+ * measurement below is in `em`, so the chip tracks whatever size is set.
+ */
+function AccessModeTab({ slotId, fallback, active, onSelect }: { slotId: string; fallback: string; active: boolean; onSelect: () => void }) {
+  const label = useSiteContentText(slotId, fallback);
+  const textStyle = useSiteContentTextStyle(slotId);
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      style={textStyle}
+      className={`min-w-max rounded-full px-[1.35em] py-[0.5em] text-sm font-bold leading-[1.45] transition ${active ? "bg-white text-j-accent shadow-sm" : "text-[#7590a5]"}`}
+    >{label}</button>
+  );
+}
+
 function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; selected: boolean; onSelect: (role: PublicAccountRole) => void }) {
   const content = roleContent[role];
   const Icon = role === "guardian" ? UsersRound : GraduationCap;
@@ -110,11 +132,11 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
         }
       }}
       tabIndex={selected ? 0 : -1}
-      className={`rounded-xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
+      className={`rounded-xl border p-[1.25em] text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
     >
-      <Icon className="text-j-accent" size={25} aria-hidden="true" />
-      <strong className="mt-4 block text-lg">{content.title}</strong>
-      <span className="mt-1 block text-sm leading-6 text-[#7890a4]">{content.description}</span>
+      <Icon className="text-j-accent" size="1.75em" aria-hidden="true" />
+      <strong className="mt-[0.9em] block text-[1.3em] leading-[1.3]">{content.title}</strong>
+      <span className="mt-[0.35em] block leading-[1.55] text-[#7890a4]">{content.description}</span>
     </button>
   );
 }
@@ -227,9 +249,9 @@ export default function AuthPage() {
         <section className="flex items-center px-7 py-10 sm:px-14">
           <div className="w-full max-w-lg">
             {isEnteringTutorWorkspace ? <TutorWorkspaceTransition /> : <>
-            <div className="mb-8 flex gap-2 rounded-full bg-[#eef3f8] p-1" aria-label="Account access mode">
-              <button type="button" onClick={() => switchMode("login")} aria-pressed={mode === "login"} className={`flex-1 rounded-full px-4 py-3 text-sm font-bold transition ${mode === "login" ? "bg-white text-j-accent shadow-sm" : "text-[#7590a5]"}`}>Sign in</button>
-              <button type="button" onClick={() => switchMode("register")} aria-pressed={mode === "register"} className={`flex-1 rounded-full px-4 py-3 text-sm font-bold transition ${mode === "register" ? "bg-white text-j-accent shadow-sm" : "text-[#7590a5]"}`}>Register</button>
+            <div className="mb-8 inline-flex w-max max-w-full gap-1 overflow-x-auto rounded-full bg-[#eef3f8] p-1" aria-label="Account access mode">
+              <AccessModeTab slotId="button-section.auth.signIn" fallback="Sign in" active={mode === "login"} onSelect={() => switchMode("login")} />
+              <AccessModeTab slotId="button-section.auth.register" fallback="Register" active={mode === "register"} onSelect={() => switchMode("register")} />
             </div>
 
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-j-accent">{mode === "login" ? "Welcome back" : "Join the community"}</p>
