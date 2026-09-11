@@ -81,6 +81,28 @@ describe("tutor profile readout rows", () => {
     expect(findSiteContentSizeSlot("tutor-profile.size.record-row")?.defaultPx).toBe(TUTOR_PROFILE_RECORD_ROW_PX);
   });
 
+  it("splits the pair by size on a phone and matches it again from sm up", () => {
+    // Stacked at one size, a ten-field card is twenty near-identical lines.
+    // The size difference is what the value would otherwise need bolding for,
+    // so losing either half of this pair loses the hierarchy silently.
+    renderRows();
+    const value = screen.getByText("English Medium");
+    const label = screen.getByText("Curriculum");
+
+    expect(label.className).toContain("text-[11px]");
+    expect(label.className).toContain("sm:text-[12px]");
+    expect(value.className).toContain("text-[13px]");
+    expect(value.className).toContain("sm:text-[12px]");
+
+    // The tone tokens carry no size of their own, or there would be two
+    // font sizes on one element and no reliable winner.
+    const digits = "0123456789";
+    for (const token of [tp.rowLabelTone, tp.rowValueTone, tp.rowValueMutedTone, tp.rowValueMissingTone]) {
+      const carriesASize = token.split("text-[").slice(1).some(part => digits.includes(part.charAt(0)));
+      expect(carriesASize, token).toBe(false);
+    }
+  });
+
   it("gives the identity rail a size-free treatment so it keeps its own 13px", () => {
     // Combining rowValueMissing with another text-* class leaves two font
     // sizes on one element and no reliable winner.
