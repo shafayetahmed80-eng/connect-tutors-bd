@@ -27,20 +27,22 @@ describe("Tutor Profile selector controls", () => {
     vi.unstubAllGlobals();
   });
 
-  it("filters teaching areas with the keyboard and exposes the selection count", async () => {
+  it("filters teaching areas from the field itself and exposes the selection count", async () => {
+    // On a desktop the field is the search box: tabbing into it opens the
+    // list, and the first keystroke narrows 597 areas without a click.
     const user = userEvent.setup();
     render(<TeachingAreaHarness />);
 
     await user.tab();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("button", { name: /teaching areas/i }).getAttribute("aria-expanded")).toBe("true");
-    await user.type(screen.getByRole("searchbox", { name: /search teaching areas/i }), "uttara");
+    const field = screen.getByRole("combobox", { name: /teaching areas/i });
+    expect(field.getAttribute("aria-expanded")).toBe("true");
+    await user.type(field, "uttara");
 
     expect(screen.getByRole("checkbox", { name: /uttara, dhaka/i })).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: /mirpur, dhaka/i })).toBeNull();
 
     await user.click(screen.getByRole("checkbox", { name: /uttara, dhaka/i }));
-    expect(screen.getByRole("button", { name: /teaching areas.*1 selected/i })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /teaching areas.*1 selected/i })).toBeTruthy();
   });
 
   it("forwards teaching-area search text so the supplied Bangladesh hierarchy can be searched server-side", async () => {
@@ -55,8 +57,7 @@ describe("Tutor Profile selector controls", () => {
       onSearchQueryChange={onSearchQueryChange}
     />);
 
-    await user.click(screen.getByRole("button", { name: /teaching areas/i }));
-    await user.type(screen.getByRole("searchbox", { name: /search teaching areas/i }), "uttara");
+    await user.type(screen.getByRole("combobox", { name: /teaching areas/i }), "uttara");
 
     expect(onSearchQueryChange).toHaveBeenLastCalledWith("uttara");
   });

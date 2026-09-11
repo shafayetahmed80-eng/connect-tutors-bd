@@ -323,8 +323,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     dialog = screen.getByRole("dialog");
-    const teachingAreas = within(dialog).getByRole("button", { name: /Teaching Areas/ });
-    expect(teachingAreas.parentElement?.textContent).toContain("Teaching Areas *");
+    const teachingAreas = within(dialog).getByRole("combobox", { name: /Teaching Areas/ });
+    expect(teachingAreas.closest("div")?.parentElement?.textContent).toContain("Teaching Areas *");
     expect(teachingAreas.getAttribute("aria-required")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
@@ -486,15 +486,14 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     const dialog = screen.getByRole("dialog");
-    // Current City is the first combobox, Current Location the second.
-    const currentLocationSearch = within(dialog).getAllByRole("combobox")[1];
+    // Named, not counted: every multi-select in this panel is a combobox too
+    // now, so the position of the Current Location box is no longer fixed.
+    const currentLocationSearch = within(dialog).getByPlaceholderText(`Search ${tutorProfileCopy.fields.currentLocation.toLocaleLowerCase()}`);
     await user.type(currentLocationSearch, "Uttara");
     await waitFor(() => expect(trpcMocks.searchRegistrationLocations).toHaveBeenCalledWith(expect.objectContaining({ cityId: "dhaka-city", query: "Uttara" }), expect.anything()));
 
-    fireEvent.click(within(dialog).getAllByRole("button", { name: /Teaching Areas/ })[0]);
-    // The options list is a Radix Popover portalled to document.body, so it is
-    // outside the modal's own subtree - query it from `screen`, not `dialog`.
-    fireEvent.change(screen.getByRole("searchbox", { name: `Search ${tutorProfileCopy.fields.teachingAreas}` }), { target: { value: "Uttara" } });
+    // The field is the search box now, so the query leaves from it directly.
+    fireEvent.change(within(dialog).getAllByRole("combobox", { name: /Teaching Areas/ })[0], { target: { value: "Uttara" } });
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Uttara" })));
   });
 
@@ -664,7 +663,7 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     await user.click(screen.getByRole("button", { name: "Edit Availability" }));
     const dialog = screen.getByRole("dialog");
 
-    await user.click(within(dialog).getByRole("button", { name: /Preferred Teaching Days/ }));
+    fireEvent.focus(within(dialog).getByRole("combobox", { name: /Preferred Teaching Days/ }));
     // The options list is a Radix Popover portalled to document.body - query it
     // from `screen`, not the modal `dialog` subtree.
     await user.click(screen.getByLabelText("All Days"));
