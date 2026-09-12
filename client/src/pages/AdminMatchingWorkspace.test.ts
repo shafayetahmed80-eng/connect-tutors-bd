@@ -26,6 +26,8 @@ import {
   getAdminPublicationActions,
   getAdminPublicationStatePresentation,
   getAdminRequestStatusPresentation,
+  BulkPublicationBar,
+  getBulkActionableRequests,
   PublicationControls,
   TutorMatchPicker,
   serializeAdminMatchingSavedViewFilters,
@@ -467,5 +469,71 @@ describe("the Tutor picker on a matching card", () => {
       expect((option as HTMLInputElement).disabled).toBe(true);
     }
     expect((screen.getByPlaceholderText("Search name or subject") as HTMLInputElement).disabled).toBe(true);
+  });
+});
+
+
+describe("acting on a batch of requests", () => {
+  function request(id: number, overrides: Partial<MatchingRequest> = {}) {
+    return {
+      id,
+      publicationState: "approved",
+      guardianConfirmedAt: new Date("2026-09-01T10:00:00.000Z"),
+      guardianReconfirmedAt: null,
+      ...overrides,
+    } as MatchingRequest;
+  }
+
+  it("only counts the requests the per-card gate would allow anyway", () => {
+    const requests = [
+      request(1),
+      request(2, { publicationState: "reviewing" }),
+      request(3, { publicationState: "approved", guardianConfirmedAt: null }),
+      request(4, { publicationState: "published" }),
+    ];
+
+    // Publish needs an approved-or-unpublished request with the call recorded.
+    expect(getBulkActionableRequests(requests, [1, 2, 3, 4], "publish").map(r => r.id)).toEqual([1]);
+    // Approve needs a reviewing request with the call recorded.
+    expect(getBulkActionableRequests(requests, [1, 2, 3, 4], "approve").map(r => r.id)).toEqual([2]);
+    // A request nobody selected is never touched.
+    expect(getBulkActionableRequests(requests, [2], "publish")).toEqual([]);
+  });
+
+  it("stays out of the way until something is selected", () => {
+    const { container } = render(createElement(BulkPublicationBar, {
+      requests: [request(1)], selectedIds: [], busy: false, onClear: vi.fn(), onRun: vi.fn(),
+    }));
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("says how many each action will really touch, and offers no irreversible one", () => {
+    const requests = [request(1), request(2, { publicationState: "reviewing" })];
+    const onRun = vi.fn();
+    render(createElement(BulkPublicationBar, {
+      requests, selectedIds: [1, 2], busy: false, onClear: vi.fn(), onRun,
+    }));
+
+    // The figure sits in its own tabular-nums span, so the count and the word
+    // are separate text nodes.
+    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getByText(/selected$/)).toBeTruthy();
+    // Verification records a phone call and cancellation cannot be undone;
+    // neither is offered here.
+    expect(screen.queryByRole("button", { name: /verification/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /cancel request/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Publish (1)" }));
+    expect(onRun).toHaveBeenCalledWith("publish", [1]);
+  });
+
+  it("disables an action that would touch nothing", () => {
+    render(createElement(BulkPublicationBar, {
+      requests: [request(1, { publicationState: "published" })],
+      selectedIds: [1], busy: false, onClear: vi.fn(), onRun: vi.fn(),
+    }));
+
+    expect((screen.getByRole("button", { name: "Publish (0)" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Approve for Job Board (0)" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

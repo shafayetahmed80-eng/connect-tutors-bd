@@ -54,6 +54,7 @@ type AdminMatchingFilters = {
   tuitionType: "all" | "home" | "online" | "both" | "group" | "package";
   preferredGender: "all" | "male" | "female" | "any";
   contactConsent: "all" | "not_required" | "pending" | "approved" | "declined";
+  expiry: "all" | "soon" | "expired";
   subject: string;
   category: string;
   location: string;
@@ -104,6 +105,8 @@ export type MatchingRequest = {
   /** The Guardian to call. Null only if the account row has gone. */
   guardianName: string | null;
   guardianPhone: string | null;
+  /** How many Tutors have applied through the Job Board, withdrawals aside. */
+  appliedTutorCount: number;
   /** When the published Job Board copy stops being visible. */
   publishedExpiresAt: Date | string | null;
 };
@@ -128,6 +131,7 @@ const initialFilters: AdminMatchingFilters = {
   tuitionType: "all",
   preferredGender: "all",
   contactConsent: "all",
+  expiry: "all",
   subject: "",
   category: "",
   location: "",
@@ -207,6 +211,23 @@ export function getAdminPublicationActions(input: { state: AdminPublicationState
   if (input.state === "published" && input.guardianReconfirmed) actions.push("extend_expiry");
   if (input.state === "published") actions.push("unpublish");
   return actions;
+}
+
+/**
+ * The requests in a selection that can actually take one action right now.
+ *
+ * Bulk work reuses the same per-request gate the buttons do, so a batch can
+ * never do something a single card would refuse. A selection is normally
+ * mixed - one waiting on a Guardian call, one already live - and the count on
+ * the button is what says how many the action will really touch.
+ */
+export function getBulkActionableRequests(requests: MatchingRequest[], selectedIds: number[], action: PublicationAction) {
+  const selected = new Set(selectedIds);
+  return requests.filter(request => selected.has(request.id) && getAdminPublicationActions({
+    state: request.publicationState,
+    guardianConfirmed: Boolean(request.guardianConfirmedAt),
+    guardianReconfirmed: Boolean(request.guardianReconfirmedAt),
+  }).includes(action));
 }
 
 /** Whole days between two instants, never negative. */
@@ -431,6 +452,39 @@ function getTutorInterestReviewPresentation(status: TutorInterestReviewStatus) {
     withdrawn: { label: "Withdrawn", className: "bg-j-surface-muted text-j-ink-soft ring-j-border" },
   } as const;
   return presentations[status];
+}
+
+/**
+ * Approving or publishing a day's verified work, without forty clicks.
+ *
+ * Only the two safe, reversible steps are offered. Verification records a
+ * Guardian phone call and cancellation cannot be undone - neither belongs
+ * behind a single button that acts on twelve requests at once.
+ */
+export function BulkPublicationBar({ requests, selectedIds, busy, onClear, onRun }: {
+  requests: MatchingRequest[];
+  selectedIds: number[];
+  busy: boolean;
+  onClear: () => void;
+  onRun: (action: PublicationAction, requestIds: number[]) => void;
+}) {
+  if (selectedIds.length === 0) return null;
+  const actions = [
+    { action: "approve" as const, label: "Approve for Job Board" },
+    { action: "publish" as const, label: "Publish" },
+  ].map(entry => ({ ...entry, ids: getBulkActionableRequests(requests, selectedIds, entry.action).map(request => request.id) }));
+
+  return <section aria-label="Bulk publication actions" className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-sky-50/95 px-4 py-3 shadow-sm backdrop-blur">
+    <p className="text-sm font-bold text-j-ink"><span className="tabular-nums">{selectedIds.length}</span> selected</p>
+    {actions.map(entry => <button
+      key={entry.action}
+      type="button"
+      disabled={busy || entry.ids.length === 0}
+      onClick={() => onRun(entry.action, entry.ids)}
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+    >{entry.label} ({entry.ids.length})</button>)}
+    <button type="button" onClick={onClear} className="ml-auto rounded-lg px-3 py-2 text-sm font-semibold text-j-accent hover:bg-white">Clear selection</button>
+  </section>;
 }
 
 /**
@@ -672,9 +726,10 @@ function MatchingWorkspaceContent() {
     only: ["query", "status", "tuitionType", "subject", "category", "preferredGender", "contactConsent", "budgetMinimum", "budgetMaximum"],
   });
   const operationalFilterCount = countActiveFilters(filters, initialFilters, {
-    only: ["lifecycle", "assignmentState", "appointmentState", "cancellationState", "createdAfter", "createdBefore", "lastActivityAfter", "lastActivityBefore"],
+    only: ["lifecycle", "assignmentState", "appointmentState", "cancellationState", "expiry", "createdAfter", "createdBefore", "lastActivityAfter", "lastActivityBefore"],
   });
   const [selectedTutorByRequest, setSelectedTutorByRequest] = useState<Record<number, string>>({});
+  const [selectedRequestIds, setSelectedRequestIds] = useState<number[]>([]);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState<number | null>(null);
   const hasHandledInitialDefaultView = useRef(false);
   const hasExplicitSavedViewIntent = useRef(false);
@@ -760,6 +815,23 @@ function MatchingWorkspaceContent() {
   const page = matchingQueue.data?.page ?? filters.page;
   const totalPages = matchingQueue.data?.totalPages ?? 1;
   const runAction = (requestId: number, action: PublicationAction) => publishAction.mutate({ requestId, action });
+  /**
+   * One at a time, not one request with a list.
+   *
+   * Every step here writes an audit event and a before/after snapshot, and the
+   * server owns that per request. Sending them in sequence keeps each answer,
+   * and each refusal, attached to the request it belongs to.
+   */
+  const runBulkAction = async (action: PublicationAction, requestIds: number[]) => {
+    for (const requestId of requestIds) {
+      try {
+        await publishAction.mutateAsync({ requestId, action });
+      } catch {
+        // The mutation surfaces its own error; the rest of the batch still runs.
+      }
+    }
+    setSelectedRequestIds(current => current.filter(id => !requestIds.includes(id)));
+  };
   const saveEdit = (requestId: number, event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -783,6 +855,7 @@ function MatchingWorkspaceContent() {
         <label className="text-xs font-semibold text-j-ink-soft">Guardian lifecycle<select aria-label="Guardian lifecycle" value={filters.lifecycle} onChange={event => applyFilters({ lifecycle: event.target.value as AdminMatchingFilters["lifecycle"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any lifecycle</option><option value="pending">Pending</option><option value="live">Live</option><option value="appointed">Appointed</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Tutor assignment<select aria-label="Tutor assignment state" value={filters.assignmentState} onChange={event => applyFilters({ assignmentState: event.target.value as AdminMatchingFilters["assignmentState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any assignment</option><option value="unassigned">Unassigned</option><option value="assigned">Assigned</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Appointment<select aria-label="Appointment state" value={filters.appointmentState} onChange={event => applyFilters({ appointmentState: event.target.value as AdminMatchingFilters["appointmentState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any appointment state</option><option value="pending">Confirmation pending</option><option value="confirmed">Confirmed</option></select></label>
+        <label className="text-xs font-semibold text-j-ink-soft">Job Board visibility<select aria-label="Publication expiry" value={filters.expiry} onChange={event => applyFilters({ expiry: event.target.value as AdminMatchingFilters["expiry"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any visibility</option><option value="soon">Expiring within 3 days</option><option value="expired">Already expired</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Closure<select aria-label="Cancellation state" value={filters.cancellationState} onChange={event => applyFilters({ cancellationState: event.target.value as AdminMatchingFilters["cancellationState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any closure state</option><option value="active">Active requests</option><option value="cancelled">Cancelled requests</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Location<input aria-label="Operational location" value={filters.location} onChange={event => applyFilters({ location: event.target.value })} placeholder="City, area or location" className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong placeholder:text-j-ink-faint outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100" /></label>
         <label className="text-xs font-semibold text-j-ink-soft">Created from<input aria-label="Created from" type="date" value={filters.createdAfter} onChange={event => applyFilters({ createdAfter: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100" /></label>
@@ -792,13 +865,15 @@ function MatchingWorkspaceContent() {
       </div>
     </CollapsiblePanel>
     <AdminMatchingQueueSummary total={total} counts={matchingQueue.data?.publicationStateCounts} />
+    <BulkPublicationBar requests={requests} selectedIds={selectedRequestIds} busy={publishAction.isPending} onClear={() => setSelectedRequestIds([])} onRun={(action, ids) => void runBulkAction(action, ids)} />
     {publishAction.isError || confirmAppointment.isError || cancelRequest.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message ?? confirmAppointment.error?.message ?? cancelRequest.error?.message}</p> : null}
     {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
       const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending || confirmAppointment.isPending || cancelRequest.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
       const expiry = getAdminPublicationExpiryDisplay(request); const age = getAdminRequestAgeDisplay(request);
       const groupCapacity = getAdminGroupCapacityDisplay(request); const packageDuration = getAdminPackageDurationDisplay(request); const studentCount = getAdminStudentCountDisplay(request);
-      return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}
+      return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><label className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><input type="checkbox" aria-label={`Select Job ID ${jobIdForRequest(request.id)} for a bulk action`} checked={selectedRequestIds.includes(request.id)} onChange={event => setSelectedRequestIds(current => event.target.checked ? [...current, request.id] : current.filter(id => id !== request.id))} className="h-4 w-4" /><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</label><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}
         {expiry ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${expiry.tone === "expired" ? "bg-red-50 text-red-800 ring-red-200" : expiry.tone === "soon" ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}>{expiry.label}</span> : null}
+        {request.appliedTutorCount > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-200"><UserCheck className="h-3.5 w-3.5" />{request.appliedTutorCount} applied</span> : null}
         {age ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${age.stale ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-j-surface-muted text-j-ink-soft ring-j-border"}`} title={age.quietLabel ?? undefined}>{age.label}{age.quietLabel ? ` · ${age.quietLabel}` : ""}</span> : null}
       </div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div>
       <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Guardian</dt><dd className="mt-1 text-j-ink-strong">{request.guardianName ?? "Account unavailable"}{request.guardianPhone ? <a href={`tel:${request.guardianPhone}`} aria-label={`Call ${request.guardianName ?? "the Guardian"} on ${request.guardianPhone}`} className="ml-1.5 font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{request.guardianPhone}</a> : <span className="ml-1.5 text-j-ink-muted">no number on file</span>}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><TutorMatchPicker request={request} tutors={(tutors.data ?? []) as MatchingTutorOption[]} isLoading={tutors.isLoading} disabled={assignmentBlocked} selectedTutorId={selectedTutor} onSelect={tutorId => setSelectedTutorByRequest(current => ({ ...current, [request.id]: tutorId }))} /><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
