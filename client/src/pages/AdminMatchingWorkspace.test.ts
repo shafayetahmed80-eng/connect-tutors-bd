@@ -31,6 +31,8 @@ import {
   shouldAutoApplyDefaultSavedView,
   TutorInterestQueue,
   type MatchingRequest,
+  getAdminRequestAgeDisplay,
+  getAdminPublicationExpiryDisplay,
 } from "./AdminMatchingWorkspace";
 
 const reviewingRequest: MatchingRequest = {
@@ -341,5 +343,58 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(onReview).toHaveBeenCalledWith(71, "shortlisted");
     expect(screen.getByRole("button", { name: /decline application/i })).not.toBeNull();
     expect(screen.queryByRole("button", { name: /mark matched/i })).toBeNull();
+  });
+});
+
+
+describe("what a matching card says about its own age", () => {
+  const now = new Date("2026-09-12T10:00:00.000Z");
+
+  it("counts the days a request has been open, and how long it has been quiet", () => {
+    const age = getAdminRequestAgeDisplay({
+      createdAt: "2026-09-04T10:00:00.000Z",
+      lastActivityAt: "2026-09-10T10:00:00.000Z",
+    }, now);
+
+    expect(age?.openDays).toBe(8);
+    expect(age?.label).toBe("Open 8 days");
+    expect(age?.quietLabel).toBe("Quiet 2 days");
+    // Eight days open but touched two days ago is not stale: the cue to call
+    // is silence, not age.
+    expect(age?.stale).toBe(false);
+  });
+
+  it("flags a week of silence, which is the cue to call", () => {
+    const age = getAdminRequestAgeDisplay({
+      createdAt: "2026-08-20T10:00:00.000Z",
+      lastActivityAt: "2026-09-01T10:00:00.000Z",
+    }, now);
+
+    expect(age?.quietDays).toBe(11);
+    expect(age?.stale).toBe(true);
+  });
+
+  it("says nothing at all rather than guessing from a missing date", () => {
+    expect(getAdminRequestAgeDisplay({ createdAt: null, lastActivityAt: null }, now)).toBeNull();
+  });
+});
+
+describe("what a published card says about its remaining visibility", () => {
+  const now = new Date("2026-09-12T10:00:00.000Z");
+
+  it("counts down the fourteen-day window and warns inside three days", () => {
+    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-22T10:00:00.000Z" }, now))
+      .toMatchObject({ label: "Expires in 10 days", tone: "ok" });
+    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-14T10:00:00.000Z" }, now))
+      .toMatchObject({ label: "Expires in 2 days", tone: "soon" });
+    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-10T10:00:00.000Z" }, now))
+      .toMatchObject({ label: "Visibility expired", tone: "expired" });
+  });
+
+  it("has nothing to say unless the job is actually published", () => {
+    // `expiresAt` belongs to the published tutor_jobs row, so an approved
+    // request has no window to count down yet.
+    expect(getAdminPublicationExpiryDisplay({ publicationState: "approved", publishedExpiresAt: "2026-09-22T10:00:00.000Z" }, now)).toBeNull();
+    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: null }, now)).toBeNull();
   });
 });
