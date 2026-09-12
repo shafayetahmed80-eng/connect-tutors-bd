@@ -1,4 +1,5 @@
-import { and, asc, count, desc, eq, getTableName, gte, inArray, isNotNull, isNull, like, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableName, gt,
+  gte, inArray, isNotNull, isNull, like, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import {
   MAX_LOCATION_ID_LENGTH,
@@ -2841,6 +2842,8 @@ export type AdminTutorRequestMatchingFilters = {
   tuitionType: "all" | "home" | "online" | "both" | "group" | "package";
   preferredGender: "all" | "male" | "female" | "any";
   contactConsent: "all" | "not_required" | "pending" | "approved" | "declined";
+  /** Published visibility: running out within three days, or already gone. */
+  expiry: "all" | "soon" | "expired";
   subject: string;
   category: string;
   location: string;
@@ -3000,6 +3003,9 @@ export async function clearAdminMatchingDefaultSavedView(input: { adminUserId: n
   return { updated: true as const };
 }
 
+/** The window the expiry badge calls "soon", so the filter and the card agree. */
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatchingFilters) {
   const conditions: SQL[] = [];
   if (filters.status !== "all") conditions.push(eq(tutorRequests.status, filters.status));
@@ -3011,6 +3017,18 @@ function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatching
   if (filters.tuitionType !== "all") conditions.push(eq(tutorRequests.tuitionType, filters.tuitionType));
   if (filters.preferredGender !== "all") conditions.push(eq(tutorRequests.preferredGender, filters.preferredGender));
   if (filters.contactConsent !== "all") conditions.push(eq(tutorRequests.contactConsent, filters.contactConsent));
+  if (filters.expiry !== "all") {
+    // Only a published request has a window at all: `expiresAt` belongs to
+    // the published tutor_jobs row, not to the request.
+    const now = new Date();
+    const soonBoundary = new Date(now.getTime() + THREE_DAYS_MS);
+    conditions.push(and(
+      eq(tutorRequests.publicationState, "published"),
+      filters.expiry === "expired"
+        ? lte(tutorJobs.expiresAt, now)
+        : and(gt(tutorJobs.expiresAt, now), lte(tutorJobs.expiresAt, soonBoundary)),
+    )!);
+  }
   if (filters.subject) conditions.push(like(tutorRequests.subjects, `%${filters.subject}%`));
   if (filters.category) conditions.push(eq(tutorRequests.category, filters.category));
   if (filters.location) conditions.push(or(like(tutorRequests.tuitionLocationLabel, `%${filters.location}%`), like(tutorRequests.locationText, `%${filters.location}%`))!);
@@ -3119,9 +3137,14 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
     .orderBy(asc(tutorRequests.createdAt))
     .limit(filters.pageSize)
     .offset(offset);
+  // Both counting queries carry the same join as the item query. The expiry
+  // filter reads `tutorJobs`, so a count without the join would be invalid
+  // SQL - and the join cannot change a count, because `tutorRequestId` is
+  // unique on that table.
   const totalQuery = database
     .select({ value: count() })
-    .from(tutorRequests);
+    .from(tutorRequests)
+    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id));
   const totals = conditions.length
     ? await totalQuery.where(and(...conditions))
     : await totalQuery;
@@ -3132,6 +3155,7 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
   const stateQuery = database
     .select({ state: tutorRequests.publicationState, value: count() })
     .from(tutorRequests)
+    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id))
     .groupBy(tutorRequests.publicationState);
   const stateRows = conditions.length ? await stateQuery.where(and(...conditions)) : await stateQuery;
   const publicationStateCounts = Object.fromEntries(
@@ -3140,8 +3164,11 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
   for (const row of stateRows) {
     if (row.state) publicationStateCounts[row.state] = Number(row.value);
   }
+  // The same per-page lookup both Posted-jobs boards do, so a card can say how
+  // many Tutors applied without a second screen.
+  const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
   return {
-    items,
+    items: items.map(item => ({ ...item, appliedTutorCount: appliedByRequest.get(item.id) ?? 0 })),
     total,
     publicationStateCounts,
     page: filters.page,

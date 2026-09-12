@@ -253,6 +253,7 @@ const adminMatchingRequestInputSchema = z.object({
   tuitionType: guardianRequestTuitionTypeSchema.or(z.literal("all")).default("all"),
   preferredGender: z.enum(["all", "male", "female", "any"]).default("all"),
   contactConsent: z.enum(["all", "not_required", "pending", "approved", "declined"]).default("all"),
+  expiry: z.enum(["all", "soon", "expired"]).default("all"),
   subject: z.string().trim().max(100).default(""),
   category: z.string().trim().max(120).default(""),
   location: z.string().trim().max(120).default(""),
