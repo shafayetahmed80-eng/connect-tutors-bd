@@ -62,6 +62,7 @@ import {
   tutorRegistrations,
   tutorJobInterests,
   tutorJobs,
+  tutorRequestPublicationStateValues,
   tutorStudentTypes,
   tutorSubjects,
   tutorTeachingAreas,
@@ -82,6 +83,7 @@ import {
   type TutorProfileStatus,
   type User,
   type UserRole,
+  type TutorRequestPublicationState,
 } from "../drizzle/schema";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
@@ -3078,14 +3080,35 @@ const adminTutorRequestFields = {
   lastActivityAt: tutorRequests.lastActivityAt,
 };
 
+/**
+ * The matching queue reads three joined columns the shared projection cannot
+ * carry. `adminTutorRequestFields` is also selected by queries that join
+ * nothing, and a column from a table they never join is invalid SQL there -
+ * which is exactly how the Admin Tutor review broke earlier.
+ *
+ * Both guardian joins are left joins on purpose: an inner join would drop a
+ * request from the Admin queue entirely if its Guardian row were ever missing,
+ * which is the worst possible way to hide work. `tutorJobs.tutorRequestId` is
+ * unique, so its join adds a column without multiplying rows.
+ */
+const adminMatchingRequestFields = {
+  ...adminTutorRequestFields,
+  guardianName: users.name,
+  guardianPhone: guardianProfiles.phone,
+  publishedExpiresAt: tutorJobs.expiresAt,
+};
+
 export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMatchingFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const conditions = getAdminTutorRequestFilterConditions(filters);
   const offset = (filters.page - 1) * filters.pageSize;
   const itemQuery = database
-    .select(adminTutorRequestFields)
-    .from(tutorRequests);
+    .select(adminMatchingRequestFields)
+    .from(tutorRequests)
+    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id));
   const items = conditions.length
     ? await itemQuery
       .where(and(...conditions))
@@ -3103,9 +3126,24 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
     ? await totalQuery.where(and(...conditions))
     : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
+  // Grouped in SQL rather than tallied from the page: the whole point is to
+  // say how much work sits outside the page being looked at. The filters
+  // apply, so the numbers describe the current search, not the whole table.
+  const stateQuery = database
+    .select({ state: tutorRequests.publicationState, value: count() })
+    .from(tutorRequests)
+    .groupBy(tutorRequests.publicationState);
+  const stateRows = conditions.length ? await stateQuery.where(and(...conditions)) : await stateQuery;
+  const publicationStateCounts = Object.fromEntries(
+    tutorRequestPublicationStateValues.map(state => [state, 0]),
+  ) as Record<TutorRequestPublicationState, number>;
+  for (const row of stateRows) {
+    if (row.state) publicationStateCounts[row.state] = Number(row.value);
+  }
   return {
     items,
     total,
+    publicationStateCounts,
     page: filters.page,
     pageSize: filters.pageSize,
     totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),

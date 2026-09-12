@@ -93,6 +93,13 @@ export type MatchingRequest = {
   addressDetails: string | null;
   notes: string | null;
   contactConsent: "not_required" | "pending" | "approved" | "declined";
+  createdAt: Date | string | null;
+  lastActivityAt: Date | string | null;
+  /** The Guardian to call. Null only if the account row has gone. */
+  guardianName: string | null;
+  guardianPhone: string | null;
+  /** When the published Job Board copy stops being visible. */
+  publishedExpiresAt: Date | string | null;
 };
 
 export type AdminTutorInterest = {
@@ -194,6 +201,64 @@ export function getAdminPublicationActions(input: { state: AdminPublicationState
   if (input.state === "published" && input.guardianReconfirmed) actions.push("extend_expiry");
   if (input.state === "published") actions.push("unpublish");
   return actions;
+}
+
+/** Whole days between two instants, never negative. */
+function daysBetween(from: Date, to: Date) {
+  return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86_400_000));
+}
+
+/**
+ * How long this request has been sitting, and since when.
+ *
+ * The queue is ordered oldest-first and the filters can already select by
+ * activity date, but a card said nothing about its own age - so the one thing
+ * an operator wants to know at a glance, which of these has been waiting,
+ * could only be worked out by reading dates off a filter.
+ */
+export function getAdminRequestAgeDisplay(
+  request: Pick<MatchingRequest, "createdAt" | "lastActivityAt">,
+  now = new Date(),
+) {
+  const created = request.createdAt ? new Date(request.createdAt) : null;
+  if (!created || Number.isNaN(created.getTime())) return null;
+  const activity = request.lastActivityAt ? new Date(request.lastActivityAt) : null;
+  const openDays = daysBetween(created, now);
+  const quietDays = activity && !Number.isNaN(activity.getTime()) ? daysBetween(activity, now) : null;
+  return {
+    label: openDays === 0 ? "Opened today" : `Open ${openDays} day${openDays === 1 ? "" : "s"}`,
+    quietLabel: quietDays === null ? null : quietDays === 0 ? "Activity today" : `Quiet ${quietDays} day${quietDays === 1 ? "" : "s"}`,
+    openDays,
+    quietDays,
+    /** A week with nothing happening is the cue to pick the phone up. */
+    stale: (quietDays ?? openDays) >= 7,
+  };
+}
+
+/**
+ * The published copy's remaining visibility.
+ *
+ * `expiresAt` lives on the published `tutor_jobs` row, so an unpublished
+ * request has none - and the Extend button was the only place the fourteen-day
+ * window appeared at all, which meant noticing an expiry required clicking
+ * into a card to look for it.
+ */
+export function getAdminPublicationExpiryDisplay(
+  request: Pick<MatchingRequest, "publicationState" | "publishedExpiresAt">,
+  now = new Date(),
+) {
+  if (request.publicationState !== "published" || !request.publishedExpiresAt) return null;
+  const expiresAt = new Date(request.publishedExpiresAt);
+  if (Number.isNaN(expiresAt.getTime())) return null;
+  if (expiresAt.getTime() <= now.getTime()) {
+    return { label: "Visibility expired", tone: "expired" as const, days: 0 };
+  }
+  const days = daysBetween(now, expiresAt);
+  return {
+    label: days === 0 ? "Expires today" : `Expires in ${days} day${days === 1 ? "" : "s"}`,
+    tone: days <= 3 ? ("soon" as const) : ("ok" as const),
+    days,
+  };
 }
 
 function formatSubjects(subjects: string) {
@@ -360,6 +425,35 @@ function getTutorInterestReviewPresentation(status: TutorInterestReviewStatus) {
     withdrawn: { label: "Withdrawn", className: "bg-j-surface-muted text-j-ink-soft ring-j-border" },
   } as const;
   return presentations[status];
+}
+
+/**
+ * The stages worth a number, in the order work moves through them.
+ *
+ * Not every state: `submitted` and `closed` are the ends of the line and
+ * `changes_requested` is rare enough that a zero would be noise. The strip is
+ * meant to answer "where is the work" in one glance, not to mirror the enum.
+ */
+const ADMIN_MATCHING_SUMMARY_STAGES = [
+  { state: "reviewing" as const, label: "In verification" },
+  { state: "approved" as const, label: "Approved, not published" },
+  { state: "published" as const, label: "Live on Job Board" },
+  { state: "unpublished" as const, label: "Unpublished" },
+] as const;
+
+export function AdminMatchingQueueSummary({ total, counts }: {
+  total: number;
+  counts?: Partial<Record<AdminPublicationState, number>>;
+}) {
+  return <section aria-label="Matching queue summary" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-j-border bg-white px-4 py-3 shadow-sm">
+    <p className="text-sm font-bold text-j-ink"><span className="tabular-nums">{total}</span> request{total === 1 ? "" : "s"} match these filters</p>
+    <dl className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      {ADMIN_MATCHING_SUMMARY_STAGES.map(stage => <div key={stage.state} className="flex items-baseline gap-1.5">
+        <dt className="text-xs text-j-ink-muted">{stage.label}</dt>
+        <dd className="text-sm font-bold tabular-nums text-j-ink-strong">{counts?.[stage.state] ?? 0}</dd>
+      </div>)}
+    </dl>
+  </section>;
 }
 
 export function TutorInterestQueue({ interests, isLoading, isError, isSaving, onReview }: {
@@ -612,11 +706,17 @@ function MatchingWorkspaceContent() {
         <label className="text-xs font-semibold text-j-ink-soft">Activity to<input aria-label="Last activity to" type="date" value={filters.lastActivityBefore} onChange={event => applyFilters({ lastActivityBefore: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100" /></label>
       </div>
     </CollapsiblePanel>
+    <AdminMatchingQueueSummary total={total} counts={matchingQueue.data?.publicationStateCounts} />
     {publishAction.isError || confirmAppointment.isError || cancelRequest.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message ?? confirmAppointment.error?.message ?? cancelRequest.error?.message}</p> : null}
     {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
       const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending || confirmAppointment.isPending || cancelRequest.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
+      const expiry = getAdminPublicationExpiryDisplay(request); const age = getAdminRequestAgeDisplay(request);
       const groupCapacity = getAdminGroupCapacityDisplay(request); const packageDuration = getAdminPackageDurationDisplay(request); const studentCount = getAdminStudentCountDisplay(request);
-      return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}</div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><select aria-label={`Select Tutor for request ${request.id}`} value={selectedTutor} onChange={event => setSelectedTutorByRequest(current => ({ ...current, [request.id]: event.target.value }))} disabled={assignmentBlocked} className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-j-surface-muted"><option value="">{tutors.isLoading ? "Loading approved Tutors…" : "Select approved Tutor"}</option>{(tutors.data ?? []).map(tutor => <option key={tutor.id} value={tutor.id}>{tutor.name} · {tutor.subjects.slice(0, 2).join(", ") || "Profile subject"}</option>)}</select><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
+      return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}
+        {expiry ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${expiry.tone === "expired" ? "bg-red-50 text-red-800 ring-red-200" : expiry.tone === "soon" ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}>{expiry.label}</span> : null}
+        {age ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${age.stale ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-j-surface-muted text-j-ink-soft ring-j-border"}`} title={age.quietLabel ?? undefined}>{age.label}{age.quietLabel ? ` · ${age.quietLabel}` : ""}</span> : null}
+      </div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div>
+      <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Guardian</dt><dd className="mt-1 text-j-ink-strong">{request.guardianName ?? "Account unavailable"}{request.guardianPhone ? <a href={`tel:${request.guardianPhone}`} aria-label={`Call ${request.guardianName ?? "the Guardian"} on ${request.guardianPhone}`} className="ml-1.5 font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{request.guardianPhone}</a> : <span className="ml-1.5 text-j-ink-muted">no number on file</span>}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><select aria-label={`Select Tutor for request ${request.id}`} value={selectedTutor} onChange={event => setSelectedTutorByRequest(current => ({ ...current, [request.id]: event.target.value }))} disabled={assignmentBlocked} className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-j-surface-muted"><option value="">{tutors.isLoading ? "Loading approved Tutors…" : "Select approved Tutor"}</option>{(tutors.data ?? []).map(tutor => <option key={tutor.id} value={tutor.id}>{tutor.name} · {tutor.subjects.slice(0, 2).join(", ") || "Profile subject"}</option>)}</select><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
     })}</section>}
     {totalPages > 1 ? <nav aria-label="Matching request pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm"><p className="text-sm text-j-ink-soft">Page {page} of {totalPages}</p><div className="flex gap-2"><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.max(1, page - 1) }))} disabled={page <= 1} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.min(totalPages, page + 1) }))} disabled={page >= totalPages} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></div></nav> : null}
   </div>;
