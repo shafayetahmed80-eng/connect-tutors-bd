@@ -410,15 +410,21 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     educationRecords: form.educationRecords.filter(record => [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup, record.studyStartYear, record.passingYear].some(Boolean)).map(record => {
       const schoolRecord = isSchoolQualification(record.qualificationLevel);
       return {
-      // A half-filled record is still sent so the server can answer with a
-      // field-level error the editor can show. Casting here keeps that path:
-      // dropping the record instead would silently discard what was typed.
+      // A half-filled record is still sent rather than dropped, so nothing a
+      // Tutor typed is silently discarded.
+      //
+      // Every blank goes as `undefined`, never as "". The Education tab always
+      // carries a Secondary and a Higher Secondary row, so until both are
+      // filled the empty strings hit `min(2)` and the enum on four fields per
+      // row - and the whole draft save failed, from any section that carries
+      // education records. The paths are nested, which the editor cannot show
+      // an error against, so the Tutor was told to check their connection.
       qualificationLevel: record.qualificationLevel as QualificationEducationLevel,
-      instituteName: record.instituteName.trim(),
-      degreeExamTitle: record.degreeExamTitle.trim(),
-      majorGroup: record.majorGroup.trim(),
+      instituteName: optionalText(record.instituteName) as string,
+      degreeExamTitle: optionalText(record.degreeExamTitle) as string,
+      majorGroup: optionalText(record.majorGroup) as string,
       resultGpa: optionalText(record.resultGpa),
-      curriculum: record.curriculum as QualificationCurriculum,
+      curriculum: (record.curriculum || undefined) as QualificationCurriculum,
       // Only the half its own level asks for carries a value; the other half
       // goes as undefined. Sending a school record's blank study years would
       // have the server validate fields the Tutor was never shown.

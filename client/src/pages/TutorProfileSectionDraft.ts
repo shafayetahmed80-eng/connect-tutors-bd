@@ -118,6 +118,21 @@ function createFullTutorProfileDraftPayload(form: TutorProfileSectionFormState) 
 
 const PRIVATE_DETAIL_PREFIX = "privateDetails.";
 
+/**
+ * Block fields whose value travels under another key in the draft.
+ *
+ * Secondary and Higher Secondary are one row each of `educationRecords` - the
+ * form is what makes them exactly one, and no draft key of their own exists.
+ * Without this the two popups collected nothing at all: their only field is
+ * the block field, the draft has no value under that name, and what the Tutor
+ * typed went nowhere. Both carry the whole array, exactly as the University
+ * Section already does.
+ */
+const BLOCK_FIELD_DRAFT_KEYS: Record<string, string> = {
+  secondaryRecord: "educationRecords",
+  higherSecondaryRecord: "educationRecords",
+};
+
 /** The fields one editor owns: a sub-group's own, or every field in a section. */
 export function getTutorProfileEditTargetFields(
   target: TutorProfileEditTarget,
@@ -152,8 +167,9 @@ export function createTutorProfileSectionDraftPayload(
   const sectionDraft = Object.fromEntries(
     fields
       .filter(field => !field.id.includes("."))
-      .filter(field => completeDraft[field.id] !== undefined)
-      .map(field => [field.id, completeDraft[field.id]]),
+      .map(field => BLOCK_FIELD_DRAFT_KEYS[field.id] ?? field.id)
+      .filter(key => completeDraft[key] !== undefined)
+      .map(key => [key, completeDraft[key]]),
   ) as TutorProfileSectionDraftPayload;
 
   if (privateDetailKeys.length > 0) {

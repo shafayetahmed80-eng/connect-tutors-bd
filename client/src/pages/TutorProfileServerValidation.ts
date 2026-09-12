@@ -58,6 +58,18 @@ function getClientErrorKey(path: string): TutorProfileSubmissionErrorKey | undef
  * errors used by client-side profile validation. The server message is purposely
  * not displayed because the UI owns the consistent recovery copy.
  */
+/**
+ * Whether the server rejected specific fields, whatever this module managed to
+ * map. Only single-segment paths become inline errors, so an issue inside an
+ * education record maps to nothing - and the caller would otherwise fall back
+ * to blaming the connection for a request that arrived and was answered.
+ */
+export function hasTutorProfileFieldIssues(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const issues = (error as TrpcValidationError).data?.tutorProfileFieldIssues;
+  return Array.isArray(issues) && issues.length > 0;
+}
+
 export function getTutorProfileServerValidationErrors(error: unknown): TutorProfileSubmissionErrors {
   if (!error || typeof error !== "object") return {};
   const issues = (error as TrpcValidationError).data?.tutorProfileFieldIssues;

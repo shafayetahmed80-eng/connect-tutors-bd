@@ -20,7 +20,7 @@ import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
-import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
+import { getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
 import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
@@ -794,7 +794,11 @@ function TutorProfileWorkspaceBody({
       return true;
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
-        setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
+        // The request arrived and was refused; saying "check your connection"
+        // sends the Tutor to look in entirely the wrong place.
+        setFeedback(hasTutorProfileFieldIssues(error)
+          ? { type: "error", message: "Some details in this section were not accepted. Review the fields above and try again." }
+          : { type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
       }
       return false;
     }
