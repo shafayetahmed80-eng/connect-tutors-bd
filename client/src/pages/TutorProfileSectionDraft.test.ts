@@ -182,6 +182,41 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload).not.toHaveProperty("educationRecords");
   });
 
+  it("carries the school rows for the Secondary and Higher Secondary popups", () => {
+    // Their only field is a block field, and the draft has no key of that
+    // name - the rows live in `educationRecords`. Selecting by field id alone
+    // collected nothing, so both popups sent {} and everything typed in them
+    // went nowhere.
+    const state = {
+      ...baseState,
+      educationRecords: [{
+        qualificationLevel: "SSC" as const,
+        instituteName: "Narandia High School",
+        degreeExamTitle: "SSC",
+        majorGroup: "Science",
+        resultGpa: "",
+        curriculum: "Bangla Version" as const,
+        studyStartYear: "",
+        studyEndYear: "",
+        currentlyStudying: false,
+        instituteIdCardNumber: "",
+        passingYear: "2009",
+        rollNumber: "",
+        registrationNumber: "",
+      }],
+    };
+
+    for (const target of ["c-secondary", "c-higher-secondary"] as const) {
+      const payload = createTutorProfileSectionDraftPayload(target, state);
+      expect(Object.keys(payload), target).toEqual(["educationRecords"]);
+      expect(payload.educationRecords?.[0], target).toMatchObject({
+        qualificationLevel: "SSC",
+        instituteName: "Narandia High School",
+        passingYear: 2009,
+      });
+    }
+  });
+
   it("splits Section C into its three stages", () => {
     expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-university", "c-higher-secondary", "c-secondary"]);
     expect(getTutorProfileSectionGroups("a")?.map(group => group.id)).toEqual(["a-identity", "a-family"]);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
+import { tutorProfileDraftSchema } from "../../../server/tutor-profile.validation";
 
 const onboardingFallback = {
   name: "Browser-only name",
@@ -299,5 +300,31 @@ describe("Tutor Profile form hydration", () => {
     const withStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "studying" });
 
     expect(withStatus.totalRequired).toBe(withoutStatus.totalRequired + 1);
+  });
+});
+
+
+describe("what an untouched education record sends", () => {
+  it("leaves a blank field out rather than sending an empty string", () => {
+    // The Education tab always carries a Secondary and a Higher Secondary row.
+    // Sent as "", each one failed `min(2)` on three fields and the curriculum
+    // enum on a fourth - so every draft save carrying education records was
+    // refused, from any section, until both school rows were filled.
+    const form = hydrateTutorProfileForm(null, null);
+    const [secondary] = createProfileDraftPayload(form).educationRecords;
+
+    expect(secondary.qualificationLevel).toBe("SSC");
+    for (const key of ["instituteName", "degreeExamTitle", "majorGroup", "curriculum"] as const) {
+      expect(secondary[key], key).toBeUndefined();
+    }
+  });
+
+  it("saves as a draft with both school rows still empty", () => {
+    const form = hydrateTutorProfileForm(null, null);
+    const parsed = tutorProfileDraftSchema.safeParse({
+      educationRecords: createProfileDraftPayload(form).educationRecords,
+    });
+
+    expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
   });
 });
