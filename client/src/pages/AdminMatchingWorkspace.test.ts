@@ -27,6 +27,7 @@ import {
   getAdminPublicationStatePresentation,
   getAdminRequestStatusPresentation,
   PublicationControls,
+  TutorMatchPicker,
   serializeAdminMatchingSavedViewFilters,
   shouldAutoApplyDefaultSavedView,
   TutorInterestQueue,
@@ -396,5 +397,75 @@ describe("what a published card says about its remaining visibility", () => {
     // request has no window to count down yet.
     expect(getAdminPublicationExpiryDisplay({ publicationState: "approved", publishedExpiresAt: "2026-09-22T10:00:00.000Z" }, now)).toBeNull();
     expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: null }, now)).toBeNull();
+  });
+});
+
+
+describe("the Tutor picker on a matching card", () => {
+  const request = {
+    id: 7,
+    subjects: JSON.stringify(["Physics"]),
+    classCourse: "HSC 1st Year",
+    category: "Bangla Medium",
+    preferredGender: "female" as const,
+    tuitionType: "home" as const,
+    budgetAmount: 6000,
+    monthlyBudget: null,
+    tuitionLocationLabel: "Uttara",
+    locationText: "Uttara, Dhaka",
+  };
+  const tutors = [
+    { id: "far", name: "Far Away", subjects: ["Biology"], levels: [], fee: 9000, gender: "male" as const, mode: "online", locationLabel: "Khulna", city: "Khulna", experience: 1 },
+    { id: "near", name: "Near Match", subjects: ["Physics"], levels: ["HSC 1st Year"], fee: 5000, gender: "female" as const, mode: "home", locationLabel: "Uttara", city: "Dhaka", experience: 6 },
+  ];
+
+  function renderPicker(overrides: Record<string, unknown> = {}) {
+    const onSelect = vi.fn();
+    render(createElement(TutorMatchPicker, {
+      request: request as never,
+      tutors,
+      isLoading: false,
+      disabled: false,
+      selectedTutorId: "",
+      onSelect,
+      ...overrides,
+    }));
+    return { onSelect };
+  }
+
+  it("leads with the best match and writes out why, for both of them", () => {
+    renderPicker();
+    const options = screen.getAllByRole("radio");
+
+    expect(options).toHaveLength(2);
+    expect(options[0].getAttribute("value")).toBe("near");
+    expect(screen.getByText("Teaches Physics")).toBeTruthy();
+    // The weaker Tutor stays on the list, with its mismatches named.
+    expect(screen.getByText("Does not list Physics")).toBeTruthy();
+    expect(screen.getByText("Asks 9000 over the 6000 budget")).toBeTruthy();
+  });
+
+  it("narrows to subject matches when asked, and says so when nothing is left", () => {
+    renderPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Subject match" }));
+    expect(screen.getAllByRole("radio")).toHaveLength(1);
+
+    fireEvent.change(screen.getByPlaceholderText("Search name or subject"), { target: { value: "zzz" } });
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.getByText(/No approved Tutor matches these narrowing choices/)).toBeTruthy();
+  });
+
+  it("reports the chosen Tutor to the card that owns the assignment", () => {
+    const { onSelect } = renderPicker();
+    fireEvent.click(screen.getAllByRole("radio")[0]);
+    expect(onSelect).toHaveBeenCalledWith("near");
+  });
+
+  it("goes read-only while assignment is blocked", () => {
+    renderPicker({ disabled: true });
+    for (const option of screen.getAllByRole("radio")) {
+      expect((option as HTMLInputElement).disabled).toBe(true);
+    }
+    expect((screen.getByPlaceholderText("Search name or subject") as HTMLInputElement).disabled).toBe(true);
   });
 });

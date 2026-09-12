@@ -1,3 +1,9 @@
+import {
+  emptyTutorMatchFilters,
+  rankTutorsForRequest,
+  type MatchingTutorOption,
+  type TutorMatchFilters,
+} from "./adminTutorMatch";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
@@ -428,6 +434,85 @@ function getTutorInterestReviewPresentation(status: TutorInterestReviewStatus) {
 }
 
 /**
+ * The Tutor picker: everyone approved, best match for this request first.
+ *
+ * It replaced a plain `<select>` whose only label was a name and the first two
+ * subjects off the profile - which meant the matching on the Matching
+ * workspace was done by whoever could hold twelve profiles in their head.
+ *
+ * Nothing is hidden. A Tutor who fits badly sits lower with its mismatches
+ * written out, because the Admin routinely knows things the arithmetic does
+ * not - who answered the phone last week, who wants more hours.
+ */
+export function TutorMatchPicker({ request, tutors, isLoading, disabled, selectedTutorId, onSelect }: {
+  request: MatchingRequest;
+  tutors: MatchingTutorOption[];
+  isLoading: boolean;
+  disabled: boolean;
+  selectedTutorId: string;
+  onSelect: (tutorId: string) => void;
+}) {
+  const [filters, setFilters] = useState<TutorMatchFilters>(emptyTutorMatchFilters);
+  const ranked = useMemo(() => rankTutorsForRequest(tutors, request, filters), [tutors, request, filters]);
+  const toggles = [
+    { key: "subjectMatchOnly" as const, label: "Subject match" },
+    { key: "sameAreaOnly" as const, label: "Same area" },
+    { key: "withinBudgetOnly" as const, label: "Fits budget" },
+  ];
+
+  if (isLoading) return <p className="flex items-center gap-2 rounded-xl bg-j-surface-sunken p-3 text-xs text-j-ink-soft"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading approved Tutors…</p>;
+
+  return <div className="space-y-2">
+    <label className="relative block"><span className="sr-only">{`Search Tutors for request ${request.id}`}</span>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
+      <input
+        value={filters.query}
+        disabled={disabled}
+        onChange={event => setFilters(current => ({ ...current, query: event.target.value }))}
+        placeholder="Search name or subject"
+        className="h-10 w-full rounded-xl border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:bg-j-surface-muted"
+      />
+    </label>
+    <div className="flex flex-wrap gap-1.5">
+      {toggles.map(toggle => <button
+        key={toggle.key}
+        type="button"
+        disabled={disabled}
+        aria-pressed={filters[toggle.key]}
+        onClick={() => setFilters(current => ({ ...current, [toggle.key]: !current[toggle.key] }))}
+        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition disabled:opacity-50 ${filters[toggle.key] ? "bg-j-accent text-white ring-j-accent" : "bg-white text-j-ink-soft ring-j-border hover:bg-j-surface-sunken"}`}
+      >{toggle.label}</button>)}
+    </div>
+    {ranked.length === 0 ? <p className="rounded-xl border border-dashed border-j-field-border bg-j-surface-sunken p-3 text-xs text-j-ink-soft">No approved Tutor matches these narrowing choices. Clear one to widen the list.</p>
+      : <ul aria-label={`Tutor matches for request ${request.id}`} className="max-h-80 space-y-1.5 overflow-y-auto pr-0.5">
+        {ranked.map(entry => <li key={entry.tutor.id}>
+          <label className={`block cursor-pointer rounded-xl border p-2.5 transition ${selectedTutorId === entry.tutor.id ? "border-j-accent bg-j-accent-wash" : "border-j-border bg-white hover:border-j-accent/50"}`}>
+            <span className="flex items-start gap-2">
+              <input
+                type="radio"
+                name={`tutor-match-${request.id}`}
+                value={entry.tutor.id}
+                checked={selectedTutorId === entry.tutor.id}
+                disabled={disabled}
+                onChange={() => onSelect(entry.tutor.id)}
+                className="mt-1 h-4 w-4 shrink-0"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-sm font-bold text-j-ink">{entry.tutor.name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-j-ink-muted">{entry.tutor.experience} yr</span>
+                </span>
+                {entry.reasons.length ? <span className="mt-1 block space-y-0.5">{entry.reasons.map(reason => <span key={reason.kind} className="block text-xs leading-5 text-emerald-800">{reason.label}</span>)}</span> : null}
+                {entry.cautions.length ? <span className="mt-1 block space-y-0.5">{entry.cautions.map(caution => <span key={caution.kind} className="block text-xs leading-5 text-amber-800">{caution.label}</span>)}</span> : null}
+              </span>
+            </span>
+          </label>
+        </li>)}
+      </ul>}
+  </div>;
+}
+
+/**
  * The stages worth a number, in the order work moves through them.
  *
  * Not every state: `submitted` and `closed` are the ends of the line and
@@ -716,7 +801,7 @@ function MatchingWorkspaceContent() {
         {expiry ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${expiry.tone === "expired" ? "bg-red-50 text-red-800 ring-red-200" : expiry.tone === "soon" ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}>{expiry.label}</span> : null}
         {age ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${age.stale ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-j-surface-muted text-j-ink-soft ring-j-border"}`} title={age.quietLabel ?? undefined}>{age.label}{age.quietLabel ? ` · ${age.quietLabel}` : ""}</span> : null}
       </div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div>
-      <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Guardian</dt><dd className="mt-1 text-j-ink-strong">{request.guardianName ?? "Account unavailable"}{request.guardianPhone ? <a href={`tel:${request.guardianPhone}`} aria-label={`Call ${request.guardianName ?? "the Guardian"} on ${request.guardianPhone}`} className="ml-1.5 font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{request.guardianPhone}</a> : <span className="ml-1.5 text-j-ink-muted">no number on file</span>}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><select aria-label={`Select Tutor for request ${request.id}`} value={selectedTutor} onChange={event => setSelectedTutorByRequest(current => ({ ...current, [request.id]: event.target.value }))} disabled={assignmentBlocked} className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-j-surface-muted"><option value="">{tutors.isLoading ? "Loading approved Tutors…" : "Select approved Tutor"}</option>{(tutors.data ?? []).map(tutor => <option key={tutor.id} value={tutor.id}>{tutor.name} · {tutor.subjects.slice(0, 2).join(", ") || "Profile subject"}</option>)}</select><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
+      <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Guardian</dt><dd className="mt-1 text-j-ink-strong">{request.guardianName ?? "Account unavailable"}{request.guardianPhone ? <a href={`tel:${request.guardianPhone}`} aria-label={`Call ${request.guardianName ?? "the Guardian"} on ${request.guardianPhone}`} className="ml-1.5 font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{request.guardianPhone}</a> : <span className="ml-1.5 text-j-ink-muted">no number on file</span>}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><TutorMatchPicker request={request} tutors={(tutors.data ?? []) as MatchingTutorOption[]} isLoading={tutors.isLoading} disabled={assignmentBlocked} selectedTutorId={selectedTutor} onSelect={tutorId => setSelectedTutorByRequest(current => ({ ...current, [request.id]: tutorId }))} /><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
     })}</section>}
     {totalPages > 1 ? <nav aria-label="Matching request pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm"><p className="text-sm text-j-ink-soft">Page {page} of {totalPages}</p><div className="flex gap-2"><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.max(1, page - 1) }))} disabled={page <= 1} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.min(totalPages, page + 1) }))} disabled={page >= totalPages} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></div></nav> : null}
   </div>;
