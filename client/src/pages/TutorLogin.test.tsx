@@ -22,12 +22,10 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/lib/tutorPortalSession", () => ({
-  clearCurrentTutorPortalLoginHandoff: vi.fn(),
   clearCurrentTutorPortalToken: vi.fn(),
   consumeCurrentTutorSignedOutNotice: () => false,
   consumeCurrentTutorPortalReauthNotice: () => false,
   getCurrentTutorPortalToken: () => null,
-  markCurrentTutorPortalLoginHandoff: vi.fn(),
   storeCurrentTutorPortalToken: vi.fn(),
 }));
 

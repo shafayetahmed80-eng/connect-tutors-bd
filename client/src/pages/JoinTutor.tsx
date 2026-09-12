@@ -5,7 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useSiteContentResolver } from "@/lib/siteContent";
 import { BANGLADESH_COUNTRY_CODE, formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
-import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, getCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
+import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
 import { ArrowRight, ChevronDown, Eye, EyeOff, LoaderCircle, MapPin, MapPinned } from "lucide-react";
@@ -138,9 +138,7 @@ export default function JoinTutor() {
       await completeTutorLoginHandoff({
         tutorPortalToken: result.tutorPortalToken,
         storeTutorPortalToken: storeCurrentTutorPortalToken,
-        markPortalLoginHandoff: markCurrentTutorPortalLoginHandoff,
         clearTutorPortalToken: clearCurrentTutorPortalToken,
-        clearPortalLoginHandoff: clearCurrentTutorPortalLoginHandoff,
         fetchAuthenticatedUser: () => utils.auth.me.fetch(),
         navigate,
         destination: TUTOR_REGISTRATION_DESTINATION,

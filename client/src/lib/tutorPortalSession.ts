@@ -3,7 +3,6 @@ export const TUTOR_PORTAL_GLOBAL_LOGOUT_EVENT_KEY = "connect-tutors:tutor-portal
 export const TUTOR_PORTAL_LOGOUT_EVENT_KEY = TUTOR_PORTAL_GLOBAL_LOGOUT_EVENT_KEY;
 export const TUTOR_PORTAL_SIGNED_OUT_NOTICE_KEY = "connect-tutors:tutor-signed-out-notice";
 export const TUTOR_PORTAL_REAUTH_NOTICE_KEY = "connect-tutors:tutor-portal-reauth-notice";
-export const TUTOR_PORTAL_LOGIN_HANDOFF_KEY = "connect-tutors:tutor-login-handoff";
 const TUTOR_PORTAL_RENEWAL_INTERVAL_MS = 20_000;
 
 type SessionStorageLike = Pick<Storage, "getItem" | "removeItem" | "setItem">;
@@ -51,18 +50,6 @@ export function storeTutorPortalToken(storage: SessionStorageLike, token: string
 
 export function clearTutorPortalToken(storage: Pick<Storage, "removeItem">) {
   storage.removeItem(TUTOR_PORTAL_SESSION_STORAGE_KEY);
-}
-
-export function markTutorPortalLoginHandoff(storage: Pick<Storage, "setItem">) {
-  storage.setItem(TUTOR_PORTAL_LOGIN_HANDOFF_KEY, "1");
-}
-
-export function clearTutorPortalLoginHandoff(storage: Pick<Storage, "removeItem">) {
-  storage.removeItem(TUTOR_PORTAL_LOGIN_HANDOFF_KEY);
-}
-
-export function isTutorPortalLoginHandoffActive(storage: Pick<Storage, "getItem">) {
-  return storage.getItem(TUTOR_PORTAL_LOGIN_HANDOFF_KEY) === "1";
 }
 
 export function markTutorSignedOutNotice(storage: Pick<Storage, "setItem">) {
@@ -114,21 +101,6 @@ export function storeCurrentTutorPortalToken(token: string) {
 export function clearCurrentTutorPortalToken() {
   if (typeof window === "undefined") return;
   clearTutorPortalToken(window.localStorage);
-}
-
-export function markCurrentTutorPortalLoginHandoff() {
-  if (typeof window === "undefined") return;
-  markTutorPortalLoginHandoff(window.sessionStorage);
-}
-
-export function clearCurrentTutorPortalLoginHandoff() {
-  if (typeof window === "undefined") return;
-  clearTutorPortalLoginHandoff(window.sessionStorage);
-}
-
-export function isCurrentTutorPortalLoginHandoffActive() {
-  if (typeof window === "undefined") return false;
-  return isTutorPortalLoginHandoffActive(window.sessionStorage);
 }
 
 export function markCurrentTutorSignedOutNotice() {

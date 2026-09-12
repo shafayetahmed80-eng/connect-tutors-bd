@@ -5,7 +5,7 @@ import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarnin
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { trpc } from "@/lib/trpc";
 import { RecordIcon } from "@/components/recordIcons";
-import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, consumeCurrentTutorPortalReauthNotice, consumeCurrentTutorSignedOutNotice, getCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
+import { clearCurrentTutorPortalToken, consumeCurrentTutorPortalReauthNotice, consumeCurrentTutorSignedOutNotice, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
 import { ArrowRight, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
@@ -70,9 +70,7 @@ export default function TutorLogin() {
       await completeTutorLoginHandoff({
         tutorPortalToken: result.tutorPortalToken,
         storeTutorPortalToken: storeCurrentTutorPortalToken,
-        markPortalLoginHandoff: markCurrentTutorPortalLoginHandoff,
         clearTutorPortalToken: clearCurrentTutorPortalToken,
-        clearPortalLoginHandoff: clearCurrentTutorPortalLoginHandoff,
         fetchAuthenticatedUser: () => utils.auth.me.fetch(),
         navigate,
       });

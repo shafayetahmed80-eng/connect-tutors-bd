@@ -8,9 +8,7 @@ export type FreshTutorAuthIdentity = {
 type TutorLoginHandoffOptions = {
   tutorPortalToken: string;
   storeTutorPortalToken: (token: string) => void;
-  markPortalLoginHandoff: () => void;
   clearTutorPortalToken: () => void;
-  clearPortalLoginHandoff: () => void;
   fetchAuthenticatedUser: () => Promise<FreshTutorAuthIdentity>;
   navigate: (destination: string) => void;
   /** Where to land inside the Tutor portal once the hand-off succeeds. */
@@ -21,15 +19,12 @@ type TutorLoginHandoffOptions = {
 export async function completeTutorLoginHandoff({
   tutorPortalToken,
   storeTutorPortalToken,
-  markPortalLoginHandoff,
   clearTutorPortalToken,
-  clearPortalLoginHandoff,
   fetchAuthenticatedUser,
   navigate,
   destination = "/tutor/dashboard",
 }: TutorLoginHandoffOptions) {
   storeTutorPortalToken(tutorPortalToken);
-  markPortalLoginHandoff();
 
   try {
     const authenticatedUser = await fetchAuthenticatedUser();
@@ -39,7 +34,6 @@ export async function completeTutorLoginHandoff({
     navigate(destination);
   } catch (error) {
     clearTutorPortalToken();
-    clearPortalLoginHandoff();
     throw error;
   }
 }

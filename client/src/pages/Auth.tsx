@@ -18,7 +18,7 @@ import { TRPCClientError } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
 import { RecordIcon } from "@/components/recordIcons";
 import { getSafeTutorApplyReturnPath, getTutorApplyPostLoginPath, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
-import { clearCurrentTutorPortalLoginHandoff, clearCurrentTutorPortalToken, markCurrentTutorPortalLoginHandoff, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
+import { clearCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 
 /**
  * Thrown when the server accepted the credentials but the session cannot be
@@ -169,14 +169,13 @@ export default function AuthPage() {
     event.preventDefault();
     setFormError(null);
     setIsEnteringTutorWorkspace(false);
-    let tutorPortalHandoffEstablished = false;
+    let tutorPortalTokenStored = false;
     try {
       const result = await loginAccount.mutateAsync({ role, identifier, password });
       if (result.user.role === "tutor") {
         if (!result.tutorPortalToken) throw new SignedInButBlockedError("Signed in, but the Tutor portal proof was not issued. Please try again.");
         storeCurrentTutorPortalToken(result.tutorPortalToken);
-        markCurrentTutorPortalLoginHandoff();
-        tutorPortalHandoffEstablished = true;
+        tutorPortalTokenStored = true;
         setIsEnteringTutorWorkspace(true);
       }
       // The page-load `auth.me` cached `null` under the app's 30s staleTime, so
@@ -187,7 +186,6 @@ export default function AuthPage() {
       const authenticatedUser = await utils.auth.me.fetch();
       if (result.user.role === "tutor" && authenticatedUser?.role !== "tutor") {
         clearCurrentTutorPortalToken();
-        clearCurrentTutorPortalLoginHandoff();
         throw new SignedInButBlockedError("Signed in, but this account is not a Tutor account.");
       }
       const tutorApplyReturnPath = getTutorApplyReturnFromLocation(location);
@@ -205,9 +203,8 @@ export default function AuthPage() {
       navigate(getPostLoginPath(result.user.role, tutorApplyReturnPath, tutorProfileStatus));
     } catch (cause) {
       setIsEnteringTutorWorkspace(false);
-      if (tutorPortalHandoffEstablished) {
+      if (tutorPortalTokenStored) {
         clearCurrentTutorPortalToken();
-        clearCurrentTutorPortalLoginHandoff();
       }
       // A suspended/closed account (FORBIDDEN) or a rate-limit block
       // (TOO_MANY_REQUESTS) carries an honest, actionable server message; show
