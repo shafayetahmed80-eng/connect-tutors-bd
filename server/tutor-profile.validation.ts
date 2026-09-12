@@ -133,18 +133,14 @@ const educationRecordSchema = z.object({
   registrationNumber: optionalTrimmedText(60),
 }).strict().superRefine((value, ctx) => {
   // A board exam has no span to check and no ongoing state: SSC and HSC are
-  // passed in one year, so the university rules below would be asking a school
+  // passed in one year, so the university rule below would be asking a school
   // record for fields it does not have.
   if (isSchoolQualification(value.qualificationLevel)) return;
 
-  if (!value.currentlyStudying && value.studyEndYear === undefined) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["studyEndYear"],
-      message: "Study end year is required unless Currently Studying is selected.",
-    });
-  }
-
+  // Only the order of two given years is checked here. Whether an end year is
+  // *present* is a submission question, not a draft one - asking for it here
+  // meant a half-typed degree could not be saved at all, and the University
+  // Section popup simply refused to close.
   if (value.studyEndYear !== undefined && value.studyStartYear !== undefined && value.studyEndYear < value.studyStartYear) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -333,6 +329,19 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: `Add your ${heading} qualification before profile submission.` });
       }
     }
+
+    // The end year every finished degree needs. Code-owned rather than
+    // config-driven, because it branches on `currentlyStudying`; school
+    // records are passed in a single year and have none.
+    value.educationRecords?.forEach((record, index) => {
+      if (isSchoolQualification(record.qualificationLevel)) return;
+      if (record.currentlyStudying || record.studyEndYear !== undefined) return;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["educationRecords", index, "studyEndYear"],
+        message: "Study end year is required unless Currently Studying is selected.",
+      });
+    });
 
     if (value.educationRecords?.length) {
       const requiredRecordFields = Array.from(config.byId.values()).filter(

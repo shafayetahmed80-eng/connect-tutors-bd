@@ -30,6 +30,14 @@ export default defineConfig({
     // Deterministic secrets so crypto-dependent server tests (guardian intake
     // handoff signing, admin invite/2FA key material) run without a sourced .env.
     env: {
+      // Pinned so the suite reads dates the way the audience does.
+      //
+      // Every date formatter in the app renders in the machine's own zone.
+      // On a laptop west of UTC a fixture timestamped near midnight formats
+      // as the day before, and seven tests that assert a rendered date fail
+      // for no reason but where the laptop is - which is exactly what
+      // happened when this one moved from UTC+6 to UTC-6.
+      TZ: "Asia/Dhaka",
       JWT_SECRET: process.env.JWT_SECRET ?? "vitest-deterministic-secret",
       VITE_APP_ID: process.env.VITE_APP_ID ?? "vitest",
       // Database-backed tests read process.env.DATABASE_URL directly. Fall back
