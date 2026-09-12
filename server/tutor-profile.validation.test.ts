@@ -258,6 +258,37 @@ describe("Tutor Profile domain validation", () => {
     expect(calculateTutorProfileCompletion(completeSubmission)).toBe(100);
   });
 
+  it("saves a half-typed degree as a draft, and asks for its end year only at submission", () => {
+    // The University Section popup saves a draft on Submit. Demanding the end
+    // year at draft level meant a degree whose dates had not been reached yet
+    // could not be saved at all - the popup refused to close and said nothing
+    // a person could act on.
+    const halfTyped = {
+      qualificationLevel: "Honours" as const,
+      instituteName: "University of Dhaka",
+      currentlyStudying: false,
+    };
+
+    expect(tutorProfileDraftSchema.safeParse({ educationRecords: [halfTyped] }).success).toBe(true);
+
+    const submission = tutorProfileSubmissionSchema.safeParse({
+      ...approvedExpandedSubmission,
+      educationRecords: withDegreeRecord({ studyEndYear: undefined }),
+    });
+    expect(submission.success).toBe(false);
+    if (!submission.success) {
+      expect(submission.error.issues.map(issue => issue.path.join("."))).toContain("educationRecords.2.studyEndYear");
+    }
+  });
+
+  it("never asks a board-exam record for an end year, at either level", () => {
+    const sscDraft = { qualificationLevel: "SSC" as const, instituteName: "Narandia High School", currentlyStudying: false };
+    expect(tutorProfileDraftSchema.safeParse({ educationRecords: [sscDraft] }).success).toBe(true);
+
+    const submission = tutorProfileSubmissionSchema.safeParse(approvedExpandedSubmission);
+    expect(submission.success).toBe(true);
+  });
+
   it("rejects qualification records outside the curated vocabularies or with an inverted year range", () => {
     const parseWithRecord = (overrides: Record<string, unknown>) =>
       tutorProfileSubmissionSchema.safeParse({
