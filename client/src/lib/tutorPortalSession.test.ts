@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   clearTutorPortalToken,
-  clearTutorPortalLoginHandoff,
   getTutorPortalToken,
   getTutorPortalRenewalIntervalMs,
-  isTutorPortalLoginHandoffActive,
-  markTutorPortalLoginHandoff,
   consumeTutorSignedOutNotice,
   markTutorSignedOutNotice,
   shouldRequireTutorPortalSignIn,
@@ -92,15 +89,6 @@ describe("Tutor portal-session browser storage", () => {
     expect(getTutorPortalToken(storage)).toBeNull();
   });
 
-  it("marks and clears the sign-in hand-off flag for one tab", () => {
-    const storage = createStorage();
-
-    markTutorPortalLoginHandoff(storage);
-    expect(isTutorPortalLoginHandoffActive(storage)).toBe(true);
-
-    clearTutorPortalLoginHandoff(storage);
-    expect(isTutorPortalLoginHandoffActive(storage)).toBe(false);
-  });
 
   it("renews an active Dashboard proof before the one-minute server expiry", () => {
     expect(getTutorPortalRenewalIntervalMs()).toBe(20_000);
