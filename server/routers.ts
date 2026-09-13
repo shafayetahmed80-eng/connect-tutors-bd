@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { appointmentRefusalMessages } from "./guardian-applicant-actions";
+import { adminAppointmentRefusalMessages } from "./admin-appointment";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
@@ -164,6 +165,10 @@ function rethrowTutorInterestError(error: unknown): never {
     TUTOR_INTEREST_NOT_FOUND: new TRPCError({ code: "NOT_FOUND", message: "Your Job Board interest was not found." }),
     TUTOR_INTEREST_INVALID_TRANSITION: new TRPCError({ code: "CONFLICT", message: "This interest cannot be moved to that status." }),
     TUTOR_INTEREST_ADMIN_ONLY: new TRPCError({ code: "FORBIDDEN", message: "Only an Admin can perform that interest action." }),
+    // "Mark matched" appoints through the same path as approving a Guardian's request.
+    TUTOR_INTEREST_APPOINTMENT_NOT_LIVE: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.not_live }),
+    TUTOR_INTEREST_APPOINTMENT_TUTOR_UNAVAILABLE: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.tutor_unavailable }),
+    TUTOR_INTEREST_APPOINTMENT_INVALID_TRANSITION: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.invalid_transition }),
   };
   throw errors[error.message] ?? error;
 }
@@ -1696,12 +1701,28 @@ export const appRouter = router({
       .query(({ input }) => db.listTutorJobInterestsForAdmin(input)),
     reviewTutorJobInterest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive(), status: z.enum(["shortlisted", "declined", "matched"]) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         try {
-          return await db.reviewTutorJobInterestByAdmin(input);
+          return await db.reviewTutorJobInterestByAdmin({ ...input, adminUserId: ctx.user.id });
         } catch (error) {
           return rethrowTutorInterestError(error);
         }
+      }),
+    approveAppointmentRequest: adminProcedure
+      .input(z.object({ interestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.appointApplicantByAdmin({ adminUserId: ctx.user.id, interestId: input.interestId, requireGuardianRequest: true });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages[result.reason] });
+        return { appointed: true as const };
+      }),
+    declineAppointmentRequest: adminProcedure
+      .input(z.object({ interestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.declineAppointmentRequestByAdmin({ adminUserId: ctx.user.id, interestId: input.interestId });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.not_requested });
+        return { declined: true as const };
       }),
     listTutorRequestPublicationEvents: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))

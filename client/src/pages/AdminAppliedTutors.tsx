@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
-import AdminTutorRows from "@/components/AdminTutorRows";
+import AdminTutorRows, { type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
@@ -10,6 +11,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
 
 /**
@@ -29,6 +31,22 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const applied = trpc.admin.listAppliedTutors.useQuery({ ...filters, requestId }, { retry: false });
   const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
   const job = applied.data?.job;
+
+  const utils = trpc.useUtils();
+  const [approving, setApproving] = useState<AdminTutorRow | null>(null);
+  const refresh = () => {
+    void utils.admin.listAppliedTutors.invalidate();
+    void utils.admin.listPostedJobs.invalidate();
+  };
+  const onError = (error: { message: string }) => { toast.error(error.message); };
+  const approve = trpc.admin.approveAppointmentRequest.useMutation({ onSuccess: () => { setApproving(null); refresh(); }, onError });
+  const decline = trpc.admin.declineAppointmentRequest.useMutation({ onSuccess: refresh, onError });
+  const appointmentActions: AdminAppointmentRequestActions = {
+    busy: approve.isPending || decline.isPending,
+    // Approving hands both people each other's number, so it is confirmed first.
+    onApprove: tutor => setApproving(tutor),
+    onDecline: tutor => { if (tutor.interestId) decline.mutate({ interestId: tutor.interestId }); },
+  };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <Link href="/admin/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
@@ -64,15 +82,27 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 
     {!applied.isLoading && !applied.isError
       ? <AdminTutorRows
-          tutors={applied.data?.items ?? []}
+          tutors={(applied.data?.items ?? []).map(row => ({ ...row, appointed: Boolean(job?.appointedTutorId) && row.id === job?.appointedTutorId }))}
           caption="Tutors who applied to this tuition"
           emptyLabel={activeFilterCount ? "No applicant matches the active filters." : "No Tutor has applied to this tuition yet."}
           serialFrom={(filters.page - 1) * filters.pageSize + 1}
           showGuardianMarks
+          appointmentActions={appointmentActions}
         />
       : null}
 
     <TutorListPager page={filters.page} totalPages={applied.data?.totalPages ?? 1} onPage={next => updateFilter({ page: next })} label="Applied Tutor pages" />
+
+    {approving ? <Modal size="sm" onClose={() => setApproving(null)} busy={approve.isPending}>
+      <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
+      <ModalBody>
+        <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setApproving(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
+      </ModalFooter>
+    </Modal> : null}
   </div>;
 }
 

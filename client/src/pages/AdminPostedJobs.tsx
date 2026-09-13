@@ -128,7 +128,8 @@ export function AdminPostedJobsContent() {
               }}
               onOpen={() => setExpandedId(job.id)}
               action={<span className="flex items-center gap-3.5">
-                {lifecycle.key === "live" ? <AppliedTutorsButton href={`/admin/applied-tutors/${job.id}`} count={job.appliedTutorCount} /> : null}
+                {job.appointmentRequested ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
+                {lifecycle.key === "live" || lifecycle.key === "appointed" ? <AppliedTutorsButton href={`/admin/applied-tutors/${job.id}`} count={job.appliedTutorCount} /> : null}
                 <DetailsAction />
               </span>}
               showMapLink={false}
@@ -177,7 +178,7 @@ export function AdminPostedJobsContent() {
         <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
         <button type="button" onClick={() => { setStatusJobId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
         <button type="button" onClick={() => { setEditingId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]"><FilePenLine size={13} /> Edit</button>
-        {getGuardianRequestLifecycle(openJob).key === "live"
+        {["live", "appointed"].includes(getGuardianRequestLifecycle(openJob).key)
           ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
           : null}
       </>}

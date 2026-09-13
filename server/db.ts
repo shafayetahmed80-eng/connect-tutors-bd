@@ -96,6 +96,7 @@ import {
 } from "./guardian-applicants";
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
+import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -3559,7 +3560,19 @@ export async function listTutorJobInterestsForAdmin(input: { tutorJobId?: number
 export async function reviewTutorJobInterestByAdmin(input: {
   interestId: number;
   status: Exclude<TutorInterestDatabaseStatus, "interested" | "withdrawn">;
+  /** Needed for "matched", which is an appointment and is recorded against the Admin. */
+  adminUserId?: number;
 }) {
+  if (input.status === "matched") {
+    // "Mark matched" appoints the applicant, so it takes the same path as
+    // approving a Guardian's request - the request, the Tutor and the Guardian
+    // all hear about it the same way.
+    if (input.adminUserId === undefined) throw new Error("TUTOR_INTEREST_ADMIN_ONLY");
+    const result = await appointApplicantByAdmin({ adminUserId: input.adminUserId, interestId: input.interestId, requireGuardianRequest: false });
+    if (result.outcome === "not_found") throw new Error("TUTOR_INTEREST_NOT_FOUND");
+    if (result.outcome === "refused") throw new Error(`TUTOR_INTEREST_APPOINTMENT_${result.reason.toUpperCase()}`);
+    return { interestId: input.interestId, status: "matched" as const };
+  }
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
@@ -4542,6 +4555,8 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
       tuitionType: tutorRequests.tuitionType,
       guardianName: users.name,
       guardianPhone: guardianProfiles.phone,
+      // Which applicant, if any, holds the appointment - the row says so.
+      appointedTutorId: tutorRequests.tutorId,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
@@ -4562,6 +4577,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const rows = await database
     .select({
       ...adminTutorDirectoryFields,
+      interestId: tutorJobInterests.id,
       appliedAt: tutorJobInterests.createdAt,
       guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
       appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
@@ -5122,6 +5138,188 @@ export async function withdrawGuardianAppointmentRequest(input: GuardianApplican
   });
 }
 
+/**
+ * Appoints one applicant to a Live tuition.
+ *
+ * The request takes the Tutor (Appointed - the demo-class stage) with no
+ * contact-consent step: the Guardian choosing the Tutor is the consent, and an
+ * Admin appointing on their behalf stands in for it. The tuition's Job Board
+ * listing is left alone, so other Tutors can still apply. Every request
+ * waiting on the tuition is answered by the appointment, the Tutor is told the
+ * Guardian's name and number, and the Guardian is told the Tutor's number is
+ * on their list.
+ */
+export async function appointApplicantByAdmin(input: { adminUserId: number; interestId: number; requireGuardianRequest: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [target] = await tx
+      .select({
+        interestId: tutorJobInterests.id,
+        interestStatus: tutorJobInterests.status,
+        tutorId: tutorJobInterests.tutorId,
+        appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
+        tutorJobId: tutorJobInterests.tutorJobId,
+        publicJobId: tutorJobs.publicJobId,
+        requestId: tutorJobs.tutorRequestId,
+        tutorProfileStatus: tutors.profileStatus,
+      })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+      .where(eq(tutorJobInterests.id, input.interestId))
+      .limit(1)
+      .for("update");
+    if (!target || target.requestId == null) return { outcome: "not_found" as const };
+
+    const [request] = await tx
+      .select({
+        id: tutorRequests.id,
+        guardianUserId: tutorRequests.guardianUserId,
+        status: tutorRequests.status,
+        publicationState: tutorRequests.publicationState,
+        tutorId: tutorRequests.tutorId,
+        appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      })
+      .from(tutorRequests)
+      .where(eq(tutorRequests.id, target.requestId))
+      .limit(1)
+      .for("update");
+    if (!request) return { outcome: "not_found" as const };
+
+    const decision = canAppointApplicant({
+      lifecycle: getGuardianRequestLifecycle(request),
+      interestStatus: target.interestStatus,
+      tutorApproved: target.tutorProfileStatus === "approved",
+      requested: target.appointmentRequestedAt !== null,
+      requireRequest: input.requireGuardianRequest,
+    });
+    if (!decision.allowed) return { outcome: "refused" as const, reason: decision.reason };
+
+    const [guardian] = await tx
+      .select({ name: users.name, phone: guardianProfiles.phone })
+      .from(users)
+      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+      .where(eq(users.id, request.guardianUserId))
+      .limit(1);
+
+    const now = new Date();
+    await tx.update(tutorRequests)
+      .set({ tutorId: target.tutorId, status: "matched", contactConsent: "approved", lastActivityAt: now })
+      .where(eq(tutorRequests.id, request.id));
+    await tx.update(tutorJobInterests)
+      .set({ status: "matched", appointmentRequestedAt: null })
+      .where(eq(tutorJobInterests.id, target.interestId));
+    // The appointment answers every request still waiting on this tuition.
+    await tx.update(tutorJobInterests)
+      .set({ appointmentRequestedAt: null })
+      .where(and(eq(tutorJobInterests.tutorJobId, target.tutorJobId), isNotNull(tutorJobInterests.appointmentRequestedAt)));
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: request.id,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_appointed",
+      changedFields: JSON.stringify(["tutor_appointed"]),
+    });
+
+    const note = appointedTutorNotification({ jobId: target.publicJobId, guardianName: guardian?.name ?? null, guardianPhone: guardian?.phone ?? null });
+    await createTutorNotification(tx, {
+      tutorId: target.tutorId,
+      type: "appointment",
+      title: note.title,
+      message: note.message,
+      actionPath: "/tutor/dashboard/status",
+      deduplicationKey: `interest:${target.interestId}:matched`,
+    });
+    const guardianNote = {
+      title: "A Tutor has been appointed to your request",
+      message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
+      actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
+    };
+    await tx.insert(guardianRequestNotifications).values({
+      guardianUserId: request.guardianUserId,
+      tutorRequestId: request.id,
+      type: "lifecycle",
+      ...guardianNote,
+      deduplicationKey: `lifecycle:${request.id}:appointed`,
+    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+
+    return { outcome: "appointed" as const, requestId: request.id, tutorId: target.tutorId };
+  });
+}
+
+/** Declines a Guardian's appointment request; the Guardian may then ask for another applicant. */
+export async function declineAppointmentRequestByAdmin(input: { adminUserId: number; interestId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [target] = await tx
+      .select({
+        interestId: tutorJobInterests.id,
+        tutorId: tutorJobInterests.tutorId,
+        appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
+        requestId: tutorJobs.tutorRequestId,
+      })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .where(eq(tutorJobInterests.id, input.interestId))
+      .limit(1)
+      .for("update");
+    if (!target || target.requestId == null) return { outcome: "not_found" as const };
+
+    const [request] = await tx
+      .select({
+        id: tutorRequests.id,
+        guardianUserId: tutorRequests.guardianUserId,
+        status: tutorRequests.status,
+        publicationState: tutorRequests.publicationState,
+        tutorId: tutorRequests.tutorId,
+        appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      })
+      .from(tutorRequests)
+      .where(eq(tutorRequests.id, target.requestId))
+      .limit(1)
+      .for("update");
+    if (!request) return { outcome: "not_found" as const };
+    if (!canDeclineAppointmentRequest({ lifecycle: getGuardianRequestLifecycle(request), requested: target.appointmentRequestedAt !== null })) {
+      return { outcome: "refused" as const };
+    }
+
+    const [registration] = await tx
+      .select({ tutorNumber: tutorRegistrations.tutorNumber })
+      .from(tutors)
+      .innerJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+      .where(eq(tutors.id, target.tutorId))
+      .limit(1);
+
+    const now = new Date();
+    await tx.update(tutorJobInterests).set({ appointmentRequestedAt: null }).where(eq(tutorJobInterests.id, target.interestId));
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: request.id,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_declined_appointment",
+      changedFields: JSON.stringify(["appointment_request_declined"]),
+    });
+    const guardianNote = {
+      title: "Your appointment request was not approved",
+      message: registration?.tutorNumber != null
+        ? `The request to appoint Tutor ID ${registration.tutorNumber} was declined. You can ask to appoint another applicant.`
+        : "The appointment request was declined. You can ask to appoint another applicant.",
+      actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
+    };
+    await tx.insert(guardianRequestNotifications).values({
+      guardianUserId: request.guardianUserId,
+      tutorRequestId: request.id,
+      type: "lifecycle",
+      ...guardianNote,
+      deduplicationKey: `appointment-request:${target.interestId}:declined`,
+    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+
+    return { outcome: "declined" as const };
+  });
+}
+
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -5179,6 +5377,16 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .where(where);
   const total = Number(totals[0]?.value ?? 0);
   const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
+  // A request waiting on the Admin is marked on the card, so it is found without opening every tuition.
+  const waitingRows = items.length
+    ? await database
+        .select({ requestId: tutorJobs.tutorRequestId })
+        .from(tutorJobInterests)
+        .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+        .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+        .where(and(inArray(tutorJobs.tutorRequestId, items.map(item => item.id)), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+    : [];
+  const appointmentRequestedIds = new Set(waitingRows.map(row => row.requestId));
 
   return {
     // `guardianOpenId` is a server-side identifier and does not leave: what
@@ -5187,6 +5395,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     items: items.map(({ guardianOpenId, ...item }) => ({
       ...item,
       appliedTutorCount: appliedByRequest.get(item.id) ?? 0,
+      appointmentRequested: appointmentRequestedIds.has(item.id),
       guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
     })),
     counts,

@@ -109,7 +109,8 @@ describe("Tutor Job Board interest procedures", () => {
     const caller = createCaller({ user: verifiedAdmin });
 
     await expect((caller.admin as any).reviewTutorJobInterest({ interestId: 12, status: "shortlisted" })).resolves.toEqual({ interestId: 12, status: "shortlisted" });
-    expect(interestDbMocks.reviewTutorJobInterestByAdmin).toHaveBeenCalledWith({ interestId: 12, status: "shortlisted" });
+    // The Admin's id goes along: "matched" is an appointment, recorded against them.
+    expect(interestDbMocks.reviewTutorJobInterestByAdmin).toHaveBeenCalledWith({ interestId: 12, status: "shortlisted", adminUserId: verifiedAdmin.id });
   });
 
   it("rejects Tutor-controlled or withdrawn review statuses before the Admin workflow runs", async () => {

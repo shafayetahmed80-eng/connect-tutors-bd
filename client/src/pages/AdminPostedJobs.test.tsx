@@ -70,7 +70,11 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { AdminPostedJobsContent } from "./AdminPostedJobs";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.data.items[0].publicationState = "submitted"; });
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentRequested: false });
+});
 
 describe("Admin Posted jobs board", () => {
   it("mirrors the Guardian's five stages with counts across every Guardian", () => {
@@ -157,6 +161,21 @@ describe("Admin Posted jobs board", () => {
 
     await user.click(card);
     expect(within(screen.getByRole("dialog")).getByRole("link", { name: /Applied Tutors/ })).toBeTruthy();
+  });
+
+  it("marks a tuition whose Guardian asked for an appointment", () => {
+    Object.assign(mocks.data.items[0], { publicationState: "published", appointmentRequested: true });
+    render(<AdminPostedJobsContent />);
+
+    expect(within(screen.getByRole("button", { name: /Job ID 6812/ })).getByText("Appointment requested")).toBeTruthy();
+  });
+
+  it("keeps the applicants one click away once a Tutor is Appointed", () => {
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175" });
+    render(<AdminPostedJobsContent />);
+
+    expect(within(screen.getByRole("button", { name: /Job ID 6812/ })).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href"))
+      .toBe("/admin/applied-tutors/13");
   });
 
   it("keeps the applied count off a tuition that is not live yet", () => {
