@@ -2047,7 +2047,7 @@ export async function createAdminPostedTuition(input: {
   if (!database) throw new Error("Database is not available");
   const requestId = await database.transaction(async tx => {
     const guardianUserId = await resolveAdminPostedGuardian(tx as JobProjectionTransaction, input.guardian);
-    const created = await tx.insert(tutorRequests).values({ ...input.request, guardianUserId });
+    const created = await tx.insert(tutorRequests).values({ ...input.request, guardianUserId, postedByAdmin: 1 });
     return Number(created[0].insertId);
   });
 
@@ -4585,6 +4585,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
       guardianPhone: guardianProfiles.phone,
       // Which applicant, if any, holds the appointment - the row says so.
       appointedTutorId: tutorRequests.tutorId,
+      postedByAdmin: tutorRequests.postedByAdmin,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
@@ -4775,6 +4776,8 @@ const adminPostedJobFields = {
   guardianId: guardianProfiles.guardianId,
   // Server-side only: mapped to `guardianIsAdminPosted` before it leaves.
   guardianOpenId: users.openId,
+  // Who put the tuition up - the Admin Post / Guardian Post mark on the card.
+  postedByAdmin: tutorRequests.postedByAdmin,
   tuitionType: tutorRequests.tuitionType,
   category: tutorRequests.category,
   curriculumType: tutorRequests.curriculumType,

@@ -1,6 +1,7 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminAddTuitionModal, { type AdminTuitionDraft } from "@/components/AdminAddTuitionModal";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
+import PostTypeBadge from "@/components/PostTypeBadge";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
 import JobDetailsModal, { JobDetailRow } from "@/components/JobDetailsModal";
@@ -143,6 +144,7 @@ export function AdminPostedJobsContent() {
                 preferredTutorGender: job.preferredGender,
               }}
               onOpen={() => setExpandedId(job.id)}
+              footerStart={<PostTypeBadge postedByAdmin={job.postedByAdmin} />}
               action={<span className="flex items-center gap-3.5">
                 {job.appointmentRequested ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
                 {lifecycle.key === "live" || lifecycle.key === "appointed" ? <AppliedTutorsButton href={`/admin/applied-tutors/${job.id}`} count={job.appliedTutorCount} /> : null}
@@ -181,6 +183,7 @@ export function AdminPostedJobsContent() {
       }}
       onClose={() => setExpandedId(null)}
       showMapLink={false}
+      footerStart={<PostTypeBadge postedByAdmin={openJob.postedByAdmin} />}
       extraRows={<>
         {/* Admin-only tail: the private address, where the request came from,
             and the Guardian behind it. */}

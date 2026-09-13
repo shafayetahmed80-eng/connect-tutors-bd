@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
     items: [{
       id: 13, classCourse: "Class 8", subjects: JSON.stringify(["History"]),
       tuitionLocationLabel: "Banasree, Dhaka", locationText: "Banasree", budgetAmount: 5000,
-      daysPerWeek: 3, guardianName: "Sojib Rahman", appliedTutorCount: 7,
+      daysPerWeek: 3, guardianName: "Sojib Rahman", appliedTutorCount: 7, postedByAdmin: 1,
     }],
     counts: { pending: 0, live: 1, appointed: 0, confirmed: 0, cancelled: 0 },
     total: 1, page: 1, pageSize: 20, totalPages: 1,
@@ -102,6 +102,8 @@ describe("Admin Applied Tutors page", () => {
     expect(screen.getByText("History, Home Economics")).toBeTruthy();
     expect(screen.getByText("3 days / week")).toBeTruthy();
     expect(screen.getByText("+8801674936203")).toBeTruthy();
+    // Right after the Job ID: who put the tuition up.
+    expect(screen.getByText("Posted By").textContent).toContain("Guardian");
   });
 
   it("lists the applicants as the Admin's own Tutor rows, numbered in application order", () => {
@@ -205,8 +207,12 @@ describe("the live tuitions the sidebar tab lands on", () => {
     for (const header of ["Job ID", "Class / Level", "Subjects", "Location", "Salary", "Days / Week", "Guardian", "Applied"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeTruthy();
     }
+    // Posted By sits straight after the Job ID.
+    const headers = screen.getAllByRole("columnheader").map(cell => cell.textContent);
+    expect(headers.slice(0, 2)).toEqual(["Job ID", "Posted By"]);
     const row = within(screen.getAllByRole("row")[1]);
     expect(row.getByText("6812")).toBeTruthy();
+    expect(row.getByText("Admin")).toBeTruthy();
     expect(row.getByText("7")).toBeTruthy();
     expect(row.getByRole("link", { name: /Open the applicants of Job ID 6812/i }).getAttribute("href"))
       .toBe("/admin/applied-tutors/13");

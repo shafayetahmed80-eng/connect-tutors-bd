@@ -60,7 +60,7 @@ function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; labe
   </div>;
 }
 
-export default function JobCard({ job, onOpen, action, showMapLink = true }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean }) {
+export default function JobCard({ job, onOpen, action, showMapLink = true, footerStart }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Leads the footer on the left - the Admin board puts the post type there. */ footerStart?: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean }) {
   const salary = formatSalaryAmount(job.budgetAmount);
   const place = formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel });
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
@@ -103,14 +103,19 @@ export default function JobCard({ job, onOpen, action, showMapLink = true }: { j
 
       {/* Pushed to the foot so every card in a row ends level. */}
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
-        {mapUrl
-          ? <a
-              href={mapUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={event => event.stopPropagation()}
-              className="inline-flex items-center gap-1 text-2xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline"
-            ><MapPin size={12} /> View on map</a>
+        {footerStart || mapUrl
+          ? <span className="flex min-w-0 items-center gap-3">
+              {footerStart}
+              {mapUrl
+                ? <a
+                    href={mapUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={event => event.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-2xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline"
+                  ><MapPin size={12} /> View on map</a>
+                : null}
+            </span>
           : <span />}
         {action}
       </div>
