@@ -11,6 +11,7 @@ import { Bell, Clock3, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, 
 import { Link, useLocation, useRoute } from "wouter";
 import { GuardianHireSheet } from "@/components/GuardianHireSheet";
 import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
+import { GuardianAppliedTuitionsContent, GuardianAppliedTutorsContent } from "@/pages/GuardianAppliedTutors";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -220,8 +221,12 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
 
   if (section === "confirmation-letter") return <GuardianConfirmationLetterPanel />;
 
-  // Applied Tutors is a tab with no layout yet; its design is a later step.
-  if (section === "applied-tutors") return <div data-testid="guardian-applied-tutors" className="space-y-6" />;
+  // The tab lands on the tuitions that can have applicants; one of them opens its list.
+  if (section === "applied-tutors") {
+    return requestId
+      ? <GuardianAppliedTutorsContent requestId={requestId} />
+      : <GuardianAppliedTuitionsContent requests={requests} isLoading={requestsQuery.isLoading} isError={requestsQuery.isError} />;
+  }
 
   if (section === "posted-jobs") {
     return <div className="space-y-6"><GuardianRequestTracking embedded detailRequestId={requestId} /></div>;
