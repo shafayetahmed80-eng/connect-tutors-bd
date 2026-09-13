@@ -1105,6 +1105,12 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
   /** Private operational reason recorded by an Admin when closing a request. */
   cancellationReason: varchar("cancellationReason", { length: 280 }),
+  /**
+   * 1 when an Admin added the tuition from Posted jobs, 0 when a Guardian
+   * posted it. On the request, not read off the Guardian account: an Admin can
+   * add a tuition for a Guardian who registered.
+   */
+  postedByAdmin: int("postedByAdmin").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   /** Updated by authorised matching and Guardian-edit workflow events for Admin queue follow-up. */
   lastActivityAt: timestamp("lastActivityAt").defaultNow().notNull(),

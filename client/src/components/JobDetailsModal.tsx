@@ -66,6 +66,7 @@ export default function JobDetailsModal({
   action,
   showMapLink = true,
   extraRows,
+  footerStart,
 }: {
   job: JobDetailsData;
   onClose: () => void;
@@ -78,6 +79,8 @@ export default function JobDetailsModal({
    * address, and the Guardian's own name and number at the end.
    */
   extraRows?: React.ReactNode;
+  /** Leads the footer on the left, opposite the actions - the Admin board's post type. */
+  footerStart?: React.ReactNode;
 }) {
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
@@ -134,7 +137,12 @@ export default function JobDetailsModal({
         </div>
       </ModalBody>
       <ModalFooter>
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">{action}</div>
+        {footerStart
+          ? <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center">{footerStart}</div>
+              <div className="flex flex-wrap items-center justify-end gap-2">{action}</div>
+            </div>
+          : <div className="flex flex-1 flex-wrap items-center justify-end gap-2">{action}</div>}
       </ModalFooter>
     </Modal>
   );

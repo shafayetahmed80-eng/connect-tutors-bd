@@ -2,6 +2,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminTutorRows, { type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
+import PostTypeBadge from "@/components/PostTypeBadge";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
 import { TutorDirectoryFilters, defaultTutorFilters, type TutorFilters } from "./AdminTutorProfiles";
@@ -58,7 +59,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
       </span>
 
-      {job ? <AppliedJobFacts job={job}>
+      {job ? <AppliedJobFacts job={job} afterJobId={<span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>}>
         <JobFact icon="phone" value={job.guardianPhone || "Not given"} />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
@@ -144,6 +145,7 @@ export function AdminLiveTuitionsContent() {
         <thead>
           <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
             <th scope="col" className="px-3 py-2.5">Job ID</th>
+            <th scope="col" className="px-3 py-2.5">Posted By</th>
             <th scope="col" className="px-3 py-2.5">Class / Level</th>
             <th scope="col" className="px-3 py-2.5">Subjects</th>
             <th scope="col" className="px-3 py-2.5">Location</th>
@@ -157,6 +159,7 @@ export function AdminLiveTuitionsContent() {
         <tbody>
           {items.map(job => <tr key={job.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
             <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</td>
+            <td className="px-3 py-2.5 align-top"><PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></td>
             <td className="px-3 py-2.5 align-top font-bold text-j-ink">{job.classCourse}</td>
             <td className="max-w-[16rem] px-3 py-2.5 align-top text-j-ink-strong">{formatSubjects(job.subjects)}</td>
             <td className="px-3 py-2.5 align-top text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</td>
@@ -172,7 +175,7 @@ export function AdminLiveTuitionsContent() {
               </Link>
             </td>
           </tr>)}
-          {items.length === 0 ? <tr><td colSpan={9} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live tuition{query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.</td></tr> : null}
+          {items.length === 0 ? <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live tuition{query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.</td></tr> : null}
         </tbody>
       </table>
     </div> : null}

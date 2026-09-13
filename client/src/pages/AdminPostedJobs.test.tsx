@@ -81,7 +81,7 @@ import { AdminPostedJobsContent } from "./AdminPostedJobs";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentRequested: false });
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentRequested: false, postedByAdmin: 0 });
 });
 
 describe("Admin Posted jobs board", () => {
@@ -184,6 +184,20 @@ describe("Admin Posted jobs board", () => {
     expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13 });
     await user.click(within(status).getByRole("button", { name: /Live/ }));
     expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 13 });
+  });
+
+  it("says on the card and in the details footer who posted the tuition", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<AdminPostedJobsContent />);
+    expect(within(screen.getByRole("button", { name: /Job ID 6812/ })).getByText("Guardian Post")).toBeTruthy();
+    unmount();
+
+    Object.assign(mocks.data.items[0], { postedByAdmin: 1 });
+    render(<AdminPostedJobsContent />);
+    const card = screen.getByRole("button", { name: /Job ID 6812/ });
+    expect(within(card).getByText("Admin Post")).toBeTruthy();
+    await user.click(card);
+    expect(within(screen.getByRole("dialog")).getByText("Admin Post")).toBeTruthy();
   });
 
   it("marks a tuition whose Guardian asked for an appointment", () => {

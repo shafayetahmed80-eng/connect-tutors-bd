@@ -27,11 +27,17 @@ export type AppliedJobSummary = {
  * The tuition an applicant list is read against. The Admin and the Guardian
  * see the same strip; the Admin's ends with the Guardian's own number.
  */
-export default function AppliedJobFacts({ job, children }: { job: AppliedJobSummary; children?: ReactNode }) {
+export default function AppliedJobFacts({ job, afterJobId, children }: {
+  job: AppliedJobSummary;
+  /** Read right after the Job ID - the Admin's Posted By. */
+  afterJobId?: ReactNode;
+  children?: ReactNode;
+}) {
   return <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-j-surface-sunken px-3.5 py-2.5 text-2xs">
     <span className="inline-flex items-center gap-1.5 font-bold text-[#173d60]">
       <RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID {jobIdForRequest(job.id)}
     </span>
+    {afterJobId}
     <JobFact icon="tutorGender" value={`${formatTutorPreference(job.preferredGender)} Tutor`} />
     <JobFact icon="location" value={job.tuitionLocationLabel ?? job.locationText ?? "Online"} />
     <JobFact icon="classLevel" value={job.classCourse} />
