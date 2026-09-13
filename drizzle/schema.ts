@@ -74,6 +74,10 @@ export const tutorRequestOperationActionValues = [
   "admin_confirmed",
   "admin_cancelled",
   "guardian_cancelled",
+  /** An Admin appointed an applicant - approving the Guardian's request, or Mark matched. */
+  "admin_appointed",
+  /** An Admin declined the Guardian's appointment request. */
+  "admin_declined_appointment",
 ] as const;
 export type TutorRequestOperationAction = (typeof tutorRequestOperationActionValues)[number];
 

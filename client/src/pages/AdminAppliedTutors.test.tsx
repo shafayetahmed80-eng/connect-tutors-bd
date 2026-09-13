@@ -10,6 +10,8 @@ const tutor = (id: string, name: string) => ({
 });
 
 const mocks = vi.hoisted(() => ({
+  approve: vi.fn(),
+  decline: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
   live: {
@@ -47,7 +49,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({ admin: { listAppliedTutors: { invalidate: vi.fn() }, listPostedJobs: { invalidate: vi.fn() } } }),
     admin: {
+      approveAppointmentRequest: { useMutation: () => ({ mutate: mocks.approve, isPending: false }) },
+      declineAppointmentRequest: { useMutation: () => ({ mutate: mocks.decline, isPending: false }) },
       listAppliedTutors: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -63,6 +68,8 @@ vi.mock("@/lib/trpc", () => ({
     },
   },
 }));
+
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { AdminAppliedTutorsContent, AdminLiveTuitionsContent } from "./AdminAppliedTutors";
 
@@ -126,6 +133,40 @@ describe("Admin Applied Tutors page", () => {
     expect(within(rows[0]).getByText("Appointment requested")).toBeTruthy();
     expect(within(rows[0]).getByText("Shortlisted")).toBeTruthy();
     expect(within(rows[1]).queryByText("Shortlisted")).toBeNull();
+  });
+
+  it("approves a Guardian's appointment request after a confirmation, or declines it", () => {
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), interestId: 91, appointmentRequestedAt: new Date("2026-09-13T09:00:00.000Z") } as never,
+      tutor("tutor-404", "Tanvir Ahmed"),
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    // Only a row with a waiting request can be approved.
+    expect(within(rows[1]).queryByRole("button", { name: /Approve/ })).toBeNull();
+
+    fireEvent.click(within(rows[0]).getByRole("button", { name: "Approve the appointment of Tania Sultana" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Appoint Tania Sultana?")).toBeTruthy();
+    // Nothing is sent until the Admin confirms.
+    expect(mocks.approve).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    expect(mocks.approve).toHaveBeenCalledWith({ interestId: 91 });
+
+    fireEvent.click(within(rows[0]).getByRole("button", { name: "Decline the appointment request for Tania Sultana" }));
+    expect(mocks.decline).toHaveBeenCalledWith({ interestId: 91 });
+  });
+
+  it("marks the Tutor who holds the appointment", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, appointedTutorId: "tutor-404" } as never;
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[1]).getByText("Appointed")).toBeTruthy();
+    expect(within(rows[0]).queryByText("Appointed")).toBeNull();
+    mocks.data.job = original;
   });
 
   it("continues the numbering across pages rather than restarting at one", () => {

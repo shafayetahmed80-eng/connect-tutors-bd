@@ -25,6 +25,17 @@ export type AdminTutorRow = {
   /** The Guardian's own marks - applied-Tutor rows only. `profileStatus` above is unrelated. */
   guardianShortlistedAt?: Date | string | null;
   appointmentRequestedAt?: Date | string | null;
+  /** The application itself, which the appointment actions act on. Applied-Tutor rows only. */
+  interestId?: number;
+  /** Holds this tuition's appointment. */
+  appointed?: boolean;
+};
+
+/** Approve and Decline on a row whose Guardian asked for an appointment. */
+export type AdminAppointmentRequestActions = {
+  busy: boolean;
+  onApprove: (tutor: AdminTutorRow) => void;
+  onDecline: (tutor: AdminTutorRow) => void;
 };
 
 export type AdminTutorRowStatus = "draft" | "pending" | "changes_requested" | "approved" | "suspended";
@@ -43,7 +54,7 @@ function Cell({ value, className = "" }: { value: string; className?: string }) 
   </td>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showGuardianMarks = false }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showGuardianMarks = false, appointmentActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -55,6 +66,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   serialFrom?: number;
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
+  appointmentActions?: AdminAppointmentRequestActions;
 }) {
   const numbered = serialFrom !== undefined;
   return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
@@ -91,10 +103,15 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <td className="px-3 py-2.5 align-top"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>{tutor.profileStatus.replaceAll("_", " ")}</span></td>
           <td className="px-3 py-2.5 align-top">{tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" />}</td>
           {showGuardianMarks ? <td className="px-3 py-2.5 align-top">
-            <span className="flex flex-wrap gap-1">
+            <span className="flex flex-wrap items-center gap-1">
+              {tutor.appointed ? <span className="whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span> : null}
               {tutor.appointmentRequestedAt ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
               {tutor.guardianShortlistedAt ? <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1 text-2xs font-bold text-sky-800">Shortlisted</span> : null}
             </span>
+            {tutor.appointmentRequestedAt && appointmentActions ? <span className="mt-1.5 flex gap-1.5">
+              <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onApprove(tutor)} aria-label={`Approve the appointment of ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg bg-j-accent px-2.5 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:opacity-40">Approve</button>
+              <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onDecline(tutor)} aria-label={`Decline the appointment request for ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40">Decline</button>
+            </span> : null}
           </td> : null}
           <td className="px-3 py-2.5 align-top text-right">
             <Link href={`/admin/tutor-profiles/${tutor.id}`} aria-label={`Open the full profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">

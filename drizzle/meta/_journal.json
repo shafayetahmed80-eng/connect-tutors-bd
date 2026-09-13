@@ -519,6 +519,13 @@
       "when": 1790300000000,
       "tag": "0073_guardian_applicant_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1790400000000,
+      "tag": "0074_admin_appointment_operation_actions",
+      "breakpoints": true
     }
   ]
 }
