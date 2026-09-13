@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listGuardianAppliedTutors: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ listGuardianAppliedTutors: vi.fn(), getTutorProfileForGuardian: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -51,5 +51,28 @@ describe("tutorRequests.appliedTutors", () => {
       await expect(createCaller({ ...guardianUser, role }).tutorRequests.appliedTutors({ requestId: 13 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
     expect(dbMocks.listGuardianAppliedTutors).not.toHaveBeenCalled();
+  });
+});
+
+describe("tutorRequests.appliedTutorProfile", () => {
+  it("opens the profile as the signed-in Guardian, through the tuition named", async () => {
+    dbMocks.getTutorProfileForGuardian.mockResolvedValue({ profile: { tutorId: "tutor-175" }, catalogLabels: {}, fieldConfig: [] });
+
+    await createCaller().tutorRequests.appliedTutorProfile({ requestId: 13, tutorId: "tutor-175", guardianUserId: 1 } as never);
+
+    expect(dbMocks.getTutorProfileForGuardian).toHaveBeenCalledWith({ guardianUserId: 77, requestId: 13, tutorId: "tutor-175" });
+  });
+
+  it("is a 404 for a Tutor who did not apply to one of their tuitions", async () => {
+    dbMocks.getTutorProfileForGuardian.mockResolvedValue(undefined);
+    await expect(createCaller().tutorRequests.appliedTutorProfile({ requestId: 13, tutorId: "tutor-404" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("is closed to anyone who is not a Guardian", async () => {
+    await expect(createCaller(null).tutorRequests.appliedTutorProfile({ requestId: 13, tutorId: "tutor-175" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    for (const role of ["tutor", "admin"] as const) {
+      await expect(createCaller({ ...guardianUser, role }).tutorRequests.appliedTutorProfile({ requestId: 13, tutorId: "tutor-175" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    expect(dbMocks.getTutorProfileForGuardian).not.toHaveBeenCalled();
   });
 });

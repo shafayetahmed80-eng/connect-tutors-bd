@@ -183,6 +183,64 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "additionalNotes", label: "Additional Notes", section: "e", panel: "review", sortOrder: 40, requiredByDefault: false, requiredConfigurable: true },
 ] as const;
 
+/**
+ * Fields a Guardian never reads on an applicant's profile, whatever an Admin
+ * sets - the floor under the Admin's own choice, owned by code so no toggle
+ * can reach it.
+ *
+ * - Contact. Reaching a Tutor goes through the platform; the one number a
+ *   Guardian is given is the appointed Tutor's, in the applicant table.
+ * - Family and emergency contact. They are about people who did not apply.
+ * - Documents. They are uploaded for the review team to verify, not to show.
+ * - Additional Notes. Written to the review team, not to a Guardian.
+ */
+export const guardianPrivateFieldIds: ReadonlySet<string> = new Set([
+  "phone",
+  "contactEmail",
+  "privateDetails.additionalPhone",
+  "privateDetails.socialProfileLinks",
+  "privateDetails.fatherName",
+  "privateDetails.fatherPhone",
+  "privateDetails.motherName",
+  "privateDetails.motherPhone",
+  "privateDetails.emergencyContactName",
+  "privateDetails.emergencyContactRelation",
+  "privateDetails.emergencyContactPhone",
+  "privateDetails.emergencyContactAddress",
+  "universityIdDocumentStatus",
+  "supportingDocument.nid_card",
+  "supportingDocument.ssc_certificate",
+  "supportingDocument.hsc_certificate",
+  "supportingDocument.hons_ms_certificate",
+  "additionalNotes",
+]);
+
+/**
+ * Fields an Admin may show a Guardian, but that start hidden: personal or
+ * identifying details that rarely help a Guardian choose, and the Tutor's own
+ * fee range, which the tuition's posted salary already answers.
+ */
+const guardianHiddenByDefaultFieldIds: ReadonlySet<string> = new Set([
+  "dateOfBirth",
+  "privateDetails.nationality",
+  "privateDetails.religion",
+  "deptId",
+  "educationRecords.instituteIdCardNumber",
+  "educationRecords.rollNumber",
+  "educationRecords.registrationNumber",
+  "feeMin",
+  "feeMax",
+]);
+
+export function isGuardianPrivateField(fieldId: string): boolean {
+  return guardianPrivateFieldIds.has(fieldId);
+}
+
+/** What a Guardian sees of a field while no Admin override says otherwise. */
+export function guardianVisibleByDefault(fieldId: string): boolean {
+  return !guardianPrivateFieldIds.has(fieldId) && !guardianHiddenByDefaultFieldIds.has(fieldId);
+}
+
 export function findTutorProfileFieldMeta(id: string): TutorProfileFieldMeta | undefined {
   return tutorProfileFieldRegistry.find(field => field.id === id);
 }
@@ -215,11 +273,21 @@ export type TutorProfileFieldOverrideRow = {
   required: number | null;
   /** Owner's own wording for the label; `null` (or blank) keeps the registry default. */
   label: string | null;
+  /**
+   * Whether a Guardian sees the field on an applicant's profile; `null` keeps
+   * the default. Optional because rows written before the column existed, and
+   * callers that only change another axis, carry no opinion on it.
+   */
+  guardianVisible?: number | null;
 };
 
 export type ResolvedTutorProfileField = TutorProfileFieldMeta & {
   enabled: boolean;
   required: boolean;
+  /** False for every private field, and whenever an Admin has not shown it. */
+  guardianVisible: boolean;
+  /** False for a field in `guardianPrivateFieldIds`: the editor offers no toggle. */
+  guardianConfigurable: boolean;
 };
 
 export type ResolvedTutorProfileFieldConfig = {
@@ -271,7 +339,11 @@ export function resolveTutorProfileFieldConfig(overrides: readonly TutorProfileF
       ? override.required === 1
       : field.requiredByDefault;
     const label = typeof override?.label === "string" && override.label.trim() !== "" ? override.label.trim() : field.label;
-    return { ...field, section, subGroup, sortOrder, enabled, required, label };
+    const guardianConfigurable = !isGuardianPrivateField(field.id);
+    const guardianVisible = guardianConfigurable && (override?.guardianVisible === 0 || override?.guardianVisible === 1
+      ? override.guardianVisible === 1
+      : guardianVisibleByDefault(field.id));
+    return { ...field, section, subGroup, sortOrder, enabled, required, label, guardianVisible, guardianConfigurable };
   });
 
   return indexResolvedFields(resolved);

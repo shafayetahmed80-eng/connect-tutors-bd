@@ -67,12 +67,12 @@ describe("Tutor Profile field editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name" },
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name", guardianVisible: null },
     ]));
   });
 
   it("clears the label override when the box is typed back to the shipped wording", async () => {
-    mocks.rows = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name" }];
+    mocks.rows = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: "Legal Name", guardianVisible: null }];
     render(<TutorProfileFieldEditor />);
 
     const labelBox = screen.getByLabelText("Label for Full Name") as HTMLInputElement;
@@ -81,7 +81,7 @@ describe("Tutor Profile field editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null },
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null },
     ]));
   });
 
@@ -94,14 +94,14 @@ describe("Tutor Profile field editor", () => {
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null },
+      { fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null, guardianVisible: null },
     ]);
     await waitFor(() => expect(mocks.invalidateOverrides).toHaveBeenCalled());
     expect(mocks.invalidateResolved).toHaveBeenCalled();
   });
 
   it("clears an override back to null when a toggle returns to the field's own default", async () => {
-    mocks.rows = [{ fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1, label: null }];
+    mocks.rows = [{ fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1, label: null, guardianVisible: null }];
     render(<TutorProfileFieldEditor />);
 
     // resultGpa defaults to optional; the stored row already flipped it required.
@@ -109,7 +109,7 @@ describe("Tutor Profile field editor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null },
+      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null },
     ]));
   });
 
@@ -168,5 +168,30 @@ describe("Tutor Profile field editor", () => {
     render(<TutorProfileFieldEditor />);
     expect(screen.getByLabelText("Move Additional Notes up")).toHaveProperty("disabled", true);
     expect(screen.getByLabelText("Move Additional Notes down")).toHaveProperty("disabled", true);
+  });
+
+  it("offers a Guardian toggle, and marks the private fields instead", async () => {
+    render(<TutorProfileFieldEditor />);
+
+    // About Me reaches Guardians by default; Religion starts hidden.
+    expect(screen.getByLabelText("Hide from Guardians About Me")).toHaveProperty("checked", true);
+    expect(screen.getByLabelText("Show to Guardians Religion")).toHaveProperty("checked", false);
+    // Mobile Number is on the floor: no toggle to offer.
+    expect(screen.queryByLabelText(/Guardians Mobile Number$/)).toBeNull();
+    const row = screen.getByDisplayValue("Mobile Number").closest("div")!;
+    expect(within(row).getByText("Private")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Show to Guardians Religion"));
+    fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
+      { fieldId: "privateDetails.religion", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 1 },
+    ]));
+  });
+
+  it("will not offer a Guardian a field that is switched off for everyone", () => {
+    mocks.rows = [{ fieldId: "aboutMe", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null, guardianVisible: null }];
+    render(<TutorProfileFieldEditor />);
+    expect(screen.getByLabelText("Hide from Guardians About Me")).toHaveProperty("disabled", true);
   });
 });

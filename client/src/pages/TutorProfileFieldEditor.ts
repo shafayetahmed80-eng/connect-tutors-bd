@@ -82,10 +82,11 @@ export type TutorProfileFieldEditorRow = {
   enabled: 0 | 1 | null;
   required: 0 | 1 | null;
   label: string | null;
+  guardianVisible: 0 | 1 | null;
 };
 
 export function emptyOverrideRow(fieldId: string): TutorProfileFieldEditorRow {
-  return { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null };
+  return { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null };
 }
 
 /**
@@ -100,11 +101,12 @@ export function toEditorRow(row: TutorProfileFieldOverrideRow): TutorProfileFiel
   const enabled = row.enabled === 0 ? 0 : row.enabled === 1 ? 1 : null;
   const required = row.required === 0 ? 0 : row.required === 1 ? 1 : null;
   const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : null;
-  return { fieldId: row.fieldId, section, subGroup, sortOrder: row.sortOrder, enabled, required, label };
+  const guardianVisible = row.guardianVisible === 0 ? 0 : row.guardianVisible === 1 ? 1 : null;
+  return { fieldId: row.fieldId, section, subGroup, sortOrder: row.sortOrder, enabled, required, label, guardianVisible };
 }
 
 export function overrideRowsEqual(a: TutorProfileFieldEditorRow, b: TutorProfileFieldEditorRow): boolean {
-  return a.section === b.section && a.subGroup === b.subGroup && a.sortOrder === b.sortOrder && a.enabled === b.enabled && a.required === b.required && a.label === b.label;
+  return a.section === b.section && a.subGroup === b.subGroup && a.sortOrder === b.sortOrder && a.enabled === b.enabled && a.required === b.required && a.label === b.label && a.guardianVisible === b.guardianVisible;
 }
 
 /**
@@ -137,6 +139,11 @@ export function requiredOverrideValue(checked: boolean, requiredByDefault: boole
 export function labelOverrideValue(text: string, defaultLabel: string): string | null {
   const trimmed = text.trim();
   return trimmed === "" || trimmed === defaultLabel ? null : trimmed;
+}
+
+/** `null` clears back to the field's own default for Guardians, so switching it back leaves no stray override. */
+export function guardianVisibleOverrideValue(checked: boolean, visibleByDefault: boolean): 0 | 1 | null {
+  return checked === visibleByDefault ? null : (checked ? 1 : 0);
 }
 
 /**

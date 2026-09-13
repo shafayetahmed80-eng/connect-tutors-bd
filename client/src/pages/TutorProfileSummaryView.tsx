@@ -20,13 +20,21 @@ function countRequired(rows: TutorProfileReadoutRow[]) {
  * a tab should feel like the same page, so the earlier condensed grid with its
  * own row marks and columns is gone.
  */
-export function TutorProfileSummaryView({ sections }: { sections: TutorProfileReadoutSection[] }) {
+export function TutorProfileSummaryView({ sections, showProgress = true }: {
+  sections: TutorProfileReadoutSection[];
+  /**
+   * The "required filled" header and the per-section counts. They are the
+   * Tutor's to-do list, so a reader of someone else's profile - a Guardian -
+   * gets the sections without them.
+   */
+  showProgress?: boolean;
+}) {
   const allRows = sections.flatMap(section => section.groups.flatMap(group => group.rows));
   const overall = countRequired(allRows);
   const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
 
   return <section aria-label="Profile preview" className={tp.stack}>
-    <div className={`${tp.card} ${sectionPadding}`}>
+    {showProgress ? <div className={`${tp.card} ${sectionPadding}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h2 className={`text-sm ${tp.heading}`}>Profile preview</h2>
@@ -36,7 +44,7 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
           {overall.filled}<span className="text-[#8496a6]">/{overall.total} required filled</span>
         </p>
       </div>
-    </div>
+    </div> : null}
 
     {sections.map(section => {
       const sectionCount = countRequired(section.groups.flatMap(group => group.rows));
@@ -46,9 +54,9 @@ export function TutorProfileSummaryView({ sections }: { sections: TutorProfileRe
             section has to name itself. */}
         <div className="flex items-baseline justify-between gap-3 px-1 pt-1">
           <h3 className={`text-sm ${tp.heading}`}>{section.title}</h3>
-          <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
+          {showProgress ? <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
             {sectionCount.total === 0 ? "Optional" : `${sectionCount.filled}/${sectionCount.total}`}
-          </span>
+          </span> : null}
         </div>
 
         {section.groups.map((group, groupIndex) => {

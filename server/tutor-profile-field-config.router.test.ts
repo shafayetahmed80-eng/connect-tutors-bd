@@ -96,4 +96,20 @@ describe("tutorProfileFieldConfig router", () => {
     ])).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(fieldConfigDbMocks.saveTutorProfileFieldOverrides).not.toHaveBeenCalled();
   });
+
+  it("saves a Guardian visibility choice on a configurable field", async () => {
+    const caller = createAdminCaller(ownerUser);
+    const change = { fieldId: "privateDetails.religion", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 1 as const };
+    await expect(caller.tutorProfileFieldConfig.save([change])).resolves.toEqual({ saved: 1 });
+    expect(fieldConfigDbMocks.saveTutorProfileFieldOverrides).toHaveBeenCalledWith([change]);
+  });
+
+  it("refuses to show a Guardian a field on the private floor", async () => {
+    // The page would never offer it; a hand-made request must not get it either.
+    const caller = createAdminCaller(ownerUser);
+    await expect(caller.tutorProfileFieldConfig.save([
+      { fieldId: "phone", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 1 },
+    ])).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(fieldConfigDbMocks.saveTutorProfileFieldOverrides).not.toHaveBeenCalled();
+  });
 });

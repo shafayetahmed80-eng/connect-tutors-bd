@@ -136,8 +136,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
             </span>
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-j-ink-muted">
-            <span className="inline-flex items-center gap-1"><IdCard size={13} />Tutor ID {profile.tutorId}</span>
-            {profile.tutorNumber ? <span>No. {profile.tutorNumber}</span> : null}
+            {/* The registered number is the Tutor ID; `tutorId` is the internal key the URL uses. */}
+            {profile.tutorNumber ? <span className="inline-flex items-center gap-1"><IdCard size={13} />Tutor ID {profile.tutorNumber}</span> : null}
             <span>Profile completed: {profile.completionPercentage}%</span>
             {profile.phone ? <span>{profile.phone}</span> : null}
             {profile.contactEmail ? <span>{profile.contactEmail}</span> : null}

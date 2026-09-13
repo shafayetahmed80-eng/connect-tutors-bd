@@ -6,6 +6,7 @@ import {
   emptyOverrideRow,
   enabledOverrideValue,
   groupFieldsForEditor,
+  guardianVisibleOverrideValue,
   labelOverrideValue,
   moveTargetOverride,
   overrideRowsEqual,
@@ -110,12 +111,30 @@ describe("Tutor Profile field editor logic", () => {
     expect(overrideRowsEqual(base, { ...base, enabled: 0 })).toBe(false);
     expect(overrideRowsEqual(base, { ...base, required: 1 })).toBe(false);
     expect(overrideRowsEqual(base, { ...base, label: "Renamed" })).toBe(false);
+    expect(overrideRowsEqual(base, { ...base, guardianVisible: 1 })).toBe(false);
   });
 
   it("seeds an empty row for a field with no stored override, and the stored row otherwise", () => {
-    const stored = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null }];
+    const stored = [{ fieldId: "name", section: null, subGroup: null, sortOrder: null, enabled: 0, required: null, label: null, guardianVisible: null }];
     const drafts = seedFieldEditorDrafts(["name", "gender"], stored);
     expect(drafts.name).toEqual(stored[0]);
     expect(drafts.gender).toEqual(emptyOverrideRow("gender"));
+  });
+
+  it("guardianVisibleOverrideValue: clears to null exactly when the toggle matches the default for Guardians", () => {
+    expect(guardianVisibleOverrideValue(true, true)).toBeNull();
+    expect(guardianVisibleOverrideValue(false, false)).toBeNull();
+    expect(guardianVisibleOverrideValue(false, true)).toBe(0);
+    expect(guardianVisibleOverrideValue(true, false)).toBe(1);
+  });
+
+  it("seeds the Guardian choice from the stored row, and treats anything else as no choice", () => {
+    const drafts = seedFieldEditorDrafts(["aboutMe", "headline"], [
+      { fieldId: "aboutMe", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 0 },
+      { fieldId: "headline", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 7 },
+    ]);
+    expect(drafts.aboutMe.guardianVisible).toBe(0);
+    expect(drafts.headline.guardianVisible).toBeNull();
+    expect(emptyOverrideRow("name").guardianVisible).toBeNull();
   });
 });

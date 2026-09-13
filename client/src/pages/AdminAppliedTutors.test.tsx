@@ -4,7 +4,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const tutor = (id: string, name: string) => ({
-  id, name, phone: "+8801711111111", instituteName: "University of Dhaka", departmentName: "Bangla",
+  id, tutorNumber: 777, name, phone: "+8801711111111", instituteName: "University of Dhaka", departmentName: "Bangla",
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
   profileStatus: "approved" as const, verified: 1,
 });
@@ -106,6 +106,9 @@ describe("Admin Applied Tutors page", () => {
     const rows = screen.getAllByRole("row").slice(1);
     expect(within(rows[0]).getByText("1")).toBeTruthy();
     expect(within(rows[1]).getByText("2")).toBeTruthy();
+    // Tutor ID is the registered number, never the internal key.
+    expect(within(rows[0]).getByText("777")).toBeTruthy();
+    expect(within(rows[0]).queryByText("tutor-175")).toBeNull();
     // The arrow leads to the same profile page as the directory's own row.
     expect(within(rows[0]).getByRole("link", { name: /Open the full profile of Tania Sultana/i }).getAttribute("href"))
       .toBe("/admin/tutor-profiles/tutor-175");

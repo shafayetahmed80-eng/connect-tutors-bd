@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import {
   findTutorProfileFieldMeta,
+  guardianVisibleByDefault,
   resolveTutorProfileFieldConfig,
   tutorProfileFieldRegistry,
   type ResolvedTutorProfileField,
@@ -14,6 +15,7 @@ import {
   enabledOverrideValue,
   groupFieldsByPanel,
   groupFieldsForEditor,
+  guardianVisibleOverrideValue,
   labelOverrideValue,
   moveTargetOverride,
   overrideRowsEqual,
@@ -71,7 +73,7 @@ export default function TutorProfileFieldEditor() {
   const isDirty = (fieldId: string) => {
     const draft = drafts[fieldId];
     const savedRow = stored.get(fieldId);
-    return Boolean(draft) && !overrideRowsEqual(draft, savedRow ? toEditorRow(savedRow) : { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null });
+    return Boolean(draft) && !overrideRowsEqual(draft, savedRow ? toEditorRow(savedRow) : { fieldId, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null });
   };
   const dirtyIds = allFieldIds.filter(isDirty);
 
@@ -164,6 +166,20 @@ export default function TutorProfileFieldEditor() {
           Required
         </label>
         : <span className="text-2xs text-j-ink-faint" title="Whether this field is required already depends on another field, so it cannot take a flat override.">Fixed</span>}
+
+      {field.guardianConfigurable
+        ? <label className="flex items-center gap-1 text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
+          <input
+            type="checkbox"
+            className={checkboxClass}
+            checked={field.guardianVisible}
+            disabled={!field.enabled}
+            aria-label={`${field.guardianVisible ? "Hide from Guardians" : "Show to Guardians"} ${field.label}`}
+            onChange={event => update(field.id, { guardianVisible: guardianVisibleOverrideValue(event.target.checked, guardianVisibleByDefault(field.id)) })}
+          />
+          Guardian
+        </label>
+        : <span className="text-2xs text-j-ink-faint" title="Never shown to a Guardian: contact details, family and emergency contact, documents and notes for the review team stay private.">Private</span>}
 
       {movable ? <div className="flex shrink-0 items-center gap-1">
         <button type="button" disabled={Boolean(needle) || index <= 0} onClick={() => moveField(field, panelFields, -1)} className={iconButtonClass} aria-label={`Move ${field.label} up`} title={needle ? "Clear the filter to reorder" : "Move up"}><ArrowUp className="h-3.5 w-3.5" /></button>

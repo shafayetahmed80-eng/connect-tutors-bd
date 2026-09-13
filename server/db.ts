@@ -94,6 +94,7 @@ import {
   isGuardianApplicantStage,
   pickGuardianApplicantEducation,
 } from "./guardian-applicants";
+import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -1349,6 +1350,59 @@ function catalogLabelMap(rows: Array<{ id: number | string; label: string }>): R
   return Object.fromEntries(rows.map(row => [String(row.id), row.label]));
 }
 
+type TutorCatalogIds = {
+  subjects: Array<number | string>;
+  classLevels: Array<number | string>;
+  curricula: Array<number | string>;
+  universityId: number | string | null;
+  facultyDepartmentId: number | string | null;
+  locations: string[];
+};
+
+/**
+ * Names for the catalog ids on one profile, looked up for those ids only.
+ *
+ * The Admin's and the Guardian's profile pages both hand these to the shared
+ * read-out as ready-made names, because the catalog procedures the Tutor's own
+ * screen uses are the Tutor's to call.
+ */
+async function loadTutorCatalogLabels(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, ids: TutorCatalogIds) {
+  const numeric = (values: Array<number | string>) => values.map(Number).filter(Number.isFinite);
+  const subjectIds = numeric(ids.subjects);
+  const levelIds = numeric(ids.classLevels);
+  const curriculumIds = numeric(ids.curricula);
+  const universityId = ids.universityId == null ? null : Number(ids.universityId);
+  const departmentId = ids.facultyDepartmentId == null ? null : Number(ids.facultyDepartmentId);
+  const [subjectRows, levelRows, curriculumRows, universityRows, departmentRows, locationRows] = await Promise.all([
+    subjectIds.length
+      ? database.select({ id: subjectsCatalog.id, label: subjectsCatalog.name }).from(subjectsCatalog).where(inArray(subjectsCatalog.id, subjectIds))
+      : [],
+    levelIds.length
+      ? database.select({ id: classLevels.id, label: classLevels.name }).from(classLevels).where(inArray(classLevels.id, levelIds))
+      : [],
+    curriculumIds.length
+      ? database.select({ id: curricula.id, label: curricula.name }).from(curricula).where(inArray(curricula.id, curriculumIds))
+      : [],
+    universityId
+      ? database.select({ id: universities.id, label: universities.name }).from(universities).where(eq(universities.id, universityId))
+      : [],
+    departmentId
+      ? database.select({ id: facultyDepartments.id, label: facultyDepartments.name }).from(facultyDepartments).where(eq(facultyDepartments.id, departmentId))
+      : [],
+    ids.locations.length
+      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, ids.locations))
+      : [],
+  ]);
+  return {
+    subjects: catalogLabelMap(subjectRows),
+    classLevels: catalogLabelMap(levelRows),
+    curricula: catalogLabelMap(curriculumRows),
+    universities: catalogLabelMap(universityRows),
+    facultyDepartments: catalogLabelMap(departmentRows),
+    locations: catalogLabelMap(locationRows),
+  };
+}
+
 /**
  * One Tutor's whole profile for an Admin, by public Tutor id.
  *
@@ -1380,32 +1434,15 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
   const profile = toTutorProfileOwnerDto(await loadTutorProfileOwner(database, owner.userId));
   if (!profile) return undefined;
 
-  const numericIds = (ids: Array<number | null>) => ids.filter((id): id is number => id != null);
-  const subjectIds = numericIds([...profile.primarySubjectIds, ...profile.additionalSubjectIds]);
-  const levelIds = numericIds(profile.classLevelIds);
-  const curriculumIds = numericIds(profile.curriculumIds);
-  const locationIds = [profile.currentCityId, profile.currentLocationId, ...profile.teachingAreaIds]
-    .filter((id): id is string => Boolean(id));
-  const [subjectRows, levelRows, curriculumRows, universityRows, departmentRows, locationRows] = await Promise.all([
-    subjectIds.length
-      ? database.select({ id: subjectsCatalog.id, label: subjectsCatalog.name }).from(subjectsCatalog).where(inArray(subjectsCatalog.id, subjectIds))
-      : [],
-    profile.classLevelIds.length
-      ? database.select({ id: classLevels.id, label: classLevels.name }).from(classLevels).where(inArray(classLevels.id, profile.classLevelIds))
-      : [],
-    profile.curriculumIds.length
-      ? database.select({ id: curricula.id, label: curricula.name }).from(curricula).where(inArray(curricula.id, profile.curriculumIds))
-      : [],
-    profile.universityId
-      ? database.select({ id: universities.id, label: universities.name }).from(universities).where(eq(universities.id, profile.universityId))
-      : [],
-    profile.facultyDepartmentId
-      ? database.select({ id: facultyDepartments.id, label: facultyDepartments.name }).from(facultyDepartments).where(eq(facultyDepartments.id, profile.facultyDepartmentId))
-      : [],
-    locationIds.length
-      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, locationIds))
-      : [],
-  ]);
+  const present = <T,>(values: Array<T | null | undefined>) => values.filter((value): value is T => value != null);
+  const catalogLabels = await loadTutorCatalogLabels(database, {
+    subjects: present([...profile.primarySubjectIds, ...profile.additionalSubjectIds]),
+    classLevels: present(profile.classLevelIds),
+    curricula: present(profile.curriculumIds),
+    universityId: profile.universityId ?? null,
+    facultyDepartmentId: profile.facultyDepartmentId ?? null,
+    locations: present([profile.currentCityId, profile.currentLocationId, ...profile.teachingAreaIds]).filter(Boolean),
+  });
 
   const [universityIdRow] = await database
     .select({ storageKey: tutorUniversityIdDocuments.storageKey })
@@ -1419,14 +1456,7 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
 
   return {
     ...profile,
-    catalogLabels: {
-      subjects: catalogLabelMap(subjectRows),
-      classLevels: catalogLabelMap(levelRows),
-      curricula: catalogLabelMap(curriculumRows),
-      universities: catalogLabelMap(universityRows),
-      facultyDepartments: catalogLabelMap(departmentRows),
-      locations: catalogLabelMap(locationRows),
-    },
+    catalogLabels,
     documents: {
       universityId: universityIdRow?.storageKey ? await storageGetSignedUrl(universityIdRow.storageKey) : null,
       supporting: Object.fromEntries(
@@ -2495,9 +2525,11 @@ export async function createConfirmationLetterDraft(input: { requestId: number; 
         daysPerWeek: tutorRequests.daysPerWeek,
         packageDurationMonths: tutorRequests.packageDurationMonths,
         tutorName: tutors.name,
+        tutorNumber: tutorRegistrations.tutorNumber,
       })
       .from(tutorRequests)
       .innerJoin(tutors, eq(tutorRequests.tutorId, tutors.id))
+      .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
       .where(and(
         eq(tutorRequests.id, input.requestId),
         eq(tutorRequests.status, "matched"),
@@ -2524,7 +2556,8 @@ export async function createConfirmationLetterDraft(input: { requestId: number; 
     const snapshot: ConfirmationLetterSnapshot = {
       schemaVersion: 1,
       requestId: request.id,
-      tutorReference: request.tutorId,
+      // The Tutor ID people know, never the internal key; empty when the Tutor has none.
+      tutorReference: request.tutorNumber != null ? String(request.tutorNumber) : "",
       tutorName: request.tutorName,
       category: request.category,
       curriculumType: request.curriculumType,
@@ -3507,6 +3540,8 @@ export async function listTutorJobInterestsForAdmin(input: { tutorJobId?: number
       tutorId: tutors.id,
       tutorName: tutors.name,
       tutorNumber: tutorRegistrations.tutorNumber,
+      // The queue's call link used to dial `tutorNumber` - the Tutor ID, not a phone.
+      tutorPhone: tutors.phone,
       publicJobId: tutorJobs.publicJobId,
       jobId: tutorJobs.id,
       jobTitle: tutorJobs.classCourse,
@@ -4390,6 +4425,8 @@ const adminTutorDirectoryFields = {
   phone: tutors.phone,
   cityLocationId: tutors.cityLocationId,
   departmentName: facultyDepartments.name,
+  // The Tutor ID people see. `tutors.id` is the internal key and is never shown.
+  tutorNumber: tutorRegistrations.tutorNumber,
 };
 
 /**
@@ -4455,7 +4492,8 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
     .from(tutors)
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
-    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId));
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
   const rows = conditions.length
     ? await itemQuery.where(and(...conditions)).orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset)
     : await itemQuery.orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset);
@@ -4524,6 +4562,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
     .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(where)
     .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
     .limit(filters.pageSize)
@@ -4818,6 +4857,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       cityLocationId: tutors.cityLocationId,
       locationLabel: locations.label,
       teachingExperienceYears: tutors.teachingExperienceYears,
+      tutorNumber: tutorRegistrations.tutorNumber,
       highestEducation: tutorAcademicProfiles.highestEducation,
       universityName: universities.name,
       academicDepartmentName: facultyDepartments.name,
@@ -4829,6 +4869,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
     .leftJoin(universities, eq(universities.id, tutorAcademicProfiles.universityId))
     .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions()))
     .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
     .limit(input.pageSize)
@@ -4881,6 +4922,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       );
       return {
         id: row.id,
+        tutorNumber: row.tutorNumber,
         name: row.name,
         phone: phoneVisible ? row.phone : null,
         phoneHidden: !phoneVisible,
@@ -4895,6 +4937,51 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     page: input.page,
     pageSize: input.pageSize,
     totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
+  };
+}
+
+/**
+ * One applicant's profile, for the Guardian whose tuition they applied to.
+ *
+ * The same access rule as the applicant table - this Guardian's own tuition,
+ * Live or Appointed, an application that table would list - so a Tutor who
+ * can be opened here is always one the table showed. Anything else reads as
+ * not found. What comes back is decided by `projectTutorProfileForGuardian`.
+ */
+export async function getTutorProfileForGuardian(input: { guardianUserId: number; requestId: number; tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [access] = await database
+    .select({
+      userId: tutors.userId,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutorRequests, eq(tutorRequests.id, tutorJobs.tutorRequestId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .where(and(
+      eq(tutorJobs.tutorRequestId, input.requestId),
+      eq(tutorRequests.guardianUserId, input.guardianUserId),
+      eq(tutors.id, input.tutorId),
+      ...guardianApplicantConditions(),
+    ))
+    .limit(1);
+  if (!access || access.userId == null) return undefined;
+  if (!isGuardianApplicantStage(getGuardianRequestLifecycle(access))) return undefined;
+
+  const owner = toTutorProfileOwnerDto(await loadTutorProfileOwner(database, access.userId));
+  if (!owner) return undefined;
+  const config = await getTutorProfileFieldConfig();
+  const profile = projectTutorProfileForGuardian(owner, config);
+  return {
+    profile,
+    catalogLabels: await loadTutorCatalogLabels(database, guardianCatalogIds(profile)),
+    fieldConfig: guardianReadableFields(config),
   };
 }
 
@@ -5023,7 +5110,7 @@ export async function getAdminMonitoringOverview() {
     database.select({ value: count() }).from(tutorRequests).where(eq(tutorRequests.status, "reviewing")),
     database.select({ value: count() }).from(tutorRequests).where(eq(tutorRequests.status, "matched")),
     database.select({ value: count() }).from(tutorRequests).where(and(eq(tutorRequests.status, "matched"), eq(tutorRequests.contactConsent, "pending"))),
-    database.select({ id: tutorProfileModerationEvents.id, tutorId: tutorProfileModerationEvents.tutorId, nextStatus: tutorProfileModerationEvents.nextStatus, createdAt: tutorProfileModerationEvents.createdAt }).from(tutorProfileModerationEvents).orderBy(desc(tutorProfileModerationEvents.createdAt)).limit(6),
+    database.select({ id: tutorProfileModerationEvents.id, tutorId: tutorProfileModerationEvents.tutorId, tutorNumber: tutorRegistrations.tutorNumber, nextStatus: tutorProfileModerationEvents.nextStatus, createdAt: tutorProfileModerationEvents.createdAt }).from(tutorProfileModerationEvents).leftJoin(tutors, eq(tutors.id, tutorProfileModerationEvents.tutorId)).leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId)).orderBy(desc(tutorProfileModerationEvents.createdAt)).limit(6),
     database.select({ id: guardianContactAccessEvents.id, tutorRequestId: guardianContactAccessEvents.tutorRequestId, createdAt: guardianContactAccessEvents.createdAt }).from(guardianContactAccessEvents).orderBy(desc(guardianContactAccessEvents.createdAt)).limit(6),
   ]);
   return {
@@ -6112,6 +6199,7 @@ export async function saveTutorProfileFieldOverrides(changes: readonly TutorProf
             enabled: change.enabled,
             required: change.required,
             label: change.label,
+            guardianVisible: change.guardianVisible,
           },
         });
     }

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     items: [
       {
         id: "tutor-175",
+        tutorNumber: 777,
         name: "Tania Sultana",
         initials: "TS",
         headline: "Physics and Maths for HSC",
@@ -30,6 +31,7 @@ const mocks = vi.hoisted(() => ({
       },
       {
         id: "tutor-338",
+        tutorNumber: null,
         name: "Sojib",
         initials: "S",
         headline: null,
@@ -86,7 +88,9 @@ describe("Admin Tutor Profiles list", () => {
     expect(rows).toHaveLength(2);
 
     const first = within(rows[0]);
-    expect(first.getByText("tutor-175")).toBeTruthy();
+    // Tutor ID is the registered number; the internal key only addresses the detail page.
+    expect(first.getByText("777")).toBeTruthy();
+    expect(first.queryByText("tutor-175")).toBeNull();
     expect(first.getByText("Tania Sultana")).toBeTruthy();
     expect(first.getByText("+8801711111111")).toBeTruthy();
     expect(first.getByText("Fisheries")).toBeTruthy();
