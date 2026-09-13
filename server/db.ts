@@ -95,6 +95,7 @@ import {
   pickGuardianApplicantEducation,
 } from "./guardian-applicants";
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
+import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -3490,7 +3491,8 @@ export async function withdrawTutorJobInterest(input: { tutorId: string; interes
   if (!interest) throw new Error("TUTOR_INTEREST_NOT_FOUND");
   const transition = transitionTutorInterest(interest.status as TutorInterestDatabaseStatus, "withdrawn", "tutor");
   if (!transition.allowed) throw new Error(`TUTOR_INTEREST_${transition.reason.toUpperCase()}`);
-  await database.update(tutorJobInterests).set({ status: "withdrawn" }).where(eq(tutorJobInterests.id, interest.id));
+  // A Tutor who withdraws is no longer someone a Guardian's request can wait on.
+  await database.update(tutorJobInterests).set({ status: "withdrawn", appointmentRequestedAt: null }).where(eq(tutorJobInterests.id, interest.id));
   return { interestId: interest.id, status: "withdrawn" as const };
 }
 
@@ -3571,7 +3573,10 @@ export async function reviewTutorJobInterestByAdmin(input: {
     if (!interest) throw new Error("TUTOR_INTEREST_NOT_FOUND");
     const transition = transitionTutorInterest(interest.status as TutorInterestDatabaseStatus, input.status, "admin");
     if (!transition.allowed) throw new Error(`TUTOR_INTEREST_${transition.reason.toUpperCase()}`);
-    await tx.update(tutorJobInterests).set({ status: input.status }).where(eq(tutorJobInterests.id, interest.id));
+    // Declining an applicant also ends any appointment request the Guardian made for them.
+    await tx.update(tutorJobInterests)
+      .set(input.status === "declined" ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
+      .where(eq(tutorJobInterests.id, interest.id));
     // A decline used to be indistinguishable from the Tutor's own withdrawal:
     // the tab changed and nothing was said. No reason is given - the Admin
     // dialog collects none for an interest - so the message says only what
@@ -4555,7 +4560,12 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const where = and(...conditions);
   const offset = (filters.page - 1) * filters.pageSize;
   const rows = await database
-    .select({ ...adminTutorDirectoryFields, appliedAt: tutorJobInterests.createdAt })
+    .select({
+      ...adminTutorDirectoryFields,
+      appliedAt: tutorJobInterests.createdAt,
+      guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
+      appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
+    })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
@@ -4858,6 +4868,8 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       locationLabel: locations.label,
       teachingExperienceYears: tutors.teachingExperienceYears,
       tutorNumber: tutorRegistrations.tutorNumber,
+      guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
+      appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
       highestEducation: tutorAcademicProfiles.highestEducation,
       universityName: universities.name,
       academicDepartmentName: facultyDepartments.name,
@@ -4875,6 +4887,14 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .limit(input.pageSize)
     .offset(offset);
   const total = (await countGuardianApplicantsByRequest(database, [input.requestId])).get(input.requestId) ?? 0;
+  // Whether a request already waits on this tuition - its Tutor may be on another page.
+  const [pendingAppointment] = await database
+    .select({ id: tutorJobInterests.id })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+    .limit(1);
 
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
@@ -4914,6 +4934,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       tuitionType: request.tuitionType,
     },
     lifecycle,
+    appointmentRequestPending: Boolean(pendingAppointment),
     items: rows.map(row => {
       const phoneVisible = guardianMaySeeApplicantPhone({ lifecycle, tutorId: request.tutorId }, row.id);
       const education = pickGuardianApplicantEducation(
@@ -4931,6 +4952,10 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
         cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
         locationLabel: row.locationLabel,
         teachingExperienceYears: row.teachingExperienceYears,
+        shortlisted: row.guardianShortlistedAt !== null,
+        appointmentRequested: row.appointmentRequestedAt !== null,
+        // Appointed is exactly when the number is released.
+        appointed: phoneVisible,
       };
     }),
     total,
@@ -4983,6 +5008,118 @@ export async function getTutorProfileForGuardian(input: { guardianUserId: number
     catalogLabels: await loadTutorCatalogLabels(database, guardianCatalogIds(profile)),
     fieldConfig: guardianReadableFields(config),
   };
+}
+
+type GuardianApplicantAction = { guardianUserId: number; requestId: number; tutorId: string };
+
+/**
+ * The one application a Guardian action is about, found through the same
+ * access rule the applicant table uses and locked for the rest of the
+ * transaction. The tuition row is locked first, so two appointment requests on
+ * one tuition wait for each other instead of both passing the one-at-a-time
+ * check.
+ */
+async function lockGuardianApplicant(tx: any, input: GuardianApplicantAction) {
+  const [request] = await tx
+    .select({
+      id: tutorRequests.id,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, input.requestId), eq(tutorRequests.guardianUserId, input.guardianUserId)))
+    .limit(1)
+    .for("update");
+  if (!request) return undefined;
+  const lifecycle = getGuardianRequestLifecycle(request);
+  if (!isGuardianApplicantStage(lifecycle)) return undefined;
+
+  const [interest] = await tx
+    .select({
+      id: tutorJobInterests.id,
+      tutorId: tutorJobInterests.tutorId,
+      publicJobId: tutorJobs.publicJobId,
+      guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
+      appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
+    })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .where(and(eq(tutorJobs.tutorRequestId, request.id), eq(tutorJobInterests.tutorId, input.tutorId), ...guardianApplicantConditions()))
+    .limit(1)
+    .for("update");
+  if (!interest) return undefined;
+  return { request, lifecycle, interest };
+}
+
+/**
+ * Puts an applicant on the Guardian's shortlist, or takes them off.
+ *
+ * Going on tells the Tutor - that a Guardian shortlisted them, and for which
+ * job, but not who: the Guardian's name and number are released on
+ * appointment. Coming off says nothing.
+ */
+export async function setGuardianApplicantShortlist(input: GuardianApplicantAction & { shortlisted: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const found = await lockGuardianApplicant(tx, input);
+    if (!found) return undefined;
+    const wasShortlisted = found.interest.guardianShortlistedAt !== null;
+    if (wasShortlisted === input.shortlisted) return { shortlisted: input.shortlisted };
+    await tx.update(tutorJobInterests)
+      .set({ guardianShortlistedAt: input.shortlisted ? new Date() : null })
+      .where(eq(tutorJobInterests.id, found.interest.id));
+    if (input.shortlisted) {
+      await createTutorNotification(tx, {
+        tutorId: found.interest.tutorId,
+        type: "interest_decision",
+        title: `A Guardian shortlisted you for ${found.interest.publicJobId}`,
+        message: "Open your Status tab to see where this application now sits.",
+        actionPath: "/tutor/dashboard/status",
+        deduplicationKey: `interest:${found.interest.id}:guardian_shortlisted`,
+      });
+    }
+    return { shortlisted: input.shortlisted };
+  });
+}
+
+/** Asks the Admin to appoint one applicant - one waiting request per tuition, and only while it is Live. */
+export async function requestGuardianAppointment(input: GuardianApplicantAction) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const found = await lockGuardianApplicant(tx, input);
+    if (!found) return { outcome: "not_found" as const };
+    const [pending] = await tx
+      .select({ tutorId: tutorJobInterests.tutorId })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+      .where(and(eq(tutorJobs.tutorRequestId, found.request.id), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+      .limit(1);
+    const decision = canRequestAppointment({ lifecycle: found.lifecycle, pendingTutorId: pending?.tutorId ?? null, tutorId: input.tutorId });
+    if (!decision.allowed) return { outcome: "refused" as const, reason: decision.reason };
+    await tx.update(tutorJobInterests).set({ appointmentRequestedAt: new Date() }).where(eq(tutorJobInterests.id, found.interest.id));
+    return { outcome: "requested" as const };
+  });
+}
+
+/** Takes back a waiting appointment request before the Admin acts on it. */
+export async function withdrawGuardianAppointmentRequest(input: GuardianApplicantAction) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const found = await lockGuardianApplicant(tx, input);
+    if (!found) return { outcome: "not_found" as const };
+    if (!canWithdrawAppointmentRequest({ lifecycle: found.lifecycle, requested: found.interest.appointmentRequestedAt !== null })) {
+      return { outcome: "refused" as const };
+    }
+    await tx.update(tutorJobInterests).set({ appointmentRequestedAt: null }).where(eq(tutorJobInterests.id, found.interest.id));
+    return { outcome: "withdrawn" as const };
+  });
 }
 
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {

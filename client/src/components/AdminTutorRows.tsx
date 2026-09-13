@@ -22,6 +22,9 @@ export type AdminTutorRow = {
   teachingExperienceYears: number | null;
   profileStatus: AdminTutorRowStatus;
   verified: number | boolean;
+  /** The Guardian's own marks - applied-Tutor rows only. `profileStatus` above is unrelated. */
+  guardianShortlistedAt?: Date | string | null;
+  appointmentRequestedAt?: Date | string | null;
 };
 
 export type AdminTutorRowStatus = "draft" | "pending" | "changes_requested" | "approved" | "suspended";
@@ -40,7 +43,7 @@ function Cell({ value, className = "" }: { value: string; className?: string }) 
   </td>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showGuardianMarks = false }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -50,6 +53,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
    * has to continue across pages rather than restart at one.
    */
   serialFrom?: number;
+  /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
+  showGuardianMarks?: boolean;
 }) {
   const numbered = serialFrom !== undefined;
   return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
@@ -68,6 +73,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <th scope="col" className="px-3 py-2.5">Experience</th>
           <th scope="col" className="px-3 py-2.5">Status</th>
           <th scope="col" className="px-3 py-2.5">Verified</th>
+          {showGuardianMarks ? <th scope="col" className="px-3 py-2.5">Guardian</th> : null}
           <th scope="col" className="px-3 py-2.5"><span className="sr-only">Details</span></th>
         </tr>
       </thead>
@@ -84,13 +90,19 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <Cell value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} />
           <td className="px-3 py-2.5 align-top"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>{tutor.profileStatus.replaceAll("_", " ")}</span></td>
           <td className="px-3 py-2.5 align-top">{tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" />}</td>
+          {showGuardianMarks ? <td className="px-3 py-2.5 align-top">
+            <span className="flex flex-wrap gap-1">
+              {tutor.appointmentRequestedAt ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
+              {tutor.guardianShortlistedAt ? <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1 text-2xs font-bold text-sky-800">Shortlisted</span> : null}
+            </span>
+          </td> : null}
           <td className="px-3 py-2.5 align-top text-right">
             <Link href={`/admin/tutor-profiles/${tutor.id}`} aria-label={`Open the full profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
               <ChevronRight size={16} />
             </Link>
           </td>
         </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={numbered ? 12 : 11} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
+        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showGuardianMarks ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
       </tbody>
     </table>
   </div>;

@@ -4,6 +4,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
+import { appointmentRefusalMessages } from "./guardian-applicant-actions";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
@@ -1808,6 +1809,39 @@ export const appRouter = router({
         const profile = await db.getTutorProfileForGuardian({ guardianUserId: ctx.user.id, ...input });
         if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor profile is unavailable." });
         return profile;
+      }),
+    shortlistApplicant: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        tutorId: z.string().trim().min(1).max(32),
+        shortlisted: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.setGuardianApplicantShortlist({ guardianUserId: ctx.user.id, ...input });
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
+        return result;
+      }),
+    requestAppointment: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        tutorId: z.string().trim().min(1).max(32),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.requestGuardianAppointment({ guardianUserId: ctx.user.id, ...input });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: appointmentRefusalMessages[result.reason] });
+        return { requested: true as const };
+      }),
+    withdrawAppointmentRequest: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        tutorId: z.string().trim().min(1).max(32),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.withdrawGuardianAppointmentRequest({ guardianUserId: ctx.user.id, ...input });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: appointmentRefusalMessages.nothing_to_withdraw });
+        return { withdrawn: true as const };
       }),
     decideContactConsent: guardianProcedure
       .input(z.object({

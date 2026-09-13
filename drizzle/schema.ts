@@ -1181,6 +1181,10 @@ export const tutorJobInterests = mysqlTable("tutor_job_interests", {
   ])
     .default("interested")
     .notNull(),
+  /** When the Guardian shortlisted this applicant; null when they have not. `status` is the Admin's, not this. */
+  guardianShortlistedAt: timestamp("guardianShortlistedAt"),
+  /** When the Guardian asked the Admin to appoint this applicant; null when no request is waiting. */
+  appointmentRequestedAt: timestamp("appointmentRequestedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [

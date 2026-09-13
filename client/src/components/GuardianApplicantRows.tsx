@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Star } from "lucide-react";
 import { Link } from "wouter";
 
 /**
@@ -21,6 +21,21 @@ export type GuardianApplicantRow = {
   cityLabel: string | null;
   locationLabel: string | null;
   teachingExperienceYears: number | null;
+  /** On the Guardian's own shortlist. */
+  shortlisted: boolean;
+  /** The Guardian asked the Admin to appoint this Tutor, and the Admin has not acted yet. */
+  appointmentRequested: boolean;
+  /** Appointed to this tuition. */
+  appointed: boolean;
+};
+
+export type GuardianApplicantActions = {
+  /** Whether an appointment may be asked for now. The server holds the same rule. */
+  canRequestAppointment: boolean;
+  busy: boolean;
+  onShortlist: (tutor: GuardianApplicantRow, shortlisted: boolean) => void;
+  onRequestAppointment: (tutor: GuardianApplicantRow) => void;
+  onWithdrawAppointment: (tutor: GuardianApplicantRow) => void;
 };
 
 function Cell({ value, className = "" }: { value: string; className?: string }) {
@@ -38,16 +53,63 @@ function MobileCell({ tutor }: { tutor: GuardianApplicantRow }) {
   </td>;
 }
 
-export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, serialFrom }: {
+function ShortlistCell({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
+  return <td className="px-3 py-2.5 align-top">
+    <button
+      type="button"
+      aria-pressed={tutor.shortlisted}
+      aria-label={`${tutor.shortlisted ? "Remove from shortlist" : "Shortlist"} ${tutor.name}`}
+      disabled={actions.busy}
+      onClick={() => actions.onShortlist(tutor, !tutor.shortlisted)}
+      className={`inline-grid size-8 place-items-center rounded-lg border disabled:opacity-40 ${tutor.shortlisted ? "border-amber-200 bg-amber-50 text-amber-500" : "border-j-border text-j-ink-faint hover:text-amber-500"}`}
+    >
+      <Star size={16} fill={tutor.shortlisted ? "currentColor" : "none"} aria-hidden="true" />
+    </button>
+  </td>;
+}
+
+function AppointmentCell({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
+  let content;
+  if (tutor.appointed) {
+    content = <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span>;
+  } else if (tutor.appointmentRequested) {
+    content = <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Requested</span>
+      <button
+        type="button"
+        disabled={actions.busy}
+        onClick={() => actions.onWithdrawAppointment(tutor)}
+        aria-label={`Withdraw the appointment request for ${tutor.name}`}
+        className="text-2xs font-bold text-j-ink-soft underline-offset-2 hover:underline disabled:opacity-40"
+      >
+        Withdraw
+      </button>
+    </span>;
+  } else {
+    content = <button
+      type="button"
+      disabled={actions.busy || !actions.canRequestAppointment}
+      onClick={() => actions.onRequestAppointment(tutor)}
+      aria-label={`Appoint ${tutor.name}`}
+      className="inline-flex h-8 items-center rounded-lg bg-j-accent px-3 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      Appoint
+    </button>;
+  }
+  return <td className="px-3 py-2.5 align-top">{content}</td>;
+}
+
+export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, serialFrom, actions }: {
   tutors: GuardianApplicantRow[];
   /** The tuition these Tutors applied to; a profile is only ever opened through it. */
   requestId: number;
   emptyLabel: string;
   /** The number the first row carries: application order, continued across pages. */
   serialFrom: number;
+  actions: GuardianApplicantActions;
 }) {
   return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-    <table className="w-full min-w-[60rem] border-collapse text-sm">
+    <table className="w-full min-w-[72rem] border-collapse text-sm">
       <caption className="sr-only">Tutors who applied to this tuition</caption>
       <thead>
         <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
@@ -60,6 +122,8 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
           <th scope="col" className="px-3 py-2.5">City</th>
           <th scope="col" className="px-3 py-2.5">Location</th>
           <th scope="col" className="px-3 py-2.5">Experience</th>
+          <th scope="col" className="px-3 py-2.5">Shortlist</th>
+          <th scope="col" className="px-3 py-2.5">Appointment</th>
           <th scope="col" className="px-3 py-2.5"><span className="sr-only">Profile</span></th>
         </tr>
       </thead>
@@ -74,13 +138,15 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
           <Cell value={tutor.cityLabel ?? ""} />
           <Cell value={tutor.locationLabel ?? ""} />
           <Cell value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} />
+          <ShortlistCell tutor={tutor} actions={actions} />
+          <AppointmentCell tutor={tutor} actions={actions} />
           <td className="px-3 py-2.5 align-top text-right">
             <Link href={`/guardian/dashboard/applied-tutors/${requestId}/${encodeURIComponent(tutor.id)}`} aria-label={`Open the profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
               <ChevronRight size={16} />
             </Link>
           </td>
         </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
+        {tutors.length === 0 ? <tr><td colSpan={12} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
       </tbody>
     </table>
   </div>;

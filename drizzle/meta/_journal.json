@@ -512,6 +512,13 @@
       "when": 1790200000000,
       "tag": "0072_tutor_profile_field_guardian_visible",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "5",
+      "when": 1790300000000,
+      "tag": "0073_guardian_applicant_actions",
+      "breakpoints": true
     }
   ]
 }
