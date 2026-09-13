@@ -78,6 +78,8 @@ export const tutorRequestOperationActionValues = [
   "admin_appointed",
   /** An Admin declined the Guardian's appointment request. */
   "admin_declined_appointment",
+  /** An Admin sent an Appointed tuition back to Live, removing its Tutor. */
+  "admin_reopened",
 ] as const;
 export type TutorRequestOperationAction = (typeof tutorRequestOperationActionValues)[number];
 

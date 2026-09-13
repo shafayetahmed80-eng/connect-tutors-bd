@@ -526,6 +526,13 @@
       "when": 1790400000000,
       "tag": "0074_admin_appointment_operation_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1790500000000,
+      "tag": "0075_admin_reopened_operation_action",
+      "breakpoints": true
     }
   ]
 }

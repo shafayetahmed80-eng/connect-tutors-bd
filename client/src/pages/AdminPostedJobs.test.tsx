@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   publish: vi.fn(),
+  confirm: vi.fn(),
+  reopen: vi.fn(),
   data: {
     items: [
       {
@@ -61,6 +63,12 @@ vi.mock("@/lib/trpc", () => ({
       },
       moderateTutorRequestPublication: {
         useMutation: () => ({ mutate: mocks.publish, isPending: false }),
+      },
+      confirmTutorRequestAppointment: {
+        useMutation: () => ({ mutate: mocks.confirm, isPending: false }),
+      },
+      reopenAppointedTuition: {
+        useMutation: () => ({ mutate: mocks.reopen, isPending: false }),
       },
     },
     useUtils: () => ({ admin: { listPostedJobs: { invalidate: vi.fn() } } }),
@@ -161,6 +169,21 @@ describe("Admin Posted jobs board", () => {
 
     await user.click(card);
     expect(within(screen.getByRole("dialog")).getByRole("link", { name: /Applied Tutors/ })).toBeTruthy();
+  });
+
+  it("moves an Appointed tuition on after the demo class: Confirmed, or back to Live", async () => {
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175" });
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
+    const status = screen.getByRole("dialog");
+
+    await user.click(within(status).getByRole("button", { name: /Confirmed/ }));
+    expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13 });
+    await user.click(within(status).getByRole("button", { name: /Live/ }));
+    expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 13 });
   });
 
   it("marks a tuition whose Guardian asked for an appointment", () => {

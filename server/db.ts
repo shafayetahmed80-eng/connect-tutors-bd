@@ -15,6 +15,7 @@ import {
   type TutorProfileFieldOverrideRow,
 } from "@shared/tutor-profile-field-registry";
 import type { RequestSource } from "@shared/request-source";
+import { jobIdForRequest } from "@shared/job-id";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -97,6 +98,7 @@ import {
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
+import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition } from "./appointed-tuition";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -2794,6 +2796,13 @@ export async function updateGuardianTutorRequest(input: {
 }
 
 /** Finalizes an Admin-verified appointment only after a Tutor has been assigned. */
+/**
+ * Confirms an appointment: the Guardian keeps the Tutor after the demo class.
+ *
+ * Confirmed is filled, so the tuition's Job Board listing closes here - from
+ * Posted jobs and from the Matching workspace alike - and the Tutor is told
+ * alongside the Guardian.
+ */
 export async function confirmTutorRequestAppointment(input: { requestId: number; adminUserId: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -2802,8 +2811,27 @@ export async function confirmTutorRequestAppointment(input: { requestId: number;
     const result = await tx.update(tutorRequests).set({ appointmentConfirmedAt: now, contactConsent: "approved", lastActivityAt: now })
       .where(and(eq(tutorRequests.id, input.requestId), eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.tutorId), isNull(tutorRequests.appointmentConfirmedAt)));
     if (!result[0].affectedRows) return { updated: false as const, lifecycle: "confirmed" as const };
-    const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId }).from(tutorRequests).where(eq(tutorRequests.id, input.requestId)).limit(1);
-    await tx.insert(tutorRequestOperationEvents).values({ tutorRequestId: input.requestId, guardianUserId: request.guardianUserId, actorUserId: input.adminUserId, action: "admin_confirmed", changedFields: JSON.stringify(["appointment_confirmed"]) });
+    const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId }).from(tutorRequests).where(eq(tutorRequests.id, input.requestId)).limit(1);
+    const closedListing = await tx.update(tutorJobs)
+      .set({ publicationStatus: "closed", deactivatedAt: now })
+      .where(and(eq(tutorJobs.tutorRequestId, input.requestId), eq(tutorJobs.publicationStatus, "published")));
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: input.requestId,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_confirmed",
+      changedFields: JSON.stringify(["appointment_confirmed", ...(closedListing[0].affectedRows ? ["job_board_listing_closed"] : [])]),
+    });
+    if (request.tutorId) {
+      const note = appointmentConfirmedTutorNotification(jobIdForRequest(input.requestId));
+      await createTutorNotification(tx, {
+        tutorId: request.tutorId,
+        type: "appointment",
+        ...note,
+        actionPath: "/tutor/dashboard/status",
+        deduplicationKey: `appointment:${input.requestId}:confirmed:${request.tutorId}`,
+      });
+    }
     await tx.insert(guardianRequestNotifications).values({
       guardianUserId: request.guardianUserId,
       tutorRequestId: input.requestId,
@@ -5317,6 +5345,80 @@ export async function declineAppointmentRequestByAdmin(input: { adminUserId: num
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
 
     return { outcome: "declined" as const };
+  });
+}
+
+/**
+ * Sends an Appointed tuition back to Live after a demo class the Guardian did
+ * not continue from.
+ *
+ * The Tutor comes off the request, so their number masks again on the
+ * Guardian's list; their application is marked declined, so the Guardian's
+ * list moves on without them and they cannot be asked for again on this
+ * tuition. The Job Board listing was never taken down while Appointed, so it
+ * stays as it is. The Tutor and the Guardian are both told.
+ */
+export async function reopenAppointedTuitionByAdmin(input: { requestId: number; adminUserId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [request] = await tx
+      .select({
+        id: tutorRequests.id,
+        guardianUserId: tutorRequests.guardianUserId,
+        status: tutorRequests.status,
+        publicationState: tutorRequests.publicationState,
+        tutorId: tutorRequests.tutorId,
+        appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      })
+      .from(tutorRequests)
+      .where(eq(tutorRequests.id, input.requestId))
+      .limit(1)
+      .for("update");
+    if (!request) return { outcome: "not_found" as const };
+    if (!canReopenAppointedTuition(getGuardianRequestLifecycle(request)) || !request.tutorId) return { outcome: "refused" as const };
+    const removedTutorId = request.tutorId;
+
+    const now = new Date();
+    await tx.update(tutorRequests)
+      .set({ tutorId: null, status: "reviewing", contactConsent: "not_required", lastActivityAt: now })
+      .where(eq(tutorRequests.id, request.id));
+    const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
+    if (job) {
+      await tx.update(tutorJobInterests)
+        .set({ status: "declined", appointmentRequestedAt: null })
+        .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, removedTutorId)));
+    }
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: request.id,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_reopened",
+      changedFields: JSON.stringify(["tutor_removed", "live_again"]),
+    });
+
+    const tutorNote = appointmentEndedTutorNotification(jobIdForRequest(request.id));
+    await createTutorNotification(tx, {
+      tutorId: removedTutorId,
+      type: "appointment",
+      ...tutorNote,
+      actionPath: "/tutor/dashboard/status",
+      deduplicationKey: `appointment:${request.id}:ended:${removedTutorId}`,
+    });
+    const guardianNote = {
+      title: "Your tuition is Live again",
+      message: "You can ask to appoint another applicant.",
+      actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
+    };
+    await tx.insert(guardianRequestNotifications).values({
+      guardianUserId: request.guardianUserId,
+      tutorRequestId: request.id,
+      type: "lifecycle",
+      ...guardianNote,
+      deduplicationKey: `lifecycle:${request.id}:reopened`,
+    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+
+    return { outcome: "reopened" as const, removedTutorId };
   });
 }
 

@@ -1650,6 +1650,14 @@ export const appRouter = router({
         }
         return result;
       }),
+    reopenAppointedTuition: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.reopenAppointedTuitionByAdmin({ ...input, adminUserId: ctx.user.id });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor Request is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: "Only an Appointed tuition can go back to Live." });
+        return { reopened: true as const };
+      }),
     createConfirmationLetterDraft: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
