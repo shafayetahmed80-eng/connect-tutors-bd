@@ -44,6 +44,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
     {!applied.isLoading && !applied.isError
       ? <GuardianApplicantRows
           tutors={applied.data?.items ?? []}
+          requestId={requestId}
           emptyLabel="No Tutor has applied to this tuition yet."
           serialFrom={(page - 1) * APPLICANT_PAGE_SIZE + 1}
         />

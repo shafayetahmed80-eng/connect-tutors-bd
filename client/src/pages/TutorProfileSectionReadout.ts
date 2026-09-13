@@ -253,3 +253,19 @@ export function getTutorProfileReadoutSections(
     return { id: sectionId, title: sectionTitles[sectionId], groups };
   }).filter(section => section.groups.length > 0);
 }
+
+/**
+ * The read-out with its empty rows taken out, along with any card or section
+ * left with nothing in it. For a reader who is not the Tutor: "Not given" is a
+ * prompt to the Tutor, and to anyone else it is only noise.
+ */
+export function withoutMissingRows(sections: TutorProfileReadoutSection[]): TutorProfileReadoutSection[] {
+  return sections
+    .map(section => ({
+      ...section,
+      groups: section.groups
+        .map(group => ({ ...group, rows: group.rows.filter(row => !row.missing) }))
+        .filter(group => group.rows.length > 0),
+    }))
+    .filter(section => section.groups.length > 0);
+}

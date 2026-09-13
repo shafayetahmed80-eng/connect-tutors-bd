@@ -325,9 +325,10 @@ describe("AdminMatchingWorkspace helpers", () => {
       interests: [{
         interestId: 71,
         status: "interested",
-        tutorId: "1503",
+        tutorId: "tutor-9",
         tutorName: "Amina Rahman",
-        tutorNumber: "+8801712345678",
+        tutorNumber: 1503,
+        tutorPhone: "+8801712345678",
         publicJobId: "CT-JOB-000071",
         jobId: 42,
         jobTitle: "Standard 2",
@@ -341,6 +342,9 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(screen.getByRole("region", { name: /tutor apply review queue/i })).not.toBeNull();
     expect(screen.getByText("Tutor applications awaiting coordination")).not.toBeNull();
     expect(screen.getByText("Amina Rahman")).not.toBeNull();
+    // The Tutor ID is the registered number; the internal key never shows.
+    expect(screen.getByText("Tutor ID 1503 · Job CT-JOB-000071")).not.toBeNull();
+    expect(screen.queryByText(/tutor-9/)).toBeNull();
     expect(screen.getByRole("link", { name: /call amina rahman/i }).getAttribute("href")).toBe("tel:+8801712345678");
     fireEvent.click(screen.getByRole("button", { name: /shortlist tutor/i }));
     expect(onReview).toHaveBeenCalledWith(71, "shortlisted");

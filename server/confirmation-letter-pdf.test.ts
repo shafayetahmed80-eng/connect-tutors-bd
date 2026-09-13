@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { renderConfirmationLetterPdf } from "./confirmation-letter-pdf";
+import { formatLetterTutor, renderConfirmationLetterPdf } from "./confirmation-letter-pdf";
+
+describe("the Tutor line on a confirmation letter", () => {
+  it("names the Tutor with the Tutor ID people know", () => {
+    expect(formatLetterTutor("Tania Sultana", "777")).toBe("Tania Sultana (Tutor ID 777)");
+  });
+
+  it("never prints the internal key an older letter still carries", () => {
+    expect(formatLetterTutor("Tania Sultana", "tutor-175")).toBe("Tania Sultana");
+    expect(formatLetterTutor("Tania Sultana", "")).toBe("Tania Sultana");
+  });
+});
 
 describe("bilingual confirmation-letter PDF", () => {
   it("renders an in-memory PDF using only the approved operational snapshot fields", async () => {

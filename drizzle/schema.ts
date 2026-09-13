@@ -878,6 +878,11 @@ export const tutorProfileFieldOverrides = mysqlTable("tutor_profile_field_overri
   required: int("required"),
   /** Owner's own wording for the field's label; NULL keeps the registry default. */
   label: varchar("label", { length: 120 }),
+  /**
+   * Whether a Guardian reading an applicant's profile sees this field. NULL
+   * keeps the registry default; a field in `guardianPrivateFieldIds` ignores it.
+   */
+  guardianVisible: int("guardianVisible"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

@@ -9,7 +9,10 @@ import { Link } from "wouter";
  * off the screen, and the whole profile is one arrow away.
  */
 export type AdminTutorRow = {
+  /** The internal key: it addresses the profile page and is never shown. */
   id: string;
+  /** The Tutor ID people see; null for a directory row that never registered. */
+  tutorNumber: number | null;
   name: string;
   phone: string | null;
   instituteName: string | null;
@@ -71,7 +74,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
       <tbody>
         {tutors.map((tutor, index) => <tr key={tutor.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
           {numbered ? <td className="px-3 py-2.5 align-top tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</td> : null}
-          <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{tutor.id}</td>
+          <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</td>
           <td className="px-3 py-2.5 align-top font-bold text-j-ink">{tutor.name}</td>
           <Cell value={tutor.phone ?? ""} className="whitespace-nowrap" />
           <Cell value={tutor.instituteName ?? ""} className="max-w-[16rem]" />

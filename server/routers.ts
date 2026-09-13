@@ -21,7 +21,7 @@ import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
 import {
-  findTutorProfileFieldMeta,
+  isGuardianPrivateField, findTutorProfileFieldMeta,
   tutorProfileFieldSections,
   tutorProfileFieldSubGroups,
 } from "@shared/tutor-profile-field-registry";
@@ -1259,6 +1259,7 @@ export const appRouter = router({
         enabled: z.union([z.literal(0), z.literal(1)]).nullable(),
         required: z.union([z.literal(0), z.literal(1)]).nullable(),
         label: z.string().trim().min(1).max(120).nullable(),
+        guardianVisible: z.union([z.literal(0), z.literal(1)]).nullable().optional(),
       })).min(1).max(200))
       .mutation(async ({ input }) => {
         for (const change of input) {
@@ -1268,6 +1269,9 @@ export const appRouter = router({
           }
           if (change.required !== null && !meta.requiredConfigurable) {
             throw new TRPCError({ code: "BAD_REQUEST", message: `${meta.label} does not support a required/optional override.` });
+          }
+          if (change.guardianVisible != null && isGuardianPrivateField(change.fieldId)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: `${meta.label} is never shown to a Guardian.` });
           }
         }
         await db.saveTutorProfileFieldOverrides(input);
@@ -1794,6 +1798,16 @@ export const appRouter = router({
         const page = await db.listGuardianAppliedTutors({ guardianUserId: ctx.user.id, ...input });
         if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
         return page;
+      }),
+    appliedTutorProfile: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        tutorId: z.string().trim().min(1).max(32),
+      }))
+      .query(async ({ ctx, input }) => {
+        const profile = await db.getTutorProfileForGuardian({ guardianUserId: ctx.user.id, ...input });
+        if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor profile is unavailable." });
+        return profile;
       }),
     decideContactConsent: guardianProcedure
       .input(z.object({

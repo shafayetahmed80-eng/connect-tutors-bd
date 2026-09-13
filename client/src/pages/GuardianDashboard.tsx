@@ -12,6 +12,7 @@ import { Link, useLocation, useRoute } from "wouter";
 import { GuardianHireSheet } from "@/components/GuardianHireSheet";
 import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
 import { GuardianAppliedTuitionsContent, GuardianAppliedTutorsContent } from "@/pages/GuardianAppliedTutors";
+import { GuardianTutorProfileContent } from "@/pages/GuardianTutorProfile";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -190,7 +191,7 @@ function GuardianConfirmationLetterPanel() {
   return <div className="space-y-6"><Card className="rounded-xl border-j-border shadow-sm"><CardContent className="p-0">{lettersQuery.isLoading ? <div className="p-7 text-sm text-j-ink-soft">Loading your private confirmation letters…</div> : null}{lettersQuery.error ? <div className="p-7"><GuardianWorkspaceState kind="error" title="Confirmation letters are temporarily unavailable" message="Please try again. Your private request information remains protected." onRetry={() => { void lettersQuery.refetch(); }} /></div> : null}{!lettersQuery.isLoading && !lettersQuery.error && letters.length === 0 ? <div className="p-8 text-center"><ShieldCheck className="mx-auto size-8 text-[#1677c8]" /><h2 className="mt-4 text-lg font-black text-j-ink">No issued letter yet</h2><Link href="/guardian/dashboard/posted-jobs" className="mt-5 inline-flex"><Button variant="outline">Review posted jobs</Button></Link></div> : null}{!lettersQuery.isLoading && !lettersQuery.error && letters.length > 0 ? <div className="divide-y divide-j-border">{letters.map(letter => <div key={letter.id} className="p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-extrabold text-j-ink">Letter {letter.letterNumber}</p><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${letter.status === "issued" ? "bg-emerald-50 text-emerald-800" : "bg-j-surface-muted text-j-ink-soft"}`}>{letter.status === "issued" ? "Issued" : "Superseded"}</span><span className="text-xs font-semibold text-j-ink-muted">Version {letter.version}</span></div><p className="mt-2 text-sm leading-6 text-j-ink-soft">Issued {formatGuardianDate(letter.issuedAt)}. This bilingual document confirms the approved tutor-match schedule.</p>{letter.supersededAt ? <p className="mt-2 text-xs font-semibold text-amber-800">A later request change superseded this record on {formatGuardianDate(letter.supersededAt)}.</p> : null}</div>{letter.status === "issued" ? <GuardianConfirmationLetterDownloadButton letterId={letter.id} /> : null}</div></div>)}</div> : null}</CardContent></Card></div>;
 }
 
-export function GuardianDashboardContent({ section, requestId }: { section?: string; requestId?: number }) {
+export function GuardianDashboardContent({ section, requestId, tutorId }: { section?: string; requestId?: number; tutorId?: string }) {
   const [, navigate] = useLocation();
   const requestsQuery = trpc.tutorRequests.mine.useQuery();
   const requests = requestsQuery.data ?? [];
@@ -223,6 +224,7 @@ export function GuardianDashboardContent({ section, requestId }: { section?: str
 
   // The tab lands on the tuitions that can have applicants; one of them opens its list.
   if (section === "applied-tutors") {
+    if (requestId && tutorId) return <GuardianTutorProfileContent requestId={requestId} tutorId={tutorId} />;
     return requestId
       ? <GuardianAppliedTutorsContent requestId={requestId} />
       : <GuardianAppliedTuitionsContent requests={requests} isLoading={requestsQuery.isLoading} isError={requestsQuery.isError} />;
@@ -258,10 +260,13 @@ function useGuardianWorkspaceHeader() {
 }
 
 export default function GuardianDashboard() {
+  const [, profileParams] = useRoute<{ section?: string; requestId?: string; tutorId?: string }>("/guardian/dashboard/:section/:requestId/:tutorId");
   const [, detailParams] = useRoute<{ section?: string; requestId?: string }>("/guardian/dashboard/:section/:requestId");
   const [, params] = useRoute<{ section?: string }>("/guardian/dashboard/:section");
-  const section = detailParams?.section ?? params?.section;
-  const requestId = detailParams?.requestId ? Number(detailParams.requestId) : undefined;
+  const section = profileParams?.section ?? detailParams?.section ?? params?.section;
+  const rawRequestId = profileParams?.requestId ?? detailParams?.requestId;
+  const requestId = rawRequestId ? Number(rawRequestId) : undefined;
+  const tutorId = profileParams?.tutorId ? decodeURIComponent(profileParams.tutorId) : undefined;
   const workspaceHeader = useGuardianWorkspaceHeader();
-  return <DashboardLayout workspaceHeader={workspaceHeader} title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} /></DashboardLayout>;
+  return <DashboardLayout workspaceHeader={workspaceHeader} title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} tutorId={tutorId} /></DashboardLayout>;
 }

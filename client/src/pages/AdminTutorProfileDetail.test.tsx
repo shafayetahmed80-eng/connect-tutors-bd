@@ -92,7 +92,9 @@ describe("Admin Tutor profile detail", () => {
 
     expect(mocks.lastInput).toEqual({ tutorId: "tutor-175" });
     expect(screen.getByRole("heading", { name: "Tania Sultana" })).toBeTruthy();
-    expect(screen.getByText("Tutor ID tutor-175")).toBeTruthy();
+    expect(screen.getByText("Tutor ID 175")).toBeTruthy();
+    // The internal key only addresses the page; it is never shown as the Tutor ID.
+    expect(screen.queryByText(/tutor-175/)).toBeNull();
     expect(screen.getByText("approved")).toBeTruthy();
     expect(screen.getByText("Verified")).toBeTruthy();
     expect(screen.getByText("Profile completed: 100%")).toBeTruthy();

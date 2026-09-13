@@ -4,7 +4,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const applicant = (id: string, name: string, overrides: Record<string, unknown> = {}) => ({
-  id, name, phone: null as string | null, phoneHidden: true,
+  id, tutorNumber: 777 as number | null, name, phone: null as string | null, phoneHidden: true,
   instituteName: "University of Dhaka", departmentName: "Physics",
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
   ...overrides,
@@ -63,8 +63,14 @@ describe("the Guardian's applicant list", () => {
     render(<GuardianAppliedTutorsContent requestId={13} />);
 
     const headers = screen.getAllByRole("columnheader").map(header => header.textContent);
-    expect(headers).toEqual(["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience"]);
-    // Nothing leads into the Admin's review screens.
+    expect(headers).toEqual(["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Profile"]);
+    // Tutor ID is the registered number, never the internal key.
+    expect(within(screen.getAllByRole("row")[1]).getByText("777")).toBeTruthy();
+    expect(screen.queryByText("tutor-175")).toBeNull();
+    // The arrow opens the Guardian's own view of the profile, through this tuition...
+    expect(screen.getByRole("link", { name: "Open the profile of Tania Sultana" }).getAttribute("href"))
+      .toBe("/guardian/dashboard/applied-tutors/13/tutor-175");
+    // ...and nothing leads into the Admin's review screens.
     expect(screen.queryByRole("link", { name: /full profile/i })).toBeNull();
   });
 

@@ -34,6 +34,15 @@ function formattedTuitionType(value: string) {
   return value.replace(/\b\w/g, letter => letter.toUpperCase()).replace("Both", "Home / Online");
 }
 
+/**
+ * The Tutor line: the name, with the Tutor ID when the letter carries one.
+ * Letters drafted before the reference became the Tutor ID hold the internal
+ * key instead; that is never printed, so they show the name alone.
+ */
+export function formatLetterTutor(tutorName: string, tutorReference: string) {
+  return /^\d+$/.test(tutorReference.trim()) ? `${tutorName} (Tutor ID ${tutorReference.trim()})` : tutorName;
+}
+
 /** Builds an in-memory bilingual PDF; never accepts address, contact, student, or internal-note fields. */
 export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocument): Promise<Buffer> {
   const font = readFileSync(bengaliFontPath);
@@ -59,7 +68,7 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
 
     const details = [
       ["Request reference / রিকোয়েস্ট", `#${letter.requestId}`],
-      ["Tutor / টিউটর", `${letter.tutorName} (${letter.tutorReference})`],
+      ["Tutor / টিউটর", formatLetterTutor(letter.tutorName, letter.tutorReference)],
       ["Learning programme / শিক্ষার ধরন", [letter.category, letter.curriculumType, letter.classCourse].filter(Boolean).join(" • ")],
       ["Subjects / বিষয়", letter.subjects.join(", ") || "As approved"],
       ["Tuition type / টিউশনের ধরন", formattedTuitionType(letter.tuitionType)],
