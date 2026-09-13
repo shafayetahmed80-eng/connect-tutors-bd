@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listGuardianAppliedTutors: vi.fn(), getTutorProfileForGuardian: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({
+  listGuardianAppliedTutors: vi.fn(),
+  getTutorProfileForGuardian: vi.fn(),
+  setGuardianApplicantShortlist: vi.fn(),
+  requestGuardianAppointment: vi.fn(),
+  withdrawGuardianAppointmentRequest: vi.fn(),
+}));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -74,5 +80,60 @@ describe("tutorRequests.appliedTutorProfile", () => {
       await expect(createCaller({ ...guardianUser, role }).tutorRequests.appliedTutorProfile({ requestId: 13, tutorId: "tutor-175" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
     expect(dbMocks.getTutorProfileForGuardian).not.toHaveBeenCalled();
+  });
+});
+
+describe("a Guardian's actions on an applicant", () => {
+  const applicant = { requestId: 13, tutorId: "tutor-175" };
+
+  it("shortlists as the signed-in Guardian", async () => {
+    dbMocks.setGuardianApplicantShortlist.mockResolvedValue({ shortlisted: true });
+
+    await expect(createCaller().tutorRequests.shortlistApplicant({ ...applicant, shortlisted: true, guardianUserId: 1 } as never))
+      .resolves.toEqual({ shortlisted: true });
+    expect(dbMocks.setGuardianApplicantShortlist).toHaveBeenCalledWith({ guardianUserId: 77, requestId: 13, tutorId: "tutor-175", shortlisted: true });
+  });
+
+  it("asks for and withdraws an appointment as the signed-in Guardian", async () => {
+    dbMocks.requestGuardianAppointment.mockResolvedValue({ outcome: "requested" });
+    dbMocks.withdrawGuardianAppointmentRequest.mockResolvedValue({ outcome: "withdrawn" });
+
+    await expect(createCaller().tutorRequests.requestAppointment(applicant)).resolves.toEqual({ requested: true });
+    await expect(createCaller().tutorRequests.withdrawAppointmentRequest(applicant)).resolves.toEqual({ withdrawn: true });
+    expect(dbMocks.requestGuardianAppointment).toHaveBeenCalledWith({ guardianUserId: 77, ...applicant });
+    expect(dbMocks.withdrawGuardianAppointmentRequest).toHaveBeenCalledWith({ guardianUserId: 77, ...applicant });
+  });
+
+  it("is a 404 for an applicant the Guardian cannot reach", async () => {
+    dbMocks.setGuardianApplicantShortlist.mockResolvedValue(undefined);
+    dbMocks.requestGuardianAppointment.mockResolvedValue({ outcome: "not_found" });
+    dbMocks.withdrawGuardianAppointmentRequest.mockResolvedValue({ outcome: "not_found" });
+
+    await expect(createCaller().tutorRequests.shortlistApplicant({ ...applicant, shortlisted: true })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(createCaller().tutorRequests.requestAppointment(applicant)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(createCaller().tutorRequests.withdrawAppointmentRequest(applicant)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("says why a second request on the same tuition is refused", async () => {
+    dbMocks.requestGuardianAppointment.mockResolvedValue({ outcome: "refused", reason: "another_requested" });
+    await expect(createCaller().tutorRequests.requestAppointment({ requestId: 13, tutorId: "tutor-404" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("another Tutor") });
+  });
+
+  it("refuses to withdraw when nothing is waiting", async () => {
+    dbMocks.withdrawGuardianAppointmentRequest.mockResolvedValue({ outcome: "refused" });
+    await expect(createCaller().tutorRequests.withdrawAppointmentRequest(applicant)).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("is closed to anyone who is not a Guardian", async () => {
+    for (const user of [null, { ...guardianUser, role: "tutor" as const }, { ...guardianUser, role: "admin" as const }]) {
+      const caller = createCaller(user);
+      await expect(caller.tutorRequests.shortlistApplicant({ ...applicant, shortlisted: true })).rejects.toBeTruthy();
+      await expect(caller.tutorRequests.requestAppointment(applicant)).rejects.toBeTruthy();
+      await expect(caller.tutorRequests.withdrawAppointmentRequest(applicant)).rejects.toBeTruthy();
+    }
+    expect(dbMocks.setGuardianApplicantShortlist).not.toHaveBeenCalled();
+    expect(dbMocks.requestGuardianAppointment).not.toHaveBeenCalled();
+    expect(dbMocks.withdrawGuardianAppointmentRequest).not.toHaveBeenCalled();
   });
 });

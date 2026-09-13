@@ -1,5 +1,5 @@
 import AppliedJobFacts from "@/components/AppliedJobFacts";
-import GuardianApplicantRows from "@/components/GuardianApplicantRows";
+import GuardianApplicantRows, { type GuardianApplicantActions } from "@/components/GuardianApplicantRows";
 import { TutorListPager } from "@/components/TutorListPager";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
@@ -7,6 +7,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Link } from "wouter";
 import { getGuardianRequestLifecycle } from "./GuardianRequestTracking";
 
@@ -24,6 +25,21 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
   const [page, setPage] = useState(1);
   const applied = trpc.tutorRequests.appliedTutors.useQuery({ requestId, page, pageSize: APPLICANT_PAGE_SIZE }, { retry: false });
   const job = applied.data?.job;
+
+  const utils = trpc.useUtils();
+  const refresh = () => utils.tutorRequests.appliedTutors.invalidate({ requestId });
+  const onError = (error: { message: string }) => { toast.error(error.message); };
+  const shortlist = trpc.tutorRequests.shortlistApplicant.useMutation({ onSuccess: refresh, onError });
+  const requestAppointment = trpc.tutorRequests.requestAppointment.useMutation({ onSuccess: refresh, onError });
+  const withdrawAppointment = trpc.tutorRequests.withdrawAppointmentRequest.useMutation({ onSuccess: refresh, onError });
+  const actions: GuardianApplicantActions = {
+    // Live, with no request already waiting - the same rule the server applies.
+    canRequestAppointment: applied.data?.lifecycle === "live" && !applied.data.appointmentRequestPending,
+    busy: shortlist.isPending || requestAppointment.isPending || withdrawAppointment.isPending,
+    onShortlist: (tutor, shortlisted) => shortlist.mutate({ requestId, tutorId: tutor.id, shortlisted }),
+    onRequestAppointment: tutor => requestAppointment.mutate({ requestId, tutorId: tutor.id }),
+    onWithdrawAppointment: tutor => withdrawAppointment.mutate({ requestId, tutorId: tutor.id }),
+  };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <Link href="/guardian/dashboard/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
@@ -45,6 +61,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
       ? <GuardianApplicantRows
           tutors={applied.data?.items ?? []}
           requestId={requestId}
+          actions={actions}
           emptyLabel="No Tutor has applied to this tuition yet."
           serialFrom={(page - 1) * APPLICANT_PAGE_SIZE + 1}
         />

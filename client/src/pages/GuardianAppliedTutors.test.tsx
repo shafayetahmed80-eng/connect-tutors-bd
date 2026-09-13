@@ -7,6 +7,7 @@ const applicant = (id: string, name: string, overrides: Record<string, unknown> 
   id, tutorNumber: 777 as number | null, name, phone: null as string | null, phoneHidden: true,
   instituteName: "University of Dhaka", departmentName: "Physics",
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
+  shortlisted: false, appointmentRequested: false, appointed: false,
   ...overrides,
 });
 
@@ -19,10 +20,17 @@ const job = {
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   result: {} as Record<string, unknown>,
+  shortlist: vi.fn(),
+  requestAppointment: vi.fn(),
+  withdrawAppointment: vi.fn(),
+  invalidate: vi.fn(),
 }));
+
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({ tutorRequests: { appliedTutors: { invalidate: mocks.invalidate } } }),
     tutorRequests: {
       appliedTutors: {
         useQuery: (input: unknown) => {
@@ -30,6 +38,9 @@ vi.mock("@/lib/trpc", () => ({
           return mocks.result;
         },
       },
+      shortlistApplicant: { useMutation: () => ({ mutate: mocks.shortlist, isPending: false }) },
+      requestAppointment: { useMutation: () => ({ mutate: mocks.requestAppointment, isPending: false }) },
+      withdrawAppointmentRequest: { useMutation: () => ({ mutate: mocks.withdrawAppointment, isPending: false }) },
     },
   },
 }));
@@ -38,7 +49,7 @@ import { GuardianAppliedTuitionsContent, GuardianAppliedTutorsContent } from "./
 
 function loaded(items: ReturnType<typeof applicant>[], extra: Record<string, unknown> = {}) {
   mocks.result = {
-    data: { job, lifecycle: "live", items, total: items.length, page: 1, pageSize: 20, totalPages: 1, ...extra },
+    data: { job, lifecycle: "live", appointmentRequestPending: false, items, total: items.length, page: 1, pageSize: 20, totalPages: 1, ...extra },
     isLoading: false, isError: false, error: null,
   };
 }
@@ -63,7 +74,7 @@ describe("the Guardian's applicant list", () => {
     render(<GuardianAppliedTutorsContent requestId={13} />);
 
     const headers = screen.getAllByRole("columnheader").map(header => header.textContent);
-    expect(headers).toEqual(["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Profile"]);
+    expect(headers).toEqual(["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Shortlist", "Appointment", "Profile"]);
     // Tutor ID is the registered number, never the internal key.
     expect(within(screen.getAllByRole("row")[1]).getByText("777")).toBeTruthy();
     expect(screen.queryByText("tutor-175")).toBeNull();
@@ -77,7 +88,7 @@ describe("the Guardian's applicant list", () => {
   it("holds every number back except the appointed Tutor's", () => {
     loaded([
       applicant("tutor-175", "Tania Sultana"),
-      applicant("tutor-404", "Tanvir Ahmed", { phone: "+8801711111111", phoneHidden: false }),
+      applicant("tutor-404", "Tanvir Ahmed", { phone: "+8801711111111", phoneHidden: false, appointed: true }),
     ], { lifecycle: "appointed" });
     render(<GuardianAppliedTutorsContent requestId={13} />);
 
@@ -104,6 +115,57 @@ describe("the Guardian's applicant list", () => {
     expect(screen.getByText("This tuition is unavailable.")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByText("Applied:")).toBeNull();
+  });
+});
+
+describe("shortlisting and asking to appoint", () => {
+  it("shortlists a Tutor, and takes one off again", () => {
+    loaded([applicant("tutor-175", "Tania Sultana"), applicant("tutor-404", "Tanvir Ahmed", { shortlisted: true })]);
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist Tania Sultana" }));
+    expect(mocks.shortlist).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-175", shortlisted: true });
+
+    const on = screen.getByRole("button", { name: "Remove from shortlist Tanvir Ahmed" });
+    expect(on.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(on);
+    expect(mocks.shortlist).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404", shortlisted: false });
+  });
+
+  it("asks the Admin to appoint a Tutor", () => {
+    loaded([applicant("tutor-175", "Tania Sultana")]);
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Appoint Tania Sultana" }));
+    expect(mocks.requestAppointment).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-175" });
+  });
+
+  it("allows one request at a time, and lets the waiting one be withdrawn", () => {
+    loaded([
+      applicant("tutor-175", "Tania Sultana", { appointmentRequested: true }),
+      applicant("tutor-404", "Tanvir Ahmed"),
+    ], { appointmentRequestPending: true });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    const [requested, other] = screen.getAllByRole("row").slice(1);
+    expect(within(requested).getByText("Requested")).toBeTruthy();
+    expect((within(other).getByRole("button", { name: "Appoint Tanvir Ahmed" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(within(requested).getByRole("button", { name: "Withdraw the appointment request for Tania Sultana" }));
+    expect(mocks.withdrawAppointment).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-175" });
+  });
+
+  it("offers no new appointment once a Tutor is appointed", () => {
+    loaded([
+      applicant("tutor-175", "Tania Sultana", { appointed: true, phoneHidden: false, phone: "+8801711111111" }),
+      applicant("tutor-404", "Tanvir Ahmed"),
+    ], { lifecycle: "appointed" });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    const [appointed, other] = screen.getAllByRole("row").slice(1);
+    expect(within(appointed).getByText("Appointed")).toBeTruthy();
+    expect(within(appointed).queryByRole("button", { name: /Appoint/ })).toBeNull();
+    expect((within(other).getByRole("button", { name: "Appoint Tanvir Ahmed" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

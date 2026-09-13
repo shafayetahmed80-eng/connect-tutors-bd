@@ -68,6 +68,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           caption="Tutors who applied to this tuition"
           emptyLabel={activeFilterCount ? "No applicant matches the active filters." : "No Tutor has applied to this tuition yet."}
           serialFrom={(filters.page - 1) * filters.pageSize + 1}
+          showGuardianMarks
         />
       : null}
 

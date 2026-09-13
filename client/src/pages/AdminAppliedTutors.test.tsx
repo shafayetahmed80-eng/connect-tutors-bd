@@ -114,6 +114,20 @@ describe("Admin Applied Tutors page", () => {
       .toBe("/admin/tutor-profiles/tutor-175");
   });
 
+  it("shows the Guardian's own marks beside each applicant", () => {
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), guardianShortlistedAt: new Date("2026-09-13T08:00:00.000Z"), appointmentRequestedAt: new Date("2026-09-13T09:00:00.000Z") } as never,
+      tutor("tutor-404", "Tanvir Ahmed"),
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    expect(screen.getByRole("columnheader", { name: "Guardian" })).toBeTruthy();
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Appointment requested")).toBeTruthy();
+    expect(within(rows[0]).getByText("Shortlisted")).toBeTruthy();
+    expect(within(rows[1]).queryByText("Shortlisted")).toBeNull();
+  });
+
   it("continues the numbering across pages rather than restarting at one", () => {
     mocks.data.totalPages = 3;
     render(<AdminAppliedTutorsContent requestId={13} />);
