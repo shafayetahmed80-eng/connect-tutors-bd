@@ -1783,6 +1783,18 @@ export const appRouter = router({
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
     mine: guardianProcedure.query(({ ctx }) => db.listGuardianTutorRequests(ctx.user.id)),
+    appliedTutors: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(50).default(20),
+      }))
+      .query(async ({ ctx, input }) => {
+        // The Guardian is always the signed-in one, never a value from the input.
+        const page = await db.listGuardianAppliedTutors({ guardianUserId: ctx.user.id, ...input });
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        return page;
+      }),
     decideContactConsent: guardianProcedure
       .input(z.object({
         requestId: z.number().int().positive(),

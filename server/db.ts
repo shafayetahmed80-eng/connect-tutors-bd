@@ -88,6 +88,12 @@ import {
 } from "../drizzle/schema";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
+import {
+  guardianMaySeeApplicantPhone,
+  guardianVisibleInterestStatuses,
+  isGuardianApplicantStage,
+  pickGuardianApplicantEducation,
+} from "./guardian-applicants";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -2201,7 +2207,9 @@ export async function listGuardianTutorRequests(userId: number) {
     .where(eq(tutorRequests.guardianUserId, userId))
     .orderBy(desc(tutorRequests.createdAt));
 
-  const appliedByRequest = await countAppliedTutorsByRequest(database, requests.map(request => request.id));
+  // Counted by the Guardian's own applicant rules, so the number on the Applied
+  // Tutors button is the number of rows behind it.
+  const appliedByRequest = await countGuardianApplicantsByRequest(database, requests.map(request => request.id));
 
   return requests.map(request => ({
     ...request,
@@ -4732,6 +4740,164 @@ export async function countAppliedTutorsByRequest(
     .groupBy(tutorJobs.tutorRequestId);
   return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
 }
+/** Which applications a Guardian's applicant table lists - its rows and its counts both. */
+function guardianApplicantConditions() {
+  return [
+    inArray(tutorJobInterests.status, [...guardianVisibleInterestStatuses]),
+    // A Tutor suspended after applying is not someone to introduce to a Guardian.
+    eq(tutors.profileStatus, "approved"),
+  ];
+}
+
+/**
+ * How many applicants each of a Guardian's tuitions shows them. The Admin's
+ * count above keeps declined applications; the Guardian's leaves them out.
+ */
+export async function countGuardianApplicantsByRequest(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  requestIds: number[],
+): Promise<Map<number, number>> {
+  if (requestIds.length === 0) return new Map();
+  const rows = await database
+    .select({ requestId: tutorJobs.tutorRequestId, applied: count(tutorJobInterests.id) })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .where(and(inArray(tutorJobs.tutorRequestId, requestIds), ...guardianApplicantConditions()))
+    .groupBy(tutorJobs.tutorRequestId);
+  return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
+}
+
+export type GuardianAppliedTutorsInput = { guardianUserId: number; requestId: number; page: number; pageSize: number };
+
+/**
+ * The Tutors who applied to one of a Guardian's own tuitions.
+ *
+ * Every privacy rule is settled here rather than on the page: a tuition that is
+ * not this Guardian's reads exactly like one that does not exist, a mobile
+ * number is sent only for the Tutor appointed to it, and a row carries nothing
+ * beyond the columns the Guardian's table shows.
+ *
+ * Ordered oldest first, like the Admin's list: the row number is application
+ * order.
+ */
+export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInput) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const [request] = await database
+    .select({
+      id: tutorRequests.id,
+      classCourse: tutorRequests.classCourse,
+      category: tutorRequests.category,
+      subjects: tutorRequests.subjects,
+      preferredGender: tutorRequests.preferredGender,
+      daysPerWeek: tutorRequests.daysPerWeek,
+      budgetAmount: tutorRequests.budgetAmount,
+      tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
+      locationText: tutorRequests.locationText,
+      tuitionType: tutorRequests.tuitionType,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, input.requestId), eq(tutorRequests.guardianUserId, input.guardianUserId)))
+    .limit(1);
+  if (!request) return undefined;
+  const lifecycle = getGuardianRequestLifecycle(request);
+  if (!isGuardianApplicantStage(lifecycle)) return undefined;
+
+  const offset = (input.page - 1) * input.pageSize;
+  const rows = await database
+    .select({
+      id: tutors.id,
+      name: tutors.name,
+      phone: tutors.phone,
+      cityLocationId: tutors.cityLocationId,
+      locationLabel: locations.label,
+      teachingExperienceYears: tutors.teachingExperienceYears,
+      highestEducation: tutorAcademicProfiles.highestEducation,
+      universityName: universities.name,
+      academicDepartmentName: facultyDepartments.name,
+    })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+    .leftJoin(universities, eq(universities.id, tutorAcademicProfiles.universityId))
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions()))
+    .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
+    .limit(input.pageSize)
+    .offset(offset);
+  const total = (await countGuardianApplicantsByRequest(database, [input.requestId])).get(input.requestId) ?? 0;
+
+  const tutorIds = rows.map(row => row.id);
+  const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
+  const [educationRows, cityRows] = await Promise.all([
+    tutorIds.length
+      ? database
+          .select({
+            tutorId: tutorEducationRecords.tutorId,
+            qualificationLevel: tutorEducationRecords.qualificationLevel,
+            instituteName: tutorEducationRecords.instituteName,
+            majorGroup: tutorEducationRecords.majorGroup,
+          })
+          .from(tutorEducationRecords)
+          .where(inArray(tutorEducationRecords.tutorId, tutorIds))
+      : [],
+    cityIds.length
+      ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+      : [],
+  ]);
+  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null; majorGroup: string | null }>>();
+  for (const record of educationRows) {
+    educationByTutor.set(record.tutorId, [...(educationByTutor.get(record.tutorId) ?? []), record]);
+  }
+  const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
+
+  return {
+    job: {
+      id: request.id,
+      classCourse: request.classCourse,
+      category: request.category,
+      subjects: request.subjects,
+      preferredGender: request.preferredGender,
+      daysPerWeek: request.daysPerWeek,
+      budgetAmount: request.budgetAmount,
+      tuitionLocationLabel: request.tuitionLocationLabel,
+      locationText: request.locationText,
+      tuitionType: request.tuitionType,
+    },
+    lifecycle,
+    items: rows.map(row => {
+      const phoneVisible = guardianMaySeeApplicantPhone({ lifecycle, tutorId: request.tutorId }, row.id);
+      const education = pickGuardianApplicantEducation(
+        { highestEducation: row.highestEducation, universityName: row.universityName, departmentName: row.academicDepartmentName },
+        educationByTutor.get(row.id) ?? [],
+      );
+      return {
+        id: row.id,
+        name: row.name,
+        phone: phoneVisible ? row.phone : null,
+        phoneHidden: !phoneVisible,
+        instituteName: education.instituteName,
+        departmentName: education.departmentName,
+        cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
+        locationLabel: row.locationLabel,
+        teachingExperienceYears: row.teachingExperienceYears,
+      };
+    }),
+    total,
+    page: input.page,
+    pageSize: input.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
+  };
+}
+
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");

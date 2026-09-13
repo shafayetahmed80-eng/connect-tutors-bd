@@ -62,4 +62,21 @@ describe("Applied Tutors on the Guardian's Posted jobs board", () => {
     expect(screen.getByRole("button", { name: /Job ID 6813/ })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
   });
+
+  it("keeps the list open once a Tutor is Appointed, and closes it once Confirmed", async () => {
+    mocks.requests = [
+      { ...base, id: 15, status: "matched", publicationState: "published", tutorId: "tutor-175", appliedTutorCount: 3 },
+      { ...base, id: 16, status: "matched", publicationState: "published", tutorId: "tutor-175", appointmentConfirmedAt: new Date("2026-09-10T00:00:00.000Z"), appliedTutorCount: 3 },
+    ];
+    const user = userEvent.setup();
+    render(<GuardianRequestTracking embedded />);
+
+    await user.click(screen.getByRole("tab", { name: /Appointed/ }));
+    const card = screen.getByRole("button", { name: /Job ID 6814/ });
+    expect(within(card).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href")).toBe("/guardian/dashboard/applied-tutors/15");
+
+    await user.click(screen.getByRole("tab", { name: /Confirmed/ }));
+    expect(screen.getByRole("button", { name: /Job ID 6815/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
+  });
 });

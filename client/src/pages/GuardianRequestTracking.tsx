@@ -25,7 +25,7 @@ type RequestRecord = {
   studentFirstName?: string | null; studentGender?: string | null; addressDetails?: string | null; notes?: string | null;
   budgetAmount: number | null; tuitionLocationLabel?: string | null;
   nextAction?: string | null; contactConsent?: string | null;
-  /** How many Tutors have applied, once the request is Live. */
+  /** How many Tutors have applied, while the request is Live or Appointed. */
   appliedTutorCount?: number;
 };
 
@@ -181,7 +181,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
                 }}
                 onOpen={() => setExpandedId(request.id)}
                 action={<span className="flex items-center gap-3.5">
-                  {lifecycle.key === "live" ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${request.id}`} count={request.appliedTutorCount ?? 0} /> : null}
+                  {lifecycle.key === "live" || lifecycle.key === "appointed" ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${request.id}`} count={request.appliedTutorCount ?? 0} /> : null}
                   <DetailsAction />
                 </span>}
                 showMapLink={false}
@@ -217,7 +217,7 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
           {getGuardianRequestLifecycle(openRequest).key === "pending"
             ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]">Update</Link>
             : null}
-          {getGuardianRequestLifecycle(openRequest).key === "live"
+          {["live", "appointed"].includes(getGuardianRequestLifecycle(openRequest).key)
             ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${openRequest.id}`} count={openRequest.appliedTutorCount ?? 0} size="md" />
             : null}
         </>}

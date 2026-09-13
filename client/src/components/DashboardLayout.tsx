@@ -139,6 +139,22 @@ export function getDashboardSidebarToggleLabel(isCollapsed: boolean) {
  * replaces the blue drop shadow the row used to carry, which made the
  * navigation the loudest thing on a screen whose subject is elsewhere.
  */
+/**
+ * The sidebar item a location belongs to. An exact match first; otherwise the
+ * item whose path the location continues, so a page one level inside a tab
+ * (one tuition under Applied Tutors) still names and highlights that tab.
+ * An item other items extend - the dashboard home - never claims a deeper
+ * page, or every unknown path would read as the home.
+ */
+export function getActiveNavigationItem<Item extends { path: string; action?: string }>(items: Item[], location: string): Item | undefined {
+  const exact = items.find(item => item.path === location);
+  if (exact) return exact;
+  const isParent = (item: Item) => items.some(other => other !== item && other.path.startsWith(item.path + "/"));
+  return items
+    .filter(item => !item.action && !isParent(item) && location.startsWith(item.path + "/"))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+}
+
 export function getDashboardNavigationItemClassName(isActive: boolean) {
   const shared = "relative h-[38px] rounded-lg px-3 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1 motion-reduce:transition-none";
   return isActive
@@ -289,7 +305,7 @@ function DashboardLayoutContent({
   const [pendingPanelExit, setPendingPanelExit] = useState<DashboardNavigationItem | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = navigationItems.find(item => item.path === location);
+  const activeMenuItem = getActiveNavigationItem(navigationItems, location);
   const isMobile = useIsMobile();
   const mobileContext = getMobileWorkspaceContext(title, activeMenuItem?.label);
   const workspaceHeading = activeMenuItem?.label ?? "Dashboard";
@@ -396,7 +412,7 @@ function DashboardLayoutContent({
 
             <SidebarMenu className="gap-0.5 px-2 py-3">
               {navigationItems.map((item, index) => {
-                const isActive = location === item.path;
+                const isActive = item.path === activeMenuItem?.path;
                 const previousSection = navigationItems[index - 1]?.sectionLabel;
                 const showSectionLabel = Boolean(item.sectionLabel && item.sectionLabel !== previousSection);
                 // Resolved through one lookup rather than a hook per item, and

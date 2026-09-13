@@ -1,23 +1,16 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminTutorRows from "@/components/AdminTutorRows";
-import { RecordIcon, type RecordIconName } from "@/components/recordIcons";
+import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import { countActiveFilters } from "@/components/activeFilterCount";
-import { TutorDirectoryFilters, TutorListPager, defaultTutorFilters, type TutorFilters } from "./AdminTutorProfiles";
-import { formatDaysPerWeek, formatSubjects, formatTutorPreference } from "@shared/job-card";
+import { TutorListPager } from "@/components/TutorListPager";
+import { TutorDirectoryFilters, defaultTutorFilters, type TutorFilters } from "./AdminTutorProfiles";
+import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Link, useRoute } from "wouter";
-
-/** One fact of the tuition, in the strip the applicants are read against. */
-function JobFact({ icon, value }: { icon: RecordIconName; value: string }) {
-  return <span className="inline-flex min-w-0 items-center gap-1.5">
-    <RecordIcon name={icon} size={12} className="shrink-0 text-[#8fb4d0]" />
-    <span className="truncate text-[#173d60]">{value}</span>
-  </span>;
-}
 
 /**
  * Everyone who applied to one tuition.
@@ -47,18 +40,9 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
       </span>
 
-      {job ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-j-surface-sunken px-3.5 py-2.5 text-2xs">
-        <span className="inline-flex items-center gap-1.5 font-bold text-[#173d60]">
-          <RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID {jobIdForRequest(job.id)}
-        </span>
-        <JobFact icon="tutorGender" value={`${formatTutorPreference(job.preferredGender)} Tutor`} />
-        <JobFact icon="location" value={job.tuitionLocationLabel ?? job.locationText ?? "Online"} />
-        <JobFact icon="classLevel" value={job.classCourse} />
-        <JobFact icon="subjects" value={formatSubjects(job.subjects)} />
-        <JobFact icon="salary" value={formatSalaryAmount(job.budgetAmount)} />
-        <JobFact icon="daysPerWeek" value={formatDaysPerWeek(job.daysPerWeek)} />
+      {job ? <AppliedJobFacts job={job}>
         <JobFact icon="phone" value={job.guardianPhone || "Not given"} />
-      </div> : <div className="min-w-0 flex-1" />}
+      </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
       <button
         type="button"
