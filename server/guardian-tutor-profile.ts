@@ -32,6 +32,8 @@ export type GuardianTutorProfile = {
   tutorId: string;
   /** The Tutor ID people see. */
   tutorNumber: number | null;
+  /** At least one of the Tutor's tuitions is Confirmed. Not a profile field: no toggle hides it. */
+  verified: boolean;
   name?: string;
   profilePhotoUrl?: string;
   headline?: string;
@@ -77,7 +79,7 @@ export function guardianCanReadField(config: ResolvedTutorProfileFieldConfig, fi
 export function projectTutorProfileForGuardian(profile: GuardianProfileSource, config: ResolvedTutorProfileFieldConfig): GuardianTutorProfile {
   const readable = (fieldId: string) => guardianCanReadField(config, fieldId);
   const tutorNumber = typeof profile.tutorNumber === "number" ? profile.tutorNumber : null;
-  const projected: Record<string, unknown> = { tutorId: profile.tutorId, tutorNumber };
+  const projected: Record<string, unknown> = { tutorId: profile.tutorId, tutorNumber, verified: profile.verified === true };
 
   for (const fieldId of valueFieldIds) {
     if (readable(fieldId) && profile[fieldId] !== undefined && profile[fieldId] !== null) projected[fieldId] = profile[fieldId];

@@ -531,6 +531,7 @@ export const tutors = mysqlTable("tutors", {
   profileStatus: mysqlEnum("profileStatus", tutorProfileStatusValues)
     .default("draft")
     .notNull(),
+  /** 1 while at least one of the Tutor's tuitions is Confirmed - kept by refreshTutorVerification in server/db.ts. */
   verified: int("verified").default(0).notNull(),
   languages: text("languages"),
   about: text("about"),

@@ -1285,6 +1285,7 @@ function TutorProfileWorkspaceBody({
       <TutorProfileIdentityRail
         name={form.name}
         tutorNumber={profile?.tutorNumber}
+        verified={Boolean(profile?.verified)}
         photoUrl={form.profilePhotoUrl}
         photoPreviewFailed={photoPreviewFailed}
         photoError={fieldErrors.profilePhotoUrl}

@@ -157,6 +157,16 @@ describe("the Admin's choice", () => {
   });
 });
 
+describe("the Verified mark", () => {
+  it("travels with the profile whatever the Guardian toggles say, and is false until a tuition is Confirmed", () => {
+    expect(projectTutorProfileForGuardian(fullProfile(), defaultTutorProfileFieldConfig()).verified).toBe(false);
+    const everythingHidden = resolveTutorProfileFieldConfig(tutorProfileFieldRegistry.map(field => ({
+      fieldId: field.id, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: 0,
+    })));
+    expect(projectTutorProfileForGuardian({ ...fullProfile(), verified: true }, everythingHidden).verified).toBe(true);
+  });
+});
+
 describe("naming the catalog ids", () => {
   it("only asks for the names of what was sent", () => {
     const config = resolveTutorProfileFieldConfig([

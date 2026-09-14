@@ -2795,6 +2795,23 @@ export async function updateGuardianTutorRequest(input: {
   });
 }
 
+/**
+ * A Tutor is Verified while at least one of their tuitions is Confirmed.
+ *
+ * `tutors.verified` keeps the answer so every list and filter reads a column.
+ * It is recomputed, inside the transaction that changed a Confirmed tuition,
+ * from the same condition the Confirmed tab counts with - so cancelling one of
+ * two Confirmed tuitions leaves the mark, and cancelling the last removes it.
+ */
+async function refreshTutorVerification(tx: any, tutorId: string) {
+  const [confirmed] = await tx
+    .select({ id: tutorRequests.id })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.tutorId, tutorId), adminPostedJobStageCondition("confirmed")))
+    .limit(1);
+  await tx.update(tutors).set({ verified: confirmed ? 1 : 0 }).where(eq(tutors.id, tutorId));
+}
+
 /** Finalizes an Admin-verified appointment only after a Tutor has been assigned. */
 /**
  * Confirms an appointment: the Guardian keeps the Tutor after the demo class.
@@ -2823,6 +2840,7 @@ export async function confirmTutorRequestAppointment(input: { requestId: number;
       changedFields: JSON.stringify(["appointment_confirmed", ...(closedListing[0].affectedRows ? ["job_board_listing_closed"] : [])]),
     });
     if (request.tutorId) {
+      await refreshTutorVerification(tx, request.tutorId);
       const note = appointmentConfirmedTutorNotification(jobIdForRequest(input.requestId));
       await createTutorNotification(tx, {
         tutorId: request.tutorId,
@@ -2850,12 +2868,14 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
-    const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId }).from(tutorRequests)
+    const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId }).from(tutorRequests)
       .where(and(eq(tutorRequests.id, input.requestId), inArray(tutorRequests.status, ["new", "reviewing", "matched"]))).limit(1).for("update");
     if (!request) return { updated: false as const, lifecycle: "cancelled" as const };
     const cancelledAt = new Date();
     await tx.update(tutorRequests).set({ status: "closed", publicationState: "closed", contactConsent: "not_required", cancellationReason: input.reason, lastActivityAt: cancelledAt }).where(eq(tutorRequests.id, input.requestId));
     await tx.update(tutorJobs).set({ publicationStatus: "closed", deactivatedAt: new Date() }).where(eq(tutorJobs.tutorRequestId, input.requestId));
+    // A cancelled Confirmed tuition may have been the Tutor's last one.
+    if (request.tutorId) await refreshTutorVerification(tx, request.tutorId);
     const supersededLetters = await tx.update(confirmationLetters)
       .set({ status: "superseded", supersededAt: cancelledAt, revisionReason: "Request cancelled by Admin" })
       .where(and(
@@ -4917,6 +4937,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       locationLabel: locations.label,
       teachingExperienceYears: tutors.teachingExperienceYears,
       tutorNumber: tutorRegistrations.tutorNumber,
+      verified: tutors.verified,
       guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
       appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
       highestEducation: tutorAcademicProfiles.highestEducation,
@@ -4994,6 +5015,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
         id: row.id,
         tutorNumber: row.tutorNumber,
         name: row.name,
+        verified: Boolean(row.verified),
         phone: phoneVisible ? row.phone : null,
         phoneHidden: !phoneVisible,
         instituteName: education.instituteName,
