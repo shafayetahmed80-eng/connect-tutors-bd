@@ -35,7 +35,7 @@ const PAGE_SIZE = 12;
  * came from off the site, straight to Live, and Edit reopens that same form
  * filled in - so a tuition is written and corrected in one place.
  */
-export function AdminPostedJobsContent() {
+export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" | "admin" } = {}) {
   const [stage, setStage] = useState<StageKey>("pending");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -44,7 +44,7 @@ export function AdminPostedJobsContent() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE });
+  const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE, postedBy });
   const items = jobs.data?.items ?? [];
   const counts = jobs.data?.counts;
   const totalPages = jobs.data?.totalPages ?? 1;
@@ -261,4 +261,9 @@ export function AdminPostedJobsContent() {
 
 export default function AdminPostedJobs() {
   return <AdminWorkspaceLayout title="Posted jobs"><AdminPostedJobsContent /></AdminWorkspaceLayout>;
+}
+
+/** The same board, holding only the tuitions an Admin added. */
+export function AdminPostedJobsByAdmin() {
+  return <AdminWorkspaceLayout title="Admin Posted Jobs"><AdminPostedJobsContent postedBy="admin" /></AdminWorkspaceLayout>;
 }

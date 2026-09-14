@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, ContactRound, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -41,6 +41,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
     { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian activity", path: "/admin/guardians", sectionLabel: "Operations" },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
+    { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
     { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Operations" },
     { icon: ClipboardList, label: "Matching workspace", path: "/admin/matching", sectionLabel: "Operations" },
     ...(isOwner ? dynamicSectionItems : []),

@@ -32,14 +32,19 @@ describe("admin.listPostedJobs", () => {
     dbMocks.listAdminPostedJobsPage.mockResolvedValue({ items: [], counts: {}, total: 0, page: 1, pageSize: 12, totalPages: 1 });
 
     await createCaller().admin.listPostedJobs({});
-    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith({ query: "", stage: "all", page: 1, pageSize: 12 });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith({ query: "", stage: "all", page: 1, pageSize: 12, postedBy: "all" });
 
     await createCaller().admin.listPostedJobs({ query: "  Banasree  ", stage: "live", page: 3, pageSize: 20 });
-    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "Banasree", stage: "live", page: 3, pageSize: 20 });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "Banasree", stage: "live", page: 3, pageSize: 20, postedBy: "all" });
+
+    // Admin Posted Jobs asks for the same page narrowed to Admin posts.
+    await createCaller().admin.listPostedJobs({ stage: "live", postedBy: "admin" });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 12, postedBy: "admin" });
   });
 
   it("refuses an unknown stage, a silly page size, and a non-admin caller", async () => {
     await expect(createCaller().admin.listPostedJobs({ stage: "archived" as never })).rejects.toThrow();
+    await expect(createCaller().admin.listPostedJobs({ postedBy: "guardian" as never })).rejects.toThrow();
     await expect(createCaller().admin.listPostedJobs({ pageSize: 500 })).rejects.toThrow();
     expect(dbMocks.listAdminPostedJobsPage).not.toHaveBeenCalled();
 

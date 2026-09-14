@@ -101,7 +101,7 @@ describe("Admin Posted jobs board", () => {
     const user = userEvent.setup();
     render(<AdminPostedJobsContent />);
 
-    expect(mocks.lastInput).toMatchObject({ stage: "pending", query: "", page: 1 });
+    expect(mocks.lastInput).toMatchObject({ stage: "pending", query: "", page: 1, postedBy: "all" });
 
     await user.click(screen.getByRole("tab", { name: /Live/ }));
     expect(mocks.lastInput).toMatchObject({ stage: "live", page: 1 });
@@ -213,6 +213,16 @@ describe("Admin Posted jobs board", () => {
 
     expect(within(screen.getByRole("button", { name: /Job ID 6812/ })).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href"))
       .toBe("/admin/applied-tutors/13");
+  });
+
+  it("narrows the same board to Admin posts on Admin Posted Jobs", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent postedBy="admin" />);
+
+    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "pending", page: 1 });
+    await user.click(screen.getByRole("tab", { name: /Live/ }));
+    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "live" });
+    expect(screen.getByRole("button", { name: /Add Tuition/ })).toBeTruthy();
   });
 
   it("keeps the applied count off a tuition that is not live yet", () => {
