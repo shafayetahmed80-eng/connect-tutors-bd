@@ -103,6 +103,16 @@ describe("TutorProfileIdentityRail", () => {
     expect(screen.getByRole("alert").textContent).toBe("Upload a profile photo.");
   });
 
+  it("shows Verified beside the Tutor ID once a tuition is Confirmed, and nothing before", () => {
+    const { unmount } = renderRail();
+    expect(screen.queryByText("Verified")).toBeNull();
+    unmount();
+
+    renderRail({ verified: true });
+    expect(screen.getByText("Verified")).toBeTruthy();
+    expect(screen.getByText(/Tutor ID: 565462/)).toBeTruthy();
+  });
+
   it("toggles between View Profile and Edit Information", () => {
     const onTogglePreview = vi.fn();
     const { unmount } = renderRail({ onTogglePreview });

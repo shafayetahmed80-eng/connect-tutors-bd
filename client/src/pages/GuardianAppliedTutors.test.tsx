@@ -4,7 +4,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const applicant = (id: string, name: string, overrides: Record<string, unknown> = {}) => ({
-  id, tutorNumber: 777 as number | null, name, phone: null as string | null, phoneHidden: true,
+  id, tutorNumber: 777 as number | null, name, phone: null as string | null, phoneHidden: true, verified: false,
   instituteName: "University of Dhaka", departmentName: "Physics",
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
   shortlisted: false, appointmentRequested: false, appointed: false,

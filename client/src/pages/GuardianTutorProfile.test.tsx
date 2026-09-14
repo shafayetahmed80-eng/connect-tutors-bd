@@ -110,6 +110,19 @@ describe("an applicant's profile, as a Guardian reads it", () => {
     expect(screen.queryByText("Profile preview")).toBeNull();
   });
 
+  it("marks a Tutor with a Confirmed tuition Verified, and nobody else", () => {
+    loaded();
+    const { unmount } = render(<GuardianTutorProfileContent requestId={13} tutorId="tutor-175" />);
+    expect(screen.queryByText("Verified")).toBeNull();
+    unmount();
+
+    loaded();
+    ((mocks.result.data as { profile: Record<string, unknown> }).profile).verified = true;
+    render(<GuardianTutorProfileContent requestId={13} tutorId="tutor-175" />);
+    expect(screen.getByText("Verified")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Tania Sultana" })).toBeTruthy();
+  });
+
   it("says so when the profile cannot be opened", () => {
     mocks.result = { data: undefined, isLoading: false, isError: true, error: { message: "This Tutor profile is unavailable." } };
     render(<GuardianTutorProfileContent requestId={13} tutorId="tutor-404" />);

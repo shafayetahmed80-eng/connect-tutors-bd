@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { hydrateTeachingProfile } from "./TutorProfileWorkspace";
 import { getTutorProfileReadoutSections, withoutMissingRows, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
+import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
 
 /**
  * One applicant's profile, as the Guardian whose tuition they applied to reads it.
@@ -60,7 +61,10 @@ export function GuardianTutorProfileContent({ requestId, tutorId }: { requestId:
               : <UserRound size={30} aria-hidden={true} />}
           </span>
           <div className="min-w-0 flex-1">
-            {profile.name ? <h2 className="text-lg font-bold tracking-[-0.02em] text-j-ink">{profile.name}</h2> : null}
+            {profile.name || profile.verified ? <div className="flex flex-wrap items-center gap-2">
+              {profile.name ? <h2 className="text-lg font-bold tracking-[-0.02em] text-j-ink">{profile.name}</h2> : null}
+              {profile.verified ? <TutorVerifiedBadge /> : null}
+            </div> : null}
             {profile.headline ? <p className="mt-0.5 text-sm text-j-ink-soft">{profile.headline}</p> : null}
             {profile.tutorNumber ? <p className="mt-1 inline-flex items-center gap-1 text-2xs text-j-ink-muted"><IdCard size={13} />Tutor ID {profile.tutorNumber}</p> : null}
           </div>

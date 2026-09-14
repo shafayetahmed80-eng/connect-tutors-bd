@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
+import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
 
 /**
  * One contact or education line.
@@ -44,6 +45,7 @@ function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; lab
 export function TutorProfileIdentityRail({
   name,
   tutorNumber,
+  verified = false,
   photoUrl,
   photoPreviewFailed,
   photoError,
@@ -65,6 +67,8 @@ export function TutorProfileIdentityRail({
 }: {
   name: string;
   tutorNumber: number | null | undefined;
+  /** At least one of the Tutor's tuitions is Confirmed. */
+  verified?: boolean;
   photoUrl: string | null;
   photoPreviewFailed: boolean;
   photoError?: string;
@@ -149,6 +153,7 @@ export function TutorProfileIdentityRail({
       <p className="col-start-2 row-start-2 mt-0.5 flex items-center gap-1.5 text-xs tabular-nums text-[#6b8497] lg:col-auto lg:row-auto lg:mt-1 lg:justify-center">
         <IdCard size={15} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
         Tutor ID: {tutorNumber ?? "Preparing"}
+        {verified ? <TutorVerifiedBadge className="ml-0.5" /> : null}
       </p>
     </div>
 

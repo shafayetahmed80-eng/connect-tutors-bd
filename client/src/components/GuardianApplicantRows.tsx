@@ -1,9 +1,10 @@
 import { ChevronRight, Star } from "lucide-react";
 import { Link } from "wouter";
+import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
 
 /**
- * An applicant as a Guardian reads one: the Admin's row without the parts that
- * are the Admin's business - profile status, verification - and with the
+ * An applicant as a Guardian reads one: the Admin's row without the part that
+ * is the Admin's business - profile status - and with the
  * mobile number held back until this Tutor is appointed. The holding back
  * happens on the server; `phoneHidden` only says it did. The arrow opens the
  * profile as a Guardian may read it, not the Admin's review page.
@@ -21,6 +22,8 @@ export type GuardianApplicantRow = {
   cityLabel: string | null;
   locationLabel: string | null;
   teachingExperienceYears: number | null;
+  /** At least one of the Tutor's tuitions is Confirmed. */
+  verified: boolean;
   /** On the Guardian's own shortlist. */
   shortlisted: boolean;
   /** The Guardian asked the Admin to appoint this Tutor, and the Admin has not acted yet. */
@@ -131,7 +134,9 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
         {tutors.map((tutor, index) => <tr key={tutor.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
           <td className="px-3 py-2.5 align-top tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</td>
           <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</td>
-          <td className="px-3 py-2.5 align-top font-bold text-j-ink">{tutor.name}</td>
+          <td className="px-3 py-2.5 align-top font-bold text-j-ink">
+            <span className="inline-flex flex-wrap items-center gap-1.5">{tutor.name}{tutor.verified ? <TutorVerifiedBadge /> : null}</span>
+          </td>
           <MobileCell tutor={tutor} />
           <Cell value={tutor.instituteName ?? ""} className="max-w-[16rem]" />
           <Cell value={tutor.departmentName ?? ""} className="max-w-[12rem]" />
