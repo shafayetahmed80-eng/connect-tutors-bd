@@ -4586,6 +4586,11 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
       // Which applicant, if any, holds the appointment - the row says so.
       appointedTutorId: tutorRequests.tutorId,
       postedByAdmin: tutorRequests.postedByAdmin,
+      // The tuition's stage, named on the page by the Posted jobs cards' own rule.
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      cancellationReason: tutorRequests.cancellationReason,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
@@ -4748,6 +4753,8 @@ export type AdminPostedJobFilters = {
   pageSize: number;
   /** "admin" is the Admin Posted Jobs board: only tuitions an Admin added. */
   postedBy: "all" | "admin";
+  /** Several stages at once, in place of `stage` - Applied Tutors lists Live, Appointed and Confirmed together. */
+  stages?: GuardianRequestLifecycle[];
 };
 
 /**
@@ -5470,7 +5477,9 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
 
   const conditions = [
     ...(scope ? [scope] : []),
-    ...(filters.stage === "all" ? [] : [adminPostedJobStageCondition(filters.stage)]),
+    ...(filters.stages?.length
+      ? [or(...filters.stages.map(stage => adminPostedJobStageCondition(stage)))!]
+      : filters.stage === "all" ? [] : [adminPostedJobStageCondition(filters.stage)]),
   ];
   const where = conditions.length ? and(...conditions) : undefined;
   const offset = (filters.page - 1) * filters.pageSize;

@@ -19,9 +19,15 @@ const mocks = vi.hoisted(() => ({
       id: 13, classCourse: "Class 8", subjects: JSON.stringify(["History"]),
       tuitionLocationLabel: "Banasree, Dhaka", locationText: "Banasree", budgetAmount: 5000,
       daysPerWeek: 3, guardianName: "Sojib Rahman", appliedTutorCount: 7, postedByAdmin: 1,
+      status: "reviewing", publicationState: "published", tutorId: null, appointmentConfirmedAt: null, cancellationReason: null,
+    }, {
+      id: 21, classCourse: "Class 9", subjects: JSON.stringify(["Physics"]),
+      tuitionLocationLabel: "Mirpur, Dhaka", locationText: "Mirpur", budgetAmount: 6000,
+      daysPerWeek: 4, guardianName: "Nusrat Jahan", appliedTutorCount: 3, postedByAdmin: 0,
+      status: "matched", publicationState: "published", tutorId: "tutor-404", appointmentConfirmedAt: new Date("2026-09-12T10:00:00.000Z"), cancellationReason: null,
     }],
-    counts: { pending: 0, live: 1, appointed: 0, confirmed: 0, cancelled: 0 },
-    total: 1, page: 1, pageSize: 20, totalPages: 1,
+    counts: { pending: 0, live: 1, appointed: 0, confirmed: 1, cancelled: 0 },
+    total: 2, page: 1, pageSize: 20, totalPages: 1,
   },
   data: {
     job: {
@@ -37,6 +43,10 @@ const mocks = vi.hoisted(() => ({
       tuitionType: "home",
       guardianName: "Sojib Rahman",
       guardianPhone: "+8801674936203",
+      status: "reviewing",
+      publicationState: "published",
+      appointmentConfirmedAt: null,
+      cancellationReason: null,
     },
     appliedTotal: 26,
     items: [] as ReturnType<typeof tutor>[],
@@ -71,7 +81,7 @@ vi.mock("@/lib/trpc", () => ({
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
-import { AdminAppliedTutorsContent, AdminLiveTuitionsContent } from "./AdminAppliedTutors";
+import { AdminAppliedTuitionsContent, AdminAppliedTutorsContent } from "./AdminAppliedTutors";
 
 afterEach(() => {
   cleanup();
@@ -102,8 +112,12 @@ describe("Admin Applied Tutors page", () => {
     expect(screen.getByText("History, Home Economics")).toBeTruthy();
     expect(screen.getByText("3 days / week")).toBeTruthy();
     expect(screen.getByText("+8801674936203")).toBeTruthy();
-    // Right after the Job ID: who put the tuition up.
-    expect(screen.getByText("Posted By").textContent).toContain("Guardian");
+    // Right after the Job ID: who put the tuition up, then where it stands.
+    const postedBy = screen.getByText("Posted By");
+    const status = screen.getByText("Tuition Status");
+    expect(postedBy.textContent).toContain("Guardian");
+    expect(status.textContent).toContain("Live");
+    expect(postedBy.nextElementSibling).toBe(status);
   });
 
   it("lists the applicants as the Admin's own Tutor rows, numbered in application order", () => {
@@ -160,14 +174,15 @@ describe("Admin Applied Tutors page", () => {
     expect(mocks.decline).toHaveBeenCalledWith({ interestId: 91 });
   });
 
-  it("marks the Tutor who holds the appointment", () => {
+  it("marks the Tutor who holds the appointment, and the tuition reads Appointed", () => {
     const original = mocks.data.job;
-    mocks.data.job = { ...original, appointedTutorId: "tutor-404" } as never;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404" } as never;
     render(<AdminAppliedTutorsContent requestId={13} />);
 
     const rows = screen.getAllByRole("row").slice(1);
     expect(within(rows[1]).getByText("Appointed")).toBeTruthy();
     expect(within(rows[0]).queryByText("Appointed")).toBeNull();
+    expect(screen.getByText("Tuition Status").textContent).toContain("Appointed");
     mocks.data.job = original;
   });
 
@@ -195,32 +210,37 @@ describe("Admin Applied Tutors page", () => {
   });
 });
 
-describe("the live tuitions the sidebar tab lands on", () => {
-  it("asks only for live tuitions - nothing else can have been applied to", () => {
-    render(<AdminLiveTuitionsContent />);
-    expect(mocks.liveInput).toMatchObject({ stage: "live", page: 1, query: "" });
+describe("the tuitions the sidebar tab lands on", () => {
+  it("asks for Live, Appointed and Confirmed tuitions - every stage that can have applicants", () => {
+    render(<AdminAppliedTuitionsContent />);
+    expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"], page: 1, query: "" });
   });
 
-  it("puts the applicant count on each tuition and points the arrow at its applicants", () => {
-    render(<AdminLiveTuitionsContent />);
+  it("puts the stage and the applicant count on each tuition and points the arrow at its applicants", () => {
+    render(<AdminAppliedTuitionsContent />);
 
     for (const header of ["Job ID", "Class / Level", "Subjects", "Location", "Salary", "Days / Week", "Guardian", "Applied"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeTruthy();
     }
-    // Posted By sits straight after the Job ID.
+    // Posted By sits straight after the Job ID, and Tuition Status after it.
     const headers = screen.getAllByRole("columnheader").map(cell => cell.textContent);
-    expect(headers.slice(0, 2)).toEqual(["Job ID", "Posted By"]);
-    const row = within(screen.getAllByRole("row")[1]);
-    expect(row.getByText("6812")).toBeTruthy();
-    expect(row.getByText("Admin")).toBeTruthy();
-    expect(row.getByText("7")).toBeTruthy();
-    expect(row.getByRole("link", { name: /Open the applicants of Job ID 6812/i }).getAttribute("href"))
+    expect(headers.slice(0, 3)).toEqual(["Job ID", "Posted By", "Tuition Status"]);
+    const rows = screen.getAllByRole("row");
+    const live = within(rows[1]);
+    expect(live.getByText("6812")).toBeTruthy();
+    expect(live.getByText("Admin")).toBeTruthy();
+    expect(live.getByText("Live")).toBeTruthy();
+    expect(live.getByText("7")).toBeTruthy();
+    expect(live.getByRole("link", { name: /Open the applicants of Job ID 6812/i }).getAttribute("href"))
       .toBe("/admin/applied-tutors/13");
+    const confirmed = within(rows[2]);
+    expect(confirmed.getByText("Confirmed")).toBeTruthy();
+    expect(confirmed.getByText("Guardian")).toBeTruthy();
   });
 
   it("searches the same way the Posted jobs board does", () => {
-    render(<AdminLiveTuitionsContent />);
+    render(<AdminAppliedTuitionsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search subject/i), { target: { value: "Banasree" } });
-    expect(mocks.liveInput).toMatchObject({ stage: "live", query: "Banasree", page: 1 });
+    expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"], query: "Banasree", page: 1 });
   });
 });

@@ -4,6 +4,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
+import TuitionStatusPill from "@/components/TuitionStatusPill";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -81,11 +82,6 @@ type GuardianTuition = Parameters<typeof getGuardianRequestLifecycle>[0] & {
   appliedTutorCount?: number;
 };
 
-const stageStyles: Record<string, string> = {
-  live: "bg-sky-50 text-sky-800",
-  appointed: "bg-emerald-50 text-emerald-800",
-};
-
 /**
  * Where the sidebar tab lands: the Guardian's tuitions that can have
  * applicants, each with the count its Posted jobs button carries.
@@ -128,7 +124,7 @@ export function GuardianAppliedTuitionsContent({ requests, isLoading, isError = 
             <td className="px-3 py-2.5 align-top text-j-ink-strong">{request.tuitionLocationLabel ?? "Online"}</td>
             <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatSalaryAmount(request.budgetAmount)}</td>
             <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatDaysPerWeek(request.daysPerWeek)}</td>
-            <td className="px-3 py-2.5 align-top"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${stageStyles[lifecycle.key]}`}>{lifecycle.label}</span></td>
+            <td className="px-3 py-2.5 align-top"><TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} /></td>
             <td className="px-3 py-2.5 align-top">
               <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{request.appliedTutorCount ?? 0}</span>
             </td>

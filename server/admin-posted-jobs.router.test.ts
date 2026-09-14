@@ -40,11 +40,17 @@ describe("admin.listPostedJobs", () => {
     // Admin Posted Jobs asks for the same page narrowed to Admin posts.
     await createCaller().admin.listPostedJobs({ stage: "live", postedBy: "admin" });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 12, postedBy: "admin" });
+
+    // Applied Tutors asks for several stages at once.
+    await createCaller().admin.listPostedJobs({ stages: ["live", "appointed", "confirmed"] });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "all", page: 1, pageSize: 12, postedBy: "all", stages: ["live", "appointed", "confirmed"] });
   });
 
   it("refuses an unknown stage, a silly page size, and a non-admin caller", async () => {
     await expect(createCaller().admin.listPostedJobs({ stage: "archived" as never })).rejects.toThrow();
     await expect(createCaller().admin.listPostedJobs({ postedBy: "guardian" as never })).rejects.toThrow();
+    await expect(createCaller().admin.listPostedJobs({ stages: ["archived" as never] })).rejects.toThrow();
+    await expect(createCaller().admin.listPostedJobs({ stages: [] })).rejects.toThrow();
     await expect(createCaller().admin.listPostedJobs({ pageSize: 500 })).rejects.toThrow();
     expect(dbMocks.listAdminPostedJobsPage).not.toHaveBeenCalled();
 

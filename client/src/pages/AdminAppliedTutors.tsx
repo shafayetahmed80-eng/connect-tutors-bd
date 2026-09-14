@@ -3,6 +3,8 @@ import AdminTutorRows, { type AdminAppointmentRequestActions, type AdminTutorRow
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import PostTypeBadge from "@/components/PostTypeBadge";
+import TuitionStatusPill from "@/components/TuitionStatusPill";
+import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
 import { TutorDirectoryFilters, defaultTutorFilters, type TutorFilters } from "./AdminTutorProfiles";
@@ -59,7 +61,10 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
       </span>
 
-      {job ? <AppliedJobFacts job={job} afterJobId={<span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>}>
+      {job ? <AppliedJobFacts job={job} afterJobId={<>
+        <span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>
+        <span className="inline-flex items-center gap-1.5 text-[#173d60]">Tuition Status <TuitionStatus job={{ ...job, tutorId: job.appointedTutorId }} /></span>
+      </>}>
         <JobFact icon="phone" value={job.guardianPhone || "Not given"} />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
@@ -107,26 +112,36 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   </div>;
 }
 
-const LIVE_PAGE_SIZE = 20;
+/** A tuition's stage, named by the same rule as the Posted jobs cards. */
+function TuitionStatus({ job }: { job: Parameters<typeof getGuardianRequestLifecycle>[0] }) {
+  const lifecycle = getGuardianRequestLifecycle(job);
+  return <TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} />;
+}
+
+const APPLIED_PAGE_SIZE = 20;
+
+/** Every stage a tuition can have applicants in: on the Job Board, or past it. */
+export const appliedTuitionStages = ["live", "appointed", "confirmed"] as const;
 
 /**
  * Which tuition's applicants to read.
  *
  * The sidebar tab lands here, because the page below it is about one tuition
- * and arriving from the sidebar you have not chosen one yet. Only live
- * tuitions are listed - a tuition that never reached the Job Board cannot have
- * been applied to - and it reads the same `admin.listPostedJobs` the Posted
- * jobs board reads, so the counts on the two screens cannot disagree.
+ * and arriving from the sidebar you have not chosen one yet. Every tuition that
+ * reached the Job Board and was not cancelled is listed - Live, Appointed and
+ * Confirmed, each with its stage - since an Appointed or Confirmed tuition
+ * keeps the applicants it had. It reads the same `admin.listPostedJobs` the
+ * Posted jobs board reads, so the counts on the two screens cannot disagree.
  */
-export function AdminLiveTuitionsContent() {
+export function AdminAppliedTuitionsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stage: "live", query, page, pageSize: LIVE_PAGE_SIZE });
+  const jobs = trpc.admin.listPostedJobs.useQuery({ stages: [...appliedTuitionStages], query, page, pageSize: APPLIED_PAGE_SIZE });
   const items = jobs.data?.items ?? [];
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <label className="relative block max-w-sm">
-      <span className="sr-only">Search live tuitions</span>
+      <span className="sr-only">Search tuitions</span>
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
       <input
         value={query}
@@ -136,16 +151,17 @@ export function AdminLiveTuitionsContent() {
       />
     </label>
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading live tuitions…</div> : null}
-    {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Live tuitions could not be loaded.</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading tuitions…</div> : null}
+    {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError ? <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-      <table className="w-full min-w-[64rem] border-collapse text-sm">
-        <caption className="sr-only">Live tuitions and how many Tutors applied to each</caption>
+      <table className="w-full min-w-[70rem] border-collapse text-sm">
+        <caption className="sr-only">Tuitions, their stage, and how many Tutors applied to each</caption>
         <thead>
           <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
             <th scope="col" className="px-3 py-2.5">Job ID</th>
             <th scope="col" className="px-3 py-2.5">Posted By</th>
+            <th scope="col" className="px-3 py-2.5">Tuition Status</th>
             <th scope="col" className="px-3 py-2.5">Class / Level</th>
             <th scope="col" className="px-3 py-2.5">Subjects</th>
             <th scope="col" className="px-3 py-2.5">Location</th>
@@ -160,6 +176,7 @@ export function AdminLiveTuitionsContent() {
           {items.map(job => <tr key={job.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
             <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</td>
             <td className="px-3 py-2.5 align-top"><PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></td>
+            <td className="px-3 py-2.5 align-top"><TuitionStatus job={job} /></td>
             <td className="px-3 py-2.5 align-top font-bold text-j-ink">{job.classCourse}</td>
             <td className="max-w-[16rem] px-3 py-2.5 align-top text-j-ink-strong">{formatSubjects(job.subjects)}</td>
             <td className="px-3 py-2.5 align-top text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</td>
@@ -175,12 +192,12 @@ export function AdminLiveTuitionsContent() {
               </Link>
             </td>
           </tr>)}
-          {items.length === 0 ? <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live tuition{query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.</td></tr> : null}
+          {items.length === 0 ? <tr><td colSpan={11} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live, appointed or confirmed tuition{query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.</td></tr> : null}
         </tbody>
       </table>
     </div> : null}
 
-    <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Live tuition pages" />
+    <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Tuition pages" />
   </div>;
 }
 
@@ -189,6 +206,6 @@ export default function AdminAppliedTutors() {
   const requestId = Number(params?.requestId);
   const chosen = Number.isInteger(requestId) && requestId > 0;
   return <AdminWorkspaceLayout title="Applied Tutors">
-    {chosen ? <AdminAppliedTutorsContent requestId={requestId} /> : <AdminLiveTuitionsContent />}
+    {chosen ? <AdminAppliedTutorsContent requestId={requestId} /> : <AdminAppliedTuitionsContent />}
   </AdminWorkspaceLayout>;
 }

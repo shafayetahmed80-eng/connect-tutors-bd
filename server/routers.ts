@@ -1553,6 +1553,7 @@ export const appRouter = router({
         page: z.number().int().positive().default(1),
         pageSize: z.number().int().min(1).max(50).default(12),
         postedBy: z.enum(["all", "admin"]).default("all"),
+        stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "cancelled"])).min(1).max(5).optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
     getGuardianProfile: adminProcedure
