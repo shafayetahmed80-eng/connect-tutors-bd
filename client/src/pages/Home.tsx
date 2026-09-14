@@ -15,8 +15,9 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 export const homeEditorialImages = {
-  homeLearning: "/manus-storage/connect-tutors-home-learning_1281da6b.jpg",
-  onlineLearning: "/manus-storage/connect-tutors-home-online_545114df.jpg",
+  hero: "/images/hero.webp",
+  homeLearning: "/images/home-learning.webp",
+  onlineLearning: "/images/online-learning.webp",
 } as const;
 
 /**
@@ -78,7 +79,7 @@ function HomeContent() {
             </div>
             <div className="hero-visual">
               <div className="hero-sunburst" />
-              <img src="/manus-storage/connect-tutors-hero_897f4c50.png" alt="A student celebrating learning success with family" />
+              <img src={homeEditorialImages.hero} alt="A student celebrating learning success with family" />
               <div className="hero-float-card float-card-one"><Heart size={16} fill="currentColor" /><span>{t("home.hero.floatOne.lead", hero.floatOne.lead)}<br /><strong>{t("home.hero.floatOne.strong", hero.floatOne.strong)}</strong></span></div>
               <div className="hero-float-card float-card-two"><CalendarDays size={17} /><span>{t("home.hero.floatTwo.lead", hero.floatTwo.lead)}<br /><strong>{t("home.hero.floatTwo.strong", hero.floatTwo.strong)}</strong></span></div>
             </div>

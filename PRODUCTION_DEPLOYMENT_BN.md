@@ -10,7 +10,7 @@
 - **Guardian/Tutor login** — আগে থেকেই স্বাধীন ছিল, অপরিবর্তিত।
 - **ছবি আপলোড (Guardian/Tutor profile photo)** — এখন আপনার নিজের সার্ভারের ডিস্কে সংরক্ষিত হয় (`private-uploads/` ফোল্ডার), কোনো external storage লাগবে না।
 - **Google Maps, image-generation, voice-transcription** এর মতো কিছু optional feature এখনো Manus Forge API-এর উপর নির্ভরশীল, কিন্তু এগুলো মূল Guardian/Tutor/Admin workflow-এর জন্য জরুরি না — env var সেট না থাকলে শুধু সেই নির্দিষ্ট feature কাজ করবে না, বাকি সাইট স্বাভাবিকভাবে চলবে।
-- **হোমপেজের ৩টা মার্কেটিং ছবি** (hero, home-learning, home-online illustration) পুরনো Forge storage-এ রাখা ছিল। যদি আপনার Manus প্রজেক্ট এখনো active থাকে, এগুলো fallback হিসেবে এখনো দেখাবে। independent করতে চাইলে এই ৩টা ছবি ডাউনলোড করে আমাকে দিন, আমি স্থায়ীভাবে প্রজেক্টের ভেতরে bundle করে দেবো।
+- **হোমপেজের ৩টা মার্কেটিং ছবি** (hero, home-learning, online-learning) এখন প্রজেক্টের ভেতরেই আছে (`client/public/images/*.webp`), build-এর সাথে চলে যায় — কোনো external storage লাগবে না।
 
 ## ১. পুরনো static সাইট রিমুভ
 
@@ -58,7 +58,7 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `LOCAL_STORAGE_DIR` | ঐচ্ছিক | ছবি রাখার path, না দিলে ডিফল্ট `<app-root>/private-uploads` ব্যবহার হবে |
 | `TELEGRAM_BOT_TOKEN` | ঐচ্ছিক | নতুন request notification পেতে চাইলে |
 | `TELEGRAM_CHAT_ID` | ঐচ্ছিক | উপরেরটার সাথে জোড়ায় লাগে |
-| `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু legacy homepage ছবি ও Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
+| `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID`, `OWNER_OPEN_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
 
 `JWT_SECRET` তৈরি করতে (SSH-এ):

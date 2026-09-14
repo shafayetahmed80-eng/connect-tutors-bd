@@ -1,12 +1,17 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { homeEditorialImages } from "./Home";
 
 describe("homepage editorial imagery", () => {
-  it("uses managed Bangladesh-context learning visuals instead of external third-party image hosts", () => {
+  it("ships the Bangladesh-context learning visuals with the site instead of a storage service", () => {
     expect(homeEditorialImages).toEqual({
-      homeLearning: "/manus-storage/connect-tutors-home-learning_1281da6b.jpg",
-      onlineLearning: "/manus-storage/connect-tutors-home-online_545114df.jpg",
+      hero: "/images/hero.webp",
+      homeLearning: "/images/home-learning.webp",
+      onlineLearning: "/images/online-learning.webp",
     });
-    expect(Object.values(homeEditorialImages).every((source) => source.startsWith("/manus-storage/"))).toBe(true);
+    for (const source of Object.values(homeEditorialImages)) {
+      expect(existsSync(path.resolve(import.meta.dirname, "../../public", source.slice(1)))).toBe(true);
+    }
   });
 });
