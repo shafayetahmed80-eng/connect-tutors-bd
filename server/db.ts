@@ -4746,6 +4746,8 @@ export type AdminPostedJobFilters = {
   stage: "all" | GuardianRequestLifecycle;
   page: number;
   pageSize: number;
+  /** "admin" is the Admin Posted Jobs board: only tuitions an Admin added. */
+  postedBy: "all" | "admin";
 };
 
 /**
@@ -5440,6 +5442,13 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       )
     : undefined;
 
+  // Admin Posted Jobs is this same board narrowed to the tuitions an Admin
+  // added, so the narrowing applies to the tab counts as well as the cards.
+  const scope = and(
+    ...(searchCondition ? [searchCondition] : []),
+    ...(filters.postedBy === "admin" ? [eq(tutorRequests.postedByAdmin, 1)] : []),
+  );
+
   // Counts span every stage for the current search, so the tab bar keeps
   // showing where the rest of the results are while one stage is open. The
   // five stages are derived, so they are counted with the same function that
@@ -5454,13 +5463,13 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
-    .where(searchCondition);
+    .where(scope);
 
   const counts: Record<GuardianRequestLifecycle, number> = { pending: 0, live: 0, appointed: 0, confirmed: 0, cancelled: 0 };
   for (const row of countRows) counts[getGuardianRequestLifecycle(row)] += 1;
 
   const conditions = [
-    ...(searchCondition ? [searchCondition] : []),
+    ...(scope ? [scope] : []),
     ...(filters.stage === "all" ? [] : [adminPostedJobStageCondition(filters.stage)]),
   ];
   const where = conditions.length ? and(...conditions) : undefined;
