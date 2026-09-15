@@ -1104,6 +1104,8 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   guardianReconfirmedAt: timestamp("guardianReconfirmedAt"),
   /** Recorded only when an Admin finalizes the Guardian and assigned Tutor appointment. */
   appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
+  /** When a Tutor was Appointed to it; cleared if the tuition goes back to Live. */
+  appointedAt: timestamp("appointedAt"),
   /** Private operational reason recorded by an Admin when closing a request. */
   cancellationReason: varchar("cancellationReason", { length: 280 }),
   /**

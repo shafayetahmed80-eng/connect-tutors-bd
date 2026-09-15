@@ -1587,6 +1587,14 @@ export const appRouter = router({
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "cancelled"])).min(1).max(5).optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
+    /** Tuitions in the Appointed stage, each with the Tutor who holds it. */
+    listAppointedJobs: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(100).default(""),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().min(1).max(50).default(20),
+      }))
+      .query(({ input }) => db.listAdminAppointedJobsPage(input)),
     getGuardianProfile: adminProcedure
       .input(z.object({ guardianUserId: z.number().int().positive() }))
       .query(async ({ input }) => {
