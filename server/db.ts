@@ -134,6 +134,8 @@ import {
   type PublishedTutorJobProjection,
 } from "./job-board-projection";
 import {
+  adminInterestDecisionNotice,
+  canShortlistOnTuition,
   canSubmitTutorInterest,
   transitionTutorInterest,
   type TutorJobInterestStatus,
@@ -2870,13 +2872,24 @@ async function refreshTutorVerification(tx: any, tutorId: string) {
  * Posted jobs and from the Matching workspace alike - and the Tutor is told
  * alongside the Guardian.
  */
-export async function confirmTutorRequestAppointment(input: { requestId: number; adminUserId: number }) {
+export async function confirmTutorRequestAppointment(input: {
+  requestId: number;
+  adminUserId: number;
+  /** When given, only that Tutor's appointment is confirmed - a stale page cannot confirm whoever holds it now. */
+  tutorId?: string;
+}) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const now = new Date();
   return database.transaction(async tx => {
     const result = await tx.update(tutorRequests).set({ appointmentConfirmedAt: now, contactConsent: "approved", lastActivityAt: now })
-      .where(and(eq(tutorRequests.id, input.requestId), eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.tutorId), isNull(tutorRequests.appointmentConfirmedAt)));
+      .where(and(
+        eq(tutorRequests.id, input.requestId),
+        eq(tutorRequests.status, "matched"),
+        isNotNull(tutorRequests.tutorId),
+        isNull(tutorRequests.appointmentConfirmedAt),
+        ...(input.tutorId ? [eq(tutorRequests.tutorId, input.tutorId)] : []),
+      ));
     if (!result[0].affectedRows) return { updated: false as const, lifecycle: "confirmed" as const };
     const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId }).from(tutorRequests).where(eq(tutorRequests.id, input.requestId)).limit(1);
     const closedListing = await tx.update(tutorJobs)
@@ -3661,7 +3674,8 @@ export async function listTutorJobInterestsForAdmin(input: { tutorJobId?: number
 
 export async function reviewTutorJobInterestByAdmin(input: {
   interestId: number;
-  status: Exclude<TutorInterestDatabaseStatus, "interested" | "withdrawn">;
+  /** "interested" takes an application off the shortlist. */
+  status: Exclude<TutorInterestDatabaseStatus, "withdrawn">;
   /** Needed for "matched", which is an appointment and is recorded against the Admin. */
   adminUserId?: number;
 }) {
@@ -3679,7 +3693,7 @@ export async function reviewTutorJobInterestByAdmin(input: {
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
     const [interest] = await tx
-      .select({ id: tutorJobInterests.id, status: tutorJobInterests.status, tutorId: tutorJobInterests.tutorId, publicJobId: tutorJobs.publicJobId })
+      .select({ id: tutorJobInterests.id, status: tutorJobInterests.status, tutorId: tutorJobInterests.tutorId, publicJobId: tutorJobs.publicJobId, requestId: tutorJobs.tutorRequestId })
       .from(tutorJobInterests)
       .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
       .where(eq(tutorJobInterests.id, input.interestId))
@@ -3688,6 +3702,16 @@ export async function reviewTutorJobInterestByAdmin(input: {
     if (!interest) throw new Error("TUTOR_INTEREST_NOT_FOUND");
     const transition = transitionTutorInterest(interest.status as TutorInterestDatabaseStatus, input.status, "admin");
     if (!transition.allowed) throw new Error(`TUTOR_INTEREST_${transition.reason.toUpperCase()}`);
+    if (input.status !== "declined") {
+      // Shortlisting is for a tuition that can still take a Tutor, or a backup for its Appointed one.
+      const [request] = interest.requestId == null ? [] : await tx
+        .select({ status: tutorRequests.status, publicationState: tutorRequests.publicationState, tutorId: tutorRequests.tutorId, appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt })
+        .from(tutorRequests)
+        .where(eq(tutorRequests.id, interest.requestId))
+        .limit(1)
+        .for("update");
+      if (!canShortlistOnTuition(request ? getGuardianRequestLifecycle(request) : null)) throw new Error("TUTOR_INTEREST_TUITION_CLOSED");
+    }
     // Declining an applicant also ends any appointment request the Guardian made for them.
     await tx.update(tutorJobInterests)
       .set(input.status === "declined" ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
@@ -3696,18 +3720,16 @@ export async function reviewTutorJobInterestByAdmin(input: {
     // the tab changed and nothing was said. No reason is given - the Admin
     // dialog collects none for an interest - so the message says only what
     // happened and where to look.
-    await createTutorNotification(tx, {
-      tutorId: interest.tutorId,
-      type: "interest_decision",
-      title: input.status === "shortlisted" ? `You were shortlisted for ${interest.publicJobId}`
-        : input.status === "matched" ? `You were appointed to ${interest.publicJobId}`
-        : `Your application for ${interest.publicJobId} was not taken forward`,
-      message: input.status === "declined"
-        ? "Other tuitions on the Job Board are still open to you."
-        : "Open your Status tab to see where this application now sits.",
-      actionPath: "/tutor/dashboard/status",
-      deduplicationKey: `interest:${interest.id}:${input.status}`,
-    });
+    const notice = adminInterestDecisionNotice(input.status, interest.publicJobId);
+    if (notice) {
+      await createTutorNotification(tx, {
+        tutorId: interest.tutorId,
+        type: "interest_decision",
+        ...notice,
+        actionPath: "/tutor/dashboard/status",
+        deduplicationKey: `interest:${interest.id}:${input.status}`,
+      });
+    }
     return { interestId: interest.id, status: input.status };
   });
 }
@@ -5508,7 +5530,12 @@ export async function declineAppointmentRequestByAdmin(input: { adminUserId: num
  * tuition. The Job Board listing was never taken down while Appointed, so it
  * stays as it is. The Tutor and the Guardian are both told.
  */
-export async function reopenAppointedTuitionByAdmin(input: { requestId: number; adminUserId: number }) {
+export async function reopenAppointedTuitionByAdmin(input: {
+  requestId: number;
+  adminUserId: number;
+  /** When given, only that Tutor is removed - a stale page cannot remove whoever holds it now. */
+  tutorId?: string;
+}) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
@@ -5527,6 +5554,7 @@ export async function reopenAppointedTuitionByAdmin(input: { requestId: number; 
       .for("update");
     if (!request) return { outcome: "not_found" as const };
     if (!canReopenAppointedTuition(getGuardianRequestLifecycle(request)) || !request.tutorId) return { outcome: "refused" as const };
+    if (input.tutorId && request.tutorId !== input.tutorId) return { outcome: "not_holder" as const };
     const removedTutorId = request.tutorId;
 
     const now = new Date();

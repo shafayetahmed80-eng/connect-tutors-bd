@@ -159,6 +159,9 @@ async function getApprovedTutorProfileId(userId: number) {
   return profile.tutorId;
 }
 
+/** A page that has fallen behind asked to confirm or remove a Tutor who no longer holds the tuition. */
+const NOT_HOLDER_MESSAGE = "This tuition is no longer appointed to this Tutor.";
+
 function rethrowTutorInterestError(error: unknown): never {
   if (!(error instanceof Error)) throw error;
   const errors: Record<string, TRPCError> = {
@@ -171,6 +174,7 @@ function rethrowTutorInterestError(error: unknown): never {
     TUTOR_INTEREST_APPOINTMENT_NOT_LIVE: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.not_live }),
     TUTOR_INTEREST_APPOINTMENT_TUTOR_UNAVAILABLE: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.tutor_unavailable }),
     TUTOR_INTEREST_APPOINTMENT_INVALID_TRANSITION: new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.invalid_transition }),
+    TUTOR_INTEREST_TUITION_CLOSED: new TRPCError({ code: "CONFLICT", message: "This tuition no longer takes shortlisting." }),
   };
   throw errors[error.message] ?? error;
 }
@@ -1699,20 +1703,21 @@ export const appRouter = router({
         return result;
       }),
     confirmTutorRequestAppointment: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive() }))
+      .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32).optional() }))
       .mutation(async ({ ctx, input }) => {
         const result = await db.confirmTutorRequestAppointment({ ...input, adminUserId: ctx.user.id });
         if (!result.updated) {
-          throw new TRPCError({ code: "CONFLICT", message: "This request cannot be confirmed until an assigned Tutor is available." });
+          throw new TRPCError({ code: "CONFLICT", message: input.tutorId ? NOT_HOLDER_MESSAGE : "This request cannot be confirmed until an assigned Tutor is available." });
         }
         return result;
       }),
     reopenAppointedTuition: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive() }))
+      .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32).optional() }))
       .mutation(async ({ ctx, input }) => {
         const result = await db.reopenAppointedTuitionByAdmin({ ...input, adminUserId: ctx.user.id });
         if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor Request is unavailable." });
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: "Only an Appointed tuition can go back to Live." });
+        if (result.outcome === "not_holder") throw new TRPCError({ code: "CONFLICT", message: NOT_HOLDER_MESSAGE });
         return { reopened: true as const };
       }),
     createConfirmationLetterDraft: adminProcedure
@@ -1765,7 +1770,7 @@ export const appRouter = router({
       .input(z.object({ tutorJobId: z.number().int().positive().optional() }))
       .query(({ input }) => db.listTutorJobInterestsForAdmin(input)),
     reviewTutorJobInterest: adminProcedure
-      .input(z.object({ interestId: z.number().int().positive(), status: z.enum(["shortlisted", "declined", "matched"]) }))
+      .input(z.object({ interestId: z.number().int().positive(), status: z.enum(["interested", "shortlisted", "declined", "matched"]) }))
       .mutation(async ({ ctx, input }) => {
         try {
           return await db.reviewTutorJobInterestByAdmin({ ...input, adminUserId: ctx.user.id });

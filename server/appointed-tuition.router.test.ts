@@ -53,6 +53,21 @@ describe("moving an Appointed tuition on", () => {
     expect(dbMocks.confirmTutorRequestAppointment).toHaveBeenCalledWith({ requestId: 13, adminUserId: 42 });
   });
 
+  it("acts only on the Tutor the Admin's page names, when it names one", async () => {
+    dbMocks.confirmTutorRequestAppointment.mockResolvedValue({ updated: true, lifecycle: "confirmed" });
+    await createCaller().admin.confirmTutorRequestAppointment({ requestId: 13, tutorId: "tutor-404" });
+    expect(dbMocks.confirmTutorRequestAppointment).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404", adminUserId: 42 });
+
+    dbMocks.confirmTutorRequestAppointment.mockResolvedValue({ updated: false, lifecycle: "confirmed" });
+    await expect(createCaller().admin.confirmTutorRequestAppointment({ requestId: 13, tutorId: "tutor-404" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "This tuition is no longer appointed to this Tutor." });
+
+    dbMocks.reopenAppointedTuitionByAdmin.mockResolvedValue({ outcome: "not_holder" });
+    await expect(createCaller().admin.reopenAppointedTuition({ requestId: 13, tutorId: "tutor-404" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "This tuition is no longer appointed to this Tutor." });
+    expect(dbMocks.reopenAppointedTuitionByAdmin).toHaveBeenLastCalledWith({ requestId: 13, tutorId: "tutor-404", adminUserId: 42 });
+  });
+
   it("is closed to anyone who is not an Admin", async () => {
     for (const user of [null, { ...admin, role: "guardian" as const, openId: "guardian-1" }]) {
       await expect(createCaller(user).admin.reopenAppointedTuition({ requestId: 13 })).rejects.toBeTruthy();

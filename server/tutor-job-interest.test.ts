@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminInterestDecisionNotice,
+  canShortlistOnTuition,
   canSubmitTutorInterest,
   transitionTutorInterest,
 } from "./tutor-job-interest";
@@ -61,5 +63,19 @@ describe("Tutor Job Board interest contract", () => {
       allowed: false,
       reason: "invalid_transition",
     });
+  });
+});
+
+describe("an Admin's shortlist on Applied Tutors", () => {
+  it("moves on or off the shortlist only while the tuition can take a Tutor or a backup", () => {
+    expect(["pending", "live", "appointed", "confirmed", "cancelled"].filter(stage => canShortlistOnTuition(stage as never))).toEqual(["live", "appointed"]);
+    // A listing with no tuition behind it keeps the old rule.
+    expect(canShortlistOnTuition(null)).toBe(true);
+  });
+
+  it("tells the Tutor when they are shortlisted or declined, and says nothing when they come off a shortlist", () => {
+    expect(adminInterestDecisionNotice("shortlisted", "6812")?.title).toBe("You were shortlisted for 6812");
+    expect(adminInterestDecisionNotice("declined", "6812")?.title).toBe("Your application for 6812 was not taken forward");
+    expect(adminInterestDecisionNotice("interested", "6812")).toBeNull();
   });
 });
