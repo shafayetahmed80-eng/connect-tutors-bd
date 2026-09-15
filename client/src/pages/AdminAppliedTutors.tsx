@@ -1,5 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
-import AdminTutorRows, { type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
+import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import PostTypeBadge from "@/components/PostTypeBadge";
@@ -12,6 +12,7 @@ import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
+import { applicantActions } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
@@ -42,6 +43,11 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const refresh = () => {
     void utils.admin.listAppliedTutors.invalidate();
     void utils.admin.listPostedJobs.invalidate();
+    // A move here changes the Appointed and Confirmed lists and the Tutor's own job stages too.
+    void utils.admin.listAppointedJobs.invalidate();
+    void utils.admin.listConfirmedJobs.invalidate();
+    void utils.admin.listTutorDirectory.invalidate();
+    void utils.admin.listTutorApplications.invalidate();
   };
   const onError = (error: { message: string }) => { toast.error(error.message); };
   const approve = trpc.admin.approveAppointmentRequest.useMutation({ onSuccess: () => { setApproving(null); refresh(); }, onError });
@@ -51,6 +57,48 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     // Approving hands both people each other's number, so it is confirmed first.
     onApprove: tutor => setApproving(tutor),
     onDecline: tutor => { if (tutor.interestId) decline.mutate({ interestId: tutor.interestId }); },
+  };
+
+  const review = trpc.admin.reviewTutorJobInterest.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
+  const confirmTutor = trpc.admin.confirmTutorRequestAppointment.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
+  const removeTutor = trpc.admin.reopenAppointedTuition.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
+  const [deciding, setDeciding] = useState<{ tutor: AdminTutorRow; action: "appoint" | "confirm" | "remove_appointed" } | null>(null);
+  const actionPending = review.isPending || confirmTutor.isPending || removeTutor.isPending;
+  const settle = (message: string) => { setDeciding(null); refresh(); toast.success(message); };
+  const rowActions: AdminApplicantRowActions = {
+    busy: actionPending,
+    optionsFor: tutor => !job || !tuitionStage || !tutor.applicationStatus ? [] : applicantActions({
+      tuitionStage,
+      applicationStatus: tutor.applicationStatus,
+      holdsTuition: tutor.id === job.appointedTutorId,
+      tutorApproved: tutor.profileStatus === "approved",
+    }).filter(({ action }) =>
+      // Removing a Confirmed Tutor is not offered yet.
+      action !== "remove_confirmed"
+      // A Guardian's waiting request is answered by Approve beside it, which appoints the same way.
+      && !(action === "appoint" && tutor.appointmentRequestedAt)),
+    onAction: (tutor, action) => {
+      if (action === "shortlist" || action === "unshortlist") {
+        if (!tutor.interestId) return;
+        review.mutate(
+          { interestId: tutor.interestId, status: action === "shortlist" ? "shortlisted" : "interested" },
+          { onSuccess: () => { refresh(); toast.success(action === "shortlist" ? `${tutor.name} is shortlisted.` : `${tutor.name} is off the shortlist.`); } },
+        );
+      } else if (action === "appoint" || action === "confirm" || action === "remove_appointed") {
+        setDeciding({ tutor, action });
+      }
+    },
+  };
+  const decide = () => {
+    if (!deciding) return;
+    const { tutor, action } = deciding;
+    if (action === "appoint" && tutor.interestId) {
+      review.mutate({ interestId: tutor.interestId, status: "matched" }, { onSuccess: () => settle(`${tutor.name} is appointed.`) });
+    } else if (action === "confirm") {
+      confirmTutor.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is confirmed.`) });
+    } else if (action === "remove_appointed") {
+      removeTutor.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is removed. The tuition is Live again.`) });
+    }
   };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
@@ -104,6 +152,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           showApplicationStage
           showGuardianMarks
           appointmentActions={appointmentActions}
+          applicantRowActions={rowActions}
         />
       : null}
 
@@ -117,6 +166,31 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       <ModalFooter>
         <button type="button" onClick={() => setApproving(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
         <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
+      </ModalFooter>
+    </Modal> : null}
+
+    {deciding ? <Modal size="sm" onClose={() => setDeciding(null)} busy={actionPending}>
+      <ModalHeader
+        title={deciding.action === "appoint" ? `Appoint ${deciding.tutor.name}?` : deciding.action === "confirm" ? `Confirm ${deciding.tutor.name}?` : `Remove ${deciding.tutor.name}?`}
+        meta={`Tutor ID ${deciding.tutor.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`}
+      />
+      <ModalBody>
+        <p className="text-sm leading-6 text-j-ink-soft">{deciding.action === "appoint"
+          ? "The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class."
+          : deciding.action === "confirm"
+            ? "The Guardian keeps the Tutor. The tuition leaves the Job Board."
+            : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setDeciding(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button
+          type="button"
+          disabled={actionPending}
+          onClick={decide}
+          className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
+        >{actionPending
+          ? (deciding.action === "appoint" ? "Appointing…" : deciding.action === "confirm" ? "Confirming…" : "Removing…")
+          : (deciding.action === "appoint" ? "Appoint" : deciding.action === "confirm" ? "Confirm" : "Remove Tutor")}</button>
       </ModalFooter>
     </Modal> : null}
   </div>;

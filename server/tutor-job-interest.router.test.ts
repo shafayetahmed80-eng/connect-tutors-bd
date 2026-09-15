@@ -113,6 +113,22 @@ describe("Tutor Job Board interest procedures", () => {
     expect(interestDbMocks.reviewTutorJobInterestByAdmin).toHaveBeenCalledWith({ interestId: 12, status: "shortlisted", adminUserId: verifiedAdmin.id });
   });
 
+  it("lets an Admin take an application back off the shortlist", async () => {
+    interestDbMocks.reviewTutorJobInterestByAdmin.mockResolvedValue({ interestId: 12, status: "interested" });
+    const caller = createCaller({ user: verifiedAdmin });
+
+    await expect((caller.admin as any).reviewTutorJobInterest({ interestId: 12, status: "interested" })).resolves.toEqual({ interestId: 12, status: "interested" });
+    expect(interestDbMocks.reviewTutorJobInterestByAdmin).toHaveBeenCalledWith({ interestId: 12, status: "interested", adminUserId: verifiedAdmin.id });
+  });
+
+  it("says so when the tuition no longer takes shortlisting", async () => {
+    interestDbMocks.reviewTutorJobInterestByAdmin.mockRejectedValue(new Error("TUTOR_INTEREST_TUITION_CLOSED"));
+    const caller = createCaller({ user: verifiedAdmin });
+
+    await expect((caller.admin as any).reviewTutorJobInterest({ interestId: 12, status: "shortlisted" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "This tuition no longer takes shortlisting." });
+  });
+
   it("rejects Tutor-controlled or withdrawn review statuses before the Admin workflow runs", async () => {
     const caller = createCaller({ user: verifiedAdmin });
 

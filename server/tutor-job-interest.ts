@@ -1,3 +1,5 @@
+import type { GuardianRequestLifecycle } from "./tutor-request-lifecycle";
+
 export const tutorJobInterestStatusValues = [
   "interested",
   "shortlisted",
@@ -49,4 +51,19 @@ export function transitionTutorInterest(
   return allowedTransitions[from]?.includes(to)
     ? { allowed: true }
     : { allowed: false, reason: "invalid_transition" };
+}
+/**
+ * Whether an Admin can still move an application on or off the shortlist: while
+ * the tuition can take a Tutor, or a backup for the one it has appointed. A
+ * listing with no tuition behind it predates requests and keeps the old rule.
+ */
+export function canShortlistOnTuition(lifecycle: GuardianRequestLifecycle | null): boolean {
+  return lifecycle === null || lifecycle === "live" || lifecycle === "appointed";
+}
+
+/** What the Tutor is told about an Admin's decision on their application. Coming off a shortlist says nothing. */
+export function adminInterestDecisionNotice(status: TutorJobInterestStatus, jobId: string) {
+  if (status === "shortlisted") return { title: `You were shortlisted for ${jobId}`, message: "Open your Status tab to see where this application now sits." };
+  if (status === "declined") return { title: `Your application for ${jobId} was not taken forward`, message: "Other tuitions on the Job Board are still open to you." };
+  return null;
 }

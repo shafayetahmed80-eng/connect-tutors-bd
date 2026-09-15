@@ -8,11 +8,15 @@ const tutor = (id: string, name: string) => ({
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
   profileStatus: "approved" as const, verified: 1,
   applicationStatus: "interested" as "interested" | "shortlisted" | "declined" | "matched" | "withdrawn",
+  interestId: undefined as number | undefined,
 });
 
 const mocks = vi.hoisted(() => ({
   approve: vi.fn(),
   decline: vi.fn(),
+  review: vi.fn(),
+  confirm: vi.fn(),
+  reopen: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
   live: {
@@ -60,10 +64,18 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ admin: { listAppliedTutors: { invalidate: vi.fn() }, listPostedJobs: { invalidate: vi.fn() } } }),
+    useUtils: () => ({
+      admin: {
+        listAppliedTutors: { invalidate: vi.fn() }, listPostedJobs: { invalidate: vi.fn() }, listAppointedJobs: { invalidate: vi.fn() },
+        listConfirmedJobs: { invalidate: vi.fn() }, listTutorDirectory: { invalidate: vi.fn() }, listTutorApplications: { invalidate: vi.fn() },
+      },
+    }),
     admin: {
       approveAppointmentRequest: { useMutation: () => ({ mutate: mocks.approve, isPending: false }) },
       declineAppointmentRequest: { useMutation: () => ({ mutate: mocks.decline, isPending: false }) },
+      reviewTutorJobInterest: { useMutation: () => ({ mutate: mocks.review, isPending: false }) },
+      confirmTutorRequestAppointment: { useMutation: () => ({ mutate: mocks.confirm, isPending: false }) },
+      reopenAppointedTuition: { useMutation: () => ({ mutate: mocks.reopen, isPending: false }) },
       listAppliedTutors: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -127,7 +139,7 @@ describe("Admin Applied Tutors page", () => {
   it("lists the applicants as the Admin's own Tutor rows, numbered in application order", () => {
     render(<AdminAppliedTutorsContent requestId={13} />);
 
-    for (const header of ["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Status", "Verified", "Application"]) {
+    for (const header of ["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Status", "Verified", "Application", "Action"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeTruthy();
     }
     const rows = screen.getAllByRole("row").slice(1);
@@ -209,6 +221,89 @@ describe("Admin Applied Tutors page", () => {
     mocks.data.job = { ...original, status: "closed", publicationState: "closed", cancellationReason: "The Guardian did not take a Tutor" } as never;
     render(<AdminAppliedTutorsContent requestId={13} />);
     expect(stages()).toEqual(["Cancelled", "Cancelled", "Cancelled"]);
+    mocks.data.job = original;
+  });
+
+  it("offers each applicant the moves a Live tuition allows", () => {
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), interestId: 91 },
+      { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "shortlisted" as const },
+      { ...tutor("tutor-510", "Rafi Hasan"), interestId: 93, profileStatus: "pending" as never },
+      { ...tutor("tutor-777", "Mitu Akter"), interestId: 94, appointmentRequestedAt: new Date("2026-09-13T09:00:00.000Z") } as never,
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    expect(screen.getByRole("columnheader", { name: "Action" })).toBeTruthy();
+    const buttonsIn = (index: number) => {
+      const row = screen.getAllByRole("row").slice(1)[index];
+      const cells = row.querySelectorAll("td");
+      return Array.from(cells[cells.length - 2].querySelectorAll("button")).map(button => `${button.textContent}${(button as HTMLButtonElement).disabled ? " (disabled)" : ""}`);
+    };
+    expect(buttonsIn(0)).toEqual(["Shortlist", "Appoint"]);
+    expect(buttonsIn(1)).toEqual(["Remove from shortlist", "Appoint"]);
+    // Only an approved profile can be appointed.
+    expect(buttonsIn(2)).toEqual(["Shortlist", "Appoint (disabled)"]);
+    // A waiting Guardian request is answered by Approve, not a second Appoint.
+    expect(buttonsIn(3)).toEqual(["Shortlist"]);
+  });
+
+  it("shortlists straight away, and appoints only after a confirmation", () => {
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), interestId: 91 },
+      { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "shortlisted" as const },
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist Tania Sultana" }));
+    expect(mocks.review).toHaveBeenCalledWith({ interestId: 91, status: "shortlisted" }, expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Remove Tanvir Ahmed from the shortlist" }));
+    expect(mocks.review).toHaveBeenLastCalledWith({ interestId: 92, status: "interested" }, expect.anything());
+
+    mocks.review.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Appoint Tania Sultana" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Appoint Tania Sultana?")).toBeTruthy();
+    expect(within(dialog).getByText("Tutor ID 777 · Job ID 6812")).toBeTruthy();
+    expect(mocks.review).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Appoint" }));
+    expect(mocks.review).toHaveBeenCalledWith({ interestId: 91, status: "matched" }, expect.anything());
+  });
+
+  it("on an Appointed tuition, confirms or removes its Tutor after a confirmation, naming that Tutor", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404" } as never;
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), interestId: 91 },
+      { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "matched" as const },
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    // The rest can still be shortlisted as backups, but not appointed.
+    expect(screen.queryByRole("button", { name: "Appoint Tania Sultana" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Shortlist Tania Sultana" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Tanvir Ahmed" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm" }));
+    expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404" }, expect.anything());
+
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Tanvir Ahmed from this tuition" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Remove Tanvir Ahmed?")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove Tutor" }));
+    expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404" }, expect.anything());
+    mocks.data.job = original;
+  });
+
+  it("offers nothing more once the tuition is Confirmed", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404", appointmentConfirmedAt: new Date("2026-09-14T08:00:00.000Z") } as never;
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), interestId: 91 },
+      { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "matched" as const },
+    ];
+    render(<AdminAppliedTutorsContent requestId={13} />);
+    for (const row of screen.getAllByRole("row").slice(1)) expect(within(row).queryAllByRole("button")).toHaveLength(0);
     mocks.data.job = original;
   });
 

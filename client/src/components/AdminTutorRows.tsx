@@ -1,5 +1,5 @@
-import { applicantStageLabels } from "@shared/admin-applicant-actions";
-import type { TutorApplicationStage } from "@shared/tutor-application-stages";
+import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
+import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
 import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
 import { Link } from "wouter";
 
@@ -31,6 +31,8 @@ export type AdminTutorRow = {
   interestId?: number;
   /** Where this application stands, by the Tutor's own rule. Applied-Tutor rows only. */
   applicationStage?: TutorApplicationStage;
+  /** The application's own status, which the Action column reads. Applied-Tutor rows only. */
+  applicationStatus?: TutorApplicationRecord["status"];
 };
 
 /** Approve and Decline on a row whose Guardian asked for an appointment. */
@@ -38,6 +40,13 @@ export type AdminAppointmentRequestActions = {
   busy: boolean;
   onApprove: (tutor: AdminTutorRow) => void;
   onDecline: (tutor: AdminTutorRow) => void;
+};
+
+/** The Action column on one tuition's applicants: what each row can do, and what doing it means. */
+export type AdminApplicantRowActions = {
+  busy: boolean;
+  optionsFor: (tutor: AdminTutorRow) => ApplicantActionOption[];
+  onAction: (tutor: AdminTutorRow, action: ApplicantAction) => void;
 };
 
 export type AdminTutorRowStatus = "draft" | "pending" | "changes_requested" | "approved" | "suspended";
@@ -58,13 +67,31 @@ const applicationStageStyles: Record<TutorApplicationStage, string> = {
   cancelled: "bg-slate-100 text-slate-600",
 };
 
+const applicantActionStyles: Record<ApplicantAction, string> = {
+  shortlist: "border border-j-border bg-white text-j-ink-strong hover:bg-j-surface-sunken",
+  unshortlist: "border border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken",
+  appoint: "bg-j-accent text-white hover:bg-j-accent-hover",
+  confirm: "bg-[#0f7048] text-white hover:bg-[#0c5b3a]",
+  remove_appointed: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
+  remove_confirmed: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
+};
+
+const applicantActionNames: Record<ApplicantAction, (name: string) => string> = {
+  shortlist: name => `Shortlist ${name}`,
+  unshortlist: name => `Remove ${name} from the shortlist`,
+  appoint: name => `Appoint ${name}`,
+  confirm: name => `Confirm ${name}`,
+  remove_appointed: name => `Remove ${name} from this tuition`,
+  remove_confirmed: name => `Remove ${name} from this tuition`,
+};
+
 function Cell({ value, className = "" }: { value: string; className?: string }) {
   return <td className={`px-3 py-2.5 align-top ${className}`}>
     <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>
   </td>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, applicantRowActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -79,6 +106,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
   appointmentActions?: AdminAppointmentRequestActions;
+  /** The Action column on one tuition's applicants. */
+  applicantRowActions?: AdminApplicantRowActions;
 }) {
   const numbered = serialFrom !== undefined;
   return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
@@ -99,6 +128,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <th scope="col" className="px-3 py-2.5">Verified</th>
           {showApplicationStage ? <th scope="col" className="px-3 py-2.5">Application</th> : null}
           {showGuardianMarks ? <th scope="col" className="px-3 py-2.5">Guardian</th> : null}
+          {applicantRowActions ? <th scope="col" className="px-3 py-2.5">Action</th> : null}
           <th scope="col" className="px-3 py-2.5"><span className="sr-only">Details</span></th>
         </tr>
       </thead>
@@ -128,13 +158,25 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
               <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onDecline(tutor)} aria-label={`Decline the appointment request for ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40">Decline</button>
             </span> : null}
           </td> : null}
+          {applicantRowActions ? <td className="px-3 py-2.5 align-top">
+            <span className="flex flex-wrap gap-1.5">
+              {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => <button
+                key={action}
+                type="button"
+                disabled={applicantRowActions.busy || disabled}
+                onClick={() => applicantRowActions.onAction(tutor, action)}
+                aria-label={applicantActionNames[action](tutor.name)}
+                className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
+              >{applicantActionLabels[action]}</button>)}
+            </span>
+          </td> : null}
           <td className="px-3 py-2.5 align-top text-right">
             <Link href={`/admin/tutor-profiles/${tutor.id}`} aria-label={`Open the full profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
               <ChevronRight size={16} />
             </Link>
           </td>
         </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showApplicationStage ? 1 : 0) + (showGuardianMarks ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
+        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showApplicationStage ? 1 : 0) + (showGuardianMarks ? 1 : 0) + (applicantRowActions ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
       </tbody>
     </table>
   </div>;
