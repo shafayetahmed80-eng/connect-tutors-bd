@@ -10,6 +10,7 @@ import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from 
 import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, IdCard, Loader2, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
+import AdminTutorApplications from "@/components/AdminTutorApplications";
 
 const statusStyles: Record<string, string> = {
   draft: "bg-j-surface-muted text-j-ink-soft",
@@ -114,6 +115,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const decisions = moderationOptions[profile.profileStatus] ?? [];
 
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-10">
+    <AdminTutorApplications tutorId={tutorId} />
+
     <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
       <ArrowLeft size={15} /> Back to Tutor Profiles
     </Link>
