@@ -56,7 +56,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       <ArrowLeft size={15} /> Back to Posted jobs
     </Link>
 
-    <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm">
+    <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">
         Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
       </span>
@@ -65,7 +65,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Tuition Status <TuitionStatus job={{ ...job, tutorId: job.appointedTutorId }} /></span>
       </>}>
-        <JobFact icon="phone" value={job.guardianPhone || "Not given"} />
+        <JobFact icon="phone" value={job.guardianPhone || "Not given"} wide />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
       <button
