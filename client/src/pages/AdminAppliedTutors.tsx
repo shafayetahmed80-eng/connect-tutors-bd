@@ -12,9 +12,9 @@ import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
-import { applicantActions } from "@shared/admin-applicant-actions";
+import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleX, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
@@ -102,6 +102,14 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     }
   };
 
+  // Cancelling is the tuition's, not an applicant's: the Guardian is not taking a Tutor from us.
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const cancelTuition = trpc.admin.cancelTutorRequest.useMutation({
+    onSuccess: () => { setCancelling(false); setCancelReason(""); refresh(); toast.success(`Job ID ${jobIdForRequest(requestId)} is cancelled.`); },
+    onError: error => { toast.error(error.message); refresh(); },
+  });
+
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <Link href="/admin/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
       <ArrowLeft size={15} /> Back to Posted jobs
@@ -118,6 +126,14 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       </>}>
         <JobFact icon="phone" value={job.guardianPhone || "Not given"} wide />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
+
+      {tuitionStage && canCancelTuition(tuitionStage) ? <button
+        type="button"
+        onClick={() => { setCancelReason(""); setCancelling(true); }}
+        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
+      >
+        <CircleX className="h-4 w-4" /> Cancel Tuition
+      </button> : null}
 
       <button
         type="button"
@@ -167,6 +183,31 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       <ModalFooter>
         <button type="button" onClick={() => setApproving(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
         <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
+      </ModalFooter>
+    </Modal> : null}
+
+    {cancelling ? <Modal size="sm" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
+      <ModalHeader title={`Cancel Job ID ${jobIdForRequest(requestId)}?`} meta={job ? `Guardian ${job.guardianName}` : undefined} />
+      <ModalBody className="space-y-3">
+        <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>
+        <label className="block text-sm font-bold text-j-ink-strong">Reason (required)
+          <textarea
+            value={cancelReason}
+            onChange={event => setCancelReason(event.target.value)}
+            rows={3}
+            maxLength={280}
+            className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setCancelling(false)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
+        <button
+          type="button"
+          disabled={cancelTuition.isPending || cancelReason.trim().length < 3}
+          onClick={() => cancelTuition.mutate({ requestId, reason: cancelReason.trim() })}
+          className="h-10 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+        >{cancelTuition.isPending ? "Cancelling…" : "Cancel Tuition"}</button>
       </ModalFooter>
     </Modal> : null}
 

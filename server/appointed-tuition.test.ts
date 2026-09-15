@@ -4,6 +4,7 @@ import {
   appointmentEndedTutorNotification,
   canReopenAppointedTuition,
   canReopenConfirmedTuition,
+  tuitionCancelledTutorNotification,
 } from "./appointed-tuition";
 
 describe("sending a tuition back to Live", () => {
@@ -31,5 +32,13 @@ describe("what the Tutor is told after the demo class", () => {
     const ended = appointmentEndedTutorNotification("6812");
     expect(ended.title).toBe("Your appointment to 6812 has ended");
     expect(ended.message).not.toMatch(/because|decided/i);
+  });
+});
+
+describe("when an Admin cancels a tuition", () => {
+  it("tells its Tutor which job ended, and keeps the Admin's reason out of it", () => {
+    const note = tuitionCancelledTutorNotification("6812");
+    expect(note.title).toBe("Your tuition 6812 has been cancelled");
+    expect(note.message).not.toMatch(/because|reason|decided/i);
   });
 });

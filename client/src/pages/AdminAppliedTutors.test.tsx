@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   reopen: vi.fn(),
   removeConfirmed: vi.fn(),
+  cancelTuition: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
   live: {
@@ -78,6 +79,7 @@ vi.mock("@/lib/trpc", () => ({
       confirmTutorRequestAppointment: { useMutation: () => ({ mutate: mocks.confirm, isPending: false }) },
       reopenAppointedTuition: { useMutation: () => ({ mutate: mocks.reopen, isPending: false }) },
       removeConfirmedTutor: { useMutation: () => ({ mutate: mocks.removeConfirmed, isPending: false }) },
+      cancelTutorRequest: { useMutation: () => ({ mutate: mocks.cancelTuition, isPending: false }) },
       listAppliedTutors: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -318,6 +320,36 @@ describe("Admin Applied Tutors page", () => {
     expect(mocks.removeConfirmed).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404" }, expect.anything());
     // Not the Appointed removal: that one leaves a closed listing closed.
     expect(mocks.reopen).not.toHaveBeenCalled();
+    mocks.data.job = original;
+  });
+
+  it("cancels the tuition only with a reason, after a confirmation", () => {
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel Tuition" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    const cancel = within(dialog).getByRole("button", { name: "Cancel Tuition" }) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+
+    fireEvent.change(within(dialog).getByLabelText(/Reason/), { target: { value: "  The Guardian found a Tutor elsewhere  " } });
+    expect(cancel.disabled).toBe(false);
+    fireEvent.click(cancel);
+    expect(mocks.cancelTuition).toHaveBeenCalledWith({ requestId: 13, reason: "The Guardian found a Tutor elsewhere" });
+  });
+
+  it("keeps the tuition when the Admin backs out, and offers no Cancel once it is cancelled", () => {
+    const view = render(<AdminAppliedTutorsContent requestId={13} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel Tuition" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Keep Tuition" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.cancelTuition).not.toHaveBeenCalled();
+    view.unmount();
+
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "closed", publicationState: "closed", cancellationReason: "The Guardian did not take a Tutor" } as never;
+    render(<AdminAppliedTutorsContent requestId={13} />);
+    expect(screen.queryByRole("button", { name: "Cancel Tuition" })).toBeNull();
     mocks.data.job = original;
   });
 
