@@ -121,7 +121,7 @@ import {
   type TutorProfileDraftInput,
   type TutorProfileEditableDraftInput,
 } from "./tutor-profile.validation";
-import { validateTutorModerationAction } from "./admin-monitoring";
+import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 import {
   buildSafeTutorRequestPublicationSnapshot,
   validateAdminRequestPublicationAction,
@@ -4429,14 +4429,7 @@ export async function moderateTutorProfile(input: {
     await createTutorNotification(tx, {
       tutorId: tutor.id,
       type: "profile_moderation",
-      title: input.nextStatus === "approved" ? "Your profile has been approved"
-        : input.nextStatus === "changes_requested" ? "Changes were requested on your profile"
-        : "Your profile has been suspended",
-      message: input.nextStatus === "changes_requested"
-        ? "Open your profile to read what to change, then submit it again."
-        : input.nextStatus === "approved"
-          ? "You can now be matched with tuition requests."
-          : "Your coordinator can explain the next step.",
+      ...describeTutorModerationNotice({ from: tutor.profileStatus, to: input.nextStatus }),
       actionPath: "/tutor/dashboard/profile",
       deduplicationKey: `moderation:${tutor.id}:${Number(result[0].insertId)}`,
     });
