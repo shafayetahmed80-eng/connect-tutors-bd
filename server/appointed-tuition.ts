@@ -28,6 +28,17 @@ export function appointmentConfirmedTutorNotification(jobId: string) {
   };
 }
 
+/**
+ * The Tutor holding a tuition, when an Admin cancels it. A reason is recorded,
+ * but it is the Admin's own note, so the message does not repeat it.
+ */
+export function tuitionCancelledTutorNotification(jobId: string) {
+  return {
+    title: `Your tuition ${jobId} has been cancelled`,
+    message: "The tuition will not go ahead. Other tuitions on the Job Board are still open to you.",
+  };
+}
+
 /** The Tutor, when the tuition goes back to Live without them. No reason is recorded, so none is given. */
 export function appointmentEndedTutorNotification(jobId: string) {
   return {

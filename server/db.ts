@@ -99,7 +99,7 @@ import {
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
-import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition, canReopenConfirmedTuition } from "./appointed-tuition";
+import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition, canReopenConfirmedTuition, tuitionCancelledTutorNotification } from "./appointed-tuition";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -2939,6 +2939,16 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
     await tx.update(tutorJobs).set({ publicationStatus: "closed", deactivatedAt: new Date() }).where(eq(tutorJobs.tutorRequestId, input.requestId));
     // A cancelled Confirmed tuition may have been the Tutor's last one.
     if (request.tutorId) await refreshTutorVerification(tx, request.tutorId);
+    // The Tutor holding it is told too. The reason is the Admin's own note, so it stays out of the message.
+    if (request.tutorId) {
+      await createTutorNotification(tx, {
+        tutorId: request.tutorId,
+        type: "appointment",
+        ...tuitionCancelledTutorNotification(jobIdForRequest(input.requestId)),
+        actionPath: "/tutor/dashboard/status",
+        deduplicationKey: `appointment:${input.requestId}:cancelled:${request.tutorId}`,
+      });
+    }
     const supersededLetters = await tx.update(confirmationLetters)
       .set({ status: "superseded", supersededAt: cancelledAt, revisionReason: "Request cancelled by Admin" })
       .where(and(
@@ -2961,7 +2971,7 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
       tutorRequestId: input.requestId,
       type: "lifecycle",
       title: "Your tutor request has been cancelled",
-      message: "An Admin has closed this request. You can view the private reason in your request details.",
+      message: "An Admin has closed this request.",
       actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
       deduplicationKey: `lifecycle:${input.requestId}:cancelled`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${input.requestId}:cancelled` } });
