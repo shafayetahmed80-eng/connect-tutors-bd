@@ -3622,6 +3622,8 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       // Appointed and Confirmed are the same interest status; only the request
       // knows which, so a Tutor cannot be shown their own stage without it.
       appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      // A cancelled tuition ends every application on it, whatever the interest says.
+      tuitionCancelled: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
     })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
@@ -4504,12 +4506,16 @@ export function tutorJobStageCondition(stage: TutorApplicationStage): SQL {
   const q = (table: MySqlTable, column: { name: string }) => `\`${getTableName(table)}\`.\`${column.name}\``;
   const status = q(tutorJobInterests, tutorJobInterests.status);
   const confirmedAt = q(tutorRequests, tutorRequests.appointmentConfirmedAt);
+  const tuitionStatus = q(tutorRequests, tutorRequests.status);
+  const publicationState = q(tutorRequests, tutorRequests.publicationState);
+  // A cancelled tuition ends every application on it, whatever the interest says.
+  const tuitionOpen = `${tuitionStatus} <> 'closed' and ${publicationState} <> 'closed'`;
   const rule: Record<TutorApplicationStage, string> = {
-    applied: `${status} = 'interested'`,
-    shortlisted: `${status} = 'shortlisted'`,
-    appointed: `${status} = 'matched' and ${confirmedAt} is null`,
-    confirmed: `${status} = 'matched' and ${confirmedAt} is not null`,
-    cancelled: `${status} in ('declined', 'withdrawn')`,
+    applied: `${status} = 'interested' and ${tuitionOpen}`,
+    shortlisted: `${status} = 'shortlisted' and ${tuitionOpen}`,
+    appointed: `${status} = 'matched' and ${confirmedAt} is null and ${tuitionOpen}`,
+    confirmed: `${status} = 'matched' and ${confirmedAt} is not null and ${tuitionOpen}`,
+    cancelled: `(${status} in ('declined', 'withdrawn') or ${tuitionStatus} = 'closed' or ${publicationState} = 'closed')`,
   };
   const from = `\`${getTableName(tutorJobInterests)}\``
     + ` inner join \`${getTableName(tutorJobs)}\` on ${q(tutorJobs, tutorJobs.id)} = ${q(tutorJobInterests, tutorJobInterests.tutorJobId)}`
@@ -4741,6 +4747,8 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
       ...adminTutorDirectoryFields,
       interestId: tutorJobInterests.id,
       appliedAt: tutorJobInterests.createdAt,
+      // The Admin's own decision on the application; the row reads its stage from it.
+      applicationStatus: tutorJobInterests.status,
       guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
       appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
     })

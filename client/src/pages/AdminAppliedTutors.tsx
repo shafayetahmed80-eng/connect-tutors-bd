@@ -11,6 +11,7 @@ import { TutorDirectoryFilters, defaultTutorFilters, type TutorFilters } from ".
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
+import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ChevronRight, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
@@ -34,6 +35,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const applied = trpc.admin.listAppliedTutors.useQuery({ ...filters, requestId }, { retry: false });
   const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
   const job = applied.data?.job;
+  const tuitionStage = job ? getGuardianRequestLifecycle({ ...job, tutorId: job.appointedTutorId }).key : null;
 
   const utils = trpc.useUtils();
   const [approving, setApproving] = useState<AdminTutorRow | null>(null);
@@ -88,10 +90,18 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 
     {!applied.isLoading && !applied.isError
       ? <AdminTutorRows
-          tutors={(applied.data?.items ?? []).map(row => ({ ...row, appointed: Boolean(job?.appointedTutorId) && row.id === job?.appointedTutorId }))}
+          tutors={(applied.data?.items ?? []).map(row => ({
+            ...row,
+            applicationStage: getTutorApplicationStage({
+              status: row.applicationStatus,
+              appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
+              tuitionCancelled: tuitionStage === "cancelled",
+            }),
+          }))}
           caption="Tutors who applied to this tuition"
           emptyLabel={activeFilterCount ? "No applicant matches the active filters." : "No Tutor has applied to this tuition yet."}
           serialFrom={(filters.page - 1) * filters.pageSize + 1}
+          showApplicationStage
           showGuardianMarks
           appointmentActions={appointmentActions}
         />

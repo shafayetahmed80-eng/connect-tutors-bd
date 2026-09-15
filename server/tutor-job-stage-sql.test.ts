@@ -33,4 +33,11 @@ describe("the job-stage subquery", () => {
     expect(compile("confirmed")).toContain("= 'matched' and `tutor_requests`.`appointmentConfirmedAt` is not null");
     expect(compile("cancelled")).toContain("`tutor_job_interests`.`status` in ('declined', 'withdrawn')");
   });
+
+  it("ends every application on a cancelled tuition, as the Status tab does", () => {
+    for (const key of ["applied", "shortlisted", "appointed", "confirmed"] as const) {
+      expect(compile(key), key).toContain("and `tutor_requests`.`status` <> 'closed' and `tutor_requests`.`publicationState` <> 'closed'");
+    }
+    expect(compile("cancelled")).toContain("(`tutor_job_interests`.`status` in ('declined', 'withdrawn') or `tutor_requests`.`status` = 'closed' or `tutor_requests`.`publicationState` = 'closed')");
+  });
 });
