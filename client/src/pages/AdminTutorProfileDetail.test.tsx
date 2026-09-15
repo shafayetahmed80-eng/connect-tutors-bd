@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   moderate: vi.fn(),
   applications: [
-    { interestId: 1, requestId: 21, status: "matched", appointmentConfirmedAt: new Date("2026-09-12T00:00:00.000Z"), createdAt: new Date("2026-09-01T00:00:00.000Z"), classCourse: "Class 9", category: "Bangla Medium", subjects: "Physics", locationLabel: "Mirpur, Dhaka" },
+    { interestId: 1, requestId: 21, status: "matched", appointmentConfirmedAt: new Date("2026-09-12T00:00:00.000Z"), createdAt: new Date("2026-09-01T00:00:00.000Z"), classCourse: "Class 9", category: "Bangla Medium", subjects: JSON.stringify(["Physics"]), locationLabel: "Mirpur, Dhaka" },
     { interestId: 2, requestId: 13, status: "interested", appointmentConfirmedAt: null, createdAt: new Date("2026-09-05T00:00:00.000Z"), classCourse: "Class 8", category: "English Version", subjects: "History", locationLabel: "Banasree, Dhaka" },
   ] as unknown[],
   profile: {
@@ -124,6 +124,8 @@ describe("Admin Tutor profile detail", () => {
     const list = screen.getByRole("list", { name: "Confirmed Jobs" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(within(list).getByText("Class 9 · Bangla Medium")).toBeTruthy();
+    // The job stores subjects as a JSON list; the row reads them as words.
+    expect(within(list).getByText("Physics · Mirpur, Dhaka")).toBeTruthy();
     expect(within(list).getByRole("link", { name: "Open the applicants of Job ID 6820" }).getAttribute("href")).toBe("/admin/applied-tutors/21");
 
     fireEvent.click(within(row).getByRole("button", { name: /Confirmed Jobs/ }));

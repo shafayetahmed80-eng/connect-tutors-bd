@@ -1,5 +1,6 @@
 import StatusTabRow from "@/components/StatusTabRow";
 import { trpc } from "@/lib/trpc";
+import { formatSubjects } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import {
   countTutorApplicationStages,
@@ -18,7 +19,8 @@ type Application = TutorApplicationRecord & {
   createdAt: Date | string;
   classCourse: string;
   category: string;
-  subjects: string;
+  /** Stored as a JSON list on the job, so it is always read through `formatSubjects`. */
+  subjects: unknown;
   locationLabel: string | null;
 };
 
@@ -65,7 +67,7 @@ export default function AdminTutorApplications({ tutorId }: { tutorId: string })
                     <span className="w-12 shrink-0 font-mono text-2xs text-j-ink-muted">{jobIdForRequest(application.requestId)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-j-ink">{application.classCourse} · {application.category}</span>
-                      <span className="block truncate text-2xs text-j-ink-soft">{[application.subjects, application.locationLabel].filter(Boolean).join(" · ")}</span>
+                      <span className="block truncate text-2xs text-j-ink-soft">{[formatSubjects(application.subjects), application.locationLabel].filter(Boolean).join(" · ")}</span>
                     </span>
                     <span className="hidden shrink-0 text-2xs text-j-ink-muted sm:block">Applied {appliedOn(application.createdAt)}</span>
                     <ChevronRight size={16} className="shrink-0 text-j-accent" aria-hidden={true} />

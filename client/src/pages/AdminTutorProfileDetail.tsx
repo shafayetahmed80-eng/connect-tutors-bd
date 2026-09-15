@@ -7,7 +7,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, IdCard, Loader2, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, IdCard, Loader2, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
@@ -121,40 +121,45 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       <ArrowLeft size={15} /> Back to Tutor Profiles
     </Link>
 
-    {/* Identity strip - the Admin's own header above the Tutor's own view. */}
-    <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start gap-4">
-        <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint">
+    {/*
+      Identity strip - the Admin's own header above the Tutor's own view.
+      One grid, two shapes. On a phone the photo and the name share a row, the
+      details take the full width beneath in two columns (the long phone and
+      email lines span both), and the moderation action spans the card. From
+      `sm` it is the wide strip: photo, then name over the details, then the
+      action on the right.
+    */}
+    <section className="rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-x-4 sm:gap-y-1.5">
+        <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint sm:row-span-2 sm:size-20">
           {profile.profilePhotoUrl
             ? <img src={profile.profilePhotoUrl} alt={`${profile.name} profile photo`} className="size-full object-cover" />
-            : <UserRound size={30} aria-hidden={true} />}
+            : <UserRound size={28} aria-hidden={true} />}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold tracking-[-0.02em] text-j-ink">{profile.name}</h2>
+        <div className="min-w-0 sm:self-end">
+          <h2 className="break-words text-base font-bold leading-snug tracking-[-0.02em] text-j-ink sm:text-lg">{profile.name}</h2>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-1 text-2xs font-bold ${statusStyles[profile.profileStatus] ?? statusStyles.draft}`}>{profile.profileStatus.replaceAll("_", " ")}</span>
             <span className="inline-flex items-center gap-1 text-2xs font-bold text-j-ink-soft">
               {profile.verified ? <BadgeCheck size={14} className="text-emerald-600" /> : <CircleAlert size={14} className="text-amber-600" />}
               {profile.verified ? "Verified" : "Not verified"}
             </span>
           </div>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-j-ink-muted">
-            {/* The registered number is the Tutor ID; `tutorId` is the internal key the URL uses. */}
-            {profile.tutorNumber ? <span className="inline-flex items-center gap-1"><IdCard size={13} />Tutor ID {profile.tutorNumber}</span> : null}
-            <span>Profile completed: {profile.completionPercentage}%</span>
-            {profile.phone ? <span>{profile.phone}</span> : null}
-            {profile.contactEmail ? <span>{profile.contactEmail}</span> : null}
-          </p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-j-ink-muted">
-            <span className="inline-flex items-center gap-1"><CalendarPlus size={13} />Created: {recordDate(profile.createdAt)}</span>
-            <span className="inline-flex items-center gap-1"><CalendarClock size={13} />Updated: {recordDate(profile.updatedAt)}</span>
-          </p>
+        </div>
+        <div className="col-span-2 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#eef4f9] pt-3 text-2xs text-j-ink-muted sm:col-span-1 sm:col-start-2 sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:border-0 sm:pt-0">
+          {/* The registered number is the Tutor ID; `tutorId` is the internal key the URL uses. */}
+          {profile.tutorNumber ? <span className="inline-flex min-w-0 items-center gap-1.5"><IdCard size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />Tutor ID {profile.tutorNumber}</span> : null}
+          <span className="inline-flex min-w-0 items-center gap-1.5"><Gauge size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />Profile completed: {profile.completionPercentage}%</span>
+          <span className="inline-flex min-w-0 items-center gap-1.5"><CalendarPlus size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />Created: {recordDate(profile.createdAt)}</span>
+          <span className="inline-flex min-w-0 items-center gap-1.5"><CalendarClock size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />Updated: {recordDate(profile.updatedAt)}</span>
+          {profile.phone ? <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5"><Phone size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />{profile.phone}</span> : null}
+          {profile.contactEmail ? <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5"><Mail size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} /><span className="truncate">{profile.contactEmail}</span></span> : null}
         </div>
         {decisions.length > 0
-          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover">
+          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="col-span-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:w-auto">
               <UserRoundCog size={16} /> Review &amp; moderate
             </button>
-          : <p className="shrink-0 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft">No Admin status action is currently available for this profile.</p>}
+          : <p className="col-span-2 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:max-w-[16rem]">No Admin status action is currently available for this profile.</p>}
       </div>
     </section>
 

@@ -16,7 +16,7 @@ const job = (over: Record<string, unknown>) => ({
   interestId: 1, status: "interested", appointmentConfirmedAt: null,
   createdAt: "2026-09-01T00:00:00.000Z", publicJobId: "CT-J-1001",
   tuitionType: "home", category: "Bangla Medium", classCourse: "Class 9",
-  subjects: "Physics, Chemistry", daysPerWeek: 4, locationLabel: "Shyamoli, Dhaka",
+  subjects: JSON.stringify(["Physics", "Chemistry"]), daysPerWeek: 4, locationLabel: "Shyamoli, Dhaka",
   budgetAmount: 6000, ...over,
 });
 
@@ -93,6 +93,8 @@ describe("the Tutor's Status tab", () => {
 
     expect(card.getByText(/Job ID : CT-J-1001/)).toBeTruthy();
     expect(card.getByText("Class 9 · Bangla Medium")).toBeTruthy();
+    // The job stores subjects as a JSON list; the card reads them as words.
+    expect(card.getByText("Physics, Chemistry")).toBeTruthy();
     expect(card.getByText("Home Tutoring")).toBeTruthy();
     expect(card.getByText("6,000 Taka")).toBeTruthy();
   });
