@@ -7,7 +7,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, IdCard, Loader2, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Loader2, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
@@ -33,8 +33,8 @@ type ModerationTarget = "approved" | "changes_requested" | "suspended";
 const moderationOptions: Record<string, ModerationTarget[]> = {
   draft: [],
   pending: ["approved", "changes_requested", "suspended"],
-  changes_requested: [],
-  approved: ["suspended"],
+  changes_requested: ["suspended"],
+  approved: ["changes_requested", "suspended"],
   // A suspension can be lifted: reinstated as it was, or sent back for changes.
   suspended: ["approved", "changes_requested"],
 };
@@ -48,6 +48,50 @@ const moderationLabels: Record<ModerationTarget, string> = {
 /** Approving a suspended profile reinstates it, so it reads that way. */
 const moderationLabel = (from: string, to: ModerationTarget) =>
   from === "suspended" && to === "approved" ? "Reinstate profile" : moderationLabels[to];
+
+function StatusPill({ status }: { status: string }) {
+  return <span className={`rounded-full px-2.5 py-1 text-2xs font-bold ${statusStyles[status] ?? statusStyles.draft}`}>{status.replaceAll("_", " ")}</span>;
+}
+
+const decidedAt = (value: Date | string) =>
+  new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/**
+ * Every decision taken from Review & moderate on this profile, newest first:
+ * when, which Admin, the move it made and the reason written with it.
+ */
+function ModerationHistory({ tutorId }: { tutorId: string }) {
+  const history = trpc.admin.getTutorModerationHistory.useQuery({ tutorId });
+  const events = history.data ?? [];
+
+  return <section aria-labelledby="moderation-history-heading" className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+    <h3 id="moderation-history-heading" className="mb-3 flex items-center gap-2 font-bold tracking-[-0.02em] text-j-ink">
+      <History size={16} className="text-[#8fb4d0]" aria-hidden={true} />Moderation history
+    </h3>
+    {history.isLoading
+      ? <p className="flex items-center gap-2 text-sm text-j-ink-soft"><Loader2 size={14} className="animate-spin" /> Loading moderation history…</p>
+      : history.isError
+        ? <p className="text-sm text-red-700">Moderation history could not be loaded.</p>
+        : events.length === 0
+          ? <p className="text-sm text-j-ink-soft">No moderation decisions yet.</p>
+          : <ol className="divide-y divide-[#eef4f9]">
+              {events.map(event => <li key={event.id} className="grid gap-1.5 py-3 first:pt-0 last:pb-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
+                <div className="text-2xs text-j-ink-muted">
+                  <time dateTime={new Date(event.createdAt).toISOString()} className="font-bold text-j-ink-strong">{decidedAt(event.createdAt)}</time>
+                  <span className="block">{event.adminName ?? "Admin"}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-1.5">
+                    <StatusPill status={event.previousStatus} />
+                    <ArrowRight size={13} className="text-j-ink-faint" aria-hidden={true} /><span className="sr-only">to</span>
+                    <StatusPill status={event.nextStatus} />
+                  </p>
+                  {event.reason ? <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-strong">{event.reason}</p> : null}
+                </div>
+              </li>)}
+            </ol>}
+  </section>;
+}
 
 function DocumentTile({ label, url }: { label: string; url: string | null }) {
   return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
@@ -84,6 +128,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const moderation = trpc.admin.moderateTutorProfile.useMutation({
     onSuccess: () => {
       void utils.admin.getTutorProfile.invalidate({ tutorId });
+      void utils.admin.getTutorModerationHistory.invalidate({ tutorId });
       void utils.admin.listTutorDirectory.invalidate();
       setModerating(false);
       setReason("");
@@ -144,7 +189,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         <div className="min-w-0 sm:self-end">
           <h2 className="break-words text-base font-bold leading-snug tracking-[-0.02em] text-j-ink sm:text-lg">{profile.name}</h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-2xs font-bold ${statusStyles[profile.profileStatus] ?? statusStyles.draft}`}>{profile.profileStatus.replaceAll("_", " ")}</span>
+            <StatusPill status={profile.profileStatus} />
             <span className="inline-flex items-center gap-1 text-2xs font-bold text-j-ink-soft">
               {profile.verified ? <BadgeCheck size={14} className="text-emerald-600" /> : <CircleAlert size={14} className="text-amber-600" />}
               {profile.verified ? "Verified" : "Not verified"}
@@ -167,6 +212,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
           : <p className="col-span-2 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:max-w-[16rem]">No Admin status action is currently available for this profile.</p>}
       </div>
     </section>
+
+    <ModerationHistory tutorId={tutorId} />
 
     {/* Private documents - Admin-only signed URLs. */}
     <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">

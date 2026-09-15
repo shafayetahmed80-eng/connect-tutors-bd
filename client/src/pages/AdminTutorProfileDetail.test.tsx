@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   moderate: vi.fn(),
+  history: [] as unknown[],
   applications: [
     { interestId: 1, requestId: 21, status: "matched", appointmentConfirmedAt: new Date("2026-09-12T00:00:00.000Z"), createdAt: new Date("2026-09-01T00:00:00.000Z"), classCourse: "Class 9", category: "Bangla Medium", subjects: JSON.stringify(["Physics"]), locationLabel: "Mirpur, Dhaka" },
     { interestId: 2, requestId: 13, status: "interested", appointmentConfirmedAt: null, createdAt: new Date("2026-09-05T00:00:00.000Z"), classCourse: "Class 8", category: "English Version", subjects: "History", locationLabel: "Banasree, Dhaka" },
@@ -68,6 +69,7 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({ mutate: mocks.moderate, isPending: false, isError: false, error: null }),
       },
       listTutorApplications: { useQuery: () => ({ data: mocks.applications, isLoading: false, isError: false }) },
+      getTutorModerationHistory: { useQuery: () => ({ data: mocks.history, isLoading: false, isError: false }) },
     },
     // The shared workspace module this page borrows `hydrateTeachingProfile`
     // from touches these at import time.
@@ -81,6 +83,7 @@ vi.mock("@/lib/trpc", () => ({
       admin: {
         getTutorProfile: { invalidate: vi.fn() },
         listTutorDirectory: { invalidate: vi.fn() },
+        getTutorModerationHistory: { invalidate: vi.fn() },
       },
     }),
   },
@@ -89,7 +92,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { AdminTutorProfileDetailContent } from "./AdminTutorProfileDetail";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.profile.profileStatus = "approved"; });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.profile.profileStatus = "approved"; mocks.history = []; });
 
 describe("Admin Tutor profile detail", () => {
   it("asks for that Tutor and heads the page with the Admin's own identity strip", () => {
@@ -159,16 +162,17 @@ describe("Admin Tutor profile detail", () => {
   it("offers only the decisions the lifecycle allows from the current status", () => {
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 
-    // Approved: suspension is the one move left.
+    // Approved: back to the Tutor for changes, or suspended.
     fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
     const options = within(screen.getByLabelText(/Next status/i)).getAllByRole("option");
-    expect(options.map(option => option.textContent)).toEqual(["Suspend profile"]);
+    expect(options.map(option => option.textContent)).toEqual(["Request changes", "Suspend profile"]);
   });
 
   it("holds the suspension until a reason is written, then sends it", () => {
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    fireEvent.change(screen.getByLabelText(/Next status/i), { target: { value: "suspended" } });
     const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
 
@@ -195,6 +199,57 @@ describe("Admin Tutor profile detail", () => {
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "approved", reason: undefined });
+  });
+
+  it("sends an approved profile back for changes once a reason is written", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    expect((screen.getByLabelText(/Next status/i) as HTMLSelectElement).value).toBe("changes_requested");
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Admin reason/i), { target: { value: "Your University ID has expired" } });
+    fireEvent.click(save);
+    expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "changes_requested", reason: "Your University ID has expired" });
+  });
+
+  it("lists every moderation decision, newest first, with who took it and why", () => {
+    mocks.history = [
+      { id: 2, adminUserId: 1, adminName: "Shafayet Ahmed", previousStatus: "pending", nextStatus: "approved", reason: null, createdAt: new Date("2026-09-10T06:30:00.000Z") },
+      { id: 1, adminUserId: 7, adminName: null, previousStatus: "pending", nextStatus: "changes_requested", reason: "Upload your University ID.", createdAt: new Date("2026-09-08T04:00:00.000Z") },
+    ];
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const history = screen.getByRole("region", { name: "Moderation history" });
+    const [latest, earlier] = within(history).getAllByRole("listitem");
+    expect(within(latest).getByText(/^10 Sep/)).toBeTruthy();
+    expect(within(latest).getByText("Shafayet Ahmed")).toBeTruthy();
+    expect(latest.querySelector("p")?.textContent).toBe("pendingtoapproved");
+    expect(within(earlier).getByText("changes requested")).toBeTruthy();
+    expect(within(earlier).getByText("Upload your University ID.")).toBeTruthy();
+    // An Admin account without a name still reads as someone.
+    expect(within(earlier).getByText("Admin")).toBeTruthy();
+  });
+
+  it("says so when no moderation decision has been taken", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+    expect(within(screen.getByRole("region", { name: "Moderation history" })).getByText("No moderation decisions yet.")).toBeTruthy();
+  });
+
+  it("can still suspend a profile that is waiting on the Tutor's changes", () => {
+    mocks.profile.profileStatus = "changes_requested";
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    const next = screen.getByLabelText(/Next status/i) as HTMLSelectElement;
+    expect(within(next).getAllByRole("option").map(option => option.textContent)).toEqual(["Suspend profile"]);
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Admin reason/i), { target: { value: "The University ID is not genuine" } });
+    fireEvent.click(save);
+    expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "suspended", reason: "The University ID is not genuine" });
   });
 
   it("says plainly when a profile has no Admin action left", () => {
