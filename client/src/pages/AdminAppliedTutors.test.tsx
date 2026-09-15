@@ -105,6 +105,9 @@ describe("Admin Applied Tutors page", () => {
     render(<AdminAppliedTutorsContent requestId={13} />);
 
     expect(screen.getByText("Job ID 6812")).toBeTruthy();
+    // On a phone the facts drop to the full width in two columns.
+    expect(screen.getByText("Job ID 6812").parentElement?.className).toContain("grid-cols-2");
+    expect(screen.getByText("+8801674936203").parentElement?.className).toContain("col-span-2");
     expect(screen.getByText("Female Tutor")).toBeTruthy();
     // Area and city already arrive comma-separated.
     expect(screen.getByText("Banasree, Dhaka")).toBeTruthy();
