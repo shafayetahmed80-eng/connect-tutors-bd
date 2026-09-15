@@ -145,6 +145,7 @@ import {
   sanitizeAdminMatchingSavedViewFilters,
   type AdminMatchingSavedViewFilters,
 } from "@shared/admin-matching-saved-views";
+import { guardianVerificationNotice } from "./guardian-verification-notice";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let tutorNumberAllocationTail: Promise<void> = Promise.resolve();
@@ -809,16 +810,32 @@ export async function setGuardianVerification(input: {
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const result = await database
-    .update(guardianProfiles)
-    .set({
-      verificationStatus: input.status,
-      verificationRejectionReason: input.status === "rejected" ? (input.reason?.trim() || null) : null,
-      verifiedByAdminId: input.adminUserId,
-      verifiedAt: new Date(),
-    })
-    .where(eq(guardianProfiles.userId, input.guardianUserId));
-  return { updated: Boolean(result[0]?.affectedRows) };
+  return database.transaction(async tx => {
+    const now = new Date();
+    const result = await tx
+      .update(guardianProfiles)
+      .set({
+        verificationStatus: input.status,
+        verificationRejectionReason: input.status === "rejected" ? (input.reason?.trim() || null) : null,
+        verifiedByAdminId: input.adminUserId,
+        verifiedAt: now,
+      })
+      .where(eq(guardianProfiles.userId, input.guardianUserId));
+    const updated = Boolean(result[0]?.affectedRows);
+    // The Guardian hears the decision. One notice per Guardian, refreshed by each new decision.
+    const notice = updated ? guardianVerificationNotice(input.status) : null;
+    if (notice) {
+      const values = { ...notice, actionPath: "/guardian/dashboard/profile" };
+      await tx.insert(guardianRequestNotifications).values({
+        guardianUserId: input.guardianUserId,
+        tutorRequestId: null,
+        type: "verification",
+        ...values,
+        deduplicationKey: `verification:${input.guardianUserId}`,
+      }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
+    }
+    return { updated };
+  });
 }
 
 /** Confirms the current credential before replacing a Guardian password hash. */
@@ -4010,7 +4027,18 @@ export async function listTutorRequestPublicationEvents(requestId: number) {
     .orderBy(desc(tutorRequestPublicationEvents.createdAt));
 }
 
-export async function assignTutorToRequest(input: { requestId: number; tutorId: string }) {
+/**
+ * Appoints a Tutor to a tuition that is not on the Job Board, from the Matching
+ * workspace - any approved Tutor, whether or not they applied.
+ *
+ * It is the same appointment Applied Tutors makes, so it follows the same
+ * rules: no contact-consent step (an Admin appointing on the Guardian's behalf
+ * stands in for it), the Tutor is told the Guardian's name and number, the
+ * Guardian is told a Tutor is on their request, and the history records it.
+ * If the Tutor had applied to this tuition before, that application is marked
+ * appointed too, so their row on Applied Tutors reads the same.
+ */
+export async function assignTutorToRequest(input: { requestId: number; tutorId: string; adminUserId: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const [tutor] = await database
@@ -4031,17 +4059,58 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
       .limit(1)
       .for("update");
     if (!request) return { assigned: false as const, reason: "request-unavailable" as const };
-    await tx.update(tutorRequests).set({ tutorId: input.tutorId, status: "matched", contactConsent: "pending", appointedAt: new Date(), lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
+
+    const [guardian] = await tx
+      .select({ name: users.name, phone: guardianProfiles.phone })
+      .from(users)
+      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+      .where(eq(users.id, request.guardianUserId))
+      .limit(1);
+
+    const now = new Date();
+    await tx.update(tutorRequests)
+      .set({ tutorId: input.tutorId, status: "matched", contactConsent: "approved", appointedAt: now, lastActivityAt: now })
+      .where(eq(tutorRequests.id, request.id));
+    const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
+    if (job) {
+      await tx.update(tutorJobInterests)
+        .set({ status: "matched", appointmentRequestedAt: null })
+        .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, input.tutorId), ne(tutorJobInterests.status, "withdrawn")));
+      // The appointment answers every request still waiting on this tuition.
+      await tx.update(tutorJobInterests)
+        .set({ appointmentRequestedAt: null })
+        .where(and(eq(tutorJobInterests.tutorJobId, job.id), isNotNull(tutorJobInterests.appointmentRequestedAt)));
+    }
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: request.id,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_appointed",
+      changedFields: JSON.stringify(["tutor_appointed", "manual_assignment"]),
+    });
+
+    const note = appointedTutorNotification({ jobId: jobIdForRequest(request.id), guardianName: guardian?.name ?? null, guardianPhone: guardian?.phone ?? null });
+    await createTutorNotification(tx, {
+      tutorId: input.tutorId,
+      type: "appointment",
+      title: note.title,
+      message: note.message,
+      actionPath: "/tutor/dashboard/status",
+      deduplicationKey: `appointment:${request.id}:assigned:${input.tutorId}`,
+    });
+    const guardianNote = {
+      title: "A Tutor has been appointed to your request",
+      message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
+      actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
+    };
     await tx.insert(guardianRequestNotifications).values({
       guardianUserId: request.guardianUserId,
       tutorRequestId: request.id,
       type: "lifecycle",
-      title: "A Tutor has been appointed to your request",
-      message: "An Admin has selected a Tutor and is completing the confirmation process.",
-      actionPath: `/guardian/dashboard/posted-jobs/${request.id}`,
+      ...guardianNote,
       deduplicationKey: `lifecycle:${request.id}:appointed`,
-    }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${request.id}:appointed` } });
-    return { assigned: true as const, contactConsent: "pending" as const };
+    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+    return { assigned: true as const, contactConsent: "approved" as const };
   });
 }
 
@@ -4775,7 +4844,45 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .where(where);
-  const total = Number(totals[0]?.value ?? 0);
+  let total = Number(totals[0]?.value ?? 0);
+
+  // A Tutor appointed from the Matching workspace may never have applied. They
+  // still hold the tuition, and Applied Tutors is where it is confirmed or
+  // handed back, so they lead the first page as an appointed row of their own.
+  if (job.appointedTutorId) {
+    const [application] = await database
+      .select({ id: tutorJobInterests.id })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .where(and(eq(tutorJobs.tutorRequestId, filters.requestId), eq(tutorJobInterests.tutorId, job.appointedTutorId), ne(tutorJobInterests.status, "withdrawn")))
+      .limit(1);
+    if (!application) {
+      const [holder] = await database
+        .select({ ...adminTutorDirectoryFields })
+        .from(tutors)
+        .leftJoin(locations, eq(tutors.locationId, locations.id))
+        .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+        .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+        .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+        .where(and(eq(tutors.id, job.appointedTutorId), ...getAdminTutorDirectoryConditions(filters)))
+        .limit(1);
+      if (holder) {
+        total += 1;
+        if (filters.page === 1) {
+          rows.unshift({
+            ...holder,
+            // No application behind this row; confirming and removing act on the tuition and the Tutor.
+            interestId: null as unknown as number,
+            appliedAt: null as unknown as Date,
+            applicationStatus: "matched",
+            guardianShortlistedAt: null,
+            appointmentRequestedAt: null,
+          });
+          if (rows.length > filters.pageSize) rows.pop();
+        }
+      }
+    }
+  }
 
   // The applied count in the header is every applicant, not the filtered page:
   // "Applied: 26" is a fact about the tuition, and a filter must not change it.

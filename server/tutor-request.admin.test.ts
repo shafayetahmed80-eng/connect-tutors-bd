@@ -44,12 +44,12 @@ function guardianCaller() {
 describe("Admin Tutor Request matching lifecycle", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns the pending-contact-consent state when an Admin matches an approved Tutor", async () => {
-    requestDbMocks.assignTutorToRequest.mockResolvedValueOnce({ assigned: true });
+  it("appoints an approved Tutor as the signed-in Admin, with no separate contact-consent step", async () => {
+    requestDbMocks.assignTutorToRequest.mockResolvedValueOnce({ assigned: true, contactConsent: "approved" });
 
     await expect(adminCaller().admin.assignTutorRequest({ requestId: 18, tutorId: "T-1503" }))
-      .resolves.toEqual({ assigned: true, contactConsent: "pending" });
-    expect(requestDbMocks.assignTutorToRequest).toHaveBeenCalledWith({ requestId: 18, tutorId: "T-1503" });
+      .resolves.toEqual({ assigned: true, contactConsent: "approved" });
+    expect(requestDbMocks.assignTutorToRequest).toHaveBeenCalledWith({ requestId: 18, tutorId: "T-1503", adminUserId: 901 });
   });
 
   it("provides a paginated, server-backed matching queue only to Admins", async () => {
