@@ -3655,33 +3655,6 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
     .orderBy(desc(tutorJobInterests.updatedAt), desc(tutorJobInterests.id));
 }
 
-/** Admin-only review queue; full Tutor contact details remain out of this general query. */
-export async function listTutorJobInterestsForAdmin(input: { tutorJobId?: number } = {}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const where = input.tutorJobId ? eq(tutorJobInterests.tutorJobId, input.tutorJobId) : undefined;
-  return database
-    .select({
-      interestId: tutorJobInterests.id,
-      status: tutorJobInterests.status,
-      createdAt: tutorJobInterests.createdAt,
-      tutorId: tutors.id,
-      tutorName: tutors.name,
-      tutorNumber: tutorRegistrations.tutorNumber,
-      // The queue's call link used to dial `tutorNumber` - the Tutor ID, not a phone.
-      tutorPhone: tutors.phone,
-      publicJobId: tutorJobs.publicJobId,
-      jobId: tutorJobs.id,
-      jobTitle: tutorJobs.classCourse,
-    })
-    .from(tutorJobInterests)
-    .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
-    .innerJoin(tutors, eq(tutorJobInterests.tutorId, tutors.id))
-    .leftJoin(tutorRegistrations, eq(tutors.userId, tutorRegistrations.userId))
-    .where(where)
-    .orderBy(desc(tutorJobInterests.createdAt), desc(tutorJobInterests.id));
-}
-
 export async function reviewTutorJobInterestByAdmin(input: {
   interestId: number;
   /** "interested" takes an application off the shortlist. */

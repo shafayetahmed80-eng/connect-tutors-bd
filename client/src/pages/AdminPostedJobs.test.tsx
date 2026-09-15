@@ -64,12 +64,6 @@ vi.mock("@/lib/trpc", () => ({
       moderateTutorRequestPublication: {
         useMutation: () => ({ mutate: mocks.publish, isPending: false }),
       },
-      confirmTutorRequestAppointment: {
-        useMutation: () => ({ mutate: mocks.confirm, isPending: false }),
-      },
-      reopenAppointedTuition: {
-        useMutation: () => ({ mutate: mocks.reopen, isPending: false }),
-      },
     },
     useUtils: () => ({ admin: { listPostedJobs: { invalidate: vi.fn() } } }),
   },
@@ -173,7 +167,7 @@ describe("Admin Posted jobs board", () => {
     expect(within(screen.getByRole("dialog")).getByRole("link", { name: /Applied Tutors/ })).toBeTruthy();
   });
 
-  it("moves an Appointed tuition on after the demo class: Confirmed, or back to Live", async () => {
+  it("leaves an Appointed tuition's next move to Applied Tutors", async () => {
     Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175" });
     const user = userEvent.setup();
     render(<AdminPostedJobsContent />);
@@ -182,10 +176,10 @@ describe("Admin Posted jobs board", () => {
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
     const status = screen.getByRole("dialog");
 
-    await user.click(within(status).getByRole("button", { name: /Confirmed/ }));
-    expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13 });
-    await user.click(within(status).getByRole("button", { name: /Live/ }));
-    expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 13 });
+    expect(within(status).queryByRole("button", { name: /Confirmed/ })).toBeNull();
+    expect(within(status).queryByRole("button", { name: "Live" })).toBeNull();
+    expect(within(status).getByText(/No status change is available from Appointed/)).toBeTruthy();
+    expect(within(status).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href")).toBe("/admin/applied-tutors/13");
   });
 
   it("says on the card and in the details footer who posted the tuition", async () => {

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const interestDbMocks = vi.hoisted(() => ({
   getTutorAccountStatusByUserId: vi.fn(),
   getTutorProfileByUserId: vi.fn(),
-  listTutorJobInterestsForAdmin: vi.fn(),
   listTutorJobInterestsForTutor: vi.fn(),
   reviewTutorJobInterestByAdmin: vi.fn(),
   submitTutorJobInterest: vi.fn(),
@@ -94,14 +93,6 @@ describe("Tutor Job Board interest procedures", () => {
     expect(interestDbMocks.listTutorJobInterestsForTutor).toHaveBeenCalledTimes(2);
     expect(interestDbMocks.listTutorJobInterestsForTutor).toHaveBeenCalledWith("tutor-1503");
     expect(interestDbMocks.withdrawTutorJobInterest).toHaveBeenCalledWith({ tutorId: "tutor-1503", interestId: 12 });
-  });
-
-  it("allows an authenticated Admin to view Tutor interest details without an interactive two-factor proof", async () => {
-    interestDbMocks.listTutorJobInterestsForAdmin.mockResolvedValue([]);
-    const caller = createCaller({ user: verifiedAdmin });
-
-    await expect((caller.admin as any).listTutorJobInterests({})).resolves.toEqual([]);
-    expect(interestDbMocks.listTutorJobInterestsForAdmin).toHaveBeenCalledTimes(1);
   });
 
   it("passes an authenticated Admin review to the private interest workflow", async () => {

@@ -12,7 +12,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { buildJobTitle } from "@shared/job-title";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { trpc } from "@/lib/trpc";
-import { AlignLeft, BadgeCheck, ChevronLeft, ChevronRight, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
+import { AlignLeft, ChevronLeft, ChevronRight, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -30,7 +30,8 @@ const PAGE_SIZE = 12;
  * the same cards and the same details dialog, but across every Guardian, with
  * a search box and paging the Guardian's own short list does not need.
  *
- * Change Status carries the one move the board owns: a Pending tuition goes
+ * Change Status carries the one move the board owns - everything after Live,
+ * from appointing to cancelling, is done from Applied Tutors: a Pending tuition goes
  * Live in a single click, which publishes it to the Job Board and moves the
  * card here and on the Guardian's own board. Add Tuition posts a tuition that
  * came from off the site, straight to Live, and Edit reopens that same form
@@ -61,15 +62,6 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
     toast.success(message);
   };
   const onStatusError = (error: { message: string }) => { toast.error(error.message); };
-  // After the demo class: the Guardian keeps the Tutor, or does not.
-  const confirmAppointment = trpc.admin.confirmTutorRequestAppointment.useMutation({
-    onSuccess: () => afterStatusChange("The tuition is confirmed and off the Job Board."),
-    onError: onStatusError,
-  });
-  const reopen = trpc.admin.reopenAppointedTuition.useMutation({
-    onSuccess: () => afterStatusChange("The tuition is Live again."),
-    onError: onStatusError,
-  });
   const goLive = trpc.admin.moderateTutorRequestPublication.useMutation({
     onSuccess: () => {
       void utils.admin.listPostedJobs.invalidate();
@@ -213,7 +205,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       }}
     /> : null}
 
-    {statusJob ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending || confirmAppointment.isPending || reopen.isPending}>
+    {statusJob ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
       <ModalHeader title={`Change status of Job ID ${jobIdForRequest(statusJob.id)}`} />
       <ModalBody>
         {getGuardianRequestLifecycle(statusJob).key === "pending"
@@ -223,28 +215,13 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
               onClick={() => goLive.mutate({ requestId: statusJob.id, action: "go_live" })}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
             ><RadioTower size={16} /> {goLive.isPending ? "Going live…" : "Live"}</button>
-          : getGuardianRequestLifecycle(statusJob).key === "appointed"
-            ? <div className="space-y-3">
-                <div>
-                  <button
-                    type="button"
-                    disabled={confirmAppointment.isPending || reopen.isPending}
-                    onClick={() => confirmAppointment.mutate({ requestId: statusJob.id })}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
-                  ><BadgeCheck size={16} /> {confirmAppointment.isPending ? "Confirming…" : "Confirmed"}</button>
-                  <p className="mt-1 text-center text-2xs text-j-ink-muted">The Guardian keeps the Tutor. The tuition leaves the Job Board.</p>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    disabled={confirmAppointment.isPending || reopen.isPending}
-                    onClick={() => reopen.mutate({ requestId: statusJob.id })}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-j-border bg-white px-4 text-sm font-bold text-j-ink-strong hover:bg-j-surface-sunken disabled:opacity-50"
-                  ><RadioTower size={16} /> {reopen.isPending ? "Reopening…" : "Live"}</button>
-                  <p className="mt-1 text-center text-2xs text-j-ink-muted">The Tutor is removed and told. The Guardian can appoint another applicant.</p>
-                </div>
-              </div>
-            : <p className="rounded-xl bg-j-surface-sunken px-3 py-2.5 text-center text-xs font-medium text-j-ink-soft">No status change is available from {getGuardianRequestLifecycle(statusJob).label}.</p>}
+          : <div className="space-y-3">
+              <p className="rounded-xl bg-j-surface-sunken px-3 py-2.5 text-center text-xs font-medium text-j-ink-soft">No status change is available from {getGuardianRequestLifecycle(statusJob).label}.</p>
+              {/* Past Live, a tuition moves on from its applicants' page. */}
+              {["live", "appointed", "confirmed"].includes(getGuardianRequestLifecycle(statusJob).key)
+                ? <div className="flex justify-center"><AppliedTutorsButton href={`/admin/applied-tutors/${statusJob.id}`} count={statusJob.appliedTutorCount} size="md" /></div>
+                : null}
+            </div>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setStatusJobId(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
