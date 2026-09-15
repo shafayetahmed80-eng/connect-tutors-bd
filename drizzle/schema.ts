@@ -80,6 +80,7 @@ export const tutorRequestOperationActionValues = [
   "admin_declined_appointment",
   /** An Admin sent an Appointed tuition back to Live, removing its Tutor. */
   "admin_reopened",
+  "admin_payment_status_changed",
 ] as const;
 export type TutorRequestOperationAction = (typeof tutorRequestOperationActionValues)[number];
 
@@ -1106,6 +1107,8 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
   /** When a Tutor was Appointed to it; cleared if the tuition goes back to Live. */
   appointedAt: timestamp("appointedAt"),
+  /** How much of a Confirmed tuition's fee has been paid; values repeat `@shared/job-payment-status`. */
+  paymentStatus: mysqlEnum("paymentStatus", ["full_due", "half_paid", "partial_paid", "full_paid"]).default("full_due").notNull(),
   /** Private operational reason recorded by an Admin when closing a request. */
   cancellationReason: varchar("cancellationReason", { length: 280 }),
   /**

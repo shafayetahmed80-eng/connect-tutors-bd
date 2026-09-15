@@ -110,6 +110,7 @@ import {
   buildCombinedCityLocationOptions,
   type RegistrationLocationRow,
 } from "@shared/registration-location-selector";
+import type { JobPaymentStatus } from "@shared/job-payment-status";
 import {
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
@@ -5569,18 +5570,19 @@ export async function reopenAppointedTuitionByAdmin(input: { requestId: number; 
 export type AdminAppointedJobFilters = { query: string; page: number; pageSize: number };
 
 /**
- * Every tuition in the Appointed stage - a Tutor holds it for the demo class,
- * nobody has confirmed it yet - with that Tutor beside it.
+ * Tuitions a Tutor holds, with that Tutor beside each: the Appointed stage (a
+ * demo class, nobody has confirmed it) or the Confirmed stage.
  *
- * The stage is `adminPostedJobStageCondition("appointed")`, the same rule the
- * Posted jobs tab counts with, so the two screens cannot disagree about which
- * tuitions are Appointed. Newest appointment first.
+ * The stage is `adminPostedJobStageCondition`, the same rule the Posted jobs
+ * tabs count with, so the screens cannot disagree about where a tuition is -
+ * and a tuition that is confirmed leaves Appointed Jobs for Confirmed Jobs
+ * with nothing to move it. Newest first, by the stage's own date.
  */
-export async function listAdminAppointedJobsPage(filters: AdminAppointedJobFilters) {
+async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filters: AdminAppointedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const search = filters.query.trim();
-  const conditions: SQL[] = [adminPostedJobStageCondition("appointed")];
+  const conditions: SQL[] = [adminPostedJobStageCondition(stage)];
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(or(
@@ -5607,6 +5609,8 @@ export async function listAdminAppointedJobsPage(filters: AdminAppointedJobFilte
       budgetAmount: tutorRequests.budgetAmount,
       daysPerWeek: tutorRequests.daysPerWeek,
       appointedAt: tutorRequests.appointedAt,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      paymentStatus: tutorRequests.paymentStatus,
       // The internal key addresses the profile page; the Tutor ID people see is the number.
       tutorId: tutors.id,
       tutorNumber: tutorRegistrations.tutorNumber,
@@ -5617,7 +5621,7 @@ export async function listAdminAppointedJobsPage(filters: AdminAppointedJobFilte
     .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(where)
-    .orderBy(desc(tutorRequests.appointedAt), desc(tutorRequests.id))
+    .orderBy(desc(stage === "confirmed" ? tutorRequests.appointmentConfirmedAt : tutorRequests.appointedAt), desc(tutorRequests.id))
     .limit(filters.pageSize)
     .offset(offset);
   const [totals] = await database
@@ -5629,6 +5633,49 @@ export async function listAdminAppointedJobsPage(filters: AdminAppointedJobFilte
   const total = Number(totals?.value ?? 0);
 
   return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+}
+
+/** Tuitions in the Appointed stage, each with the Tutor who holds it. */
+export function listAdminAppointedJobsPage(filters: AdminAppointedJobFilters) {
+  return listAdminTutorHeldJobsPage("appointed", filters);
+}
+
+/** Tuitions in the Confirmed stage, each with its Tutor, dates and payment status. */
+export function listAdminConfirmedJobsPage(filters: AdminAppointedJobFilters) {
+  return listAdminTutorHeldJobsPage("confirmed", filters);
+}
+
+/**
+ * An Admin's record of how much of a Confirmed tuition's fee has been paid.
+ *
+ * Only a tuition that is Confirmed has one to set. The change goes into the
+ * request's operation history with every other Admin decision.
+ */
+export async function setConfirmedJobPaymentStatus(input: { adminUserId: number; requestId: number; paymentStatus: JobPaymentStatus }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [request] = await tx
+      .select({ id: tutorRequests.id, guardianUserId: tutorRequests.guardianUserId, paymentStatus: tutorRequests.paymentStatus })
+      .from(tutorRequests)
+      .where(and(eq(tutorRequests.id, input.requestId), adminPostedJobStageCondition("confirmed")))
+      .limit(1)
+      .for("update");
+    if (!request) return { outcome: "not_found" as const };
+    if (request.paymentStatus === input.paymentStatus) return { outcome: "unchanged" as const, paymentStatus: request.paymentStatus };
+
+    await tx.update(tutorRequests)
+      .set({ paymentStatus: input.paymentStatus, lastActivityAt: new Date() })
+      .where(eq(tutorRequests.id, request.id));
+    await tx.insert(tutorRequestOperationEvents).values({
+      tutorRequestId: request.id,
+      guardianUserId: request.guardianUserId,
+      actorUserId: input.adminUserId,
+      action: "admin_payment_status_changed",
+      changedFields: JSON.stringify(["payment_status"]),
+    });
+    return { outcome: "updated" as const, paymentStatus: input.paymentStatus };
+  });
 }
 
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
