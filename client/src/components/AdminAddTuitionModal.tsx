@@ -138,6 +138,12 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   // A Guardian who registered owns their name and their number, and the
   // number is how they sign in - so an Admin sees both and changes neither.
   const guardianLocked = editing && !draft.guardianIsAdminPosted;
+  // A new tuition takes the next Job ID in sequence unless the Admin types
+  // another over it. An edited tuition keeps the Job ID it already has: the
+  // number is the row's id, and everything about the tuition hangs off it.
+  const nextJobId = trpc.admin.nextJobId.useQuery(undefined, { enabled: !editing });
+  const [typedJobId, setTypedJobId] = useState<string | null>(null);
+  const jobId = editing ? jobIdForRequest(draft.requestId) : typedJobId ?? nextJobId.data?.jobId ?? "";
   const [guardianName, setGuardianName] = useState(draft?.guardianName ?? "");
   const [guardianPhone, setGuardianPhone] = useState(draft?.guardianPhone ?? "");
   const [tuitionType, setTuitionType] = useState<TuitionType>((draft?.tuitionType as TuitionType) ?? "home");
@@ -176,8 +182,10 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const subjectLimit = resolvedLimits.data?.["request.subjects"] ?? defaultSiteLimits()["request.subjects"];
 
   const create = trpc.admin.createPostedTuition.useMutation({
-    onSuccess: () => { toast.success("The tuition is live on the Job Board."); onPosted(); },
-    onError: error => toast.error(error.message),
+    onSuccess: result => { toast.success(`Job ID ${jobIdForRequest(result.id)} is live on the Job Board.`); onPosted(); },
+    // A taken Job ID may mean the sequence moved on under the form; offer the
+    // new next one if the Admin had not typed their own.
+    onError: error => { toast.error(error.message); void nextJobId.refetch(); },
   });
   const update = trpc.admin.updatePostedTuition.useMutation({
     onSuccess: () => { toast.success("The tuition has been updated."); onPosted(); },
@@ -205,6 +213,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     : current.length < subjectLimit ? [...current, subject] : current);
 
   const submit = () => {
+    if (!editing && typedJobId === "") { toast.error("Enter the Job ID."); return; }
     const days = Number(daysPerWeek);
     const salary = parseSalaryAmount(salaryAmount);
     if (salary === null) { toast.error("Enter the monthly salary."); return; }
@@ -232,7 +241,8 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
           : { ...base, ...place, tuitionType: "home" as const, studentCount: Number(studentCount) };
 
     if (draft) update.mutate({ ...payload, requestId: draft.requestId });
-    else create.mutate(payload);
+    // The Job ID the form shows is the one the tuition is written under.
+    else create.mutate({ ...payload, ...(jobId ? { jobId } : {}) });
   };
 
   const postButton = <button
@@ -250,6 +260,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     <ModalHeader title={editing ? `Edit Job ID ${jobIdForRequest(draft.requestId)}` : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
     <ModalBody>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
+        <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(value.replace(/[^0-9]/g, ""))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />
         <Text title="Guardian name" required readOnly={guardianLocked} value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />
         <Text title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={setGuardianPhone} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
         <Select title="Tuition type" required value={tuitionType} onChange={value => setTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose" format={value => formatTuitionType(value)} />

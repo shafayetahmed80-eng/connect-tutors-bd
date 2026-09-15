@@ -3,13 +3,14 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ post: vi.fn(), update: vi.fn() }));
+const mocks = vi.hoisted(() => ({ post: vi.fn(), update: vi.fn(), refetchNextJobId: vi.fn(), toastError: vi.fn() }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
       createPostedTuition: { useMutation: () => ({ mutate: mocks.post, isPending: false }) },
       updatePostedTuition: { useMutation: () => ({ mutate: mocks.update, isPending: false }) },
+      nextJobId: { useQuery: () => ({ data: { jobId: "6831" }, isLoading: false, refetch: mocks.refetchNextJobId }) },
     },
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka-city", label: "Dhaka" }] }) },
@@ -18,7 +19,7 @@ vi.mock("@/lib/trpc", () => ({
     siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
   },
 }));
-vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: mocks.toastError }) }));
 
 import AdminAddTuitionModal from "./AdminAddTuitionModal";
 
@@ -30,6 +31,19 @@ const type = (label: RegExp | string, value: string) => fireEvent.change(screen.
 // foot for a phone - and CSS shows exactly one. jsdom applies no CSS, so both
 // are in the tree here; either one runs the same handler.
 const postButton = () => screen.getAllByRole("button", { name: /^Post$/ })[0];
+
+/** Everything a tuition needs to post, so a test can vary only what it is about. */
+function fillTuition() {
+  type(/Guardian name/, "Off-site Guardian");
+  type(/Mobile number/, "01999888777");
+  fireEvent.change(screen.getByLabelText(/Curriculum \/ category/), { target: { value: "Bangla Medium" } });
+  fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 4" } });
+  const subjects = screen.getByRole("group", { name: /Subject selection/ });
+  fireEvent.click(within(subjects).getAllByRole("button")[0]);
+  fireEvent.change(screen.getByLabelText(/Days per week/), { target: { value: "3" } });
+  type(/Monthly salary/, "6,500");
+  fireEvent.change(screen.getByLabelText(/Where Did You Hear About Us/), { target: { value: "others" } });
+}
 
 describe("Add Tuition", () => {
   it("puts the whole journey on one screen, with the Guardian's name and number in front", () => {
@@ -43,6 +57,40 @@ describe("Add Tuition", () => {
       expect(screen.getByLabelText(field), String(field)).toBeTruthy();
     }
     expect(postButton()).toBeTruthy();
+  });
+
+  it("leads with the Job ID, filled in with the next one in sequence", () => {
+    open();
+
+    const field = screen.getByLabelText(/Job ID/) as HTMLInputElement;
+    expect(screen.getAllByRole("textbox")[0]).toBe(field);
+    expect(field.value).toBe("6831");
+    expect(field.readOnly).toBe(false);
+  });
+
+  it("posts under the Job ID it showed", () => {
+    open();
+    fillTuition();
+    fireEvent.click(postButton());
+    expect(mocks.post).toHaveBeenCalledWith(expect.objectContaining({ jobId: "6831" }));
+  });
+
+  it("posts under the Job ID the Admin typed over it, keeping only the digits", () => {
+    open();
+    type(/Job ID/, "7 0 0 0");
+    expect((screen.getByLabelText(/Job ID/) as HTMLInputElement).value).toBe("7000");
+    fillTuition();
+    fireEvent.click(postButton());
+    expect(mocks.post).toHaveBeenCalledWith(expect.objectContaining({ jobId: "7000" }));
+  });
+
+  it("will not post with the Job ID cleared", () => {
+    open();
+    type(/Job ID/, "");
+    fillTuition();
+    fireEvent.click(postButton());
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith("Enter the Job ID.");
   });
 
   it("swaps the tuition location for the Guardian's own when the tuition is online", () => {
@@ -99,17 +147,7 @@ describe("Add Tuition", () => {
 
   it("sends the tuition as the Guardian journey would have posted it", () => {
     open();
-
-    type(/Guardian name/, "Off-site Guardian");
-    type(/Mobile number/, "01999888777");
-    fireEvent.change(screen.getByLabelText(/Curriculum \/ category/), { target: { value: "Bangla Medium" } });
-    fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 4" } });
-    const subjects = screen.getByRole("group", { name: /Subject selection/ });
-    fireEvent.click(within(subjects).getAllByRole("button")[0]);
-    fireEvent.change(screen.getByLabelText(/Days per week/), { target: { value: "3" } });
-    type(/Monthly salary/, "6,500");
-    fireEvent.change(screen.getByLabelText(/Where Did You Hear About Us/), { target: { value: "others" } });
-
+    fillTuition();
     fireEvent.click(postButton());
 
     expect(mocks.post).toHaveBeenCalledWith(expect.objectContaining({
@@ -180,12 +218,21 @@ describe("Edit", () => {
     expect(within(subjects).getByRole("button", { pressed: true }).textContent).toContain("General Maths");
   });
 
+  it("shows the tuition's own Job ID, which an edit cannot change", () => {
+    openEdit();
+    // Anchored: the dialog itself is named "Edit Job ID 6813".
+    const field = screen.getByLabelText(/^Job ID/) as HTMLInputElement;
+    expect(field.value).toBe("6813");
+    expect(field.readOnly).toBe(true);
+  });
+
   it("sends the edit against that tuition, not a new one", () => {
     openEdit();
     type(/Monthly salary/, "8000");
     fireEvent.click(updateButton());
 
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, budgetAmount: 8000 }));
+    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("jobId");
     expect(mocks.post).not.toHaveBeenCalled();
   });
 

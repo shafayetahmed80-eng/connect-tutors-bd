@@ -5,6 +5,7 @@ const dbMocks = vi.hoisted(() => ({
   createAdminPostedTuition: vi.fn(),
   updateAdminPostedTuition: vi.fn(),
   getTutorRequestLocation: vi.fn(),
+  getNextAdminJobId: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -13,6 +14,7 @@ vi.mock("./db", async importOriginal => {
 });
 
 import { ENV } from "./_core/env";
+import { JobIdTakenError } from "./db";
 import { appRouter } from "./routers";
 
 const adminUser = {
@@ -106,6 +108,52 @@ describe("admin.createPostedTuition", () => {
     await expect(
       createCaller({ ...adminUser, role: "user", openId: "someone-else" }).admin.createPostedTuition(homeTuition),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("the Job ID a posted tuition takes", () => {
+  it("writes the tuition under the Job ID the form sent, or lets the table choose", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 201, live: true });
+
+    // A Job ID is its request's id plus 6799.
+    await createCaller().admin.createPostedTuition({ ...homeTuition, jobId: "7000" });
+    expect(dbMocks.createAdminPostedTuition.mock.calls[0][0].requestId).toBe(201);
+
+    await createCaller().admin.createPostedTuition(homeTuition);
+    expect(dbMocks.createAdminPostedTuition.mock.calls[1][0].requestId).toBeUndefined();
+  });
+
+  it("refuses a Job ID below the first one, or one that is not a number", async () => {
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, jobId: "6799" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: "A Job ID is a number from 6800 up." });
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, jobId: "68a1" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
+  });
+
+  it("says which Job ID is already taken", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockRejectedValue(new JobIdTakenError("6813"));
+
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, jobId: "6813" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "Job ID 6813 is already taken." });
+  });
+
+  it("offers the next Job ID to Admins only", async () => {
+    dbMocks.getNextAdminJobId.mockResolvedValue({ jobId: "6831" });
+    await expect(createCaller().admin.nextJobId()).resolves.toEqual({ jobId: "6831" });
+    await expect(createCaller({ ...adminUser, role: "guardian", openId: "someone-else" }).admin.nextJobId())
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("is not something an edit can change", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: true, guardianEdited: false });
+
+    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, jobId: "7000" } as never))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
   });
 });
 

@@ -58,6 +58,7 @@ import {
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
+import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -568,6 +569,18 @@ const adminPostedTuitionUpdateSchema = z.object({
 }).passthrough().and(z.preprocess(value => {
   if (!value || typeof value !== "object") return value;
   const { requestId: _requestId, ...rest } = value as Record<string, unknown>;
+  return rest;
+}, adminPostedTuitionInputSchema));
+/**
+ * Posting one, with the Job ID the form showed - the next in sequence, or the
+ * one the Admin typed over it. Stripped before the rest is parsed, for the
+ * same reason as `requestId` above.
+ */
+const adminPostedTuitionCreateSchema = z.object({
+  jobId: z.string().trim().regex(/^[0-9]{1,9}$/, "A Job ID is a number.").optional(),
+}).passthrough().and(z.preprocess(value => {
+  if (!value || typeof value !== "object") return value;
+  const { jobId: _jobId, ...rest } = value as Record<string, unknown>;
   return rest;
 }, adminPostedTuitionInputSchema));
 const guardianPendingTutorRequestUpdateSchema = z.object({
@@ -1486,11 +1499,24 @@ export const appRouter = router({
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.listTutorJobInterestsForTutor(input.tutorId)),
+    /** The Job ID a new tuition takes unless the Admin types another. */
+    nextJobId: adminProcedure.query(() => db.getNextAdminJobId()),
     createPostedTuition: adminProcedure
-      .input(adminPostedTuitionInputSchema)
+      .input(adminPostedTuitionCreateSchema)
       .mutation(async ({ ctx, input }) => {
+        let requestId: number | undefined;
+        if (input.jobId) {
+          const chosen = requestIdFromJobId(input.jobId);
+          if (chosen === null) throw new TRPCError({ code: "BAD_REQUEST", message: `A Job ID is a number from ${JOB_ID_OFFSET + 1} up.` });
+          requestId = chosen;
+        }
         const { guardian, request } = await buildAdminPostedTuition(input);
-        return db.createAdminPostedTuition({ adminUserId: ctx.user.id, guardian, request });
+        try {
+          return await db.createAdminPostedTuition({ adminUserId: ctx.user.id, guardian, request, requestId });
+        } catch (error) {
+          if (error instanceof db.JobIdTakenError) throw new TRPCError({ code: "CONFLICT", message: error.message });
+          throw error;
+        }
       }),
     updatePostedTuition: adminProcedure
       .input(adminPostedTuitionUpdateSchema)
