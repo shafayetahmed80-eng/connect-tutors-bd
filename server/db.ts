@@ -4023,7 +4023,7 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
       .limit(1)
       .for("update");
     if (!request) return { assigned: false as const, reason: "request-unavailable" as const };
-    await tx.update(tutorRequests).set({ tutorId: input.tutorId, status: "matched", contactConsent: "pending", lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
+    await tx.update(tutorRequests).set({ tutorId: input.tutorId, status: "matched", contactConsent: "pending", appointedAt: new Date(), lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
     await tx.insert(guardianRequestNotifications).values({
       guardianUserId: request.guardianUserId,
       tutorRequestId: request.id,
@@ -5377,7 +5377,7 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
 
     const now = new Date();
     await tx.update(tutorRequests)
-      .set({ tutorId: target.tutorId, status: "matched", contactConsent: "approved", lastActivityAt: now })
+      .set({ tutorId: target.tutorId, status: "matched", contactConsent: "approved", appointedAt: now, lastActivityAt: now })
       .where(eq(tutorRequests.id, request.id));
     await tx.update(tutorJobInterests)
       .set({ status: "matched", appointmentRequestedAt: null })
@@ -5525,7 +5525,7 @@ export async function reopenAppointedTuitionByAdmin(input: { requestId: number; 
 
     const now = new Date();
     await tx.update(tutorRequests)
-      .set({ tutorId: null, status: "reviewing", contactConsent: "not_required", lastActivityAt: now })
+      .set({ tutorId: null, status: "reviewing", contactConsent: "not_required", appointedAt: null, lastActivityAt: now })
       .where(eq(tutorRequests.id, request.id));
     const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
     if (job) {
@@ -5564,6 +5564,71 @@ export async function reopenAppointedTuitionByAdmin(input: { requestId: number; 
 
     return { outcome: "reopened" as const, removedTutorId };
   });
+}
+
+export type AdminAppointedJobFilters = { query: string; page: number; pageSize: number };
+
+/**
+ * Every tuition in the Appointed stage - a Tutor holds it for the demo class,
+ * nobody has confirmed it yet - with that Tutor beside it.
+ *
+ * The stage is `adminPostedJobStageCondition("appointed")`, the same rule the
+ * Posted jobs tab counts with, so the two screens cannot disagree about which
+ * tuitions are Appointed. Newest appointment first.
+ */
+export async function listAdminAppointedJobsPage(filters: AdminAppointedJobFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const search = filters.query.trim();
+  const conditions: SQL[] = [adminPostedJobStageCondition("appointed")];
+  if (search) {
+    const pattern = `%${search}%`;
+    conditions.push(or(
+      like(tutorRequests.classCourse, pattern),
+      like(tutorRequests.subjects, pattern),
+      like(tutorRequests.tuitionLocationLabel, pattern),
+      like(tutorRequests.locationText, pattern),
+      like(tutors.name, pattern),
+      like(tutors.phone, pattern),
+      like(sql`cast(${tutorRegistrations.tutorNumber} as char)`, pattern),
+    )!);
+  }
+  const where = and(...conditions);
+  const offset = (filters.page - 1) * filters.pageSize;
+
+  const items = await database
+    .select({
+      id: tutorRequests.id,
+      postedByAdmin: tutorRequests.postedByAdmin,
+      classCourse: tutorRequests.classCourse,
+      subjects: tutorRequests.subjects,
+      tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
+      locationText: tutorRequests.locationText,
+      budgetAmount: tutorRequests.budgetAmount,
+      daysPerWeek: tutorRequests.daysPerWeek,
+      appointedAt: tutorRequests.appointedAt,
+      // The internal key addresses the profile page; the Tutor ID people see is the number.
+      tutorId: tutors.id,
+      tutorNumber: tutorRegistrations.tutorNumber,
+      tutorName: tutors.name,
+      tutorPhone: tutors.phone,
+    })
+    .from(tutorRequests)
+    .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(where)
+    .orderBy(desc(tutorRequests.appointedAt), desc(tutorRequests.id))
+    .limit(filters.pageSize)
+    .offset(offset);
+  const [totals] = await database
+    .select({ value: count() })
+    .from(tutorRequests)
+    .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(where);
+  const total = Number(totals?.value ?? 0);
+
+  return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
 }
 
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {

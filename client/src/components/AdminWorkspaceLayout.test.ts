@@ -18,6 +18,7 @@ describe("Admin workspace navigation", () => {
       "Tutor Profiles",
       "Guardian activity",
       "Posted jobs",
+      "Appointed Jobs",
       "Admin Posted Jobs",
       "Applied Tutors",
       "Matching workspace",
