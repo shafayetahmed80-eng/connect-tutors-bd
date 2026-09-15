@@ -4,10 +4,12 @@ import { formatTuitionType } from "@shared/job-card";
 import {
   countTutorApplicationStages,
   filterTutorApplicationsByStage,
+  isTutorApplicationStage,
   tutorApplicationStages,
   type TutorApplicationStage,
 } from "@shared/tutor-application-stages";
 import { useMemo, useState } from "react";
+import { useSearch } from "wouter";
 
 type ApplicationRow = {
   interestId: number;
@@ -41,7 +43,9 @@ export function TutorApplicationStatus() {
   const interestsQuery = trpc.jobBoard.myInterests.useQuery();
   const applications = (interestsQuery.data ?? []) as ApplicationRow[];
   const counts = useMemo(() => countTutorApplicationStages(applications), [applications]);
-  const [activeStage, setActiveStage] = useState<TutorApplicationStage>("applied");
+  // The Dashboard's stage buttons open this tab on their own stage.
+  const requestedStage = new URLSearchParams(useSearch()).get("stage");
+  const [activeStage, setActiveStage] = useState<TutorApplicationStage>(isTutorApplicationStage(requestedStage) ? requestedStage : "applied");
   const visible = useMemo(() => filterTutorApplicationsByStage(applications, activeStage), [applications, activeStage]);
   const activeLabel = tutorApplicationStages.find(stage => stage.key === activeStage)?.label ?? "";
 

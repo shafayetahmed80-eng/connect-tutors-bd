@@ -17,6 +17,10 @@ export const tutorApplicationStages = [
 
 export type TutorApplicationStage = (typeof tutorApplicationStages)[number]["key"];
 
+export function isTutorApplicationStage(value: unknown): value is TutorApplicationStage {
+  return tutorApplicationStages.some(stage => stage.key === value);
+}
+
 export type TutorApplicationRecord = {
   status: "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
   /** Set only once an Admin finalises the Guardian and Tutor appointment. */

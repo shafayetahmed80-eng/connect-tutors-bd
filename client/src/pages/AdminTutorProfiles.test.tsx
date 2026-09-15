@@ -56,6 +56,10 @@ const mocks = vi.hoisted(() => ({
     page: 1,
     pageSize: 20,
     totalPages: 1,
+    counts: {
+      profileStatus: { all: 42, pending: 6, changes_requested: 3, approved: 28, suspended: 1, draft: 4 },
+      jobStage: { applied: 30, shortlisted: 12, appointed: 5, confirmed: 3, cancelled: 2 },
+    },
   },
 }));
 
@@ -120,18 +124,55 @@ describe("Admin Tutor Profiles list", () => {
     expect(link.getAttribute("href")).toBe("/admin/tutor-profiles/tutor-175");
   });
 
-  it("sends the typed search and the chosen status to the server", () => {
+  it("counts every profile status in a tab row, and a tab narrows the list", () => {
     render(<AdminTutorProfilesContent />);
 
-    expect(mocks.lastInput).toMatchObject({ query: "", profileStatus: "all", page: 1 });
+    const statusRow = screen.getByRole("tablist", { name: "Profile status" });
+    // Zero-padded, like the Tutor's Status tab.
+    expect(within(statusRow).getAllByRole("tab").map(tab => tab.textContent)).toEqual([
+      "All 42", "Pending review 06", "Changes requested 03", "Approved 28", "Suspended 01", "Draft 04",
+    ]);
+    expect(within(statusRow).getByRole("tab", { name: /^All/ }).getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.click(within(statusRow).getByRole("tab", { name: /Approved/ }));
+    expect(mocks.lastInput).toMatchObject({ profileStatus: "approved", page: 1 });
+    expect(within(statusRow).getByRole("tab", { name: /Approved/ }).getAttribute("aria-selected")).toBe("true");
+
+    // The tabs replace the dropdown the filter set carries on other screens.
+    fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
+    expect(screen.queryByRole("combobox", { name: "Profile status" })).toBeNull();
+  });
+
+  it("counts the Tutors with a job in each stage, and choosing a stage again clears it", () => {
+    render(<AdminTutorProfilesContent />);
+
+    const jobRow = screen.getByRole("group", { name: "Job status" });
+    expect(within(jobRow).getAllByRole("button").map(button => button.textContent)).toEqual([
+      "Applied Jobs 30", "Shortlisted Jobs 12", "Appointed Jobs 05", "Confirmed Jobs 03", "Cancelled Jobs 02",
+    ]);
+    expect(mocks.lastInput).toMatchObject({ jobStage: "all" });
+    // On a phone both rows stay one line, and the job row drops "Jobs".
+    expect(jobRow.className).toContain("flex-nowrap");
+    expect(screen.getByRole("tablist", { name: "Profile status" }).className).toContain("flex-nowrap");
+    expect(within(jobRow).getAllByRole("button").map(button => button.querySelector(".hidden.sm\\:inline")?.textContent)).toEqual(Array(5).fill("Jobs"));
+
+    fireEvent.click(within(jobRow).getByRole("button", { name: /Confirmed Jobs/ }));
+    expect(mocks.lastInput).toMatchObject({ jobStage: "confirmed", page: 1 });
+    expect(within(jobRow).getByRole("button", { name: /Confirmed Jobs/ }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(within(jobRow).getByRole("button", { name: /Confirmed Jobs/ }));
+    expect(mocks.lastInput).toMatchObject({ jobStage: "all" });
+  });
+
+  it("sends the typed search to the server", () => {
+    render(<AdminTutorProfilesContent />);
+
+    expect(mocks.lastInput).toMatchObject({ query: "", profileStatus: "all", jobStage: "all", page: 1 });
 
     // The filter set ships collapsed, as it does on the other Admin screens.
     fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
 
     fireEvent.change(screen.getByPlaceholderText(/Search Tutor name/i), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ query: "Tania", page: 1 });
-
-    fireEvent.change(screen.getByLabelText("Profile status"), { target: { value: "pending" } });
-    expect(mocks.lastInput).toMatchObject({ profileStatus: "pending", page: 1 });
   });
 });
