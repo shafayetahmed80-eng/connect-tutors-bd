@@ -2030,6 +2030,31 @@ async function resolveAdminPostedGuardian(
   return userId;
 }
 
+/** A Job ID an Admin chose that another tuition already carries. */
+export class JobIdTakenError extends Error {
+  constructor(readonly jobId: string) {
+    super(`Job ID ${jobId} is already taken.`);
+    this.name = "JobIdTakenError";
+  }
+}
+
+/**
+ * The Job ID a new tuition takes unless an Admin types another: the one after
+ * the highest there is.
+ *
+ * A Job ID is its request's id plus a fixed offset (`@shared/job-id`), so
+ * choosing one is choosing the id the row is written with - and every screen
+ * that derives the number keeps working unchanged. The table's own counter
+ * moves past whatever id is written, so the Guardians' requests carry on from
+ * the highest Job ID, whoever chose it.
+ */
+export async function getNextAdminJobId() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database.select({ highest: sql<number | null>`max(${tutorRequests.id})` }).from(tutorRequests);
+  return { jobId: jobIdForRequest(Number(row?.highest ?? 0) + 1) };
+}
+
 /**
  * An off-site tuition, posted by an Admin straight to the Job Board.
  *
@@ -2043,14 +2068,37 @@ export async function createAdminPostedTuition(input: {
   adminUserId: number;
   guardian: AdminPostedTuitionGuardian;
   request: AdminPostedTuitionRequest;
+  /** The id behind the Job ID the Admin chose. Absent, the table picks the next one. */
+  requestId?: number;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const requestId = await database.transaction(async tx => {
-    const guardianUserId = await resolveAdminPostedGuardian(tx as JobProjectionTransaction, input.guardian);
-    const created = await tx.insert(tutorRequests).values({ ...input.request, guardianUserId, postedByAdmin: 1 });
-    return Number(created[0].insertId);
-  });
+  const chosenId = input.requestId;
+  let requestId: number;
+  try {
+    requestId = await database.transaction(async tx => {
+      if (chosenId !== undefined) {
+        // Locks that id whether or not a row holds it yet, so two Admins
+        // choosing the same Job ID at once cannot both get past here.
+        const [taken] = await tx.select({ id: tutorRequests.id }).from(tutorRequests).where(eq(tutorRequests.id, chosenId)).limit(1).for("update");
+        if (taken) throw new JobIdTakenError(jobIdForRequest(chosenId));
+      }
+      const guardianUserId = await resolveAdminPostedGuardian(tx as JobProjectionTransaction, input.guardian);
+      const created = await tx.insert(tutorRequests).values({
+        ...(chosenId !== undefined ? { id: chosenId } : {}),
+        ...input.request,
+        guardianUserId,
+        postedByAdmin: 1,
+      });
+      return Number(created[0].insertId);
+    });
+  } catch (error) {
+    // A Guardian's request can take the id between the check and the write.
+    const failure = error as { code?: string; message?: string; cause?: { code?: string; message?: string } };
+    const duplicate = [failure, failure?.cause].some(item => item?.code === "ER_DUP_ENTRY" && String(item.message ?? "").includes("PRIMARY"));
+    if (chosenId !== undefined && duplicate) throw new JobIdTakenError(jobIdForRequest(chosenId));
+    throw error;
+  }
 
   // Publishing is its own transaction on purpose: it is the same call the
   // Change Status button makes, so the two paths cannot drift, and a failure
