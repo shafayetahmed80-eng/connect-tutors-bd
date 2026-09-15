@@ -179,6 +179,24 @@ describe("Admin Tutor profile detail", () => {
     expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "suspended", reason: "Repeated no-shows" });
   });
 
+  it("lifts a suspension: reinstated without a reason, or sent back for changes with one", () => {
+    mocks.profile.profileStatus = "suspended";
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    const next = screen.getByLabelText(/Next status/i) as HTMLSelectElement;
+    expect(within(next).getAllByRole("option").map(option => option.textContent)).toEqual(["Reinstate profile", "Request changes"]);
+
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    fireEvent.change(next, { target: { value: "changes_requested" } });
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(next, { target: { value: "approved" } });
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "approved", reason: undefined });
+  });
+
   it("says plainly when a profile has no Admin action left", () => {
     mocks.profile.profileStatus = "draft";
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);

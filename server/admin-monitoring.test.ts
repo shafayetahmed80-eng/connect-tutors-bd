@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateTutorModerationAction } from "./admin-monitoring";
+import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 
 describe("Tutor moderation rules", () => {
   it("permits only the approved operational status transitions", () => {
@@ -15,5 +15,19 @@ describe("Tutor moderation rules", () => {
     expect(validateTutorModerationAction({ from: "pending", to: "changes_requested", reason: "   " })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
     expect(validateTutorModerationAction({ from: "pending", to: "suspended" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
     expect(validateTutorModerationAction({ from: "pending", to: "approved", reason: "Optional review note" })).toEqual({ valid: true });
+  });
+
+  it("lets an Admin lift a suspension, straight back to approved or back to the Tutor for changes", () => {
+    expect(validateTutorModerationAction({ from: "suspended", to: "approved" })).toEqual({ valid: true });
+    expect(validateTutorModerationAction({ from: "suspended", to: "changes_requested" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
+    expect(validateTutorModerationAction({ from: "suspended", to: "changes_requested", reason: "Upload a clearer University ID" })).toEqual({ valid: true });
+    expect(validateTutorModerationAction({ from: "suspended", to: "suspended", reason: "Again" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
+  });
+
+  it("tells a reinstated Tutor they are back, not newly approved", () => {
+    expect(describeTutorModerationNotice({ from: "suspended", to: "approved" }).title).toBe("Your profile has been reinstated");
+    expect(describeTutorModerationNotice({ from: "pending", to: "approved" }).title).toBe("Your profile has been approved");
+    expect(describeTutorModerationNotice({ from: "suspended", to: "changes_requested" }).title).toBe("Changes were requested on your profile");
+    expect(describeTutorModerationNotice({ from: "approved", to: "suspended" }).title).toBe("Your profile has been suspended");
   });
 });

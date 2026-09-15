@@ -35,7 +35,8 @@ const moderationOptions: Record<string, ModerationTarget[]> = {
   pending: ["approved", "changes_requested", "suspended"],
   changes_requested: [],
   approved: ["suspended"],
-  suspended: [],
+  // A suspension can be lifted: reinstated as it was, or sent back for changes.
+  suspended: ["approved", "changes_requested"],
 };
 
 const moderationLabels: Record<ModerationTarget, string> = {
@@ -43,6 +44,10 @@ const moderationLabels: Record<ModerationTarget, string> = {
   changes_requested: "Request changes",
   suspended: "Suspend profile",
 };
+
+/** Approving a suspended profile reinstates it, so it reads that way. */
+const moderationLabel = (from: string, to: ModerationTarget) =>
+  from === "suspended" && to === "approved" ? "Reinstate profile" : moderationLabels[to];
 
 function DocumentTile({ label, url }: { label: string; url: string | null }) {
   return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
@@ -186,11 +191,11 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         </div>
         <label className="block text-sm font-bold text-j-ink-strong">Next status
           <select value={nextStatus} onChange={event => setNextStatus(event.target.value as ModerationTarget)} className="mt-2 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal">
-            {decisions.map(status => <option key={status} value={status}>{moderationLabels[status]}</option>)}
+            {decisions.map(status => <option key={status} value={status}>{moderationLabel(profile.profileStatus, status)}</option>)}
           </select>
         </label>
         <label className="block text-sm font-bold text-j-ink-strong">Admin reason {nextStatus === "approved" ? "(optional)" : "(required)"}
-          <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? "Optional approval note" : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? (profile.profileStatus === "suspended" ? "Optional reinstatement note" : "Optional approval note") : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
         </label>
         {moderation.isError ? <p className="text-sm text-red-700">{moderation.error.message}</p> : null}
       </ModalBody>
