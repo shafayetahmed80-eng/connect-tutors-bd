@@ -35,6 +35,9 @@ describe("the Tutor's Status tab", () => {
     expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual([
       "Applied Jobs 02", "Shortlisted Jobs 01", "Appointed Jobs 00", "Confirmed Jobs 01", "Cancelled Jobs 00",
     ]);
+    // On a phone the row stays one line and drops "Jobs".
+    expect(screen.getByRole("tablist", { name: "Application stages" }).className).toContain("flex-nowrap");
+    expect(screen.getAllByRole("tab")[0].querySelector("span.hidden")?.textContent).toBe("Jobs");
   });
 
   it("opens on Applied and swaps the list when another stage is clicked", async () => {

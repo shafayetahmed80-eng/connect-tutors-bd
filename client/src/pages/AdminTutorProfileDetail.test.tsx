@@ -6,6 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   moderate: vi.fn(),
+  applications: [
+    { interestId: 1, requestId: 21, status: "matched", appointmentConfirmedAt: new Date("2026-09-12T00:00:00.000Z"), createdAt: new Date("2026-09-01T00:00:00.000Z"), classCourse: "Class 9", category: "Bangla Medium", subjects: "Physics", locationLabel: "Mirpur, Dhaka" },
+    { interestId: 2, requestId: 13, status: "interested", appointmentConfirmedAt: null, createdAt: new Date("2026-09-05T00:00:00.000Z"), classCourse: "Class 8", category: "English Version", subjects: "History", locationLabel: "Banasree, Dhaka" },
+  ] as unknown[],
   profile: {
     tutorId: "tutor-175",
     tutorNumber: 175,
@@ -63,6 +67,7 @@ vi.mock("@/lib/trpc", () => ({
       moderateTutorProfile: {
         useMutation: () => ({ mutate: mocks.moderate, isPending: false, isError: false, error: null }),
       },
+      listTutorApplications: { useQuery: () => ({ data: mocks.applications, isLoading: false, isError: false }) },
     },
     // The shared workspace module this page borrows `hydrateTeachingProfile`
     // from touches these at import time.
@@ -101,6 +106,34 @@ describe("Admin Tutor profile detail", () => {
     expect(screen.getByText("Created: 01 Aug 2026")).toBeTruthy();
     expect(screen.getByText("Updated: 20 Nov 2026")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Back to Tutor Profiles/i }).getAttribute("href")).toBe("/admin/tutor-profiles");
+  });
+
+  it("leads with the Tutor's job-status row, and a stage lists those applications", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const row = screen.getByRole("group", { name: "Job status" });
+    expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual([
+      "Applied Jobs 01", "Shortlisted Jobs 00", "Appointed Jobs 00", "Confirmed Jobs 01", "Cancelled Jobs 00",
+    ]);
+    // First on the page, under the workspace header; one line on a phone.
+    expect(row.compareDocumentPosition(screen.getByRole("link", { name: /Back to Tutor Profiles/i })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(row.className).toContain("flex-nowrap");
+    expect(screen.queryByRole("list", { name: "Confirmed Jobs" })).toBeNull();
+
+    fireEvent.click(within(row).getByRole("button", { name: /Confirmed Jobs/ }));
+    const list = screen.getByRole("list", { name: "Confirmed Jobs" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(list).getByText("Class 9 · Bangla Medium")).toBeTruthy();
+    expect(within(list).getByRole("link", { name: "Open the applicants of Job ID 6820" }).getAttribute("href")).toBe("/admin/applied-tutors/21");
+
+    fireEvent.click(within(row).getByRole("button", { name: /Confirmed Jobs/ }));
+    expect(screen.queryByRole("list", { name: "Confirmed Jobs" })).toBeNull();
+  });
+
+  it("says so when a stage has no applications", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+    fireEvent.click(within(screen.getByRole("group", { name: "Job status" })).getByRole("button", { name: /Cancelled Jobs/ }));
+    expect(screen.getByText("No cancelled jobs.")).toBeTruthy();
   });
 
   it("shows the professional headline here, where the row deliberately does not", () => {

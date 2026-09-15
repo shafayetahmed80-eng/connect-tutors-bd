@@ -1482,6 +1482,10 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    /** One Tutor's applications, for the job-status row on their Admin profile page. */
+    listTutorApplications: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(({ input }) => db.listTutorJobInterestsForTutor(input.tutorId)),
     createPostedTuition: adminProcedure
       .input(adminPostedTuitionInputSchema)
       .mutation(async ({ ctx, input }) => {

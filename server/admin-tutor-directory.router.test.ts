@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn(), listTutorJobInterestsForTutor: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -41,5 +41,21 @@ describe("admin.listTutorDirectory", () => {
   it("refuses a job stage the Status tab does not have", async () => {
     await expect(createCaller().admin.listTutorDirectory({ jobStage: "hired" as never })).rejects.toThrow();
     expect(dbMocks.listAdminTutorDirectoryPage).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin.listTutorApplications", () => {
+  it("reads one Tutor's applications with the Tutor's own list", async () => {
+    dbMocks.listTutorJobInterestsForTutor.mockResolvedValue([{ interestId: 1, status: "interested", requestId: 13 }]);
+
+    await expect(createCaller().admin.listTutorApplications({ tutorId: " tutor-175 " })).resolves.toEqual([{ interestId: 1, status: "interested", requestId: 13 }]);
+    expect(dbMocks.listTutorJobInterestsForTutor).toHaveBeenCalledWith("tutor-175");
+  });
+
+  it("is an Admin's to read, and needs a Tutor", async () => {
+    const guardian = { ...adminUser, role: "guardian" as const };
+    await expect(createCaller(guardian).admin.listTutorApplications({ tutorId: "tutor-175" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller().admin.listTutorApplications({ tutorId: "" })).rejects.toThrow();
+    expect(dbMocks.listTutorJobInterestsForTutor).not.toHaveBeenCalled();
   });
 });

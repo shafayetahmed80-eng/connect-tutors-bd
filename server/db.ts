@@ -3568,6 +3568,8 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       expiresAt: tutorJobs.expiresAt,
       publicationStatus: tutorJobs.publicationStatus,
       budgetAmount: tutorJobs.budgetAmount,
+      // The Admin's copy of this list links each application to its tuition.
+      requestId: tutorJobs.tutorRequestId,
       // Appointed and Confirmed are the same interest status; only the request
       // knows which, so a Tutor cannot be shown their own stage without it.
       appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,

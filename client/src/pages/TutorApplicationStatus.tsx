@@ -1,4 +1,5 @@
 import { LabelIcon, RecordIcon } from "@/components/recordIcons";
+import StatusTabRow from "@/components/StatusTabRow";
 import { trpc } from "@/lib/trpc";
 import { formatTuitionType } from "@shared/job-card";
 import {
@@ -50,22 +51,12 @@ export function TutorApplicationStatus() {
   const activeLabel = tutorApplicationStages.find(stage => stage.key === activeStage)?.label ?? "";
 
   return <section>
-    <div role="tablist" aria-label="Application stages" className="flex flex-wrap items-end gap-5 border-b border-[#dce9f1]">
-      {tutorApplicationStages.map(stage => {
-        const selected = stage.key === activeStage;
-        return <button
-          key={stage.key}
-          type="button"
-          role="tab"
-          aria-selected={selected}
-          onClick={() => setActiveStage(stage.key)}
-          className={`relative pb-2.5 pt-1.5 text-xs font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
-        >
-          {stage.label} <span className={`ml-1 tabular-nums ${selected ? "text-[#1267c8]" : "text-j-ink-faint"}`}>{String(counts[stage.key]).padStart(2, "0")}</span>
-          {selected ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
-        </button>;
-      })}
-    </div>
+    <StatusTabRow
+      label="Application stages"
+      items={tutorApplicationStages.map(stage => ({ key: stage.key, label: stage.label.replace(/\s*Jobs$/, ""), wideSuffix: "Jobs", count: counts[stage.key] }))}
+      selected={activeStage}
+      onSelect={key => { if (key) setActiveStage(key); }}
+    />
 
     {interestsQuery.isLoading
       ? <p className="mt-6 rounded-xl border border-j-border bg-white px-4 py-8 text-center text-sm font-semibold text-j-ink-muted">Loading your applications…</p>
