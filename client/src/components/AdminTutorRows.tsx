@@ -1,3 +1,5 @@
+import { applicantStageLabels } from "@shared/admin-applicant-actions";
+import type { TutorApplicationStage } from "@shared/tutor-application-stages";
 import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
 import { Link } from "wouter";
 
@@ -27,8 +29,8 @@ export type AdminTutorRow = {
   appointmentRequestedAt?: Date | string | null;
   /** The application itself, which the appointment actions act on. Applied-Tutor rows only. */
   interestId?: number;
-  /** Holds this tuition's appointment. */
-  appointed?: boolean;
+  /** Where this application stands, by the Tutor's own rule. Applied-Tutor rows only. */
+  applicationStage?: TutorApplicationStage;
 };
 
 /** Approve and Decline on a row whose Guardian asked for an appointment. */
@@ -48,13 +50,21 @@ export const adminTutorStatusStyles: Record<AdminTutorRowStatus, string> = {
   suspended: "bg-red-50 text-red-800",
 };
 
+const applicationStageStyles: Record<TutorApplicationStage, string> = {
+  applied: "bg-j-surface-muted text-j-ink-soft",
+  shortlisted: "bg-violet-50 text-violet-800",
+  appointed: "bg-emerald-50 text-emerald-800",
+  confirmed: "bg-indigo-50 text-indigo-800",
+  cancelled: "bg-slate-100 text-slate-600",
+};
+
 function Cell({ value, className = "" }: { value: string; className?: string }) {
   return <td className={`px-3 py-2.5 align-top ${className}`}>
     <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>
   </td>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showGuardianMarks = false, appointmentActions }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -64,6 +74,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
    * has to continue across pages rather than restart at one.
    */
   serialFrom?: number;
+  /** A column for each application's stage, on one tuition's applicants. */
+  showApplicationStage?: boolean;
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
   appointmentActions?: AdminAppointmentRequestActions;
@@ -85,6 +97,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <th scope="col" className="px-3 py-2.5">Experience</th>
           <th scope="col" className="px-3 py-2.5">Status</th>
           <th scope="col" className="px-3 py-2.5">Verified</th>
+          {showApplicationStage ? <th scope="col" className="px-3 py-2.5">Application</th> : null}
           {showGuardianMarks ? <th scope="col" className="px-3 py-2.5">Guardian</th> : null}
           <th scope="col" className="px-3 py-2.5"><span className="sr-only">Details</span></th>
         </tr>
@@ -102,9 +115,11 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <Cell value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} />
           <td className="px-3 py-2.5 align-top"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>{tutor.profileStatus.replaceAll("_", " ")}</span></td>
           <td className="px-3 py-2.5 align-top">{tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" />}</td>
+          {showApplicationStage ? <td className="px-3 py-2.5 align-top">
+            {tutor.applicationStage ? <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>{applicantStageLabels[tutor.applicationStage]}</span> : null}
+          </td> : null}
           {showGuardianMarks ? <td className="px-3 py-2.5 align-top">
             <span className="flex flex-wrap items-center gap-1">
-              {tutor.appointed ? <span className="whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span> : null}
               {tutor.appointmentRequestedAt ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
               {tutor.guardianShortlistedAt ? <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1 text-2xs font-bold text-sky-800">Shortlisted</span> : null}
             </span>
@@ -119,7 +134,7 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
             </Link>
           </td>
         </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showGuardianMarks ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
+        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showApplicationStage ? 1 : 0) + (showGuardianMarks ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
       </tbody>
     </table>
   </div>;

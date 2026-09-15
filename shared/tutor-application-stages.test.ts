@@ -23,6 +23,14 @@ describe("the stage a Tutor's application sits at", () => {
     expect(getTutorApplicationStage({ status: "declined" })).toBe("cancelled");
   });
 
+  it("ends every application on a cancelled tuition, whatever stage it had reached", () => {
+    expect(getTutorApplicationStage({ status: "interested", tuitionCancelled: true })).toBe("cancelled");
+    expect(getTutorApplicationStage({ status: "shortlisted", tuitionCancelled: 1 })).toBe("cancelled");
+    expect(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: new Date("2026-09-01"), tuitionCancelled: 1 })).toBe("cancelled");
+    // MySQL hands the flag back as 0 for an open tuition.
+    expect(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: null, tuitionCancelled: 0 })).toBe("appointed");
+  });
+
   it("counts every stage, including the ones with nothing in them", () => {
     expect(countTutorApplicationStages([
       { status: "interested" },

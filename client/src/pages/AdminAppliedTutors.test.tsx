@@ -7,6 +7,7 @@ const tutor = (id: string, name: string) => ({
   id, tutorNumber: 777, name, phone: "+8801711111111", instituteName: "University of Dhaka", departmentName: "Bangla",
   cityLabel: "Dhaka", locationLabel: "Adabor", teachingExperienceYears: 4,
   profileStatus: "approved" as const, verified: 1,
+  applicationStatus: "interested" as "interested" | "shortlisted" | "declined" | "matched" | "withdrawn",
 });
 
 const mocks = vi.hoisted(() => ({
@@ -126,7 +127,7 @@ describe("Admin Applied Tutors page", () => {
   it("lists the applicants as the Admin's own Tutor rows, numbered in application order", () => {
     render(<AdminAppliedTutorsContent requestId={13} />);
 
-    for (const header of ["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Status", "Verified"]) {
+    for (const header of ["#", "Tutor ID", "Name", "Mobile", "Institute", "Department", "City", "Location", "Experience", "Status", "Verified", "Application"]) {
       expect(screen.getByRole("columnheader", { name: header })).toBeTruthy();
     }
     const rows = screen.getAllByRole("row").slice(1);
@@ -180,12 +181,34 @@ describe("Admin Applied Tutors page", () => {
   it("marks the Tutor who holds the appointment, and the tuition reads Appointed", () => {
     const original = mocks.data.job;
     mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404" } as never;
+    mocks.data.items = [tutor("tutor-175", "Tania Sultana"), { ...tutor("tutor-404", "Tanvir Ahmed"), applicationStatus: "matched" as const }];
     render(<AdminAppliedTutorsContent requestId={13} />);
 
     const rows = screen.getAllByRole("row").slice(1);
     expect(within(rows[1]).getByText("Appointed")).toBeTruthy();
     expect(within(rows[0]).queryByText("Appointed")).toBeNull();
+    expect(within(rows[0]).getByText("Applied")).toBeTruthy();
     expect(screen.getByText("Tuition Status").textContent).toContain("Appointed");
+    mocks.data.job = original;
+  });
+
+  it("reads each application's stage, and a cancelled tuition ends them all", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404", appointmentConfirmedAt: new Date("2026-09-14T08:00:00.000Z") } as never;
+    mocks.data.items = [
+      { ...tutor("tutor-175", "Tania Sultana"), applicationStatus: "shortlisted" as const },
+      { ...tutor("tutor-404", "Tanvir Ahmed"), applicationStatus: "matched" as const },
+      { ...tutor("tutor-510", "Rafi Hasan"), applicationStatus: "declined" as const },
+    ];
+    const view = render(<AdminAppliedTutorsContent requestId={13} />);
+    const column = screen.getAllByRole("columnheader").findIndex(cell => cell.textContent === "Application");
+    const stages = () => screen.getAllByRole("row").slice(1).map(row => row.querySelectorAll("td")[column]?.textContent);
+    expect(stages()).toEqual(["Shortlisted", "Confirmed", "Cancelled"]);
+
+    view.unmount();
+    mocks.data.job = { ...original, status: "closed", publicationState: "closed", cancellationReason: "The Guardian did not take a Tutor" } as never;
+    render(<AdminAppliedTutorsContent requestId={13} />);
+    expect(stages()).toEqual(["Cancelled", "Cancelled", "Cancelled"]);
     mocks.data.job = original;
   });
 

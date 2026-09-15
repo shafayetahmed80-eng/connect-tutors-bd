@@ -25,10 +25,13 @@ export type TutorApplicationRecord = {
   status: "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
   /** Set only once an Admin finalises the Guardian and Tutor appointment. */
   appointmentConfirmedAt?: Date | string | null;
+  /** Set when the tuition itself was cancelled: every application on it ends with it. */
+  tuitionCancelled?: boolean | number | null;
 };
 
 export function getTutorApplicationStage(record: TutorApplicationRecord): TutorApplicationStage {
-  if (record.status === "declined" || record.status === "withdrawn") return "cancelled";
+  // A cancelled tuition ends every application on it, a Confirmed one included.
+  if (record.tuitionCancelled || record.status === "declined" || record.status === "withdrawn") return "cancelled";
   // Appointed and Confirmed are the same interest status either side of the
   // Admin's confirmation, which is the only thing that tells them apart.
   if (record.status === "matched") return record.appointmentConfirmedAt ? "confirmed" : "appointed";
