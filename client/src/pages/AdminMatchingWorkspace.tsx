@@ -35,7 +35,6 @@ import {
   Star,
   Trash2,
   UserCheck,
-  XCircle,
 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -45,7 +44,6 @@ import {
 
 type AdminRequestStatus = "new" | "reviewing" | "matched" | "closed";
 type AdminPublicationState = "submitted" | "reviewing" | "changes_requested" | "approved" | "unpublished" | "published" | "closed";
-type TutorInterestReviewStatus = "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
 type AdminStatusFilter = "all" | AdminRequestStatus;
 type AdminMatchingFilters = {
   query: string;
@@ -109,19 +107,6 @@ export type MatchingRequest = {
   appliedTutorCount: number;
   /** When the published Job Board copy stops being visible. */
   publishedExpiresAt: Date | string | null;
-};
-
-export type AdminTutorInterest = {
-  interestId: number;
-  status: TutorInterestReviewStatus;
-  tutorId: string;
-  tutorName: string;
-  /** The Tutor ID people see - not a phone number. */
-  tutorNumber: number | string | null;
-  tutorPhone: string | null;
-  publicJobId: string;
-  jobId: number;
-  jobTitle: string;
 };
 
 type PublicationAction = "verify" | "guardian_confirmed" | "guardian_reconfirmed" | "approve" | "publish" | "extend_expiry" | "unpublish";
@@ -356,24 +341,19 @@ function AssignmentNotes({ requestId }: { requestId: number }) {
   </details>;
 }
 
-function RequestLifecycleControls({ request, busy }: {
-  request: MatchingRequest;
-  busy: boolean;
-}) {
-  const [reason, setReason] = useState("");
-  const utils = trpc.useUtils();
-  const confirmAppointment = trpc.admin.confirmTutorRequestAppointment.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
-  const cancelRequest = trpc.admin.cancelTutorRequest.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
-  const lifecycleBusy = busy || confirmAppointment.isPending || cancelRequest.isPending;
-  const canConfirm = request.status === "matched" && Boolean(request.tutorId) && !request.appointmentConfirmedAt;
-  const canCancel = request.status !== "closed";
-  return <section aria-label={`Lifecycle actions for request ${request.id}`} className="space-y-3 rounded-xl border border-violet-100 bg-violet-50/60 p-3">
+/**
+ * Where a matched request ended up, for the Admin reading its card.
+ *
+ * Only what has happened is shown. Confirming, removing a Tutor and cancelling
+ * are done from Applied Tutors, the one place an Admin acts on a tuition's
+ * applicants, so this card no longer offers them.
+ */
+function RequestLifecycleControls({ request }: { request: MatchingRequest }) {
+  if (!request.appointmentConfirmedAt && !request.cancellationReason) return null;
+  return <section aria-label={`Lifecycle for request ${request.id}`} className="space-y-3 rounded-xl border border-violet-100 bg-violet-50/60 p-3">
     <div><p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-700">Guardian request lifecycle</p></div>
     {request.appointmentConfirmedAt ? <p className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-white p-2.5 text-xs font-semibold text-emerald-800"><BadgeCheck className="h-4 w-4" /> Guardian and Tutor confirmation recorded</p> : null}
-    {confirmAppointment.isError || cancelRequest.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs leading-5 text-red-800">{confirmAppointment.error?.message ?? cancelRequest.error?.message}</p> : null}
-    {canConfirm ? <button type="button" disabled={lifecycleBusy} onClick={() => confirmAppointment.mutate({ requestId: request.id })} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><BadgeCheck className="h-4 w-4" /> Confirm Guardian and Tutor appointment</button> : null}
     {request.cancellationReason ? <p className="rounded-xl border border-j-border bg-white p-2.5 text-xs leading-5 text-j-ink-soft"><strong>Closure reason:</strong> {request.cancellationReason}</p> : null}
-    {canCancel ? <div className="rounded-xl border border-violet-100 bg-white p-3"><label className="block text-xs font-semibold text-j-ink-soft" htmlFor={`cancel-reason-${request.id}`}>Cancellation reason<textarea id={`cancel-reason-${request.id}`} aria-label="Cancellation reason" value={reason} onChange={event => setReason(event.target.value)} minLength={3} maxLength={280} placeholder="Explain why this request is being closed" className="mt-1.5 min-h-20 w-full rounded-lg border border-j-border p-2 text-sm text-j-ink placeholder:text-j-ink-faint" /></label><button type="button" disabled={lifecycleBusy || reason.trim().length < 3} onClick={() => cancelRequest.mutate({ requestId: request.id, reason: reason.trim() })} className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-50"><XCircle className="h-4 w-4" /> Cancel request</button></div> : null}
   </section>;
 }
 
@@ -440,20 +420,9 @@ export function PublicationControls({ request, busy, onAction, onEdit }: {
     </div>
     {request.publicationState === "reviewing" ? <details className="rounded-xl border border-sky-100 bg-white p-3"><summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-j-ink-soft"><FilePenLine className="h-4 w-4 text-j-accent" /> Edit job-facing details</summary><p className="mt-2 text-xs leading-5 text-j-ink-muted">Changes clear the recorded Guardian confirmation. City and area are intentionally Guardian-controlled and cannot be altered here.</p><form className="mt-3 grid gap-2" onSubmit={onEdit}><label className="text-xs font-medium text-j-ink-soft">Category<input name="category" required defaultValue={request.category} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Class / course<input name="classCourse" required defaultValue={request.classCourse} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Subjects, separated by commas<input name="subjects" required defaultValue={subjectsForEdit(request.subjects)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs font-medium text-j-ink-soft">Days / week<input name="daysPerWeek" type="number" min="1" max="7" required defaultValue={request.daysPerWeek} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Tutor preference<select name="preferredGender" defaultValue={request.preferredGender} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm"><option value="any">Any</option><option value="female">Female</option><option value="male">Male</option></select></label></div><label className="text-xs font-medium text-j-ink-soft"><span className="inline-flex items-center gap-1.5"><RecordIcon name="notes" size={13} className="text-j-accent" />Job Board note</span><textarea name="notes" rows={3} maxLength={2000} defaultValue={request.notes ?? ""} placeholder="Leave empty to publish no note" className="mt-1 w-full rounded-lg border border-j-border px-2 py-1.5 text-sm leading-6 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><button type="submit" disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:opacity-50"><FilePenLine className="h-4 w-4" /> Save approved edit</button></form></details> : null}
     <AssignmentNotes requestId={request.id} />
-    <RequestLifecycleControls request={request} busy={busy} />
+    <RequestLifecycleControls request={request} />
     <ConfirmationLetterControls request={request} busy={busy} />
   </section>;
-}
-
-function getTutorInterestReviewPresentation(status: TutorInterestReviewStatus) {
-  const presentations = {
-    interested: { label: "Awaiting review", className: "bg-sky-50 text-sky-800 ring-sky-200" },
-    shortlisted: { label: "Shortlisted", className: "bg-amber-50 text-amber-800 ring-amber-200" },
-    declined: { label: "Declined", className: "bg-j-surface-muted text-j-ink-soft ring-j-border" },
-    matched: { label: "Matched", className: "bg-emerald-50 text-emerald-800 ring-emerald-200" },
-    withdrawn: { label: "Withdrawn", className: "bg-j-surface-muted text-j-ink-soft ring-j-border" },
-  } as const;
-  return presentations[status];
 }
 
 /**
@@ -597,26 +566,6 @@ export function AdminMatchingQueueSummary({ total, counts }: {
   </section>;
 }
 
-export function TutorInterestQueue({ interests, isLoading, isError, isSaving, onReview }: {
-  interests: AdminTutorInterest[];
-  isLoading: boolean;
-  isError: boolean;
-  isSaving: boolean;
-  onReview: (interestId: number, status: Extract<TutorInterestReviewStatus, "shortlisted" | "declined" | "matched">) => void;
-}) {
-  return <section role="region" aria-label="Tutor Apply review queue" className="rounded-xl border border-sky-100 bg-white p-4 shadow-sm sm:p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-j-accent"><UserCheck className="h-4 w-4" /> Tutor Apply</div><h2 className="mt-1 text-lg font-bold text-j-ink">Tutor applications awaiting coordination</h2></div><span className="rounded-full bg-sky-50 px-3 py-1 text-sm font-bold text-sky-800">{isLoading ? "—" : interests.filter(interest => interest.status === "interested").length} awaiting</span></div>
-    {isLoading ? <p className="mt-4 flex items-center gap-2 rounded-xl bg-j-surface-sunken p-4 text-sm text-j-ink-soft"><Loader2 className="h-4 w-4 animate-spin" /> Loading Tutor applications…</p> : null}
-    {isError ? <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Tutor applications could not be loaded. Please refresh before making a matching decision.</p> : null}
-    {!isLoading && !isError && interests.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-j-field-border bg-j-surface-sunken p-4 text-sm text-j-ink-soft">No Tutor applications have been received for published tuition opportunities yet.</p> : null}
-    {!isLoading && !isError && interests.length ? <div className="mt-4 grid gap-3 lg:grid-cols-2">{interests.map(interest => {
-      const presentation = getTutorInterestReviewPresentation(interest.status);
-      const canReview = interest.status === "interested" || interest.status === "shortlisted";
-      return <article key={interest.interestId} className="rounded-xl border border-j-border bg-j-surface-sunken/60 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-bold text-j-ink">{interest.tutorName}</p><p className="mt-0.5 text-xs text-j-ink-muted">Tutor ID {interest.tutorNumber ?? "not set"} · Job {interest.publicJobId}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${presentation.className}`}>{presentation.label}</span></div><p className="mt-3 text-sm text-j-ink-soft">Job: <strong>{interest.jobTitle}</strong></p><div className="mt-3 rounded-xl border border-sky-100 bg-white p-3"><p className="text-xs font-semibold uppercase tracking-wide text-j-ink-muted">Private Tutor contact</p>{interest.tutorPhone ? <a href={`tel:${interest.tutorPhone}`} aria-label={`Call ${interest.tutorName}`} className="mt-1 inline-flex font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{interest.tutorPhone}</a> : <p className="mt-1 text-sm text-j-ink-soft">No phone number available; review the Tutor profile before contacting.</p>}</div>{canReview ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{interest.status === "interested" ? <button type="button" disabled={isSaving} onClick={() => onReview(interest.interestId, "shortlisted")} className="inline-flex h-10 items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-semibold text-white hover:bg-j-accent-hover disabled:opacity-50">Shortlist Tutor</button> : <button type="button" disabled={isSaving} onClick={() => onReview(interest.interestId, "matched")} className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">Mark matched</button>}<button type="button" disabled={isSaving} onClick={() => onReview(interest.interestId, "declined")} className="inline-flex h-10 items-center justify-center rounded-xl border border-j-field-border bg-white px-3 text-sm font-semibold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">Decline application</button></div> : <p className="mt-3 text-xs leading-5 text-j-ink-muted">This application is closed for further review changes.</p>}</article>;
-    })}</div> : null}
-  </section>;
-}
-
 export type AdminMatchingSavedView = {
   id: number;
   name: string;
@@ -745,17 +694,13 @@ function MatchingWorkspaceContent() {
   }), [filters]);
   const matchingQueue = trpc.admin.listMatchingRequests.useQuery(matchingInput);
   const tutors = trpc.admin.listMatchingTutors.useQuery();
-  const tutorInterests = trpc.admin.listTutorJobInterests.useQuery({});
   const savedViews = trpc.admin.listMatchingSavedViews.useQuery();
   const assignTutor = trpc.admin.assignTutorRequest.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
-  const confirmAppointment = trpc.admin.confirmTutorRequestAppointment.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
-  const cancelRequest = trpc.admin.cancelTutorRequest.useMutation({ onSuccess: () => void utils.admin.listMatchingRequests.invalidate() });
   const publishAction = trpc.admin.moderateTutorRequestPublication.useMutation({
     onSuccess: () => {
       void utils.admin.listMatchingRequests.invalidate();
     },
   });
-  const reviewTutorInterest = trpc.admin.reviewTutorJobInterest.useMutation({ onSuccess: () => void utils.admin.listTutorJobInterests.invalidate() });
   const createSavedView = trpc.admin.createMatchingSavedView.useMutation({
     onSuccess: result => {
       setSelectedSavedViewId(result.id);
@@ -848,7 +793,6 @@ function MatchingWorkspaceContent() {
     } });
   };
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-    <TutorInterestQueue interests={(tutorInterests.data ?? []) as AdminTutorInterest[]} isLoading={tutorInterests.isLoading} isError={tutorInterests.isError} isSaving={reviewTutorInterest.isPending} onReview={(interestId, status) => reviewTutorInterest.mutate({ interestId, status })} />
     <AdminMatchingSavedViews views={(savedViews.data ?? []) as AdminMatchingSavedView[]} isLoading={savedViews.isLoading} isError={savedViews.isError} isSaving={createSavedView.isPending || deleteSavedView.isPending || setDefaultSavedView.isPending || clearDefaultSavedView.isPending || renameSavedView.isPending} errorMessage={createSavedView.error?.message ?? deleteSavedView.error?.message ?? setDefaultSavedView.error?.message ?? clearDefaultSavedView.error?.message ?? renameSavedView.error?.message} selectedViewId={selectedSavedViewId} onApply={applySavedView} onCreate={name => createSavedView.mutate({ name, filters: serializeAdminMatchingSavedViewFilters(filters) })} onDelete={savedViewId => deleteSavedView.mutate({ savedViewId })} onSetDefault={savedViewId => setDefaultSavedView.mutate({ savedViewId })} onClearDefault={() => clearDefaultSavedView.mutate()} onRename={(savedViewId, name) => renameSavedView.mutate({ savedViewId, name })} />
     <CollapsiblePanel title="Advanced filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={advancedFilterCount}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="relative sm:col-span-2"><span className="sr-only">Search requests</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" /><input value={filters.query} onChange={event => applyFilters({ query: event.target.value })} placeholder="Search subject, class, category or location" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none transition focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><select aria-label="Request status" value={filters.status} onChange={event => applyFilters({ status: event.target.value as AdminStatusFilter })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">All statuses</option><option value="new">New</option><option value="reviewing">Reviewing</option><option value="matched">Matched</option><option value="closed">Closed</option></select><select aria-label="Tuition type" value={filters.tuitionType} onChange={event => applyFilters({ tuitionType: event.target.value as AdminMatchingFilters["tuitionType"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">All tuition modes</option><option value="home">Home Tutoring</option><option value="online">Online Tutoring</option><option value="group">Group Tutoring</option><option value="package">Package Tutoring</option><option value="both">Home and Online Tutoring (legacy)</option></select><input value={filters.subject} onChange={event => applyFilters({ subject: event.target.value })} placeholder="Subject contains" className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><input value={filters.category} onChange={event => applyFilters({ category: event.target.value })} placeholder="Category" className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><select aria-label="Tutor gender preference" value={filters.preferredGender} onChange={event => applyFilters({ preferredGender: event.target.value as AdminMatchingFilters["preferredGender"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">Any Tutor gender</option><option value="male">Male Tutor</option><option value="female">Female Tutor</option><option value="any">Any</option></select><select aria-label="Contact consent" value={filters.contactConsent} onChange={event => applyFilters({ contactConsent: event.target.value as AdminMatchingFilters["contactConsent"] })} className="h-11 min-w-0 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value="all">Any contact state</option><option value="not_required">Not required</option><option value="pending">Consent pending</option><option value="approved">Consent approved</option><option value="declined">Consent declined</option></select><div className="flex min-w-0 gap-2"><MoneyAmountField ariaLabel="Minimum budget in Taka" value={filters.budgetMinimum === undefined ? "" : String(filters.budgetMinimum)} onChange={value => { const digits = value.replace(/D/g, ""); applyFilters({ budgetMinimum: digits ? Number(digits) : undefined }); }} placeholder="Min budget" inputClassName="h-11 min-w-0 flex-1 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /><MoneyAmountField ariaLabel="Maximum budget in Taka" value={filters.budgetMaximum === undefined ? "" : String(filters.budgetMaximum)} onChange={value => { const digits = value.replace(/D/g, ""); applyFilters({ budgetMaximum: digits ? Number(digits) : undefined }); }} placeholder="Max budget" inputClassName="h-11 min-w-0 flex-1 rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></div></div><div className="mt-4 flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg px-3 py-2 text-sm font-semibold text-j-accent hover:bg-sky-50">Clear filters</button></div></CollapsiblePanel>
     <CollapsiblePanel title="Operational queue filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={operationalFilterCount} tone="accent" className="border-violet-100">
@@ -868,9 +812,9 @@ function MatchingWorkspaceContent() {
     </CollapsiblePanel>
     <AdminMatchingQueueSummary total={total} counts={matchingQueue.data?.publicationStateCounts} />
     <BulkPublicationBar requests={requests} selectedIds={selectedRequestIds} busy={publishAction.isPending} onClear={() => setSelectedRequestIds([])} onRun={(action, ids) => void runBulkAction(action, ids)} />
-    {publishAction.isError || confirmAppointment.isError || cancelRequest.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message ?? confirmAppointment.error?.message ?? cancelRequest.error?.message}</p> : null}
+    {publishAction.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message}</p> : null}
     {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
-      const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending || confirmAppointment.isPending || cancelRequest.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
+      const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
       const expiry = getAdminPublicationExpiryDisplay(request); const age = getAdminRequestAgeDisplay(request);
       const groupCapacity = getAdminGroupCapacityDisplay(request); const packageDuration = getAdminPackageDurationDisplay(request); const studentCount = getAdminStudentCountDisplay(request);
       return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><label className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><input type="checkbox" aria-label={`Select Job ID ${jobIdForRequest(request.id)} for a bulk action`} checked={selectedRequestIds.includes(request.id)} onChange={event => setSelectedRequestIds(current => event.target.checked ? [...current, request.id] : current.filter(id => id !== request.id))} className="h-4 w-4" /><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</label><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}

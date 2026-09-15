@@ -32,7 +32,6 @@ import {
   TutorMatchPicker,
   serializeAdminMatchingSavedViewFilters,
   shouldAutoApplyDefaultSavedView,
-  TutorInterestQueue,
   type MatchingRequest,
   getAdminRequestAgeDisplay,
   getAdminPublicationExpiryDisplay,
@@ -265,7 +264,7 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(onAction).toHaveBeenCalledWith("guardian_confirmed");
   });
 
-  it("keeps confirmation scoped to an assigned Tutor and requires a reason before an Admin can cancel", () => {
+  it("shows what became of a request without offering to change it", () => {
     const onAction = vi.fn();
     const { container, rerender } = render(createElement(PublicationControls, {
       request: reviewingRequest,
@@ -274,19 +273,27 @@ describe("AdminMatchingWorkspace helpers", () => {
       onEdit: event => event.preventDefault(),
     }));
     const card = within(container);
-
-    expect(card.queryByRole("button", { name: /confirm guardian and tutor appointment/i })).toBeNull();
-    expect(card.getByRole("button", { name: /cancel request/i }).hasAttribute("disabled")).toBe(true);
-    fireEvent.change(card.getByRole("textbox", { name: /cancellation reason/i }), { target: { value: "Guardian requested closure" } });
-    expect(card.getByRole("button", { name: /cancel request/i }).hasAttribute("disabled")).toBe(false);
+    // Nothing has happened to it yet, so there is no lifecycle section at all.
+    expect(card.queryByRole("region", { name: /lifecycle for request/i })).toBeNull();
 
     rerender(createElement(PublicationControls, {
-      request: { ...reviewingRequest, status: "matched", tutorId: "T-125" },
+      request: { ...reviewingRequest, status: "matched", tutorId: "T-125", appointmentConfirmedAt: new Date("2026-09-13T08:00:00.000Z") },
       busy: false,
       onAction,
       onEdit: event => event.preventDefault(),
     }));
-    expect(card.getByRole("button", { name: /confirm guardian and tutor appointment/i })).not.toBeNull();
+    expect(card.getByText(/guardian and tutor confirmation recorded/i)).not.toBeNull();
+
+    rerender(createElement(PublicationControls, {
+      request: { ...reviewingRequest, status: "closed", cancellationReason: "Guardian requested closure" },
+      busy: false,
+      onAction,
+      onEdit: event => event.preventDefault(),
+    }));
+    expect(card.getByText("Guardian requested closure")).not.toBeNull();
+    // Confirming and cancelling are Applied Tutors' now.
+    expect(card.queryByRole("button", { name: /confirm guardian and tutor appointment/i })).toBeNull();
+    expect(card.queryByRole("button", { name: /cancel request/i })).toBeNull();
   });
 
   it("does not expose the legacy no-reason Close request action", () => {
@@ -319,37 +326,17 @@ describe("AdminMatchingWorkspace helpers", () => {
     expect(onAction).toHaveBeenCalledWith("publish");
   });
 
-  it("keeps Tutor contact within the protected Admin queue and offers only valid review actions", () => {
-    const onReview = vi.fn();
-    render(createElement(TutorInterestQueue, {
-      interests: [{
-        interestId: 71,
-        status: "interested",
-        tutorId: "tutor-9",
-        tutorName: "Amina Rahman",
-        tutorNumber: 1503,
-        tutorPhone: "+8801712345678",
-        publicJobId: "CT-JOB-000071",
-        jobId: 42,
-        jobTitle: "Standard 2",
-      }],
-      isLoading: false,
-      isError: false,
-      isSaving: false,
-      onReview,
+  it("leaves confirming and cancelling a request to Applied Tutors", () => {
+    render(createElement(PublicationControls, {
+      request: { ...reviewingRequest, status: "matched", tutorId: "tutor-9", publicationState: "published" },
+      busy: false,
+      onAction: vi.fn(),
+      onEdit: event => event.preventDefault(),
     }));
 
-    expect(screen.getByRole("region", { name: /tutor apply review queue/i })).not.toBeNull();
-    expect(screen.getByText("Tutor applications awaiting coordination")).not.toBeNull();
-    expect(screen.getByText("Amina Rahman")).not.toBeNull();
-    // The Tutor ID is the registered number; the internal key never shows.
-    expect(screen.getByText("Tutor ID 1503 · Job CT-JOB-000071")).not.toBeNull();
-    expect(screen.queryByText(/tutor-9/)).toBeNull();
-    expect(screen.getByRole("link", { name: /call amina rahman/i }).getAttribute("href")).toBe("tel:+8801712345678");
-    fireEvent.click(screen.getByRole("button", { name: /shortlist tutor/i }));
-    expect(onReview).toHaveBeenCalledWith(71, "shortlisted");
-    expect(screen.getByRole("button", { name: /decline application/i })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: /mark matched/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /confirm guardian and tutor appointment/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /cancel request/i })).toBeNull();
+    expect(screen.queryByLabelText(/cancellation reason/i)).toBeNull();
   });
 });
 

@@ -1776,9 +1776,6 @@ export const appRouter = router({
         }
         throw new TRPCError({ code: "CONFLICT", message: "This publication action is no longer available for the request." });
       }),
-    listTutorJobInterests: adminProcedure
-      .input(z.object({ tutorJobId: z.number().int().positive().optional() }))
-      .query(({ input }) => db.listTutorJobInterestsForAdmin(input)),
     reviewTutorJobInterest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive(), status: z.enum(["interested", "shortlisted", "declined", "matched"]) }))
       .mutation(async ({ ctx, input }) => {
