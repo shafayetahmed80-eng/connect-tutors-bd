@@ -59,6 +59,7 @@ import {
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
+import { jobPaymentStatusValues } from "@shared/job-payment-status";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -1595,6 +1596,21 @@ export const appRouter = router({
         pageSize: z.number().int().min(1).max(50).default(20),
       }))
       .query(({ input }) => db.listAdminAppointedJobsPage(input)),
+    /** Tuitions in the Confirmed stage, each with its Tutor, dates and payment status. */
+    listConfirmedJobs: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(100).default(""),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().min(1).max(50).default(20),
+      }))
+      .query(({ input }) => db.listAdminConfirmedJobsPage(input)),
+    setJobPaymentStatus: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive(), paymentStatus: z.enum(jobPaymentStatusValues) }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.setConfirmedJobPaymentStatus({ adminUserId: ctx.user.id, ...input });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This confirmed tuition is unavailable." });
+        return result;
+      }),
     getGuardianProfile: adminProcedure
       .input(z.object({ guardianUserId: z.number().int().positive() }))
       .query(async ({ input }) => {
