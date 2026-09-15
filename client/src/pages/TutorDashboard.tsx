@@ -16,6 +16,7 @@ import {
 import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorApplicationStatus } from "./TutorApplicationStatus";
+import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
@@ -273,6 +274,7 @@ export default function TutorDashboard() {
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });
   return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }] }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor">
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
+      {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
       {section === "profile" && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}
       {section === "preferences" && <Preferences profile={profile} navigate={navigate} />}

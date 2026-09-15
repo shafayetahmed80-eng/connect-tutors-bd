@@ -1,9 +1,11 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminTutorRows from "@/components/AdminTutorRows";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
+import StatusTabRow from "@/components/StatusTabRow";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
+import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
 import { Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
@@ -11,6 +13,7 @@ type ProfileStatus = "all" | "draft" | "pending" | "changes_requested" | "approv
 export type TutorFilters = {
   query: string;
   profileStatus: ProfileStatus;
+  jobStage: "all" | TutorApplicationStage;
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
@@ -19,17 +22,29 @@ export type TutorFilters = {
   pageSize: number;
 };
 
-export const defaultTutorFilters: TutorFilters = { query: "", profileStatus: "all", verified: "all", location: "", subject: "", tuitionType: "all", page: 1, pageSize: 20 };
+export const defaultTutorFilters: TutorFilters = { query: "", profileStatus: "all", jobStage: "all", verified: "all", location: "", subject: "", tuitionType: "all", page: 1, pageSize: 20 };
+
+/** The profile statuses, in the order the dropdown has always listed them. */
+const profileStatusTabs: Array<{ key: ProfileStatus; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending review" },
+  { key: "changes_requested", label: "Changes requested" },
+  { key: "approved", label: "Approved" },
+  { key: "suspended", label: "Suspended" },
+  { key: "draft", label: "Draft" },
+];
 
 /**
  * The filter set both Tutor lists carry - the whole directory, and the Tutors
  * who applied to one tuition. Shared so the two screens filter by the same
- * things, in the same order, with the same wording.
+ * things, in the same order, with the same wording. The directory shows its
+ * profile status as tabs instead, so it leaves the dropdown out.
  */
-export function TutorDirectoryFilters({ filters, onChange, onClear }: {
+export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileStatus = true }: {
   filters: TutorFilters;
   onChange: (change: Partial<TutorFilters>) => void;
   onClear: () => void;
+  showProfileStatus?: boolean;
 }) {
   return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
     <label className="relative sm:col-span-2">
@@ -37,7 +52,7 @@ export function TutorDirectoryFilters({ filters, onChange, onClear }: {
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
       <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
     </label>
-    <select value={filters.profileStatus} onChange={event => onChange({ profileStatus: event.target.value as ProfileStatus })} aria-label="Profile status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All profile statuses</option><option value="pending">Pending review</option><option value="changes_requested">Changes requested</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="draft">Draft</option></select>
+    {showProfileStatus ? <select value={filters.profileStatus} onChange={event => onChange({ profileStatus: event.target.value as ProfileStatus })} aria-label="Profile status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All profile statuses</option><option value="pending">Pending review</option><option value="changes_requested">Changes requested</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="draft">Draft</option></select> : null}
     <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
     <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
     <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
@@ -46,17 +61,39 @@ export function TutorDirectoryFilters({ filters, onChange, onClear }: {
   </div>;
 }
 
-/** The pager both Tutor lists carry. */
-/** Every Tutor's record, one per row. */
+/**
+ * Every Tutor's record, one per row, under two rows of counted tabs: the
+ * profile status, and the stage of the Tutor's job applications. Both narrow
+ * the list, together with the filter set.
+ */
 export function AdminTutorProfilesContent() {
   const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
-  const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize"] });
+  // The tab rows show their own choices, so the Filters badge counts the rest.
+  const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize", "profileStatus", "jobStage"] });
   const tutors = trpc.admin.listTutorDirectory.useQuery(filters);
+  const counts = tutors.data?.counts;
   const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-5 pb-10">
+    <div>
+      <StatusTabRow
+        label="Profile status"
+        items={profileStatusTabs.map(tab => ({ ...tab, count: counts?.profileStatus[tab.key] }))}
+        selected={filters.profileStatus}
+        onSelect={key => updateFilter({ profileStatus: key ?? "all" })}
+      />
+      <StatusTabRow
+        label="Job status"
+        toggle
+        compact
+        items={tutorApplicationStages.map(stage => ({ key: stage.key, label: stage.label.replace(/\s*Jobs$/, ""), wideSuffix: "Jobs", count: counts?.jobStage[stage.key] }))}
+        selected={filters.jobStage === "all" ? null : filters.jobStage}
+        onSelect={key => updateFilter({ jobStage: key ?? "all" })}
+      />
+    </div>
+
     <CollapsiblePanel title="Filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={activeFilterCount}>
-      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} />
+      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} showProfileStatus={false} />
     </CollapsiblePanel>
 
     {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profiles…</div> : null}

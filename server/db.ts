@@ -16,6 +16,7 @@ import {
 } from "@shared/tutor-profile-field-registry";
 import type { RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
+import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -4433,6 +4434,8 @@ export async function recordGuardianContactAccess(input: {
 export type AdminTutorDirectoryFilters = {
   query: string;
   profileStatus: "all" | TutorProfileStatus;
+  /** Tutors with at least one application in this stage. */
+  jobStage: "all" | TutorApplicationStage;
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
@@ -4441,9 +4444,35 @@ export type AdminTutorDirectoryFilters = {
   pageSize: number;
 };
 
+/**
+ * A Tutor with at least one application in this stage: the SQL twin of
+ * `getTutorApplicationStage`, which the Tutor's own Status tab counts with.
+ * Keep the two in step.
+ *
+ * Every name is written out in full - see `outerId` - because the subquery
+ * joins three tables that each have an `id` of their own.
+ */
+export function tutorJobStageCondition(stage: TutorApplicationStage): SQL {
+  const q = (table: MySqlTable, column: { name: string }) => `\`${getTableName(table)}\`.\`${column.name}\``;
+  const status = q(tutorJobInterests, tutorJobInterests.status);
+  const confirmedAt = q(tutorRequests, tutorRequests.appointmentConfirmedAt);
+  const rule: Record<TutorApplicationStage, string> = {
+    applied: `${status} = 'interested'`,
+    shortlisted: `${status} = 'shortlisted'`,
+    appointed: `${status} = 'matched' and ${confirmedAt} is null`,
+    confirmed: `${status} = 'matched' and ${confirmedAt} is not null`,
+    cancelled: `${status} in ('declined', 'withdrawn')`,
+  };
+  const from = `\`${getTableName(tutorJobInterests)}\``
+    + ` inner join \`${getTableName(tutorJobs)}\` on ${q(tutorJobs, tutorJobs.id)} = ${q(tutorJobInterests, tutorJobInterests.tutorJobId)}`
+    + ` inner join \`${getTableName(tutorRequests)}\` on ${q(tutorRequests, tutorRequests.id)} = ${q(tutorJobs, tutorJobs.tutorRequestId)}`;
+  return sql`exists (select 1 from ${sql.raw(from)} where ${sql.raw(q(tutorJobInterests, tutorJobInterests.tutorId))} = ${outerId(tutors)} and ${sql.raw(rule[stage])})`;
+}
+
 function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   const conditions: SQL[] = [];
   if (filters.profileStatus !== "all") conditions.push(eq(tutors.profileStatus, filters.profileStatus));
+  if (filters.jobStage !== "all") conditions.push(tutorJobStageCondition(filters.jobStage));
   if (filters.verified === "verified") conditions.push(eq(tutors.verified, 1));
   if (filters.verified === "unverified") conditions.push(eq(tutors.verified, 0));
   if (filters.tuitionType !== "all") conditions.push(eq(tutors.mode, filters.tuitionType));
@@ -4568,7 +4597,38 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
   const total = Number(totals[0]?.value ?? 0);
 
   const items = await enrichAdminTutorDirectoryRows(database, rows);
-  return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+
+  // The two tab rows over the list. Each counts across every other filter and
+  // leaves its own choice out, so a row keeps showing where the rest are.
+  const statusRows = await database
+    .select({ status: tutors.profileStatus, value: count() })
+    .from(tutors)
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .where(and(...getAdminTutorDirectoryConditions({ ...filters, profileStatus: "all" })))
+    .groupBy(tutors.profileStatus);
+  const profileStatus: Record<"all" | TutorProfileStatus, number> = { all: 0, draft: 0, pending: 0, changes_requested: 0, approved: 0, suspended: 0 };
+  for (const row of statusRows) {
+    profileStatus[row.status] = Number(row.value);
+    profileStatus.all += Number(row.value);
+  }
+  const stageTotals = await Promise.all(tutorApplicationStages.map(async stage => {
+    const [row] = await database
+      .select({ value: count() })
+      .from(tutors)
+      .leftJoin(locations, eq(tutors.locationId, locations.id))
+      .where(and(...getAdminTutorDirectoryConditions({ ...filters, jobStage: stage.key })));
+    return [stage.key, Number(row?.value ?? 0)] as const;
+  }));
+  const jobStage = Object.fromEntries(stageTotals) as Record<TutorApplicationStage, number>;
+
+  return {
+    items,
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+    counts: { profileStatus, jobStage },
+  };
 }
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };

@@ -29,6 +29,8 @@ vi.mock("@/lib/trpc", () => ({
       upsertProfile: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
     },
     tutorRequests: { assigned: { useQuery: () => ({ data: [], isLoading: false }) } },
+    // The Dashboard's stage buttons count the Tutor's own applications.
+    jobBoard: { myInterests: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     locations: { list: { useQuery: () => ({ data: [] }) } },
     // The dashboard sidebar reads its Admin-editable labels through this.
     siteContent: {
@@ -94,12 +96,15 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
     expect(screen.getByText("Preparing your Tutor workspace")).not.toBeNull();
   });
 
-  it("keeps the protected shell but renders no current overview content on the Dashboard tab", () => {
+  it("keeps the protected shell and leads the Dashboard tab with the application stage buttons, and no old overview", () => {
     window.history.pushState({}, "", "/tutor/dashboard");
 
     render(<TutorDashboard />);
 
     expect(screen.getAllByText("Test Tutor").length).toBeGreaterThan(0);
+    const stages = screen.getByRole("navigation", { name: "Application stages" });
+    expect(stages.querySelectorAll("a")).toHaveLength(5);
+    expect(stages.querySelector("a")?.getAttribute("href")).toBe("/tutor/dashboard/status?stage=applied");
     expect(screen.getAllByText("Tutor ID preparing").length).toBeGreaterThan(0);
     expect(screen.queryByText("Profile status")).toBeNull();
     expect(screen.queryByText("Verification")).toBeNull();

@@ -20,7 +20,7 @@ const job = (over: Record<string, unknown>) => ({
   budgetAmount: 6000, ...over,
 });
 
-afterEach(() => { cleanup(); applications.current = []; applications.isLoading = false; applications.isError = false; });
+afterEach(() => { cleanup(); applications.current = []; applications.isLoading = false; applications.isError = false; window.history.replaceState(null, "", "/"); });
 
 describe("the Tutor's Status tab", () => {
   it("names all five stages and counts each, zero-padded like the Guardian's", () => {
@@ -52,6 +52,25 @@ describe("the Tutor's Status tab", () => {
 
     expect(screen.getByText(/CT-J-2002/)).toBeTruthy();
     expect(screen.queryByText(/CT-J-1001/)).toBeNull();
+  });
+
+  it("opens on the stage a Dashboard button asked for", () => {
+    window.history.replaceState(null, "", "/tutor/dashboard/status?stage=cancelled");
+    applications.current = [
+      job({ interestId: 1, publicJobId: "CT-J-1001" }),
+      job({ interestId: 2, publicJobId: "CT-J-2002", status: "declined" }),
+    ];
+    render(<TutorApplicationStatus />);
+
+    expect(screen.getByRole("tab", { name: /Cancelled Jobs/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/CT-J-2002/)).toBeTruthy();
+    expect(screen.queryByText(/CT-J-1001/)).toBeNull();
+  });
+
+  it("ignores a stage it does not know and opens on Applied", () => {
+    window.history.replaceState(null, "", "/tutor/dashboard/status?stage=hired");
+    render(<TutorApplicationStatus />);
+    expect(screen.getByRole("tab", { name: /Applied Jobs/ }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("says which stage is empty rather than showing a blank panel", async () => {
