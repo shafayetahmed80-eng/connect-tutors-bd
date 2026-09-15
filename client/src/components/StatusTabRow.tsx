@@ -13,13 +13,13 @@ export type StatusTabItem<K extends string> = {
  * A plain row is a tablist: one stage is always chosen. A `toggle` row has no
  * "All" of its own - choosing the chosen stage again clears it.
  *
- * On a phone every row stays one line: tight 10px text, so the five job
- * stages fit a 375px screen, and sideways scrolling for a row that still does
- * not. From `sm` up it wraps at its full size. The line under the tabs is drawn
- * by the inner row, not the scrolling box, so the chosen tab's underline is not
+ * On a phone every row stays one line: tight 10px text, so five stages fit a
+ * 375px screen, and sideways scrolling for a row that still does not. From
+ * `sm` up it wraps at its full size. The line under the tabs is drawn by the
+ * inner row, not the scrolling box, so the chosen tab's underline is not
  * clipped by the scroll.
  */
-export default function StatusTabRow<K extends string>({ label, items, selected, onSelect, toggle = false, compact = false }: {
+export default function StatusTabRow<K extends string>({ label, items, selected, onSelect, toggle = false, compact = false, flush = false }: {
   label: string;
   items: Array<StatusTabItem<K>>;
   selected: K | null;
@@ -27,12 +27,17 @@ export default function StatusTabRow<K extends string>({ label, items, selected,
   toggle?: boolean;
   /** A second row under a first: smaller text on a lighter line. */
   compact?: boolean;
+  /**
+   * The row shares a bottom line with controls beside it from `sm` up, so it
+   * draws its own line only on a phone, where those controls drop below it.
+   */
+  flush?: boolean;
 }) {
   return <div className="overflow-x-auto [scrollbar-width:none] sm:overflow-visible [&::-webkit-scrollbar]:hidden">
     <div
       role={toggle ? "group" : "tablist"}
       aria-label={label}
-      className={`flex w-max min-w-full flex-nowrap items-end gap-2 border-b sm:w-auto sm:flex-wrap ${compact ? "border-[#e8f0f5] sm:gap-4" : "border-[#dce9f1] sm:gap-5"}`}
+      className={`flex w-max min-w-full flex-nowrap items-end gap-2 border-b sm:w-auto sm:flex-wrap ${flush ? "sm:border-b-0" : ""} ${compact ? "border-[#e8f0f5] sm:gap-4" : "border-[#dce9f1] sm:gap-5"}`}
     >
       {items.map(item => {
         const chosen = item.key === selected;
