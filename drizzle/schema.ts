@@ -88,6 +88,8 @@ export const guardianRequestNotificationTypeValues = [
   "lifecycle",
   "follow_up",
   "confirmation_letter_issued",
+  /** An Admin verified the Guardian's profile, or did not; carries no tuition. */
+  "verification",
 ] as const;
 export type GuardianRequestNotificationType = (typeof guardianRequestNotificationTypeValues)[number];
 
@@ -1380,7 +1382,8 @@ export const guardianRequestNotifications = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     guardianUserId: int("guardianUserId").notNull(),
-    tutorRequestId: int("tutorRequestId").notNull(),
+    /** Null only for a notice about the Guardian rather than one of their tuitions. */
+    tutorRequestId: int("tutorRequestId"),
     type: mysqlEnum("type", guardianRequestNotificationTypeValues).notNull(),
     followUpKind: mysqlEnum("followUpKind", guardianRequestFollowUpKindValues),
     title: varchar("title", { length: 120 }).notNull(),

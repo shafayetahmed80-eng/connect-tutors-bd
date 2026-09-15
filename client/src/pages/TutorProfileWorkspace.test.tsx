@@ -10,6 +10,8 @@ const trpcMocks = vi.hoisted(() => ({
   submitProfile: vi.fn(),
   searchBangladeshLocations: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
   searchRegistrationLocations: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
+  searchUniversities: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
+  searchFacultyDepartments: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
 }));
 
 vi.mock("@/lib/trpc", () => {
@@ -33,8 +35,8 @@ vi.mock("@/lib/trpc", () => {
       // No data means the shipped field defaults, which is what these tests expect.
       tutorProfileFieldConfig: { resolved: { useQuery: () => ({ data: undefined }) } },
       catalog: {
-        searchUniversities: { useQuery: emptyQuery },
-        searchFacultyDepartments: { useQuery: emptyQuery },
+        searchUniversities: { useQuery: trpcMocks.searchUniversities },
+        searchFacultyDepartments: { useQuery: trpcMocks.searchFacultyDepartments },
         searchSubjects: { useQuery: emptyQuery },
         searchClassLevels: { useQuery: emptyQuery },
         searchCurricula: { useQuery: emptyQuery },
@@ -574,6 +576,39 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
 
     // The read view must keep showing the label, not fall back to "Not given".
     expect(within(tabPanel).getByText("Dhaka")).toBeTruthy();
+  });
+
+  it("keeps the Institute and Department read-out labels once their own search boxes re-search with the chosen names", async () => {
+    // A real catalog search is a `%query%` match on the name, so the chosen
+    // name itself still finds its row - unlike a location's "Label · type".
+    trpcMocks.searchUniversities.mockImplementation(({ query }: { query: string }) => ({
+      data: "University of Dhaka".includes(query) ? [{ id: 1, name: "University of Dhaka" }] : [],
+    }));
+    trpcMocks.searchFacultyDepartments.mockImplementation(({ query }: { query: string }) => ({
+      data: "Physics".includes(query) ? [{ id: 1, name: "Physics" }] : [],
+    }));
+
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    const tabPanel = screen.getByRole("tabpanel");
+    expect(await within(tabPanel).findByText("University of Dhaka")).toBeTruthy();
+    expect(within(tabPanel).getByText("Physics")).toBeTruthy();
+
+    // Opening the editor mounts both boxes, which seed their text from the
+    // chosen names and search the catalog with that literal text.
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    await waitFor(() => expect(trpcMocks.searchUniversities).toHaveBeenCalledWith(expect.objectContaining({ query: "University of Dhaka" })));
+    await waitFor(() => expect(trpcMocks.searchFacultyDepartments).toHaveBeenCalledWith(expect.objectContaining({ query: "Physics" })));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+
+    // The read view keeps both names instead of falling back to "Not given".
+    expect(within(tabPanel).getByText("University of Dhaka")).toBeTruthy();
+    expect(within(tabPanel).getByText("Physics")).toBeTruthy();
+
+    trpcMocks.searchUniversities.mockImplementation(() => ({ data: [] }));
+    trpcMocks.searchFacultyDepartments.mockImplementation(() => ({ data: [] }));
   });
 
   it("scopes teaching-area catalog requests to a selected city parent", async () => {

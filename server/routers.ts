@@ -1806,12 +1806,12 @@ export const appRouter = router({
       .query(({ input }) => db.listTutorRequestPublicationEvents(input.requestId)),
     assignTutorRequest: adminProcedure
       .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32) }))
-      .mutation(async ({ input }) => {
-        const result = await db.assignTutorToRequest(input);
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.assignTutorToRequest({ ...input, adminUserId: ctx.user.id });
         if (!result.assigned) {
           throw new TRPCError({ code: "CONFLICT", message: result.reason === "tutor-unavailable" ? "এই Tutor বর্তমানে manual matching-এর জন্য অনুমোদিত নয়।" : "এই request ইতিমধ্যে assign করা হয়েছে বা আর active নেই।" });
         }
-        return { ...result, contactConsent: "pending" as const };
+        return result;
       }),
     addTutorRequestAssignmentNote: adminProcedure
       .input(z.object({
