@@ -4445,14 +4445,18 @@ export async function listTutorModerationEvents(tutorId: string) {
     .select({
       id: tutorProfileModerationEvents.id,
       adminUserId: tutorProfileModerationEvents.adminUserId,
+      // The name the history reads; the id stays for the audit trail.
+      adminName: users.name,
       previousStatus: tutorProfileModerationEvents.previousStatus,
       nextStatus: tutorProfileModerationEvents.nextStatus,
       reason: tutorProfileModerationEvents.reason,
       createdAt: tutorProfileModerationEvents.createdAt,
     })
     .from(tutorProfileModerationEvents)
+    .leftJoin(users, eq(users.id, tutorProfileModerationEvents.adminUserId))
     .where(eq(tutorProfileModerationEvents.tutorId, tutorId))
-    .orderBy(desc(tutorProfileModerationEvents.createdAt));
+    // Decisions a moment apart share a timestamp; the id keeps them in order.
+    .orderBy(desc(tutorProfileModerationEvents.createdAt), desc(tutorProfileModerationEvents.id));
 }
 
 /**

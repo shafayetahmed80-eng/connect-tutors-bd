@@ -15,6 +15,10 @@ const ALLOWED_TRANSITIONS: ReadonlySet<string> = new Set([
   "pending:changes_requested",
   "pending:suspended",
   "approved:suspended",
+  // An approved profile can go back to the Tutor to correct something.
+  "approved:changes_requested",
+  // A profile waiting on the Tutor's corrections can still be suspended; approving it waits for the resubmission.
+  "changes_requested:suspended",
   // Lifting a suspension: straight back to approved, or back to the Tutor to fix first.
   "suspended:approved",
   "suspended:changes_requested",

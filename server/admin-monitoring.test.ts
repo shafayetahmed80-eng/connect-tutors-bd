@@ -17,6 +17,19 @@ describe("Tutor moderation rules", () => {
     expect(validateTutorModerationAction({ from: "pending", to: "approved", reason: "Optional review note" })).toEqual({ valid: true });
   });
 
+  it("lets an Admin send an approved profile back to the Tutor for changes, with a reason", () => {
+    expect(validateTutorModerationAction({ from: "approved", to: "changes_requested" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
+    expect(validateTutorModerationAction({ from: "approved", to: "changes_requested", reason: "Your University ID has expired" })).toEqual({ valid: true });
+    expect(validateTutorModerationAction({ from: "approved", to: "approved" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
+  });
+
+  it("lets an Admin suspend a profile that is waiting on the Tutor's changes, with a reason", () => {
+    expect(validateTutorModerationAction({ from: "changes_requested", to: "suspended" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
+    expect(validateTutorModerationAction({ from: "changes_requested", to: "suspended", reason: "The University ID is not genuine" })).toEqual({ valid: true });
+    // Approval still waits for the Tutor to resubmit.
+    expect(validateTutorModerationAction({ from: "changes_requested", to: "approved" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
+  });
+
   it("lets an Admin lift a suspension, straight back to approved or back to the Tutor for changes", () => {
     expect(validateTutorModerationAction({ from: "suspended", to: "approved" })).toEqual({ valid: true });
     expect(validateTutorModerationAction({ from: "suspended", to: "changes_requested" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
