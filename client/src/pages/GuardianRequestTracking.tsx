@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import JobCard, { DetailsAction } from "@/components/JobCard";
 import { PostAnotherRequestButton } from "@/components/PostAnotherRequestButton";
+import StatusTabRow from "@/components/StatusTabRow";
 import JobDetailsModal from "@/components/JobDetailsModal";
 import { formatPostedDate } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
@@ -125,24 +126,17 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
     {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
       {/* No page hero: the workspace header already names this screen, and the
           five stages carry the counts that the old summary cards showed. */}
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dce9f1]">
-        <div role="tablist" aria-label="Request stages" className="flex flex-wrap items-end gap-5">
-          {guardianLifecycleSteps.map(step => {
-            const selected = step.key === activeStage;
-            return <button
-              key={step.key}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => { setActiveStage(step.key); setExpandedId(null); }}
-              className={`relative pb-2.5 pt-1.5 text-xs font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
-            >
-              {step.label} <span className={`ml-1 tabular-nums ${selected ? "text-[#1267c8]" : "text-j-ink-faint"}`}>{String(counts[step.key]).padStart(2, "0")}</span>
-              {selected ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
-            </button>;
-          })}
-        </div>
-        <PostAnotherRequestButton href="/guardian/dashboard/hire" variant="solid" className="mb-2" />
+      {/* On a phone the stages keep one line of their own and the button drops
+          beneath them; from `sm` the two share one bottom line. */}
+      <div className="flex flex-col gap-3 border-[#dce9f1] sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:border-b">
+        <StatusTabRow
+          label="Request stages"
+          flush
+          items={guardianLifecycleSteps.map(step => ({ ...step, count: counts[step.key] }))}
+          selected={activeStage}
+          onSelect={key => { if (key) { setActiveStage(key); setExpandedId(null); } }}
+        />
+        <PostAnotherRequestButton href="/guardian/dashboard/hire" variant="solid" className="self-start sm:mb-2" />
       </div>
 
       {requestsQuery.isLoading ? <div className="mt-5"><GuardianWorkspaceSkeleton label="Loading your private tutor requests" /></div> : null}

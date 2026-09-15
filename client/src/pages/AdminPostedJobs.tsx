@@ -2,6 +2,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminAddTuitionModal, { type AdminTuitionDraft } from "@/components/AdminAddTuitionModal";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import PostTypeBadge from "@/components/PostTypeBadge";
+import StatusTabRow from "@/components/StatusTabRow";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
 import JobDetailsModal, { JobDetailRow } from "@/components/JobDetailsModal";
@@ -82,24 +83,17 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
   const changeStage = (next: StageKey) => { setStage(next); setPage(1); setExpandedId(null); };
 
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dce9f1]">
-      <div role="tablist" aria-label="Request stages" className="flex flex-wrap items-end gap-5">
-        {stages.map(step => {
-          const selected = step.key === stage;
-          return <button
-            key={step.key}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => changeStage(step.key)}
-            className={`relative pb-2.5 pt-1.5 text-xs font-semibold transition-colors ${selected ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
-          >
-            {step.label} <span className={`ml-1 tabular-nums ${selected ? "text-[#1267c8]" : "text-j-ink-faint"}`}>{String(counts?.[step.key] ?? 0).padStart(2, "0")}</span>
-            {selected ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
-          </button>;
-        })}
-      </div>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
+    {/* On a phone the stages keep one line of their own, and search and Add
+        Tuition drop beneath them; from `sm` the three share one bottom line. */}
+    <div className="flex flex-col gap-3 border-[#dce9f1] sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:border-b">
+      <StatusTabRow
+        label="Request stages"
+        flush
+        items={stages.map(step => ({ ...step, count: counts?.[step.key] }))}
+        selected={stage}
+        onSelect={key => { if (key) changeStage(key); }}
+      />
+      <div className="flex flex-wrap items-center gap-2 sm:mb-2">
         <label className="relative">
           <span className="sr-only">Search posted jobs</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />

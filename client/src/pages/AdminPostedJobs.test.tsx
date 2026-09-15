@@ -95,6 +95,8 @@ describe("Admin Posted jobs board", () => {
     expect(screen.getByRole("tab", { name: /Pending/ }).textContent).toContain("04");
     expect(screen.getByRole("tab", { name: /Live/ }).textContent).toContain("09");
     expect(screen.getByRole("button", { name: /Add Tuition/ })).toBeTruthy();
+    // On a phone the five stages keep one line.
+    expect(screen.getByRole("tablist", { name: "Request stages" }).className).toContain("flex-nowrap");
   });
 
   it("asks the server for the chosen stage and the typed search", async () => {
