@@ -1,7 +1,7 @@
 import { LabelIcon, RecordIcon } from "@/components/recordIcons";
 import StatusTabRow from "@/components/StatusTabRow";
 import { trpc } from "@/lib/trpc";
-import { formatTuitionType } from "@shared/job-card";
+import { formatSubjects, formatTuitionType } from "@shared/job-card";
 import {
   countTutorApplicationStages,
   filterTutorApplicationsByStage,
@@ -83,7 +83,7 @@ export function TutorApplicationStatus() {
           </p>
         </div>
         <h3 className="mt-1.5 text-base font-bold text-j-ink">{application.classCourse} · {application.category}</h3>
-        <p className="mt-1 text-sm text-j-ink-soft">{application.subjects}</p>
+        <p className="mt-1 text-sm text-j-ink-soft">{formatSubjects(application.subjects)}</p>
         <div className="mt-4 grid gap-3 border-t border-[#e8f0f5] pt-4 sm:grid-cols-4">
           <Fact label="Tuition type" value={formatTuitionType(application.tuitionType)} />
           <Fact label="Location" value={application.locationLabel ?? "Not set"} />
