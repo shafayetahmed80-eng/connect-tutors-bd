@@ -62,8 +62,9 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const review = trpc.admin.reviewTutorJobInterest.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const confirmTutor = trpc.admin.confirmTutorRequestAppointment.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const removeTutor = trpc.admin.reopenAppointedTuition.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
-  const [deciding, setDeciding] = useState<{ tutor: AdminTutorRow; action: "appoint" | "confirm" | "remove_appointed" } | null>(null);
-  const actionPending = review.isPending || confirmTutor.isPending || removeTutor.isPending;
+  const removeConfirmed = trpc.admin.removeConfirmedTutor.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
+  const [deciding, setDeciding] = useState<{ tutor: AdminTutorRow; action: "appoint" | "confirm" | "remove_appointed" | "remove_confirmed" } | null>(null);
+  const actionPending = review.isPending || confirmTutor.isPending || removeTutor.isPending || removeConfirmed.isPending;
   const settle = (message: string) => { setDeciding(null); refresh(); toast.success(message); };
   const rowActions: AdminApplicantRowActions = {
     busy: actionPending,
@@ -73,10 +74,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       holdsTuition: tutor.id === job.appointedTutorId,
       tutorApproved: tutor.profileStatus === "approved",
     }).filter(({ action }) =>
-      // Removing a Confirmed Tutor is not offered yet.
-      action !== "remove_confirmed"
       // A Guardian's waiting request is answered by Approve beside it, which appoints the same way.
-      && !(action === "appoint" && tutor.appointmentRequestedAt)),
+      !(action === "appoint" && tutor.appointmentRequestedAt)),
     onAction: (tutor, action) => {
       if (action === "shortlist" || action === "unshortlist") {
         if (!tutor.interestId) return;
@@ -84,7 +83,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           { interestId: tutor.interestId, status: action === "shortlist" ? "shortlisted" : "interested" },
           { onSuccess: () => { refresh(); toast.success(action === "shortlist" ? `${tutor.name} is shortlisted.` : `${tutor.name} is off the shortlist.`); } },
         );
-      } else if (action === "appoint" || action === "confirm" || action === "remove_appointed") {
+      } else {
         setDeciding({ tutor, action });
       }
     },
@@ -98,6 +97,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       confirmTutor.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is confirmed.`) });
     } else if (action === "remove_appointed") {
       removeTutor.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is removed. The tuition is Live again.`) });
+    } else if (action === "remove_confirmed") {
+      removeConfirmed.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is removed. The tuition is Live again.`) });
     }
   };
 
@@ -179,7 +180,9 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           ? "The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class."
           : deciding.action === "confirm"
             ? "The Guardian keeps the Tutor. The tuition leaves the Job Board."
-            : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
+            : deciding.action === "remove_confirmed"
+              ? "The Tutor is removed and told. The tuition goes back on the Job Board, its payment status starts again at Full Due, and the Guardian can appoint another applicant."
+              : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setDeciding(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
@@ -187,7 +190,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           type="button"
           disabled={actionPending}
           onClick={decide}
-          className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
+          className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" || deciding.action === "remove_confirmed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
         >{actionPending
           ? (deciding.action === "appoint" ? "Appointing…" : deciding.action === "confirm" ? "Confirming…" : "Removing…")
           : (deciding.action === "appoint" ? "Appoint" : deciding.action === "confirm" ? "Confirm" : "Remove Tutor")}</button>

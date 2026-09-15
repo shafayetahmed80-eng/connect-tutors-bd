@@ -3,6 +3,7 @@ import {
   appointmentConfirmedTutorNotification,
   appointmentEndedTutorNotification,
   canReopenAppointedTuition,
+  canReopenConfirmedTuition,
 } from "./appointed-tuition";
 
 describe("sending a tuition back to Live", () => {
@@ -10,6 +11,13 @@ describe("sending a tuition back to Live", () => {
     expect(canReopenAppointedTuition("appointed")).toBe(true);
     for (const lifecycle of ["pending", "live", "confirmed", "cancelled"] as const) {
       expect(canReopenAppointedTuition(lifecycle), lifecycle).toBe(false);
+    }
+  });
+
+  it("takes a Confirmed tuition back only through its own removal", () => {
+    expect(canReopenConfirmedTuition("confirmed")).toBe(true);
+    for (const lifecycle of ["pending", "live", "appointed", "cancelled"] as const) {
+      expect(canReopenConfirmedTuition(lifecycle), lifecycle).toBe(false);
     }
   });
 });

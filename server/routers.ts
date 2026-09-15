@@ -1720,6 +1720,16 @@ export const appRouter = router({
         if (result.outcome === "not_holder") throw new TRPCError({ code: "CONFLICT", message: NOT_HOLDER_MESSAGE });
         return { reopened: true as const };
       }),
+    /** From Applied Tutors: the Guardian did not keep a Confirmed Tutor after all. */
+    removeConfirmedTutor: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.removeConfirmedTutorByAdmin({ ...input, adminUserId: ctx.user.id });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor Request is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: "Only a Confirmed tuition can have its Tutor removed here." });
+        if (result.outcome === "not_holder") throw new TRPCError({ code: "CONFLICT", message: NOT_HOLDER_MESSAGE });
+        return { reopened: true as const };
+      }),
     createConfirmationLetterDraft: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {

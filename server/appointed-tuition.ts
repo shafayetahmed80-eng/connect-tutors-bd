@@ -15,6 +15,11 @@ export function canReopenAppointedTuition(lifecycle: GuardianRequestLifecycle): 
   return lifecycle === "appointed";
 }
 
+/** A Confirmed tuition goes back to Live only from Applied Tutors, when the Guardian did not keep its Tutor after all. */
+export function canReopenConfirmedTuition(lifecycle: GuardianRequestLifecycle): boolean {
+  return lifecycle === "confirmed";
+}
+
 /** The Tutor, when the Guardian keeps them. */
 export function appointmentConfirmedTutorNotification(jobId: string) {
   return {

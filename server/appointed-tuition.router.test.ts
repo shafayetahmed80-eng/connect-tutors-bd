@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 const dbMocks = vi.hoisted(() => ({
   reopenAppointedTuitionByAdmin: vi.fn(),
+  removeConfirmedTutorByAdmin: vi.fn(),
   confirmTutorRequestAppointment: vi.fn(),
 }));
 
@@ -68,10 +69,34 @@ describe("moving an Appointed tuition on", () => {
     expect(dbMocks.reopenAppointedTuitionByAdmin).toHaveBeenLastCalledWith({ requestId: 13, tutorId: "tutor-404", adminUserId: 42 });
   });
 
+  it("removes a Confirmed Tutor, named by the Admin's page, as the signed-in Admin", async () => {
+    dbMocks.removeConfirmedTutorByAdmin.mockResolvedValue({ outcome: "reopened", removedTutorId: "tutor-404" });
+    await expect(createCaller().admin.removeConfirmedTutor({ requestId: 13, tutorId: "tutor-404" })).resolves.toEqual({ reopened: true });
+    expect(dbMocks.removeConfirmedTutorByAdmin).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404", adminUserId: 42 });
+    // It is not the Appointed removal.
+    expect(dbMocks.reopenAppointedTuitionByAdmin).not.toHaveBeenCalled();
+
+    dbMocks.removeConfirmedTutorByAdmin.mockResolvedValue({ outcome: "refused" });
+    await expect(createCaller().admin.removeConfirmedTutor({ requestId: 13, tutorId: "tutor-404" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "Only a Confirmed tuition can have its Tutor removed here." });
+    dbMocks.removeConfirmedTutorByAdmin.mockResolvedValue({ outcome: "not_holder" });
+    await expect(createCaller().admin.removeConfirmedTutor({ requestId: 13, tutorId: "tutor-404" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "This tuition is no longer appointed to this Tutor." });
+    dbMocks.removeConfirmedTutorByAdmin.mockResolvedValue({ outcome: "not_found" });
+    await expect(createCaller().admin.removeConfirmedTutor({ requestId: 999, tutorId: "tutor-404" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("needs the Tutor named to remove a Confirmed one", async () => {
+    await expect(createCaller().admin.removeConfirmedTutor({ requestId: 13 } as never)).rejects.toThrow();
+    expect(dbMocks.removeConfirmedTutorByAdmin).not.toHaveBeenCalled();
+  });
+
   it("is closed to anyone who is not an Admin", async () => {
     for (const user of [null, { ...admin, role: "guardian" as const, openId: "guardian-1" }]) {
       await expect(createCaller(user).admin.reopenAppointedTuition({ requestId: 13 })).rejects.toBeTruthy();
+      await expect(createCaller(user).admin.removeConfirmedTutor({ requestId: 13, tutorId: "tutor-404" })).rejects.toBeTruthy();
     }
     expect(dbMocks.reopenAppointedTuitionByAdmin).not.toHaveBeenCalled();
+    expect(dbMocks.removeConfirmedTutorByAdmin).not.toHaveBeenCalled();
   });
 });

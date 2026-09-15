@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   review: vi.fn(),
   confirm: vi.fn(),
   reopen: vi.fn(),
+  removeConfirmed: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
   live: {
@@ -76,6 +77,7 @@ vi.mock("@/lib/trpc", () => ({
       reviewTutorJobInterest: { useMutation: () => ({ mutate: mocks.review, isPending: false }) },
       confirmTutorRequestAppointment: { useMutation: () => ({ mutate: mocks.confirm, isPending: false }) },
       reopenAppointedTuition: { useMutation: () => ({ mutate: mocks.reopen, isPending: false }) },
+      removeConfirmedTutor: { useMutation: () => ({ mutate: mocks.removeConfirmed, isPending: false }) },
       listAppliedTutors: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -295,7 +297,7 @@ describe("Admin Applied Tutors page", () => {
     mocks.data.job = original;
   });
 
-  it("offers nothing more once the tuition is Confirmed", () => {
+  it("on a Confirmed tuition, only removes its Tutor, after a confirmation", () => {
     const original = mocks.data.job;
     mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404", appointmentConfirmedAt: new Date("2026-09-14T08:00:00.000Z") } as never;
     mocks.data.items = [
@@ -303,7 +305,19 @@ describe("Admin Applied Tutors page", () => {
       { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "matched" as const },
     ];
     render(<AdminAppliedTutorsContent requestId={13} />);
-    for (const row of screen.getAllByRole("row").slice(1)) expect(within(row).queryAllByRole("button")).toHaveLength(0);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).queryAllByRole("button")).toHaveLength(0);
+    expect(within(rows[1]).getAllByRole("button").map(button => button.textContent)).toEqual(["Remove Tutor"]);
+
+    fireEvent.click(within(rows[1]).getByRole("button", { name: "Remove Tanvir Ahmed from this tuition" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/payment status starts again at Full Due/)).toBeTruthy();
+    expect(mocks.removeConfirmed).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove Tutor" }));
+    expect(mocks.removeConfirmed).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-404" }, expect.anything());
+    // Not the Appointed removal: that one leaves a closed listing closed.
+    expect(mocks.reopen).not.toHaveBeenCalled();
     mocks.data.job = original;
   });
 
