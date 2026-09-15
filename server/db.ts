@@ -99,7 +99,7 @@ import {
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
-import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition } from "./appointed-tuition";
+import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition, canReopenConfirmedTuition } from "./appointed-tuition";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
@@ -5530,12 +5530,29 @@ export async function declineAppointmentRequestByAdmin(input: { adminUserId: num
  * tuition. The Job Board listing was never taken down while Appointed, so it
  * stays as it is. The Tutor and the Guardian are both told.
  */
-export async function reopenAppointedTuitionByAdmin(input: {
+export function reopenAppointedTuitionByAdmin(input: {
   requestId: number;
   adminUserId: number;
   /** When given, only that Tutor is removed - a stale page cannot remove whoever holds it now. */
   tutorId?: string;
 }) {
+  return reopenHeldTuitionByAdmin(input, "appointed");
+}
+
+/**
+ * Removes the Tutor from a Confirmed tuition, from Applied Tutors, when the
+ * Guardian did not keep them after all.
+ *
+ * What confirming did is undone first: the listing it closed goes back on the
+ * Job Board for a full run, any confirmation letter is superseded, the payment
+ * status starts again at Full Due, and the Tutor's Verified mark is worked out
+ * afresh. The rest is the Appointed removal - application declined, both told.
+ */
+export function removeConfirmedTutorByAdmin(input: { requestId: number; adminUserId: number; tutorId: string }) {
+  return reopenHeldTuitionByAdmin(input, "confirmed");
+}
+
+async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId: number; tutorId?: string }, stage: "appointed" | "confirmed") {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
@@ -5553,26 +5570,49 @@ export async function reopenAppointedTuitionByAdmin(input: {
       .limit(1)
       .for("update");
     if (!request) return { outcome: "not_found" as const };
-    if (!canReopenAppointedTuition(getGuardianRequestLifecycle(request)) || !request.tutorId) return { outcome: "refused" as const };
+    const lifecycle = getGuardianRequestLifecycle(request);
+    const allowed = stage === "confirmed" ? canReopenConfirmedTuition(lifecycle) : canReopenAppointedTuition(lifecycle);
+    if (!allowed || !request.tutorId) return { outcome: "refused" as const };
     if (input.tutorId && request.tutorId !== input.tutorId) return { outcome: "not_holder" as const };
     const removedTutorId = request.tutorId;
+    const confirmed = stage === "confirmed";
 
     const now = new Date();
     await tx.update(tutorRequests)
-      .set({ tutorId: null, status: "reviewing", contactConsent: "not_required", appointedAt: null, lastActivityAt: now })
+      .set({
+        tutorId: null, status: "reviewing", contactConsent: "not_required", appointedAt: null, lastActivityAt: now,
+        ...(confirmed ? { appointmentConfirmedAt: null, paymentStatus: "full_due" as const } : {}),
+      })
       .where(eq(tutorRequests.id, request.id));
+    const changedFields = confirmed ? ["tutor_removed", "confirmation_removed", "live_again"] : ["tutor_removed", "live_again"];
     const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
     if (job) {
       await tx.update(tutorJobInterests)
         .set({ status: "declined", appointmentRequestedAt: null })
         .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, removedTutorId)));
+      if (confirmed) {
+        // Confirming took the listing down; it goes back up for a full run, not the rest of the old one.
+        const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
+        const reopened = await tx.update(tutorJobs)
+          .set({ publicationStatus: "published", deactivatedAt: null, expiresAt: addDays(now, jobExpiryDays) })
+          .where(and(eq(tutorJobs.id, job.id), eq(tutorJobs.publicationStatus, "closed")));
+        if (reopened[0].affectedRows) changedFields.push("job_board_listing_reopened");
+      }
+    }
+    if (confirmed) {
+      const superseded = await tx.update(confirmationLetters)
+        .set({ status: "superseded", supersededAt: now, revisionReason: "Tutor removed by Admin" })
+        .where(and(eq(confirmationLetters.tutorRequestId, request.id), inArray(confirmationLetters.status, ["draft", "issued"])));
+      if (superseded[0].affectedRows) changedFields.push("confirmation_letter_superseded");
+      // This may have been the Tutor's last Confirmed tuition.
+      await refreshTutorVerification(tx, removedTutorId);
     }
     await tx.insert(tutorRequestOperationEvents).values({
       tutorRequestId: request.id,
       guardianUserId: request.guardianUserId,
       actorUserId: input.adminUserId,
       action: "admin_reopened",
-      changedFields: JSON.stringify(["tutor_removed", "live_again"]),
+      changedFields: JSON.stringify(changedFields),
     });
 
     const tutorNote = appointmentEndedTutorNotification(jobIdForRequest(request.id));
