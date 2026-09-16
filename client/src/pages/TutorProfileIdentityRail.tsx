@@ -117,7 +117,7 @@ export function TutorProfileIdentityRail({
           disabled={uploadingPhoto}
           onClick={() => photoInputRef.current?.click()}
           aria-label={hasPhoto ? "Replace photo" : "Upload photo"}
-          className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-j-accent text-white shadow-sm transition hover:bg-j-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60"
+          className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-j-accent text-white shadow-sm transition hover:bg-j-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:size-10"
         >
           <Camera size={15} aria-hidden={true} />
         </button>
@@ -136,11 +136,12 @@ export function TutorProfileIdentityRail({
         photo rather than over it.
       */}
       {hasPhoto ? <p className="col-start-2 row-start-3 mt-1.5 text-xs lg:col-auto lg:row-auto lg:mt-2.5">
-        <button type="button" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className="rounded font-medium text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60">
+        {/* Two words a thumb has to hit: on a phone they carry 40px of their own. */}
+        <button type="button" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className="inline-flex items-center rounded font-medium text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:pr-2">
           {uploadingPhoto ? "Uploading…" : "Replace"}
         </button>
         <span className="px-1.5 text-[#c3d1db]" aria-hidden={true}>·</span>
-        <button type="button" disabled={uploadingPhoto} onClick={onRemovePhoto} className="rounded font-medium text-[#bf3b3b] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60">
+        <button type="button" disabled={uploadingPhoto} onClick={onRemovePhoto} className="inline-flex items-center rounded font-medium text-[#bf3b3b] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:px-2">
           Remove photo
         </button>
       </p> : <p className="col-start-2 row-start-3 mt-1.5 text-xs font-medium text-j-err lg:col-auto lg:row-auto lg:mt-2.5">
@@ -194,7 +195,7 @@ export function TutorProfileIdentityRail({
       type="button"
       onClick={() => setContactOpen(open => !open)}
       aria-expanded={contactOpen}
-      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-xs font-medium text-[#6b8497] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 lg:hidden"
+      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-xs font-medium text-[#6b8497] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 max-md:min-h-10 lg:hidden"
     >
       Contact and institute
       <ChevronDown size={15} aria-hidden={true} className={`shrink-0 transition-transform motion-reduce:transition-none ${contactOpen ? "rotate-180" : ""}`} />

@@ -112,7 +112,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
                     target="_blank"
                     rel="noreferrer"
                     onClick={event => event.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-2xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline"
+                    className="inline-flex items-center gap-1 text-2xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
                   ><MapPin size={12} /> View on map</a>
                 : null}
             </span>

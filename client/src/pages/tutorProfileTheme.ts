@@ -66,9 +66,12 @@ export const tutorProfileTheme = {
   /** Pill / chip base (add tone classes per use). */
   pill: "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
 
-  /** Ghost icon button (e.g. the per-section edit pencil). */
+  /**
+   * Ghost icon button (e.g. the per-section edit pencil). A phone gives it
+   * 40px to be tapped in; the icon inside keeps its size.
+   */
   ghostIconButton:
-    "rounded-lg p-1.5 text-[#6b8497] transition hover:bg-j-accent-wash hover:text-j-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-50",
+    "inline-grid place-items-center rounded-lg p-1.5 text-[#6b8497] transition hover:bg-j-accent-wash hover:text-j-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-50 max-md:size-10",
   /** Primary action button. */
   primaryButton:
     "rounded-xl bg-j-accent font-bold text-white transition hover:bg-j-accent-hover disabled:cursor-wait disabled:opacity-70",
