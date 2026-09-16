@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, optionalMark, primaryButton, ghostButton, requiredMark } from "@/components/journeyField";
+import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, primaryButton, ghostButton, requiredMark } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
@@ -1126,18 +1126,22 @@ export function RequestStage(props: RequestStageProps) {
     {/* One line, every width: three marks joined by a rail that fills as the
         Guardian moves. The step names are read out but not drawn - the step's
         own heading says where you are, and on a phone three named cards took
-        the screen the form needed. */}
+        the screen the form needed. The rail and the steps still ahead are
+        drawn in translucent deep blue rather than a pale grey, so they hold
+        on the Hire a tutor sheet's blue water as well as on a white page. */}
     <ol className="mt-7 flex items-center gap-2.5" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
       const number = index + 1;
       const isActive = props.step === number;
       const isComplete = number < props.step;
       const isLast = number === requestSteps.length;
       return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex items-center gap-2.5 ${isLast ? "" : "flex-1"}`}>
-        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-all duration-500 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${isActive ? "bg-j-accent text-white ring-4 ring-j-accent/15" : isComplete ? "bg-j-ok text-white" : "bg-[#eef3f7] text-[#7890a1]"}`}>
-          {isComplete ? <Check size={14} aria-hidden="true" /> : number}
+        <span className={`relative grid size-8 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-all duration-500 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${isActive ? "bg-j-accent text-white ring-4 ring-j-accent/15" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#0f4c81] ring-1 ring-[#0f4c81]/30"}`}>
+          {/* Only the step you are on ripples; reduced motion keeps it still. */}
+          {isActive ? <span aria-hidden="true" className="journey-step-halo absolute inset-0 rounded-full bg-j-accent motion-reduce:hidden" /> : null}
+          <span className="relative">{isComplete ? <Check size={14} aria-hidden="true" /> : number}</span>
         </span>
         <span className="sr-only">{label}</span>
-        {isLast ? null : <span aria-hidden="true" className="h-[3px] flex-1 overflow-hidden rounded-full bg-[#e3ebf1]">
+        {isLast ? null : <span aria-hidden="true" className="h-[3px] flex-1 overflow-hidden rounded-full bg-[#0f4c81]/25">
           <span className={`block h-full rounded-full bg-j-ok transition-[width] duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${isComplete ? "w-full" : "w-0"}`} />
         </span>}
       </li>;
@@ -1242,7 +1246,9 @@ function TuitionTypeIcon({ type }: { type: string }) {
 }
 
 /**
- * A field's label, its icon, and its required / optional note - in one voice.
+ * A field's label, its icon, and its required asterisk - in one voice. An
+ * optional field says nothing about it: the Owner's rule is that optional
+ * stays optional without the word.
  *
  * Every field in the journey renders its label through here. They used to be
  * written by hand at each call site, which is how the form ended up with three
@@ -1256,7 +1262,7 @@ function FieldLabelText({ label, slotId, labelIcon, labelHidden, optional }: { l
   const text = resolveSlot(slotId ?? "", label);
   return <span className={labelHidden ? "sr-only" : fieldLabel}>
     <span className="inline-flex items-center gap-1.5">{labelIcon ? <span aria-hidden="true" className="text-j-accent">{labelIcon}</span> : null}{text}</span>
-    {optional ? <span className={optionalMark}> (optional)</span> : <span className={requiredMark}> *</span>}
+    {optional ? null : <span className={requiredMark}> *</span>}
   </span>;
 }
 
@@ -1309,7 +1315,8 @@ function MoneyField({ label, slotId, labelIcon, value, onChange, placeholder }: 
     </span>
   </label>;
 }
-function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <Check size={15} aria-hidden="true" /> : null}<span>{children}</span></button>; }
+// A chosen subject ripples softly, as the step you are on does, so the picks stand out while the list is still open.
+function ChoiceButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={selected} className={`relative inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9] ring-1 ring-inset ring-j-accent shadow-[0_4px_12px_rgba(22,125,221,.1)]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:-translate-y-px hover:border-[#9bcdf4] hover:bg-j-surface-sunken"}`} onClick={onClick}>{selected ? <span aria-hidden="true" className="journey-chip-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}{selected ? <Check size={13} aria-hidden="true" /> : null}<span>{children}</span></button>; }
 function ReviewItem({ label, value }: { label: string; value: string }) { return <div><dt className="text-[#71889b]">{label}</dt><dd className="font-bold text-[#274d6d]">{value}</dd></div>; }
 function formatTuitionType(value: TuitionType) { return value === "home" ? "Home Tutoring" : value === "online" ? "Online Tutoring" : value === "group" ? "Group Tutoring" : value === "package" ? "Package Tutoring" : "Home and Online Tutoring"; }
 const REQUEST_SOURCE_ICONS: Record<RequestSource, ReactNode> = {

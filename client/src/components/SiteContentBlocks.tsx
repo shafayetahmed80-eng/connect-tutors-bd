@@ -112,7 +112,7 @@ export default function SiteContentBlocks({ page }: { page: SiteContentPageId })
                 aria-label={`Block ${index + 1} heading`}
                 value={value.heading}
                 maxLength={MAX_SITE_CONTENT_BLOCK_HEADING}
-                placeholder="Heading (optional)"
+                placeholder="Heading"
                 onChange={event => editDraft(block, { heading: event.target.value })}
                 className={inputClass}
               />

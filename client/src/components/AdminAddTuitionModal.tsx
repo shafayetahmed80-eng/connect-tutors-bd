@@ -295,9 +295,9 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
             <span className="flex items-center border-l border-j-border px-2 text-[10px] font-semibold text-j-ink-muted">Taka</span>
           </span>
         </Field>
-        <Text title="Institute Name" value={instituteName} onChange={setInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder="Optional" />
+        <Text title="Institute Name" value={instituteName} onChange={setInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} />
         <Select title="Where Did You Hear About Us" required value={heardAboutUs} onChange={value => setHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" format={value => formatRequestSource(value as RequestSource)} />
-        <Text title="Address Details" value={addressDetails} onChange={setAddressDetails} maxLength={160} placeholder="Optional" />
+        <Text title="Address Details" value={addressDetails} onChange={setAddressDetails} maxLength={160} />
       </div>
 
       <fieldset className="mt-3.5 border-t border-j-border pt-3">

@@ -50,8 +50,8 @@ describe("TutorProfileSummaryView", () => {
     // 5 required rows across the fixture (the 2 optional ones are excluded); 3 filled.
     expect(screen.getByText("/5 required filled")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
-    // Section E is all-optional.
-    expect(screen.getByText("Optional")).toBeTruthy();
+    // Section E is all-optional: it carries no count, and no "Optional" either.
+    expect(screen.queryByText("Optional")).toBeNull();
   });
 
   it("separates filled, required-missing and optional-missing by colour alone", () => {

@@ -241,8 +241,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
             {decisions.map(status => <option key={status} value={status}>{moderationLabel(profile.profileStatus, status)}</option>)}
           </select>
         </label>
-        <label className="block text-sm font-bold text-j-ink-strong">Admin reason {nextStatus === "approved" ? "(optional)" : "(required)"}
-          <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? (profile.profileStatus === "suspended" ? "Optional reinstatement note" : "Optional approval note") : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        <label className="block text-sm font-bold text-j-ink-strong">Admin reason{nextStatus === "approved" ? null : " (required)"}
+          <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? (profile.profileStatus === "suspended" ? "Reinstatement note" : "Approval note") : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
         </label>
         {moderation.isError ? <p className="text-sm text-red-700">{moderation.error.message}</p> : null}
       </ModalBody>

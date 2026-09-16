@@ -203,6 +203,9 @@ export function Modal({
             "sm:my-6 sm:zoom-in-95 sm:slide-in-from-bottom-0",
           )}
         >
+          {/* Drawn first, and the header, body and footer are all positioned,
+              so each of them paints over the sketch - an unpositioned header
+              would sit under it and lose its title and close button. */}
           {decor === "water" ? <WaterSketch /> : null}
           {children}
         </div>
@@ -232,22 +235,25 @@ export function ModalHeader({
    */
   action?: React.ReactNode;
 }) {
-  const { titleId, onClose, busy } = useModalContext("ModalHeader");
+  const { titleId, onClose, busy, decorated } = useModalContext("ModalHeader");
+  // On a decorated panel the header is part of the water rather than a white
+  // bar across it: no surface of its own, a soft light rule, and the title and
+  // close button in the water's deep blue so they stay clear on the wash.
   return (
-    <div className="flex shrink-0 items-start justify-between gap-4 border-b border-j-border bg-background px-4 py-3 sm:px-5">
+    <div className={cn("relative flex shrink-0 items-start justify-between gap-4 border-b px-4 py-3 sm:px-5", decorated ? "border-white/70 bg-transparent" : "border-j-border bg-background")}>
       <div className="min-w-0">
         {eyebrow ? <p aria-hidden="true" className="text-2xs font-bold uppercase tracking-[0.14em] text-j-ink-faint">{eyebrow}</p> : null}
         {/* The space sits outside the hidden span: an accessible name is built
             from trimmed text nodes, so the prefix inside it would butt against
             the title with no gap. */}
-        <h2 id={titleId} className={cn("truncate text-base", tp.heading, eyebrow && "mt-0.5")}>
+        <h2 id={titleId} className={cn("truncate text-base", tp.heading, eyebrow && "mt-0.5", decorated && "text-[#0f4c81]")}>
           {srPrefix ? <><span className="sr-only">{srPrefix}</span>{" "}</> : null}{title}
         </h2>
         {meta ? <div className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
-        <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton)}>
+        <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton, decorated && "text-[#0f4c81] hover:bg-white/50 hover:text-[#0f4c81]")}>
           <X size={18} />
         </button>
       </div>
@@ -268,9 +274,11 @@ export function ModalBody({ className, children }: { className?: string; childre
 
 export function ModalFooter({ children }: { children: React.ReactNode }) {
   // A footer control sized for a mouse is too small for a thumb: on a phone
-  // every one of them clears 40px, whatever height the caller asked for.
+  // every one of them clears 40px, whatever height the caller asked for. On a
+  // decorated panel it lets the water through, as the header does.
+  const { decorated } = useModalContext("ModalFooter");
   return (
-    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-j-border bg-background px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5">
+    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 border-t px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", decorated ? "border-white/70 bg-transparent" : "border-j-border bg-background")}>
       {children}
     </div>
   );

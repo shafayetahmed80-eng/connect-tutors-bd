@@ -214,6 +214,31 @@
   to { background-position: -40% 0; }
 }
 
+/* The journey's current step breathes: a soft ring leaves the mark and fades,
+   like a ripple, then rests before the next one. */
+.journey-step-halo {
+  animation: journey-step-halo 2.4s cubic-bezier(.22, .61, .36, 1) infinite;
+}
+
+@keyframes journey-step-halo {
+  0% { transform: scale(1); opacity: .5; }
+  70% { transform: scale(1.7); opacity: 0; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* The same ripple for a chosen subject. A chip is wide, so instead of scaling
+   the shape the ring grows outward a few pixels from its edge and fades, on
+   the step mark's own rhythm. */
+.journey-chip-halo {
+  animation: journey-chip-halo 2.4s cubic-bezier(.22, .61, .36, 1) infinite;
+}
+
+@keyframes journey-chip-halo {
+  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .4); }
+  70% { box-shadow: 0 0 0 8px rgba(22, 119, 232, 0); }
+  100% { box-shadow: 0 0 0 8px rgba(22, 119, 232, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {

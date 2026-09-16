@@ -14,8 +14,6 @@ export const fieldLabel = "block text-[13px] font-semibold text-j-ink-soft";
 
 /** The red asterisk on a required field. One red, everywhere. */
 export const requiredMark = "text-[#d74545]";
-/** The grey "(optional)" note. One word for the idea, and one grey. */
-export const optionalMark = "font-normal text-[#71889b]";
 
 /**
  * The field grid every step lays out on.

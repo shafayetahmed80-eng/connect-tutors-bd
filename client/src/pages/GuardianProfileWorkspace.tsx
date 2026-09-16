@@ -1,5 +1,5 @@
 import {
-  AlertCircle, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, Link2, MapPin,
+  BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, Link2, MapPin,
   Megaphone, IdCard, Mail, PencilLine, Phone, ShieldCheck, UserRound, Users,
   type LucideIcon,
 } from "lucide-react";
@@ -334,7 +334,7 @@ export default function GuardianProfileWorkspace() {
           <ModalBody className="space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
               <Field label="Gender"><select value={form.gender} onChange={event => set({ gender: event.target.value as "male" | "female" })} className={inputClass}><option value="female">Female</option><option value="male">Male</option></select></Field>
-              <Field label="Additional phone"><input value={form.additionalPhone} maxLength={16} onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} placeholder="Optional" /></Field>
+              <Field label="Additional phone"><input value={form.additionalPhone} maxLength={16} onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} /></Field>
               <Field label="Religion"><select value={form.religion} onChange={event => set({ religion: event.target.value })} className={inputClass}><option value="">Not set</option>{guardianReligionOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
               <Field label="Nationality"><select value={form.nationality || "Bangladeshi"} onChange={event => set({ nationality: event.target.value })} className={inputClass}>{guardianNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
               <Field label="City"><select value={form.cityLocationId} onChange={event => set({ cityLocationId: event.target.value, locationId: "" })} className={inputClass}><option value="">Select city</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></Field>
@@ -362,7 +362,6 @@ export default function GuardianProfileWorkspace() {
                 );
               })}
             </div>
-            <p className="flex items-start gap-1.5 text-2xs leading-4 text-j-ink-muted"><AlertCircle size={12} className="mt-px shrink-0" aria-hidden={true} /> Every field here is optional. Uploading your NID helps our team verify you faster; it is stored privately.</p>
           </ModalBody>
           <ModalFooter>
             <Button type="button" variant="outline" disabled={updateMutation.isPending} onClick={() => setEditingTab(null)} className="rounded-xl">Cancel</Button>
