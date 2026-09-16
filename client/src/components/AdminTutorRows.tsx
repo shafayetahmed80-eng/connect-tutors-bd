@@ -1,3 +1,4 @@
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
 import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
@@ -85,10 +86,8 @@ const applicantActionNames: Record<ApplicantAction, (name: string) => string> = 
   remove_confirmed: name => `Remove ${name} from this tuition`,
 };
 
-function Cell({ value, className = "" }: { value: string; className?: string }) {
-  return <td className={`px-3 py-2.5 align-top ${className}`}>
-    <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>
-  </td>;
+function Value({ value }: { value: string }) {
+  return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
 export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, applicantRowActions }: {
@@ -110,74 +109,63 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   applicantRowActions?: AdminApplicantRowActions;
 }) {
   const numbered = serialFrom !== undefined;
-  return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-    <table className="w-full min-w-[72rem] border-collapse text-sm">
-      <caption className="sr-only">{caption}</caption>
-      <thead>
-        <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-          {numbered ? <th scope="col" className="px-3 py-2.5">#</th> : null}
-          <th scope="col" className="px-3 py-2.5">Tutor ID</th>
-          <th scope="col" className="px-3 py-2.5">Name</th>
-          <th scope="col" className="px-3 py-2.5">Mobile</th>
-          <th scope="col" className="px-3 py-2.5">Institute</th>
-          <th scope="col" className="px-3 py-2.5">Department</th>
-          <th scope="col" className="px-3 py-2.5">City</th>
-          <th scope="col" className="px-3 py-2.5">Location</th>
-          <th scope="col" className="px-3 py-2.5">Experience</th>
-          <th scope="col" className="px-3 py-2.5">Status</th>
-          <th scope="col" className="px-3 py-2.5">Verified</th>
-          {showApplicationStage ? <th scope="col" className="px-3 py-2.5">Application</th> : null}
-          {showGuardianMarks ? <th scope="col" className="px-3 py-2.5">Guardian</th> : null}
-          {applicantRowActions ? <th scope="col" className="px-3 py-2.5">Action</th> : null}
-          <th scope="col" className="px-3 py-2.5"><span className="sr-only">Details</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        {tutors.map((tutor, index) => <tr key={tutor.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-          {numbered ? <td className="px-3 py-2.5 align-top tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</td> : null}
-          <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</td>
-          <td className="px-3 py-2.5 align-top font-bold text-j-ink">{tutor.name}</td>
-          <Cell value={tutor.phone ?? ""} className="whitespace-nowrap" />
-          <Cell value={tutor.instituteName ?? ""} className="max-w-[16rem]" />
-          <Cell value={tutor.departmentName ?? ""} className="max-w-[12rem]" />
-          <Cell value={tutor.cityLabel ?? ""} />
-          <Cell value={tutor.locationLabel ?? ""} />
-          <Cell value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} />
-          <td className="px-3 py-2.5 align-top"><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>{tutor.profileStatus.replaceAll("_", " ")}</span></td>
-          <td className="px-3 py-2.5 align-top">{tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" />}</td>
-          {showApplicationStage ? <td className="px-3 py-2.5 align-top">
-            {tutor.applicationStage ? <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>{applicantStageLabels[tutor.applicationStage]}</span> : null}
-          </td> : null}
-          {showGuardianMarks ? <td className="px-3 py-2.5 align-top">
-            <span className="flex flex-wrap items-center gap-1">
-              {tutor.appointmentRequestedAt ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
-              {tutor.guardianShortlistedAt ? <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1 text-2xs font-bold text-sky-800">Shortlisted</span> : null}
-            </span>
-            {tutor.appointmentRequestedAt && appointmentActions ? <span className="mt-1.5 flex gap-1.5">
-              <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onApprove(tutor)} aria-label={`Approve the appointment of ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg bg-j-accent px-2.5 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:opacity-40">Approve</button>
-              <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onDecline(tutor)} aria-label={`Decline the appointment request for ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40">Decline</button>
-            </span> : null}
-          </td> : null}
-          {applicantRowActions ? <td className="px-3 py-2.5 align-top">
-            <span className="flex flex-wrap gap-1.5">
-              {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => <button
-                key={action}
-                type="button"
-                disabled={applicantRowActions.busy || disabled}
-                onClick={() => applicantRowActions.onAction(tutor, action)}
-                aria-label={applicantActionNames[action](tutor.name)}
-                className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
-              >{applicantActionLabels[action]}</button>)}
-            </span>
-          </td> : null}
-          <td className="px-3 py-2.5 align-top text-right">
-            <Link href={`/admin/tutor-profiles/${tutor.id}`} aria-label={`Open the full profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-              <ChevronRight size={16} />
-            </Link>
-          </td>
-        </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={(numbered ? 12 : 11) + (showApplicationStage ? 1 : 0) + (showGuardianMarks ? 1 : 0) + (applicantRowActions ? 1 : 0)} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
-      </tbody>
-    </table>
-  </div>;
+  const columns: RecordColumn<AdminTutorRow>[] = [
+    ...(numbered ? [{ key: "serial", label: "#", place: "head" as const, cell: (_tutor: AdminTutorRow, index: number) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> }] : []),
+    { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
+    { key: "name", label: "Name", place: "head", cell: tutor => <span className="font-bold text-j-ink">{tutor.name}</span> },
+    { key: "phone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: tutor => <Value value={tutor.phone ?? ""} /> },
+    { key: "institute", label: "Institute", wide: true, cellClassName: "max-w-[16rem]", cell: tutor => <Value value={tutor.instituteName ?? ""} /> },
+    { key: "department", label: "Department", cellClassName: "max-w-[12rem]", cell: tutor => <Value value={tutor.departmentName ?? ""} /> },
+    { key: "city", label: "City", cell: tutor => <Value value={tutor.cityLabel ?? ""} /> },
+    { key: "location", label: "Location", cell: tutor => <Value value={tutor.locationLabel ?? ""} /> },
+    { key: "experience", label: "Experience", cell: tutor => <Value value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} /> },
+    // Status, Verified and the application stage keep their place in the table
+    // and lead the card, where a row's standing is the first thing read.
+    { key: "status", label: "Status", place: "head", cell: tutor => <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>{tutor.profileStatus.replaceAll("_", " ")}</span> },
+    { key: "verified", label: "Verified", place: "head", cell: tutor => tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" /> },
+    ...(showApplicationStage ? [{
+      key: "applicationStage", label: "Application", place: "head" as const,
+      cell: (tutor: AdminTutorRow) => tutor.applicationStage ? <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>{applicantStageLabels[tutor.applicationStage]}</span> : null,
+    }] : []),
+    ...(showGuardianMarks ? [{
+      // The Guardian's own marks and the Admin's answer to them travel together.
+      key: "guardian", label: "Guardian", place: "action" as const,
+      cell: (tutor: AdminTutorRow) => <span className="flex flex-wrap items-center gap-1.5">
+        {tutor.appointmentRequestedAt ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
+        {tutor.guardianShortlistedAt ? <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-1 text-2xs font-bold text-sky-800">Shortlisted</span> : null}
+        {tutor.appointmentRequestedAt && appointmentActions ? <>
+          <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onApprove(tutor)} aria-label={`Approve the appointment of ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg bg-j-accent px-2.5 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:opacity-40">Approve</button>
+          <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onDecline(tutor)} aria-label={`Decline the appointment request for ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40">Decline</button>
+        </> : null}
+      </span>,
+    }] : []),
+    ...(applicantRowActions ? [{
+      key: "action", label: "Action", place: "action" as const,
+      cell: (tutor: AdminTutorRow) => <span className="flex flex-wrap gap-1.5">
+        {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => <button
+          key={action}
+          type="button"
+          disabled={applicantRowActions.busy || disabled}
+          onClick={() => applicantRowActions.onAction(tutor, action)}
+          aria-label={applicantActionNames[action](tutor.name)}
+          className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
+        >{applicantActionLabels[action]}</button>)}
+      </span>,
+    }] : []),
+    {
+      key: "details", label: "Details", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: tutor => <Link href={`/admin/tutor-profiles/${tutor.id}`} aria-label={`Open the full profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
+        <ChevronRight size={16} />
+      </Link>,
+    },
+  ];
+
+  return <RecordTable
+    caption={caption}
+    columns={columns}
+    rows={tutors}
+    rowKey={tutor => tutor.id}
+    empty={emptyLabel}
+    tableClassName="min-w-[72rem]"
+  />;
 }

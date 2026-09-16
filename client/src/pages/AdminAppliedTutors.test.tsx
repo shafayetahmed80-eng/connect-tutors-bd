@@ -105,6 +105,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.data.items = [tutor("tutor-175", "Tania Sultana"), tutor("tutor-404", "Tanvir Ahmed")];
   mocks.data.totalPages = 1;
+  window.innerWidth = 1024;
 });
 mocks.data.items = [tutor("tutor-175", "Tania Sultana"), tutor("tutor-404", "Tanvir Ahmed")];
 
@@ -155,6 +156,19 @@ describe("Admin Applied Tutors page", () => {
     // The arrow leads to the same profile page as the directory's own row.
     expect(within(rows[0]).getByRole("link", { name: /Open the full profile of Tania Sultana/i }).getAttribute("href"))
       .toBe("/admin/tutor-profiles/tutor-175");
+  });
+
+  it("gives a phone one card per applicant, with the same columns and the same moves", () => {
+    window.innerWidth = 375;
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    expect(screen.queryByRole("table")).toBeNull();
+    const card = within(screen.getAllByRole("listitem")[0]);
+    expect(card.getByText("777")).toBeTruthy();
+    expect(card.getByText("Tania Sultana")).toBeTruthy();
+    expect(card.getByText("Institute")).toBeTruthy();
+    expect(card.getByRole("button", { name: /Shortlist Tania Sultana/i })).toBeTruthy();
+    expect(card.getByRole("link", { name: /Open the full profile of Tania Sultana/i })).toBeTruthy();
   });
 
   it("shows the Guardian's own marks beside each applicant", () => {

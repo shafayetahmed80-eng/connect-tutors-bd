@@ -45,7 +45,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { AdminConfirmedJobsContent } from "./AdminConfirmedJobs";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); window.innerWidth = 1024; });
 
 describe("Admin Confirmed Jobs", () => {
   it("asks for the Confirmed stage and names the columns in the Owner's order", () => {
@@ -96,6 +96,26 @@ describe("Admin Confirmed Jobs", () => {
     expect(screen.getByRole("link", { name: "Open the profile of Tania Sultana" }).getAttribute("href"))
       .toBe("/admin/tutor-profiles/tutor-175");
     expect(within(screen.getAllByRole("row")[2]).getAllByText("Not set")).toHaveLength(3);
+  });
+
+  it("gives a phone one card per job, carrying the fourteen columns and the payment control", () => {
+    window.innerWidth = 375;
+    render(<AdminConfirmedJobsContent />);
+
+    expect(screen.queryByRole("table")).toBeNull();
+    const card = within(screen.getAllByRole("listitem")[0]);
+    expect(card.getByText("6820")).toBeTruthy();
+    expect(card.getByText("777")).toBeTruthy();
+    expect(card.getByText("Tania Sultana")).toBeTruthy();
+    expect(card.getByText("+8801711111111")).toBeTruthy();
+    expect(card.getByText("Biology")).toBeTruthy();
+    expect(card.getByText("Mohakhali, Dhaka")).toBeTruthy();
+    expect(card.getByText("4 days / week")).toBeTruthy();
+    // The one control on this screen still changes the status from the card.
+    const payment = card.getByRole("combobox", { name: "Payment status of Job ID 6820" });
+    fireEvent.change(payment, { target: { value: "full_paid" } });
+    expect(mocks.setPayment).toHaveBeenCalledWith({ requestId: 21, paymentStatus: "full_paid" });
+    expect(card.getByRole("link", { name: "Open the profile of Tania Sultana" })).toBeTruthy();
   });
 
   it("searches from the first page", () => {

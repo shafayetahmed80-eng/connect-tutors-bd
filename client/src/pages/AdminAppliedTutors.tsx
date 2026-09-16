@@ -3,6 +3,7 @@ import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentReq
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import PostTypeBadge from "@/components/PostTypeBadge";
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TuitionStatusPill from "@/components/TuitionStatusPill";
 import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
 import { countActiveFilters } from "@/components/activeFilterCount";
@@ -267,6 +268,26 @@ export function AdminAppliedTuitionsContent() {
   const jobs = trpc.admin.listPostedJobs.useQuery({ stages: [...appliedTuitionStages], query, page, pageSize: APPLIED_PAGE_SIZE });
   const items = jobs.data?.items ?? [];
 
+  type PostedTuition = (typeof items)[number];
+  const tuitionColumns: RecordColumn<PostedTuition>[] = [
+    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
+    { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
+    { key: "tuitionStatus", label: "Tuition Status", place: "head", cell: job => <TuitionStatus job={job} /> },
+    { key: "classCourse", label: "Class / Level", cell: job => <span className="font-bold text-j-ink">{job.classCourse}</span> },
+    { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: job => <span className="text-j-ink-strong">{formatSubjects(job.subjects)}</span> },
+    { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },
+    { key: "salary", label: "Salary", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
+    { key: "days", label: "Days / Week", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
+    { key: "guardian", label: "Guardian", cell: job => <span className="text-j-ink-strong">{job.guardianName}</span> },
+    { key: "applied", label: "Applied", cell: job => <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{job.appliedTutorCount}</span> },
+    {
+      key: "applicants", label: "Applicants", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: job => <Link href={`/admin/applied-tutors/${job.id}`} aria-label={`Open the applicants of Job ID ${jobIdForRequest(job.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
+        <ChevronRight size={16} />
+      </Link>,
+    },
+  ];
+
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <label className="relative block max-w-sm">
       <span className="sr-only">Search tuitions</span>
@@ -282,48 +303,14 @@ export function AdminAppliedTuitionsContent() {
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading tuitions…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
 
-    {!jobs.isLoading && !jobs.isError ? <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-      <table className="w-full min-w-[70rem] border-collapse text-sm">
-        <caption className="sr-only">Tuitions, their stage, and how many Tutors applied to each</caption>
-        <thead>
-          <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-            <th scope="col" className="px-3 py-2.5">Job ID</th>
-            <th scope="col" className="px-3 py-2.5">Posted By</th>
-            <th scope="col" className="px-3 py-2.5">Tuition Status</th>
-            <th scope="col" className="px-3 py-2.5">Class / Level</th>
-            <th scope="col" className="px-3 py-2.5">Subjects</th>
-            <th scope="col" className="px-3 py-2.5">Location</th>
-            <th scope="col" className="px-3 py-2.5">Salary</th>
-            <th scope="col" className="px-3 py-2.5">Days / Week</th>
-            <th scope="col" className="px-3 py-2.5">Guardian</th>
-            <th scope="col" className="px-3 py-2.5">Applied</th>
-            <th scope="col" className="px-3 py-2.5"><span className="sr-only">Applicants</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map(job => <tr key={job.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-            <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</td>
-            <td className="px-3 py-2.5 align-top"><PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></td>
-            <td className="px-3 py-2.5 align-top"><TuitionStatus job={job} /></td>
-            <td className="px-3 py-2.5 align-top font-bold text-j-ink">{job.classCourse}</td>
-            <td className="max-w-[16rem] px-3 py-2.5 align-top text-j-ink-strong">{formatSubjects(job.subjects)}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{job.guardianName}</td>
-            <td className="px-3 py-2.5 align-top">
-              <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{job.appliedTutorCount}</span>
-            </td>
-            <td className="px-3 py-2.5 align-top text-right">
-              <Link href={`/admin/applied-tutors/${job.id}`} aria-label={`Open the applicants of Job ID ${jobIdForRequest(job.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-                <ChevronRight size={16} />
-              </Link>
-            </td>
-          </tr>)}
-          {items.length === 0 ? <tr><td colSpan={11} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live, appointed or confirmed tuition{query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.</td></tr> : null}
-        </tbody>
-      </table>
-    </div> : null}
+    {!jobs.isLoading && !jobs.isError ? <RecordTable
+      caption="Tuitions, their stage, and how many Tutors applied to each"
+      columns={tuitionColumns}
+      rows={items}
+      rowKey={job => job.id}
+      empty={`No live, appointed or confirmed tuition${query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.`}
+      tableClassName="min-w-[70rem]"
+    /> : null}
 
     <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Tuition pages" />
   </div>;

@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import PostTypeBadge from "@/components/PostTypeBadge";
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
@@ -30,6 +31,27 @@ export function AdminAppointedJobsContent() {
   const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize: PAGE_SIZE });
   const items = jobs.data?.items ?? [];
 
+  type AppointedJob = (typeof items)[number];
+  const columns: RecordColumn<AppointedJob>[] = [
+    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
+    { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
+    { key: "classCourse", label: "Class", cell: job => <span className="font-bold text-j-ink">{job.classCourse}</span> },
+    { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: job => <span className="text-j-ink-strong">{formatSubjects(job.subjects)}</span> },
+    { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },
+    { key: "salary", label: "Salary", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
+    { key: "days", label: "Days", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
+    { key: "tutorNumber", label: "Tutor ID", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{job.tutorNumber ?? notSet}</span> },
+    { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },
+    { key: "tutorPhone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{job.tutorPhone || notSet}</span> },
+    { key: "appointedAt", label: "Appointed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{appointedOn(job.appointedAt) ?? notSet}</span> },
+    {
+      key: "profile", label: "Tutor profile", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: job => <Link href={`/admin/tutor-profiles/${encodeURIComponent(job.tutorId)}`} aria-label={`Open the profile of ${job.tutorName}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
+        <ChevronRight size={16} />
+      </Link>,
+    },
+  ];
+
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <label className="relative block max-w-sm">
       <span className="sr-only">Search appointed jobs</span>
@@ -45,51 +67,14 @@ export function AdminAppointedJobsContent() {
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading appointed jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Appointed jobs could not be loaded.</div> : null}
 
-    {!jobs.isLoading && !jobs.isError ? <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-      <table className="w-full min-w-[80rem] border-collapse text-sm">
-        <caption className="sr-only">Appointed jobs and the Tutor appointed to each</caption>
-        <thead>
-          <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-            <th scope="col" className="px-3 py-2.5">Job ID</th>
-            <th scope="col" className="px-3 py-2.5">Posted By</th>
-            <th scope="col" className="px-3 py-2.5">Class</th>
-            <th scope="col" className="px-3 py-2.5">Subjects</th>
-            <th scope="col" className="px-3 py-2.5">Location</th>
-            <th scope="col" className="px-3 py-2.5">Salary</th>
-            <th scope="col" className="px-3 py-2.5">Days</th>
-            <th scope="col" className="px-3 py-2.5">Tutor ID</th>
-            <th scope="col" className="px-3 py-2.5">Name</th>
-            <th scope="col" className="px-3 py-2.5">Mobile</th>
-            <th scope="col" className="px-3 py-2.5">Appointed</th>
-            <th scope="col" className="px-3 py-2.5"><span className="sr-only">Tutor profile</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map(job => {
-            const appointed = appointedOn(job.appointedAt);
-            return <tr key={job.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-              <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</td>
-              <td className="px-3 py-2.5 align-top"><PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></td>
-              <td className="px-3 py-2.5 align-top font-bold text-j-ink">{job.classCourse}</td>
-              <td className="max-w-[16rem] px-3 py-2.5 align-top text-j-ink-strong">{formatSubjects(job.subjects)}</td>
-              <td className="px-3 py-2.5 align-top text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-top text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-top text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</td>
-              <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{job.tutorNumber ?? notSet}</td>
-              <td className="px-3 py-2.5 align-top font-bold text-j-ink">{job.tutorName}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-top text-j-ink-strong">{job.tutorPhone || notSet}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-top text-j-ink-strong">{appointed ?? notSet}</td>
-              <td className="px-3 py-2.5 align-top text-right">
-                <Link href={`/admin/tutor-profiles/${encodeURIComponent(job.tutorId)}`} aria-label={`Open the profile of ${job.tutorName}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-                  <ChevronRight size={16} />
-                </Link>
-              </td>
-            </tr>;
-          })}
-          {items.length === 0 ? <tr><td colSpan={12} className="px-3 py-10 text-center text-sm text-j-ink-soft">No appointed job{query.trim() ? " for this search" : ""}.</td></tr> : null}
-        </tbody>
-      </table>
-    </div> : null}
+    {!jobs.isLoading && !jobs.isError ? <RecordTable
+      caption="Appointed jobs and the Tutor appointed to each"
+      columns={columns}
+      rows={items}
+      rowKey={job => job.id}
+      empty={`No appointed job${query.trim() ? " for this search" : ""}.`}
+      tableClassName="min-w-[80rem]"
+    /> : null}
 
     <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Appointed job pages" />
   </div>;
