@@ -19,10 +19,16 @@ export function isGuardianApplicantStage(lifecycle: GuardianRequestLifecycle) {
 }
 
 /**
- * The applications a Guardian sees. A withdrawn one is not an application any
- * more, and one the Admin declined is a decision already taken.
+ * The applications a Guardian's count includes. A withdrawn one is not an
+ * application any more, and one the Admin declined is a decision already taken.
  */
-export const guardianVisibleInterestStatuses = ["interested", "shortlisted", "matched"] as const;
+export const guardianCountedInterestStatuses = ["interested", "shortlisted", "matched"] as const;
+
+/**
+ * The applications a Guardian can open, shortlist and ask about: the ones an
+ * Admin shortlisted, and the Tutor appointed. The rest are only counted.
+ */
+export const guardianVisibleInterestStatuses = ["shortlisted", "matched"] as const;
 
 /**
  * Whether one applicant's mobile number goes to the Guardian: only the Tutor

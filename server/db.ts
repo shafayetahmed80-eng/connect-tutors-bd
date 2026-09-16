@@ -93,6 +93,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
   guardianMaySeeApplicantPhone,
+  guardianCountedInterestStatuses,
   guardianVisibleInterestStatuses,
   isGuardianApplicantStage,
   pickGuardianApplicantEducation,
@@ -3729,9 +3730,10 @@ export async function reviewTutorJobInterestByAdmin(input: {
         .for("update");
       if (!canShortlistOnTuition(request ? getGuardianRequestLifecycle(request) : null)) throw new Error("TUTOR_INTEREST_TUITION_CLOSED");
     }
-    // Declining an applicant also ends any appointment request the Guardian made for them.
+    // Declining an applicant, or taking them off the shortlist - which hides them
+    // from the Guardian - also ends any appointment request the Guardian made for them.
     await tx.update(tutorJobInterests)
-      .set(input.status === "declined" ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
+      .set(input.status === "declined" || input.status === "interested" ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
       .where(eq(tutorJobInterests.id, interest.id));
     // A decline used to be indistinguishable from the Tutor's own withdrawal:
     // the tab changed and nothing was said. No reason is given - the Admin
@@ -5113,11 +5115,23 @@ export async function countAppliedTutorsByRequest(
     .groupBy(tutorJobs.tutorRequestId);
   return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
 }
-/** Which applications a Guardian's applicant table lists - its rows and its counts both. */
+/**
+ * Which applications a Guardian's applicant table lists, and so which Tutors
+ * they can open, shortlist and ask about: those an Admin shortlisted, and the
+ * one appointed.
+ */
 function guardianApplicantConditions() {
   return [
     inArray(tutorJobInterests.status, [...guardianVisibleInterestStatuses]),
     // A Tutor suspended after applying is not someone to introduce to a Guardian.
+    eq(tutors.profileStatus, "approved"),
+  ];
+}
+
+/** Which applications a Guardian's applied count includes: every one still standing, listed or not. */
+function guardianCountedApplicantConditions() {
+  return [
+    inArray(tutorJobInterests.status, [...guardianCountedInterestStatuses]),
     eq(tutors.profileStatus, "approved"),
   ];
 }
@@ -5136,7 +5150,7 @@ export async function countGuardianApplicantsByRequest(
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-    .where(and(inArray(tutorJobs.tutorRequestId, requestIds), ...guardianApplicantConditions()))
+    .where(and(inArray(tutorJobs.tutorRequestId, requestIds), ...guardianCountedApplicantConditions()))
     .groupBy(tutorJobs.tutorRequestId);
   return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
 }
@@ -5211,7 +5225,15 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
     .limit(input.pageSize)
     .offset(offset);
+  // The count is everyone who applied; the pages are only the Tutors listed.
   const total = (await countGuardianApplicantsByRequest(database, [input.requestId])).get(input.requestId) ?? 0;
+  const [listed] = await database
+    .select({ value: count() })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions()));
+  const listedTotal = Number(listed?.value ?? 0);
   // Whether a request already waits on this tuition - its Tutor may be on another page.
   const [pendingAppointment] = await database
     .select({ id: tutorJobInterests.id })
@@ -5288,9 +5310,10 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       };
     }),
     total,
+    listedTotal,
     page: input.page,
     pageSize: input.pageSize,
-    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
+    totalPages: Math.max(1, Math.ceil(listedTotal / input.pageSize)),
   };
 }
 
