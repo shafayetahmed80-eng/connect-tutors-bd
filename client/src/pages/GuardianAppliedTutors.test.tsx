@@ -73,6 +73,15 @@ describe("the Guardian's applicant list", () => {
     expect(screen.getByText("3 days / week")).toBeTruthy();
   });
 
+  it("counts every applicant, but says none is shortlisted yet when the list is empty", () => {
+    loaded([], { total: 5, listedTotal: 0 });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    expect(screen.getByText("Applied:").textContent).toContain("5");
+    expect(screen.getByText("No shortlisted Tutor yet.")).toBeTruthy();
+    expect(screen.queryByText("No Tutor has applied to this tuition yet.")).toBeNull();
+  });
+
   it("shows the Guardian's columns and none of the Admin's", () => {
     loaded([applicant("tutor-175", "Tania Sultana")]);
     render(<GuardianAppliedTutorsContent requestId={13} />);

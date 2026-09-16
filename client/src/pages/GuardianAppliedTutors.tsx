@@ -97,7 +97,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
           tutors={applied.data?.items ?? []}
           requestId={requestId}
           actions={actions}
-          emptyLabel="No Tutor has applied to this tuition yet."
+          emptyLabel={applied.data?.total ? "No shortlisted Tutor yet." : "No Tutor has applied to this tuition yet."}
           serialFrom={(page - 1) * APPLICANT_PAGE_SIZE + 1}
         />
       : null}

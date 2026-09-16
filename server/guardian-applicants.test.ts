@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  guardianCountedInterestStatuses,
   guardianMaySeeApplicantPhone,
+  guardianVisibleInterestStatuses,
   isGuardianApplicantStage,
   pickGuardianApplicantEducation,
 } from "./guardian-applicants";
@@ -68,6 +70,13 @@ describe("whose mobile number reaches the Guardian", () => {
     expect(guardianMaySeeApplicantPhone({ lifecycle: "live", tutorId: null }, "tutor-175")).toBe(false);
     // A Tutor recorded on a request that fell back to Live is no longer appointed.
     expect(guardianMaySeeApplicantPhone({ lifecycle: "live", tutorId: "tutor-175" }, "tutor-175")).toBe(false);
+  });
+});
+
+describe("which applications a Guardian counts and which they can open", () => {
+  it("counts every standing application but lists only the Admin's shortlist and the appointed Tutor", () => {
+    expect([...guardianCountedInterestStatuses]).toEqual(["interested", "shortlisted", "matched"]);
+    expect([...guardianVisibleInterestStatuses]).toEqual(["shortlisted", "matched"]);
   });
 });
 
