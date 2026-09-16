@@ -47,7 +47,58 @@ function focusableWithin(root: HTMLElement | null): HTMLElement[] {
   );
 }
 
-type ModalContextValue = { titleId: string; onClose: () => void; busy: boolean };
+/**
+ * Water seen from above: a light blue wash, rings spreading from a point the
+ * way they do when something lands in still water, and a few painted streaks
+ * across them.
+ *
+ * It fills the panel behind the body of a dialog that is an invitation rather
+ * than a form to get through. The wash stays pale and the rings stay thin, so
+ * dark text on top keeps its full contrast.
+ */
+function WaterSketch() {
+  const rings = [
+    { rx: 34, dy: 0, width: 2.4, opacity: 0.5 },
+    { rx: 62, dy: -3, width: 1.8, opacity: 0.42 },
+    { rx: 96, dy: -7, width: 2.6, opacity: 0.34 },
+    { rx: 134, dy: -12, width: 1.6, opacity: 0.28 },
+    { rx: 176, dy: -18, width: 3, opacity: 0.22 },
+    { rx: 222, dy: -25, width: 1.8, opacity: 0.16 },
+    { rx: 272, dy: -33, width: 2.6, opacity: 0.12 },
+  ];
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" className="h-full w-full">
+        <defs>
+          <linearGradient id="modal-water-wash" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f6fbfe" />
+            <stop offset="0.45" stopColor="#e7f3fb" />
+            <stop offset="1" stopColor="#d5e9f7" />
+          </linearGradient>
+        </defs>
+        <rect width="400" height="300" fill="url(#modal-water-wash)" />
+        {/* The rings: white where the light catches the crest, blue in the trough. */}
+        <g fill="none" transform="translate(196 214)">
+          {rings.map(ring => <g key={ring.rx}>
+            <ellipse cx="0" cy={ring.dy} rx={ring.rx} ry={ring.rx * 0.42} stroke="#ffffff" strokeWidth={ring.width} opacity={ring.opacity} />
+            <ellipse cx="0" cy={ring.dy + ring.width * 1.6} rx={ring.rx} ry={ring.rx * 0.42} stroke="#5aa3d8" strokeWidth={ring.width * 0.7} opacity={ring.opacity * 0.38} />
+          </g>)}
+        </g>
+        {/* Brushed streaks across the surface, thin and broken like a dry brush. */}
+        <g fill="none" strokeLinecap="round" stroke="#ffffff" opacity=".5">
+          <path d="M-10 96 C 70 82, 140 104, 230 88 S 350 70, 420 84" strokeWidth="3" strokeDasharray="130 34 190 40" />
+          <path d="M-10 268 C 90 250, 160 276, 250 258 S 356 240, 420 254" strokeWidth="4" strokeDasharray="150 38 160 30" />
+        </g>
+        <g fill="none" strokeLinecap="round" stroke="#3f8fc9" opacity=".18">
+          <path d="M-10 128 C 80 112, 150 134, 240 118 S 352 100, 420 114" strokeWidth="2" strokeDasharray="90 40 150 46" />
+          <path d="M-10 292 C 96 274, 168 298, 258 282 S 358 264, 420 278" strokeWidth="2.5" strokeDasharray="120 44 130 38" />
+        </g>
+      </svg>
+    </span>
+  );
+}
+
+type ModalContextValue = { titleId: string; onClose: () => void; busy: boolean; decorated: boolean };
 const ModalContext = createContext<ModalContextValue | null>(null);
 
 function useModalContext(component: string): ModalContextValue {
@@ -62,10 +113,13 @@ export function Modal({
   busy = false,
   isSuspended,
   panelTestId,
+  decor,
   children,
 }: {
   size?: ModalSize;
   onClose: () => void;
+  /** `water` puts a water sketch behind the body. For a dialog that invites, not one that collects. */
+  decor?: "water";
   /** A submit is in flight: Escape and the backdrop stop closing the dialog. */
   busy?: boolean;
   /** A nested non-Modal overlay owns the keyboard right now (e.g. the photo cropper). */
@@ -124,7 +178,7 @@ export function Modal({
   };
 
   return (
-    <ModalContext.Provider value={{ titleId, onClose, busy }}>
+    <ModalContext.Provider value={{ titleId, onClose, busy, decorated: decor === "water" }}>
       <div
         onClick={onBackdropClick}
         data-modal-backdrop=""
@@ -141,11 +195,12 @@ export function Modal({
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
           className={cn(
-            "flex max-h-[92vh] w-full flex-col overflow-hidden border border-j-border bg-background text-j-ink focus:outline-none",
+            "relative flex max-h-[92vh] w-full flex-col overflow-hidden border border-j-border bg-background text-j-ink focus:outline-none",
             "animate-in slide-in-from-bottom-4 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none",
             "sm:my-6 sm:zoom-in-95 sm:slide-in-from-bottom-0",
           )}
         >
+          {decor === "water" ? <WaterSketch /> : null}
           {children}
         </div>
       </div>
@@ -198,8 +253,11 @@ export function ModalHeader({
 }
 
 export function ModalBody({ className, children }: { className?: string; children: React.ReactNode }) {
+  // A decorated panel draws its sketch behind the body, so the body lets it
+  // through; every other dialog keeps its own plain surface.
+  const { decorated } = useModalContext("ModalBody");
   return (
-    <div data-modal-body className={cn("min-h-0 flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5", className)}>
+    <div data-modal-body className={cn("relative min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5", decorated ? "bg-transparent" : "bg-background", className)}>
       {children}
     </div>
   );

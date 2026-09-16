@@ -75,7 +75,7 @@ import { AdminPostedJobsContent } from "./AdminPostedJobs";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentRequested: false, postedByAdmin: 0 });
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, appointmentRequested: false, postedByAdmin: 0 });
 });
 
 describe("Admin Posted jobs board", () => {
@@ -141,16 +141,17 @@ describe("Admin Posted jobs board", () => {
     expect(mocks.publish).toHaveBeenCalledWith({ requestId: 13, action: "go_live" });
   });
 
-  it("offers no status move once the tuition is past Pending", async () => {
+  it("drops Change Status once the tuition is past Pending", async () => {
     mocks.data.items[0].publicationState = "published";
     const user = userEvent.setup();
     render(<AdminPostedJobsContent />);
 
     await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
-    const status = screen.getByRole("dialog");
-    expect(within(status).queryByRole("button", { name: "Live" })).toBeNull();
-    expect(within(status).getByText(/No status change is available from Live/)).toBeTruthy();
+    const dialog = screen.getByRole("dialog");
+    // The board owns one move, Pending to Live; a Live tuition has none, so the
+    // button itself is gone rather than opening a dialog with nothing in it.
+    expect(within(dialog).queryByRole("button", { name: /Change Status/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: /Edit/ })).toBeTruthy();
   });
 
   it("shows the applied Tutor count on a live tuition, on the card and in the dialog", async () => {
@@ -173,13 +174,22 @@ describe("Admin Posted jobs board", () => {
     render(<AdminPostedJobsContent />);
 
     await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Change Status/ }));
-    const status = screen.getByRole("dialog");
+    const dialog = screen.getByRole("dialog");
 
-    expect(within(status).queryByRole("button", { name: /Confirmed/ })).toBeNull();
-    expect(within(status).queryByRole("button", { name: "Live" })).toBeNull();
-    expect(within(status).getByText(/No status change is available from Appointed/)).toBeTruthy();
-    expect(within(status).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href")).toBe("/admin/applied-tutors/13");
+    expect(within(dialog).queryByRole("button", { name: /Change Status/ })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /Confirmed/ })).toBeNull();
+    expect(within(dialog).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href")).toBe("/admin/applied-tutors/13");
+  });
+
+  it("still opens Applied Tutors from a Confirmed tuition", async () => {
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175", appointmentConfirmedAt: new Date("2026-09-14T09:00:00.000Z") });
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByRole("button", { name: /Change Status/ })).toBeNull();
+    expect(within(dialog).getByRole("link", { name: /Applied Tutors/ }).getAttribute("href")).toBe("/admin/applied-tutors/13");
   });
 
   it("says on the card and in the details footer who posted the tuition", async () => {

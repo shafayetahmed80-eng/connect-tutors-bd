@@ -181,9 +181,13 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       </>}
       action={<>
         <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
-        <button type="button" onClick={() => { setStatusJobId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
+        {/* The board owns one move only - Pending to Live - so past Pending
+            there is no status to change here. */}
+        {getGuardianRequestLifecycle(openJob).key === "pending"
+          ? <button type="button" onClick={() => { setStatusJobId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]"><RefreshCcw size={13} /> Change Status</button>
+          : null}
         <button type="button" onClick={() => { setEditingId(openJob.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]"><FilePenLine size={13} /> Edit</button>
-        {["live", "appointed"].includes(getGuardianRequestLifecycle(openJob).key)
+        {["live", "appointed", "confirmed"].includes(getGuardianRequestLifecycle(openJob).key)
           ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
           : null}
       </>}
@@ -205,23 +209,15 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       }}
     /> : null}
 
-    {statusJob ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
+    {statusJob && getGuardianRequestLifecycle(statusJob).key === "pending" ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
       <ModalHeader title={`Change status of Job ID ${jobIdForRequest(statusJob.id)}`} />
       <ModalBody>
-        {getGuardianRequestLifecycle(statusJob).key === "pending"
-          ? <button
-              type="button"
-              disabled={goLive.isPending}
-              onClick={() => goLive.mutate({ requestId: statusJob.id, action: "go_live" })}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
-            ><RadioTower size={16} /> {goLive.isPending ? "Going live…" : "Live"}</button>
-          : <div className="space-y-3">
-              <p className="rounded-xl bg-j-surface-sunken px-3 py-2.5 text-center text-xs font-medium text-j-ink-soft">No status change is available from {getGuardianRequestLifecycle(statusJob).label}.</p>
-              {/* Past Live, a tuition moves on from its applicants' page. */}
-              {["live", "appointed", "confirmed"].includes(getGuardianRequestLifecycle(statusJob).key)
-                ? <div className="flex justify-center"><AppliedTutorsButton href={`/admin/applied-tutors/${statusJob.id}`} count={statusJob.appliedTutorCount} size="md" /></div>
-                : null}
-            </div>}
+        <button
+          type="button"
+          disabled={goLive.isPending}
+          onClick={() => goLive.mutate({ requestId: statusJob.id, action: "go_live" })}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
+        ><RadioTower size={16} /> {goLive.isPending ? "Going live…" : "Live"}</button>
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setStatusJobId(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>

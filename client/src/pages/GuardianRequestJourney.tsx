@@ -1123,10 +1123,24 @@ export function RequestStage(props: RequestStageProps) {
     ? (props.pending ? "Saving changes" : "Save changes")
     : (props.pending ? "Sending request" : "Send request");
   return <form className="mt-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" onSubmit={props.onSubmit}>
-    <ol className="mt-7 grid gap-2 sm:grid-cols-3" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
-      const isActive = props.step === index + 1;
-      const isComplete = index + 1 < props.step;
-      return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-xs font-extrabold transition sm:justify-center ${isActive ? "border-j-accent/40 bg-j-accent-wash text-[#126ea9] shadow-[0_5px_16px_rgba(22,125,221,.08)]" : isComplete ? "border-j-ok/35 bg-j-ok-wash text-j-ok" : "border-[#e0eaf0] bg-[#f6f9fb] text-[#7890a1]"}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-2xs ${isActive ? "bg-j-accent text-white" : isComplete ? "bg-j-ok text-white" : "bg-white text-[#7890a1]"}`}>{isComplete ? <Check size={13} aria-hidden="true" /> : index + 1}</span><span>{label}</span></li>;
+    {/* One line, every width: three marks joined by a rail that fills as the
+        Guardian moves. The step names are read out but not drawn - the step's
+        own heading says where you are, and on a phone three named cards took
+        the screen the form needed. */}
+    <ol className="mt-7 flex items-center gap-2.5" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
+      const number = index + 1;
+      const isActive = props.step === number;
+      const isComplete = number < props.step;
+      const isLast = number === requestSteps.length;
+      return <li key={label} aria-current={isActive ? "step" : undefined} className={`flex items-center gap-2.5 ${isLast ? "" : "flex-1"}`}>
+        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-all duration-500 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${isActive ? "bg-j-accent text-white ring-4 ring-j-accent/15" : isComplete ? "bg-j-ok text-white" : "bg-[#eef3f7] text-[#7890a1]"}`}>
+          {isComplete ? <Check size={14} aria-hidden="true" /> : number}
+        </span>
+        <span className="sr-only">{label}</span>
+        {isLast ? null : <span aria-hidden="true" className="h-[3px] flex-1 overflow-hidden rounded-full bg-[#e3ebf1]">
+          <span className={`block h-full rounded-full bg-j-ok transition-[width] duration-700 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${isComplete ? "w-full" : "w-0"}`} />
+        </span>}
+      </li>;
     })}</ol>
     {props.step === 1 ? <div className="mt-6 space-y-6">
       <fieldset>
