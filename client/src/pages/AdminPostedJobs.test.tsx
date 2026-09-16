@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   publish: vi.fn(),
+  approveGuardian: vi.fn(),
+  declineGuardian: vi.fn(),
   confirm: vi.fn(),
   reopen: vi.fn(),
   data: {
@@ -42,6 +44,7 @@ const mocks = vi.hoisted(() => ({
         contactConsent: "not_required",
         createdAt: new Date("2026-09-06T00:00:00.000Z"),
         appliedTutorCount: 7,
+        guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
       },
     ],
     counts: { pending: 4, live: 9, appointed: 0, confirmed: 0, cancelled: 0 },
@@ -64,8 +67,15 @@ vi.mock("@/lib/trpc", () => ({
       moderateTutorRequestPublication: {
         useMutation: () => ({ mutate: mocks.publish, isPending: false }),
       },
+      approveGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.approveGuardian, isPending: false }) },
+      declineGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.declineGuardian, isPending: false }) },
     },
-    useUtils: () => ({ admin: { listPostedJobs: { invalidate: vi.fn() } } }),
+    useUtils: () => ({
+      admin: {
+        listPostedJobs: { invalidate: vi.fn() }, listAppliedTutors: { invalidate: vi.fn() }, listAppointedJobs: { invalidate: vi.fn() },
+        listConfirmedJobs: { invalidate: vi.fn() }, listTutorDirectory: { invalidate: vi.fn() }, listTutorApplications: { invalidate: vi.fn() },
+      },
+    }),
   },
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
@@ -75,7 +85,7 @@ import { AdminPostedJobsContent } from "./AdminPostedJobs";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, appointmentRequested: false, postedByAdmin: 0 });
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, appointmentRequested: false, postedByAdmin: 0, guardianRequest: null });
 });
 
 describe("Admin Posted jobs board", () => {
@@ -211,6 +221,40 @@ describe("Admin Posted jobs board", () => {
     render(<AdminPostedJobsContent />);
 
     expect(within(screen.getByRole("button", { name: /Job ID 6812/ })).getByText("Appointment requested")).toBeTruthy();
+  });
+
+  it("answers a Guardian's cancellation from the details dialog, even while Pending", async () => {
+    const user = userEvent.setup();
+    mocks.data.items[0].guardianRequest = { id: 7, type: "cancel_tuition", tutorId: null, reason: "Found a Tutor elsewhere", createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminPostedJobsContent />);
+
+    const card = screen.getByRole("button", { name: /Job ID 6812/ });
+    expect(within(card).getByText("Cancellation requested")).toBeTruthy();
+
+    await user.click(card);
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Approve: Cancellation requested" }));
+    const approval = screen.getByRole("dialog");
+    expect(within(approval).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(approval).getByText("Found a Tutor elsewhere")).toBeTruthy();
+    await user.click(within(approval).getByRole("button", { name: "Approve" }));
+    expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });
+
+    await user.click(within(approval).getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Decline: Cancellation requested" }));
+    expect(mocks.declineGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });
+  });
+
+  it("only marks a Confirm or Remove request, which is answered on Applied Tutors", async () => {
+    const user = userEvent.setup();
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175" });
+    mocks.data.items[0].guardianRequest = { id: 5, type: "confirm", tutorId: "tutor-175", reason: null, createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Confirm requested")).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: /Approve/ })).toBeNull();
   });
 
   it("keeps the applicants one click away once a Tutor is Appointed", () => {

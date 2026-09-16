@@ -12,12 +12,14 @@ const mocks = vi.hoisted(() => ({
         tuitionLocationLabel: "Banasree, Dhaka", locationText: "Banasree", budgetAmount: 5000, daysPerWeek: 3,
         appointedAt: new Date("2026-09-13T08:30:00.000Z"),
         tutorId: "tutor-175", tutorNumber: 777 as number | null, tutorName: "Tania Sultana", tutorPhone: "+8801711111111" as string | null,
+        guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
       },
       {
         id: 21, postedByAdmin: 0, classCourse: "Class 9", subjects: JSON.stringify(["Physics"]),
         tuitionLocationLabel: null, locationText: null, budgetAmount: 6000, daysPerWeek: 4,
         appointedAt: null as Date | null,
         tutorId: "tutor-404", tutorNumber: null, tutorName: "Tanvir Ahmed", tutorPhone: null,
+        guardianRequest: null,
       },
     ],
     total: 2, page: 1, pageSize: 20, totalPages: 1,
@@ -39,9 +41,18 @@ vi.mock("@/lib/trpc", () => ({
 
 import { AdminAppointedJobsContent } from "./AdminAppointedJobs";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.data.items[0].guardianRequest = null; });
 
 describe("Admin Appointed Jobs", () => {
+  it("marks a Guardian's waiting request beside the Job ID, leading to Applied Tutors where it is answered", () => {
+    mocks.data.items[0].guardianRequest = { id: 5, type: "confirm", tutorId: "tutor-175", reason: null, createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppointedJobsContent />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("Confirm requested").closest("a")?.getAttribute("href")).toBe("/admin/applied-tutors/13");
+    expect(within(rows[1]).queryByText(/requested/)).toBeNull();
+  });
+
   it("asks for the Appointed stage and names the columns in the Owner's order", () => {
     render(<AdminAppointedJobsContent />);
 

@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminGuardianTuitionRequestMark, ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
 import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
@@ -60,6 +61,11 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     onDecline: tutor => { if (tutor.interestId) decline.mutate({ interestId: tutor.interestId }); },
   };
 
+  // A Guardian's Confirm, Remove or Cancel request is answered here: Approve makes that move.
+  const guardianRequest = applied.data?.guardianRequest ?? null;
+  const [approvingGuardianRequest, setApprovingGuardianRequest] = useState(false);
+  const guardianAnswer = useAdminGuardianTuitionRequest(() => setApprovingGuardianRequest(false));
+
   const review = trpc.admin.reviewTutorJobInterest.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const confirmTutor = trpc.admin.confirmTutorRequestAppointment.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const removeTutor = trpc.admin.reopenAppointedTuition.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
@@ -68,7 +74,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const actionPending = review.isPending || confirmTutor.isPending || removeTutor.isPending || removeConfirmed.isPending;
   const settle = (message: string) => { setDeciding(null); refresh(); toast.success(message); };
   const rowActions: AdminApplicantRowActions = {
-    busy: actionPending,
+    busy: actionPending || guardianAnswer.busy,
     optionsFor: tutor => !job || !tuitionStage || !tutor.applicationStatus ? [] : applicantActions({
       tuitionStage,
       applicationStatus: tutor.applicationStatus,
@@ -76,7 +82,12 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       tutorApproved: tutor.profileStatus === "approved",
     }).filter(({ action }) =>
       // A Guardian's waiting request is answered by Approve beside it, which appoints the same way.
-      !(action === "appoint" && tutor.appointmentRequestedAt)),
+      !(action === "appoint" && tutor.appointmentRequestedAt)
+      // So is a Confirm or Remove the Guardian asked for about this Tutor.
+      && !(guardianRequest?.tutorId === tutor.id && (
+        (guardianRequest.type === "confirm" && action === "confirm")
+        || (guardianRequest.type === "remove_tutor" && (action === "remove_appointed" || action === "remove_confirmed"))
+      ))),
     onAction: (tutor, action) => {
       if (action === "shortlist" || action === "unshortlist") {
         if (!tutor.interestId) return;
@@ -128,7 +139,9 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         <JobFact icon="phone" value={job.guardianPhone || "Not given"} wide />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
-      {tuitionStage && canCancelTuition(tuitionStage) ? <button
+      {guardianRequest?.type === "cancel_tuition"
+        ? <AdminGuardianTuitionRequestMark request={guardianRequest} busy={guardianAnswer.busy} onApprove={() => setApprovingGuardianRequest(true)} onDecline={() => guardianAnswer.decline.mutate({ guardianRequestId: guardianRequest.id })} />
+        : tuitionStage && canCancelTuition(tuitionStage) ? <button
         type="button"
         onClick={() => { setCancelReason(""); setCancelling(true); }}
         className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
@@ -170,6 +183,12 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
           showApplicationStage
           showGuardianMarks
           appointmentActions={appointmentActions}
+          guardianTuitionRequest={guardianRequest ? {
+            request: guardianRequest,
+            busy: guardianAnswer.busy,
+            onApprove: () => setApprovingGuardianRequest(true),
+            onDecline: () => guardianAnswer.decline.mutate({ guardianRequestId: guardianRequest.id }),
+          } : undefined}
           applicantRowActions={rowActions}
         />
       : null}
@@ -186,6 +205,16 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
       </ModalFooter>
     </Modal> : null}
+
+    {approvingGuardianRequest && guardianRequest ? <ApproveGuardianTuitionRequestDialog
+      request={guardianRequest}
+      jobId={jobIdForRequest(requestId)}
+      tutorName={applied.data?.items.find(row => row.id === guardianRequest.tutorId)?.name}
+      confirmed={tuitionStage === "confirmed"}
+      busy={guardianAnswer.approve.isPending}
+      onClose={() => setApprovingGuardianRequest(false)}
+      onApprove={() => guardianAnswer.approve.mutate({ guardianRequestId: guardianRequest.id })}
+    /> : null}
 
     {cancelling ? <Modal size="sm" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
       <ModalHeader title={`Cancel Job ID ${jobIdForRequest(requestId)}?`} meta={job ? `Guardian ${job.guardianName}` : undefined} />
