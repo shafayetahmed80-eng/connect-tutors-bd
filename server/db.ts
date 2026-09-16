@@ -9,6 +9,13 @@ import {
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
 import {
+  DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
+  GUARDIAN_APPLICANT_VISIBILITY_ID,
+  guardianApplicantVisibilityFromStored,
+  storedGuardianApplicantVisibility,
+  type GuardianApplicantVisibility,
+} from "@shared/admin-control";
+import {
   defaultTutorProfileFieldConfig,
   resolveTutorProfileFieldConfig,
   type ResolvedTutorProfileFieldConfig,
@@ -3735,10 +3742,13 @@ export async function reviewTutorJobInterestByAdmin(input: {
         .for("update");
       if (!canShortlistOnTuition(request ? getGuardianRequestLifecycle(request) : null)) throw new Error("TUTOR_INTEREST_TUITION_CLOSED");
     }
-    // Declining an applicant, or taking them off the shortlist - which hides them
-    // from the Guardian - also ends any appointment request the Guardian made for them.
+    // Declining an applicant also ends any appointment request the Guardian made
+    // for them, and so does taking them off the shortlist while the Owner's
+    // switch shows a Guardian only shortlisted Tutors - it hides them.
+    const endsRequest = input.status === "declined"
+      || (input.status === "interested" && (await getGuardianApplicantVisibility({ tx })) === "shortlisted");
     await tx.update(tutorJobInterests)
-      .set(input.status === "declined" || input.status === "interested" ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
+      .set(endsRequest ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
       .where(eq(tutorJobInterests.id, interest.id));
     // A decline used to be indistinguishable from the Tutor's own withdrawal:
     // the tab changed and nothing was said. No reason is given - the Admin
@@ -5122,12 +5132,11 @@ export async function countAppliedTutorsByRequest(
 }
 /**
  * Which applications a Guardian's applicant table lists, and so which Tutors
- * they can open, shortlist and ask about: those an Admin shortlisted, and the
- * one appointed.
+ * they can open, shortlist and ask about - by the Owner's Admin Control switch.
  */
-function guardianApplicantConditions() {
+function guardianApplicantConditions(visibility: GuardianApplicantVisibility) {
   return [
-    inArray(tutorJobInterests.status, [...guardianVisibleInterestStatuses]),
+    inArray(tutorJobInterests.status, [...guardianVisibleInterestStatuses(visibility)]),
     // A Tutor suspended after applying is not someone to introduce to a Guardian.
     eq(tutors.profileStatus, "approved"),
   ];
@@ -5139,6 +5148,84 @@ function guardianCountedApplicantConditions() {
     inArray(tutorJobInterests.status, [...guardianCountedInterestStatuses]),
     eq(tutors.profileStatus, "approved"),
   ];
+}
+
+let guardianApplicantVisibilityCache: { value: GuardianApplicantVisibility; readAt: number } | null = null;
+
+/**
+ * The Owner's Admin Control switch: whether a Guardian meets every applicant
+ * or only the ones an Admin shortlisted.
+ *
+ * Lists read it through the same short cache as the site limits. Anything that
+ * decides access - opening a profile, a Guardian's action - asks for it fresh,
+ * and inside a transaction reads it with a shared lock, so a switch being saved
+ * and a Guardian's request made at that moment take turns.
+ */
+export async function getGuardianApplicantVisibility(options: { fresh?: boolean; tx?: any } = {}): Promise<GuardianApplicantVisibility> {
+  if (!options.fresh && !options.tx && guardianApplicantVisibilityCache && Date.now() - guardianApplicantVisibilityCache.readAt < SITE_LIMIT_CACHE_MS) {
+    return guardianApplicantVisibilityCache.value;
+  }
+  if (options.tx) {
+    // Written out rather than `.for("share")`: MariaDB has no FOR SHARE, and
+    // LOCK IN SHARE MODE means the same on it and on MySQL.
+    const [rows] = await options.tx.execute(sql`select ${siteLimitsTable.value} as value from ${siteLimitsTable} where ${siteLimitsTable.limitId} = ${GUARDIAN_APPLICANT_VISIBILITY_ID} limit 1 lock in share mode`);
+    const [row] = rows as Array<{ value: number }>;
+    return guardianApplicantVisibilityFromStored(row ? Number(row.value) : undefined);
+  }
+  const database = await getDb();
+  if (!database) return DEFAULT_GUARDIAN_APPLICANT_VISIBILITY;
+  const [row] = await database
+    .select({ value: siteLimitsTable.value })
+    .from(siteLimitsTable)
+    .where(eq(siteLimitsTable.limitId, GUARDIAN_APPLICANT_VISIBILITY_ID))
+    .limit(1);
+  const value = guardianApplicantVisibilityFromStored(row ? Number(row.value) : undefined);
+  guardianApplicantVisibilityCache = { value, readAt: Date.now() };
+  return value;
+}
+
+/** A Guardian's appointment request for a Tutor no Admin shortlisted - what "Shortlisted only" would hide. */
+function appointmentRequestOutsideShortlistConditions() {
+  return [isNotNull(tutorJobInterests.appointmentRequestedAt), eq(tutorJobInterests.status, "interested")];
+}
+
+/** The Admin Control page: the switch, and how many waiting requests turning it to "Shortlisted only" would cancel. */
+export async function getAdminControl() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const guardianApplicantVisibility = await getGuardianApplicantVisibility({ fresh: true });
+  const [outside] = await database
+    .select({ value: count() })
+    .from(tutorJobInterests)
+    .where(and(...appointmentRequestOutsideShortlistConditions()));
+  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0) };
+}
+
+/**
+ * Sets the switch. Turning it to "Shortlisted only" cancels every waiting
+ * appointment request for a Tutor no Admin shortlisted: the Guardian could no
+ * longer see that Tutor to take it back, and the request would stop blocking a
+ * second one - the same thing taking one Tutor off the shortlist does.
+ */
+export async function setGuardianApplicantVisibility(input: { visibility: GuardianApplicantVisibility }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const stored = storedGuardianApplicantVisibility(input.visibility);
+  const result = await database.transaction(async tx => {
+    let cancelledAppointmentRequests = 0;
+    if (input.visibility === "shortlisted") {
+      const cleared = await tx.update(tutorJobInterests)
+        .set({ appointmentRequestedAt: null })
+        .where(and(...appointmentRequestOutsideShortlistConditions()));
+      cancelledAppointmentRequests = Number(cleared[0].affectedRows ?? 0);
+    }
+    await tx.insert(siteLimitsTable)
+      .values({ limitId: GUARDIAN_APPLICANT_VISIBILITY_ID, value: stored })
+      .onDuplicateKeyUpdate({ set: { value: stored } });
+    return { visibility: input.visibility, cancelledAppointmentRequests };
+  });
+  guardianApplicantVisibilityCache = null;
+  return result;
 }
 
 /**
@@ -5200,6 +5287,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
   if (!request) return undefined;
   const lifecycle = getGuardianRequestLifecycle(request);
   if (!isGuardianApplicantStage(lifecycle)) return undefined;
+  const visibility = await getGuardianApplicantVisibility();
 
   const offset = (input.page - 1) * input.pageSize;
   const rows = await database
@@ -5226,7 +5314,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .leftJoin(universities, eq(universities.id, tutorAcademicProfiles.universityId))
     .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
-    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions()))
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions(visibility)))
     .orderBy(asc(tutorJobInterests.createdAt), asc(tutorJobInterests.id))
     .limit(input.pageSize)
     .offset(offset);
@@ -5237,7 +5325,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions()));
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), ...guardianApplicantConditions(visibility)));
   const listedTotal = Number(listed?.value ?? 0);
   // Whether a request already waits on this tuition - its Tutor may be on another page.
   const [pendingAppointment] = await database
@@ -5245,7 +5333,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+    .where(and(eq(tutorJobs.tutorRequestId, input.requestId), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions(visibility)))
     .limit(1);
 
   const tuitionRequest = (await getWaitingGuardianTuitionRequests([request])).get(request.id) ?? null;
@@ -5333,6 +5421,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
 export async function getTutorProfileForGuardian(input: { guardianUserId: number; requestId: number; tutorId: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
+  const visibility = await getGuardianApplicantVisibility({ fresh: true });
 
   const [access] = await database
     .select({
@@ -5350,7 +5439,7 @@ export async function getTutorProfileForGuardian(input: { guardianUserId: number
       eq(tutorJobs.tutorRequestId, input.requestId),
       eq(tutorRequests.guardianUserId, input.guardianUserId),
       eq(tutors.id, input.tutorId),
-      ...guardianApplicantConditions(),
+      ...guardianApplicantConditions(visibility),
     ))
     .limit(1);
   if (!access || access.userId == null) return undefined;
@@ -5392,6 +5481,7 @@ async function lockGuardianApplicant(tx: any, input: GuardianApplicantAction) {
   if (!request) return undefined;
   const lifecycle = getGuardianRequestLifecycle(request);
   if (!isGuardianApplicantStage(lifecycle)) return undefined;
+  const visibility = await getGuardianApplicantVisibility({ tx });
 
   const [interest] = await tx
     .select({
@@ -5404,11 +5494,11 @@ async function lockGuardianApplicant(tx: any, input: GuardianApplicantAction) {
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-    .where(and(eq(tutorJobs.tutorRequestId, request.id), eq(tutorJobInterests.tutorId, input.tutorId), ...guardianApplicantConditions()))
+    .where(and(eq(tutorJobs.tutorRequestId, request.id), eq(tutorJobInterests.tutorId, input.tutorId), ...guardianApplicantConditions(visibility)))
     .limit(1)
     .for("update");
   if (!interest) return undefined;
-  return { request, lifecycle, interest };
+  return { request, lifecycle, interest, visibility };
 }
 
 /**
@@ -5455,7 +5545,7 @@ export async function requestGuardianAppointment(input: GuardianApplicantAction)
       .from(tutorJobInterests)
       .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
       .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-      .where(and(eq(tutorJobs.tutorRequestId, found.request.id), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+      .where(and(eq(tutorJobs.tutorRequestId, found.request.id), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions(found.visibility)))
       .limit(1);
     const decision = canRequestAppointment({ lifecycle: found.lifecycle, pendingTutorId: pending?.tutorId ?? null, tutorId: input.tutorId });
     if (!decision.allowed) return { outcome: "refused" as const, reason: decision.reason };
@@ -6213,7 +6303,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
         .from(tutorJobInterests)
         .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
         .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
-        .where(and(inArray(tutorJobs.tutorRequestId, items.map(item => item.id)), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
+        .where(and(inArray(tutorJobs.tutorRequestId, items.map(item => item.id)), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianCountedApplicantConditions()))
     : [];
   const appointmentRequestedIds = new Set(waitingRows.map(row => row.requestId));
   // So is a Guardian's own Confirm, Remove or Cancel request, which an Admin answers.

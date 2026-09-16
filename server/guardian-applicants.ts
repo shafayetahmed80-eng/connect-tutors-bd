@@ -5,6 +5,7 @@
  * whose number leaves the server, which school introduces a Tutor - can be
  * tested without a database.
  */
+import type { GuardianApplicantVisibility } from "@shared/admin-control";
 import { academicEducationLevels } from "@shared/tutor-education";
 import type { GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 
@@ -25,10 +26,13 @@ export function isGuardianApplicantStage(lifecycle: GuardianRequestLifecycle) {
 export const guardianCountedInterestStatuses = ["interested", "shortlisted", "matched"] as const;
 
 /**
- * The applications a Guardian can open, shortlist and ask about: the ones an
- * Admin shortlisted, and the Tutor appointed. The rest are only counted.
+ * The applications a Guardian can open, shortlist and ask about, by the
+ * Owner's Admin Control switch: every counted one, or only those an Admin
+ * shortlisted and the Tutor appointed - the rest are then only counted.
  */
-export const guardianVisibleInterestStatuses = ["shortlisted", "matched"] as const;
+export function guardianVisibleInterestStatuses(visibility: GuardianApplicantVisibility): readonly ("interested" | "shortlisted" | "matched")[] {
+  return visibility === "all" ? guardianCountedInterestStatuses : ["shortlisted", "matched"];
+}
 
 /**
  * Whether one applicant's mobile number goes to the Guardian: only the Tutor

@@ -74,9 +74,10 @@ describe("whose mobile number reaches the Guardian", () => {
 });
 
 describe("which applications a Guardian counts and which they can open", () => {
-  it("counts every standing application but lists only the Admin's shortlist and the appointed Tutor", () => {
+  it("counts every standing application, and lists them all or only the Admin's shortlist and the appointed Tutor", () => {
     expect([...guardianCountedInterestStatuses]).toEqual(["interested", "shortlisted", "matched"]);
-    expect([...guardianVisibleInterestStatuses]).toEqual(["shortlisted", "matched"]);
+    expect([...guardianVisibleInterestStatuses("all")]).toEqual(["interested", "shortlisted", "matched"]);
+    expect([...guardianVisibleInterestStatuses("shortlisted")]).toEqual(["shortlisted", "matched"]);
   });
 });
 

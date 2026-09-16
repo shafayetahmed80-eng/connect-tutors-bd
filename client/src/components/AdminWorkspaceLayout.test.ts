@@ -50,6 +50,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Input Field Text", path: "/admin/dynamic/input-field-text" }),
       expect.objectContaining({ label: "Button Section", path: "/admin/dynamic/button-section" }),
       expect.objectContaining({ label: "Limits", path: "/admin/dynamic/limits" }),
+      expect.objectContaining({ label: "Admin Control", path: "/admin/dynamic/admin-control" }),
     ]);
   });
 
@@ -66,6 +67,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/locations");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/legal-pages");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/limits");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/admin-control");
   });
 
   it("orders the Dynamic Section after Operations and before the Owner controls", () => {
