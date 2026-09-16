@@ -253,12 +253,12 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(screen.getByRole("button", { name: "Edit Documents" }));
     const dialog = screen.getByRole("dialog");
 
-    // All four are offered, and all four are clearly optional.
+    // All four are offered, and none of them says "(Optional)" - optional stays optional without the word.
     for (const label of ["NID Card Image", "SSC Certificate", "HSC Certificate", "Hons/MS Certificate"]) {
       expect(within(dialog).getByLabelText(`Upload ${label}`)).toBeTruthy();
       expect(within(dialog).getByText(label)).toBeTruthy();
     }
-    expect(within(dialog).getAllByText("(Optional)")).toHaveLength(4);
+    expect(within(dialog).queryByText("(Optional)")).toBeNull();
 
     fireEvent.change(within(dialog).getByLabelText("Upload HSC Certificate"), {
       target: { files: [new File(["cert"], "hsc.png", { type: "image/png" })] },
@@ -664,7 +664,7 @@ describe("the Tutor Profile phone boxes", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
     const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Mother’s Phone Number (Optional)"), { target: { value: "17123" } });
+    fireEvent.change(within(dialog).getByLabelText("Mother’s Phone Number"), { target: { value: "17123" } });
     await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
 
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();

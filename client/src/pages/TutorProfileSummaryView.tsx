@@ -54,8 +54,9 @@ export function TutorProfileSummaryView({ sections, showProgress = true }: {
             section has to name itself. */}
         <div className="flex items-baseline justify-between gap-3 px-1 pt-1">
           <h3 className={`text-sm ${tp.heading}`}>{section.title}</h3>
-          {showProgress ? <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
-            {sectionCount.total === 0 ? "Optional" : `${sectionCount.filled}/${sectionCount.total}`}
+          {/* A section with no required field shows no count - and no "Optional" in its place. */}
+          {showProgress && sectionCount.total > 0 ? <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
+            {`${sectionCount.filled}/${sectionCount.total}`}
           </span> : null}
         </div>
 

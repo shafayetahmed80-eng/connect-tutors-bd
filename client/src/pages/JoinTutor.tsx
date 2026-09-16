@@ -1,6 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { fieldLabel, filledField, optionalMark, primaryButton, requiredMark } from "@/components/journeyField";
+import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useSiteContentResolver } from "@/lib/siteContent";
@@ -349,7 +349,7 @@ export function SearchableLocationSelect({ triggerId, label, slotId, required, v
   const activeOption = open ? filteredOptions[activeIndex] : undefined;
 
   return <div ref={selectorRef} className={`relative block ${open ? "z-40" : "z-0"}`}>
-    <label htmlFor={inputId} className={fieldLabel}>{labelText}{required ? <RequiredMark /> : <span className={optionalMark}> (optional)</span>}</label>
+    <label htmlFor={inputId} className={fieldLabel}>{labelText}{required ? <RequiredMark /> : null}</label>
     <span className="relative mt-2 block">
       <MapPin aria-hidden="true" size={16} className="input-text-journey pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-j-accent" />
       <input

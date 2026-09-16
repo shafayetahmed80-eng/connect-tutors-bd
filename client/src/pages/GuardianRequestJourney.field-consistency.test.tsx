@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getSiteContentSlots } from "@shared/site-content";
 
-import { fieldGrid, fieldLabel, optionalMark, requiredMark } from "@/components/journeyField";
+import { fieldGrid, fieldLabel, requiredMark } from "@/components/journeyField";
 import { RequestStage } from "./GuardianRequestJourney";
 
 afterEach(cleanup);
@@ -62,16 +62,14 @@ describe("the Guardian request form's fields line up", () => {
     }
   });
 
-  it("marks required and optional the same way everywhere", () => {
+  it("marks a required field with one asterisk, and an optional one with nothing", () => {
     const { container } = render(<RequestStage {...props} step={2} />);
-    const marks = Array.from(container.querySelectorAll("label span"))
-      .filter(span => span.textContent?.trim() === "*" || span.textContent?.trim() === "(optional)");
+    const marks = Array.from(container.querySelectorAll("label span")).filter(span => span.textContent?.trim() === "*");
 
-    expect(marks.length).toBeGreaterThan(3);
-    for (const mark of marks) {
-      const expected = mark.textContent?.trim() === "*" ? requiredMark : optionalMark;
-      expect(mark.className, mark.textContent ?? "").toBe(expected);
-    }
+    expect(marks.length).toBeGreaterThan(0);
+    for (const mark of marks) expect(mark.className).toBe(requiredMark);
+    // Optional stays optional without the word (Owner rule, 2026-09-16).
+    expect(container.textContent?.toLowerCase()).not.toContain("(optional)");
     // "(if applicable)" was the location picker's own word for the same idea.
     expect(container.textContent).not.toContain("(if applicable)");
   });
