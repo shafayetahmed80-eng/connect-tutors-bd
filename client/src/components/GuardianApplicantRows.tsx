@@ -1,5 +1,6 @@
 import { ChevronRight, Star } from "lucide-react";
 import { Link } from "wouter";
+import { WaitingTuitionRequestMark, type WaitingTuitionRequest } from "@/components/GuardianTuitionRequestDialog";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
 
@@ -40,6 +41,13 @@ export type GuardianApplicantActions = {
   onShortlist: (tutor: GuardianApplicantRow, shortlisted: boolean) => void;
   onRequestAppointment: (tutor: GuardianApplicantRow) => void;
   onWithdrawAppointment: (tutor: GuardianApplicantRow) => void;
+  /** The Guardian's own Confirm, Remove or Cancel request waiting on the tuition, if any. */
+  tuitionRequest?: WaitingTuitionRequest;
+  /** Whether the appointed Tutor can be asked about now: Appointed, with nothing waiting. The server holds the same rule. */
+  canAskAboutAppointed?: boolean;
+  onAskConfirm?: (tutor: GuardianApplicantRow) => void;
+  onAskRemove?: (tutor: GuardianApplicantRow) => void;
+  onWithdrawTuitionRequest?: () => void;
 };
 
 function Value({ value }: { value: string }) {
@@ -70,7 +78,31 @@ function ShortlistButton({ tutor, actions }: { tutor: GuardianApplicantRow; acti
 
 function AppointmentControl({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
   if (tutor.appointed) {
-    return <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span>;
+    // After the demo class the Guardian can ask to keep this Tutor or to have them removed - one request at a time.
+    const waiting = actions.tuitionRequest;
+    return <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span>
+      {waiting && waiting.tutorId === tutor.id && actions.onWithdrawTuitionRequest
+        ? <WaitingTuitionRequestMark type={waiting.type} busy={actions.busy} onWithdraw={actions.onWithdrawTuitionRequest} />
+        : actions.canAskAboutAppointed && actions.onAskConfirm && actions.onAskRemove
+          ? <>
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => actions.onAskConfirm?.(tutor)}
+                aria-label={`Ask to confirm ${tutor.name}`}
+                className="inline-flex h-8 items-center rounded-lg bg-[#0f7048] px-3 text-2xs font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-40"
+              >Confirm</button>
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => actions.onAskRemove?.(tutor)}
+                aria-label={`Ask to remove ${tutor.name}`}
+                className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-white px-3 text-2xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
+              >Remove</button>
+            </>
+          : null}
+    </span>;
   }
   if (tutor.appointmentRequested) {
     return <span className="inline-flex items-center gap-2 whitespace-nowrap">

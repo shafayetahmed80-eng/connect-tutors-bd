@@ -1,5 +1,7 @@
 import AppliedJobFacts from "@/components/AppliedJobFacts";
-import GuardianApplicantRows, { type GuardianApplicantActions } from "@/components/GuardianApplicantRows";
+import GuardianApplicantRows, { type GuardianApplicantActions, type GuardianApplicantRow } from "@/components/GuardianApplicantRows";
+import { GuardianTuitionRequestDialog, WaitingTuitionRequestMark, type GuardianTuitionRequestType } from "@/components/GuardianTuitionRequestDialog";
+import { useGuardianTuitionRequest } from "@/hooks/useGuardianTuitionRequest";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
@@ -7,7 +9,7 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import TuitionStatusPill from "@/components/TuitionStatusPill";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleX, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -34,13 +36,23 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
   const shortlist = trpc.tutorRequests.shortlistApplicant.useMutation({ onSuccess: refresh, onError });
   const requestAppointment = trpc.tutorRequests.requestAppointment.useMutation({ onSuccess: refresh, onError });
   const withdrawAppointment = trpc.tutorRequests.withdrawAppointmentRequest.useMutation({ onSuccess: refresh, onError });
+  // Confirm, Remove and Cancel go to an Admin as requests; one waits at a time.
+  const tuitionRequest = useGuardianTuitionRequest();
+  const waiting = applied.data?.tuitionRequest ?? null;
+  const [asking, setAsking] = useState<{ type: GuardianTuitionRequestType; tutor?: GuardianApplicantRow } | null>(null);
+
   const actions: GuardianApplicantActions = {
     // Live, with no request already waiting - the same rule the server applies.
     canRequestAppointment: applied.data?.lifecycle === "live" && !applied.data.appointmentRequestPending,
-    busy: shortlist.isPending || requestAppointment.isPending || withdrawAppointment.isPending,
+    busy: shortlist.isPending || requestAppointment.isPending || withdrawAppointment.isPending || tuitionRequest.busy,
     onShortlist: (tutor, shortlisted) => shortlist.mutate({ requestId, tutorId: tutor.id, shortlisted }),
     onRequestAppointment: tutor => requestAppointment.mutate({ requestId, tutorId: tutor.id }),
     onWithdrawAppointment: tutor => withdrawAppointment.mutate({ requestId, tutorId: tutor.id }),
+    tuitionRequest: waiting,
+    canAskAboutAppointed: applied.data?.lifecycle === "appointed" && !waiting,
+    onAskConfirm: tutor => setAsking({ type: "confirm", tutor }),
+    onAskRemove: tutor => setAsking({ type: "remove_tutor", tutor }),
+    onWithdrawTuitionRequest: () => tuitionRequest.withdraw.mutate({ requestId }),
   };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
@@ -54,7 +66,28 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
         Applied: <span className="tabular-nums">{applied.data?.total ?? 0}</span>
       </span>
       {job ? <AppliedJobFacts job={job} /> : <div className="min-w-0 flex-1" />}
+      {waiting?.type === "cancel_tuition"
+        ? <WaitingTuitionRequestMark type="cancel_tuition" busy={tuitionRequest.busy} onWithdraw={() => tuitionRequest.withdraw.mutate({ requestId })} />
+        : job && !waiting
+          ? <button
+              type="button"
+              onClick={() => setAsking({ type: "cancel_tuition" })}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
+            ><CircleX className="h-4 w-4" /> Cancel Tuition</button>
+          : null}
     </section> : null}
+
+    {asking ? <GuardianTuitionRequestDialog
+      type={asking.type}
+      jobId={jobIdForRequest(requestId)}
+      tutorLabel={asking.tutor?.name}
+      busy={tuitionRequest.send.isPending}
+      onClose={() => setAsking(null)}
+      onSend={reason => tuitionRequest.send.mutate(
+        { requestId, type: asking.type, tutorId: asking.tutor?.id, reason },
+        { onSuccess: () => setAsking(null) },
+      )}
+    /> : null}
 
     {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading applied Tutors…</div> : null}
     {applied.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{applied.error?.message ?? "The applied Tutors could not be loaded."}</div> : null}
