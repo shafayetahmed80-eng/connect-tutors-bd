@@ -87,6 +87,20 @@ describe("RecordTable", () => {
     expect(screen.queryByRole("listitem")).toBeNull();
   });
 
+  it("draws no card of its own when the table already sits in one", () => {
+    const { container } = render(<RecordTable
+      caption="Security events"
+      columns={columns}
+      rows={rows}
+      rowKey={row => row.id}
+      empty="No event."
+      plain
+    />);
+
+    expect(container.firstElementChild?.className).toBe("overflow-x-auto");
+    expect(screen.getByRole("table")).toBeTruthy();
+  });
+
   it("names the card list the way the table's caption names the table", () => {
     onAPhone();
     renderTable();

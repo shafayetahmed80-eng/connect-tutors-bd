@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, CheckCircle2, ClipboardCheck, ContactRound, Loader2, ShieldCheck, UsersRound, XCircle } from "lucide-react";
 import { useState } from "react";
@@ -91,10 +92,44 @@ function ReportData({ data }: { data: OwnerActivityReport }) {
     { label: "Tutor moderation", value: data.totals.tutorModerations, detail: "Recorded profile decisions", icon: ClipboardCheck, tone: "bg-amber-50 text-amber-900 ring-amber-200" },
     { label: "Guardian contact views", value: data.totals.guardianContactViews, detail: "Deliberate audited disclosures", icon: ContactRound, tone: "bg-violet-50 text-violet-900 ring-violet-200" },
   ];
+
+  type AdminSummary = OwnerActivityReport["adminSummaries"][number];
+  const adminColumns: RecordColumn<AdminSummary>[] = [
+    {
+      key: "admin", label: "Admin account", place: "head", wide: true,
+      cell: admin => <>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-bold text-j-ink">{admin.name}</p>
+          <span className={`rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide ${admin.active ? "bg-emerald-50 text-emerald-700" : "bg-j-surface-muted text-j-ink-soft"}`}>{admin.active ? "Active" : "Former"}</span>
+        </div>
+        <p className="mt-1 text-xs text-j-ink-muted">{admin.email ?? "No account email"}</p>
+      </>,
+    },
+    {
+      key: "signIns", label: "Sign-ins",
+      cell: admin => <span className="text-j-ink-soft">
+        <span className="font-bold text-emerald-700">{admin.successfulLogins}</span>
+        <span className="mx-1 text-j-ink-faint">/</span>
+        <span className="font-bold text-rose-700">{admin.failedLogins}</span>
+      </span>,
+    },
+    { key: "moderation", label: "Moderation", cell: admin => <span className="font-semibold text-j-ink-soft">{admin.tutorModerations}</span> },
+    { key: "contactViews", label: "Contact views", cell: admin => <span className="font-semibold text-j-ink-soft">{admin.guardianContactViews}</span> },
+    { key: "lastActivity", label: "Last activity", wide: true, cell: admin => <span className="text-xs leading-5 text-j-ink-muted">{formatDate(admin.lastActivityAt)}</span> },
+  ];
+
   return <>
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{metrics.map(metric => { const Icon = metric.icon; return <article key={metric.label} className={`rounded-xl p-5 ring-1 shadow-sm ${metric.tone}`}><Icon className="h-5 w-5" /><p className="mt-5 text-3xl font-bold">{metric.value.toLocaleString()}</p><h2 className="mt-1 text-sm font-bold">{metric.label}</h2><p className="mt-2 text-xs leading-5 opacity-75">{metric.detail}</p></article>; })}</section>
     <section className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-      <article className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="border-b border-j-border p-5 sm:p-6"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-j-accent" /><div><h2 className="text-lg font-bold text-j-ink">Per-Admin activity</h2></div></div></div><div className="overflow-x-auto"><table className="w-full min-w-[670px] text-left text-sm"><thead className="bg-j-surface-sunken text-xs uppercase tracking-wide text-j-ink-muted"><tr><th className="px-5 py-3 font-bold">Admin account</th><th className="px-4 py-3 font-bold">Sign-ins</th><th className="px-4 py-3 font-bold">Moderation</th><th className="px-4 py-3 font-bold">Contact views</th><th className="px-5 py-3 font-bold">Last activity</th></tr></thead><tbody className="divide-y divide-j-border">{data.adminSummaries.map(admin => <tr key={admin.userId}><td className="px-5 py-4"><div className="flex flex-wrap items-center gap-2"><p className="font-bold text-j-ink">{admin.name}</p><span className={`rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide ${admin.active ? "bg-emerald-50 text-emerald-700" : "bg-j-surface-muted text-j-ink-soft"}`}>{admin.active ? "Active" : "Former"}</span></div><p className="mt-1 text-xs text-j-ink-muted">{admin.email ?? "No account email"}</p></td><td className="px-4 py-4 text-j-ink-soft"><span className="font-bold text-emerald-700">{admin.successfulLogins}</span><span className="mx-1 text-j-ink-faint">/</span><span className="font-bold text-rose-700">{admin.failedLogins}</span></td><td className="px-4 py-4 font-semibold text-j-ink-soft">{admin.tutorModerations}</td><td className="px-4 py-4 font-semibold text-j-ink-soft">{admin.guardianContactViews}</td><td className="px-5 py-4 text-xs leading-5 text-j-ink-muted">{formatDate(admin.lastActivityAt)}</td></tr>)}</tbody></table></div></article>
+      {/* One column list, read as a table on a laptop and as a card per Admin on a phone. */}
+      <article className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="border-b border-j-border p-5 sm:p-6"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-j-accent" /><div><h2 className="text-lg font-bold text-j-ink">Per-Admin activity</h2></div></div></div><RecordTable
+        caption="Per-Admin activity: sign-ins, moderation, contact views and last activity"
+        columns={adminColumns}
+        rows={data.adminSummaries}
+        rowKey={admin => admin.userId}
+        empty="No Admin activity recorded yet."
+        tableClassName="min-w-[670px]"
+      /></article>
       <article className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-j-ink">Report boundary</h2><ul className="mt-5 space-y-3 text-sm leading-6 text-j-ink-soft"><li className="rounded-xl bg-j-surface-sunken p-3"><strong className="text-j-ink">Included:</strong> authenticated Admin security events, Tutor profile decisions, and audited Guardian contact-view counts.</li><li className="rounded-xl bg-j-surface-sunken p-3"><strong className="text-j-ink">Excluded:</strong> Guardian phone/email, student notes, passwords, recovery codes, TOTP secrets, audit metadata, and IP addresses.</li><li className="rounded-xl bg-j-surface-sunken p-3"><strong className="text-j-ink">Generated:</strong> {formatDate(data.generatedAt)}</li></ul></article>
     </section>
     <section className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-j-ink">Recent recorded activity</h2>{data.recentEvents.length ? <ol className="mt-5 divide-y divide-j-border">{data.recentEvents.map(event => <li key={event.id} className="flex gap-3 py-4 first:pt-0"><span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${event.category === "security" ? "bg-sky-500" : event.category === "tutor_moderation" ? "bg-amber-500" : "bg-violet-500"}`} /><div className="min-w-0 flex-1"><p className="text-sm font-bold capitalize text-j-ink">{eventLabel(event.category, event.label)}</p><p className="mt-1 text-sm text-j-ink-soft">Recorded for <strong>{event.adminName}</strong></p></div><time className="shrink-0 text-right text-xs leading-5 text-j-ink-muted">{formatDate(event.createdAt)}</time></li>)}</ol> : <p className="mt-5 rounded-xl bg-j-surface-sunken p-4 text-sm text-j-ink-soft">No Admin activity has been recorded in this reporting window.</p>}</section>

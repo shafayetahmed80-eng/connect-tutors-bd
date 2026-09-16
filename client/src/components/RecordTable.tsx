@@ -41,6 +41,11 @@ export type RecordTableProps<Row> = {
   empty: string;
   /** The table's own width class, e.g. `min-w-[72rem]`. Cards never use it. */
   tableClassName?: string;
+  /**
+   * The table draws no card of its own - for a table already inside one, where
+   * a second border would box a box. Cards are unaffected: each carries its own.
+   */
+  plain?: boolean;
 };
 
 function cardContent<Row>(column: RecordColumn<Row>, row: Row, index: number) {
@@ -78,12 +83,12 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty }: RecordTable
 }
 
 export default function RecordTable<Row>(props: RecordTableProps<Row>) {
-  const { caption, columns, rows, rowKey, empty, tableClassName = "" } = props;
+  const { caption, columns, rows, rowKey, empty, tableClassName = "", plain = false } = props;
   const isMobile = useIsMobile();
 
   if (isMobile) return <RecordCards {...props} />;
 
-  return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
+  return <div className={plain ? "overflow-x-auto" : "overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm"}>
     <table className={`w-full border-collapse text-sm ${tableClassName}`}>
       <caption className="sr-only">{caption}</caption>
       <thead>
