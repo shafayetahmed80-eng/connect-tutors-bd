@@ -5,6 +5,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { appointmentRefusalMessages } from "./guardian-applicant-actions";
+import { GUARDIAN_REQUEST_REASON_MAX_LENGTH, guardianTuitionRequestRefusalMessages } from "./guardian-tuition-requests";
+import { guardianTuitionRequestTypeValues } from "../drizzle/schema";
 import { adminAppointmentRefusalMessages } from "./admin-appointment";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
@@ -1801,6 +1803,23 @@ export const appRouter = router({
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: adminAppointmentRefusalMessages.not_requested });
         return { declined: true as const };
       }),
+    /** Runs the Confirm, Remove or Cancel a Guardian asked for - the Admin's own move, with the Guardian's reason on a cancellation. */
+    approveGuardianTuitionRequest: adminProcedure
+      .input(z.object({ guardianRequestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.approveGuardianTuitionRequestByAdmin({ adminUserId: ctx.user.id, guardianRequestId: input.guardianRequestId });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This request is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages[result.reason] });
+        return { approved: true as const };
+      }),
+    declineGuardianTuitionRequest: adminProcedure
+      .input(z.object({ guardianRequestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.declineGuardianTuitionRequestByAdmin({ adminUserId: ctx.user.id, guardianRequestId: input.guardianRequestId });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This request is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages.not_waiting });
+        return { declined: true as const };
+      }),
     listTutorRequestPublicationEvents: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))
       .query(({ input }) => db.listTutorRequestPublicationEvents(input.requestId)),
@@ -1939,6 +1958,32 @@ export const appRouter = router({
         const result = await db.withdrawGuardianAppointmentRequest({ guardianUserId: ctx.user.id, ...input });
         if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: appointmentRefusalMessages.nothing_to_withdraw });
+        return { withdrawn: true as const };
+      }),
+    /**
+     * Asks an Admin to confirm the appointed Tutor, remove the Tutor, or cancel
+     * the tuition. Nothing changes until an Admin approves.
+     */
+    requestTuitionChange: guardianProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        type: z.enum(guardianTuitionRequestTypeValues),
+        tutorId: z.string().trim().min(1).max(32).optional(),
+        reason: z.string().trim().max(GUARDIAN_REQUEST_REASON_MAX_LENGTH).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // The Guardian is always the signed-in one, never a value from the input.
+        const result = await db.createGuardianTuitionRequest({ ...input, guardianUserId: ctx.user.id });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages[result.reason] });
+        return { requested: true as const };
+      }),
+    withdrawTuitionChange: guardianProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.withdrawGuardianTuitionRequest({ ...input, guardianUserId: ctx.user.id });
+        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages.nothing_to_withdraw });
         return { withdrawn: true as const };
       }),
     decideContactConsent: guardianProcedure

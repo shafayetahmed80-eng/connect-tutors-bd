@@ -575,6 +575,13 @@
       "when": 1791100000000,
       "tag": "0081_guardian_verification_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1791200000000,
+      "tag": "0082_guardian_tuition_requests",
+      "breakpoints": true
     }
   ]
 }
