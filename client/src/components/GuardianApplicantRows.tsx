@@ -1,5 +1,6 @@
 import { ChevronRight, Star } from "lucide-react";
 import { Link } from "wouter";
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
 
 /**
@@ -41,42 +42,38 @@ export type GuardianApplicantActions = {
   onWithdrawAppointment: (tutor: GuardianApplicantRow) => void;
 };
 
-function Cell({ value, className = "" }: { value: string; className?: string }) {
-  return <td className={`px-3 py-2.5 align-top ${className}`}>
-    <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>
-  </td>;
+function Value({ value }: { value: string }) {
+  return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-function MobileCell({ tutor }: { tutor: GuardianApplicantRow }) {
-  if (!tutor.phoneHidden) return <Cell value={tutor.phone ?? ""} className="whitespace-nowrap" />;
-  return <td className="whitespace-nowrap px-3 py-2.5 align-top">
+function MobileValue({ tutor }: { tutor: GuardianApplicantRow }) {
+  if (!tutor.phoneHidden) return <Value value={tutor.phone ?? ""} />;
+  return <span className="whitespace-nowrap">
     <span className="text-j-ink-strong">+880</span>
     <span aria-hidden="true" className="ml-1 tracking-wider text-j-ink-faint">••••••••••</span>
     <span className="sr-only">, hidden</span>
-  </td>;
+  </span>;
 }
 
-function ShortlistCell({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
-  return <td className="px-3 py-2.5 align-top">
-    <button
-      type="button"
-      aria-pressed={tutor.shortlisted}
-      aria-label={`${tutor.shortlisted ? "Remove from shortlist" : "Shortlist"} ${tutor.name}`}
-      disabled={actions.busy}
-      onClick={() => actions.onShortlist(tutor, !tutor.shortlisted)}
-      className={`inline-grid size-8 place-items-center rounded-lg border disabled:opacity-40 ${tutor.shortlisted ? "border-amber-200 bg-amber-50 text-amber-500" : "border-j-border text-j-ink-faint hover:text-amber-500"}`}
-    >
-      <Star size={16} fill={tutor.shortlisted ? "currentColor" : "none"} aria-hidden="true" />
-    </button>
-  </td>;
+function ShortlistButton({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
+  return <button
+    type="button"
+    aria-pressed={tutor.shortlisted}
+    aria-label={`${tutor.shortlisted ? "Remove from shortlist" : "Shortlist"} ${tutor.name}`}
+    disabled={actions.busy}
+    onClick={() => actions.onShortlist(tutor, !tutor.shortlisted)}
+    className={`inline-grid size-8 place-items-center rounded-lg border disabled:opacity-40 ${tutor.shortlisted ? "border-amber-200 bg-amber-50 text-amber-500" : "border-j-border text-j-ink-faint hover:text-amber-500"}`}
+  >
+    <Star size={16} fill={tutor.shortlisted ? "currentColor" : "none"} aria-hidden="true" />
+  </button>;
 }
 
-function AppointmentCell({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
-  let content;
+function AppointmentControl({ tutor, actions }: { tutor: GuardianApplicantRow; actions: GuardianApplicantActions }) {
   if (tutor.appointed) {
-    content = <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span>;
-  } else if (tutor.appointmentRequested) {
-    content = <span className="inline-flex items-center gap-2 whitespace-nowrap">
+    return <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800">Appointed</span>;
+  }
+  if (tutor.appointmentRequested) {
+    return <span className="inline-flex items-center gap-2 whitespace-nowrap">
       <span className="rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">Requested</span>
       <button
         type="button"
@@ -88,18 +85,16 @@ function AppointmentCell({ tutor, actions }: { tutor: GuardianApplicantRow; acti
         Withdraw
       </button>
     </span>;
-  } else {
-    content = <button
-      type="button"
-      disabled={actions.busy || !actions.canRequestAppointment}
-      onClick={() => actions.onRequestAppointment(tutor)}
-      aria-label={`Appoint ${tutor.name}`}
-      className="inline-flex h-8 items-center rounded-lg bg-j-accent px-3 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      Appoint
-    </button>;
   }
-  return <td className="px-3 py-2.5 align-top">{content}</td>;
+  return <button
+    type="button"
+    disabled={actions.busy || !actions.canRequestAppointment}
+    onClick={() => actions.onRequestAppointment(tutor)}
+    aria-label={`Appoint ${tutor.name}`}
+    className="inline-flex h-8 items-center rounded-lg bg-j-accent px-3 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    Appoint
+  </button>;
 }
 
 export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, serialFrom, actions }: {
@@ -111,48 +106,32 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
   serialFrom: number;
   actions: GuardianApplicantActions;
 }) {
-  return <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-    <table className="w-full min-w-[72rem] border-collapse text-sm">
-      <caption className="sr-only">Tutors who applied to this tuition</caption>
-      <thead>
-        <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-          <th scope="col" className="px-3 py-2.5">#</th>
-          <th scope="col" className="px-3 py-2.5">Tutor ID</th>
-          <th scope="col" className="px-3 py-2.5">Name</th>
-          <th scope="col" className="px-3 py-2.5">Mobile</th>
-          <th scope="col" className="px-3 py-2.5">Institute</th>
-          <th scope="col" className="px-3 py-2.5">Department</th>
-          <th scope="col" className="px-3 py-2.5">City</th>
-          <th scope="col" className="px-3 py-2.5">Location</th>
-          <th scope="col" className="px-3 py-2.5">Experience</th>
-          <th scope="col" className="px-3 py-2.5">Shortlist</th>
-          <th scope="col" className="px-3 py-2.5">Appointment</th>
-          <th scope="col" className="px-3 py-2.5"><span className="sr-only">Profile</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        {tutors.map((tutor, index) => <tr key={tutor.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-          <td className="px-3 py-2.5 align-top tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</td>
-          <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</td>
-          <td className="px-3 py-2.5 align-top font-bold text-j-ink">
-            <span className="inline-flex flex-wrap items-center gap-1.5">{tutor.name}{tutor.verified ? <TutorVerifiedBadge /> : null}</span>
-          </td>
-          <MobileCell tutor={tutor} />
-          <Cell value={tutor.instituteName ?? ""} className="max-w-[16rem]" />
-          <Cell value={tutor.departmentName ?? ""} className="max-w-[12rem]" />
-          <Cell value={tutor.cityLabel ?? ""} />
-          <Cell value={tutor.locationLabel ?? ""} />
-          <Cell value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} />
-          <ShortlistCell tutor={tutor} actions={actions} />
-          <AppointmentCell tutor={tutor} actions={actions} />
-          <td className="px-3 py-2.5 align-top text-right">
-            <Link href={`/guardian/dashboard/applied-tutors/${requestId}/${encodeURIComponent(tutor.id)}`} aria-label={`Open the profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-              <ChevronRight size={16} />
-            </Link>
-          </td>
-        </tr>)}
-        {tutors.length === 0 ? <tr><td colSpan={12} className="px-3 py-10 text-center text-sm text-j-ink-soft">{emptyLabel}</td></tr> : null}
-      </tbody>
-    </table>
-  </div>;
+  const columns: RecordColumn<GuardianApplicantRow>[] = [
+    { key: "serial", label: "#", place: "head", cell: (_tutor, index) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> },
+    { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
+    { key: "name", label: "Name", place: "head", cell: tutor => <span className="inline-flex flex-wrap items-center gap-1.5 font-bold text-j-ink">{tutor.name}{tutor.verified ? <TutorVerifiedBadge /> : null}</span> },
+    { key: "phone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: tutor => <MobileValue tutor={tutor} /> },
+    { key: "institute", label: "Institute", wide: true, cellClassName: "max-w-[16rem]", cell: tutor => <Value value={tutor.instituteName ?? ""} /> },
+    { key: "department", label: "Department", cellClassName: "max-w-[12rem]", cell: tutor => <Value value={tutor.departmentName ?? ""} /> },
+    { key: "city", label: "City", cell: tutor => <Value value={tutor.cityLabel ?? ""} /> },
+    { key: "location", label: "Location", cell: tutor => <Value value={tutor.locationLabel ?? ""} /> },
+    { key: "experience", label: "Experience", cell: tutor => <Value value={tutor.teachingExperienceYears == null ? "" : `${tutor.teachingExperienceYears} yr`} /> },
+    { key: "shortlist", label: "Shortlist", place: "action", cell: tutor => <ShortlistButton tutor={tutor} actions={actions} /> },
+    { key: "appointment", label: "Appointment", place: "action", cell: tutor => <AppointmentControl tutor={tutor} actions={actions} /> },
+    {
+      key: "profile", label: "Profile", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: tutor => <Link href={`/guardian/dashboard/applied-tutors/${requestId}/${encodeURIComponent(tutor.id)}`} aria-label={`Open the profile of ${tutor.name}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
+        <ChevronRight size={16} />
+      </Link>,
+    },
+  ];
+
+  return <RecordTable
+    caption="Tutors who applied to this tuition"
+    columns={columns}
+    rows={tutors}
+    rowKey={tutor => tutor.id}
+    empty={emptyLabel}
+    tableClassName="min-w-[72rem]"
+  />;
 }
