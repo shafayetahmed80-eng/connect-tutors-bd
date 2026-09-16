@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   shortlist: vi.fn(),
   requestAppointment: vi.fn(),
   withdrawAppointment: vi.fn(),
+  sendTuitionRequest: vi.fn(),
+  withdrawTuitionRequest: vi.fn(),
   invalidate: vi.fn(),
 }));
 
@@ -30,7 +32,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ tutorRequests: { appliedTutors: { invalidate: mocks.invalidate } } }),
+    useUtils: () => ({ tutorRequests: { appliedTutors: { invalidate: mocks.invalidate }, mine: { invalidate: mocks.invalidate } } }),
     tutorRequests: {
       appliedTutors: {
         useQuery: (input: unknown) => {
@@ -41,6 +43,8 @@ vi.mock("@/lib/trpc", () => ({
       shortlistApplicant: { useMutation: () => ({ mutate: mocks.shortlist, isPending: false }) },
       requestAppointment: { useMutation: () => ({ mutate: mocks.requestAppointment, isPending: false }) },
       withdrawAppointmentRequest: { useMutation: () => ({ mutate: mocks.withdrawAppointment, isPending: false }) },
+      requestTuitionChange: { useMutation: () => ({ mutate: mocks.sendTuitionRequest, isPending: false }) },
+      withdrawTuitionChange: { useMutation: () => ({ mutate: mocks.withdrawTuitionRequest, isPending: false }) },
     },
   },
 }));
@@ -166,6 +170,77 @@ describe("shortlisting and asking to appoint", () => {
     expect(within(appointed).getByText("Appointed")).toBeTruthy();
     expect(within(appointed).queryByRole("button", { name: /Appoint/ })).toBeNull();
     expect((within(other).getByRole("button", { name: "Appoint Tanvir Ahmed" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("asking an Admin to confirm, remove or cancel", () => {
+  const appointed = () => applicant("tutor-175", "Tania Sultana", { appointed: true, phoneHidden: false, phone: "+8801711111111" });
+
+  it("asks to confirm the appointed Tutor, with no reason", () => {
+    loaded([appointed(), applicant("tutor-404", "Tanvir Ahmed")], { lifecycle: "appointed", tuitionRequest: null });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    const [row, other] = screen.getAllByRole("row").slice(1);
+    expect(within(other).queryByRole("button", { name: /Ask to/ })).toBeNull();
+    fireEvent.click(within(row).getByRole("button", { name: "Ask to confirm Tania Sultana" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask to confirm Tania Sultana?" });
+    expect(within(dialog).queryByRole("textbox")).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Send request" }));
+    expect(mocks.sendTuitionRequest).toHaveBeenCalledWith({ requestId: 13, type: "confirm", tutorId: "tutor-175", reason: undefined }, expect.anything());
+  });
+
+  it("asks to remove the appointed Tutor only with a reason", () => {
+    loaded([appointed()], { lifecycle: "appointed", tuitionRequest: null });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ask to remove Tania Sultana" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask to remove Tania Sultana?" });
+    const send = within(dialog).getByRole("button", { name: "Send request" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "ok" } });
+    expect(send.disabled).toBe(true);
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "  The demo class did not suit us  " } });
+    fireEvent.click(send);
+    expect(mocks.sendTuitionRequest).toHaveBeenCalledWith({ requestId: 13, type: "remove_tutor", tutorId: "tutor-175", reason: "The demo class did not suit us" }, expect.anything());
+  });
+
+  it("asks to cancel the tuition from the strip, with a reason", () => {
+    loaded([applicant("tutor-175", "Tania Sultana")], { lifecycle: "live", tuitionRequest: null });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel Tuition" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask to cancel Job ID 6812?" });
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Found a tutor elsewhere" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Send request" }));
+    expect(mocks.sendTuitionRequest).toHaveBeenCalledWith({ requestId: 13, type: "cancel_tuition", tutorId: undefined, reason: "Found a tutor elsewhere" }, expect.anything());
+  });
+
+  it("offers nothing new while a request waits, and lets it be withdrawn", () => {
+    loaded([appointed()], { lifecycle: "appointed", tuitionRequest: { type: "remove_tutor", tutorId: "tutor-175" } });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    const row = screen.getAllByRole("row")[1];
+    expect(within(row).getByText("Removal requested")).toBeTruthy();
+    expect(within(row).queryByRole("button", { name: /Ask to/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel Tuition" })).toBeNull();
+    fireEvent.click(within(row).getByRole("button", { name: "Withdraw: Removal requested" }));
+    expect(mocks.withdrawTuitionRequest).toHaveBeenCalledWith({ requestId: 13 });
+  });
+
+  it("shows a waiting cancellation on the strip, and keeps the appointed row quiet", () => {
+    loaded([appointed()], { lifecycle: "appointed", tuitionRequest: { type: "cancel_tuition", tutorId: null } });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+
+    expect(screen.getByText("Cancellation requested")).toBeTruthy();
+    expect(within(screen.getAllByRole("row")[1]).queryByRole("button", { name: /Ask to/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw: Cancellation requested" }));
+    expect(mocks.withdrawTuitionRequest).toHaveBeenCalledWith({ requestId: 13 });
+  });
+
+  it("offers no Confirm or Remove before a Tutor is appointed", () => {
+    loaded([applicant("tutor-175", "Tania Sultana")], { lifecycle: "live", tuitionRequest: null });
+    render(<GuardianAppliedTutorsContent requestId={13} />);
+    expect(screen.queryByRole("button", { name: /Ask to (confirm|remove)/ })).toBeNull();
   });
 });
 

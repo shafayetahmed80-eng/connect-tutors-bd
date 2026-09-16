@@ -12,6 +12,8 @@ import JobCard, { DetailsAction } from "@/components/JobCard";
 import { PostAnotherRequestButton } from "@/components/PostAnotherRequestButton";
 import StatusTabRow from "@/components/StatusTabRow";
 import JobDetailsModal from "@/components/JobDetailsModal";
+import { GuardianTuitionRequestDialog, tuitionRequestWaitingLabels, WaitingTuitionRequestMark, type GuardianTuitionRequestType, type WaitingTuitionRequest } from "@/components/GuardianTuitionRequestDialog";
+import { useGuardianTuitionRequest } from "@/hooks/useGuardianTuitionRequest";
 import { formatPostedDate } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildJobTitle } from "@shared/job-title";
@@ -28,6 +30,8 @@ type RequestRecord = {
   nextAction?: string | null; contactConsent?: string | null;
   /** How many Tutors have applied, while the request is Live or Appointed. */
   appliedTutorCount?: number;
+  /** The Guardian's own Confirm, Remove or Cancel request waiting on it, if any. */
+  tuitionRequest?: WaitingTuitionRequest;
 };
 
 const guardianLifecycleSteps: Array<{ key: GuardianLifecycleKey; label: string }> = [
@@ -122,6 +126,11 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
   );
   const openRequest = expandedId ? requests.find(item => item.id === expandedId) ?? null : null;
 
+  // Cancel at any stage, and Remove once Confirmed, are asked from the details
+  // dialog: Applied Tutors, which carries the rest, only opens while Live or Appointed.
+  const tuitionRequest = useGuardianTuitionRequest();
+  const [asking, setAsking] = useState<{ type: GuardianTuitionRequestType; requestId: number; tutorId?: string } | null>(null);
+
   return <div className={embedded ? "" : "site-page min-h-screen bg-j-surface-sunken"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "shell py-10"}>
     {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
       {/* No page hero: the workspace header already names this screen, and the
@@ -174,7 +183,8 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
                   preferredTutorGender: request.preferredGender,
                 }}
                 onOpen={() => setExpandedId(request.id)}
-                action={<span className="flex items-center gap-3.5">
+                action={<span className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5">
+                  {request.tuitionRequest ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">{tuitionRequestWaitingLabels[request.tuitionRequest.type]}</span> : null}
                   {lifecycle.key === "live" || lifecycle.key === "appointed" ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${request.id}`} count={request.appliedTutorCount ?? 0} /> : null}
                   <DetailsAction />
                 </span>}
@@ -206,15 +216,36 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
         action={<>
           <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
           {/* A posted request is not the Guardian's to cancel - once it exists it
-              is a coordinator's to close. Only the "Update" path stays, and only
-              while Pending. */}
+              is a coordinator's to close. The Guardian edits it only while
+              Pending, and otherwise can only ask, through the buttons below. */}
           {getGuardianRequestLifecycle(openRequest).key === "pending"
             ? <Link href={getGuardianPendingEditDestination(openRequest.id)} className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8]">Update</Link>
             : null}
           {["live", "appointed"].includes(getGuardianRequestLifecycle(openRequest).key)
             ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${openRequest.id}`} count={openRequest.appliedTutorCount ?? 0} size="md" />
             : null}
+          {openRequest.tuitionRequest
+            ? <WaitingTuitionRequestMark type={openRequest.tuitionRequest.type} busy={tuitionRequest.busy} onWithdraw={() => tuitionRequest.withdraw.mutate({ requestId: openRequest.id })} />
+            : <>
+                {getGuardianRequestLifecycle(openRequest).key === "confirmed" && openRequest.tutorId
+                  ? <button type="button" onClick={() => { setAsking({ type: "remove_tutor", requestId: openRequest.id, tutorId: openRequest.tutorId ?? undefined }); setExpandedId(null); }} className="h-8 rounded-lg border border-red-200 bg-white px-3.5 text-xs font-bold text-red-700 hover:bg-red-50">Remove Tutor</button>
+                  : null}
+                {getGuardianRequestLifecycle(openRequest).key !== "cancelled"
+                  ? <button type="button" onClick={() => { setAsking({ type: "cancel_tuition", requestId: openRequest.id }); setExpandedId(null); }} className="h-8 rounded-lg border border-red-200 bg-white px-3.5 text-xs font-bold text-red-700 hover:bg-red-50">Cancel Tuition</button>
+                  : null}
+              </>}
         </>}
+      /> : null}
+
+      {asking ? <GuardianTuitionRequestDialog
+        type={asking.type}
+        jobId={jobIdForRequest(asking.requestId)}
+        busy={tuitionRequest.send.isPending}
+        onClose={() => setAsking(null)}
+        onSend={reason => tuitionRequest.send.mutate(
+          { requestId: asking.requestId, type: asking.type, tutorId: asking.tutorId, reason },
+          { onSuccess: () => setAsking(null) },
+        )}
       /> : null}
     </>}
   </main>{embedded ? null : <SiteFooter />}</div>;
