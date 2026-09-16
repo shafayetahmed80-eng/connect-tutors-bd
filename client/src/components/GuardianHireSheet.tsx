@@ -24,7 +24,7 @@ export function GuardianHireSheet({
   children: React.ReactNode;
 }) {
   return (
-    <Modal size="lg" onClose={onClose}>
+    <Modal size="lg" onClose={onClose} decor="water">
       <ModalHeader title={title} />
       <ModalBody>{children}</ModalBody>
     </Modal>
