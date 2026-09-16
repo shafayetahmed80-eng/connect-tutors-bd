@@ -17,9 +17,11 @@ export default function AppliedTutorsButton({ href, count, size = "sm" }: {
   /** `sm` for the card foot, `md` for the details dialog's action row. */
   size?: "sm" | "md";
 }) {
+  // On a phone both shapes clear 40px: a thumb needs the height even where a
+  // pointer only needs the words.
   const shape = size === "md"
-    ? "h-8 gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs hover:bg-[#f1f6fa]"
-    : "gap-1.5 text-2xs hover:underline";
+    ? "h-8 gap-1.5 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs hover:bg-[#f1f6fa] max-md:min-h-10"
+    : "gap-1.5 text-2xs hover:underline max-md:min-h-10";
   return <Link
     href={href}
     onClick={event => event.stopPropagation()}

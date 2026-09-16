@@ -61,11 +61,13 @@ function initials(name: string) {
  */
 function ReadRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-baseline gap-3 border-b border-[#eef4f9] py-2 last:border-b-0">
-      <span className="flex w-[152px] shrink-0 items-center gap-1.5 text-xs text-j-ink-muted">
+    // A phone has no room for a 152px label column beside a long value, so the
+    // label sits above it there - the same shape the Tutor read-out takes.
+    <div className="flex flex-col gap-px border-b border-[#eef4f9] py-2 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3">
+      <span className="flex items-center gap-1.5 text-xs text-j-ink-muted sm:w-[152px] sm:shrink-0">
         <Icon size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} />{label}
       </span>
-      <span className={`min-w-0 flex-1 break-words text-sm font-medium ${value ? "text-j-ink" : "text-j-err"}`}>{value || "Not set"}</span>
+      <span className={`min-w-0 break-words text-sm font-medium sm:flex-1 ${value ? "text-j-ink" : "text-j-err"}`}>{value || "Not set"}</span>
     </div>
   );
 }
@@ -233,7 +235,7 @@ export default function GuardianProfileWorkspace() {
             {hasPhoto ? <img src={photoUrl ?? undefined} alt="Guardian profile photo" className="h-full w-full object-cover" /> : initials(profile.name || "Guardian")}
           </span>
           <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} aria-label={hasPhoto ? "Replace profile photo" : "Upload profile photo"}
-            className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-[#1677c8] text-white shadow-sm transition hover:bg-[#0e4f85] disabled:opacity-60">
+            className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-[#1677c8] text-white shadow-sm transition hover:bg-[#0e4f85] disabled:opacity-60 max-md:size-10">
             <Camera size={15} aria-hidden={true} />
           </button>
           {photoSuccessAt ? <PhotoUploadSuccess key={photoSuccessAt} className="absolute left-1/2 top-[calc(100%+0.5rem)] -translate-x-1/2 whitespace-nowrap" /> : null}
@@ -242,9 +244,10 @@ export default function GuardianProfileWorkspace() {
           onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file); }} />
         {hasPhoto ? (
           <p className="mt-2.5 text-xs">
-            <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} className="font-semibold text-[#1677c8] hover:underline disabled:opacity-60">{photoBusy ? "Working…" : "Replace"}</button>
+            {/* Two words a thumb has to hit: on a phone they carry 40px of their own. */}
+            <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} className="inline-flex items-center font-semibold text-[#1677c8] hover:underline disabled:opacity-60 max-md:min-h-10 max-md:px-2">{photoBusy ? "Working…" : "Replace"}</button>
             <span className="px-1.5 text-[#c3d1db]" aria-hidden={true}>·</span>
-            <button type="button" disabled={photoBusy} onClick={() => void removePhoto()} className="font-semibold text-[#bf3b3b] hover:underline disabled:opacity-60">Remove</button>
+            <button type="button" disabled={photoBusy} onClick={() => void removePhoto()} className="inline-flex items-center font-semibold text-[#bf3b3b] hover:underline disabled:opacity-60 max-md:min-h-10 max-md:px-2">Remove</button>
           </p>
         ) : <p className="mt-2.5 text-xs text-j-ink-muted">{photoBusy ? "Working…" : "Add a profile photo"}</p>}
 
@@ -348,12 +351,12 @@ export default function GuardianProfileWorkspace() {
                     <p className="text-xs font-bold text-j-ink-strong">NID card — {side}</p>
                     {url ? <img src={url} alt={`NID card ${side}`} className="mt-2 h-24 w-full rounded-lg border border-j-border object-cover" /> : <div className="mt-2 grid h-24 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">No image yet</div>}
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <label className="cursor-pointer rounded-lg border border-[#c9ddeb] px-2.5 py-1 text-2xs font-bold text-[#42657d] hover:bg-white">
+                      <label className="inline-flex cursor-pointer items-center rounded-lg border border-[#c9ddeb] px-2.5 py-1 text-2xs font-bold text-[#42657d] hover:bg-white max-md:min-h-10 max-md:px-4">
                         {nidBusy === side ? "Working…" : url ? "Replace" : "Upload"}
                         <input type="file" className="sr-only" accept={IMAGE_ACCEPT} disabled={nidBusy === side}
                           onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadNid(side, file); }} />
                       </label>
-                      {url ? <button type="button" disabled={nidBusy === side} onClick={() => void removeNid(side)} className="rounded-lg px-2.5 py-1 text-2xs font-bold text-[#bf3b3b] hover:bg-white disabled:opacity-60">Remove</button> : null}
+                      {url ? <button type="button" disabled={nidBusy === side} onClick={() => void removeNid(side)} className="inline-flex items-center rounded-lg px-2.5 py-1 text-2xs font-bold text-[#bf3b3b] hover:bg-white disabled:opacity-60 max-md:min-h-10 max-md:px-4">Remove</button> : null}
                     </div>
                   </div>
                 );

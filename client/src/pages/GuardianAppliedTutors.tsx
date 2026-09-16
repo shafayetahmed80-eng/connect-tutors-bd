@@ -1,5 +1,6 @@
 import AppliedJobFacts from "@/components/AppliedJobFacts";
 import GuardianApplicantRows, { type GuardianApplicantActions } from "@/components/GuardianApplicantRows";
+import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
@@ -99,44 +100,32 @@ export function GuardianAppliedTuitionsContent({ requests, isLoading, isError = 
     return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Your tuitions could not be loaded.</div>;
   }
 
+  type TuitionRow = (typeof tuitions)[number];
+  const columns: RecordColumn<TuitionRow>[] = [
+    { key: "jobId", label: "Job ID", place: "head", cell: ({ request }) => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(request.id)}</span> },
+    { key: "class", label: "Class / Level", cell: ({ request }) => <span className="font-bold text-j-ink">{request.classCourse}</span> },
+    { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: ({ request }) => <span className="text-j-ink-strong">{formatSubjects(request.subjects)}</span> },
+    { key: "location", label: "Location", cell: ({ request }) => <span className="text-j-ink-strong">{request.tuitionLocationLabel ?? "Online"}</span> },
+    { key: "salary", label: "Salary", cell: ({ request }) => <span className="text-j-ink-strong">{formatSalaryAmount(request.budgetAmount)}</span> },
+    { key: "days", label: "Days / Week", cell: ({ request }) => <span className="text-j-ink-strong">{formatDaysPerWeek(request.daysPerWeek)}</span> },
+    { key: "status", label: "Status", place: "head", cell: ({ lifecycle }) => <TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} /> },
+    { key: "applied", label: "Applied", cell: ({ request }) => <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{request.appliedTutorCount ?? 0}</span> },
+    {
+      key: "applicants", label: "Applicants", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: ({ request }) => <Link href={`/guardian/dashboard/applied-tutors/${request.id}`} aria-label={`Open the applicants of Job ID ${jobIdForRequest(request.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
+        <ChevronRight size={16} />
+      </Link>,
+    },
+  ];
+
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <div className="overflow-x-auto rounded-xl border border-j-border bg-white shadow-sm">
-      <table className="w-full min-w-[56rem] border-collapse text-sm">
-        <caption className="sr-only">Your tuitions and how many Tutors applied to each</caption>
-        <thead>
-          <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-            <th scope="col" className="px-3 py-2.5">Job ID</th>
-            <th scope="col" className="px-3 py-2.5">Class / Level</th>
-            <th scope="col" className="px-3 py-2.5">Subjects</th>
-            <th scope="col" className="px-3 py-2.5">Location</th>
-            <th scope="col" className="px-3 py-2.5">Salary</th>
-            <th scope="col" className="px-3 py-2.5">Days / Week</th>
-            <th scope="col" className="px-3 py-2.5">Status</th>
-            <th scope="col" className="px-3 py-2.5">Applied</th>
-            <th scope="col" className="px-3 py-2.5"><span className="sr-only">Applicants</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tuitions.map(({ request, lifecycle }) => <tr key={request.id} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-            <td className="px-3 py-2.5 align-top font-mono text-2xs text-j-ink-muted">{jobIdForRequest(request.id)}</td>
-            <td className="px-3 py-2.5 align-top font-bold text-j-ink">{request.classCourse}</td>
-            <td className="max-w-[16rem] px-3 py-2.5 align-top text-j-ink-strong">{formatSubjects(request.subjects)}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{request.tuitionLocationLabel ?? "Online"}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatSalaryAmount(request.budgetAmount)}</td>
-            <td className="px-3 py-2.5 align-top text-j-ink-strong">{formatDaysPerWeek(request.daysPerWeek)}</td>
-            <td className="px-3 py-2.5 align-top"><TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} /></td>
-            <td className="px-3 py-2.5 align-top">
-              <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{request.appliedTutorCount ?? 0}</span>
-            </td>
-            <td className="px-3 py-2.5 align-top text-right">
-              <Link href={`/guardian/dashboard/applied-tutors/${request.id}`} aria-label={`Open the applicants of Job ID ${jobIdForRequest(request.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-                <ChevronRight size={16} />
-              </Link>
-            </td>
-          </tr>)}
-          {tuitions.length === 0 ? <tr><td colSpan={9} className="px-3 py-10 text-center text-sm text-j-ink-soft">No live or appointed tuition.</td></tr> : null}
-        </tbody>
-      </table>
-    </div>
+    <RecordTable
+      caption="Your tuitions and how many Tutors applied to each"
+      columns={columns}
+      rows={tuitions}
+      rowKey={({ request }) => request.id}
+      empty="No live or appointed tuition."
+      tableClassName="min-w-[56rem]"
+    />
   </div>;
 }

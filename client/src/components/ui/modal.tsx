@@ -206,8 +206,10 @@ export function ModalBody({ className, children }: { className?: string; childre
 }
 
 export function ModalFooter({ children }: { children: React.ReactNode }) {
+  // A footer control sized for a mouse is too small for a thumb: on a phone
+  // every one of them clears 40px, whatever height the caller asked for.
   return (
-    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-j-border bg-background px-4 py-3 sm:px-5">
+    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-j-border bg-background px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5">
       {children}
     </div>
   );
