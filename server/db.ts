@@ -2947,15 +2947,20 @@ export async function confirmTutorRequestAppointment(input: {
         deduplicationKey: `appointment:${input.requestId}:confirmed:${request.tutorId}`,
       });
     }
+    // A tuition can be confirmed again after its Tutor is removed, so a notice
+    // left from the first time comes back unread rather than staying silent.
+    const guardianNote = {
+      title: "Your tutor match is confirmed",
+      message: "An Admin has confirmed the selected Tutor for your request.",
+      actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
+    };
     await tx.insert(guardianRequestNotifications).values({
       guardianUserId: request.guardianUserId,
       tutorRequestId: input.requestId,
       type: "lifecycle",
-      title: "Your tutor match is confirmed",
-      message: "An Admin has confirmed the selected Tutor for your request.",
-      actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
+      ...guardianNote,
       deduplicationKey: `lifecycle:${input.requestId}:confirmed`,
-    }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${input.requestId}:confirmed` } });
+    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: new Date() } });
     return { updated: true as const, lifecycle: "confirmed" as const };
   });
 }
