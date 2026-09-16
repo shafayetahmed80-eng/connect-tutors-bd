@@ -6032,6 +6032,8 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
       locationText: tutorRequests.locationText,
       budgetAmount: tutorRequests.budgetAmount,
       daysPerWeek: tutorRequests.daysPerWeek,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
       appointedAt: tutorRequests.appointedAt,
       confirmedAt: tutorRequests.appointmentConfirmedAt,
       paymentStatus: tutorRequests.paymentStatus,
@@ -6055,8 +6057,16 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(where);
   const total = Number(totals?.value ?? 0);
+  // A Guardian's waiting Confirm, Remove or Cancel request is marked on the row.
+  const guardianRequests = await getWaitingGuardianTuitionRequests(items.map(item => ({ ...item, appointmentConfirmedAt: item.confirmedAt })));
 
-  return { items, total, page: filters.page, pageSize: filters.pageSize, totalPages: Math.max(1, Math.ceil(total / filters.pageSize)) };
+  return {
+    items: items.map(item => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null })),
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+  };
 }
 
 /** Tuitions in the Appointed stage, each with the Tutor who holds it. */
@@ -6178,6 +6188,8 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
         .where(and(inArray(tutorJobs.tutorRequestId, items.map(item => item.id)), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
     : [];
   const appointmentRequestedIds = new Set(waitingRows.map(row => row.requestId));
+  // So is a Guardian's own Confirm, Remove or Cancel request, which an Admin answers.
+  const guardianRequests = await getWaitingGuardianTuitionRequests(items);
 
   return {
     // `guardianOpenId` is a server-side identifier and does not leave: what
@@ -6187,6 +6199,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       ...item,
       appliedTutorCount: appliedByRequest.get(item.id) ?? 0,
       appointmentRequested: appointmentRequestedIds.has(item.id),
+      guardianRequest: guardianRequests.get(item.id) ?? null,
       guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
     })),
     counts,

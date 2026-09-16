@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
@@ -50,7 +51,14 @@ export function AdminConfirmedJobsContent() {
 
   type ConfirmedJob = (typeof items)[number];
   const columns: RecordColumn<ConfirmedJob>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
+    {
+      key: "jobId", label: "Job ID", place: "head",
+      cell: job => <span className="inline-flex flex-wrap items-center gap-2">
+        <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span>
+        {/* A Guardian's waiting request is answered on Applied Tutors, so the mark leads there. */}
+        {job.guardianRequest ? <Link href={`/admin/applied-tutors/${job.id}`} className="hover:opacity-80"><AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /></Link> : null}
+      </span>,
+    },
     { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
     { key: "tutorNumber", label: "Tutor ID", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{job.tutorNumber ?? notSet}</span> },
     { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },

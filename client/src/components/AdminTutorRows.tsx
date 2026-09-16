@@ -1,3 +1,4 @@
+import { AdminGuardianTuitionRequestMark, type AdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
@@ -41,6 +42,14 @@ export type AdminAppointmentRequestActions = {
   busy: boolean;
   onApprove: (tutor: AdminTutorRow) => void;
   onDecline: (tutor: AdminTutorRow) => void;
+};
+
+/** Approve and Decline on the row a Guardian's Confirm or Remove request is about. */
+export type AdminGuardianTuitionRequestActions = {
+  request: AdminGuardianTuitionRequest;
+  busy: boolean;
+  onApprove: () => void;
+  onDecline: () => void;
 };
 
 /** The Action column on one tuition's applicants: what each row can do, and what doing it means. */
@@ -90,7 +99,7 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, applicantRowActions }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -105,6 +114,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
   appointmentActions?: AdminAppointmentRequestActions;
+  /** A Guardian's waiting Confirm or Remove request, shown on the row of the Tutor it is about. */
+  guardianTuitionRequest?: AdminGuardianTuitionRequestActions;
   /** The Action column on one tuition's applicants. */
   applicantRowActions?: AdminApplicantRowActions;
 }) {
@@ -137,6 +148,9 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onApprove(tutor)} aria-label={`Approve the appointment of ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg bg-j-accent px-2.5 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:opacity-40">Approve</button>
           <button type="button" disabled={appointmentActions.busy} onClick={() => appointmentActions.onDecline(tutor)} aria-label={`Decline the appointment request for ${tutor.name}`} className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40">Decline</button>
         </> : null}
+        {guardianTuitionRequest && guardianTuitionRequest.request.type !== "cancel_tuition" && guardianTuitionRequest.request.tutorId === tutor.id
+          ? <AdminGuardianTuitionRequestMark {...guardianTuitionRequest} />
+          : null}
       </span>,
     }] : []),
     ...(applicantRowActions ? [{

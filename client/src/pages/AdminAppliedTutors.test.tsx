@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   reopen: vi.fn(),
   removeConfirmed: vi.fn(),
   cancelTuition: vi.fn(),
+  approveGuardian: vi.fn(),
+  declineGuardian: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
   live: {
@@ -56,6 +58,7 @@ const mocks = vi.hoisted(() => ({
       cancellationReason: null,
     },
     appliedTotal: 26,
+    guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
     items: [] as ReturnType<typeof tutor>[],
     total: 2,
     page: 1,
@@ -80,6 +83,8 @@ vi.mock("@/lib/trpc", () => ({
       reopenAppointedTuition: { useMutation: () => ({ mutate: mocks.reopen, isPending: false }) },
       removeConfirmedTutor: { useMutation: () => ({ mutate: mocks.removeConfirmed, isPending: false }) },
       cancelTutorRequest: { useMutation: () => ({ mutate: mocks.cancelTuition, isPending: false }) },
+      approveGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.approveGuardian, isPending: false }) },
+      declineGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.declineGuardian, isPending: false }) },
       listAppliedTutors: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -105,6 +110,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.data.items = [tutor("tutor-175", "Tania Sultana"), tutor("tutor-404", "Tanvir Ahmed")];
   mocks.data.totalPages = 1;
+  mocks.data.guardianRequest = null;
   window.innerWidth = 1024;
 });
 mocks.data.items = [tutor("tutor-175", "Tania Sultana"), tutor("tutor-404", "Tanvir Ahmed")];
@@ -388,6 +394,78 @@ describe("Admin Applied Tutors page", () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Search Tutor name/i), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ requestId: 13, query: "Tania", page: 1 });
+  });
+});
+
+describe("a Guardian's Confirm, Remove or Cancel request", () => {
+  const holder = () => [
+    { ...tutor("tutor-175", "Tania Sultana"), interestId: 91 },
+    { ...tutor("tutor-404", "Tanvir Ahmed"), interestId: 92, applicationStatus: "matched" as const },
+  ];
+
+  it("shows a Confirm request beside the Tutor, and approves it after a confirmation or declines it", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404" } as never;
+    mocks.data.items = holder();
+    mocks.data.guardianRequest = { id: 5, type: "confirm", tutorId: "tutor-404", reason: null, createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[1]).getByText("Confirm requested")).toBeTruthy();
+    expect(within(rows[0]).queryByText("Confirm requested")).toBeNull();
+    // Approve beside the request is the Confirm; the Admin's own Confirm button steps aside.
+    expect(within(rows[1]).queryByRole("button", { name: "Confirm Tanvir Ahmed" })).toBeNull();
+    expect(within(rows[1]).getByRole("button", { name: "Remove Tanvir Ahmed from this tuition" })).toBeTruthy();
+
+    fireEvent.click(within(rows[1]).getByRole("button", { name: "Approve: Confirm requested" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Confirm Tanvir Ahmed?")).toBeTruthy();
+    expect(mocks.approveGuardian).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 5 });
+
+    fireEvent.click(within(rows[1]).getByRole("button", { name: "Decline: Confirm requested" }));
+    expect(mocks.declineGuardian).toHaveBeenCalledWith({ guardianRequestId: 5 });
+    mocks.data.job = original;
+  });
+
+  it("reads the Guardian's reason before removing a Confirmed Tutor", () => {
+    const original = mocks.data.job;
+    mocks.data.job = { ...original, status: "matched", appointedTutorId: "tutor-404", appointmentConfirmedAt: new Date("2026-09-14T08:00:00.000Z") } as never;
+    mocks.data.items = holder();
+    mocks.data.guardianRequest = { id: 6, type: "remove_tutor", tutorId: "tutor-404", reason: "Misses classes", createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[1]).queryByRole("button", { name: "Remove Tanvir Ahmed from this tuition" })).toBeNull();
+    fireEvent.click(within(rows[1]).getByRole("button", { name: "Approve: Removal requested" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Remove Tanvir Ahmed?")).toBeTruthy();
+    expect(within(dialog).getByText("Misses classes")).toBeTruthy();
+    expect(within(dialog).getByText(/payment status starts again at Full Due/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 6 });
+    expect(mocks.removeConfirmed).not.toHaveBeenCalled();
+    mocks.data.job = original;
+  });
+
+  it("puts a cancellation in place of Cancel Tuition, with the Guardian's reason", () => {
+    mocks.data.guardianRequest = { id: 7, type: "cancel_tuition", tutorId: null, reason: "Found a Tutor elsewhere", createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    expect(screen.queryByRole("button", { name: "Cancel Tuition" })).toBeNull();
+    expect(screen.getByText("Cancellation requested")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Approve: Cancellation requested" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByText("Found a Tutor elsewhere")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });
+    expect(mocks.cancelTuition).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Decline: Cancellation requested" }));
+    expect(mocks.declineGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });
   });
 });
 

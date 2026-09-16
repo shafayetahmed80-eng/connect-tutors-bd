@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminAddTuitionModal, { type AdminTuitionDraft } from "@/components/AdminAddTuitionModal";
+import { AdminGuardianTuitionRequestMark, AdminGuardianTuitionRequestPill, ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import StatusTabRow from "@/components/StatusTabRow";
@@ -72,6 +73,11 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
     onError: error => toast.error(error.message),
   });
 
+  // A Guardian's cancellation is answered from the details dialog, since a Pending tuition has no Applied Tutors page.
+  const [approvingCancelId, setApprovingCancelId] = useState<number | null>(null);
+  const approvingCancelJob = approvingCancelId ? items.find(item => item.id === approvingCancelId) ?? null : null;
+  const guardianAnswer = useAdminGuardianTuitionRequest(() => setApprovingCancelId(null));
+
   const changeStage = (next: StageKey) => { setStage(next); setPage(1); setExpandedId(null); };
 
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
@@ -131,8 +137,9 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
               }}
               onOpen={() => setExpandedId(job.id)}
               footerStart={<PostTypeBadge postedByAdmin={job.postedByAdmin} />}
-              action={<span className="flex items-center gap-3.5">
+              action={<span className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5">
                 {job.appointmentRequested ? <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">Appointment requested</span> : null}
+                {job.guardianRequest ? <AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /> : null}
                 {lifecycle.key === "live" || lifecycle.key === "appointed" ? <AppliedTutorsButton href={`/admin/applied-tutors/${job.id}`} count={job.appliedTutorCount} /> : null}
                 <DetailsAction />
               </span>}
@@ -190,7 +197,25 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         {["live", "appointed", "confirmed"].includes(getGuardianRequestLifecycle(openJob).key)
           ? <AppliedTutorsButton href={`/admin/applied-tutors/${openJob.id}`} count={openJob.appliedTutorCount} size="md" />
           : null}
+        {/* A Confirm or Remove is answered beside the Tutor on Applied Tutors; a cancellation, here. */}
+        {openJob.guardianRequest?.type === "cancel_tuition"
+          ? <AdminGuardianTuitionRequestMark
+              request={openJob.guardianRequest}
+              busy={guardianAnswer.busy}
+              onApprove={() => { setApprovingCancelId(openJob.id); setExpandedId(null); }}
+              onDecline={() => { if (openJob.guardianRequest) guardianAnswer.decline.mutate({ guardianRequestId: openJob.guardianRequest.id }); }}
+            />
+          : openJob.guardianRequest ? <AdminGuardianTuitionRequestPill type={openJob.guardianRequest.type} /> : null}
       </>}
+    /> : null}
+
+    {approvingCancelJob?.guardianRequest ? <ApproveGuardianTuitionRequestDialog
+      request={approvingCancelJob.guardianRequest}
+      jobId={jobIdForRequest(approvingCancelJob.id)}
+      confirmed={getGuardianRequestLifecycle(approvingCancelJob).key === "confirmed"}
+      busy={guardianAnswer.approve.isPending}
+      onClose={() => setApprovingCancelId(null)}
+      onApprove={() => { if (approvingCancelJob.guardianRequest) guardianAnswer.approve.mutate({ guardianRequestId: approvingCancelJob.guardianRequest.id }); }}
     /> : null}
 
     {editJob ? <AdminAddTuitionModal
