@@ -37,6 +37,7 @@ import {
   facultyDepartments,
   guardianContactAccessEvents,
   guardianRequestNotifications,
+  guardianTuitionRequests,
   tutorNotifications,
   guardianPhoneIntakes,
   guardianProfilePhotos,
@@ -146,6 +147,14 @@ import {
   type AdminMatchingSavedViewFilters,
 } from "@shared/admin-matching-saved-views";
 import { guardianVerificationNotice } from "./guardian-verification-notice";
+import {
+  canRequestTuitionChange,
+  guardianTuitionRequestApplies,
+  guardianTuitionRequestDeclinedNotice,
+  guardianTuitionRequestTypesAnsweredBy,
+  type TuitionMove,
+} from "./guardian-tuition-requests";
+import type { GuardianTuitionRequestType } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let tutorNumberAllocationTail: Promise<void> = Promise.resolve();
@@ -2313,15 +2322,21 @@ export async function listGuardianTutorRequests(userId: number) {
   // Counted by the Guardian's own applicant rules, so the number on the Applied
   // Tutors button is the number of rows behind it.
   const appliedByRequest = await countGuardianApplicantsByRequest(database, requests.map(request => request.id));
+  const waitingByRequest = await getWaitingGuardianTuitionRequests(requests);
 
-  return requests.map(request => ({
-    ...request,
-    appliedTutorCount: appliedByRequest.get(request.id) ?? 0,
-    lifecycle: getGuardianRequestLifecycle(request),
-    nextAction: request.status === "matched" && request.contactConsent === "pending"
-      ? "decide_contact_consent" as const
-      : "none" as const,
-  }));
+  return requests.map(request => {
+    const waiting = waitingByRequest.get(request.id);
+    return {
+      ...request,
+      appliedTutorCount: appliedByRequest.get(request.id) ?? 0,
+      // The Guardian's own request waiting on this tuition - what was asked, not their reason.
+      tuitionRequest: waiting ? { type: waiting.type, tutorId: waiting.tutorId } : null,
+      lifecycle: getGuardianRequestLifecycle(request),
+      nextAction: request.status === "matched" && request.contactConsent === "pending"
+        ? "decide_contact_consent" as const
+        : "none" as const,
+    };
+  });
 }
 
 export async function listGuardianNotifications(input: {
@@ -2919,6 +2934,7 @@ export async function confirmTutorRequestAppointment(input: {
       action: "admin_confirmed",
       changedFields: JSON.stringify(["appointment_confirmed", ...(closedListing[0].affectedRows ? ["job_board_listing_closed"] : [])]),
     });
+    await settleGuardianTuitionRequests(tx, input.requestId, "confirmed", input.adminUserId);
     if (request.tutorId) {
       await refreshTutorVerification(tx, request.tutorId);
       const note = appointmentConfirmedTutorNotification(jobIdForRequest(input.requestId));
@@ -2983,6 +2999,7 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
         ...(supersededLetters[0].affectedRows ? ["confirmation_letter_superseded"] : []),
       ]),
     });
+    await settleGuardianTuitionRequests(tx, input.requestId, "cancelled", input.adminUserId);
     await tx.insert(guardianRequestNotifications).values({
       guardianUserId: request.guardianUserId,
       tutorRequestId: input.requestId,
@@ -4888,8 +4905,11 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   // "Applied: 26" is a fact about the tuition, and a filter must not change it.
   const appliedTotal = (await countAppliedTutorsByRequest(database, [filters.requestId])).get(filters.requestId) ?? 0;
 
+  // The Guardian's request waiting on this tuition, with their reason, for the Admin to approve or decline.
+  const guardianRequest = (await getWaitingGuardianTuitionRequests([{ ...job, tutorId: job.appointedTutorId }])).get(job.id) ?? null;
   return {
     job,
+    guardianRequest,
     appliedTotal,
     items: await enrichAdminTutorDirectoryRows(database, rows),
     total,
@@ -5201,6 +5221,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     .where(and(eq(tutorJobs.tutorRequestId, input.requestId), isNotNull(tutorJobInterests.appointmentRequestedAt), ...guardianApplicantConditions()))
     .limit(1);
 
+  const tuitionRequest = (await getWaitingGuardianTuitionRequests([request])).get(request.id) ?? null;
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
   const [educationRows, cityRows] = await Promise.all([
@@ -5240,6 +5261,8 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
     },
     lifecycle,
     appointmentRequestPending: Boolean(pendingAppointment),
+    // The Guardian's own request waiting on the tuition, if one still applies - the reason stays with the Admin.
+    tuitionRequest: tuitionRequest ? { type: tuitionRequest.type, tutorId: tuitionRequest.tutorId } : null,
     items: rows.map(row => {
       const phoneVisible = guardianMaySeeApplicantPhone({ lifecycle, tutorId: request.tutorId }, row.id);
       const education = pickGuardianApplicantEducation(
@@ -5426,6 +5449,243 @@ export async function withdrawGuardianAppointmentRequest(input: GuardianApplican
     await tx.update(tutorJobInterests).set({ appointmentRequestedAt: null }).where(eq(tutorJobInterests.id, found.interest.id));
     return { outcome: "withdrawn" as const };
   });
+}
+
+type TuitionLifecycleSource = Parameters<typeof getGuardianRequestLifecycle>[0] & { id: number };
+
+/** The tuition a Guardian owns, locked while a request on it is made or taken back. */
+async function lockGuardianTuition(tx: any, input: { guardianUserId: number; requestId: number }) {
+  const [request]: TuitionLifecycleSource[] = await tx
+    .select({
+      id: tutorRequests.id,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, input.requestId), eq(tutorRequests.guardianUserId, input.guardianUserId)))
+    .limit(1)
+    .for("update");
+  if (!request) return undefined;
+  return { request, lifecycle: getGuardianRequestLifecycle(request) };
+}
+
+/**
+ * The Guardian's request waiting on a tuition, if one still applies to it.
+ *
+ * A waiting request the tuition has moved past is closed on the way, so it
+ * neither blocks a new request nor shows as waiting.
+ */
+async function takeWaitingGuardianTuitionRequest(tx: any, tuition: NonNullable<Awaited<ReturnType<typeof lockGuardianTuition>>>) {
+  const waiting: Array<{ id: number; type: GuardianTuitionRequestType; tutorId: string | null }> = await tx
+    .select({ id: guardianTuitionRequests.id, type: guardianTuitionRequests.type, tutorId: guardianTuitionRequests.tutorId })
+    .from(guardianTuitionRequests)
+    .where(and(eq(guardianTuitionRequests.tutorRequestId, tuition.request.id), eq(guardianTuitionRequests.status, "pending")))
+    .orderBy(asc(guardianTuitionRequests.createdAt))
+    .for("update");
+  let current: (typeof waiting)[number] | null = null;
+  for (const row of waiting) {
+    const applies = guardianTuitionRequestApplies({ type: row.type, lifecycle: tuition.lifecycle, holderTutorId: tuition.request.tutorId, tutorId: row.tutorId });
+    if (applies && !current) current = row;
+    else await tx.update(guardianTuitionRequests).set({ status: "closed", decidedAt: new Date() }).where(eq(guardianTuitionRequests.id, row.id));
+  }
+  return current;
+}
+
+/**
+ * Settles the Guardian's waiting requests on a tuition an Admin has just moved
+ * on, inside that move's own transaction.
+ *
+ * The move that was asked for approves the request - whether the Admin
+ * approved it or simply made the move - and any other move closes it, since
+ * there is nothing left for it to apply to.
+ */
+async function settleGuardianTuitionRequests(tx: any, tutorRequestId: number, move: TuitionMove, adminUserId: number) {
+  const now = new Date();
+  const waiting = and(eq(guardianTuitionRequests.tutorRequestId, tutorRequestId), eq(guardianTuitionRequests.status, "pending"));
+  await tx.update(guardianTuitionRequests)
+    .set({ status: "approved", decidedByAdminId: adminUserId, decidedAt: now })
+    .where(and(waiting, inArray(guardianTuitionRequests.type, guardianTuitionRequestTypesAnsweredBy(move))));
+  await tx.update(guardianTuitionRequests)
+    .set({ status: "closed", decidedByAdminId: adminUserId, decidedAt: now })
+    .where(waiting);
+}
+
+export type GuardianTuitionRequestInput = {
+  guardianUserId: number;
+  requestId: number;
+  type: GuardianTuitionRequestType;
+  /** The Tutor a confirm or remove request is about. Ignored for a cancellation. */
+  tutorId?: string;
+  /** Required to remove a Tutor or cancel. Ignored for a confirmation. */
+  reason?: string;
+};
+
+/** A Guardian asks an Admin to confirm the appointed Tutor, remove the Tutor, or cancel the tuition. */
+export async function createGuardianTuitionRequest(input: GuardianTuitionRequestInput) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const tuition = await lockGuardianTuition(tx, input);
+    if (!tuition) return { outcome: "not_found" as const };
+    const waiting = await takeWaitingGuardianTuitionRequest(tx, tuition);
+    const tutorId = input.type === "cancel_tuition" ? null : input.tutorId ?? null;
+    const reason = input.type === "confirm" ? null : input.reason?.trim() || null;
+    const decision = canRequestTuitionChange({
+      type: input.type,
+      lifecycle: tuition.lifecycle,
+      holderTutorId: tuition.request.tutorId,
+      tutorId,
+      reason,
+      requestWaiting: waiting !== null,
+    });
+    if (!decision.allowed) return { outcome: "refused" as const, reason: decision.reason };
+    const created = await tx.insert(guardianTuitionRequests).values({
+      tutorRequestId: tuition.request.id,
+      guardianUserId: input.guardianUserId,
+      type: input.type,
+      tutorId,
+      reason,
+    });
+    return { outcome: "requested" as const, id: Number(created[0].insertId) };
+  });
+}
+
+/** A Guardian takes back their waiting request before an Admin decides it. */
+export async function withdrawGuardianTuitionRequest(input: { guardianUserId: number; requestId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const tuition = await lockGuardianTuition(tx, input);
+    if (!tuition) return { outcome: "not_found" as const };
+    const waiting = await takeWaitingGuardianTuitionRequest(tx, tuition);
+    if (!waiting) return { outcome: "refused" as const };
+    await tx.update(guardianTuitionRequests).set({ status: "withdrawn", decidedAt: new Date() }).where(eq(guardianTuitionRequests.id, waiting.id));
+    return { outcome: "withdrawn" as const };
+  });
+}
+
+/**
+ * An Admin approves a Guardian's request by making the move it asked for -
+ * the very Confirm, Remove or Cancel an Admin can make directly, which settles
+ * the request inside its own transaction. An approved cancellation carries
+ * the Guardian's reason.
+ *
+ * If the tuition moved on before the approval reached it, that move refuses,
+ * nothing changes, and the request is closed.
+ */
+export async function approveGuardianTuitionRequestByAdmin(input: { adminUserId: number; guardianRequestId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({
+      id: guardianTuitionRequests.id,
+      tutorRequestId: guardianTuitionRequests.tutorRequestId,
+      type: guardianTuitionRequests.type,
+      tutorId: guardianTuitionRequests.tutorId,
+      reason: guardianTuitionRequests.reason,
+      status: guardianTuitionRequests.status,
+    })
+    .from(guardianTuitionRequests)
+    .where(eq(guardianTuitionRequests.id, input.guardianRequestId))
+    .limit(1);
+  if (!row) return { outcome: "not_found" as const };
+  if (row.status !== "pending") return { outcome: "refused" as const, reason: "not_waiting" as const };
+
+  const move = { requestId: row.tutorRequestId, adminUserId: input.adminUserId };
+  let moved = false;
+  if (row.type === "confirm" && row.tutorId) {
+    moved = (await confirmTutorRequestAppointment({ ...move, tutorId: row.tutorId })).updated;
+  } else if (row.type === "remove_tutor" && row.tutorId) {
+    const [tuition] = await database.select({ appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt }).from(tutorRequests).where(eq(tutorRequests.id, row.tutorRequestId)).limit(1);
+    if (tuition) {
+      const result = tuition.appointmentConfirmedAt
+        ? await removeConfirmedTutorByAdmin({ ...move, tutorId: row.tutorId })
+        : await reopenAppointedTuitionByAdmin({ ...move, tutorId: row.tutorId });
+      moved = result.outcome === "reopened";
+    }
+  } else if (row.type === "cancel_tuition" && row.reason) {
+    moved = (await cancelTutorRequest({ ...move, reason: row.reason })).updated;
+  }
+  if (moved) return { outcome: "approved" as const };
+
+  await database.update(guardianTuitionRequests)
+    .set({ status: "closed", decidedByAdminId: input.adminUserId, decidedAt: new Date() })
+    .where(and(eq(guardianTuitionRequests.id, row.id), eq(guardianTuitionRequests.status, "pending")));
+  return { outcome: "refused" as const, reason: "moved_on" as const };
+}
+
+/** An Admin declines a Guardian's request: the tuition stays as it is, and the Guardian is told. */
+export async function declineGuardianTuitionRequestByAdmin(input: { adminUserId: number; guardianRequestId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [row] = await tx
+      .select({
+        id: guardianTuitionRequests.id,
+        tutorRequestId: guardianTuitionRequests.tutorRequestId,
+        guardianUserId: guardianTuitionRequests.guardianUserId,
+        type: guardianTuitionRequests.type,
+        status: guardianTuitionRequests.status,
+      })
+      .from(guardianTuitionRequests)
+      .where(eq(guardianTuitionRequests.id, input.guardianRequestId))
+      .limit(1)
+      .for("update");
+    if (!row) return { outcome: "not_found" as const };
+    if (row.status !== "pending") return { outcome: "refused" as const };
+
+    const now = new Date();
+    await tx.update(guardianTuitionRequests)
+      .set({ status: "declined", decidedByAdminId: input.adminUserId, decidedAt: now })
+      .where(eq(guardianTuitionRequests.id, row.id));
+    const notice = {
+      ...guardianTuitionRequestDeclinedNotice(row.type, jobIdForRequest(row.tutorRequestId)),
+      // A cancellation can be asked from any stage, so it leads back to Posted jobs; the other two are about a Tutor.
+      actionPath: row.type === "cancel_tuition" ? `/guardian/dashboard/posted-jobs/${row.tutorRequestId}` : `/guardian/dashboard/applied-tutors/${row.tutorRequestId}`,
+    };
+    await tx.insert(guardianRequestNotifications).values({
+      guardianUserId: row.guardianUserId,
+      tutorRequestId: row.tutorRequestId,
+      type: "lifecycle",
+      ...notice,
+      deduplicationKey: `tuition-request:${row.id}:declined`,
+    }).onDuplicateKeyUpdate({ set: { ...notice, readAt: null, createdAt: now } });
+    return { outcome: "declined" as const };
+  });
+}
+
+/**
+ * The request waiting on each of these tuitions that still applies to it, for
+ * the screens that show one - a request the tuition has moved past is left out.
+ */
+export async function getWaitingGuardianTuitionRequests(tuitions: TuitionLifecycleSource[]) {
+  const waiting = new Map<number, { id: number; type: GuardianTuitionRequestType; tutorId: string | null; reason: string | null; createdAt: Date }>();
+  if (tuitions.length === 0) return waiting;
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const rows = await database
+    .select({
+      id: guardianTuitionRequests.id,
+      tutorRequestId: guardianTuitionRequests.tutorRequestId,
+      type: guardianTuitionRequests.type,
+      tutorId: guardianTuitionRequests.tutorId,
+      reason: guardianTuitionRequests.reason,
+      createdAt: guardianTuitionRequests.createdAt,
+    })
+    .from(guardianTuitionRequests)
+    .where(and(inArray(guardianTuitionRequests.tutorRequestId, tuitions.map(tuition => tuition.id)), eq(guardianTuitionRequests.status, "pending")))
+    .orderBy(asc(guardianTuitionRequests.createdAt));
+  const tuitionById = new Map(tuitions.map(tuition => [tuition.id, tuition] as const));
+  for (const { tutorRequestId, ...row } of rows) {
+    const tuition = tuitionById.get(tutorRequestId);
+    if (!tuition || waiting.has(tutorRequestId)) continue;
+    if (guardianTuitionRequestApplies({ type: row.type, lifecycle: getGuardianRequestLifecycle(tuition), holderTutorId: tuition.tutorId, tutorId: row.tutorId })) {
+      waiting.set(tutorRequestId, row);
+    }
+  }
+  return waiting;
 }
 
 /**
@@ -5704,6 +5964,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
       action: "admin_reopened",
       changedFields: JSON.stringify(changedFields),
     });
+    await settleGuardianTuitionRequests(tx, request.id, "reopened", input.adminUserId);
 
     const tutorNote = appointmentEndedTutorNotification(jobIdForRequest(request.id));
     await createTutorNotification(tx, {

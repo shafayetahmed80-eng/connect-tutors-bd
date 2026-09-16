@@ -93,6 +93,29 @@ export const guardianRequestNotificationTypeValues = [
 ] as const;
 export type GuardianRequestNotificationType = (typeof guardianRequestNotificationTypeValues)[number];
 
+/** What a Guardian can ask an Admin to do to a tuition that has, or had, a Tutor on it. */
+export const guardianTuitionRequestTypeValues = [
+  /** Keep the appointed Tutor after the demo class. */
+  "confirm",
+  /** Take the Tutor off an Appointed or Confirmed tuition, back to Live. */
+  "remove_tutor",
+  /** The Guardian is not taking a Tutor from us: close the whole tuition. */
+  "cancel_tuition",
+] as const;
+export type GuardianTuitionRequestType = (typeof guardianTuitionRequestTypeValues)[number];
+
+export const guardianTuitionRequestStatusValues = [
+  "pending",
+  /** An Admin did what was asked - by approving it, or by doing it directly. */
+  "approved",
+  "declined",
+  /** The Guardian took it back first. */
+  "withdrawn",
+  /** Something else moved the tuition on first, so it no longer applied. */
+  "closed",
+] as const;
+export type GuardianTuitionRequestStatus = (typeof guardianTuitionRequestStatusValues)[number];
+
 export const guardianRequestFollowUpKindValues = [
   "availability_confirmation",
   "information_required",
@@ -1399,6 +1422,37 @@ export const guardianRequestNotifications = mysqlTable(
     uniqueIndex("guardian_request_notifications_dedup_unique").on(table.deduplicationKey),
     index("guardian_request_notifications_guardian_created_idx").on(table.guardianUserId, table.createdAt),
     index("guardian_request_notifications_guardian_read_idx").on(table.guardianUserId, table.readAt),
+  ]
+);
+
+/**
+ * A Guardian asking an Admin to confirm, remove the Tutor from, or cancel one
+ * of their tuitions. The Guardian never does these themselves: an Admin
+ * approves - which runs the Admin's own action - or declines. Rows are kept
+ * after they are decided, so what was asked and what came of it stays on
+ * record.
+ */
+export const guardianTuitionRequests = mysqlTable(
+  "guardian_tuition_requests",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorRequestId: int("tutorRequestId").notNull(),
+    guardianUserId: int("guardianUserId").notNull(),
+    type: mysqlEnum("type", guardianTuitionRequestTypeValues).notNull(),
+    /** The Tutor a confirm or remove request is about; null for a cancellation. */
+    tutorId: varchar("tutorId", { length: 32 }),
+    /** The Guardian's own words; required to remove a Tutor or cancel, and carried into an approved cancellation. */
+    reason: varchar("reason", { length: 280 }),
+    status: mysqlEnum("status", guardianTuitionRequestStatusValues).default("pending").notNull(),
+    decidedByAdminId: int("decidedByAdminId"),
+    decidedAt: timestamp("decidedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.tutorRequestId], foreignColumns: [tutorRequests.id], name: "gtr_request_fk" }),
+    foreignKey({ columns: [table.guardianUserId], foreignColumns: [users.id], name: "gtr_guardian_fk" }),
+    index("guardian_tuition_requests_request_status_idx").on(table.tutorRequestId, table.status),
   ]
 );
 
