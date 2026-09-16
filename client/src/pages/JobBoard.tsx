@@ -525,7 +525,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
           type="button"
           disabled={isInterestSaving}
           onClick={event => { event.stopPropagation(); onInterestAction(); }}
-          className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-10 max-md:px-5"
         >{isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}</button>}
   />;
 }
