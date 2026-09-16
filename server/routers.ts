@@ -24,6 +24,7 @@ import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
+import { guardianApplicantVisibilityValues } from "@shared/admin-control";
 import {
   isGuardianPrivateField, findTutorProfileFieldMeta,
   tutorProfileFieldSections,
@@ -1266,6 +1267,13 @@ export const appRouter = router({
     reset: ownerAdminProcedure
       .input(z.object({ limitId: z.enum(siteLimitIdValues) }))
       .mutation(({ input }) => db.resetSiteLimit(input.limitId)),
+  }),
+  /** The Owner's switches on the Dynamic Section's Admin Control page. */
+  adminControl: router({
+    get: ownerAdminProcedure.query(() => db.getAdminControl()),
+    setGuardianApplicantVisibility: ownerAdminProcedure
+      .input(z.object({ visibility: z.enum(guardianApplicantVisibilityValues) }))
+      .mutation(({ input }) => db.setGuardianApplicantVisibility(input)),
   }),
   /**
    * Owner overrides for the Tutor Profile's field section/order/enabled/

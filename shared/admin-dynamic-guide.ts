@@ -29,6 +29,7 @@ const GUARDIAN_JOURNEY: AdminDynamicDestination = { label: "টিউটর চ�
 const HOME: AdminDynamicDestination = { label: "হোমপেইজ", path: "/" };
 const JOB_BOARD: AdminDynamicDestination = { label: "জব বোর্ড", path: "/job-board" };
 const REGISTER: AdminDynamicDestination = { label: "রেজিস্ট্রেশন পেজ", path: "/register" };
+const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভাবকের Applied Tutors", path: "/guardian/dashboard/applied-tutors" };
 
 export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
@@ -108,6 +109,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     label: "Limits",
     summary: "সংখ্যার সীমা — সর্বোচ্চ কয়টা বাছা যাবে, লেখা কত লম্বা হতে পারে, ফাইল কত বড়। সীমা ছাড়ালে কাজটা আটকে যায়।",
     seeAt: [TUTOR_PROFILE, JOB_BOARD],
+  },
+  {
+    path: "/admin/dynamic/admin-control",
+    label: "Admin Control",
+    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে।",
+    seeAt: [GUARDIAN_APPLIED_TUTORS],
   },
 ];
 
