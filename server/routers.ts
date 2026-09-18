@@ -1427,6 +1427,9 @@ export const appRouter = router({
       // query of its own: the workspace header needs both, and this one is
       // already fetched on every Admin page.
       return {
+        // Whose answer this is, so the workspace can tell a routine re-check of
+        // the same session from one that belongs to a different Admin.
+        userId: ctx.user.id,
         isOwner: ctx.user.openId === ENV.ownerOpenId,
         name: ctx.user.name ?? "Admin",
         loginId: await db.getAdminLoginId(ctx.user.id),
