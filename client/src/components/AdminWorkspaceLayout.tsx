@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
   retry: false,
@@ -62,18 +62,29 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
   ];
 }
 
+/**
+ * Whether the workspace is shown, held behind a loader, or refused.
+ *
+ * The Owner check is re-run on every mount and every return to the window.
+ * A re-run for the session already on screen does not hide the page - it used
+ * to, and every return to the tab threw away an open dialog, the reason typed
+ * into it, the scroll and the filters. What still waits is an answer that
+ * belongs to another session: Owner navigation must never be shown to the
+ * wrong Admin, even for a moment.
+ */
 export function getAdminWorkspaceDisplayState({
   authLoading,
   isAdmin,
   ownerAccessLoading,
-  ownerAccessFetching,
+  ownerAccessFromOtherSession,
 }: {
   authLoading: boolean;
   isAdmin: boolean;
   ownerAccessLoading: boolean;
-  ownerAccessFetching: boolean;
+  /** The Owner check on hand was answered for a different Admin than the one signed in. */
+  ownerAccessFromOtherSession: boolean;
 }) {
-  if (authLoading || (isAdmin && (ownerAccessLoading || ownerAccessFetching))) return "loading" as const;
+  if (authLoading || (isAdmin && (ownerAccessLoading || ownerAccessFromOtherSession))) return "loading" as const;
   if (!isAdmin) return "denied" as const;
   return "ready" as const;
 }
@@ -85,12 +96,27 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     ...ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS,
     enabled: isAdmin,
   });
+  const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
     isAdmin: Boolean(isAdmin),
     ownerAccessLoading: workspaceAccess.isLoading,
-    ownerAccessFetching: workspaceAccess.isFetching,
+    ownerAccessFromOtherSession,
   });
+
+  // The two answers disagree when the session changed somewhere this page did
+  // not see - a sign-in in another tab. Either one may be the stale one, so both
+  // are asked again, once per disagreement; they read the same cookie and agree.
+  const utils = trpc.useUtils();
+  const reconciled = useRef<string | null>(null);
+  const { isFetching, refetch } = workspaceAccess;
+  const mismatch = ownerAccessFromOtherSession ? `${workspaceAccess.data?.userId}:${user?.id}` : null;
+  useEffect(() => {
+    if (!mismatch || isFetching || reconciled.current === mismatch) return;
+    reconciled.current = mismatch;
+    void refetch();
+    void utils.auth.me.invalidate();
+  }, [mismatch, isFetching, refetch, utils]);
 
   if (displayState === "loading") {
     return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening Admin workspace…</div>;

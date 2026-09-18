@@ -92,10 +92,11 @@ describe("Admin workspace navigation", () => {
     expect(buildAdminWorkspaceNavigation(false).map(item => item.path)).not.toContain("/admin/reports");
   });
 
-  it("waits for a fresh Owner check rather than briefly using stale non-Owner navigation after an Admin session changes", () => {
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFetching: true })).toBe("loading");
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFetching: false })).toBe("ready");
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFetching: false })).toBe("denied");
+  it("waits for a fresh Owner check rather than briefly using another Admin session's navigation", () => {
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: true })).toBe("loading");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: true, ownerAccessFromOtherSession: false })).toBe("loading");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: false })).toBe("ready");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFromOtherSession: false })).toBe("denied");
   });
 
   it("does not retain an Owner result or a non-Owner result across an Admin session change", () => {

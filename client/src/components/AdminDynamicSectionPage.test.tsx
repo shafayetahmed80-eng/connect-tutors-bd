@@ -8,6 +8,11 @@ const state = vi.hoisted(() => ({
   loading: false,
   isOwner: true,
   ownerLoading: false,
+  // Whose answer the Owner check holds, and whether it is being re-run.
+  accessUserId: 1,
+  fetching: false,
+  refetch: vi.fn(),
+  invalidateMe: vi.fn(),
 }));
 
 vi.mock("@/_core/hooks/useAuth", () => ({
@@ -16,10 +21,10 @@ vi.mock("@/_core/hooks/useAuth", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({}),
+    useUtils: () => ({ auth: { me: { invalidate: state.invalidateMe } } }),
     admin: {
       getWorkspaceAccess: {
-        useQuery: () => ({ data: state.ownerLoading ? undefined : { isOwner: state.isOwner }, isLoading: state.ownerLoading, isFetching: false }),
+        useQuery: () => ({ data: state.ownerLoading ? undefined : { userId: state.accessUserId, isOwner: state.isOwner }, isLoading: state.ownerLoading, isFetching: state.fetching || state.ownerLoading, refetch: state.refetch }),
       },
     },
     auth: { logout: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } },
@@ -43,6 +48,9 @@ afterEach(() => {
   state.loading = false;
   state.isOwner = true;
   state.ownerLoading = false;
+  state.accessUserId = 1;
+  state.fetching = false;
+  vi.clearAllMocks();
 });
 
 describe("Dynamic Section content page", () => {
@@ -68,6 +76,29 @@ describe("Dynamic Section content page", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Owner access required" })).toBeTruthy();
+  });
+
+  it("keeps the page on screen while the Owner check is re-run for the same session", () => {
+    // What returning to the tab does: the check runs again in the background.
+    state.fetching = true;
+    renderPage();
+
+    expect(screen.getByText(/Content controls are not configured yet/)).toBeTruthy();
+    expect(screen.queryByText(/Opening Admin workspace/)).toBeNull();
+    expect(state.refetch).not.toHaveBeenCalled();
+  });
+
+  it("holds the page back when the Owner check on hand belongs to another Admin, and asks both again once", () => {
+    state.accessUserId = 2;
+    const view = renderPage();
+
+    expect(screen.getByText(/Opening Admin workspace/)).toBeTruthy();
+    expect(screen.queryByText(/Content controls are not configured yet/)).toBeNull();
+    expect(state.refetch).toHaveBeenCalledTimes(1);
+    expect(state.invalidateMe).toHaveBeenCalledTimes(1);
+
+    view.rerender(<AdminDynamicSectionPage title="Tutor Profile content" />);
+    expect(state.refetch).toHaveBeenCalledTimes(1);
   });
 
   it("waits for the Owner check instead of flashing the workspace or a refusal", () => {
