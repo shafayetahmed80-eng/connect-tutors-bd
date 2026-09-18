@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -41,6 +41,7 @@ vi.mock("@/lib/trpc", () => ({
       update: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
+    account: { changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
     locations: { list: { useQuery: () => ({ data: [{ id: "dhaka", type: "city", label: "Dhaka" }, { id: "mirpur", type: "area", parentId: "dhaka", label: "Mirpur" }] }) } },
     tutorRequests: { mine: { useQuery: () => ({ data: mocks.requests, isLoading: false }) } },
     useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() }, identityDocuments: { invalidate: vi.fn() } } }),
@@ -109,13 +110,20 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByRole("tab", { name: "Personal Information" })).toBeTruthy();
   });
 
-  it("renders current-password settings and keeps the support contact reachable", () => {
+  it("opens Settings on the Guardian's name, keeps the support contact reachable, and changes the password from its own button", () => {
+    window.history.replaceState(null, "", "/guardian/dashboard/settings");
     const { rerender } = render(<GuardianDashboardContent section="settings" />);
-    expect(screen.getByLabelText("Current password")).toBeTruthy();
-    // The explanation went; the number a Guardian needs to change a phone or
-    // email is the one thing on that card they cannot get anywhere else.
+    const settings = screen.getByRole("navigation", { name: "Account settings" });
+    expect(within(settings).getAllByRole("button").map(button => button.textContent)).toEqual([
+      expect.stringContaining("Name"), expect.stringContaining("Mobile Number"), expect.stringContaining("Password"), expect.stringContaining("Profile Verification"),
+    ]);
+    // The number a Guardian needs to change a name or phone is still here.
     expect(screen.getByRole("link", { name: "01516 131 411" })).toBeTruthy();
-    expect(screen.queryByText(/require support-assisted verification/i)).toBeNull();
+    expect(screen.queryByLabelText("Current password")).toBeNull();
+
+    fireEvent.click(within(settings).getByRole("button", { name: /Password/ }));
+    expect(screen.getByLabelText("Current password")).toBeTruthy();
+    window.history.replaceState(null, "", "/");
 
     rerender(<GuardianDashboardContent section="how-it-works" />);
     expect(screen.getByText("Job Board publication")).toBeTruthy();

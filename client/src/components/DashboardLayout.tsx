@@ -29,7 +29,7 @@ import {
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { Bell, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Users, type LucideIcon } from "lucide-react";
+import { Bell, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -102,6 +102,8 @@ export type WorkspaceHeaderIdentity = {
   name: string;
   profilePhotoUrl?: string | null;
   details?: Array<{ label: string; value: string }>;
+  /** The panel's Settings page, offered in the avatar menu too. */
+  settingsPath?: string;
 };
 
 export function getDashboardAvatarInitials(name: string, fallback = "?") {
@@ -469,6 +471,12 @@ function DashboardLayoutContent({
               if (!shouldAllowDashboardAccountSignOut(onBeforeNavigation)) return;
               handleSignOut();
             }}
+            // Through the sidebar's own handler, so an unsaved-changes guard applies here too.
+            onOpenSettings={workspaceHeader.settingsPath ? () => {
+              const settingsPath = workspaceHeader.settingsPath!;
+              const settingsItem = navigationItems.find(item => item.path === settingsPath) ?? { icon: Settings, label: "Settings", path: settingsPath };
+              handleNavigation(settingsItem);
+            } : undefined}
           />
         ) : isMobile ? (
           <div className="flex h-16 items-center justify-between border-b border-[#d9e5ed] bg-white/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
@@ -517,11 +525,13 @@ function WorkspaceHeader({
   identity,
   isSigningOut,
   onSignOut,
+  onOpenSettings,
 }: {
   heading: string;
   identity: WorkspaceHeaderIdentity;
   isSigningOut: boolean;
   onSignOut: () => void;
+  onOpenSettings?: () => void;
 }) {
   const initials = getDashboardAvatarInitials(identity.name);
 
@@ -564,6 +574,13 @@ function WorkspaceHeader({
               </div>)}
             </div>
             <DropdownMenuSeparator />
+            {onOpenSettings ? <DropdownMenuItem
+              onSelect={() => onOpenSettings()}
+              className="cursor-pointer text-j-ink-strong transition-colors hover:bg-[#eef8ff] focus:bg-[#eef8ff] data-[highlighted]:bg-[#eef8ff]"
+            >
+              <Settings className="mr-2 size-4" aria-hidden="true" />
+              <span>Settings</span>
+            </DropdownMenuItem> : null}
             <DropdownMenuItem
               disabled={isSigningOut}
               onSelect={event => {

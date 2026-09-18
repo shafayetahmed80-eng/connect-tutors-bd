@@ -1315,6 +1315,33 @@ export const appRouter = router({
       return { profile, images: await getAdminProfileImageUrls({ userId: input.userId }) };
     }),
   }),
+  /** The signed-in account's own settings, shared by the Guardian, Tutor and Admin panels. */
+  account: router({
+    changePassword: protectedProcedure.input(z.object({
+      currentPassword: z.string().min(1, "Enter your current password.").max(128),
+      newPassword: z.string().min(8, "Password must be at least 8 characters.").max(128),
+      confirmNewPassword: z.string().min(8).max(128),
+    }).superRefine((input, context) => {
+      if (input.newPassword !== input.confirmNewPassword) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["confirmNewPassword"], message: "New passwords do not match." });
+      }
+    })).mutation(async ({ ctx, input }) => {
+      const role = ctx.user.role === "user" ? "guardian" : ctx.user.role;
+      if (role !== "guardian" && role !== "tutor" && role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This account has no password to change." });
+      }
+      const result = await db.changeOwnPasswordByUserId({
+        userId: ctx.user.id,
+        role,
+        currentPassword: input.currentPassword,
+        newPassword: input.newPassword,
+      });
+      if (result === "invalid-current-password") {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Your current password is incorrect." });
+      }
+      return { changed: true } as const;
+    }),
+  }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */
   adminControl: router({
     get: ownerAdminProcedure.query(() => db.getAdminControl()),

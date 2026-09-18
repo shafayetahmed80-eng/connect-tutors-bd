@@ -107,6 +107,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/tutors", "Public Tutor directory"],
       ["/admin/reports", "Admin activity report"],
       ["/admin/security", "Admin security"],
+      ["/admin/settings", "Settings"],
       ["/admin/sign-out", "Sign Out"],
     ],
   },
