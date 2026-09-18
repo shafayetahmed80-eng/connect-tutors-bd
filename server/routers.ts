@@ -25,6 +25,8 @@ import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
 import { guardianApplicantVisibilityValues } from "@shared/admin-control";
+import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
+import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
 import {
   isGuardianPrivateField, findTutorProfileFieldMeta,
   tutorProfileFieldSections,
@@ -1267,6 +1269,51 @@ export const appRouter = router({
     reset: ownerAdminProcedure
       .input(z.object({ limitId: z.enum(siteLimitIdValues) }))
       .mutation(({ input }) => db.resetSiteLimit(input.limitId)),
+  }),
+  /**
+   * An Admin's own profile. Every Admin reads and edits their own; the Project
+   * Owner can also read any Admin's, and edit none but their own.
+   */
+  adminProfile: router({
+    me: adminProcedure.query(async ({ ctx }) => {
+      const profile = await db.getAdminProfileByUserId(ctx.user.id);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Admin profile not found." });
+      return profile;
+    }),
+    images: adminProcedure.query(({ ctx }) => getAdminProfileImageUrls({ userId: ctx.user.id })),
+    photo: adminProcedure.query(({ ctx }) => getAdminProfilePhotoUrl({ userId: ctx.user.id })),
+    update: adminProcedure.input(z.object({
+      name: z.string().trim().min(2, "Enter your full name.").max(ADMIN_PROFILE_LIMITS.name),
+      phone: guardianOptionalText(ADMIN_PROFILE_LIMITS.phone),
+      additionalPhone: guardianOptionalText(ADMIN_PROFILE_LIMITS.additionalPhone),
+      gender: z.enum(["male", "female"]).nullish(),
+      religion: guardianOptionalChoice(adminReligionOptions),
+      nationality: guardianOptionalChoice(adminNationalityOptions),
+      cityLocationId: guardianOptionalText(80),
+      locationId: guardianOptionalText(80),
+      addressDetails: guardianOptionalText(ADMIN_PROFILE_LIMITS.addressDetails),
+      designation: guardianOptionalText(ADMIN_PROFILE_LIMITS.designation),
+      emergencyContactName: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactName),
+      emergencyContactPhone: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactPhone),
+      emergencyContactRelation: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactRelation),
+      emergencyContactAddress: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactAddress),
+      emergencyContactProfession: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactProfession),
+    })).mutation(async ({ ctx, input }) => {
+      try {
+        return await db.updateAdminProfileByUserId({ userId: ctx.user.id, ...input });
+      } catch (error) {
+        if (error instanceof db.TutorRequestLocationError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a City, then a location inside it - or leave both empty." });
+        }
+        throw error;
+      }
+    }),
+    /** Another Admin's profile, for the Project Owner to read. */
+    view: ownerAdminProcedure.input(z.object({ userId: z.number().int().positive() })).query(async ({ input }) => {
+      const profile = await db.getAdminProfileByUserId(input.userId);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "This Admin account is unavailable." });
+      return { profile, images: await getAdminProfileImageUrls({ userId: input.userId }) };
+    }),
   }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */
   adminControl: router({

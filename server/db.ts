@@ -30,6 +30,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
   adminCredentials,
+  adminProfiles,
   adminInvitations,
   adminLoginAuditLogs,
   adminMatchingDefaultSavedViews,
@@ -4306,6 +4307,138 @@ export async function listAdminUsers() {
     .leftJoin(adminCredentials, eq(adminCredentials.userId, users.id))
     .where(eq(users.role, "admin"))
     .orderBy(asc(users.createdAt));
+}
+
+/**
+ * One Admin's profile: the account, its User ID, and whatever the Admin has
+ * filled in. An Admin who never saved has no `admin_profiles` row, so every
+ * profile field reads as unset rather than the profile being missing. The
+ * image keys never leave - only whether each image is there.
+ */
+export async function getAdminProfileByUserId(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({
+      userId: users.id,
+      openId: users.openId,
+      role: users.role,
+      name: users.name,
+      email: users.email,
+      accountCreatedAt: users.createdAt,
+      loginId: adminCredentials.loginId,
+      phone: adminProfiles.phone,
+      additionalPhone: adminProfiles.additionalPhone,
+      gender: adminProfiles.gender,
+      religion: adminProfiles.religion,
+      nationality: adminProfiles.nationality,
+      cityLocationId: adminProfiles.cityLocationId,
+      locationId: adminProfiles.locationId,
+      addressDetails: adminProfiles.addressDetails,
+      designation: adminProfiles.designation,
+      photoKey: adminProfiles.photoKey,
+      nidFrontKey: adminProfiles.nidFrontKey,
+      nidBackKey: adminProfiles.nidBackKey,
+      emergencyContactName: adminProfiles.emergencyContactName,
+      emergencyContactPhone: adminProfiles.emergencyContactPhone,
+      emergencyContactRelation: adminProfiles.emergencyContactRelation,
+      emergencyContactAddress: adminProfiles.emergencyContactAddress,
+      emergencyContactProfession: adminProfiles.emergencyContactProfession,
+    })
+    .from(users)
+    .leftJoin(adminCredentials, eq(adminCredentials.userId, users.id))
+    .leftJoin(adminProfiles, eq(adminProfiles.userId, users.id))
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!row || row.role !== "admin") return undefined;
+  const { openId, role: _role, photoKey, nidFrontKey, nidBackKey, ...profile } = row;
+  return {
+    ...profile,
+    isOwner: openId === ENV.ownerOpenId,
+    photoUploaded: Boolean(photoKey),
+    nidFrontUploaded: Boolean(nidFrontKey),
+    nidBackUploaded: Boolean(nidBackKey),
+  };
+}
+
+export type AdminProfileUpdateInput = {
+  userId: number;
+  name: string;
+  phone?: string | null;
+  additionalPhone?: string | null;
+  gender?: "male" | "female" | null;
+  religion?: string | null;
+  nationality?: string | null;
+  cityLocationId?: string | null;
+  locationId?: string | null;
+  addressDetails?: string | null;
+  designation?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  emergencyContactAddress?: string | null;
+  emergencyContactProfession?: string | null;
+};
+
+/**
+ * Saves an Admin's own profile. A City and a location inside it are chosen
+ * together or not at all - the same rule the Guardian profile checks, so a
+ * location can never sit in the wrong City.
+ */
+export async function updateAdminProfileByUserId(input: AdminProfileUpdateInput) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const city = guardianProfileText(input.cityLocationId);
+  const area = guardianProfileText(input.locationId);
+  if (Boolean(city) !== Boolean(area)) throw new TutorRequestLocationError();
+  const location = city && area ? await getTutorRequestLocation({ cityLocationId: city, locationId: area }) : null;
+  const fields = {
+    phone: guardianProfileText(input.phone),
+    additionalPhone: guardianProfileText(input.additionalPhone),
+    gender: input.gender ?? null,
+    religion: guardianProfileText(input.religion),
+    nationality: guardianProfileText(input.nationality),
+    cityLocationId: location?.cityLocationId ?? null,
+    locationId: location?.locationId ?? null,
+    addressDetails: guardianProfileText(input.addressDetails),
+    designation: guardianProfileText(input.designation),
+    emergencyContactName: guardianProfileText(input.emergencyContactName),
+    emergencyContactPhone: guardianProfileText(input.emergencyContactPhone),
+    emergencyContactRelation: guardianProfileText(input.emergencyContactRelation),
+    emergencyContactAddress: guardianProfileText(input.emergencyContactAddress),
+    emergencyContactProfession: guardianProfileText(input.emergencyContactProfession),
+  };
+  await database.transaction(async tx => {
+    await tx.update(users).set({ name: input.name.trim() }).where(and(eq(users.id, input.userId), eq(users.role, "admin")));
+    await tx.insert(adminProfiles).values({ userId: input.userId, ...fields }).onDuplicateKeyUpdate({ set: fields });
+  });
+  return { updated: true } as const;
+}
+
+const adminProfileImageColumn = {
+  photo: "photoKey",
+  "nid-front": "nidFrontKey",
+  "nid-back": "nidBackKey",
+} as const;
+
+/** Server-only image keys for one Admin. */
+export async function getAdminProfileImageKeys(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ photo: adminProfiles.photoKey, nidFront: adminProfiles.nidFrontKey, nidBack: adminProfiles.nidBackKey })
+    .from(adminProfiles)
+    .where(eq(adminProfiles.userId, userId))
+    .limit(1);
+  return { photo: row?.photo ?? null, nidFront: row?.nidFront ?? null, nidBack: row?.nidBack ?? null };
+}
+
+/** Stores or clears one image key; the row is created on first use. */
+export async function setAdminProfileImageKey(userId: number, kind: keyof typeof adminProfileImageColumn, storageKey: string | null) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const set = { [adminProfileImageColumn[kind]]: storageKey };
+  await database.insert(adminProfiles).values({ userId, ...set }).onDuplicateKeyUpdate({ set });
 }
 
 export async function updateUserRole(userId: number, role: UserRole) {
