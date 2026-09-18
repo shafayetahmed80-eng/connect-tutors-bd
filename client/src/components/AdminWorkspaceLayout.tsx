@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -59,6 +59,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
     // Last, as in the Tutor sidebar. The path is never navigated to - the
     // layout sees `action: "signout"` and signs out instead - but a nav item
     // needs one.
+    { icon: Settings, label: "Settings", path: "/admin/settings", sectionLabel: "Account" },
     { icon: LogOut, label: "Sign Out", path: "/admin/sign-out", sectionLabel: "Account", action: "signout" },
   ];
 }
@@ -163,6 +164,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
       portal: "Admin Panel",
       name: access?.name ?? "Admin",
       profilePhotoUrl: photoUrl,
+      settingsPath: "/admin/settings",
       details: [
         // The User ID, not the display name: it is what they type at
         // /admin/login, and with more than one Admin the name alone does not

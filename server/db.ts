@@ -856,20 +856,35 @@ export async function setGuardianVerification(input: {
   });
 }
 
-/** Confirms the current credential before replacing a Guardian password hash. */
-export async function changeGuardianPasswordByUserId(input: {
+/**
+ * Confirms the current credential before replacing the signed-in account's own
+ * password hash. Guardians, Tutors and Admins all keep theirs in
+ * `users.passwordHash`, so one check serves the three Settings pages; the
+ * role guard stops a session of one role changing an account of another.
+ */
+export async function changeOwnPasswordByUserId(input: {
   userId: number;
+  role: "guardian" | "tutor" | "admin";
   currentPassword: string;
   newPassword: string;
 }): Promise<"changed" | "invalid-current-password"> {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const user = (await database.select({ passwordHash: users.passwordHash, role: users.role }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
-  if (user?.role !== "guardian" || !user.passwordHash || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
+  if (user?.role !== input.role || !user.passwordHash || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
     return "invalid-current-password";
   }
   await database.update(users).set({ passwordHash: await hashPassword(input.newPassword) }).where(eq(users.id, input.userId));
   return "changed";
+}
+
+/** Confirms the current credential before replacing a Guardian password hash. */
+export async function changeGuardianPasswordByUserId(input: {
+  userId: number;
+  currentPassword: string;
+  newPassword: string;
+}): Promise<"changed" | "invalid-current-password"> {
+  return changeOwnPasswordByUserId({ ...input, role: "guardian" });
 }
 
 /** Internal current-photo record; the raw storage key never leaves server-only services. */

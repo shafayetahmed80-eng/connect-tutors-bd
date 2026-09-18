@@ -13,6 +13,7 @@ import { GuardianHireSheet } from "@/components/GuardianHireSheet";
 import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
 import { GuardianAppliedTuitionsContent, GuardianAppliedTutorsContent } from "@/pages/GuardianAppliedTutors";
 import { GuardianTutorProfileContent } from "@/pages/GuardianTutorProfile";
+import { GUARDIAN_SETTINGS_PATH, GuardianSettingsContent } from "@/pages/PanelSettings";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -137,16 +138,6 @@ function GuardianProfileWorkspace() {
   </SiteContentProvider>;
 }
 
-function GuardianSettingsPanel() {
-  const contact = useSiteContact();
-  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
-  const mutation = trpc.guardianProfile.changePassword.useMutation({
-    onSuccess: () => { setForm({ currentPassword: "", newPassword: "", confirmNewPassword: "" }); toast.success("Password changed. Use your new password next time you sign in."); },
-    onError: error => toast.error(error.message),
-  });
-  return <div className="space-y-6"><Card className="rounded-xl border-j-border shadow-sm"><CardHeader><CardTitle className="flex items-center gap-2 text-xl font-black text-j-ink"><KeyRound className="size-5 text-[#1677c8]" /> Change password</CardTitle></CardHeader><CardContent className="p-7 pt-0"><form className="grid max-w-xl gap-5" onSubmit={event => { event.preventDefault(); mutation.mutate(form); }}><label className="grid gap-2 text-sm font-bold text-j-ink-strong">Current password<input required type="password" autoComplete="current-password" value={form.currentPassword} onChange={event => setForm(current => ({ ...current, currentPassword: event.target.value }))} className="rounded-xl border border-j-field-border px-3 py-2.5 outline-none ring-[#1677c8] focus:ring-2" /></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">New password<input required minLength={8} type="password" autoComplete="new-password" value={form.newPassword} onChange={event => setForm(current => ({ ...current, newPassword: event.target.value }))} className="rounded-xl border border-j-field-border px-3 py-2.5 outline-none ring-[#1677c8] focus:ring-2" /></label><label className="grid gap-2 text-sm font-bold text-j-ink-strong">Confirm new password<input required minLength={8} type="password" autoComplete="new-password" value={form.confirmNewPassword} onChange={event => setForm(current => ({ ...current, confirmNewPassword: event.target.value }))} className="rounded-xl border border-j-field-border px-3 py-2.5 outline-none ring-[#1677c8] focus:ring-2" /></label><Button type="submit" disabled={mutation.isPending} aria-busy={mutation.isPending} data-motion={mutation.isPending ? "pending" : undefined} className="w-fit bg-[#1677c8] hover:bg-[#0e4f85]">{mutation.isPending ? "Changing…" : "Change password"}</Button></form><div className="mt-7 rounded-xl border border-sky-100 bg-sky-50 p-4 text-sm leading-6 text-sky-950"><p className="font-extrabold">Phone and email changes</p><p className="mt-1">Contact us on WhatsApp at <a className="font-bold underline" href={contact.whatsapp()} target="_blank" rel="noreferrer">01516 131 411</a>.</p></div></CardContent></Card></div>;
-}
-
 function GuardianHowItWorksPanel() {
   const contact = useSiteContact();
   const steps = [["1", "Submit a private request", "Share the student’s learning needs, schedule, budget, City, and area. You can review the request before submission."], ["2", "Coordinator review", "Our team checks the request and may call you to confirm or clarify information before any publication."], ["3", "Job Board publication", "If suitable and confirmed, an Admin may publish a privacy-safe tuition opportunity. Your phone, email, exact address, student identity, and notes are never public."], ["4", "Tutor coordination", "Interested Tutors are reviewed by the Admin team. If a match is ready, you decide whether coordination contact may proceed."], ["5", "Next steps", "Your coordinator guides the private next step. Attendance, payment, and session records are not part of this first release."]];
@@ -214,7 +205,7 @@ export function GuardianDashboardContent({ section, requestId, tutorId }: { sect
 
   if (section === "profile") return <GuardianProfileWorkspace />;
 
-  if (section === "settings") return <GuardianSettingsPanel />;
+  if (section === "settings") return <GuardianSettingsContent />;
 
   if (section === "how-it-works") return <GuardianHowItWorksPanel />;
 
@@ -256,6 +247,7 @@ function useGuardianWorkspaceHeader() {
     name: profile?.name || "Guardian",
     profilePhotoUrl: photoQuery.data?.photoUrl ?? null,
     details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
+    settingsPath: GUARDIAN_SETTINGS_PATH,
   };
 }
 

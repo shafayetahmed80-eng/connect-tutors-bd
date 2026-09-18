@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -92,6 +92,18 @@ describe("Dynamic Section content page", () => {
     expect(block.textContent).toContain("User ID: owner");
     expect(block.textContent).toContain("Role: Project Owner");
     expect(block.textContent).toContain("Created: 01 Sept 2026");
+  });
+
+  it("offers Settings in the avatar menu, and it opens the Admin Settings page", async () => {
+    window.history.replaceState(null, "", "/admin/dynamic");
+    renderPage();
+
+    const trigger = screen.getByRole("button", { name: "Open Admin Panel account menu" });
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    const settings = await screen.findByRole("menuitem", { name: /Settings/ });
+    fireEvent.click(settings);
+    expect(window.location.pathname).toBe("/admin/settings");
+    window.history.replaceState(null, "", "/");
   });
 
   it("keeps the page on screen while the Owner check is re-run for the same session", () => {
