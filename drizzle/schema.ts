@@ -179,6 +179,36 @@ export const adminCredentials = mysqlTable(
 );
 
 /**
+ * An Admin's own profile, the Admin panel's counterpart of `guardian_profiles`.
+ * The name stays on `users` and the email is the invitation's, read-only
+ * here. Every column is optional: a row appears the first time an Admin
+ * saves, and an Admin without one simply has nothing filled in yet. The image
+ * keys are server-only - the owner and the Project Owner get signed URLs.
+ */
+export const adminProfiles = mysqlTable("admin_profiles", {
+  userId: int("userId").primaryKey().references(() => users.id),
+  phone: varchar("phone", { length: 16 }),
+  additionalPhone: varchar("additionalPhone", { length: 16 }),
+  gender: mysqlEnum("gender", ["male", "female"]),
+  religion: varchar("religion", { length: 40 }),
+  nationality: varchar("nationality", { length: 60 }),
+  cityLocationId: varchar("cityLocationId", { length: 80 }).references(() => locations.id),
+  locationId: varchar("locationId", { length: 80 }).references(() => locations.id),
+  addressDetails: varchar("addressDetails", { length: 255 }),
+  designation: varchar("designation", { length: 120 }),
+  photoKey: varchar("photoKey", { length: 512 }),
+  nidFrontKey: varchar("nidFrontKey", { length: 512 }),
+  nidBackKey: varchar("nidBackKey", { length: 512 }),
+  emergencyContactName: varchar("emergencyContactName", { length: 120 }),
+  emergencyContactPhone: varchar("emergencyContactPhone", { length: 16 }),
+  emergencyContactRelation: varchar("emergencyContactRelation", { length: 60 }),
+  emergencyContactAddress: varchar("emergencyContactAddress", { length: 255 }),
+  emergencyContactProfession: varchar("emergencyContactProfession", { length: 120 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
  * Per-tab Tutor portal access proofs. Raw browser proofs are never persisted;
  * this table keeps only their one-way digests and short-lived lifecycle state.
  */

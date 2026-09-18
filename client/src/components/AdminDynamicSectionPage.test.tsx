@@ -28,6 +28,11 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     auth: { logout: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } },
+    // The sidebar's account block.
+    adminProfile: {
+      me: { useQuery: () => ({ data: { name: "Owner Admin", email: "owner@example.com", loginId: "owner", isOwner: state.isOwner, accountCreatedAt: "2026-09-01T00:00:00.000Z" } }) },
+      photo: { useQuery: () => ({ data: { photoUrl: null } }) },
+    },
     // The dashboard sidebar reads its Admin-editable labels through this.
     siteContent: {
       list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
@@ -76,6 +81,17 @@ describe("Dynamic Section content page", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Owner access required" })).toBeTruthy();
+  });
+
+  it("heads the sidebar with the Admin's own account block, as the other panels do", () => {
+    renderPage();
+
+    const block = screen.getByLabelText("Admin account identity");
+    expect(block.textContent).toContain("Owner Admin");
+    expect(block.textContent).toContain("owner@example.com");
+    expect(block.textContent).toContain("User ID: owner");
+    expect(block.textContent).toContain("Role: Project Owner");
+    expect(block.textContent).toContain("Created: 01 Sept 2026");
   });
 
   it("keeps the page on screen while the Owner check is re-run for the same session", () => {

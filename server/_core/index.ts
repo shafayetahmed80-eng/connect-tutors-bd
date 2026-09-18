@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { registerGuardianProfilePhotoRoute } from "../guardian-profile-photo-route";
 import { registerGuardianNidDocumentRoute } from "../guardian-nid-document-route";
+import { registerAdminProfileImageRoute } from "../admin-profile-image-route";
 import { registerTutorProfilePhotoRoute } from "../tutor-profile-photo-route";
 import { registerTutorUniversityIdDocumentRoute } from "../tutor-university-id-document-route";
 import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-document-route";
@@ -43,6 +44,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerGuardianProfilePhotoRoute(app);
   registerGuardianNidDocumentRoute(app);
+  registerAdminProfileImageRoute(app);
   registerTutorProfilePhotoRoute(app);
   registerTutorUniversityIdDocumentRoute(app);
   registerTutorSupportingDocumentRoute(app);

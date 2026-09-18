@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
+import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -39,6 +39,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
   // starts a new section heading wherever `sectionLabel` changes.
   return [
     { icon: LayoutDashboard, label: "Overview", path: "/admin/dashboard", sectionLabel: "Operations" },
+    { icon: CircleUserRound, label: "Admin Profile", path: "/admin/profile", sectionLabel: "Operations" },
     { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian activity", path: "/admin/guardians", sectionLabel: "Operations" },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
@@ -89,6 +90,31 @@ export function getAdminWorkspaceDisplayState({
   return "ready" as const;
 }
 
+function formatAdminDate(value?: Date | string | null) {
+  if (!value) return "Not available";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+/** The account block at the top of the sidebar, as the Guardian and Tutor panels have. */
+function AdminSidebarIdentity({ photoUrl }: { photoUrl: string | null }) {
+  const profile = trpc.adminProfile.me.useQuery().data;
+  const name = profile?.name || "Admin";
+  return <div className="rounded-xl bg-[#f4f9fd] p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Admin account identity">
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">
+      {photoUrl ? <img src={photoUrl} alt="Admin profile photo" className="size-full object-cover" /> : getDashboardAvatarInitials(name, "A")}
+    </div>
+    <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
+      <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
+      <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>
+      <div className="mt-2.5 space-y-0.5 border-t border-[#dbe9f2] pt-2 text-2xs text-j-ink-soft">
+        <p><span className="font-bold text-j-ink">User ID:</span> {profile ? profile.loginId ?? "Not set" : "Loading…"}</p>
+        <p><span className="font-bold text-j-ink">Role:</span> {profile ? (profile.isOwner ? "Project Owner" : "Administrator") : "Loading…"}</p>
+        <p><span className="font-bold text-j-ink">Created:</span> {formatAdminDate(profile?.accountCreatedAt)}</p>
+      </div>
+    </div>
+  </div>;
+}
+
 export default function AdminWorkspaceLayout({ children, title = "Admin workspace" }: { children: ReactNode; title?: string }) {
   const { user, loading } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -96,6 +122,8 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     ...ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS,
     enabled: isAdmin,
   });
+  // One photo for both places it shows: the sidebar block and the header avatar.
+  const photoUrl = trpc.adminProfile.photo.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.photoUrl ?? null;
   const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
@@ -130,9 +158,11 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     title={title}
     loginPath="/admin/login"
     sidebarPanel="admin"
+    sidebarIdentity={<AdminSidebarIdentity photoUrl={photoUrl} />}
     workspaceHeader={{
       portal: "Admin Panel",
       name: access?.name ?? "Admin",
+      profilePhotoUrl: photoUrl,
       details: [
         // The User ID, not the display name: it is what they type at
         // /admin/login, and with more than one Admin the name alone does not

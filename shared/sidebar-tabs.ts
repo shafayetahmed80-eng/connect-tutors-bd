@@ -80,6 +80,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"],
     items: [
       ["/admin/dashboard", "Overview"],
+      ["/admin/profile", "Admin Profile"],
       ["/admin/tutor-profiles", "Tutor Profiles"],
       ["/admin/guardians", "Guardian activity"],
       ["/admin/posted-jobs", "Posted jobs"],

@@ -15,6 +15,7 @@ describe("Admin workspace navigation", () => {
     const adminItems = buildAdminWorkspaceNavigation(false);
     expect(adminItems.filter(item => item.sectionLabel === "Operations").map(item => item.label)).toEqual([
       "Overview",
+      "Admin Profile",
       "Tutor Profiles",
       "Guardian activity",
       "Posted jobs",
