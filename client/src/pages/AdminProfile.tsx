@@ -347,8 +347,11 @@ export function AdminProfileContent() {
         <ModalHeader title="Personal Information" eyebrow="Edit section" srPrefix="Edit" />
         <ModalBody className="space-y-3.5">
           <div className="grid gap-3.5 sm:grid-cols-2">
-            <Field label="Name"><input value={form.name} maxLength={ADMIN_PROFILE_LIMITS.name} onChange={event => set({ name: event.target.value })} className={inputClass} /></Field>
-            <Field label="Mobile"><input value={form.phone} maxLength={ADMIN_PROFILE_LIMITS.phone} inputMode="tel" onChange={event => set({ phone: event.target.value })} className={inputClass} /></Field>
+            {/* Another Admin asks for a new name or mobile from Settings; only the Owner changes theirs here. */}
+            {profile.isOwner ? <>
+              <Field label="Name"><input value={form.name} maxLength={ADMIN_PROFILE_LIMITS.name} onChange={event => set({ name: event.target.value })} className={inputClass} /></Field>
+              <Field label="Mobile"><input value={form.phone} maxLength={ADMIN_PROFILE_LIMITS.phone} inputMode="tel" onChange={event => set({ phone: event.target.value })} className={inputClass} /></Field>
+            </> : null}
             <Field label="Additional phone"><input value={form.additionalPhone} maxLength={ADMIN_PROFILE_LIMITS.additionalPhone} inputMode="tel" onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} /></Field>
             <Field label="Gender"><select value={form.gender} onChange={event => set({ gender: event.target.value as AdminForm["gender"] })} className={inputClass}><option value="">Not set</option><option value="female">Female</option><option value="male">Male</option></select></Field>
             <Field label="Religion"><select value={form.religion} onChange={event => set({ religion: event.target.value })} className={inputClass}><option value="">Not set</option>{adminReligionOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>

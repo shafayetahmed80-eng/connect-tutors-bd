@@ -649,13 +649,26 @@ describe("the Tutor Profile phone boxes", () => {
 
   it("keeps +880 out of the box, so it cannot be typed away", async () => {
     const user = userEvent.setup({ document: window.document });
-    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, phone: "" }} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
     const phone = within(screen.getByRole("dialog")).getByLabelText(tutorProfileCopy.fields.phone) as HTMLInputElement;
 
-    expect(phone.value).toBe("1712345678");
     expect(phone.maxLength).toBe(10);
+    expect(phone.readOnly).toBe(false);
+  });
+
+  it("shows a saved name and mobile without letting them be typed over - they change through a request from Settings", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const phone = within(dialog).getByLabelText(new RegExp(`^${tutorProfileCopy.fields.phone}`)) as HTMLInputElement;
+    const name = within(dialog).getByLabelText(new RegExp(`^${tutorProfileCopy.fields.fullName}`)) as HTMLInputElement;
+    expect(phone.readOnly).toBe(true);
+    expect(name.readOnly).toBe(true);
+    expect(name.value).toBe(completeProfile.name);
   });
 
   it("names the half-typed number instead of letting the save fail", async () => {

@@ -178,6 +178,37 @@ export const adminCredentials = mysqlTable(
   }
 );
 
+export const accountChangeRequestRoleValues = ["guardian", "tutor", "admin"] as const;
+export const accountChangeRequestTypeValues = ["name", "mobile", "verification", "close_account"] as const;
+export const accountChangeRequestStatusValues = ["pending", "approved", "declined", "withdrawn"] as const;
+
+/**
+ * A change a Guardian, a Tutor or an Admin asked for from their Settings page:
+ * a new name or mobile number, a verification, or closing the account. An
+ * Admin decides it - the Project Owner, when the asker is another Admin. The
+ * value it replaces is kept beside the new one, so the decision is read as
+ * "old -> new" even after the account has changed. One waits per type per
+ * account.
+ */
+export const accountChangeRequests = mysqlTable("account_change_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  role: mysqlEnum("role", accountChangeRequestRoleValues).notNull(),
+  type: mysqlEnum("type", accountChangeRequestTypeValues).notNull(),
+  currentValue: varchar("currentValue", { length: 160 }),
+  requestedValue: varchar("requestedValue", { length: 160 }),
+  reason: varchar("reason", { length: 280 }),
+  status: mysqlEnum("status", accountChangeRequestStatusValues).default("pending").notNull(),
+  declineReason: varchar("declineReason", { length: 280 }),
+  decidedByUserId: int("decidedByUserId").references(() => users.id),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("account_change_requests_user_status_idx").on(table.userId, table.status),
+  index("account_change_requests_status_created_idx").on(table.status, table.createdAt),
+]);
+
 /**
  * An Admin's own profile, the Admin panel's counterpart of `guardian_profiles`.
  * The name stays on `users` and the email is the invitation's, read-only

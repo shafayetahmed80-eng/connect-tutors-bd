@@ -41,10 +41,15 @@ vi.mock("@/lib/trpc", () => ({
       update: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
-    account: { changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
+    account: {
+      changePassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      changeRequests: { useQuery: () => ({ data: { offered: ["name", "mobile", "verification", "close_account"], isOwner: false, currentName: "Rina Akter", currentMobile: "+8801711111111", liveTuition: false, requests: [] }, isLoading: false }) },
+      requestChange: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      withdrawChange: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
     locations: { list: { useQuery: () => ({ data: [{ id: "dhaka", type: "city", label: "Dhaka" }, { id: "mirpur", type: "area", parentId: "dhaka", label: "Mirpur" }] }) } },
     tutorRequests: { mine: { useQuery: () => ({ data: mocks.requests, isLoading: false }) } },
-    useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() }, identityDocuments: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() }, identityDocuments: { invalidate: vi.fn() } }, account: { changeRequests: { invalidate: vi.fn() } } }),
   },
 }));
 
@@ -110,15 +115,16 @@ describe("Guardian dashboard working tabs", () => {
     expect(screen.getByRole("tab", { name: "Personal Information" })).toBeTruthy();
   });
 
-  it("opens Settings on the Guardian's name, keeps the support contact reachable, and changes the password from its own button", () => {
+  it("opens Settings on the Guardian's name, asks for a new one there, and changes the password from its own button", () => {
     window.history.replaceState(null, "", "/guardian/dashboard/settings");
     const { rerender } = render(<GuardianDashboardContent section="settings" />);
     const settings = screen.getByRole("navigation", { name: "Account settings" });
-    expect(within(settings).getAllByRole("button").map(button => button.textContent)).toEqual([
-      expect.stringContaining("Name"), expect.stringContaining("Mobile Number"), expect.stringContaining("Password"), expect.stringContaining("Profile Verification"),
+    expect(within(settings).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual([
+      "Name", "Mobile Number", "Password", "Profile Verification", "Account Delete",
     ]);
-    // The number a Guardian needs to change a name or phone is still here.
-    expect(screen.getByRole("link", { name: "01516 131 411" })).toBeTruthy();
+    // A name change is a request now, not a phone call.
+    expect(screen.getByLabelText("New name")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "01516 131 411" })).toBeNull();
     expect(screen.queryByLabelText("Current password")).toBeNull();
 
     fireEvent.click(within(settings).getByRole("button", { name: /Password/ }));

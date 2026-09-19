@@ -45,8 +45,19 @@ describe("adminProfile", () => {
     expect(imageMocks.getAdminProfileImageUrls).toHaveBeenCalledWith({ userId: 43 });
   });
 
-  it("saves the Admin's own profile, turning a blank into a cleared field", async () => {
+  it("keeps another Admin's name and mobile as they are - those are asked for from Settings", async () => {
     dbMocks.updateAdminProfileByUserId.mockResolvedValue({ updated: true });
+    dbMocks.getAdminProfileByUserId.mockResolvedValue({ ...profile, isOwner: false, phone: "+8801700000000" });
+
+    await createCaller(otherAdmin).adminProfile.update({ name: "Someone Else", phone: "01999999999", designation: "Coordinator" });
+    expect(dbMocks.updateAdminProfileByUserId).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 43, name: "Nadia", phone: "+8801700000000", designation: "Coordinator",
+    }));
+  });
+
+  it("saves the Owner's own profile, turning a blank into a cleared field", async () => {
+    dbMocks.updateAdminProfileByUserId.mockResolvedValue({ updated: true });
+    dbMocks.getAdminProfileByUserId.mockResolvedValue({ ...profile, isOwner: true });
 
     await createCaller(otherAdmin).adminProfile.update({
       name: "  Nadia Rahman ", phone: " 01711111111 ", additionalPhone: "", gender: null,
