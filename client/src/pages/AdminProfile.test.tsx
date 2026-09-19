@@ -28,6 +28,10 @@ vi.mock("@/lib/trpc", () => ({
       update: { useMutation: () => ({ mutate: state.update, isPending: false }) },
       view: { useQuery: () => ({ data: { profile: { ...(state.profile as object), isOwner: false }, images: { photo: null, nidFront: null, nidBack: null } }, isLoading: false, error: null }) },
     },
+    // The request history under another Admin's profile.
+    accountChanges: {
+      history: { useQuery: () => ({ data: [{ id: 4, type: "name", status: "declined", currentValue: "Nadia Rahman", requestedValue: "Nadia R", reason: null, declineReason: "Use the full name.", createdAt: "2026-09-18T10:00:00Z", decidedAt: "2026-09-18T12:00:00Z", decidedByName: "Site Admin" }], isLoading: false, isError: false }) },
+    },
     locations: {
       list: { useQuery: () => ({ data: [
         { id: "dhaka", label: "Dhaka", type: "city", parentId: null },
@@ -117,6 +121,9 @@ describe("another Admin's profile, as the Project Owner reads it", () => {
     expect(screen.getByRole("heading", { name: "Nadia Rahman" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Edit/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /profile photo/ })).toBeNull();
-    expect(screen.getByRole("link", { name: /Back to Admin security/ }).getAttribute("href")).toBe("/admin/security");
+    expect(screen.getByRole("link", { name: /Back to Admin Profiles/ }).getAttribute("href")).toBe("/admin/admin-profiles");
+    // With the Admin's change requests below it.
+    expect(screen.getByRole("heading", { name: "Change requests" })).toBeTruthy();
+    expect(screen.getByText("Use the full name.")).toBeTruthy();
   });
 });

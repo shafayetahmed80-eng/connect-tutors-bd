@@ -1527,6 +1527,8 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
   return {
     ...profile,
     catalogLabels,
+    // The account behind the profile, for its change request history.
+    userId: owner.userId,
     documents: {
       universityId: universityIdRow?.storageKey ? await storageGetSignedUrl(universityIdRow.storageKey) : null,
       supporting: Object.fromEntries(
@@ -4333,9 +4335,14 @@ export async function listAdminUsers() {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database
-    .select({ id: users.id, name: users.name, email: users.email, loginId: adminCredentials.loginId, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn })
+    .select({
+      id: users.id, name: users.name, email: users.email, loginId: adminCredentials.loginId, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
+      phone: adminProfiles.phone, designation: adminProfiles.designation,
+      pendingRequests: sql<number>`(select count(*) from \`account_change_requests\` acr where acr.\`userId\` = \`users\`.\`id\` and acr.\`status\` = 'pending')`,
+    })
     .from(users)
     .leftJoin(adminCredentials, eq(adminCredentials.userId, users.id))
+    .leftJoin(adminProfiles, eq(adminProfiles.userId, users.id))
     .where(eq(users.role, "admin"))
     .orderBy(asc(users.createdAt));
 }
@@ -4676,6 +4683,104 @@ export async function listAccountChangeRequestsForAdmin(input: {
   const counts = { pending: 0, approved: 0, declined: 0 };
   for (const row of grouped) if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.total);
   return { items, counts };
+}
+
+/**
+ * Every change request one account has made, newest first, withdrawn ones
+ * included - the history on that account's profile page.
+ */
+export async function listAccountChangeHistoryForUser(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const decider = alias(users, "decider");
+  return database
+    .select({
+      id: accountChangeRequests.id,
+      role: accountChangeRequests.role,
+      type: accountChangeRequests.type,
+      status: accountChangeRequests.status,
+      currentValue: accountChangeRequests.currentValue,
+      requestedValue: accountChangeRequests.requestedValue,
+      reason: accountChangeRequests.reason,
+      declineReason: accountChangeRequests.declineReason,
+      createdAt: accountChangeRequests.createdAt,
+      decidedAt: accountChangeRequests.decidedAt,
+      decidedByName: decider.name,
+    })
+    .from(accountChangeRequests)
+    .leftJoin(decider, eq(decider.id, accountChangeRequests.decidedByUserId))
+    .where(eq(accountChangeRequests.userId, userId))
+    .orderBy(desc(accountChangeRequests.id))
+    .limit(100);
+}
+
+/** Whose account this is, so a history of an Admin's requests stays the Project Owner's. */
+export async function getUserRoleById(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.role;
+}
+
+/**
+ * The Guardian Profiles list: one row per Guardian account, with how many
+ * tuitions they posted and how many change requests wait, under counted
+ * verification tabs. A Guardian with no profile row yet reads as unverified.
+ */
+export async function listGuardianProfilesForAdmin(input: {
+  query: string;
+  verification: "all" | "unverified" | "verified" | "rejected";
+  page: number;
+  pageSize: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const verification = sql<string>`coalesce(${guardianProfiles.verificationStatus}, 'unverified')`;
+  const term = input.query.trim();
+  const search = term
+    ? or(like(users.name, `%${term}%`), like(users.email, `%${term}%`), like(users.loginPhone, `%${term}%`), like(guardianProfiles.phone, `%${term}%`), like(guardianProfiles.guardianId, `%${term}%`))
+    : undefined;
+  const base = and(eq(users.role, "guardian"), search);
+  const where = input.verification === "all" ? base : and(base, sql`${verification} = ${input.verification}`);
+
+  const grouped = await database
+    .select({ status: verification, total: count() })
+    .from(users)
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+    .where(base)
+    .groupBy(verification);
+  const counts = { all: 0, unverified: 0, verified: 0, rejected: 0 };
+  for (const row of grouped) {
+    counts.all += Number(row.total);
+    if (row.status in counts) counts[row.status as keyof typeof counts] += Number(row.total);
+  }
+  const total = input.verification === "all" ? counts.all : counts[input.verification];
+
+  const items = await database
+    .select({
+      userId: users.id,
+      name: users.name,
+      email: users.email,
+      phone: sql<string | null>`coalesce(${guardianProfiles.phone}, ${users.loginPhone})`,
+      guardianId: guardianProfiles.guardianId,
+      verificationStatus: verification,
+      accountStatus: users.accountStatus,
+      joinedAt: users.createdAt,
+      tuitions: sql<number>`(select count(*) from \`tutor_requests\` tr where tr.\`guardianUserId\` = \`users\`.\`id\`)`,
+      pendingRequests: sql<number>`(select count(*) from \`account_change_requests\` acr where acr.\`userId\` = \`users\`.\`id\` and acr.\`status\` = 'pending')`,
+    })
+    .from(users)
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+    .where(where)
+    .orderBy(desc(users.createdAt), desc(users.id))
+    .limit(input.pageSize)
+    .offset((input.page - 1) * input.pageSize);
+
+  return {
+    items: items.map(item => ({ ...item, tuitions: Number(item.tuitions), pendingRequests: Number(item.pendingRequests) })),
+    counts,
+    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
+  };
 }
 
 /** How many requests wait for this Admin - the sidebar's badge. */

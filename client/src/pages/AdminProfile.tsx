@@ -1,3 +1,4 @@
+import AccountChangeHistory from "@/components/AccountChangeHistory";
 import {
   ArrowLeft, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, IdCard, Loader2, Mail, MapPin,
   PencilLine, Phone, ShieldCheck, UserRound, Users, type LucideIcon,
@@ -415,12 +416,13 @@ export function AdminProfileOwnerViewContent({ userId }: { userId: number }) {
   const view = trpc.adminProfile.view.useQuery({ userId }, { retry: false });
   const locationsQuery = trpc.locations.list.useQuery();
   return <div className="space-y-4">
-    <Link href="/admin/security" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Admin security
+    <Link href="/admin/admin-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
+      <ArrowLeft size={15} /> Back to Admin Profiles
     </Link>
     {view.isLoading ? <Loading /> : null}
     {view.error ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{view.error.message}</div> : null}
     {view.data ? <AdminProfileView profile={view.data.profile} images={view.data.images} locations={locationsQuery.data ?? []} /> : null}
+    {view.data ? <AccountChangeHistory userId={userId} /> : null}
   </div>;
 }
 
