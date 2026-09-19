@@ -99,6 +99,7 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "contactEmail", label: "Email Address", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 60, requiredByDefault: true, requiredConfigurable: true },
   { id: "privateDetails.nationality", label: "Nationality", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 70, requiredByDefault: true, requiredConfigurable: true },
   { id: "privateDetails.religion", label: "Religion", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 80, requiredByDefault: true, requiredConfigurable: true },
+  { id: "privateDetails.permanentAddress", label: "Permanent Address", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 85, requiredByDefault: true, requiredConfigurable: true },
   { id: "privateDetails.additionalPhone", label: "Additional Phone", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 90, requiredByDefault: false, requiredConfigurable: true },
   { id: "privateDetails.socialProfileLinks", label: "Social Profile Links", section: "a", subGroup: "a-identity", panel: "identity", sortOrder: 100, requiredByDefault: false, requiredConfigurable: true },
 
@@ -198,6 +199,7 @@ export const guardianPrivateFieldIds: ReadonlySet<string> = new Set([
   "phone",
   "contactEmail",
   "privateDetails.additionalPhone",
+  "privateDetails.permanentAddress",
   "privateDetails.socialProfileLinks",
   "privateDetails.fatherName",
   "privateDetails.fatherPhone",

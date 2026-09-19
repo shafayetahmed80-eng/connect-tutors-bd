@@ -763,3 +763,38 @@ describe("what an Admin asked the Tutor to change", () => {
     expect(screen.queryByText(/Changes requested/)).toBeNull();
   });
 });
+
+describe("Permanent Address and the Availability choices", () => {
+  afterEach(() => { cleanup(); });
+
+  it("asks for the Permanent Address in Personal Information, required, and saves it", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { permanentAddress: "" } }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const address = within(dialog).getByLabelText(/^Permanent Address/) as HTMLTextAreaElement;
+    expect(address.required).toBe(true);
+    fireEvent.change(address, { target: { value: "Village Example, Rangpur" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls.at(-1)?.[0].privateDetails).toMatchObject({ permanentAddress: "Village Example, Rangpur" });
+  });
+
+  it("offers Tuition Type and Preferred Student Gender as dropdowns on a laptop", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Availability" }));
+    const dialog = screen.getByRole("dialog");
+
+    const type = within(dialog).getByRole("combobox", { name: /Tuition Type/ }) as HTMLSelectElement;
+    expect(within(type).getAllByRole("option").map(option => option.textContent)).toEqual(["Select…", "Home tuition", "Online tuition", "Both"]);
+    fireEvent.change(type, { target: { value: "online" } });
+    expect(type.value).toBe("online");
+    expect(within(dialog).getByRole("combobox", { name: /Preferred Student Gender/ })).toBeTruthy();
+    expect(within(dialog).queryByRole("radiogroup", { name: /Tuition Type/ })).toBeNull();
+  });
+});

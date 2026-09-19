@@ -154,6 +154,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   contactEmail: form => ({ label: "Email address", value: text(form.contactEmail) }),
   "privateDetails.nationality": form => ({ label: "Nationality", value: text(form.privateDetails.nationality) }),
   "privateDetails.religion": form => ({ label: "Religion", value: text(form.privateDetails.religion) }),
+  "privateDetails.permanentAddress": form => ({ label: "Permanent address", value: text(form.privateDetails.permanentAddress) }),
   "privateDetails.additionalPhone": form => ({ label: "Additional phone", value: text(form.privateDetails.additionalPhone) }),
   "privateDetails.socialProfileLinks": form => ({ label: "Social profile links", value: text(form.privateDetails.socialProfileLinks) }),
 
