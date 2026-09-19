@@ -27,6 +27,8 @@ import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } fr
 import { guardianApplicantVisibilityValues } from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
+import { accountChangeTypeValues, accountChangeTypesFor, ACCOUNT_CHANGE_NAME_MAX, ACCOUNT_CHANGE_REASON_MAX } from "@shared/account-change-requests";
+import { accountChangeRefusalMessages, checkAccountChange } from "./account-change-requests";
 import {
   isGuardianPrivateField, findTutorProfileFieldMeta,
   tutorProfileFieldSections,
@@ -1299,8 +1301,12 @@ export const appRouter = router({
       emergencyContactAddress: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactAddress),
       emergencyContactProfession: guardianOptionalText(ADMIN_PROFILE_LIMITS.emergencyContactProfession),
     })).mutation(async ({ ctx, input }) => {
+      // Only the Project Owner changes their own name and mobile here; another
+      // Admin asks for that from Settings, so theirs are carried over unchanged.
+      const current = await db.getAdminProfileByUserId(ctx.user.id);
+      const contact = current?.isOwner ? {} : { name: current?.name ?? input.name, phone: current?.phone ?? null };
       try {
-        return await db.updateAdminProfileByUserId({ userId: ctx.user.id, ...input });
+        return await db.updateAdminProfileByUserId({ userId: ctx.user.id, ...input, ...contact });
       } catch (error) {
         if (error instanceof db.TutorRequestLocationError) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a City, then a location inside it - or leave both empty." });
@@ -1341,6 +1347,53 @@ export const appRouter = router({
       }
       return { changed: true } as const;
     }),
+    /** What this account may ask to change, what it has now, and its requests so far. */
+    changeRequests: protectedProcedure.query(async ({ ctx }) => {
+      const context = await db.getAccountChangeContextByUserId(ctx.user.id);
+      if (!context) throw new TRPCError({ code: "FORBIDDEN", message: "This account has no settings to change." });
+      return {
+        offered: accountChangeTypesFor(context.role, context.isOwner),
+        isOwner: context.isOwner,
+        currentName: context.currentName,
+        currentMobile: context.currentMobile,
+        liveTuition: context.liveTuition,
+        requests: await db.listOwnAccountChangeRequests(ctx.user.id),
+      };
+    }),
+    requestChange: protectedProcedure.input(z.object({
+      type: z.enum(accountChangeTypeValues),
+      value: z.string().trim().max(ACCOUNT_CHANGE_NAME_MAX).nullish(),
+      reason: z.string().trim().max(ACCOUNT_CHANGE_REASON_MAX).nullish(),
+    })).mutation(async ({ ctx, input }) => {
+      const context = await db.getAccountChangeContextByUserId(ctx.user.id);
+      if (!context) throw new TRPCError({ code: "FORBIDDEN", message: accountChangeRefusalMessages.not_offered });
+      const decision = checkAccountChange(context, input);
+      if (!decision.allowed) throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages[decision.reason] });
+      if (input.type === "mobile" && decision.requestedValue
+        && await db.isMobileTakenByAnotherAccount({ userId: ctx.user.id, role: context.role, mobile: decision.requestedValue })) {
+        throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages.mobile_taken });
+      }
+      const result = await db.createAccountChangeRequest({
+        userId: ctx.user.id,
+        role: context.role,
+        type: input.type,
+        currentValue: decision.currentValue,
+        requestedValue: decision.requestedValue,
+        reason: decision.reason,
+      });
+      if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages.request_waiting });
+      return { requested: true as const, id: result.id };
+    }),
+    withdrawChange: protectedProcedure.input(z.object({ type: z.enum(accountChangeTypeValues) })).mutation(async ({ ctx, input }) => {
+      const result = await db.withdrawAccountChangeRequest({ userId: ctx.user.id, type: input.type });
+      if (!result.withdrawn) throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages.nothing_to_withdraw });
+      return { withdrawn: true as const };
+    }),
+    /** The Project Owner's own name and mobile - changed directly, with nobody above them to ask. */
+    updateOwnerContact: ownerAdminProcedure.input(z.object({
+      name: z.string().trim().min(2, "Enter your full name.").max(ACCOUNT_CHANGE_NAME_MAX),
+      phone: z.string().trim().max(16).transform(value => (value.length ? value : null)).nullish(),
+    })).mutation(({ ctx, input }) => db.updateOwnerAdminContact({ userId: ctx.user.id, name: input.name, phone: input.phone ?? null })),
   }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */
   adminControl: router({

@@ -285,8 +285,8 @@ function CatalogSearchField({
   </label>;
 }
 
-function FormInput({ label, hint, error, required = false, showRequiredMarker = required, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+function FormInput({ label, hint, error, required = false, showRequiredMarker = required, className: extraClassName, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${extraClassName ?? ""} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
 }
 
 /**
@@ -1031,13 +1031,21 @@ function TutorProfileWorkspaceBody({
    * the identity rail, and `educationRecords.*` are drawn per record by
    * `renderEducationRecordField` instead.
    */
+  // A saved name and mobile change only through a request from Settings, so
+  // the form shows them without letting them be typed over.
+  const nameLocked = typeof profile?.name === "string" && profile.name.trim().length > 0;
+  const phoneLocked = typeof profile?.phone === "string" && profile.phone.trim().length > 0;
   const renderField = (fieldId: string): React.ReactNode => {
     switch (fieldId) {
-      case "name": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />;
+      case "name": return nameLocked
+        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required readOnly value={form.name} className="bg-j-surface-muted text-j-ink-soft" />
+        : <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />;
       case "gender": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.gender)}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.gender)} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>;
       case "dateOfBirth": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />;
       case "headline": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.headline)} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />;
-      case "phone": return <FormPhoneInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
+      case "phone": return phoneLocked
+        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required readOnly value={form.phone} className="bg-j-surface-muted text-j-ink-soft" />
+        : <FormPhoneInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
       case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
       case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}<span aria-hidden="true" className="text-[#d84a4a]"> *</span></span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
       case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;

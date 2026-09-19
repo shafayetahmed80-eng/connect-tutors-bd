@@ -8,6 +8,8 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
+import type { AccountChangeType } from "@shared/account-change-requests";
+import type { AccountChangeContext } from "./account-change-requests";
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
@@ -31,6 +33,7 @@ import {
   InsertUser,
   adminCredentials,
   adminProfiles,
+  accountChangeRequests,
   adminInvitations,
   adminLoginAuditLogs,
   adminMatchingDefaultSavedViews,
@@ -1680,6 +1683,10 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     const tutorId = tutorRow.id;
     const existingProfile = await loadTutorProfileOwner(transaction, userId);
     if (!existingProfile) throw new Error("Tutor Profile was not found.");
+    // Once set, a Tutor's name and mobile change only through a request from
+    // Settings that an Admin approves - the profile form cannot move them.
+    if (existingProfile.name?.trim()) input = { ...input, name: undefined };
+    if (existingProfile.phone?.trim()) input = { ...input, phone: undefined };
     const effectiveDraft = mergeTutorProfileDraft(existingProfile, input);
     const effectiveDraftResult = tutorProfileDraftSchema.safeParse(effectiveDraft);
     if (!effectiveDraftResult.success) {
@@ -4454,6 +4461,146 @@ export async function setAdminProfileImageKey(userId: number, kind: keyof typeof
   if (!database) throw new Error("Database is not available");
   const set = { [adminProfileImageColumn[kind]]: storageKey };
   await database.insert(adminProfiles).values({ userId, ...set }).onDuplicateKeyUpdate({ set });
+}
+
+/**
+ * Everything the Settings page's change requests are checked against, for one
+ * signed-in account: its role, whether it is the Project Owner, the name and
+ * mobile it has now, what it already has waiting, a Guardian's verification
+ * and NID images, and whether a tuition is still running on it.
+ */
+export async function getAccountChangeContextByUserId(userId: number): Promise<AccountChangeContext | undefined> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [account] = await database
+    .select({ role: users.role, openId: users.openId, name: users.name, loginPhone: users.loginPhone })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!account) return undefined;
+  const role = account.role === "user" ? "guardian" : account.role;
+  if (role !== "guardian" && role !== "tutor" && role !== "admin") return undefined;
+
+  const waiting = await database
+    .select({ type: accountChangeRequests.type })
+    .from(accountChangeRequests)
+    .where(and(eq(accountChangeRequests.userId, userId), eq(accountChangeRequests.status, "pending")));
+  const heldStages = or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed"))!;
+
+  if (role === "guardian") {
+    const [profile] = await database
+      .select({ phone: guardianProfiles.phone, status: guardianProfiles.verificationStatus, front: guardianProfiles.nidFrontKey, back: guardianProfiles.nidBackKey })
+      .from(guardianProfiles)
+      .where(eq(guardianProfiles.userId, userId))
+      .limit(1);
+    const [live] = await database.select({ id: tutorRequests.id }).from(tutorRequests)
+      .where(and(eq(tutorRequests.guardianUserId, userId), heldStages)).limit(1);
+    return {
+      role, isOwner: false, currentName: account.name, currentMobile: profile?.phone ?? account.loginPhone ?? null,
+      waitingTypes: waiting.map(row => row.type),
+      verification: { status: profile?.status ?? "unverified", nidFrontUploaded: Boolean(profile?.front), nidBackUploaded: Boolean(profile?.back) },
+      liveTuition: Boolean(live),
+    };
+  }
+  if (role === "tutor") {
+    const [tutor] = await database.select({ id: tutors.id, name: tutors.name, phone: tutors.phone }).from(tutors).where(eq(tutors.userId, userId)).limit(1);
+    const [live] = tutor
+      ? await database.select({ id: tutorRequests.id }).from(tutorRequests).where(and(eq(tutorRequests.tutorId, tutor.id), heldStages)).limit(1)
+      : [];
+    return {
+      role, isOwner: false, currentName: tutor?.name ?? account.name, currentMobile: tutor?.phone ?? account.loginPhone ?? null,
+      waitingTypes: waiting.map(row => row.type), liveTuition: Boolean(live),
+    };
+  }
+  const [adminProfile] = await database.select({ phone: adminProfiles.phone }).from(adminProfiles).where(eq(adminProfiles.userId, userId)).limit(1);
+  return {
+    role, isOwner: account.openId === ENV.ownerOpenId, currentName: account.name, currentMobile: adminProfile?.phone ?? null,
+    waitingTypes: waiting.map(row => row.type), liveTuition: false,
+  };
+}
+
+/**
+ * Whether another account of the same role already signs in with this mobile
+ * number - a Guardian's and a Tutor's number is their login. An Admin signs in
+ * with a User ID, so theirs is never taken.
+ */
+export async function isMobileTakenByAnotherAccount(input: { userId: number; role: "guardian" | "tutor" | "admin"; mobile: string }) {
+  if (input.role === "admin") return false;
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [other] = await database
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, input.role), eq(users.loginPhone, input.mobile), ne(users.id, input.userId)))
+    .limit(1);
+  return Boolean(other);
+}
+
+/** The account's own requests, newest first. */
+export async function listOwnAccountChangeRequests(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database
+    .select({
+      id: accountChangeRequests.id,
+      type: accountChangeRequests.type,
+      status: accountChangeRequests.status,
+      currentValue: accountChangeRequests.currentValue,
+      requestedValue: accountChangeRequests.requestedValue,
+      reason: accountChangeRequests.reason,
+      declineReason: accountChangeRequests.declineReason,
+      createdAt: accountChangeRequests.createdAt,
+      decidedAt: accountChangeRequests.decidedAt,
+    })
+    .from(accountChangeRequests)
+    .where(eq(accountChangeRequests.userId, userId))
+    .orderBy(desc(accountChangeRequests.id))
+    .limit(20);
+}
+
+/**
+ * Stores a request after the account row is locked, so two taps cannot leave
+ * two waiting for the same thing: the waiting check runs again inside the lock.
+ */
+export async function createAccountChangeRequest(input: {
+  userId: number;
+  role: "guardian" | "tutor" | "admin";
+  type: AccountChangeType;
+  currentValue: string | null;
+  requestedValue: string | null;
+  reason: string | null;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1).for("update");
+    const [waiting] = await tx.select({ id: accountChangeRequests.id }).from(accountChangeRequests)
+      .where(and(eq(accountChangeRequests.userId, input.userId), eq(accountChangeRequests.type, input.type), eq(accountChangeRequests.status, "pending")))
+      .limit(1);
+    if (waiting) return { outcome: "refused" as const, reason: "request_waiting" as const };
+    const created = await tx.insert(accountChangeRequests).values(input);
+    return { outcome: "requested" as const, id: Number(created[0].insertId) };
+  });
+}
+
+export async function withdrawAccountChangeRequest(input: { userId: number; type: AccountChangeType }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.update(accountChangeRequests)
+    .set({ status: "withdrawn", decidedAt: new Date() })
+    .where(and(eq(accountChangeRequests.userId, input.userId), eq(accountChangeRequests.type, input.type), eq(accountChangeRequests.status, "pending")));
+  return { withdrawn: Boolean(result[0].affectedRows) };
+}
+
+/** The Project Owner's own name and mobile, changed directly - nobody above them to ask. */
+export async function updateOwnerAdminContact(input: { userId: number; name: string; phone: string | null }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.transaction(async tx => {
+    await tx.update(users).set({ name: input.name.trim() }).where(and(eq(users.id, input.userId), eq(users.role, "admin")));
+    await tx.insert(adminProfiles).values({ userId: input.userId, phone: input.phone }).onDuplicateKeyUpdate({ set: { phone: input.phone } });
+  });
+  return { updated: true } as const;
 }
 
 export async function updateUserRole(userId: number, role: UserRole) {

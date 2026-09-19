@@ -63,7 +63,20 @@ describe("an Admin's own profile", () => {
     expect(screen.getByRole("button", { name: "Upload profile photo" })).toBeTruthy();
   });
 
-  it("edits name and mobile beside the rest, but not the email", () => {
+  it("lets another Admin edit the rest, but not their name or mobile - those are asked for from Settings", () => {
+    render(<AdminProfileContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Name")).toBeNull();
+    expect(within(dialog).queryByLabelText("Mobile")).toBeNull();
+    fireEvent.change(within(dialog).getByLabelText("Designation"), { target: { value: "Senior Coordinator" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    expect(state.update).toHaveBeenCalledWith(expect.objectContaining({ designation: "Senior Coordinator", name: "Nadia Rahman" }));
+  });
+
+  it("lets the Project Owner edit name and mobile beside the rest, but not the email", () => {
+    state.profile = { ...baseProfile, isOwner: true };
     render(<AdminProfileContent />);
 
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
@@ -79,6 +92,7 @@ describe("an Admin's own profile", () => {
   });
 
   it("will not save a name shorter than two letters", () => {
+    state.profile = { ...baseProfile, isOwner: true };
     render(<AdminProfileContent />);
 
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
