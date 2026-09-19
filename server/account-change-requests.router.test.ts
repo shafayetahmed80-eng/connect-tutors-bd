@@ -11,6 +11,7 @@ const dbMocks = vi.hoisted(() => ({
   listAccountChangeRequestsForAdmin: vi.fn(),
   countPendingAccountChangeRequests: vi.fn(),
   decideAccountChangeRequest: vi.fn(),
+  verifyOwnPasswordByUserId: vi.fn(),
   listAccountChangeHistoryForUser: vi.fn(),
   getUserRoleById: vi.fn(),
   listGuardianProfilesForAdmin: vi.fn(),
@@ -172,5 +173,21 @@ describe("admin.listGuardianProfiles", () => {
     await createCaller(otherAdmin).admin.listGuardianProfiles({ query: " Rina ", verification: "verified" });
     expect(dbMocks.listGuardianProfilesForAdmin).toHaveBeenCalledWith({ query: "Rina", verification: "verified", page: 1, pageSize: 20 });
     await expect(createCaller(guardianUser).admin.listGuardianProfiles({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("a delete request", () => {
+  it("is sent only with the account's own password, which is never stored", async () => {
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    dbMocks.verifyOwnPasswordByUserId.mockResolvedValueOnce(false);
+    await expect(createCaller(guardianUser).account.requestChange({ type: "close_account", reason: "Moving abroad", password: "wrong" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: "Your password is incorrect." });
+    expect(dbMocks.createAccountChangeRequest).not.toHaveBeenCalled();
+
+    dbMocks.verifyOwnPasswordByUserId.mockResolvedValueOnce(true);
+    dbMocks.createAccountChangeRequest.mockResolvedValue({ outcome: "requested", id: 12 });
+    await createCaller(guardianUser).account.requestChange({ type: "close_account", reason: "Moving abroad", password: "right-one" });
+    expect(dbMocks.verifyOwnPasswordByUserId).toHaveBeenLastCalledWith(7, "right-one");
+    expect(dbMocks.createAccountChangeRequest).toHaveBeenCalledWith(expect.not.objectContaining({ password: expect.anything() }));
   });
 });
