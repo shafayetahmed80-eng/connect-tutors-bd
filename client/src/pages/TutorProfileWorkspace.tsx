@@ -26,6 +26,7 @@ import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./T
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
 import { getTutorProfileStatusCard } from "./TutorProfileStatusCard";
 import { TutorProfilePhotoEditor } from "@/components/TutorProfilePhotoEditor";
+import SchoolNameField from "@/components/SchoolNameField";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
@@ -1143,7 +1144,10 @@ function TutorProfileWorkspaceBody({
     const school = isSchoolQualification(record.qualificationLevel);
     switch (fieldId) {
       case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker options={historyQualificationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
-      case "educationRecords.instituteName": return <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder={school ? "Ex- Dhaka Residential Model College" : "Ex- University of Dhaka"} />;
+      // A school or college is chosen from the list, or created for this Tutor alone.
+      case "educationRecords.instituteName": return school
+        ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
+        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
       case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
       // A board exam is sat under one of three groups; a degree's subject is
       // whatever the department is called, so that one stays free text.

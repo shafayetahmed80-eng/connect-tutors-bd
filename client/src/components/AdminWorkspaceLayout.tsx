@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, ClipboardPen, UserCog, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -25,6 +25,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: House, label: "Home page", path: "/admin/dynamic/home", sectionLabel: "Dynamic Section" },
   { icon: Globe, label: "Public pages", path: "/admin/dynamic/public-pages", sectionLabel: "Dynamic Section" },
   { icon: School, label: "Institutes & departments", path: "/admin/dynamic/institutes", sectionLabel: "Dynamic Section" },
+  { icon: Building2, label: "Schools & colleges", path: "/admin/dynamic/schools", sectionLabel: "Dynamic Section" },
   { icon: MapPin, label: "Cities & locations", path: "/admin/dynamic/locations", sectionLabel: "Dynamic Section" },
   { icon: Scale, label: "Legal pages", path: "/admin/dynamic/legal-pages", sectionLabel: "Dynamic Section" },
   { icon: SquareDashed, label: "Modals", path: "/admin/dynamic/modals", sectionLabel: "Dynamic Section" },

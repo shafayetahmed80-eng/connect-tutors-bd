@@ -603,6 +603,13 @@
       "when": 1791500000000,
       "tag": "0085_account_change_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1791600000000,
+      "tag": "0086_school_colleges",
+      "breakpoints": true
     }
   ]
 }

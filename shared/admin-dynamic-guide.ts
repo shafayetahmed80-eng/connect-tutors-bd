@@ -75,6 +75,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [TUTOR_PROFILE],
   },
   {
+    path: "/admin/dynamic/schools",
+    label: "Schools & colleges",
+    summary: "স্কুল ও কলেজের তালিকা, যেটা প্রোফাইলের Secondary ও Higher Secondary অংশের Institute Name বাক্সে দেখা যায়। টিচারদের নিজে তৈরি করা নাম অন্যরা দেখে না, যতক্ষণ না এখান থেকে তালিকায় তোলা হয়।",
+    seeAt: [TUTOR_PROFILE],
+  },
+  {
     path: "/admin/dynamic/locations",
     label: "Cities & locations",
     summary: "শহর ও এলাকার তালিকা। টিউটর প্রোফাইল, অভিভাবকের অনুরোধ আর জব বোর্ডের ফিল্টার — তিন জায়গাতেই এই তালিকাই চলে।",
