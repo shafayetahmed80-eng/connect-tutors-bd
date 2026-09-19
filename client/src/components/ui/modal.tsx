@@ -240,7 +240,7 @@ export function ModalHeader({
   // bar across it: no surface of its own, a soft light rule, and the title and
   // close button in the water's deep blue so they stay clear on the wash.
   return (
-    <div className={cn("relative flex shrink-0 items-start justify-between gap-4 border-b px-4 py-3 sm:px-5", decorated ? "border-white/70 bg-transparent" : "border-j-border bg-background")}>
+    <div className={cn("relative flex shrink-0 items-start justify-between gap-4 px-4 py-3 sm:px-5", decorated ? "bg-transparent" : "bg-background")}>
       <div className="min-w-0">
         {eyebrow ? <p aria-hidden="true" className="text-2xs font-bold uppercase tracking-[0.14em] text-j-ink-faint">{eyebrow}</p> : null}
         {/* The space sits outside the hidden span: an accessible name is built
@@ -278,7 +278,7 @@ export function ModalFooter({ children }: { children: React.ReactNode }) {
   // decorated panel it lets the water through, as the header does.
   const { decorated } = useModalContext("ModalFooter");
   return (
-    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 border-t px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", decorated ? "border-white/70 bg-transparent" : "border-j-border bg-background")}>
+    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", decorated ? "bg-transparent" : "bg-background")}>
       {children}
     </div>
   );

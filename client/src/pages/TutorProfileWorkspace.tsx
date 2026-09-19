@@ -69,18 +69,11 @@ const wideFieldClassName = "md:col-span-2";
  * a short list of named groups.
  */
 function FormSection({ title, description, children }: { title?: React.ReactNode; description?: string; children: React.ReactNode }) {
-  // A raised panel rather than a rule between blocks. The dialog body is
-  // tinted, so each white group lifts off it the way the reference's floating
-  // cards lift off their backdrop - the same layering, in the site's own blues.
-  return <section className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(23,59,96,0.04),0_8px_20px_-12px_rgba(22,119,232,0.18)] ring-1 ring-[#dbe9f4]">
-    {title ? <div className="flex items-baseline gap-2 border-b border-[#e9f2f8] bg-gradient-to-b from-j-surface-sunken to-[#f1f8fd] px-4 py-2.5">
-      {/* A short accent spine, the one place the panel is coloured. */}
-      <span aria-hidden="true" className="h-3.5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#4aa6f0] to-[#1677e8]" />
-      <h3 className="text-sm font-bold text-[#244a6a]">{title}</h3>
-      {description ? <p className="text-2xs leading-4 text-[#72889a]">{description}</p> : null}
-    </div> : null}
-    <div className="p-4">{children}</div>
-  </section>;
+  // Bare: no bordered card and no section name - the dialog's own title names
+  // the editor, and the fields flow on the plain dialog surface.
+  void title;
+  void description;
+  return <section>{children}</section>;
 }
 
 /**
