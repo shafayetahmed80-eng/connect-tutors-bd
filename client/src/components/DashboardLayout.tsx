@@ -571,9 +571,10 @@ function WorkspaceHeader({
           <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
             <div className="px-2 py-2">
               <p className="truncate text-sm font-bold text-j-ink">{identity.name}</p>
-              {(identity.details ?? []).map(detail => <div key={detail.label}>
-                <p className="mt-1 text-2xs font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</p>
-                <p className="mt-0.5 truncate text-sm font-medium text-[#527086]">{detail.value}</p>
+              {/* Label and value on one line, a pixel under the shared sizes (10px / 13px). */}
+              {(identity.details ?? []).map(detail => <div key={detail.label} className="mt-1.5 flex items-baseline justify-between gap-3">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6d8799]">{detail.label}</span>
+                <span className="min-w-0 truncate text-[13px] font-medium text-[#527086]">{detail.value}</span>
               </div>)}
             </div>
             <DropdownMenuSeparator />
