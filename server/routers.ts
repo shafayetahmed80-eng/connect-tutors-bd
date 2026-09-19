@@ -28,7 +28,7 @@ import { guardianApplicantVisibilityValues } from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
 import { accountChangeTypeValues, accountChangeTypesFor, ACCOUNT_CHANGE_NAME_MAX, ACCOUNT_CHANGE_REASON_MAX } from "@shared/account-change-requests";
-import { accountChangeRefusalMessages, checkAccountChange } from "./account-change-requests";
+import { accountChangeDecisionRefusalMessages, accountChangeRefusalMessages, checkAccountChange } from "./account-change-requests";
 import {
   isGuardianPrivateField, findTutorProfileFieldMeta,
   tutorProfileFieldSections,
@@ -1394,6 +1394,30 @@ export const appRouter = router({
       name: z.string().trim().min(2, "Enter your full name.").max(ACCOUNT_CHANGE_NAME_MAX),
       phone: z.string().trim().max(16).transform(value => (value.length ? value : null)).nullish(),
     })).mutation(({ ctx, input }) => db.updateOwnerAdminContact({ userId: ctx.user.id, name: input.name, phone: input.phone ?? null })),
+  }),
+  /**
+   * The Admin panel's Change requests queue. Every Admin answers Guardians and
+   * Tutors; another Admin's requests are the Project Owner's alone.
+   */
+  accountChanges: router({
+    list: adminProcedure.input(z.object({
+      status: z.enum(["pending", "approved", "declined"]).default("pending"),
+      role: z.enum(["all", "guardian", "tutor", "admin"]).default("all"),
+      type: z.enum(["all", ...accountChangeTypeValues]).default("all"),
+      userId: z.number().int().positive().optional(),
+    })).query(({ ctx, input }) => db.listAccountChangeRequestsForAdmin({ ...input, includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
+    pendingCount: adminProcedure.query(({ ctx }) => db.countPendingAccountChangeRequests({ includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
+    decide: adminProcedure.input(z.object({
+      requestId: z.number().int().positive(),
+      decision: z.enum(["approve", "decline"]),
+      declineReason: z.string().trim().max(ACCOUNT_CHANGE_REASON_MAX).nullish(),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await db.decideAccountChangeRequest({ ...input, adminUserId: ctx.user.id, isOwner: ctx.user.openId === ENV.ownerOpenId });
+      if (result.outcome === "refused") {
+        throw new TRPCError({ code: result.reason === "not_found" ? "NOT_FOUND" : result.reason === "owner_only" ? "FORBIDDEN" : "CONFLICT", message: accountChangeDecisionRefusalMessages[result.reason] });
+      }
+      return { status: result.status };
+    }),
   }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */
   adminControl: router({

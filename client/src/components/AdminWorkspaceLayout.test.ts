@@ -18,6 +18,7 @@ describe("Admin workspace navigation", () => {
       "Admin Profile",
       "Tutor Profiles",
       "Guardian activity",
+      "Change requests",
       "Posted jobs",
       "Appointed Jobs",
       "Confirmed Jobs",
@@ -32,6 +33,11 @@ describe("Admin workspace navigation", () => {
       "Admin activity report",
       "Admin security",
     ]);
+  });
+
+  it("counts the change requests waiting beside their tab, and draws nothing for none", () => {
+    expect(buildAdminWorkspaceNavigation(false, 4).find(item => item.path === "/admin/change-requests")).toMatchObject({ label: "Change requests", badge: 4 });
+    expect(buildAdminWorkspaceNavigation(false).find(item => item.path === "/admin/change-requests")?.badge).toBe(0);
   });
 
   it("gives the Owner a Dynamic Section for content control and the form option lists", () => {

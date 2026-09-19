@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { BadgeCheck, ClipboardPen, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -34,7 +34,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section" },
 ];
 
-export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNavigationItem[] {
+export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0): DashboardNavigationItem[] {
   // Order matters twice over: it is the visible order, and DashboardLayout
   // starts a new section heading wherever `sectionLabel` changes.
   return [
@@ -42,6 +42,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean): DashboardNaviga
     { icon: CircleUserRound, label: "Admin Profile", path: "/admin/profile", sectionLabel: "Operations" },
     { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian activity", path: "/admin/guardians", sectionLabel: "Operations" },
+    { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Operations", badge: pendingChangeRequests },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
     { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations" },
     { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations" },
@@ -125,6 +126,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   });
   // One photo for both places it shows: the sidebar block and the header avatar.
   const photoUrl = trpc.adminProfile.photo.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.photoUrl ?? null;
+  const pendingChangeRequests = trpc.accountChanges.pendingCount.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data ?? 0;
   const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
@@ -155,7 +157,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   }
   const access = workspaceAccess.data;
   return <DashboardLayout
-    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner))}
+    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner), pendingChangeRequests)}
     title={title}
     loginPath="/admin/login"
     sidebarPanel="admin"

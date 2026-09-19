@@ -8,6 +8,9 @@ const dbMocks = vi.hoisted(() => ({
   createAccountChangeRequest: vi.fn(),
   withdrawAccountChangeRequest: vi.fn(),
   updateOwnerAdminContact: vi.fn(),
+  listAccountChangeRequestsForAdmin: vi.fn(),
+  countPendingAccountChangeRequests: vi.fn(),
+  decideAccountChangeRequest: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -25,6 +28,7 @@ const base = {
 };
 const guardianUser = { ...base, role: "guardian" as const };
 const owner = { ...base, id: 1, role: "admin" as const, openId: ENV.ownerOpenId };
+const otherAdmin = { ...base, id: 2, role: "admin" as const, openId: "admin-2" };
 
 function createCaller(user: TrpcContext["user"]) {
   return appRouter.createCaller({
@@ -107,5 +111,40 @@ describe("account.updateOwnerContact", () => {
 
     await expect(createCaller({ ...owner, openId: "another-admin" }).account.updateOwnerContact({ name: "Someone" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller(guardianUser).account.updateOwnerContact({ name: "Someone" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("accountChanges (the Admin queue)", () => {
+  it("shows another Admin's requests to the Project Owner only", async () => {
+    dbMocks.listAccountChangeRequestsForAdmin.mockResolvedValue({ items: [], counts: { pending: 0, approved: 0, declined: 0 } });
+    await createCaller(owner).accountChanges.list({ status: "pending" });
+    expect(dbMocks.listAccountChangeRequestsForAdmin).toHaveBeenLastCalledWith(expect.objectContaining({ status: "pending", role: "all", type: "all", includeAdminRequests: true }));
+    await createCaller(otherAdmin).accountChanges.list({ status: "approved", role: "tutor" });
+    expect(dbMocks.listAccountChangeRequestsForAdmin).toHaveBeenLastCalledWith(expect.objectContaining({ status: "approved", role: "tutor", includeAdminRequests: false }));
+
+    dbMocks.countPendingAccountChangeRequests.mockResolvedValue(3);
+    await expect(createCaller(otherAdmin).accountChanges.pendingCount()).resolves.toBe(3);
+    expect(dbMocks.countPendingAccountChangeRequests).toHaveBeenCalledWith({ includeAdminRequests: false });
+  });
+
+  it("is closed to Guardians and Tutors", async () => {
+    await expect(createCaller(guardianUser).accountChanges.list({ status: "pending" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller(guardianUser).accountChanges.decide({ requestId: 3, decision: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.decideAccountChangeRequest).not.toHaveBeenCalled();
+  });
+
+  it("decides as the signed-in Admin, and refuses in the rule's own words", async () => {
+    dbMocks.decideAccountChangeRequest.mockResolvedValueOnce({ outcome: "decided", status: "declined" });
+    await expect(createCaller(otherAdmin).accountChanges.decide({ requestId: 3, decision: "decline", declineReason: " Use your NID name. " }))
+      .resolves.toEqual({ status: "declined" });
+    expect(dbMocks.decideAccountChangeRequest).toHaveBeenCalledWith({ requestId: 3, decision: "decline", declineReason: "Use your NID name.", adminUserId: 2, isOwner: false });
+
+    dbMocks.decideAccountChangeRequest.mockResolvedValueOnce({ outcome: "refused", reason: "owner_only" });
+    await expect(createCaller(otherAdmin).accountChanges.decide({ requestId: 4, decision: "approve" }))
+      .rejects.toMatchObject({ code: "FORBIDDEN", message: "Only the Project Owner decides another Admin's request." });
+
+    dbMocks.decideAccountChangeRequest.mockResolvedValueOnce({ outcome: "refused", reason: "mobile_taken" });
+    await expect(createCaller(owner).accountChanges.decide({ requestId: 5, decision: "approve" }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("used by another account") });
   });
 });

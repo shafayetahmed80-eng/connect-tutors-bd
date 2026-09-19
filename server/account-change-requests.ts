@@ -106,3 +106,43 @@ export function checkAccountChange(context: AccountChangeContext, ask: AccountCh
     }
   }
 }
+
+export type AccountChangeDecisionRefusal =
+  | "not_found"
+  | "already_decided"
+  | "owner_only"
+  | "decline_reason_required"
+  | "mobile_taken"
+  | "live_tuition"
+  | "nid_missing";
+
+export const accountChangeDecisionRefusalMessages: Record<AccountChangeDecisionRefusal, string> = {
+  not_found: "This request was not found.",
+  already_decided: "This request was already decided or withdrawn.",
+  owner_only: "Only the Project Owner decides another Admin's request.",
+  decline_reason_required: `Write a reason of at least ${ACCOUNT_CHANGE_REASON_MIN} characters.`,
+  mobile_taken: "This mobile number is now used by another account. Decline the request instead.",
+  live_tuition: "An Appointed or Confirmed tuition is still running on this account. It has to end before the account can be closed.",
+  nid_missing: "Both sides of the NID card are no longer on the profile. Decline the request instead.",
+};
+
+/**
+ * What the account hears about a decision. A verification is told through
+ * the Guardian's verification notice instead, and a closed account cannot
+ * sign in to read anything, so both have none here.
+ */
+export function accountChangeDecisionNotice(input: {
+  type: AccountChangeType;
+  decision: "approve" | "decline";
+  requestedValue: string | null;
+  declineReason?: string | null;
+}): { title: string; message: string } | null {
+  if (input.type === "verification") return null;
+  if (input.decision === "decline") {
+    const title = { name: "Name change declined", mobile: "Mobile number change declined", close_account: "Account delete declined" }[input.type];
+    return { title, message: (input.declineReason ?? "").slice(0, 360) };
+  }
+  if (input.type === "name") return { title: "Name changed", message: `Your name is now ${input.requestedValue}.`.slice(0, 360) };
+  if (input.type === "mobile") return { title: "Mobile number changed", message: `Your mobile number is now ${input.requestedValue}. Sign in with this number from now on.` };
+  return null;
+}

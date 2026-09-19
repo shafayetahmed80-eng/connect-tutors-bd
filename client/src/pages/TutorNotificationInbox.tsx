@@ -1,7 +1,7 @@
 import { LabelIcon, RecordIcon } from "@/components/recordIcons";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, ClipboardList, FileCheck2, UserRoundCog } from "lucide-react";
+import { BadgeCheck, ClipboardList, FileCheck2, Settings, UserRoundCog } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ const TYPE_ICON = {
   interest_decision: ClipboardList,
   appointment: BadgeCheck,
   confirmation_letter: FileCheck2,
+  account_change: Settings,
 } as const;
 
 type TutorNotification = {

@@ -55,6 +55,8 @@ export type DashboardNavigationItem = {
   planned?: boolean;
   action?: "signout";
   requiresSignOut?: boolean;
+  /** Things waiting on this screen - drawn as a count beside the label, never as 0. */
+  badge?: number;
 };
 
 const defaultMenuItems: DashboardNavigationItem[] = [
@@ -442,6 +444,7 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
                       />
                       <span>{label}</span>
+                      {item.badge ? <span aria-label={`${item.badge} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
                       {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -311,6 +311,10 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    if (user.accountStatus === "closed") {
+      throw ForbiddenError("Account closed");
+    }
+
     // `lastSignedIn` is a coarse "last seen" marker, not a per-request counter.
     // Refresh it at most once an hour so an authenticated session does not write
     // to `users` on every tRPC call (auth.me polling, the 20s portal renew, …).
