@@ -154,3 +154,16 @@ describe("Modal", () => {
     spy.mockRestore();
   });
 });
+
+describe("the water backdrop", () => {
+  it("can be kept to laptops, so a long form on a phone stays plain white", () => {
+    const { container, rerender } = render(<Modal onClose={() => {}} decor="water-wide"><ModalHeader title="Edit" /></Modal>);
+    const sketch = () => document.querySelector("[role=dialog] > span[aria-hidden=true]") as HTMLElement | null;
+    expect(sketch()?.className).toContain("max-sm:hidden");
+    expect(screen.getByRole("heading", { name: "Edit" }).className).toContain("sm:text-[#0f4c81]");
+
+    rerender(<Modal onClose={() => {}} decor="water"><ModalHeader title="Edit" /></Modal>);
+    expect(sketch()?.className).not.toContain("max-sm:hidden");
+    void container;
+  });
+});
