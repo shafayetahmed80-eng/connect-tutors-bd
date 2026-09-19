@@ -138,7 +138,7 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
     render(<TutorDashboard />);
 
     await user.click(screen.getByRole("button", { name: "Open Tutor Portal navigation" }));
-    expect(await screen.findByRole("dialog", { name: "Sidebar" })).not.toBeNull();
+    expect(await screen.findByRole("dialog", { name: "Navigation" })).not.toBeNull();
   });
 
   it("blocks real account-menu sign-out when the rendered Profile workspace reports a dirty draft and the Tutor declines", async () => {
