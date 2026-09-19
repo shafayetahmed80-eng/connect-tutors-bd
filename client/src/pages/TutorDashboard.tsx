@@ -117,10 +117,10 @@ function TutorSidebarIdentity({ identity }: { identity: ReturnType<typeof getTut
     .join("") || "T";
 
   return (
-    <div className="rounded-xl bg-[#f7fbfe] p-3 text-center ring-1 ring-[#dcebf5] group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:ring-0">
+    <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
       <Avatar className="mx-auto h-16 w-16 border-2 border-white shadow-sm group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:border">
         {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
-        <AvatarFallback className="bg-[#dff3ff] text-base font-bold text-[#126fb5] group-data-[collapsible=icon]:text-2xs">{initials}</AvatarFallback>
+        <AvatarFallback className="bg-[var(--sb-accent-tint)] text-base font-bold text-[var(--sb-accent-strong)] group-data-[collapsible=icon]:text-2xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
         <p className="truncate text-sm font-bold tracking-[-0.015em] text-j-ink">{identity.name}</p>

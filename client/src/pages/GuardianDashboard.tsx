@@ -115,8 +115,8 @@ function GuardianSidebarIdentity() {
   const profile = profileQuery.data;
   const photoUrl = photoQuery.data?.photoUrl ?? null;
   const name = profile?.name || "Guardian";
-  return <div className="rounded-xl bg-[#f4f9fd] p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Guardian account identity">
-    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{photoUrl ? <img src={photoUrl} alt="Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
+  return <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Guardian account identity">
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-accent-strong)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{photoUrl ? <img src={photoUrl} alt="Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
     <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
       <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
       <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>

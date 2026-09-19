@@ -252,3 +252,80 @@
     transform: none;
   }
 }
+
+/*
+ * The three dashboard sidebars - "calm depth".
+ *
+ * One token set, three accent hues: Admin blue, Tutor teal, Guardian indigo.
+ * Depth is layered soft elevation (the panel, the current page, the account
+ * card), never a tilt or a bevel. Text tokens hold WCAG AA on the panel:
+ * items 5.6:1, headings 4.9:1, the current page 4.7:1 or better on its tint.
+ * Unlayered so these beat the shared Sidebar's utility classes without
+ * `!important`. The Owner's font, padding and height dials are untouched.
+ */
+.sb-root {
+  --sb-border: #e3edf5;
+  --sb-text: #4b6478;
+  --sb-text-hover: #1f3b57;
+  --sb-heading: #546e84;
+  --sb-icon: #6f889b;
+  --sb-hover-bg: #eaf2fa;
+  --sb-guide: #dbe7f1;
+  --sb-accent: #1677e8;
+  --sb-accent-strong: #0f5fc2;
+  --sb-accent-tint: #eaf3ff;
+  --sb-accent-ring: #cfe2f7;
+  background-image: linear-gradient(180deg, #f8fbff 0%, #f1f7fd 100%);
+  box-shadow: 8px 0 24px -14px rgb(16 40 73 / 0.12);
+}
+.sb-panel-tutor {
+  --sb-accent: #0f9d8a;
+  --sb-accent-strong: #0b7a6b;
+  --sb-accent-tint: #e6f7f4;
+  --sb-accent-ring: #bfe6df;
+}
+.sb-panel-guardian {
+  --sb-accent: #5b6cf0;
+  --sb-accent-strong: #4453d4;
+  --sb-accent-tint: #eef0ff;
+  --sb-accent-ring: #d3d8fb;
+}
+.sb-root .sb-item { color: var(--sb-text); }
+.sb-root .sb-item:hover { background-color: var(--sb-hover-bg); color: var(--sb-text-hover); }
+.sb-root .sb-item-current { color: var(--sb-accent-strong); }
+.sb-root .sb-item-active,
+.sb-root .sb-item-active:hover {
+  color: var(--sb-accent-strong);
+  background-color: var(--sb-accent-tint);
+  background-image: linear-gradient(180deg, #ffffff 0%, var(--sb-accent-tint) 100%);
+  box-shadow:
+    0 0 0 1px var(--sb-accent-ring),
+    0 1px 2px rgb(16 40 73 / 0.06),
+    0 8px 16px -10px color-mix(in srgb, var(--sb-accent) 55%, transparent);
+}
+.sb-root .sb-item-active::before { background-color: var(--sb-accent); }
+.sb-root .sb-heading { color: var(--sb-heading); }
+.sb-root .sb-icon { color: var(--sb-icon); }
+.sb-root .sb-icon-active { color: var(--sb-accent); }
+.sb-root [data-sidebar="menu-sub"] { border-color: var(--sb-guide); }
+/* A waiting count is a question to answer, so it reads as attention, not as brand. */
+.sb-root .sb-badge { background-color: #fef3c7; color: #92400e; box-shadow: 0 0 0 1px #fde68a; }
+/* The account card: a lifted sheet with an inner highlight and a thin accent at the top. */
+.sb-root .sb-card {
+  position: relative;
+  background-image: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%);
+  box-shadow: 0 0 0 1px #e1ebf4, inset 0 1px 0 #ffffff, 0 6px 14px -10px rgb(16 40 73 / 0.18);
+}
+.sb-root .sb-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 14px auto 14px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background-color: var(--sb-accent);
+  opacity: 0.85;
+}
+[data-collapsible="icon"] .sb-root .sb-card,
+[data-collapsible="icon"].sb-root .sb-card { background-image: none; box-shadow: none; }
+[data-collapsible="icon"] .sb-root .sb-card::before,
+[data-collapsible="icon"].sb-root .sb-card::before { display: none; }
