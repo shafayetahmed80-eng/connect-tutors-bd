@@ -27,6 +27,7 @@ import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } fr
 import { guardianApplicantVisibilityValues } from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
+import { SCHOOL_NAME_MAX, SCHOOL_NAME_MIN, schoolCollegeDivisionValues } from "@shared/school-colleges";
 import { accountChangeTypeValues, accountChangeTypesFor, ACCOUNT_CHANGE_NAME_MAX, ACCOUNT_CHANGE_REASON_MAX } from "@shared/account-change-requests";
 import { accountChangeDecisionRefusalMessages, accountChangeRefusalMessages, checkAccountChange } from "./account-change-requests";
 import {
@@ -968,6 +969,16 @@ export const appRouter = router({
   }),
   catalog: router({
     searchUniversities: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchUniversities(input)),
+    /** Secondary / Higher Secondary Institute Name: the shared list plus this Tutor's own names. */
+    searchSchoolColleges: activeTutorProcedure.input(z.object({ query: z.string().trim().max(SCHOOL_NAME_MAX).default("") }))
+      .query(({ ctx, input }) => db.searchSchoolColleges({ userId: ctx.user.id, query: input.query })),
+    createSchoolCollege: activeTutorProcedure.input(z.object({
+      name: z.string().trim().min(SCHOOL_NAME_MIN, `Enter at least ${SCHOOL_NAME_MIN} characters.`).max(SCHOOL_NAME_MAX),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await db.createSchoolCollegeForTutor({ userId: ctx.user.id, name: input.name });
+      if (result.outcome === "limit") throw new TRPCError({ code: "CONFLICT", message: "You have created as many institute names as allowed. Choose one from the list." });
+      return result.school;
+    }),
     searchFacultyDepartments: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchFacultyDepartments(input)),
     searchDegreeMajors: activeTutorProcedure.input(catalogSearchInputSchema.extend({ facultyDepartmentId: z.number().int().positive() })).query(({ input }) => {
       const { facultyDepartmentId, ...search } = input;
@@ -1428,6 +1439,39 @@ export const appRouter = router({
         throw new TRPCError({ code: result.reason === "not_found" ? "NOT_FOUND" : result.reason === "owner_only" ? "FORBIDDEN" : "CONFLICT", message: accountChangeDecisionRefusalMessages[result.reason] });
       }
       return { status: result.status };
+    }),
+  }),
+  /** The Owner's Schools & colleges page in the Dynamic Section. */
+  schoolColleges: router({
+    list: ownerAdminProcedure.input(z.object({
+      view: z.enum(["shared", "created"]).default("shared"),
+      query: z.string().trim().max(SCHOOL_NAME_MAX).default(""),
+      division: z.enum(["all", ...schoolCollegeDivisionValues]).default("all"),
+      page: z.number().int().min(1).default(1),
+    })).query(({ input }) => db.listSchoolCollegesForOwner(input)),
+    add: ownerAdminProcedure.input(z.object({
+      name: z.string().trim().min(SCHOOL_NAME_MIN, `Enter at least ${SCHOOL_NAME_MIN} characters.`).max(SCHOOL_NAME_MAX),
+      division: z.enum(schoolCollegeDivisionValues),
+    })).mutation(async ({ input }) => {
+      const result = await db.addSharedSchoolCollege(input);
+      if (result.outcome === "duplicate") throw new TRPCError({ code: "CONFLICT", message: "This name is already on the list in that division." });
+      return result;
+    }),
+    update: ownerAdminProcedure.input(z.object({
+      id: z.number().int().positive(),
+      name: z.string().trim().min(SCHOOL_NAME_MIN, `Enter at least ${SCHOOL_NAME_MIN} characters.`).max(SCHOOL_NAME_MAX),
+      division: z.enum(schoolCollegeDivisionValues),
+      active: z.boolean(),
+    })).mutation(async ({ input }) => {
+      const result = await db.updateSharedSchoolCollege(input);
+      if (result.outcome === "duplicate") throw new TRPCError({ code: "CONFLICT", message: "This name is already on the list in that division." });
+      if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This name is no longer on the list." });
+      return result;
+    }),
+    promote: ownerAdminProcedure.input(z.object({ id: z.number().int().positive(), division: z.enum(schoolCollegeDivisionValues) })).mutation(async ({ input }) => {
+      const result = await db.promoteSchoolCollege(input);
+      if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This name is no longer waiting." });
+      return result;
     }),
   }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */

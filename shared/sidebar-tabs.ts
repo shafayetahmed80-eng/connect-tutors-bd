@@ -98,6 +98,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/dynamic/home", "Home page"],
       ["/admin/dynamic/public-pages", "Public pages"],
       ["/admin/dynamic/institutes", "Institutes & departments"],
+      ["/admin/dynamic/schools", "Schools & colleges"],
       ["/admin/dynamic/locations", "Cities & locations"],
       ["/admin/dynamic/legal-pages", "Legal pages"],
       ["/admin/dynamic/modals", "Modals"],

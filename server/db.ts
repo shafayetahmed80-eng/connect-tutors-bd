@@ -11,6 +11,7 @@ import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@sha
 import type { AccountChangeRole, AccountChangeStatus, AccountChangeType } from "@shared/account-change-requests";
 import { accountChangeDecisionNotice, type AccountChangeContext, type AccountChangeDecisionRefusal } from "./account-change-requests";
 import { alias } from "drizzle-orm/mysql-core";
+import { normalizeSchoolName, SCHOOL_CREATE_LIMIT_PER_TUTOR, SCHOOL_SEARCH_LIMIT, tidySchoolName } from "@shared/school-colleges";
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
@@ -35,6 +36,7 @@ import {
   adminCredentials,
   adminProfiles,
   accountChangeRequests,
+  schoolColleges,
   adminInvitations,
   adminLoginAuditLogs,
   adminMatchingDefaultSavedViews,
@@ -4886,6 +4888,169 @@ export async function decideAccountChangeRequest(input: {
       if (tutor) await createTutorNotification(tx, { tutorId: tutor.id, type: "account_change", ...notice, actionPath: "/tutor/dashboard/settings", deduplicationKey: "account-change:" + request.id });
     }
     return { outcome: "decided" as const, status };
+  });
+}
+
+/**
+ * The Institute Name box for a Secondary or Higher Secondary record: names on
+ * the shared list, and the ones this Tutor created - never another Tutor's.
+ * A name that starts with what was typed comes before one that only contains it.
+ */
+export async function searchSchoolColleges(input: { userId: number; query: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const key = normalizeSchoolName(input.query);
+  if (key.length < 2) return [];
+  const escaped = key.replace(/[\\%_]/g, character => `\\${character}`);
+  return database
+    .select({ id: schoolColleges.id, name: schoolColleges.name, division: schoolColleges.division, own: sql<number>`${schoolColleges.createdByUserId} is not null` })
+    .from(schoolColleges)
+    .where(and(
+      eq(schoolColleges.active, 1),
+      or(isNull(schoolColleges.createdByUserId), eq(schoolColleges.createdByUserId, input.userId)),
+      like(schoolColleges.normalizedName, `%${escaped}%`),
+    ))
+    .orderBy(sql`${schoolColleges.normalizedName} like ${`${escaped}%`} desc`, asc(schoolColleges.name))
+    .limit(SCHOOL_SEARCH_LIMIT)
+    .then(rows => rows.map(row => ({ ...row, own: Boolean(Number(row.own)) })));
+}
+
+/**
+ * A name a Tutor typed that is not on the list, kept for that Tutor. The same
+ * name already on the list, or already theirs, is returned instead of a copy.
+ */
+export async function createSchoolCollegeForTutor(input: { userId: number; name: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const name = tidySchoolName(input.name);
+  const normalizedName = normalizeSchoolName(name);
+  return database.transaction(async tx => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1).for("update");
+    const [existing] = await tx
+      .select({ id: schoolColleges.id, name: schoolColleges.name, division: schoolColleges.division, createdByUserId: schoolColleges.createdByUserId })
+      .from(schoolColleges)
+      .where(and(
+        eq(schoolColleges.normalizedName, normalizedName),
+        or(and(isNull(schoolColleges.createdByUserId), eq(schoolColleges.active, 1)), eq(schoolColleges.createdByUserId, input.userId)),
+      ))
+      .orderBy(sql`${schoolColleges.createdByUserId} is not null`)
+      .limit(1);
+    if (existing) return { outcome: "existing" as const, school: { id: existing.id, name: existing.name, division: existing.division, own: existing.createdByUserId != null } };
+    const [{ total }] = await tx.select({ total: count() }).from(schoolColleges).where(eq(schoolColleges.createdByUserId, input.userId));
+    if (Number(total) >= SCHOOL_CREATE_LIMIT_PER_TUTOR) return { outcome: "limit" as const };
+    const created = await tx.insert(schoolColleges).values({ name, normalizedName, division: null, origin: "tutor", createdByUserId: input.userId });
+    return { outcome: "created" as const, school: { id: Number(created[0].insertId), name, division: null, own: true } };
+  });
+}
+
+export const SCHOOL_ADMIN_PAGE_SIZE = 50;
+
+/**
+ * The Owner's Schools & colleges page: the shared list, or the names Tutors
+ * created for themselves, searched, filtered by division and paged, with the
+ * size of both.
+ */
+export async function listSchoolCollegesForOwner(input: {
+  view: "shared" | "created";
+  query: string;
+  division: string;
+  page: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const key = normalizeSchoolName(input.query);
+  const escaped = key.replace(/[\\%_]/g, character => `\\${character}`);
+  const where = and(
+    input.view === "shared" ? isNull(schoolColleges.createdByUserId) : isNotNull(schoolColleges.createdByUserId),
+    key ? like(schoolColleges.normalizedName, `%${escaped}%`) : undefined,
+    input.view === "shared" && input.division !== "all" ? eq(schoolColleges.division, input.division) : undefined,
+  );
+  const [{ total }] = await database.select({ total: count() }).from(schoolColleges).where(where);
+  const rows = await database
+    .select({
+      id: schoolColleges.id,
+      name: schoolColleges.name,
+      division: schoolColleges.division,
+      active: schoolColleges.active,
+      origin: schoolColleges.origin,
+      createdAt: schoolColleges.createdAt,
+      tutorName: users.name,
+      tutorId: tutors.id,
+      tutorNumber: tutorRegistrations.tutorNumber,
+    })
+    .from(schoolColleges)
+    .leftJoin(users, eq(users.id, schoolColleges.createdByUserId))
+    .leftJoin(tutors, eq(tutors.userId, schoolColleges.createdByUserId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, schoolColleges.createdByUserId))
+    .where(where)
+    .orderBy(input.view === "shared" ? asc(schoolColleges.name) : desc(schoolColleges.id))
+    .limit(SCHOOL_ADMIN_PAGE_SIZE)
+    .offset((input.page - 1) * SCHOOL_ADMIN_PAGE_SIZE);
+  const sizes = await database
+    .select({ shared: sql<number>`sum(${schoolColleges.createdByUserId} is null)`, created: sql<number>`sum(${schoolColleges.createdByUserId} is not null)` })
+    .from(schoolColleges);
+  return {
+    rows: rows.map(row => ({ ...row, active: row.active === 1 })),
+    total: Number(total),
+    counts: { shared: Number(sizes[0]?.shared ?? 0), created: Number(sizes[0]?.created ?? 0) },
+    pageSize: SCHOOL_ADMIN_PAGE_SIZE,
+  };
+}
+
+async function sharedSchoolTaken(executor: any, input: { normalizedName: string; division: string; exceptId?: number }) {
+  const [row] = await executor.select({ id: schoolColleges.id }).from(schoolColleges)
+    .where(and(
+      isNull(schoolColleges.createdByUserId),
+      eq(schoolColleges.normalizedName, input.normalizedName),
+      eq(schoolColleges.division, input.division),
+      input.exceptId ? ne(schoolColleges.id, input.exceptId) : undefined,
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
+/** A name the Owner adds to the shared list; the same name in the same division is refused. */
+export async function addSharedSchoolCollege(input: { name: string; division: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const name = tidySchoolName(input.name);
+  const normalizedName = normalizeSchoolName(name);
+  if (await sharedSchoolTaken(database, { normalizedName, division: input.division })) return { outcome: "duplicate" as const };
+  const created = await database.insert(schoolColleges).values({ name, normalizedName, division: input.division, origin: "owner" });
+  return { outcome: "added" as const, id: Number(created[0].insertId) };
+}
+
+/** Renames, moves or hides a shared row. Tutor records keep the name they saved. */
+export async function updateSharedSchoolCollege(input: { id: number; name: string; division: string; active: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const name = tidySchoolName(input.name);
+  const normalizedName = normalizeSchoolName(name);
+  if (await sharedSchoolTaken(database, { normalizedName, division: input.division, exceptId: input.id })) return { outcome: "duplicate" as const };
+  const result = await database.update(schoolColleges)
+    .set({ name, normalizedName, division: input.division, active: input.active ? 1 : 0 })
+    .where(and(eq(schoolColleges.id, input.id), isNull(schoolColleges.createdByUserId)));
+  return result[0].affectedRows ? { outcome: "updated" as const } : { outcome: "not_found" as const };
+}
+
+/**
+ * A Tutor's own name moved onto the shared list, in the division the Owner
+ * picks - from then on every Tutor finds it. If the list already has it there,
+ * the Tutor's copy is simply removed from the waiting names.
+ */
+export async function promoteSchoolCollege(input: { id: number; division: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [row] = await tx.select({ normalizedName: schoolColleges.normalizedName }).from(schoolColleges)
+      .where(and(eq(schoolColleges.id, input.id), isNotNull(schoolColleges.createdByUserId))).limit(1).for("update");
+    if (!row) return { outcome: "not_found" as const };
+    if (await sharedSchoolTaken(tx, { normalizedName: row.normalizedName, division: input.division })) {
+      await tx.delete(schoolColleges).where(eq(schoolColleges.id, input.id));
+      return { outcome: "already_listed" as const };
+    }
+    await tx.update(schoolColleges).set({ createdByUserId: null, division: input.division, active: 1 }).where(eq(schoolColleges.id, input.id));
+    return { outcome: "promoted" as const };
   });
 }
 

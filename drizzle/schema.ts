@@ -651,6 +651,35 @@ export const universities = mysqlTable(
 );
 
 /**
+ * Schools and colleges for the Secondary and Higher Secondary "Institute
+ * Name" box. A row with no `createdByUserId` is on the shared list every
+ * Tutor searches (seeded from the Project Owner's list, or added by the
+ * Owner); a row with one is a name that Tutor created, found by them alone
+ * until the Owner adds it to the list. The education record keeps the name
+ * as text, so editing or hiding a row never rewrites anyone's history.
+ */
+export const schoolColleges = mysqlTable(
+  "school_colleges",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 240 }).notNull(),
+    normalizedName: varchar("normalizedName", { length: 240 }).notNull(),
+    /** One of `schoolCollegeDivisionValues`; null for a Tutor's own name. */
+    division: varchar("division", { length: 20 }),
+    active: int("active").default(1).notNull(),
+    /** "seed" from the Owner's file, "owner" added in the Admin panel, "tutor" created by a Tutor. */
+    origin: varchar("origin", { length: 10 }).default("seed").notNull(),
+    createdByUserId: int("createdByUserId").references(() => users.id),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("school_colleges_owner_name_idx").on(table.createdByUserId, table.normalizedName),
+    index("school_colleges_active_name_idx").on(table.active, table.name),
+  ]
+);
+
+/**
  * Department / Subject — one flat, global Honours/Bachelor/Undergraduate
  * field-of-study vocabulary. Keeps the historical table name; there is no
  * Faculty layer and no per-institute scoping any more.
