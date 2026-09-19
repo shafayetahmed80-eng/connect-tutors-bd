@@ -83,17 +83,19 @@ describe("asking to be verified", () => {
 });
 
 describe("asking to close the account", () => {
-  it("needs a reason and DELETE typed out", () => {
+  it("needs a reason and the account's password", () => {
     render(<CloseAccount />);
     const send = screen.getByRole("button", { name: /Send delete request/ }) as HTMLButtonElement;
     fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Moving abroad" } });
     expect(send.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "delete" } });
-    expect(send.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    const password = screen.getByLabelText(/Enter Your Password/) as HTMLInputElement;
+    expect(password.type).toBe("password");
+    fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(password.type).toBe("text");
+    fireEvent.change(password, { target: { value: "my-secret-1" } });
     expect(send.disabled).toBe(false);
     fireEvent.click(send);
-    expect(state.request).toHaveBeenCalledWith({ type: "close_account", reason: "Moving abroad" });
+    expect(state.request).toHaveBeenCalledWith({ type: "close_account", reason: "Moving abroad", password: "my-secret-1" }, expect.anything());
   });
 
   it("is closed while a tuition is still running, and says why", () => {

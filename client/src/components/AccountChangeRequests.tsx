@@ -1,4 +1,4 @@
-import { Send, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -112,20 +112,27 @@ export function VerificationRequest({ changes, verified, nidReady }: { changes: 
 /** Asking to close the account: a reason, and DELETE typed out. */
 export function CloseAccountRequest({ changes, liveTuitionMessage }: { changes: AccountChanges; liveTuitionMessage?: string | null }) {
   const [reason, setReason] = useState("");
-  const [confirmation, setConfirmation] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const last = changes.latest("close_account");
   if (last?.status === "pending") return <WaitingRequest changes={changes} type="close_account" text="Account delete requested" />;
-  const ready = reason.trim().length >= ACCOUNT_CHANGE_REASON_MIN && confirmation === "DELETE";
+  const ready = reason.trim().length >= ACCOUNT_CHANGE_REASON_MIN && password.length > 0;
   return <div className="space-y-3">
     {last?.status === "declined" ? <DeclinedNote reason={last.declineReason} /> : null}
     {liveTuitionMessage ? <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{liveTuitionMessage}</p> : null}
-    <form className="grid max-w-xl gap-3" onSubmit={event => { event.preventDefault(); changes.request.mutate({ type: "close_account", reason: reason.trim() }); }}>
+    <form className="grid max-w-xl gap-3" onSubmit={event => { event.preventDefault(); changes.request.mutate({ type: "close_account", reason: reason.trim(), password }, { onSettled: () => setPassword("") }); }}>
       <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">
         <span>Reason<span aria-hidden={true} className="text-[#d84a4a]"> *</span></span>
         <textarea value={reason} onChange={event => setReason(event.target.value)} rows={3} maxLength={ACCOUNT_CHANGE_REASON_MAX} disabled={Boolean(liveTuitionMessage)} className="w-full rounded-xl border border-j-field-border bg-white p-3 text-sm font-normal outline-none ring-[#1677c8] focus:ring-2 disabled:bg-j-surface-muted" />
       </label>
-      <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">Type DELETE to confirm
-        <input value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="off" disabled={Boolean(liveTuitionMessage)} className={`${inputClass} font-mono tracking-wider disabled:bg-j-surface-muted`} />
+      <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">
+        <span>Enter Your Password<span aria-hidden={true} className="text-[#d84a4a]"> *</span></span>
+        <span className="relative">
+          <input type={showPassword ? "text" : "password"} value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" maxLength={128} disabled={Boolean(liveTuitionMessage)} className={`${inputClass} pr-11 disabled:bg-j-surface-muted`} />
+          <button type="button" onClick={() => setShowPassword(shown => !shown)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 grid w-10 place-items-center text-j-ink-soft hover:text-j-ink">
+            {showPassword ? <EyeOff size={16} aria-hidden={true} /> : <Eye size={16} aria-hidden={true} />}
+          </button>
+        </span>
       </label>
       <Button type="submit" disabled={changes.busy || !ready || Boolean(liveTuitionMessage)} className="w-fit rounded-xl bg-red-600 font-bold text-white hover:bg-red-700">
         <Trash2 size={15} aria-hidden={true} /> {changes.request.isPending ? "Sending…" : "Send delete request"}

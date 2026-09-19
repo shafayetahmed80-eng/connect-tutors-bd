@@ -1364,11 +1364,16 @@ export const appRouter = router({
       type: z.enum(accountChangeTypeValues),
       value: z.string().trim().max(ACCOUNT_CHANGE_NAME_MAX).nullish(),
       reason: z.string().trim().max(ACCOUNT_CHANGE_REASON_MAX).nullish(),
+      /** Asked for again before a delete request; checked here, never stored. */
+      password: z.string().max(128).nullish(),
     })).mutation(async ({ ctx, input }) => {
       const context = await db.getAccountChangeContextByUserId(ctx.user.id);
       if (!context) throw new TRPCError({ code: "FORBIDDEN", message: accountChangeRefusalMessages.not_offered });
       const decision = checkAccountChange(context, input);
       if (!decision.allowed) throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages[decision.reason] });
+      if (input.type === "close_account" && !(await db.verifyOwnPasswordByUserId(ctx.user.id, input.password ?? ""))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Your password is incorrect." });
+      }
       if (input.type === "mobile" && decision.requestedValue
         && await db.isMobileTakenByAnotherAccount({ userId: ctx.user.id, role: context.role, mobile: decision.requestedValue })) {
         throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages.mobile_taken });

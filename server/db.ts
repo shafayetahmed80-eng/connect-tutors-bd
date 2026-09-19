@@ -869,6 +869,17 @@ async function setGuardianVerificationInTx(tx: any, input: {
 }
 
 /**
+ * Whether this is the signed-in account's own password - asked for again
+ * before a request to delete the account is sent.
+ */
+export async function verifyOwnPasswordByUserId(userId: number, password: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [user] = await database.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)).limit(1);
+  return Boolean(user?.passwordHash && password && await verifyPassword(password, user.passwordHash));
+}
+
+/**
  * Confirms the current credential before replacing the signed-in account's own
  * password hash. Guardians, Tutors and Admins all keep theirs in
  * `users.passwordHash`, so one check serves the three Settings pages; the
