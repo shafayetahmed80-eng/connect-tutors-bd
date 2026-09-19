@@ -33,7 +33,7 @@ import {
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
 import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
-import React, { CSSProperties, useEffect, useRef, useState } from "react";
+import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -67,6 +67,20 @@ export type DashboardNavigationItem = {
    */
   subgroup?: { label: string; icon: LucideIcon };
 };
+
+/**
+ * A waiting count that gives one small pulse when it goes up, so a new request
+ * is noticed without the page moving. It stays still on first paint.
+ */
+export function CountBadge({ count, className }: { count: number; className?: string }) {
+  const previous = useRef(count);
+  const [pulses, setPulses] = useState(0);
+  useEffect(() => {
+    if (count > previous.current) setPulses(total => total + 1);
+    previous.current = count;
+  }, [count]);
+  return <span key={pulses} data-pulse={pulses > 0 ? "" : undefined} aria-label={`${count} waiting`} className={`sb-badge ${className ?? ""}`}>{count > 99 ? "99+" : count}</span>;
+}
 
 export type NavigationRow<Item extends { subgroup?: { label: string } }> =
   | { kind: "item"; item: Item; index: number }
@@ -344,6 +358,48 @@ function DashboardLayoutContent({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = getActiveNavigationItem(navigationItems, location);
+
+  // One pill glides from the page you left to the page you opened. It is
+  // measured from the real button, so it follows rows that open and close, and
+  // it moves without a transition whenever the layout - not the page - moved.
+  // State, not a ref: on a phone the list mounts only when the sheet opens.
+  const [menuEl, setMenuEl] = useState<HTMLUListElement | null>(null);
+  const lastActivePath = useRef<string | undefined>(undefined);
+  const [indicator, setIndicator] = useState<{ top: number; left: number; width: number; height: number; glide: boolean } | null>(null);
+  const measureIndicator = useCallback((glide: boolean) => {
+    const menu = menuEl;
+    const active = menu?.querySelector<HTMLElement>('[data-nav-active="true"]');
+    if (!menu || !active || isCollapsed) { setIndicator(null); return; }
+    // Layout offsets, not bounding boxes: a page rising into a row that is
+    // opening is mid-transform, and its box would be measured off the mark.
+    let top = 0;
+    let left = 0;
+    let cursor: HTMLElement | null = active;
+    while (cursor && cursor !== menu) {
+      top += cursor.offsetTop;
+      left += cursor.offsetLeft;
+      cursor = cursor.offsetParent as HTMLElement | null;
+    }
+    const height = active.offsetHeight;
+    // A page inside a shut row has no height to sit on.
+    if (!cursor || height < 4) { setIndicator(null); return; }
+    setIndicator(current => {
+      const next = { top, left, width: active.offsetWidth, height, glide };
+      return current && current.top === next.top && current.left === next.left && current.width === next.width && current.height === next.height && current.glide === next.glide ? current : next;
+    });
+  }, [isCollapsed, menuEl]);
+  useLayoutEffect(() => {
+    const moved = lastActivePath.current !== undefined && lastActivePath.current !== activeMenuItem?.path;
+    lastActivePath.current = activeMenuItem?.path;
+    measureIndicator(moved);
+  }, [activeMenuItem?.path, expandedGroups, measureIndicator, navigationItems]);
+  useEffect(() => {
+    const menu = menuEl;
+    if (!menu || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => measureIndicator(false));
+    observer.observe(menu);
+    return () => observer.disconnect();
+  }, [measureIndicator, menuEl]);
   const isMobile = useIsMobile();
   const mobileContext = getMobileWorkspaceContext(title, activeMenuItem?.label);
   const workspaceHeading = activeMenuItem?.label ?? "Dashboard";
@@ -448,7 +504,13 @@ function DashboardLayoutContent({
 
             {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
 
-            <SidebarMenu className="gap-0.5 px-2 py-3">
+            <SidebarMenu ref={setMenuEl} className="relative gap-0.5 px-2 py-3">
+              {indicator ? <li
+                role="presentation"
+                aria-hidden="true"
+                className="sb-indicator pointer-events-none absolute left-0 top-0"
+                style={{ width: indicator.width, height: indicator.height, transform: `translate3d(${indicator.left}px, ${indicator.top}px, 0)`, ...(indicator.glide ? {} : { transition: "none" }) }}
+              /> : null}
               {groupNavigationRows(navigationItems).map(row => {
                 const first = row.kind === "item" ? row : row.members[0];
                 const previousSection = navigationItems[first.index - 1]?.sectionLabel;
@@ -471,6 +533,7 @@ function DashboardLayoutContent({
                     onClick={() => handleNavigation(item)}
                     tooltip={label}
                     aria-current={isActive && !item.action ? "page" : undefined}
+                    data-nav-active={isActive && !item.action ? "true" : undefined}
                     className={getDashboardNavigationItemClassName(isActive && !item.action)}
                     // Height is spread last: it is the more specific ask, so
                     // an Owner who sets both height and padding gets the
@@ -482,7 +545,7 @@ function DashboardLayoutContent({
                       className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "sb-icon-active" : "sb-icon"}`}
                     />
                     <span>{label}</span>
-                    {item.badge ? <span aria-label={`${item.badge} waiting`} className="sb-badge ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                    {item.badge ? <CountBadge count={item.badge} className="ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden" /> : null}
                     {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                   </SidebarMenuButton>;
                 };
@@ -502,7 +565,7 @@ function DashboardLayoutContent({
                   <SidebarMenuButton
                     isActive={false}
                     aria-expanded={open}
-                    aria-controls={open ? listId : undefined}
+                    aria-controls={listId}
                     tooltip={groupLabel}
                     // A collapsed sidebar has no room for the list, so the row goes to its first page instead.
                     onClick={() => {
@@ -514,12 +577,17 @@ function DashboardLayoutContent({
                   >
                     <row.subgroup.icon className={`h-4 w-4 shrink-0 ${containsActive ? "sb-icon-active" : "sb-icon"}`} />
                     <span>{groupLabel}</span>
-                    {!open && waiting ? <span aria-label={`${waiting} waiting`} className="sb-badge ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden">{waiting > 99 ? "99+" : waiting}</span> : null}
+                    {!open && waiting ? <CountBadge count={waiting} className="ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden" /> : null}
                     <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 sb-icon transition-transform duration-200 motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
                   </SidebarMenuButton>
-                  {open ? <SidebarMenuSub id={listId} aria-label={groupLabel} className="mt-0.5">
-                    {row.members.map(member => <SidebarMenuSubItem key={member.item.path}>{renderLeaf(member.item)}</SidebarMenuSubItem>)}
-                  </SidebarMenuSub> : null}
+                  {/* Always drawn, so it can open and close smoothly; a shut list is out of reach of the keyboard and of a screen reader. */}
+                  <div className="sb-sub" data-open={open} aria-hidden={!open} inert={!open}>
+                    <div>
+                      <SidebarMenuSub id={listId} aria-label={groupLabel} className="mt-0.5">
+                        {row.members.map((member, position) => <SidebarMenuSubItem key={member.item.path} style={{ "--i": position } as CSSProperties}>{renderLeaf(member.item)}</SidebarMenuSubItem>)}
+                      </SidebarMenuSub>
+                    </div>
+                  </div>
                 </SidebarMenuItem>;
               })}
             </SidebarMenu>
