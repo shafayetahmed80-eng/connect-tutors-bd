@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, getTableName, gt,
-  gte, inArray, isNotNull, isNull, like, lte, ne, or, sql, type SQL } from "drizzle-orm";
+  gte, inArray, isNotNull, isNull, like, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import {
   MAX_LOCATION_ID_LENGTH,
@@ -5052,6 +5052,137 @@ export async function promoteSchoolCollege(input: { id: number; division: string
     await tx.update(schoolColleges).set({ createdByUserId: null, division: input.division, active: 1 }).where(eq(schoolColleges.id, input.id));
     return { outcome: "promoted" as const };
   });
+}
+
+export const GUARDIAN_REQUEST_PAGE_SIZE = 25;
+export type GuardianRequestKind = "shortlist" | "appoint" | "confirm" | "cancel";
+
+/** The Guardian actions that ask an Admin for something: Confirm, Remove or Cancel - a removal is answered under Cancel. */
+const guardianTuitionRequestTypesFor = (kind: "confirm" | "cancel") =>
+  kind === "confirm" ? (["confirm"] as const) : (["remove_tutor", "cancel_tuition"] as const);
+
+/**
+ * How many of each Guardian action there are: the requests still waiting for
+ * an answer, and - for the shortlist, which is a signal rather than a question -
+ * how many applicants Guardians have shortlisted.
+ */
+export async function countGuardianRequestActions() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [appoint] = await database.select({ total: count() }).from(tutorJobInterests).where(isNotNull(tutorJobInterests.appointmentRequestedAt));
+  const [shortlist] = await database.select({ total: count() }).from(tutorJobInterests)
+    .where(and(isNotNull(tutorJobInterests.guardianShortlistedAt), notInArray(tutorJobInterests.status, ["withdrawn", "declined"])));
+  const waiting = await database
+    .select({ type: guardianTuitionRequests.type, total: count() })
+    .from(guardianTuitionRequests)
+    .where(eq(guardianTuitionRequests.status, "pending"))
+    .groupBy(guardianTuitionRequests.type);
+  const of = (types: readonly string[]) => waiting.filter(row => types.includes(row.type)).reduce((sum, row) => sum + Number(row.total), 0);
+  return {
+    shortlist: Number(shortlist?.total ?? 0),
+    appoint: Number(appoint?.total ?? 0),
+    confirm: of(guardianTuitionRequestTypesFor("confirm")),
+    cancel: of(guardianTuitionRequestTypesFor("cancel")),
+  };
+}
+
+/**
+ * One kind of Guardian action, a page at a time, newest first. A shortlist
+ * and an appointment request live on the applicant (an appointment request
+ * leaves no trace once answered, so only the waiting ones can be listed);
+ * Confirm and Cancel are rows of their own, kept after they are decided.
+ */
+export async function listGuardianRequestActions(input: { kind: GuardianRequestKind; status: "pending" | "approved" | "declined"; page: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const offset = (input.page - 1) * GUARDIAN_REQUEST_PAGE_SIZE;
+
+  if (input.kind === "shortlist" || input.kind === "appoint") {
+    const stamp = input.kind === "appoint" ? tutorJobInterests.appointmentRequestedAt : tutorJobInterests.guardianShortlistedAt;
+    const where = input.kind === "appoint"
+      ? isNotNull(tutorJobInterests.appointmentRequestedAt)
+      : and(isNotNull(tutorJobInterests.guardianShortlistedAt), notInArray(tutorJobInterests.status, ["withdrawn", "declined"]));
+    const base = database
+      .select({
+        key: tutorJobInterests.id,
+        interestId: tutorJobInterests.id,
+        requestId: tutorRequests.id,
+        createdAt: stamp,
+        tuitionConfirmed: sql<number>`${tutorRequests.appointmentConfirmedAt} is not null`,
+        guardianUserId: tutorRequests.guardianUserId,
+        guardianName: users.name,
+        guardianId: guardianProfiles.guardianId,
+        tutorId: tutors.id,
+        tutorName: tutors.name,
+        tutorNumber: tutorRegistrations.tutorNumber,
+      })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .innerJoin(tutorRequests, eq(tutorRequests.id, tutorJobs.tutorRequestId))
+      .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+      .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+      .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+      .where(where);
+    const [{ total }] = await database.select({ total: count() }).from(tutorJobInterests).where(where);
+    const rows = await base.orderBy(desc(stamp), desc(tutorJobInterests.id)).limit(GUARDIAN_REQUEST_PAGE_SIZE).offset(offset);
+    return {
+      items: rows.map(row => ({
+        ...row,
+        type: input.kind === "appoint" ? ("appoint" as const) : ("shortlist" as const),
+        reason: null as string | null,
+        status: "pending" as const,
+        decidedAt: null as Date | null,
+        tuitionConfirmed: Boolean(Number(row.tuitionConfirmed)),
+      })),
+      counts: { pending: Number(total), approved: 0, declined: 0 },
+      totalPages: Math.max(1, Math.ceil(Number(total) / GUARDIAN_REQUEST_PAGE_SIZE)),
+    };
+  }
+
+  const types = guardianTuitionRequestTypesFor(input.kind);
+  const typeFilter = inArray(guardianTuitionRequests.type, [...types]);
+  const grouped = await database
+    .select({ status: guardianTuitionRequests.status, total: count() })
+    .from(guardianTuitionRequests)
+    .where(typeFilter)
+    .groupBy(guardianTuitionRequests.status);
+  const counts = { pending: 0, approved: 0, declined: 0 };
+  for (const row of grouped) if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.total);
+
+  const rows = await database
+    .select({
+      key: guardianTuitionRequests.id,
+      guardianRequestId: guardianTuitionRequests.id,
+      requestId: tutorRequests.id,
+      type: guardianTuitionRequests.type,
+      reason: guardianTuitionRequests.reason,
+      status: guardianTuitionRequests.status,
+      createdAt: guardianTuitionRequests.createdAt,
+      decidedAt: guardianTuitionRequests.decidedAt,
+      tuitionConfirmed: sql<number>`${tutorRequests.appointmentConfirmedAt} is not null`,
+      guardianUserId: guardianTuitionRequests.guardianUserId,
+      guardianName: users.name,
+      guardianId: guardianProfiles.guardianId,
+      tutorId: tutors.id,
+      tutorName: tutors.name,
+      tutorNumber: tutorRegistrations.tutorNumber,
+    })
+    .from(guardianTuitionRequests)
+    .innerJoin(tutorRequests, eq(tutorRequests.id, guardianTuitionRequests.tutorRequestId))
+    .innerJoin(users, eq(users.id, guardianTuitionRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, guardianTuitionRequests.guardianUserId))
+    .leftJoin(tutors, eq(tutors.id, guardianTuitionRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(and(typeFilter, eq(guardianTuitionRequests.status, input.status)))
+    .orderBy(input.status === "pending" ? asc(guardianTuitionRequests.createdAt) : desc(guardianTuitionRequests.decidedAt), desc(guardianTuitionRequests.id))
+    .limit(GUARDIAN_REQUEST_PAGE_SIZE)
+    .offset(offset);
+  return {
+    items: rows.map(row => ({ ...row, tuitionConfirmed: Boolean(Number(row.tuitionConfirmed)) })),
+    counts,
+    totalPages: Math.max(1, Math.ceil(counts[input.status] / GUARDIAN_REQUEST_PAGE_SIZE)),
+  };
 }
 
 /** The Project Owner's own name and mobile, changed directly - nobody above them to ask. */

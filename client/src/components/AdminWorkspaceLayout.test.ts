@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAdminWorkspaceNavigation, getAdminWorkspaceDisplayState } from "./AdminWorkspaceLayout";
+import { groupNavigationRows } from "./DashboardLayout";
 import { ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS } from "./AdminWorkspaceLayout";
 
 describe("Admin workspace navigation", () => {
@@ -24,6 +25,10 @@ describe("Admin workspace navigation", () => {
       "Confirmed Jobs",
       "Admin Posted Jobs",
       "Applied Tutors",
+      "Shortlist Requests",
+      "Appoint Requests",
+      "Confirm Requests",
+      "Cancel Requests",
       "Matching workspace",
     ]);
     expect(adminItems.find(item => item.path === "/tutors")).toMatchObject({ sectionLabel: "Public reference" });
@@ -34,6 +39,18 @@ describe("Admin workspace navigation", () => {
       "Admin activity report",
       "Admin security",
     ]);
+  });
+
+  it("folds the Guardian Requests and the Dynamic Section into collapsible rows, with the counts on the rows that ask", () => {
+    const items = buildAdminWorkspaceNavigation(true, 0, { shortlist: 6, appoint: 2, confirm: 1, cancel: 0 });
+    const rows = groupNavigationRows(items).filter(row => row.kind === "subgroup");
+    expect(rows.map(row => row.kind === "subgroup" && row.subgroup.label)).toEqual(["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"]);
+    const requests = rows[0];
+    expect(requests.kind === "subgroup" && requests.members.map(member => [member.item.label, member.item.badge])).toEqual([
+      ["Shortlist Requests", undefined], ["Appoint Requests", 2], ["Confirm Requests", 1], ["Cancel Requests", 0],
+    ]);
+    // An Admin who is not the Owner has no Dynamic Section rows, and keeps Guardian Requests.
+    expect(groupNavigationRows(buildAdminWorkspaceNavigation(false)).filter(row => row.kind === "subgroup")).toHaveLength(1);
   });
 
   it("counts the change requests waiting beside their tab, and draws nothing for none", () => {
@@ -47,14 +64,14 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Section guide", path: "/admin/dynamic" }),
       expect.objectContaining({ label: "Tutor Profile", path: "/admin/dynamic/tutor-profile" }),
       expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
-      expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),
-      expect.objectContaining({ label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs" }),
       expect.objectContaining({ label: "Home page", path: "/admin/dynamic/home" }),
       expect.objectContaining({ label: "Public pages", path: "/admin/dynamic/public-pages" }),
+      expect.objectContaining({ label: "Legal pages", path: "/admin/dynamic/legal-pages" }),
+      expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),
       expect.objectContaining({ label: "Institutes & departments", path: "/admin/dynamic/institutes" }),
       expect.objectContaining({ label: "Schools & colleges", path: "/admin/dynamic/schools" }),
       expect.objectContaining({ label: "Cities & locations", path: "/admin/dynamic/locations" }),
-      expect.objectContaining({ label: "Legal pages", path: "/admin/dynamic/legal-pages" }),
+      expect.objectContaining({ label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs" }),
       expect.objectContaining({ label: "Modals", path: "/admin/dynamic/modals" }),
       expect.objectContaining({ label: "Input Field Text", path: "/admin/dynamic/input-field-text" }),
       expect.objectContaining({ label: "Button Section", path: "/admin/dynamic/button-section" }),

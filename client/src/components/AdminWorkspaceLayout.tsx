@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users, UsersRound } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -16,26 +16,36 @@ export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
  * Site-content control for the Tutor and Guardian pages. Owner-only, because
  * editing published copy changes what every visitor sees.
  */
+const dynamicProfileForms = { label: "Profile forms", icon: IdCard };
+const dynamicSiteContent = { label: "Site content", icon: Newspaper };
+const dynamicOptionLists = { label: "Option lists", icon: ListChecks };
+const dynamicAppearance = { label: "Appearance", icon: Palette };
+const dynamicControls = { label: "Controls", icon: SlidersHorizontal };
+
 const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: Compass, label: "Section guide", path: "/admin/dynamic", sectionLabel: "Dynamic Section" },
-  { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section" },
-  { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section" },
-  { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section" },
-  { icon: PanelsTopLeft, label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs", sectionLabel: "Dynamic Section" },
-  { icon: House, label: "Home page", path: "/admin/dynamic/home", sectionLabel: "Dynamic Section" },
-  { icon: Globe, label: "Public pages", path: "/admin/dynamic/public-pages", sectionLabel: "Dynamic Section" },
-  { icon: School, label: "Institutes & departments", path: "/admin/dynamic/institutes", sectionLabel: "Dynamic Section" },
-  { icon: Building2, label: "Schools & colleges", path: "/admin/dynamic/schools", sectionLabel: "Dynamic Section" },
-  { icon: MapPin, label: "Cities & locations", path: "/admin/dynamic/locations", sectionLabel: "Dynamic Section" },
-  { icon: Scale, label: "Legal pages", path: "/admin/dynamic/legal-pages", sectionLabel: "Dynamic Section" },
-  { icon: SquareDashed, label: "Modals", path: "/admin/dynamic/modals", sectionLabel: "Dynamic Section" },
-  { icon: Type, label: "Input Field Text", path: "/admin/dynamic/input-field-text", sectionLabel: "Dynamic Section" },
-  { icon: MousePointerClick, label: "Button Section", path: "/admin/dynamic/button-section", sectionLabel: "Dynamic Section" },
-  { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section" },
-  { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section" },
+  { icon: FileUser, label: "Tutor Profile", path: "/admin/dynamic/tutor-profile", sectionLabel: "Dynamic Section", subgroup: dynamicProfileForms },
+  { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section", subgroup: dynamicProfileForms },
+  { icon: House, label: "Home page", path: "/admin/dynamic/home", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
+  { icon: Globe, label: "Public pages", path: "/admin/dynamic/public-pages", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
+  { icon: Scale, label: "Legal pages", path: "/admin/dynamic/legal-pages", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
+  { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },
+  { icon: School, label: "Institutes & departments", path: "/admin/dynamic/institutes", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },
+  { icon: Building2, label: "Schools & colleges", path: "/admin/dynamic/schools", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },
+  { icon: MapPin, label: "Cities & locations", path: "/admin/dynamic/locations", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },
+  { icon: PanelsTopLeft, label: "Sidebar Tabs", path: "/admin/dynamic/sidebar-tabs", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: SquareDashed, label: "Modals", path: "/admin/dynamic/modals", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: Type, label: "Input Field Text", path: "/admin/dynamic/input-field-text", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: MousePointerClick, label: "Button Section", path: "/admin/dynamic/button-section", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
+  { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
 ];
 
-export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0): DashboardNavigationItem[] {
+/** How many of each Guardian request wait for an answer - the counts beside the Guardian Requests rows. */
+export type GuardianRequestCounts = { shortlist: number; appoint: number; confirm: number; cancel: number };
+
+export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0, guardianRequests?: GuardianRequestCounts): DashboardNavigationItem[] {
+  const requests = { label: "Guardian Requests", icon: Inbox };
   // Order matters twice over: it is the visible order, and DashboardLayout
   // starts a new section heading wherever `sectionLabel` changes.
   return [
@@ -49,6 +59,11 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations" },
     { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
     { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Operations" },
+    // The shortlist is a signal, not a question, so it carries no count.
+    { icon: Star, label: "Shortlist Requests", path: "/admin/guardian-requests/shortlist", sectionLabel: "Operations", subgroup: requests },
+    { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.appoint },
+    { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.confirm },
+    { icon: CircleX, label: "Cancel Requests", path: "/admin/guardian-requests/cancel", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.cancel },
     { icon: ClipboardList, label: "Matching workspace", path: "/admin/matching", sectionLabel: "Operations" },
     ...(isOwner ? dynamicSectionItems : []),
     { icon: UsersRound, label: "Public Tutor directory", path: "/tutors", sectionLabel: "Public reference", requiresSignOut: true },
@@ -129,6 +144,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   // One photo for both places it shows: the sidebar block and the header avatar.
   const photoUrl = trpc.adminProfile.photo.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.photoUrl ?? null;
   const pendingChangeRequests = trpc.accountChanges.pendingCount.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data ?? 0;
+  const guardianRequestCounts = trpc.admin.guardianRequestCounts.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data;
   const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
@@ -159,7 +175,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   }
   const access = workspaceAccess.data;
   return <DashboardLayout
-    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner), pendingChangeRequests)}
+    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner), pendingChangeRequests, guardianRequestCounts)}
     title={title}
     loginPath="/admin/login"
     sidebarPanel="admin"

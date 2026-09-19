@@ -2010,6 +2010,14 @@ export const appRouter = router({
           return rethrowTutorInterestError(error);
         }
       }),
+    /** How many of each Guardian action wait - the counts beside the Guardian Requests rows. */
+    guardianRequestCounts: adminProcedure.query(() => db.countGuardianRequestActions()),
+    /** One kind of Guardian action - shortlist, appoint, confirm or cancel - for its Guardian Requests screen. */
+    listGuardianRequestActions: adminProcedure.input(z.object({
+      kind: z.enum(["shortlist", "appoint", "confirm", "cancel"]),
+      status: z.enum(["pending", "approved", "declined"]).default("pending"),
+      page: z.number().int().min(1).default(1),
+    })).query(({ input }) => db.listGuardianRequestActions(input)),
     approveAppointmentRequest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {

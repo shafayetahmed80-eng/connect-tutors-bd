@@ -45,18 +45,6 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [GUARDIAN_JOURNEY, { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" }],
   },
   {
-    path: "/admin/dynamic/form-options",
-    label: "Form options",
-    summary: "ড্রপডাউনের ভেতরের তালিকা — Subjects, Class / level, Curricula। নতুন অপশন যোগ করা, নাম বদলানো, ক্রম বদলানো।",
-    seeAt: [TUTOR_PROFILE, GUARDIAN_JOURNEY],
-  },
-  {
-    path: "/admin/dynamic/sidebar-tabs",
-    label: "Sidebar Tabs",
-    summary: "তিনটা প্যানেলের (Admin, Tutor, Guardian) বাঁ পাশের মেনুর নাম ও দলের শিরোনাম, সাথে লেখার আকার, উচ্চতা ও প্যাডিং।",
-    seeAt: [{ label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" }, { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" }],
-  },
-  {
     path: "/admin/dynamic/home",
     label: "Home page",
     summary: "হোমপেইজের প্রতিটা অংশের লেখা — হিরো, প্রমাণ-সারি, টিউশনের ধরন, ধাপ, FAQ আর শেষের আহ্বান।",
@@ -67,6 +55,18 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     label: "Public pages",
     summary: "সাতটা তথ্য পাতার শিরোনাম ও বর্ণনা — Tuition, For tutors, Blogs, Events, Contact, Privacy, Terms।",
     seeAt: [{ label: "Tuition", path: "/tuition" }, { label: "Contact", path: "/contact" }],
+  },
+  {
+    path: "/admin/dynamic/legal-pages",
+    label: "Legal pages",
+    summary: "শর্তাবলি ও গোপনীয়তা নীতির পূর্ণ লেখা, অনুচ্ছেদ ধরে ধরে সম্পাদনা করার জন্য।",
+    seeAt: [{ label: "শর্তাবলি", path: "/terms-conditions" }, { label: "গোপনীয়তা নীতি", path: "/privacy-policy" }],
+  },
+  {
+    path: "/admin/dynamic/form-options",
+    label: "Form options",
+    summary: "ড্রপডাউনের ভেতরের তালিকা — Subjects, Class / level, Curricula। নতুন অপশন যোগ করা, নাম বদলানো, ক্রম বদলানো।",
+    seeAt: [TUTOR_PROFILE, GUARDIAN_JOURNEY],
   },
   {
     path: "/admin/dynamic/institutes",
@@ -87,10 +87,10 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [TUTOR_PROFILE, GUARDIAN_JOURNEY, JOB_BOARD],
   },
   {
-    path: "/admin/dynamic/legal-pages",
-    label: "Legal pages",
-    summary: "শর্তাবলি ও গোপনীয়তা নীতির পূর্ণ লেখা, অনুচ্ছেদ ধরে ধরে সম্পাদনা করার জন্য।",
-    seeAt: [{ label: "শর্তাবলি", path: "/terms-conditions" }, { label: "গোপনীয়তা নীতি", path: "/privacy-policy" }],
+    path: "/admin/dynamic/sidebar-tabs",
+    label: "Sidebar Tabs",
+    summary: "তিনটা প্যানেলের (Admin, Tutor, Guardian) বাঁ পাশের মেনুর নাম ও দলের শিরোনাম, সাথে লেখার আকার, উচ্চতা ও প্যাডিং।",
+    seeAt: [{ label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" }, { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" }],
   },
   {
     path: "/admin/dynamic/modals",
