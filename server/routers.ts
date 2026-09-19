@@ -1407,6 +1407,12 @@ export const appRouter = router({
       userId: z.number().int().positive().optional(),
     })).query(({ ctx, input }) => db.listAccountChangeRequestsForAdmin({ ...input, includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
     pendingCount: adminProcedure.query(({ ctx }) => db.countPendingAccountChangeRequests({ includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
+    /** One account's requests, for its profile page. An Admin's are the Project Owner's to read. */
+    history: adminProcedure.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const role = await db.getUserRoleById(input.userId);
+      if (role === "admin" && ctx.user.openId !== ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner reads another Admin's requests." });
+      return db.listAccountChangeHistoryForUser(input.userId);
+    }),
     decide: adminProcedure.input(z.object({
       requestId: z.number().int().positive(),
       decision: z.enum(["approve", "decline"]),
@@ -1779,6 +1785,12 @@ export const appRouter = router({
         if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This confirmed tuition is unavailable." });
         return result;
       }),
+    listGuardianProfiles: adminProcedure.input(z.object({
+      query: z.string().trim().max(120).default(""),
+      verification: z.enum(["all", "unverified", "verified", "rejected"]).default("all"),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(20),
+    })).query(({ input }) => db.listGuardianProfilesForAdmin(input)),
     getGuardianProfile: adminProcedure
       .input(z.object({ guardianUserId: z.number().int().positive() }))
       .query(async ({ input }) => {

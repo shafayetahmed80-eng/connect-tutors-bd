@@ -172,7 +172,7 @@ export function GuardianVerificationModal({ guardianUserId, onClose }: { guardia
   );
 }
 
-function GuardianActivityContent() {
+export function GuardianActivityContent() {
   const [filters, setFilters] = useState<GuardianFilters>(initialFilters);
   const activeFilterCount = countActiveFilters(filters, initialFilters, { ignore: ["page", "pageSize"] });
   const [contactRequestId, setContactRequestId] = useState<number | null>(null);

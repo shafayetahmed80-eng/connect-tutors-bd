@@ -11,6 +11,9 @@ const dbMocks = vi.hoisted(() => ({
   listAccountChangeRequestsForAdmin: vi.fn(),
   countPendingAccountChangeRequests: vi.fn(),
   decideAccountChangeRequest: vi.fn(),
+  listAccountChangeHistoryForUser: vi.fn(),
+  getUserRoleById: vi.fn(),
+  listGuardianProfilesForAdmin: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -146,5 +149,28 @@ describe("accountChanges (the Admin queue)", () => {
     dbMocks.decideAccountChangeRequest.mockResolvedValueOnce({ outcome: "refused", reason: "mobile_taken" });
     await expect(createCaller(owner).accountChanges.decide({ requestId: 5, decision: "approve" }))
       .rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("used by another account") });
+  });
+});
+
+describe("one account's request history", () => {
+  it("is read by any Admin for a Guardian or Tutor, and only by the Project Owner for another Admin", async () => {
+    dbMocks.listAccountChangeHistoryForUser.mockResolvedValue([{ id: 3, type: "name", status: "withdrawn" }]);
+    dbMocks.getUserRoleById.mockResolvedValueOnce("guardian");
+    await expect(createCaller(otherAdmin).accountChanges.history({ userId: 21 })).resolves.toEqual([{ id: 3, type: "name", status: "withdrawn" }]);
+
+    dbMocks.getUserRoleById.mockResolvedValueOnce("admin");
+    await expect(createCaller(otherAdmin).accountChanges.history({ userId: 5 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    dbMocks.getUserRoleById.mockResolvedValueOnce("admin");
+    await expect(createCaller(owner).accountChanges.history({ userId: 5 })).resolves.toHaveLength(1);
+    expect(dbMocks.listAccountChangeHistoryForUser).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("admin.listGuardianProfiles", () => {
+  it("passes the search, tab and page through, and is closed to a Guardian", async () => {
+    dbMocks.listGuardianProfilesForAdmin.mockResolvedValue({ items: [], counts: { all: 0, unverified: 0, verified: 0, rejected: 0 }, totalPages: 1 });
+    await createCaller(otherAdmin).admin.listGuardianProfiles({ query: " Rina ", verification: "verified" });
+    expect(dbMocks.listGuardianProfilesForAdmin).toHaveBeenCalledWith({ query: "Rina", verification: "verified", page: 1, pageSize: 20 });
+    await expect(createCaller(guardianUser).admin.listGuardianProfiles({})).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

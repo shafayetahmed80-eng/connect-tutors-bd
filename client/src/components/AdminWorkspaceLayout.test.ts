@@ -17,7 +17,7 @@ describe("Admin workspace navigation", () => {
       "Overview",
       "Admin Profile",
       "Tutor Profiles",
-      "Guardian activity",
+      "Guardian Profiles",
       "Change requests",
       "Posted jobs",
       "Appointed Jobs",
@@ -30,6 +30,7 @@ describe("Admin workspace navigation", () => {
 
     const ownerItems = buildAdminWorkspaceNavigation(true);
     expect(ownerItems.filter(item => item.sectionLabel === "Owner controls").map(item => item.label)).toEqual([
+      "Admin Profiles",
       "Admin activity report",
       "Admin security",
     ]);
