@@ -293,9 +293,13 @@
 .sb-root .sb-item { color: var(--sb-text); }
 .sb-root .sb-item:hover { background-color: var(--sb-hover-bg); color: var(--sb-text-hover); }
 .sb-root .sb-item-current { color: var(--sb-accent-strong); }
+/* The current page: its text turns the accent; the pill itself is .sb-indicator, which glides. */
 .sb-root .sb-item-active,
-.sb-root .sb-item-active:hover {
-  color: var(--sb-accent-strong);
+.sb-root .sb-item-active:hover { color: var(--sb-accent-strong); background-color: transparent; }
+.sb-root .sb-item-active::before { display: none; }
+.sb-root .sb-indicator,
+[data-collapsible="icon"] .sb-root .sb-item-active,
+[data-collapsible="icon"].sb-root .sb-item-active {
   background-color: var(--sb-accent-tint);
   background-image: linear-gradient(180deg, #ffffff 0%, var(--sb-accent-tint) 100%);
   box-shadow:
@@ -303,7 +307,51 @@
     0 1px 2px rgb(16 40 73 / 0.06),
     0 8px 16px -10px color-mix(in srgb, var(--sb-accent) 55%, transparent);
 }
-.sb-root .sb-item-active::before { background-color: var(--sb-accent); }
+.sb-root .sb-indicator {
+  z-index: 0;
+  border-radius: 0.5rem;
+  transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), width 240ms cubic-bezier(0.23, 1, 0.32, 1), height 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.sb-root .sb-indicator::before,
+[data-collapsible="icon"] .sb-root .sb-item-active::before,
+[data-collapsible="icon"].sb-root .sb-item-active::before {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 18px;
+  width: 3px;
+  transform: translateY(-50%);
+  border-radius: 0 3px 3px 0;
+  background-color: var(--sb-accent);
+}
+/* A row opens by height, its pages rising one after another. */
+.sb-root .sb-sub {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1), visibility 0s linear 220ms;
+}
+.sb-root .sb-sub[data-open="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1), visibility 0s;
+}
+.sb-root .sb-sub > div { min-height: 0; overflow: hidden; }
+.sb-root .sb-sub[data-open="true"] li { animation: sb-rise 220ms cubic-bezier(0.23, 1, 0.32, 1) both; animation-delay: calc(var(--i, 0) * 30ms); }
+.sb-root .sb-item > svg:first-child { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.sb-root .sb-item:hover > svg:first-child { transform: translateX(1px); }
+.sb-root .sb-badge[data-pulse] { animation: sb-pulse 480ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes sb-rise { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes sb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.22); box-shadow: 0 0 0 4px rgb(253 230 138 / 0.55); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .sb-root .sb-indicator,
+  .sb-root .sb-sub,
+  .sb-root .sb-sub li,
+  .sb-root .sb-badge,
+  .sb-root .sb-item > svg:first-child { transition: none !important; animation: none !important; }
+}
 .sb-root .sb-heading { color: var(--sb-heading); }
 .sb-root .sb-icon { color: var(--sb-icon); }
 .sb-root .sb-icon-active { color: var(--sb-accent); }
