@@ -57,7 +57,7 @@ function focusableWithin(root: HTMLElement | null): HTMLElement[] {
  * still read at 4.5:1, and every line keeps its drawn width however far a tall
  * phone sheet stretches the sketch.
  */
-function WaterSketch() {
+function WaterSketch({ wideOnly = false }: { wideOnly?: boolean }) {
   const rings = [
     { rx: 34, dy: 0, width: 2.6, opacity: 0.8 },
     { rx: 62, dy: -3, width: 2, opacity: 0.7 },
@@ -68,7 +68,7 @@ function WaterSketch() {
     { rx: 272, dy: -33, width: 2.8, opacity: 0.24 },
   ];
   return (
-    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+    <span aria-hidden="true" className={cn("pointer-events-none absolute inset-0 overflow-hidden", wideOnly && "max-sm:hidden")}>
       <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" className="h-full w-full">
         <defs>
           {/* As deep as the water can go under text: the darkest stop still
@@ -101,7 +101,7 @@ function WaterSketch() {
   );
 }
 
-type ModalContextValue = { titleId: string; onClose: () => void; busy: boolean; decorated: boolean };
+type ModalContextValue = { titleId: string; onClose: () => void; busy: boolean; decorated: boolean; /** Decorated from `sm` up only. */ wideOnly: boolean };
 const ModalContext = createContext<ModalContextValue | null>(null);
 
 function useModalContext(component: string): ModalContextValue {
@@ -122,7 +122,8 @@ export function Modal({
   size?: ModalSize;
   onClose: () => void;
   /** `water` puts a water sketch behind the body. For a dialog that invites, not one that collects. */
-  decor?: "water";
+  /** `water-wide`: the sketch from `sm` up only - a long form on a phone stays plain white. */
+  decor?: "water" | "water-wide";
   /** A submit is in flight: Escape and the backdrop stop closing the dialog. */
   busy?: boolean;
   /** A nested non-Modal overlay owns the keyboard right now (e.g. the photo cropper). */
@@ -181,7 +182,7 @@ export function Modal({
   };
 
   return (
-    <ModalContext.Provider value={{ titleId, onClose, busy, decorated: decor === "water" }}>
+    <ModalContext.Provider value={{ titleId, onClose, busy, decorated: decor === "water" || decor === "water-wide", wideOnly: decor === "water-wide" }}>
       <div
         onClick={onBackdropClick}
         data-modal-backdrop=""
@@ -206,7 +207,7 @@ export function Modal({
           {/* Drawn first, and the header, body and footer are all positioned,
               so each of them paints over the sketch - an unpositioned header
               would sit under it and lose its title and close button. */}
-          {decor === "water" ? <WaterSketch /> : null}
+          {decor ? <WaterSketch wideOnly={decor === "water-wide"} /> : null}
           {children}
         </div>
       </div>
@@ -235,7 +236,7 @@ export function ModalHeader({
    */
   action?: React.ReactNode;
 }) {
-  const { titleId, onClose, busy, decorated } = useModalContext("ModalHeader");
+  const { titleId, onClose, busy, decorated, wideOnly } = useModalContext("ModalHeader");
   // On a decorated panel the header is part of the water rather than a white
   // bar across it: no surface of its own, a soft light rule, and the title and
   // close button in the water's deep blue so they stay clear on the wash.
@@ -246,14 +247,14 @@ export function ModalHeader({
         {/* The space sits outside the hidden span: an accessible name is built
             from trimmed text nodes, so the prefix inside it would butt against
             the title with no gap. */}
-        <h2 id={titleId} className={cn("truncate text-base", tp.heading, eyebrow && "mt-0.5", decorated && "text-[#0f4c81]")}>
+        <h2 id={titleId} className={cn("truncate text-base", tp.heading, eyebrow && "mt-0.5", decorated && (wideOnly ? "sm:text-[#0f4c81]" : "text-[#0f4c81]"))}>
           {srPrefix ? <><span className="sr-only">{srPrefix}</span>{" "}</> : null}{title}
         </h2>
         {meta ? <div className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
-        <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton, decorated && "text-[#0f4c81] hover:bg-white/50 hover:text-[#0f4c81]")}>
+        <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className={cn("-mr-1 shrink-0", tp.ghostIconButton, decorated && (wideOnly ? "sm:text-[#0f4c81] sm:hover:bg-white/50 sm:hover:text-[#0f4c81]" : "text-[#0f4c81] hover:bg-white/50 hover:text-[#0f4c81]"))}>
           <X size={18} />
         </button>
       </div>
