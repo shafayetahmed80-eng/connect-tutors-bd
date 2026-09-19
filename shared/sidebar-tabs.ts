@@ -20,6 +20,11 @@ export type SidebarPanelMeta = {
   items: ReadonlyArray<readonly [string, string]>;
   /** Group headings shown above a run of items. */
   groups: readonly string[];
+  /**
+   * Collapsible rows that hold a run of items beneath them, in the order they
+   * appear. A subgroup has no page of its own: it opens and closes.
+   */
+  subgroups: readonly string[];
   /** Font size the sidebar ships at, in pixels. */
   fontPx: number;
   /** Vertical padding each row ships with, in pixels. */
@@ -44,6 +49,10 @@ export function sidebarTabsSlotId(panel: SidebarPanelId, path: string): string {
 
 export function sidebarGroupSlotId(panel: SidebarPanelId, sectionLabel: string): string {
   return `sidebar-tabs.${panel}.group.${labelKey(sectionLabel)}`;
+}
+
+export function sidebarSubgroupSlotId(panel: SidebarPanelId, subgroup: string): string {
+  return `sidebar-tabs.${panel}.subgroup.${labelKey(subgroup)}`;
 }
 
 export function sidebarFontSlotId(panel: SidebarPanelId): string {
@@ -78,6 +87,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     paddingPx: SHIPPED_ROW_PADDING_PX,
     heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"],
+    subgroups: ["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"],
     items: [
       ["/admin/dashboard", "Overview"],
       ["/admin/profile", "Admin Profile"],
@@ -89,18 +99,22 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/confirmed-jobs", "Confirmed Jobs"],
       ["/admin/admin-posted-jobs", "Admin Posted Jobs"],
       ["/admin/applied-tutors", "Applied Tutors"],
+      ["/admin/guardian-requests/shortlist", "Shortlist Requests"],
+      ["/admin/guardian-requests/appoint", "Appoint Requests"],
+      ["/admin/guardian-requests/confirm", "Confirm Requests"],
+      ["/admin/guardian-requests/cancel", "Cancel Requests"],
       ["/admin/matching", "Matching workspace"],
       ["/admin/dynamic", "Section guide"],
       ["/admin/dynamic/tutor-profile", "Tutor Profile"],
       ["/admin/dynamic/guardian-profile", "Guardian Profile"],
-      ["/admin/dynamic/form-options", "Form options"],
-      ["/admin/dynamic/sidebar-tabs", "Sidebar Tabs"],
       ["/admin/dynamic/home", "Home page"],
       ["/admin/dynamic/public-pages", "Public pages"],
+      ["/admin/dynamic/legal-pages", "Legal pages"],
+      ["/admin/dynamic/form-options", "Form options"],
       ["/admin/dynamic/institutes", "Institutes & departments"],
       ["/admin/dynamic/schools", "Schools & colleges"],
       ["/admin/dynamic/locations", "Cities & locations"],
-      ["/admin/dynamic/legal-pages", "Legal pages"],
+      ["/admin/dynamic/sidebar-tabs", "Sidebar Tabs"],
       ["/admin/dynamic/modals", "Modals"],
       ["/admin/dynamic/input-field-text", "Input Field Text"],
       ["/admin/dynamic/button-section", "Button Section"],
@@ -121,6 +135,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     paddingPx: SHIPPED_ROW_PADDING_PX,
     heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Active workspace", "Coming later", "Account"],
+    subgroups: [],
     items: [
       ["/tutor/dashboard", "Dashboard"],
       ["/tutor/dashboard/profile", "Profile"],
@@ -147,6 +162,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     paddingPx: SHIPPED_ROW_PADDING_PX,
     heightPx: SHIPPED_ROW_HEIGHT_PX,
     groups: ["Workspace", "Account"],
+    subgroups: [],
     items: [
       ["/guardian/dashboard", "Dashboard"],
       ["/guardian/dashboard/hire", "Hire a tutor"],

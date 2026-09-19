@@ -15,6 +15,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -26,10 +28,11 @@ import {
   sidebarGroupSlotId,
   sidebarHeightSlotId,
   sidebarPaddingSlotId,
+  sidebarSubgroupSlotId,
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { Bell, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
+import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -57,7 +60,33 @@ export type DashboardNavigationItem = {
   requiresSignOut?: boolean;
   /** Things waiting on this screen - drawn as a count beside the label, never as 0. */
   badge?: number;
+  /**
+   * Puts the item under a collapsible row. Consecutive items with the same
+   * subgroup label share one row; the row has no page of its own, it opens and
+   * closes. Its label is a site-content slot, like a section heading.
+   */
+  subgroup?: { label: string; icon: LucideIcon };
 };
+
+export type NavigationRow<Item extends { subgroup?: { label: string } }> =
+  | { kind: "item"; item: Item; index: number }
+  | { kind: "subgroup"; subgroup: NonNullable<Item["subgroup"]>; members: Array<{ item: Item; index: number }> };
+
+/** Folds a run of items that share a subgroup into one row, keeping every other item as it is. */
+export function groupNavigationRows<Item extends { subgroup?: { label: string } }>(items: Item[]): NavigationRow<Item>[] {
+  const rows: NavigationRow<Item>[] = [];
+  items.forEach((item, index) => {
+    const last = rows[rows.length - 1];
+    if (item.subgroup && last?.kind === "subgroup" && last.subgroup.label === item.subgroup.label) {
+      last.members.push({ item, index });
+    } else if (item.subgroup) {
+      rows.push({ kind: "subgroup", subgroup: item.subgroup as NonNullable<Item["subgroup"]>, members: [{ item, index }] });
+    } else {
+      rows.push({ kind: "item", item, index });
+    }
+  });
+  return rows;
+}
 
 const defaultMenuItems: DashboardNavigationItem[] = [
   { icon: LayoutDashboard, label: "Page 1", path: "/" },
@@ -308,6 +337,9 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const [pendingPanelExit, setPendingPanelExit] = useState<DashboardNavigationItem | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  // A collapsible row is open while it holds the current page, unless it was
+  // closed by hand; a row opened by hand stays open when the page moves on.
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = getActiveNavigationItem(navigationItems, location);
   const isMobile = useIsMobile();
@@ -415,40 +447,78 @@ function DashboardLayoutContent({
             {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
 
             <SidebarMenu className="gap-0.5 px-2 py-3">
-              {navigationItems.map((item, index) => {
-                const isActive = item.path === activeMenuItem?.path;
-                const previousSection = navigationItems[index - 1]?.sectionLabel;
-                const showSectionLabel = Boolean(item.sectionLabel && item.sectionLabel !== previousSection);
-                // Resolved through one lookup rather than a hook per item, and
-                // used as a string so the tooltip renames along with the label.
-                const label = sidebarPanel ? resolveSlot(sidebarTabsSlotId(sidebarPanel, item.path), item.label) : item.label;
-                return (
-                  <SidebarMenuItem key={`${item.path}-${item.label}`}>
-                    {item.dividerBefore ? <div className="mx-2 my-2.5 h-px bg-[#eaf0f5] group-data-[collapsible=icon]:mx-0" /> : null}
-                    {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-2xs font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
-                      {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, item.sectionLabel!), item.sectionLabel!) : item.sectionLabel}
-                    </p> : null}
-                    <SidebarMenuButton
-                      isActive={item.action ? false : isActive}
-                      onClick={() => handleNavigation(item)}
-                      tooltip={label}
-                      aria-current={isActive && !item.action ? "page" : undefined}
-                      className={getDashboardNavigationItemClassName(isActive && !item.action)}
-                      // Height is spread last: it is the more specific ask, so
-                      // an Owner who sets both height and padding gets the
-                      // literal number they typed for height, not the `auto`
-                      // that setting padding alone would otherwise produce.
-                      style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
-                      />
-                      <span>{label}</span>
-                      {item.badge ? <span aria-label={`${item.badge} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
-                      {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
+              {groupNavigationRows(navigationItems).map(row => {
+                const first = row.kind === "item" ? row : row.members[0];
+                const previousSection = navigationItems[first.index - 1]?.sectionLabel;
+                const showSectionLabel = Boolean(first.item.sectionLabel && first.item.sectionLabel !== previousSection);
+                const heading = <>
+                  {first.item.dividerBefore ? <div className="mx-2 my-2.5 h-px bg-[#eaf0f5] group-data-[collapsible=icon]:mx-0" /> : null}
+                  {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-2xs font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
+                    {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, first.item.sectionLabel!), first.item.sectionLabel!) : first.item.sectionLabel}
+                  </p> : null}
+                </>;
+
+                // One menu button. Resolved through one lookup rather than a hook
+                // per item, and used as a string so the tooltip renames along
+                // with the label.
+                const renderLeaf = (item: DashboardNavigationItem) => {
+                  const isActive = item.path === activeMenuItem?.path;
+                  const label = sidebarPanel ? resolveSlot(sidebarTabsSlotId(sidebarPanel, item.path), item.label) : item.label;
+                  return <SidebarMenuButton
+                    isActive={item.action ? false : isActive}
+                    onClick={() => handleNavigation(item)}
+                    tooltip={label}
+                    aria-current={isActive && !item.action ? "page" : undefined}
+                    className={getDashboardNavigationItemClassName(isActive && !item.action)}
+                    // Height is spread last: it is the more specific ask, so
+                    // an Owner who sets both height and padding gets the
+                    // literal number they typed for height, not the `auto`
+                    // that setting padding alone would otherwise produce.
+                    style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
+                  >
+                    <item.icon
+                      className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
+                    />
+                    <span>{label}</span>
+                    {item.badge ? <span aria-label={`${item.badge} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                    {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
+                  </SidebarMenuButton>;
+                };
+
+                if (row.kind === "item") {
+                  return <SidebarMenuItem key={`${row.item.path}-${row.item.label}`}>{heading}{renderLeaf(row.item)}</SidebarMenuItem>;
+                }
+
+                const groupKey = row.subgroup.label;
+                const containsActive = row.members.some(member => member.item.path === activeMenuItem?.path);
+                const open = expandedGroups[groupKey] ?? containsActive;
+                const waiting = row.members.reduce((total, member) => total + (member.item.badge ?? 0), 0);
+                const groupLabel = sidebarPanel ? resolveSlot(sidebarSubgroupSlotId(sidebarPanel, groupKey), groupKey) : groupKey;
+                const listId = `nav-group-${groupKey.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+                return <SidebarMenuItem key={`group-${groupKey}`}>
+                  {heading}
+                  <SidebarMenuButton
+                    isActive={false}
+                    aria-expanded={open}
+                    aria-controls={open ? listId : undefined}
+                    tooltip={groupLabel}
+                    // A collapsed sidebar has no room for the list, so the row goes to its first page instead.
+                    onClick={() => {
+                      if (isCollapsed) handleNavigation(row.members[0].item);
+                      else setExpandedGroups(current => ({ ...current, [groupKey]: !open }));
+                    }}
+                    className={getDashboardNavigationItemClassName(false) + (containsActive && !open ? " font-semibold !text-j-accent" : "")}
+                    style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
+                  >
+                    <row.subgroup.icon className={`h-4 w-4 shrink-0 ${containsActive ? "text-j-accent" : "text-[#8ba1b2]"}`} />
+                    <span>{groupLabel}</span>
+                    {!open && waiting ? <span aria-label={`${waiting} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{waiting > 99 ? "99+" : waiting}</span> : null}
+                    <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 text-[#8ba1b2] transition-transform duration-200 motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
+                  </SidebarMenuButton>
+                  {open ? <SidebarMenuSub id={listId} aria-label={groupLabel} className="mt-0.5">
+                    {row.members.map(member => <SidebarMenuSubItem key={member.item.path}>{renderLeaf(member.item)}</SidebarMenuSubItem>)}
+                  </SidebarMenuSub> : null}
+                </SidebarMenuItem>;
               })}
             </SidebarMenu>
           </SidebarContent>

@@ -15,6 +15,7 @@ import {
   sidebarHeightSlotId,
   sidebarPaddingSlotId,
   sidebarPanels,
+  sidebarSubgroupSlotId,
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
@@ -278,6 +279,15 @@ const sidebarTabsSlots: SiteContentSlot[] = sidebarPanels.flatMap(panel => [
     label: heading,
     defaultText: heading,
     defaultTextClass: "text-xs" as const,
+  })),
+  ...panel.subgroups.map(subgroup => ({
+    id: sidebarSubgroupSlotId(panel.id, subgroup),
+    page: "sidebar-tabs" as const,
+    surface: panel.surface,
+    group: "Collapsible rows",
+    label: subgroup,
+    defaultText: subgroup,
+    defaultTextClass: "text-sm" as const,
   })),
   ...panel.items.map(([path, label]) => ({
     id: sidebarTabsSlotId(panel.id, path),

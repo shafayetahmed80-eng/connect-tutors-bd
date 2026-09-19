@@ -26,6 +26,8 @@ vi.mock("@/lib/trpc", () => ({
       getWorkspaceAccess: {
         useQuery: () => ({ data: state.ownerLoading ? undefined : { userId: state.accessUserId, isOwner: state.isOwner }, isLoading: state.ownerLoading, isFetching: state.fetching || state.ownerLoading, refetch: state.refetch }),
       },
+      // The Guardian Requests rows in the sidebar.
+      guardianRequestCounts: { useQuery: () => ({ data: { shortlist: 3, appoint: 2, confirm: 0, cancel: 1 } }) },
     },
     auth: { logout: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } },
     // The sidebar's account block.
@@ -138,5 +140,39 @@ describe("Dynamic Section content page", () => {
     expect(screen.getByText(/Verifying Owner access/)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Owner access required" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Tutor Profile" })).toBeNull();
+  });
+});
+
+describe("the collapsible sidebar rows", () => {
+  it("keeps Guardian Requests shut with the waiting count on it, and opens it on a click", () => {
+    window.history.replaceState(null, "", "/admin/dashboard");
+    renderPage();
+
+    const row = screen.getByRole("button", { name: /Guardian Requests/ });
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    // Appoint 2 + Cancel 1 wait for an answer; the shortlist is a signal, so it is not counted.
+    expect(row.textContent).toContain("3");
+    expect(screen.queryByRole("button", { name: /Appoint Requests/ })).toBeNull();
+
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("true");
+    const list = screen.getByRole("list", { name: "Guardian Requests" });
+    expect(Array.from(list.querySelectorAll("button")).map(button => button.textContent?.replace(/\d+$/, ""))).toEqual([
+      "Shortlist Requests", "Appoint Requests", "Confirm Requests", "Cancel Requests",
+    ]);
+    expect(screen.getByRole("button", { name: /Appoint Requests/ }).textContent).toContain("2");
+    expect(row.textContent).not.toContain("3");
+
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("opens the row that holds the current page, and marks the page", () => {
+    window.history.replaceState(null, "", "/admin/dynamic/home");
+    renderPage();
+
+    expect(screen.getByRole("button", { name: /Site content/ }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Home page" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: /Option lists/ }).getAttribute("aria-expanded")).toBe("false");
   });
 });
