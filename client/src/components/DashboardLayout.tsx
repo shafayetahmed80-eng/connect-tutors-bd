@@ -189,10 +189,12 @@ export function getActiveNavigationItem<Item extends { path: string; action?: st
 }
 
 export function getDashboardNavigationItemClassName(isActive: boolean) {
-  const shared = "relative h-[38px] rounded-lg px-3 transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1 motion-reduce:transition-none";
+  // The colours come from the sidebar's tokens (`.sb-*` in index.css), so the
+  // three panels share one set of classes and differ only by accent.
+  const shared = "sb-item relative h-[38px] rounded-lg px-3 transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1 motion-reduce:transition-none";
   return isActive
-    ? `${shared} !bg-[#f1f8fe] font-semibold !text-j-accent before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-j-accent before:content-['']`
-    : `${shared} font-medium text-[#527086] hover:bg-[#f1f5f9] hover:text-[#2b4d66]`;
+    ? `${shared} sb-item-active font-semibold before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:content-['']`
+    : `${shared} font-medium`;
 }
 
 export function closeMobileSidebarAfterNavigation(
@@ -422,7 +424,7 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
           <Sidebar
             collapsible="icon"
-            className={`border-r border-[#e6eef4] bg-[#fbfdff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
+            className={`sb-root sb-panel-${sidebarPanel ?? "admin"} border-r border-[var(--sb-border)] bg-[#f8fbff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             disableTransition={isResizing}
           >
           {/* Header, identity, and nav all live inside the one scroll region,
@@ -453,7 +455,7 @@ function DashboardLayoutContent({
                 const showSectionLabel = Boolean(first.item.sectionLabel && first.item.sectionLabel !== previousSection);
                 const heading = <>
                   {first.item.dividerBefore ? <div className="mx-2 my-2.5 h-px bg-[#eaf0f5] group-data-[collapsible=icon]:mx-0" /> : null}
-                  {showSectionLabel ? <p className="px-3 pb-1.5 pt-4 text-2xs font-semibold uppercase tracking-[0.12em] text-[#93a8b8] group-data-[collapsible=icon]:sr-only">
+                  {showSectionLabel ? <p className="sb-heading px-3 pb-1.5 pt-4 text-2xs font-semibold uppercase tracking-[0.12em] group-data-[collapsible=icon]:sr-only">
                     {sidebarPanel ? resolveSlot(sidebarGroupSlotId(sidebarPanel, first.item.sectionLabel!), first.item.sectionLabel!) : first.item.sectionLabel}
                   </p> : null}
                 </>;
@@ -477,10 +479,10 @@ function DashboardLayoutContent({
                     style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
                   >
                     <item.icon
-                      className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "text-j-accent" : "text-[#8ba1b2]"}`}
+                      className={`h-4 w-4 shrink-0 ${isActive && !item.action ? "sb-icon-active" : "sb-icon"}`}
                     />
                     <span>{label}</span>
-                    {item.badge ? <span aria-label={`${item.badge} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                    {item.badge ? <span aria-label={`${item.badge} waiting`} className="sb-badge ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden">{item.badge > 99 ? "99+" : item.badge}</span> : null}
                     {item.planned ? <span className="ml-auto rounded-full bg-[#eef2f6] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-[#8397a6] group-data-[collapsible=icon]:hidden">Soon</span> : null}
                   </SidebarMenuButton>;
                 };
@@ -507,13 +509,13 @@ function DashboardLayoutContent({
                       if (isCollapsed) handleNavigation(row.members[0].item);
                       else setExpandedGroups(current => ({ ...current, [groupKey]: !open }));
                     }}
-                    className={getDashboardNavigationItemClassName(false) + (containsActive && !open ? " font-semibold !text-j-accent" : "")}
+                    className={getDashboardNavigationItemClassName(false) + (containsActive && !open ? " sb-item-current font-semibold" : "")}
                     style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
                   >
-                    <row.subgroup.icon className={`h-4 w-4 shrink-0 ${containsActive ? "text-j-accent" : "text-[#8ba1b2]"}`} />
+                    <row.subgroup.icon className={`h-4 w-4 shrink-0 ${containsActive ? "sb-icon-active" : "sb-icon"}`} />
                     <span>{groupLabel}</span>
-                    {!open && waiting ? <span aria-label={`${waiting} waiting`} className="ml-auto min-w-5 rounded-full bg-[#1677e8] px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums text-white group-data-[collapsible=icon]:hidden">{waiting > 99 ? "99+" : waiting}</span> : null}
-                    <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 text-[#8ba1b2] transition-transform duration-200 motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
+                    {!open && waiting ? <span aria-label={`${waiting} waiting`} className="sb-badge ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden">{waiting > 99 ? "99+" : waiting}</span> : null}
+                    <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 sb-icon transition-transform duration-200 motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
                   </SidebarMenuButton>
                   {open ? <SidebarMenuSub id={listId} aria-label={groupLabel} className="mt-0.5">
                     {row.members.map(member => <SidebarMenuSubItem key={member.item.path}>{renderLeaf(member.item)}</SidebarMenuSubItem>)}

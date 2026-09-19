@@ -118,8 +118,8 @@ function formatAdminDate(value?: Date | string | null) {
 function AdminSidebarIdentity({ photoUrl }: { photoUrl: string | null }) {
   const profile = trpc.adminProfile.me.useQuery().data;
   const name = profile?.name || "Admin";
-  return <div className="rounded-xl bg-[#f4f9fd] p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Admin account identity">
-    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#1677c8] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">
+  return <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Admin account identity">
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-accent-strong)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">
       {photoUrl ? <img src={photoUrl} alt="Admin profile photo" className="size-full object-cover" /> : getDashboardAvatarInitials(name, "A")}
     </div>
     <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
