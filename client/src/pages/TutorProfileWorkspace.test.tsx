@@ -769,7 +769,7 @@ describe("Permanent Address and the Availability choices", () => {
 
   it("asks for the Permanent Address in Personal Information, required, and saves it", async () => {
     const user = userEvent.setup({ document: window.document });
-    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { ...completeProfile.privateDetails, permanentAddress: "" } }} onboardingFallback={null} />);
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { permanentAddress: "" } }} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
     const dialog = screen.getByRole("dialog");
