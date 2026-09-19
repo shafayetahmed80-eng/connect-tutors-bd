@@ -90,6 +90,8 @@ export const guardianRequestNotificationTypeValues = [
   "confirmation_letter_issued",
   /** An Admin verified the Guardian's profile, or did not; carries no tuition. */
   "verification",
+  /** An Admin decided a name, mobile or account change the Guardian asked for from Settings. */
+  "account_change",
 ] as const;
 export type GuardianRequestNotificationType = (typeof guardianRequestNotificationTypeValues)[number];
 
@@ -1424,6 +1426,8 @@ export const tutorNotificationTypeValues = [
   "interest_decision",
   "appointment",
   "confirmation_letter",
+  /** An Admin decided a name, mobile or account change the Tutor asked for from Settings. */
+  "account_change",
 ] as const;
 export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
 

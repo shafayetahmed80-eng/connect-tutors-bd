@@ -33,6 +33,8 @@ vi.mock("@/lib/trpc", () => ({
       me: { useQuery: () => ({ data: { name: "Owner Admin", email: "owner@example.com", loginId: "owner", isOwner: state.isOwner, accountCreatedAt: "2026-09-01T00:00:00.000Z" } }) },
       photo: { useQuery: () => ({ data: { photoUrl: null } }) },
     },
+    // The sidebar's Change requests count.
+    accountChanges: { pendingCount: { useQuery: () => ({ data: 0 }) } },
     // The dashboard sidebar reads its Admin-editable labels through this.
     siteContent: {
       list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },

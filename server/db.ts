@@ -8,8 +8,9 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
-import type { AccountChangeType } from "@shared/account-change-requests";
-import type { AccountChangeContext } from "./account-change-requests";
+import type { AccountChangeRole, AccountChangeStatus, AccountChangeType } from "@shared/account-change-requests";
+import { accountChangeDecisionNotice, type AccountChangeContext, type AccountChangeDecisionRefusal } from "./account-change-requests";
+import { alias } from "drizzle-orm/mysql-core";
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
@@ -831,32 +832,40 @@ export async function setGuardianVerification(input: {
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
-    const now = new Date();
-    const result = await tx
-      .update(guardianProfiles)
-      .set({
-        verificationStatus: input.status,
-        verificationRejectionReason: input.status === "rejected" ? (input.reason?.trim() || null) : null,
-        verifiedByAdminId: input.adminUserId,
-        verifiedAt: now,
-      })
-      .where(eq(guardianProfiles.userId, input.guardianUserId));
-    const updated = Boolean(result[0]?.affectedRows);
-    // The Guardian hears the decision. One notice per Guardian, refreshed by each new decision.
-    const notice = updated ? guardianVerificationNotice(input.status) : null;
-    if (notice) {
-      const values = { ...notice, actionPath: "/guardian/dashboard/profile" };
-      await tx.insert(guardianRequestNotifications).values({
-        guardianUserId: input.guardianUserId,
-        tutorRequestId: null,
-        type: "verification",
-        ...values,
-        deduplicationKey: `verification:${input.guardianUserId}`,
-      }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
-    }
-    return { updated };
-  });
+  return database.transaction(async tx => setGuardianVerificationInTx(tx, { ...input, now: new Date() }));
+}
+
+async function setGuardianVerificationInTx(tx: any, input: {
+  guardianUserId: number;
+  status: "unverified" | "verified" | "rejected";
+  reason?: string | null;
+  adminUserId: number;
+  now: Date;
+}) {
+  const now = input.now;
+  const result = await tx
+    .update(guardianProfiles)
+    .set({
+      verificationStatus: input.status,
+      verificationRejectionReason: input.status === "rejected" ? (input.reason?.trim() || null) : null,
+      verifiedByAdminId: input.adminUserId,
+      verifiedAt: now,
+    })
+    .where(eq(guardianProfiles.userId, input.guardianUserId));
+  const updated = Boolean(result[0]?.affectedRows);
+  // The Guardian hears the decision. One notice per Guardian, refreshed by each new decision.
+  const notice = updated ? guardianVerificationNotice(input.status) : null;
+  if (notice) {
+    const values = { ...notice, actionPath: "/guardian/dashboard/profile" };
+    await tx.insert(guardianRequestNotifications).values({
+      guardianUserId: input.guardianUserId,
+      tutorRequestId: null,
+      type: "verification",
+      ...values,
+      deduplicationKey: `verification:${input.guardianUserId}`,
+    }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
+  }
+  return { updated };
 }
 
 /**
@@ -2499,7 +2508,7 @@ export async function markAllTutorNotificationsRead(input: { tutorId: string }) 
 /** One decision, one row. A repeat of the same decision refreshes it rather than piling up. */
 async function createTutorNotification(tx: any, input: {
   tutorId: string;
-  type: "profile_moderation" | "interest_decision" | "appointment" | "confirmation_letter";
+  type: "profile_moderation" | "interest_decision" | "appointment" | "confirmation_letter" | "account_change";
   title: string;
   message: string;
   actionPath: string;
@@ -4485,7 +4494,6 @@ export async function getAccountChangeContextByUserId(userId: number): Promise<A
     .select({ type: accountChangeRequests.type })
     .from(accountChangeRequests)
     .where(and(eq(accountChangeRequests.userId, userId), eq(accountChangeRequests.status, "pending")));
-  const heldStages = or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed"))!;
 
   if (role === "guardian") {
     const [profile] = await database
@@ -4493,23 +4501,18 @@ export async function getAccountChangeContextByUserId(userId: number): Promise<A
       .from(guardianProfiles)
       .where(eq(guardianProfiles.userId, userId))
       .limit(1);
-    const [live] = await database.select({ id: tutorRequests.id }).from(tutorRequests)
-      .where(and(eq(tutorRequests.guardianUserId, userId), heldStages)).limit(1);
     return {
       role, isOwner: false, currentName: account.name, currentMobile: profile?.phone ?? account.loginPhone ?? null,
       waitingTypes: waiting.map(row => row.type),
       verification: { status: profile?.status ?? "unverified", nidFrontUploaded: Boolean(profile?.front), nidBackUploaded: Boolean(profile?.back) },
-      liveTuition: Boolean(live),
+      liveTuition: await accountHasLiveTuition(database, role, userId),
     };
   }
   if (role === "tutor") {
     const [tutor] = await database.select({ id: tutors.id, name: tutors.name, phone: tutors.phone }).from(tutors).where(eq(tutors.userId, userId)).limit(1);
-    const [live] = tutor
-      ? await database.select({ id: tutorRequests.id }).from(tutorRequests).where(and(eq(tutorRequests.tutorId, tutor.id), heldStages)).limit(1)
-      : [];
     return {
       role, isOwner: false, currentName: tutor?.name ?? account.name, currentMobile: tutor?.phone ?? account.loginPhone ?? null,
-      waitingTypes: waiting.map(row => row.type), liveTuition: Boolean(live),
+      waitingTypes: waiting.map(row => row.type), liveTuition: await accountHasLiveTuition(database, role, userId),
     };
   }
   const [adminProfile] = await database.select({ phone: adminProfiles.phone }).from(adminProfiles).where(eq(adminProfiles.userId, userId)).limit(1);
@@ -4517,6 +4520,26 @@ export async function getAccountChangeContextByUserId(userId: number): Promise<A
     role, isOwner: account.openId === ENV.ownerOpenId, currentName: account.name, currentMobile: adminProfile?.phone ?? null,
     waitingTypes: waiting.map(row => row.type), liveTuition: false,
   };
+}
+
+/**
+ * Whether an Appointed or Confirmed tuition still runs on the account: one a
+ * Guardian owns, or one a Tutor holds. An Admin holds none.
+ */
+async function accountHasLiveTuition(executor: any, role: AccountChangeRole, userId: number) {
+  const heldStages = or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed"))!;
+  if (role === "guardian") {
+    const [live] = await executor.select({ id: tutorRequests.id }).from(tutorRequests)
+      .where(and(eq(tutorRequests.guardianUserId, userId), heldStages)).limit(1);
+    return Boolean(live);
+  }
+  if (role === "tutor") {
+    const [live] = await executor.select({ id: tutorRequests.id }).from(tutorRequests)
+      .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
+      .where(and(eq(tutors.userId, userId), heldStages)).limit(1);
+    return Boolean(live);
+  }
+  return false;
 }
 
 /**
@@ -4590,6 +4613,164 @@ export async function withdrawAccountChangeRequest(input: { userId: number; type
     .set({ status: "withdrawn", decidedAt: new Date() })
     .where(and(eq(accountChangeRequests.userId, input.userId), eq(accountChangeRequests.type, input.type), eq(accountChangeRequests.status, "pending")));
   return { withdrawn: Boolean(result[0].affectedRows) };
+}
+
+/**
+ * The Admin panel's Change requests queue: one status at a time, newest
+ * first, with the count of every status under the same panel and type
+ * filters. Another Admin's requests are the Project Owner's alone, so they
+ * are left out of everyone else's queue - rows and counts both.
+ */
+export async function listAccountChangeRequestsForAdmin(input: {
+  status: Exclude<AccountChangeStatus, "withdrawn">;
+  role: AccountChangeRole | "all";
+  type: AccountChangeType | "all";
+  includeAdminRequests: boolean;
+  userId?: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const decider = alias(users, "decider");
+  const filters = [
+    input.role === "all" ? undefined : eq(accountChangeRequests.role, input.role),
+    input.type === "all" ? undefined : eq(accountChangeRequests.type, input.type),
+    input.includeAdminRequests ? undefined : ne(accountChangeRequests.role, "admin"),
+    input.userId ? eq(accountChangeRequests.userId, input.userId) : undefined,
+  ].filter(Boolean) as SQL[];
+
+  const items = await database
+    .select({
+      id: accountChangeRequests.id,
+      userId: accountChangeRequests.userId,
+      role: accountChangeRequests.role,
+      type: accountChangeRequests.type,
+      status: accountChangeRequests.status,
+      currentValue: accountChangeRequests.currentValue,
+      requestedValue: accountChangeRequests.requestedValue,
+      reason: accountChangeRequests.reason,
+      declineReason: accountChangeRequests.declineReason,
+      createdAt: accountChangeRequests.createdAt,
+      decidedAt: accountChangeRequests.decidedAt,
+      accountName: users.name,
+      accountStatus: users.accountStatus,
+      tutorId: tutors.id,
+      tutorNumber: tutorRegistrations.tutorNumber,
+      guardianId: guardianProfiles.guardianId,
+      decidedByName: decider.name,
+    })
+    .from(accountChangeRequests)
+    .innerJoin(users, eq(users.id, accountChangeRequests.userId))
+    .leftJoin(tutors, eq(tutors.userId, accountChangeRequests.userId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, accountChangeRequests.userId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, accountChangeRequests.userId))
+    .leftJoin(decider, eq(decider.id, accountChangeRequests.decidedByUserId))
+    .where(and(eq(accountChangeRequests.status, input.status), ...filters))
+    .orderBy(input.status === "pending" ? asc(accountChangeRequests.id) : desc(accountChangeRequests.decidedAt), desc(accountChangeRequests.id))
+    .limit(200);
+
+  const grouped = await database
+    .select({ status: accountChangeRequests.status, total: count() })
+    .from(accountChangeRequests)
+    .where(filters.length ? and(...filters) : undefined)
+    .groupBy(accountChangeRequests.status);
+  const counts = { pending: 0, approved: 0, declined: 0 };
+  for (const row of grouped) if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.total);
+  return { items, counts };
+}
+
+/** How many requests wait for this Admin - the sidebar's badge. */
+export async function countPendingAccountChangeRequests(input: { includeAdminRequests: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ total: count() })
+    .from(accountChangeRequests)
+    .where(and(eq(accountChangeRequests.status, "pending"), input.includeAdminRequests ? undefined : ne(accountChangeRequests.role, "admin")));
+  return Number(row?.total ?? 0);
+}
+
+/**
+ * An Admin's answer to a change request, made in one transaction with the
+ * request row locked, so two Admins cannot both answer it.
+ *
+ * Approving makes the change: a name on the account (and on a Tutor's
+ * profile), a mobile number on the profile and as the sign-in number -
+ * checked again, since another account may have taken it while the request
+ * waited - a Guardian's verification, or closing the account, which is
+ * refused while a tuition still runs. A closed Admin also loses the Admin
+ * role. Declining keeps the reason; a declined verification marks the
+ * Guardian's profile not approved, with that reason, as the verification
+ * control in Guardian activity does.
+ */
+export async function decideAccountChangeRequest(input: {
+  requestId: number;
+  adminUserId: number;
+  isOwner: boolean;
+  decision: "approve" | "decline";
+  declineReason?: string | null;
+}): Promise<{ outcome: "decided"; status: "approved" | "declined" } | { outcome: "refused"; reason: AccountChangeDecisionRefusal }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [request] = await tx.select().from(accountChangeRequests).where(eq(accountChangeRequests.id, input.requestId)).limit(1).for("update");
+    if (!request) return { outcome: "refused" as const, reason: "not_found" as const };
+    if (request.status !== "pending") return { outcome: "refused" as const, reason: "already_decided" as const };
+    if (request.role === "admin" && !input.isOwner) return { outcome: "refused" as const, reason: "owner_only" as const };
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, request.userId)).limit(1).for("update");
+
+    const now = new Date();
+    const userId = request.userId;
+    const value = request.requestedValue;
+    const declineReason = input.declineReason?.trim() || null;
+
+    if (input.decision === "decline") {
+      if (!declineReason || declineReason.length < 3) return { outcome: "refused" as const, reason: "decline_reason_required" as const };
+      if (request.type === "verification") await setGuardianVerificationInTx(tx, { guardianUserId: userId, status: "rejected", reason: declineReason, adminUserId: input.adminUserId, now });
+    } else if (request.type === "name" && value) {
+      await tx.update(users).set({ name: value }).where(eq(users.id, userId));
+      if (request.role === "tutor") await tx.update(tutors).set({ name: value }).where(eq(tutors.userId, userId));
+    } else if (request.type === "mobile" && value) {
+      if (request.role === "admin") {
+        await tx.insert(adminProfiles).values({ userId, phone: value }).onDuplicateKeyUpdate({ set: { phone: value } });
+      } else {
+        const [other] = await tx.select({ id: users.id }).from(users)
+          .where(and(eq(users.role, request.role), eq(users.loginPhone, value), ne(users.id, userId))).limit(1);
+        if (other) return { outcome: "refused" as const, reason: "mobile_taken" as const };
+        await tx.update(users).set({ loginPhone: value }).where(eq(users.id, userId));
+        if (request.role === "guardian") await tx.update(guardianProfiles).set({ phone: value }).where(eq(guardianProfiles.userId, userId));
+        else await tx.update(tutors).set({ phone: value }).where(eq(tutors.userId, userId));
+      }
+    } else if (request.type === "verification") {
+      const [profile] = await tx.select({ front: guardianProfiles.nidFrontKey, back: guardianProfiles.nidBackKey })
+        .from(guardianProfiles).where(eq(guardianProfiles.userId, userId)).limit(1);
+      if (!profile?.front || !profile.back) return { outcome: "refused" as const, reason: "nid_missing" as const };
+      await setGuardianVerificationInTx(tx, { guardianUserId: userId, status: "verified", adminUserId: input.adminUserId, now });
+    } else if (request.type === "close_account") {
+      if (await accountHasLiveTuition(tx, request.role, userId)) return { outcome: "refused" as const, reason: "live_tuition" as const };
+      await tx.update(users).set(request.role === "admin" ? { accountStatus: "closed", role: "user" } : { accountStatus: "closed" }).where(eq(users.id, userId));
+      // Nothing else it asked for can happen to a closed account.
+      await tx.update(accountChangeRequests).set({ status: "withdrawn", decidedAt: now })
+        .where(and(eq(accountChangeRequests.userId, userId), eq(accountChangeRequests.status, "pending"), ne(accountChangeRequests.id, request.id)));
+    }
+
+    const status = input.decision === "approve" ? "approved" as const : "declined" as const;
+    await tx.update(accountChangeRequests)
+      .set({ status, declineReason: status === "declined" ? declineReason : null, decidedByUserId: input.adminUserId, decidedAt: now })
+      .where(eq(accountChangeRequests.id, request.id));
+
+    const notice = accountChangeDecisionNotice({ type: request.type, decision: input.decision, requestedValue: value, declineReason });
+    if (notice && request.role === "guardian") {
+      const values = { ...notice, actionPath: "/guardian/dashboard/settings" };
+      await tx.insert(guardianRequestNotifications).values({
+        guardianUserId: userId, tutorRequestId: null, type: "account_change", ...values, deduplicationKey: "account-change:" + request.id,
+      }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
+    }
+    if (notice && request.role === "tutor") {
+      const [tutor] = await tx.select({ id: tutors.id }).from(tutors).where(eq(tutors.userId, userId)).limit(1);
+      if (tutor) await createTutorNotification(tx, { tutorId: tutor.id, type: "account_change", ...notice, actionPath: "/tutor/dashboard/settings", deduplicationKey: "account-change:" + request.id });
+    }
+    return { outcome: "decided" as const, status };
+  });
 }
 
 /** The Project Owner's own name and mobile, changed directly - nobody above them to ask. */
