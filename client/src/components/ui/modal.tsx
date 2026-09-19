@@ -57,6 +57,14 @@ function focusableWithin(root: HTMLElement | null): HTMLElement[] {
  * still read at 4.5:1, and every line keeps its drawn width however far a tall
  * phone sheet stretches the sketch.
  */
+/**
+ * The header and footer are their own bands: white on a laptop, a light ash on
+ * a phone, each closed off from the body by a hairline. A panel that draws the
+ * water behind everything (the Guardian journey) keeps them see-through.
+ */
+const modalBarClass = (seeThrough: boolean, side: "top" | "bottom") =>
+  seeThrough ? "bg-transparent" : cn("bg-white max-sm:bg-[#eef2f5]", side === "top" ? "border-b border-j-border" : "border-t border-j-border");
+
 function WaterSketch({ wideOnly = false }: { wideOnly?: boolean }) {
   const rings = [
     { rx: 34, dy: 0, width: 2.6, opacity: 0.8 },
@@ -241,7 +249,7 @@ export function ModalHeader({
   // bar across it: no surface of its own, a soft light rule, and the title and
   // close button in the water's deep blue so they stay clear on the wash.
   return (
-    <div className={cn("relative flex shrink-0 items-start justify-between gap-4 px-4 py-3 sm:px-5", decorated ? "bg-transparent" : "bg-background")}>
+    <div className={cn("relative flex shrink-0 items-start justify-between gap-4 px-4 py-3 sm:px-5", modalBarClass(decorated && !wideOnly, "top"))}>
       <div className="min-w-0">
         {eyebrow ? <p aria-hidden="true" className="text-2xs font-bold uppercase tracking-[0.14em] text-j-ink-faint">{eyebrow}</p> : null}
         {/* The space sits outside the hidden span: an accessible name is built
@@ -277,9 +285,9 @@ export function ModalFooter({ children }: { children: React.ReactNode }) {
   // A footer control sized for a mouse is too small for a thumb: on a phone
   // every one of them clears 40px, whatever height the caller asked for. On a
   // decorated panel it lets the water through, as the header does.
-  const { decorated } = useModalContext("ModalFooter");
+  const { decorated, wideOnly } = useModalContext("ModalFooter");
   return (
-    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", decorated ? "bg-transparent" : "bg-background")}>
+    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", modalBarClass(decorated && !wideOnly, "bottom"))}>
       {children}
     </div>
   );

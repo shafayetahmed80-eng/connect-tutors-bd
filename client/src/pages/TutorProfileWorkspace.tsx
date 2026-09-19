@@ -31,6 +31,7 @@ import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
+import { useIsMobile } from "@/hooks/useMobile";
 import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
 import { RecordIcon } from "@/components/recordIcons";
 import { defaultSiteLimits } from "@shared/site-limits";
@@ -84,7 +85,7 @@ function FormSection({ title, description, children }: { title?: React.ReactNode
  * The fieldsets these replace carried their own heavy border and a third label
  * style, so they read as a different kind of thing from the fields beside them.
  */
-function ChoiceGroup({ label, name, value, options, onChange, required = false, error }: {
+function ChoiceGroup({ label, name, value, options, onChange, required = false, error, dropdownOnWide = false }: {
   label: string;
   name: string;
   value: string;
@@ -92,7 +93,20 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
   onChange: (value: string) => void;
   required?: boolean;
   error?: string;
+  /** A laptop gets a dropdown; a phone keeps the tappable choice cards. */
+  dropdownOnWide?: boolean;
 }) {
+  const isMobile = useIsMobile();
+  if (dropdownOnWide && !isMobile) {
+    return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+      <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+      <select aria-label={label} aria-invalid={Boolean(error)} aria-required={required || undefined} value={value} onChange={event => onChange(event.target.value)} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
+        <option value="">Select…</option>
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+      <InlineError message={error} />
+    </label>;
+  }
   return <div role="radiogroup" aria-label={label} className={tutorProfileResponsiveClasses.fieldRoot}>
     <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
@@ -1043,6 +1057,7 @@ function TutorProfileWorkspaceBody({
       case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
       case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}<span aria-hidden="true" className="text-[#d84a4a]"> *</span></span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
       case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
+      case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />;
       case "privateDetails.socialProfileLinks": return <FormInput label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;
 
@@ -1089,8 +1104,8 @@ function TutorProfileWorkspaceBody({
       case "specialExpertise": return <FormTextArea label={fieldLabel(fieldId, "Special Expertise")} value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />;
       case "academicAchievement": return <FormTextArea label={fieldLabel(fieldId, "Academic Achievement")} value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />;
 
-      case "tuitionType": return <ChoiceGroup label={fieldLabel(fieldId, tutorProfileCopy.fields.tuitionType)} name="tuition-type" required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />;
-      case "preferredStudentGender": return <ChoiceGroup label={fieldLabel(fieldId, tutorProfileCopy.fields.preferredStudentGender)} name="student-gender" required value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />;
+      case "tuitionType": return <ChoiceGroup label={fieldLabel(fieldId, tutorProfileCopy.fields.tuitionType)} name="tuition-type" dropdownOnWide required value={form.tuitionType} onChange={value => update("tuitionType", value as TeachingProfileState["tuitionType"])} error={fieldErrors.tuitionType} options={[["home", "Home tuition"], ["online", "Online tuition"], ["both", "Both"]]} />;
+      case "preferredStudentGender": return <ChoiceGroup label={fieldLabel(fieldId, tutorProfileCopy.fields.preferredStudentGender)} name="student-gender" dropdownOnWide required value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />;
       case "preferredClassSizes": return <SearchableMultiSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.classSizes)} required options={[{ id: "one_to_one", label: "One-to-one" }, { id: "small_group", label: "Small group" }, { id: "group", label: "Group" }]} selectedIds={form.preferredClassSizes} onChange={value => update("preferredClassSizes", value)} emptyMessage="No class-size options found." error={fieldErrors.preferredClassSizes} />;
       case "preferredTeachingDays": return <SearchableMultiSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingDays)} required options={teachingDayOptions} selectedIds={selectedTeachingDayIds(form.preferredTeachingDays)} onChange={value => update("preferredTeachingDays", expandTeachingDayIds(value))} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />;
       case "preferredTimeSlots": return <SearchableMultiSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.timeSlots)} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />;

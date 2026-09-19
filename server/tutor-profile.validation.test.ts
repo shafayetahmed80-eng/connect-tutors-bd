@@ -179,6 +179,13 @@ describe("Tutor Profile domain validation", () => {
     }
   });
 
+  it("asks for the Permanent Address before review, unless the Owner makes it optional", () => {
+    const withoutAddress = { ...approvedExpandedSubmission, privateDetails: { ...approvedExpandedSubmission.privateDetails, permanentAddress: undefined } };
+    const result = tutorProfileSubmissionSchema.safeParse(withoutAddress);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map(issue => issue.path.join("."))).toContain("privateDetails.permanentAddress");
+  });
+
   it("deliberately rejects direct NID values until encryption and retention controls are implemented", () => {
     const result = tutorProfileDraftSchema.safeParse({
       privateDetails: {

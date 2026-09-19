@@ -70,6 +70,7 @@ export type PersistedTutorProfileForForm = {
 
 export type TutorProfilePrivateDetails = {
   additionalPhone?: string;
+  permanentAddress?: string;
   nationality?: string;
   religion?: string;
   socialProfileLinks?: string;
@@ -124,7 +125,7 @@ export type PersistedTutorEducationRecord = {
 };
 
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
-  additionalPhone: "", nationality: DEFAULT_TUTOR_NATIONALITY, religion: "", socialProfileLinks: "",
+  additionalPhone: "", permanentAddress: "", nationality: DEFAULT_TUTOR_NATIONALITY, religion: "", socialProfileLinks: "",
   fatherName: "", fatherPhone: "", motherName: "", motherPhone: "", emergencyContactName: "", emergencyContactRelation: "",
   emergencyContactPhone: "", emergencyContactAddress: "",
 });
@@ -391,10 +392,10 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     additionalNotes: optionalText(form.additionalNotes),
     privateDetails: {
       additionalPhone: form.privateDetails.additionalPhone?.trim() ?? "",
-      // The server keeps these two columns (existing rows are untouched); the
-      // form no longer collects them, so nothing is ever sent for them.
+      // Present address stays uncollected (the column is kept, untouched);
+      // the permanent address is asked for again.
       presentAddress: undefined,
-      permanentAddress: undefined,
+      permanentAddress: form.privateDetails.permanentAddress?.trim() ?? "",
       nationality: form.privateDetails.nationality?.trim() ?? "",
       religion: form.privateDetails.religion?.trim() ?? "",
       socialProfileLinks: form.privateDetails.socialProfileLinks?.trim() ?? "",
