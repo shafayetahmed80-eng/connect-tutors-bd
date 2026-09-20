@@ -332,7 +332,27 @@
 /* The panel's own controls - the collapse arrow, the scrollbar - follow its ink. */
 .sb-root .sb-toggle { color: var(--sb-soft); }
 .sb-root .sb-toggle:hover { background-color: var(--sb-hover-bg); color: var(--sb-text); }
-.sb-root { scrollbar-color: rgb(255 255 255 / 0.28) transparent; }
+/*
+ * The panel's scrollbar: a slim one in the panel's own tones on a laptop,
+ * and none at all on a phone, where the drawer is dragged rather than
+ * scrolled by a pointer - it still scrolls, it just draws no bar.
+ */
+.sb-root,
+.sb-root [data-sidebar="content"] { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.3) transparent; }
+.sb-root::-webkit-scrollbar,
+.sb-root ::-webkit-scrollbar { width: 6px; height: 6px; }
+.sb-root::-webkit-scrollbar-track,
+.sb-root ::-webkit-scrollbar-track { background: transparent; }
+.sb-root::-webkit-scrollbar-thumb,
+.sb-root ::-webkit-scrollbar-thumb { border-radius: 9999px; background-color: rgb(255 255 255 / 0.3); }
+.sb-root::-webkit-scrollbar-thumb:hover,
+.sb-root ::-webkit-scrollbar-thumb:hover { background-color: rgb(255 255 255 / 0.45); }
+@media (max-width: 767px) {
+  .sb-root,
+  .sb-root [data-sidebar="content"] { scrollbar-width: none; }
+  .sb-root::-webkit-scrollbar,
+  .sb-root ::-webkit-scrollbar { width: 0; height: 0; }
+}
 /* A row opens by height, its pages rising one after another. */
 .sb-root .sb-sub {
   display: grid;
