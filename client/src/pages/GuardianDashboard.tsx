@@ -116,13 +116,13 @@ function GuardianSidebarIdentity() {
   const photoUrl = photoQuery.data?.photoUrl ?? null;
   const name = profile?.name || "Guardian";
   return <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Guardian account identity">
-    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-accent-strong)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{photoUrl ? <img src={photoUrl} alt="Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-avatar-bg)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">{photoUrl ? <img src={photoUrl} alt="Guardian profile photo" className="size-full object-cover" /> : initials(name)}</div>
     <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
-      <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
-      <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>
-      <div className="mt-2.5 space-y-0.5 border-t border-[#dbe9f2] pt-2 text-2xs text-j-ink-soft">
-        <p><span className="font-bold text-j-ink">Guardian ID:</span> {profile?.guardianId || "Loading…"}</p>
-        <p><span className="font-bold text-j-ink">Created:</span> {formatGuardianDate(profile?.accountCreatedAt)}</p>
+      <p className="truncate text-sm font-extrabold text-white">{name}</p>
+      <p className="truncate text-xs text-[var(--sb-soft)]">{profile?.email || "Private account"}</p>
+      <div className="mt-2.5 space-y-0.5 border-t border-[var(--sb-card-border)] pt-2 text-2xs text-[var(--sb-soft)]">
+        <p><span className="font-bold text-white">Guardian ID:</span> {profile?.guardianId || "Loading…"}</p>
+        <p><span className="font-bold text-white">Created:</span> {formatGuardianDate(profile?.accountCreatedAt)}</p>
       </div>
     </div>
   </div>;

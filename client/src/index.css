@@ -254,78 +254,85 @@
 }
 
 /*
- * The three dashboard sidebars - "calm depth".
+ * The three dashboard sidebars - a filled panel, after the Owner's reference.
  *
- * One token set, three accent hues: Admin blue, Tutor teal, Guardian indigo.
- * Depth is layered soft elevation (the panel, the current page, the account
- * card), never a tilt or a bevel. Text tokens hold WCAG AA on the panel:
- * items 5.6:1, headings 4.9:1, the current page 4.7:1 or better on its tint.
- * Unlayered so these beat the shared Sidebar's utility classes without
- * `!important`. The Owner's font, padding and height dials are untouched.
+ * Each panel is its own deep colour (Admin blue, Tutor teal, Guardian indigo)
+ * with white text; the current page is a white pill carrying that colour as
+ * its ink, and it glides between pages. Every pair is measured: white on the
+ * lightest part of the panel is 6:1 or better, the soft tone 4.5:1, icons
+ * above 3:1, and the pill's ink 8.8:1 or better on white. Unlayered so these
+ * beat the shared Sidebar's utility classes without `!important`. The
+ * Owner's font, padding and height dials are untouched.
  */
 .sb-root {
-  --sb-border: #e3edf5;
-  --sb-text: #4b6478;
-  --sb-text-hover: #1f3b57;
-  --sb-heading: #546e84;
-  --sb-icon: #6f889b;
-  --sb-hover-bg: #eaf2fa;
-  --sb-guide: #dbe7f1;
-  --sb-accent: #1677e8;
-  --sb-accent-strong: #0f5fc2;
-  --sb-accent-tint: #eaf3ff;
-  --sb-accent-ring: #cfe2f7;
-  background-image: linear-gradient(180deg, #f8fbff 0%, #f1f7fd 100%);
-  box-shadow: 8px 0 24px -14px rgb(16 40 73 / 0.12);
+  --sb-panel-top: #0d5fae;
+  --sb-panel-bottom: #0a4c8c;
+  --sb-ink: #0b4b86;
+  --sb-text: #ffffff;
+  --sb-soft: #cfe0f5;
+  --sb-icon: #b6cfe9;
+  --sb-border: rgb(255 255 255 / 0.14);
+  --sb-hover-bg: rgb(255 255 255 / 0.14);
+  --sb-guide: rgb(255 255 255 / 0.22);
+  --sb-card-bg: rgb(255 255 255 / 0.12);
+  --sb-card-border: rgb(255 255 255 / 0.2);
+  --sb-avatar-bg: rgb(255 255 255 / 0.18);
+  background-color: var(--sb-panel-bottom);
+  background-image: linear-gradient(180deg, var(--sb-panel-top) 0%, var(--sb-panel-bottom) 100%);
+  box-shadow: 10px 0 28px -18px rgb(6 26 48 / 0.55);
 }
 .sb-panel-tutor {
-  --sb-accent: #0f9d8a;
-  --sb-accent-strong: #0b7a6b;
-  --sb-accent-tint: #e6f7f4;
-  --sb-accent-ring: #bfe6df;
+  --sb-panel-top: #0a6f61;
+  --sb-panel-bottom: #07524a;
+  --sb-ink: #075247;
+  --sb-soft: #cfe7e2;
+  --sb-icon: #b3d7d0;
 }
 .sb-panel-guardian {
-  --sb-accent: #5b6cf0;
-  --sb-accent-strong: #4453d4;
-  --sb-accent-tint: #eef0ff;
-  --sb-accent-ring: #d3d8fb;
+  --sb-panel-top: #3a47c4;
+  --sb-panel-bottom: #2c3795;
+  --sb-ink: #2c3795;
+  --sb-soft: #d6dbf7;
+  --sb-icon: #bcc4f0;
 }
+/* On a laptop the shared Sidebar paints its own pale surface inside this
+ * wrapper, which would cover the panel and leave white text on white. */
+.sb-root [data-sidebar="sidebar"] { background-color: transparent; }
 .sb-root .sb-item { color: var(--sb-text); }
-.sb-root .sb-item:hover { background-color: var(--sb-hover-bg); color: var(--sb-text-hover); }
-.sb-root .sb-item-current { color: var(--sb-accent-strong); }
-/* The current page: its text turns the accent; the pill itself is .sb-indicator, which glides. */
+.sb-root .sb-item:hover { background-color: var(--sb-hover-bg); color: var(--sb-text); }
+/* The current page: its ink is the panel's colour, on the white pill below it. */
 .sb-root .sb-item-active,
-.sb-root .sb-item-active:hover { color: var(--sb-accent-strong); background-color: transparent; }
+.sb-root .sb-item-active:hover { color: var(--sb-ink); background-color: transparent; }
 .sb-root .sb-item-active::before { display: none; }
+.sb-root .sb-item-current { color: var(--sb-text); }
 .sb-root .sb-indicator,
 [data-collapsible="icon"] .sb-root .sb-item-active,
 [data-collapsible="icon"].sb-root .sb-item-active {
-  background-color: var(--sb-accent-tint);
-  background-image: linear-gradient(180deg, #ffffff 0%, var(--sb-accent-tint) 100%);
-  box-shadow:
-    0 0 0 1px var(--sb-accent-ring),
-    0 1px 2px rgb(16 40 73 / 0.06),
-    0 8px 16px -10px color-mix(in srgb, var(--sb-accent) 55%, transparent);
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px rgb(6 26 48 / 0.18), 0 8px 18px -10px rgb(6 26 48 / 0.45);
 }
 .sb-root .sb-indicator {
   z-index: 0;
   border-radius: 0.5rem;
   transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), width 240ms cubic-bezier(0.23, 1, 0.32, 1), height 240ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.sb-root .sb-indicator::before,
-[data-collapsible="icon"] .sb-root .sb-item-active::before,
-[data-collapsible="icon"].sb-root .sb-item-active::before {
-  content: "";
-  display: block;
-  position: absolute;
-  left: 0;
-  top: 50%;
-  height: 18px;
-  width: 3px;
-  transform: translateY(-50%);
-  border-radius: 0 3px 3px 0;
-  background-color: var(--sb-accent);
+.sb-root .sb-heading { color: var(--sb-soft); }
+.sb-root .sb-icon { color: var(--sb-icon); }
+.sb-root .sb-icon-active { color: var(--sb-ink); }
+.sb-root [data-sidebar="menu-sub"] { border-color: var(--sb-guide); }
+/* A waiting count is a question to answer, so it stays amber on the panel. */
+.sb-root .sb-badge { background-color: #fef3c7; color: #92400e; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.35); }
+/* The account card: a lit pane of the panel itself, not a white box on it. */
+.sb-root .sb-card {
+  background-color: var(--sb-card-bg);
+  box-shadow: inset 0 0 0 1px var(--sb-card-border), inset 0 1px 0 rgb(255 255 255 / 0.18);
 }
+[data-collapsible="icon"] .sb-root .sb-card,
+[data-collapsible="icon"].sb-root .sb-card { background-color: transparent; box-shadow: none; }
+/* The panel's own controls - the collapse arrow, the scrollbar - follow its ink. */
+.sb-root .sb-toggle { color: var(--sb-soft); }
+.sb-root .sb-toggle:hover { background-color: var(--sb-hover-bg); color: var(--sb-text); }
+.sb-root { scrollbar-color: rgb(255 255 255 / 0.28) transparent; }
 /* A row opens by height, its pages rising one after another. */
 .sb-root .sb-sub {
   display: grid;
@@ -344,7 +351,7 @@
 .sb-root .sb-item:hover > svg:first-child { transform: translateX(1px); }
 .sb-root .sb-badge[data-pulse] { animation: sb-pulse 480ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes sb-rise { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@keyframes sb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.22); box-shadow: 0 0 0 4px rgb(253 230 138 / 0.55); } 100% { transform: scale(1); } }
+@keyframes sb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.22); box-shadow: 0 0 0 4px rgb(254 243 199 / 0.45); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
   .sb-root .sb-indicator,
   .sb-root .sb-sub,
@@ -352,28 +359,3 @@
   .sb-root .sb-badge,
   .sb-root .sb-item > svg:first-child { transition: none !important; animation: none !important; }
 }
-.sb-root .sb-heading { color: var(--sb-heading); }
-.sb-root .sb-icon { color: var(--sb-icon); }
-.sb-root .sb-icon-active { color: var(--sb-accent); }
-.sb-root [data-sidebar="menu-sub"] { border-color: var(--sb-guide); }
-/* A waiting count is a question to answer, so it reads as attention, not as brand. */
-.sb-root .sb-badge { background-color: #fef3c7; color: #92400e; box-shadow: 0 0 0 1px #fde68a; }
-/* The account card: a lifted sheet with an inner highlight and a thin accent at the top. */
-.sb-root .sb-card {
-  position: relative;
-  background-image: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%);
-  box-shadow: 0 0 0 1px #e1ebf4, inset 0 1px 0 #ffffff, 0 6px 14px -10px rgb(16 40 73 / 0.18);
-}
-.sb-root .sb-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 14px auto 14px;
-  height: 2px;
-  border-radius: 0 0 2px 2px;
-  background-color: var(--sb-accent);
-  opacity: 0.85;
-}
-[data-collapsible="icon"] .sb-root .sb-card,
-[data-collapsible="icon"].sb-root .sb-card { background-image: none; box-shadow: none; }
-[data-collapsible="icon"] .sb-root .sb-card::before,
-[data-collapsible="icon"].sb-root .sb-card::before { display: none; }

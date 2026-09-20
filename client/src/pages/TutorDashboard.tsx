@@ -118,16 +118,16 @@ function TutorSidebarIdentity({ identity }: { identity: ReturnType<typeof getTut
 
   return (
     <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
-      <Avatar className="mx-auto h-16 w-16 border-2 border-white shadow-sm group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:border">
+      <Avatar className="mx-auto h-16 w-16 border-2 border-white/60 shadow-sm group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:border">
         {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
-        <AvatarFallback className="bg-[var(--sb-accent-tint)] text-base font-bold text-[var(--sb-accent-strong)] group-data-[collapsible=icon]:text-2xs">{initials}</AvatarFallback>
+        <AvatarFallback className="bg-[var(--sb-avatar-bg)] text-base font-bold text-white group-data-[collapsible=icon]:text-2xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
-        <p className="truncate text-sm font-bold tracking-[-0.015em] text-j-ink">{identity.name}</p>
-        <p className="mt-0.5 truncate text-xs font-medium text-[#587489]">{identity.email}</p>
-        <div className="mt-2.5 space-y-0.5 border-t border-[#dcebf5] pt-2 text-2xs text-[#6c8799]">
-          <p className="flex items-center justify-center gap-1 font-bold text-j-ink">
-            <IdCard size={13} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
+        <p className="truncate text-sm font-bold tracking-[-0.015em] text-white">{identity.name}</p>
+        <p className="mt-0.5 truncate text-xs font-medium text-[var(--sb-soft)]">{identity.email}</p>
+        <div className="mt-2.5 space-y-0.5 border-t border-[var(--sb-card-border)] pt-2 text-2xs text-[var(--sb-soft)]">
+          <p className="flex items-center justify-center gap-1 font-bold text-white">
+            <IdCard size={13} className="shrink-0 text-[var(--sb-icon)]" aria-hidden={true} />
             <span className="truncate">{identity.tutorNumber.startsWith("Tutor ID") ? identity.tutorNumber : `Tutor ID: ${identity.tutorNumber}`}</span>
           </p>
           <p className="font-semibold">{identity.joined}</p>
