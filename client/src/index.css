@@ -353,6 +353,16 @@
   .sb-root::-webkit-scrollbar,
   .sb-root ::-webkit-scrollbar { width: 0; height: 0; }
 }
+/*
+ * Collapsed to icons the panel is only 48px wide, so a scrollbar would take
+ * a fifth of it and shove every icon off centre. It still scrolls.
+ */
+[data-collapsible="icon"] .sb-root,
+[data-collapsible="icon"] .sb-root [data-sidebar="content"] { scrollbar-width: none; }
+[data-collapsible="icon"] .sb-root::-webkit-scrollbar,
+[data-collapsible="icon"] .sb-root ::-webkit-scrollbar { width: 0; height: 0; }
+/* With the labels gone the icon is the whole menu item, so it carries full strength. */
+[data-collapsible="icon"] .sb-root .sb-icon { color: var(--sb-text); }
 /* A row opens by height, its pages rising one after another. */
 .sb-root .sb-sub {
   display: grid;
