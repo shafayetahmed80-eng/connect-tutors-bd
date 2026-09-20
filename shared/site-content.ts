@@ -14,6 +14,8 @@ import {
   sidebarGroupSlotId,
   sidebarHeightSlotId,
   sidebarPaddingSlotId,
+  sidebarColourParts,
+  sidebarColourSlotId,
   sidebarPanels,
   sidebarSubgroupSlotId,
   sidebarTabsSlotId,
@@ -103,6 +105,7 @@ export type SiteContentOverride = {
   slotId: string;
   text?: string | null;
   textSizePx?: number | null;
+  colourHex?: string | null;
 };
 
 export type SiteContentSpacingSlot = {
@@ -137,6 +140,32 @@ export type SiteContentSizeSlot = {
   /** Shown under the control so the Admin knows what it moves. */
   help: string;
 };
+
+/**
+ * A slot that carries only a colour.
+ *
+ * The sidebars are painted from CSS variables, so an Owner can repaint one
+ * without a deploy; there is no copy to edit here, only the colour itself.
+ */
+export type SiteContentColourSlot = {
+  id: string;
+  page: SiteContentPageId;
+  surface: string;
+  group: string;
+  label: string;
+  /** What the colour is in code, and what Reset returns to. */
+  defaultHex: string;
+  help: string;
+};
+
+export const SITE_CONTENT_COLOUR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+/** A colour an Owner typed, tidied to `#rrggbb`, or null when it is not one. */
+export function normalizeSiteContentColour(value: string): string | null {
+  const hex = value.trim().toLowerCase();
+  const filled = /^#?[0-9a-f]{3}$/.test(hex) ? "#" + hex.replace("#", "").split("").map(c => c + c).join("") : hex.startsWith("#") ? hex : "#" + hex;
+  return SITE_CONTENT_COLOUR_PATTERN.test(filled) ? filled : null;
+}
 
 /** A size slot's measurement; the older text-only slots predate the field. */
 export function siteContentSizeSlotMetric(slot: SiteContentSizeSlot): "fontSize" | "padding" | "height" {
@@ -417,6 +446,23 @@ const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
   { id: "tutor-profile.spacing.section-card", page: "tutor-profile", surface: "Tutor dashboard", group: "Spacing", label: "Section card padding" },
 ];
 
+const sidebarColourLabels: Record<(typeof sidebarColourParts)[number], { label: string; help: string }> = {
+  panel: { label: "Sidebar colour", help: "The whole panel. A darker shade of it is used towards the foot, for depth." },
+  text: { label: "Menu text colour", help: "Every menu item, and the icons beside them, except the page the Admin is on." },
+  pill: { label: "Current page background", help: "The pill behind the page being viewed." },
+  "pill-text": { label: "Current page text colour", help: "The name of the page being viewed, on that pill." },
+};
+
+const siteContentColourSlots: SiteContentColourSlot[] = sidebarPanels.flatMap(panel => sidebarColourParts.map(part => ({
+  id: sidebarColourSlotId(panel.id, part),
+  page: "sidebar-tabs" as const,
+  surface: panel.surface,
+  group: "Colours",
+  label: sidebarColourLabels[part].label,
+  defaultHex: part === "pill-text" ? panel.colours.pillText : part === "pill" ? panel.colours.pill : part === "text" ? panel.colours.text : panel.colours.panel,
+  help: sidebarColourLabels[part].help,
+})));
+
 const siteContentSizeSlots: SiteContentSizeSlot[] = [
   {
     id: "tutor-profile.size.record-row",
@@ -479,6 +525,7 @@ export function getSiteContentSurfaces(page: SiteContentPageId): string[] {
     ...getSiteContentSlots(page).map(slot => slot.surface),
     ...getSiteContentSpacingSlots(page).map(slot => slot.surface),
     ...getSiteContentSizeSlots(page).map(slot => slot.surface),
+    ...getSiteContentColourSlots(page).map(slot => slot.surface),
   ];
   return surfaces.filter((surface, index) => surfaces.indexOf(surface) === index);
 }
@@ -489,6 +536,14 @@ export function findSiteContentSlot(slotId: string): SiteContentSlot | undefined
 
 export function findSiteContentSpacingSlot(slotId: string): SiteContentSpacingSlot | undefined {
   return siteContentSpacingSlots.find(slot => slot.id === slotId);
+}
+
+export function getSiteContentColourSlots(page: SiteContentPageId): SiteContentColourSlot[] {
+  return siteContentColourSlots.filter(slot => slot.page === page);
+}
+
+export function findSiteContentColourSlot(slotId: string): SiteContentColourSlot | undefined {
+  return siteContentColourSlots.find(slot => slot.id === slotId);
 }
 
 export function findSiteContentSizeSlot(slotId: string): SiteContentSizeSlot | undefined {

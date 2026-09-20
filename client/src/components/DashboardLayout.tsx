@@ -22,8 +22,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { SiteContentProvider, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
+import { SiteContentProvider, useSiteContentColour, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
 import {
+  sidebarColourSlotId,
   sidebarFontSlotId,
   sidebarGroupSlotId,
   sidebarHeightSlotId,
@@ -202,6 +203,28 @@ export function getActiveNavigationItem<Item extends { path: string; action?: st
     .sort((a, b) => b.path.length - a.path.length)[0];
 }
 
+/**
+ * The colours an Owner chose for one sidebar, as the CSS variables the panel
+ * is painted from. A colour left alone is absent here, so the shipped value in
+ * `index.css` keeps painting it. The foot of the panel is a darker mix of the
+ * chosen colour, which is how the shipped gradient gets its depth.
+ */
+export function sidebarColourStyle(colours: { panel?: string | null; text?: string | null; pill?: string | null; pillText?: string | null }): CSSProperties {
+  const style: Record<string, string> = {};
+  if (colours.panel) {
+    style["--sb-panel-top"] = colours.panel;
+    style["--sb-panel-bottom"] = `color-mix(in srgb, ${colours.panel} 82%, #05213c)`;
+  }
+  if (colours.text) {
+    style["--sb-text"] = colours.text;
+    style["--sb-soft"] = `color-mix(in srgb, ${colours.text} 80%, transparent)`;
+    style["--sb-icon"] = `color-mix(in srgb, ${colours.text} 68%, transparent)`;
+  }
+  if (colours.pill) style["--sb-pill"] = colours.pill;
+  if (colours.pillText) style["--sb-ink"] = colours.pillText;
+  return style as CSSProperties;
+}
+
 export function getDashboardNavigationItemClassName(isActive: boolean) {
   // The colours come from the sidebar's tokens (`.sb-*` in index.css), so the
   // three panels share one set of classes and differ only by accent.
@@ -347,6 +370,12 @@ function DashboardLayoutContent({
   const sidebarFontStyle = useSiteContentTextStyle(sidebarPanel ? sidebarFontSlotId(sidebarPanel) : "");
   const sidebarPaddingStyle = useSiteContentPaddingStyle(sidebarPanel ? sidebarPaddingSlotId(sidebarPanel) : "");
   const sidebarHeightStyle = useSiteContentHeightStyle(sidebarPanel ? sidebarHeightSlotId(sidebarPanel) : "");
+  const sidebarColours = sidebarColourStyle({
+    panel: useSiteContentColour(sidebarPanel ? sidebarColourSlotId(sidebarPanel, "panel") : ""),
+    text: useSiteContentColour(sidebarPanel ? sidebarColourSlotId(sidebarPanel, "text") : ""),
+    pill: useSiteContentColour(sidebarPanel ? sidebarColourSlotId(sidebarPanel, "pill") : ""),
+    pillText: useSiteContentColour(sidebarPanel ? sidebarColourSlotId(sidebarPanel, "pill-text") : ""),
+  });
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -481,6 +510,7 @@ function DashboardLayoutContent({
           <Sidebar
             collapsible="icon"
             className={`sb-root sb-panel-${sidebarPanel ?? "admin"} border-r border-[var(--sb-border)] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
+            style={sidebarColours}
             disableTransition={isResizing}
           >
           {/* Header, identity, and nav all live inside the one scroll region,

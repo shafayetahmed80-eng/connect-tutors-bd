@@ -183,7 +183,7 @@ function Sidebar({
         onOpenChange={setOpenMobile}
         label="Navigation"
         className={cn("bg-sidebar text-sidebar-foreground p-0", className)}
-        style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
+        style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE, ...(props.style as React.CSSProperties | undefined) } as React.CSSProperties}
       >
         <div className="flex h-full w-full flex-col">{children}</div>
       </SwipeDrawer>

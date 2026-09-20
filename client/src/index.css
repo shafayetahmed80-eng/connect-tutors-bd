@@ -308,7 +308,7 @@
 .sb-root .sb-indicator,
 [data-collapsible="icon"] .sb-root .sb-item-active,
 [data-collapsible="icon"].sb-root .sb-item-active {
-  background-color: #ffffff;
+  background-color: var(--sb-pill, #ffffff);
   box-shadow: 0 1px 2px rgb(6 26 48 / 0.18), 0 8px 18px -10px rgb(6 26 48 / 0.45);
 }
 .sb-root .sb-indicator {

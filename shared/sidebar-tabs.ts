@@ -31,6 +31,8 @@ export type SidebarPanelMeta = {
   paddingPx: number;
   /** Height each row ships at, in pixels - independent of the padding above. */
   heightPx: number;
+  /** The colours this sidebar ships with; an Owner may change each one. */
+  colours: { panel: string; text: string; pill: string; pillText: string };
 };
 
 /** Turns a path into the stable key half of a slot id. */
@@ -53,6 +55,13 @@ export function sidebarGroupSlotId(panel: SidebarPanelId, sectionLabel: string):
 
 export function sidebarSubgroupSlotId(panel: SidebarPanelId, subgroup: string): string {
   return `sidebar-tabs.${panel}.subgroup.${labelKey(subgroup)}`;
+}
+
+export const sidebarColourParts = ["panel", "text", "pill", "pill-text"] as const;
+export type SidebarColourPart = (typeof sidebarColourParts)[number];
+
+export function sidebarColourSlotId(panel: SidebarPanelId, part: SidebarColourPart): string {
+  return `sidebar-tabs.${panel}.colour.${part}`;
 }
 
 export function sidebarFontSlotId(panel: SidebarPanelId): string {
@@ -82,6 +91,7 @@ const SHIPPED_ROW_HEIGHT_PX = 38;
 export const sidebarPanels: SidebarPanelMeta[] = [
   {
     id: "admin",
+    colours: { panel: "#0d5fae", text: "#ffffff", pill: "#ffffff", pillText: "#0b4b86" },
     surface: "Admin panel",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
@@ -130,6 +140,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
   },
   {
     id: "tutor",
+    colours: { panel: "#0a6f61", text: "#ffffff", pill: "#ffffff", pillText: "#075247" },
     surface: "Tutor dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
@@ -157,6 +168,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
   },
   {
     id: "guardian",
+    colours: { panel: "#3a47c4", text: "#ffffff", pill: "#ffffff", pillText: "#2c3795" },
     surface: "Guardian dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,

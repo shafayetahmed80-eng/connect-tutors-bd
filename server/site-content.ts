@@ -11,7 +11,10 @@ import {
   findSiteContentAnchor,
   isSiteContactNumber,
   normalizeSiteContactNumber,
+  findSiteContentColourSlot,
   findSiteContentSizeSlot,
+  normalizeSiteContentColour,
+  SITE_CONTENT_COLOUR_PATTERN,
   siteContentSizeSlotMetric,
   findSiteContentSlot,
   findSiteContentSpacingSlot,
@@ -33,16 +36,25 @@ export const siteContentOverrideInputSchema = z.object({
   textSizePx: z.number().int().min(MIN_SITE_CONTENT_TEXT_PX).max(MAX_SITE_CONTENT_TEXT_PX).nullish(),
   paddingPx: z.number().int().min(MIN_SITE_CONTENT_TEXT_PX).max(MAX_SITE_CONTENT_TEXT_PX).nullish(),
   spacing: z.enum(siteContentSpacings).nullish(),
+  colourHex: z.string().trim().regex(SITE_CONTENT_COLOUR_PATTERN, "Enter a colour like #1677e8.").nullish(),
 }).superRefine((value, ctx) => {
   const textSlot = findSiteContentSlot(value.slotId);
   const spacingSlot = findSiteContentSpacingSlot(value.slotId);
   const sizeSlot = findSiteContentSizeSlot(value.slotId);
+  const colourSlot = findSiteContentColourSlot(value.slotId);
 
   if (textSlot?.kind === "phone" && value.text != null && value.text.trim() !== "" && !isSiteContactNumber(normalizeSiteContactNumber(value.text))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "Enter a Bangladesh mobile number, for example 8801516131411." });
   }
 
-  if (!textSlot && !spacingSlot && !sizeSlot) {
+  if (colourSlot && (value.text !== undefined || value.textSizePx !== undefined || value.paddingPx !== undefined || value.spacing !== undefined)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot only accepts a colour." });
+  }
+  if (!colourSlot && value.colourHex !== undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "This slot does not accept a colour." });
+  }
+
+  if (!textSlot && !spacingSlot && !sizeSlot && !colourSlot) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["slotId"], message: "Unknown content slot." });
     return;
   }
@@ -78,7 +90,7 @@ export type SiteContentOverrideInput = z.infer<typeof siteContentOverrideInputSc
 
 /** The page a slot belongs to, taken from the registry rather than the caller. */
 export function resolveSiteContentSlotPage(slotId: string) {
-  return (findSiteContentSlot(slotId) ?? findSiteContentSpacingSlot(slotId) ?? findSiteContentSizeSlot(slotId))?.page;
+  return (findSiteContentSlot(slotId) ?? findSiteContentSpacingSlot(slotId) ?? findSiteContentSizeSlot(slotId) ?? findSiteContentColourSlot(slotId))?.page;
 }
 
 /**
@@ -87,7 +99,7 @@ export function resolveSiteContentSlotPage(slotId: string) {
  */
 export function isEmptySiteContentOverride(input: SiteContentOverrideInput) {
   const text = input.text?.trim();
-  return !text && input.textSizePx == null && input.paddingPx == null && !input.spacing;
+  return !text && input.textSizePx == null && input.paddingPx == null && !input.spacing && !input.colourHex;
 }
 
 /**

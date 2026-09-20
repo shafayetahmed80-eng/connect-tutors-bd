@@ -934,6 +934,8 @@ export const siteContentOverrides = mysqlTable(
      */
     paddingPx: int("paddingPx"),
     spacing: varchar("spacing", { length: 20 }),
+    /** `#rrggbb` for a colour-only slot; null means the slot paints as shipped. */
+    colourHex: varchar("colourHex", { length: 7 }),
     updatedByUserId: int("updatedByUserId").references(() => users.id),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
