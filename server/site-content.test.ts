@@ -99,3 +99,33 @@ describe("site contact override", () => {
     expect(siteContentOverrideInputSchema.safeParse({ slotId: textSlot, text: "Anything at all" }).success).toBe(true);
   });
 });
+
+describe("a colour-only slot", () => {
+  const colourSlot = "sidebar-tabs.admin.colour.panel";
+
+  it("takes a colour and nothing else", () => {
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: colourSlot, colourHex: "#1677e8" }).success).toBe(true);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: colourSlot, colourHex: null }).success).toBe(true);
+
+    const withText = siteContentOverrideInputSchema.safeParse({ slotId: colourSlot, text: "Blue" });
+    expect(withText.success).toBe(false);
+    if (!withText.success) expect(withText.error.issues[0]?.message).toMatch(/only accepts a colour/);
+  });
+
+  it("refuses anything that is not a six-digit colour", () => {
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: colourSlot, colourHex: "blue" }).success).toBe(false);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: colourSlot, colourHex: "#abc" }).success).toBe(false);
+  });
+
+  it("keeps a colour off every other kind of slot", () => {
+    const textSlot = getSiteContentSlots("tutor-profile")[0]!.id;
+    const result = siteContentOverrideInputSchema.safeParse({ slotId: textSlot, colourHex: "#1677e8" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.message).toMatch(/does not accept a colour/);
+  });
+
+  it("counts a cleared colour as no override at all", () => {
+    expect(isEmptySiteContentOverride({ slotId: colourSlot, colourHex: null })).toBe(true);
+    expect(isEmptySiteContentOverride({ slotId: colourSlot, colourHex: "#1677e8" })).toBe(false);
+  });
+});

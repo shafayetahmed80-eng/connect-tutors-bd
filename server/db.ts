@@ -7424,6 +7424,7 @@ export async function listSiteContentOverrides(page: string) {
       textSizePx: siteContentOverrides.textSizePx,
       paddingPx: siteContentOverrides.paddingPx,
       spacing: siteContentOverrides.spacing,
+      colourHex: siteContentOverrides.colourHex,
     })
     .from(siteContentOverrides)
     .where(eq(siteContentOverrides.page, page));
@@ -7436,6 +7437,7 @@ export async function saveSiteContentOverride(input: {
   textSizePx: number | null;
   paddingPx: number | null;
   spacing: string | null;
+  colourHex: string | null;
   updatedByUserId: number;
 }) {
   const db = await getDb();
@@ -7448,6 +7450,7 @@ export async function saveSiteContentOverride(input: {
       textSizePx: values.textSizePx,
       paddingPx: values.paddingPx,
       spacing: values.spacing,
+      colourHex: values.colourHex,
       updatedByUserId: values.updatedByUserId,
     },
   });

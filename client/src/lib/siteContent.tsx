@@ -15,7 +15,7 @@ import {
 } from "@shared/site-content";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-type ResolvedOverride = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
+type ResolvedOverride = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null; colourHex: string | null };
 type SiteContentValue = { overrides: Map<string, ResolvedOverride> };
 
 const SiteContentContext = createContext<SiteContentValue>({ overrides: new Map() });
@@ -38,7 +38,7 @@ export function SiteContentProvider({ page, children }: { page: SiteContentPageI
   const value = useMemo<SiteContentValue>(() => {
     const overrides = new Map(parent.overrides);
     for (const row of query.data ?? []) {
-      overrides.set(row.slotId, { text: row.text ?? null, textSizePx: row.textSizePx ?? null, paddingPx: row.paddingPx ?? null, spacing: row.spacing ?? null });
+      overrides.set(row.slotId, { text: row.text ?? null, textSizePx: row.textSizePx ?? null, paddingPx: row.paddingPx ?? null, spacing: row.spacing ?? null, colourHex: row.colourHex ?? null });
     }
     return { overrides };
   }, [query.data, parent]);
@@ -88,6 +88,11 @@ export function useSiteContentHeightStyle(slotId: string) {
  * a tooltip or an aria-label - and a hook per item would break the rules of
  * hooks inside `.map()`. This reads the context once and hands back a lookup.
  */
+/** The colour an Owner chose for a slot, or nothing while it paints as shipped. */
+export function useSiteContentColour(slotId: string) {
+  return useOverride(slotId)?.colourHex ?? null;
+}
+
 export function useSiteContentResolver() {
   const { overrides } = useContext(SiteContentContext);
   return useMemo(() => (slotId: string, fallback: string) => {

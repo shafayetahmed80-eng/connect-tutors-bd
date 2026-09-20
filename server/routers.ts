@@ -36,6 +36,7 @@ import {
   tutorProfileFieldSubGroups,
 } from "@shared/tutor-profile-field-registry";
 import { assertWithinLengthLimit, assertWithinLimit } from "./site-limit-guard";
+import { normalizeSiteContentColour } from "@shared/site-content";
 import {
   isEmptySiteContentOverride,
   resolveSiteContentAnchorPage,
@@ -1092,6 +1093,7 @@ export const appRouter = router({
           page,
           text: input.text?.trim() || null,
           textSizePx: input.textSizePx ?? null,
+          colourHex: input.colourHex ? normalizeSiteContentColour(input.colourHex) : null,
           paddingPx: input.paddingPx ?? null,
           spacing: input.spacing ?? null,
           updatedByUserId: ctx.user.id,

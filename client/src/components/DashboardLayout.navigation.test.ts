@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  sidebarColourStyle,
   DASHBOARD_SIDEBAR_MOTION_CLASS,
   getDashboardNavigationItemClassName,
   getDashboardSidebarToggleLabel,
@@ -51,5 +52,28 @@ describe("Dashboard account-menu navigation", () => {
     expect(inactive).not.toContain("active:scale-");
     // Keyboard focus is still unmistakable.
     expect(inactive).toContain("focus-visible:ring-2");
+  });
+});
+
+describe("the sidebar colours an Owner chose", () => {
+  it("paints nothing while every colour is untouched", () => {
+    expect(sidebarColourStyle({})).toEqual({});
+    expect(sidebarColourStyle({ panel: null, text: null, pill: null, pillText: null })).toEqual({});
+  });
+
+  it("derives the panel's darker foot and the softer text tones from the colours chosen", () => {
+    const style = sidebarColourStyle({ panel: "#7a1f6a", text: "#fff8f0", pill: "#ffe9d0", pillText: "#3b0b33" }) as Record<string, string>;
+
+    expect(style["--sb-panel-top"]).toBe("#7a1f6a");
+    expect(style["--sb-panel-bottom"]).toContain("#7a1f6a");
+    expect(style["--sb-soft"]).toContain("#fff8f0");
+    expect(style["--sb-icon"]).toContain("#fff8f0");
+    expect(style["--sb-pill"]).toBe("#ffe9d0");
+    expect(style["--sb-ink"]).toBe("#3b0b33");
+  });
+
+  it("leaves the shipped value alone for a colour that was not chosen", () => {
+    const style = sidebarColourStyle({ pill: "#ffffff" }) as Record<string, string>;
+    expect(Object.keys(style)).toEqual(["--sb-pill"]);
   });
 });

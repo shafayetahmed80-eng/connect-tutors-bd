@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  getSiteContentColourSlots,
+  normalizeSiteContentColour,
   MAX_SITE_CONTENT_TEXT_LENGTH,
   MAX_SITE_CONTENT_TEXT_PX,
   MIN_SITE_CONTENT_TEXT_PX,
@@ -129,5 +131,27 @@ describe("site content slots", () => {
 
   it("does not resolve a slot the registry has never declared", () => {
     expect(findSiteContentSlot("tutor-profile.does-not-exist")).toBeUndefined();
+  });
+});
+
+describe("the sidebars' colours", () => {
+  it("gives every panel four colour slots, defaulting to what the CSS ships", () => {
+    const slots = getSiteContentColourSlots("sidebar-tabs");
+    expect(slots).toHaveLength(12);
+    const adminPanel = slots.find(slot => slot.id === "sidebar-tabs.admin.colour.panel");
+    expect(adminPanel).toMatchObject({ surface: "Admin panel", group: "Colours", defaultHex: "#0d5fae" });
+    expect(slots.filter(slot => slot.surface === "Tutor dashboard").map(slot => slot.label)).toEqual([
+      "Sidebar colour", "Menu text colour", "Current page background", "Current page text colour",
+    ]);
+    // A page with no colour slots is unaffected.
+    expect(getSiteContentColourSlots("tutor-profile")).toHaveLength(0);
+  });
+
+  it("tidies a typed colour, and refuses what is not one", () => {
+    expect(normalizeSiteContentColour("#1677E8")).toBe("#1677e8");
+    expect(normalizeSiteContentColour("1677e8")).toBe("#1677e8");
+    expect(normalizeSiteContentColour(" #abc ")).toBe("#aabbcc");
+    expect(normalizeSiteContentColour("blue")).toBeNull();
+    expect(normalizeSiteContentColour("#12345")).toBeNull();
   });
 });

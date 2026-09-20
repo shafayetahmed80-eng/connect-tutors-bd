@@ -4,10 +4,12 @@ import {
   MAX_SITE_CONTENT_TEXT_LENGTH,
   MAX_SITE_CONTENT_TEXT_PX,
   MIN_SITE_CONTENT_TEXT_PX,
+  getSiteContentColourSlots,
   getSiteContentSizeSlots,
   getSiteContentSlots,
   getSiteContentSpacingSlots,
   getSiteContentSurfaces,
+  normalizeSiteContentColour,
   siteContentSizeSlotMetric,
   siteContentSlotDefaultPx,
   siteContentSpacings,
@@ -33,8 +35,8 @@ const rowClass = "grid grid-cols-[minmax(0,1fr)_5.5rem_1.75rem] items-center gap
 const rowLabelClass = "col-span-3 truncate text-sm font-medium text-j-ink-soft sm:col-span-1";
 
 /** `textPx` is the number in the box, kept as a string so it can be emptied. */
-type Draft = { text: string; textPx: string; spacing: SiteContentSpacing };
-type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null };
+type Draft = { text: string; textPx: string; spacing: SiteContentSpacing; colour: string };
+type Stored = { text: string | null; textSizePx: number | null; paddingPx: number | null; spacing: string | null; colourHex: string | null };
 
 const sizeInputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm tabular-nums text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
@@ -63,6 +65,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   const textSlots = useMemo(() => getSiteContentSlots(page), [page]);
   const spacingSlots = useMemo(() => getSiteContentSpacingSlots(page), [page]);
   const sizeSlots = useMemo(() => getSiteContentSizeSlots(page), [page]);
+  const colourSlots = useMemo(() => getSiteContentColourSlots(page), [page]);
   const surfaces = useMemo(() => getSiteContentSurfaces(page), [page]);
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -93,20 +96,25 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         text: row?.text ?? slot.defaultText,
         textPx: String(row?.textSizePx ?? siteContentSlotDefaultPx(slot)),
         spacing: "default",
+        colour: "",
       });
     }
     for (const slot of spacingSlots) {
       const row = stored.get(slot.id);
-      map.set(slot.id, { text: "", textPx: "", spacing: (row?.spacing as SiteContentSpacing | null) ?? "default" });
+      map.set(slot.id, { text: "", textPx: "", spacing: (row?.spacing as SiteContentSpacing | null) ?? "default", colour: "" });
     }
     for (const slot of sizeSlots) {
       const row = stored.get(slot.id);
       // A padding slot stores its number in its own column.
       const saved = siteContentSizeSlotMetric(slot) === "padding" ? row?.paddingPx : row?.textSizePx;
-      map.set(slot.id, { text: "", textPx: String(saved ?? slot.defaultPx), spacing: "default" });
+      map.set(slot.id, { text: "", textPx: String(saved ?? slot.defaultPx), spacing: "default", colour: "" });
+    }
+    for (const slot of colourSlots) {
+      const row = stored.get(slot.id);
+      map.set(slot.id, { text: "", textPx: "", spacing: "default", colour: row?.colourHex ?? slot.defaultHex });
     }
     return map;
-  }, [stored, textSlots, spacingSlots, sizeSlots]);
+  }, [stored, textSlots, spacingSlots, sizeSlots, colourSlots]);
 
   // Re-seed whenever the saved overrides change, so a save or reset is
   // reflected. Keyed on contents rather than array identity: seeding on
@@ -121,9 +129,9 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
     const draft = drafts[slotId];
     const saved = savedDraft.get(slotId);
     if (!draft || !saved) return false;
-    return draft.text.trim() !== saved.text.trim() || draft.textPx.trim() !== saved.textPx.trim() || draft.spacing !== saved.spacing;
+    return draft.text.trim() !== saved.text.trim() || draft.textPx.trim() !== saved.textPx.trim() || draft.spacing !== saved.spacing || draft.colour.trim().toLowerCase() !== saved.colour.trim().toLowerCase();
   };
-  const dirtyIds = [...textSlots, ...spacingSlots, ...sizeSlots].map(slot => slot.id).filter(isDirty);
+  const dirtyIds = [...textSlots, ...spacingSlots, ...sizeSlots, ...colourSlots].map(slot => slot.id).filter(isDirty);
 
   const update = (slotId: string, change: Partial<Draft>) =>
     setDrafts(current => ({ ...current, [slotId]: { ...current[slotId], ...change } }));
@@ -139,7 +147,12 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
         const draft = drafts[slotId];
         const slot = textSlots.find(candidate => candidate.id === slotId);
         const sizeSlot = sizeSlots.find(candidate => candidate.id === slotId);
-        if (slot) {
+        const colourSlot = colourSlots.find(candidate => candidate.id === slotId);
+        if (colourSlot) {
+          // Matching the shipped colour means "no override", as a size does.
+          const chosen = normalizeSiteContentColour(draft.colour);
+          await save.mutateAsync({ slotId, colourHex: chosen && chosen !== colourSlot.defaultHex.toLowerCase() ? chosen : null });
+        } else if (slot) {
           const trimmed = draft.text.trim();
           // Matching the shipped copy at the shipped size means "no override".
           await save.mutateAsync({
@@ -312,14 +325,15 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
       const surfaceTextSlots = textSlots.filter(slot => slot.surface === surface && matches(slot.label, drafts[slot.id]?.text ?? slot.defaultText));
       const surfaceSpacingSlots = spacingSlots.filter(slot => slot.surface === surface && matches(slot.label, ""));
       const surfaceSizeSlots = sizeSlots.filter(slot => slot.surface === surface && matches(slot.label, slot.help));
-      if (surfaceTextSlots.length === 0 && surfaceSpacingSlots.length === 0 && surfaceSizeSlots.length === 0) return null;
+      const surfaceColourSlots = colourSlots.filter(slot => slot.surface === surface && matches(slot.label, slot.help));
+      if (surfaceTextSlots.length === 0 && surfaceSpacingSlots.length === 0 && surfaceSizeSlots.length === 0 && surfaceColourSlots.length === 0) return null;
 
       const groups = surfaceTextSlots.map(slot => slot.group).filter((group, index, all) => all.indexOf(group) === index);
-      const overriddenHere = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].filter(slot => stored.has(slot.id)).length;
+      const overriddenHere = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots, ...surfaceColourSlots].filter(slot => stored.has(slot.id)).length;
 
       // Only what the filter leaves visible, so "select all" never picks up a
       // row the Owner cannot see.
-      const surfaceIds = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots].map(slot => slot.id);
+      const surfaceIds = [...surfaceTextSlots, ...surfaceSpacingSlots, ...surfaceSizeSlots, ...surfaceColourSlots].map(slot => slot.id);
       const allSelected = surfaceIds.length > 0 && surfaceIds.every(id => selected.has(id));
       const surfacePath = siteContentSurfacePath(page, surface);
 
@@ -422,6 +436,54 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
             </button>
           </div>
         </div>)}
+
+        {surfaceColourSlots.length > 0 ? <div className="mt-2">
+          <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Colours</p>
+          {surfaceColourSlots.map(slot => {
+            const typed = drafts[slot.id]?.colour ?? slot.defaultHex;
+            const valid = normalizeSiteContentColour(typed);
+            return <div key={slot.id} className={rowClass}>
+              <span className={`${rowLabelClass} flex items-center gap-2`}>
+                <input
+                  type="checkbox"
+                  className={checkboxClass}
+                  checked={selected.has(slot.id)}
+                  aria-label={`Select ${surface} ${slot.label}`}
+                  onChange={event => toggleSelected(slot.id, event.target.checked)}
+                />
+                <label htmlFor={`slot-${slot.id}`} className="min-w-0 truncate" title={slot.label}>
+                  {slot.label}
+                  {isDirty(slot.id) ? <span className="ml-1 text-j-accent" aria-label="unsaved">•</span> : null}
+                </label>
+              </span>
+              <span className="flex min-w-0 items-center gap-2">
+                {/* The swatch and the code are one control: picking from the
+                    swatch fills the box, and typing a code moves the swatch. */}
+                <input
+                  type="color"
+                  aria-label={`${surface} ${slot.label} colour picker`}
+                  value={valid ?? slot.defaultHex}
+                  onChange={event => update(slot.id, { colour: event.target.value })}
+                  className="h-8 w-9 shrink-0 cursor-pointer rounded-lg border border-j-border bg-white p-0.5"
+                />
+                <input
+                  id={`slot-${slot.id}`}
+                  value={typed}
+                  maxLength={7}
+                  spellCheck={false}
+                  aria-invalid={!valid}
+                  onChange={event => update(slot.id, { colour: event.target.value })}
+                  className={`${inputClass} w-24 shrink-0 font-mono ${valid ? "" : "border-[#d84a4a]"}`}
+                />
+                <span className="hidden min-w-0 truncate text-2xs leading-4 text-j-ink-muted sm:block">{slot.help}</span>
+              </span>
+              <span />
+              <button type="button" disabled={saving || !stored.has(slot.id)} aria-label={`Reset ${surface} ${slot.label}`} title="Reset to the original" onClick={() => void resetSlot(slot.id)} className="grid h-7 w-7 place-items-center rounded-lg border border-j-border text-j-ink-soft disabled:opacity-30">
+                <RotateCcw size={13} />
+              </button>
+            </div>;
+          })}
+        </div> : null}
 
         {surfaceSpacingSlots.map(slot => <div key={slot.id} className="mt-2">
           <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Spacing</p>

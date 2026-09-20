@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const TEXT_BOX = "input:not([type=number]):not([type=checkbox])";
 
 const mocks = vi.hoisted(() => ({
-  rows: [] as Array<{ slotId: string; text: string | null; textSizePx: number | null; paddingPx?: number | null; spacing: string | null }>,
+  rows: [] as Array<{ slotId: string; text: string | null; textSizePx: number | null; paddingPx?: number | null; spacing: string | null; colourHex?: string | null }>,
   save: vi.fn().mockResolvedValue({}),
   reset: vi.fn().mockResolvedValue({}),
   invalidate: vi.fn().mockResolvedValue(undefined),
@@ -200,5 +200,39 @@ describe("Site content editor bulk actions", () => {
 
     // Selecting rows hidden behind a filter would act on things unseen.
     expect(screen.getByText("1 selected")).toBeTruthy();
+  });
+});
+
+describe("the sidebars' colours", () => {
+  const PANEL = "sidebar-tabs.admin.colour.panel";
+
+  it("offers a swatch and a code per colour, seeded from what the sidebar ships", () => {
+    render(<SiteContentEditor page="sidebar-tabs" />);
+
+    const swatch = screen.getByLabelText("Admin panel Sidebar colour colour picker") as HTMLInputElement;
+    expect(swatch.value).toBe("#0d5fae");
+    expect((document.getElementById(`slot-${PANEL}`) as HTMLInputElement).value).toBe("#0d5fae");
+  });
+
+  it("saves a chosen colour, and treats the shipped one as no override", async () => {
+    render(<SiteContentEditor page="sidebar-tabs" />);
+
+    fireEvent.change(document.getElementById(`slot-${PANEL}`)!, { target: { value: "#7A1F6A" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save 1 change/ }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith({ slotId: PANEL, colourHex: "#7a1f6a" }));
+
+    mocks.save.mockClear();
+    fireEvent.change(document.getElementById(`slot-${PANEL}`)!, { target: { value: "#0d5fae" } });
+    expect(screen.queryByRole("button", { name: /Save d+ change/ })).toBeNull();
+  });
+
+  it("marks an unreadable colour rather than saving it", () => {
+    render(<SiteContentEditor page="sidebar-tabs" />);
+
+    const box = document.getElementById(`slot-${PANEL}`) as HTMLInputElement;
+    fireEvent.change(box, { target: { value: "purple" } });
+    expect(box.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /Save 1 change/ }));
+    expect(mocks.save).toHaveBeenCalledWith({ slotId: PANEL, colourHex: null });
   });
 });
