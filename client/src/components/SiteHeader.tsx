@@ -18,8 +18,8 @@ export const mobilePublicQuickLinks = [
 
 export const brandWordmark = {
   primary: "Connect",
-  secondary: "Tutors BD",
-  homeLabel: "Connect Tutors BD home",
+  secondary: "Tutors",
+  homeLabel: "Connect Tutors home",
 } as const;
 
 export type JourneyAudience = "guardian" | "tutor";
@@ -103,7 +103,7 @@ export default function SiteHeader({
               className="whatsapp-link"
               target="_blank"
               rel="noreferrer"
-              aria-label="Message Connect Tutors BD on WhatsApp"
+              aria-label="Message Connect Tutors on WhatsApp"
               title="Message us on WhatsApp"
             >
               <FaWhatsapp size={16} aria-hidden="true" />

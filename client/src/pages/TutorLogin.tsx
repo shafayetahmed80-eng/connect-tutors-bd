@@ -32,7 +32,7 @@ export function getTutorSignInErrorMessage(cause: unknown): string {
   return "We could not sign you in. Please check your details and try again.";
 }
 
-const RECOVERY_MESSAGE = "Hello Connect Tutors BD, I need help recovering my account.";
+const RECOVERY_MESSAGE = "Hello Connect Tutors, I need help recovering my account.";
 
 export default function TutorLogin() {
   const contact = useSiteContact();
@@ -89,7 +89,7 @@ export default function TutorLogin() {
           <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
           <div className="relative">
-            <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors BD</Link>
+            <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors</Link>
             <div className="mt-20 max-w-sm"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8fd0f5]">Tutor workspace</p><h1 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.04em]">Continue building your teaching profile.</h1><p className="mt-5 text-sm leading-7 text-[#c8ddf0]">Sign in to manage your Tutor ID, profile information, requests, and account settings.</p></div>
           </div>
         </div>

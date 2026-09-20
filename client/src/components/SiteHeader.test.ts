@@ -5,8 +5,8 @@ describe("shared brand wordmark", () => {
   it("keeps the public name and accessible home label stable across responsive headers", () => {
     expect(brandWordmark).toEqual({
       primary: "Connect",
-      secondary: "Tutors BD",
-      homeLabel: "Connect Tutors BD home",
+      secondary: "Tutors",
+      homeLabel: "Connect Tutors home",
     });
   });
 });

@@ -37,12 +37,12 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Active workspace" },
   { icon: BriefcaseBusiness, label: "Job Board", path: "/tutor/dashboard/jobs", sectionLabel: "Active workspace" },
   { icon: FileCheck2, label: "Confirmation Letter", path: "/tutor/dashboard/confirmation-letter", sectionLabel: "Active workspace" },
+  { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Active workspace", community: true },
   { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Coming later", planned: true },
   { icon: GraduationCap, label: "Certificate", path: "/tutor/dashboard/certificate", sectionLabel: "Coming later", planned: true },
   { icon: Share2, label: "Refer & Earn", path: "/tutor/dashboard/refer-earn", sectionLabel: "Coming later", planned: true },
   { icon: Sparkles, label: "Exclusively Yours", path: "/tutor/dashboard/exclusively-yours", sectionLabel: "Coming later", planned: true },
   { icon: CircleHelp, label: "How It Works", path: "/tutor/dashboard/how-it-works", sectionLabel: "Coming later", planned: true },
-  { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Coming later", planned: true },
   { icon: LogOut, label: "Sign Out", path: "/tutor/dashboard/sign-out", sectionLabel: "Account", action: "signout" },
 ];
 
@@ -299,7 +299,7 @@ function DashboardDesignPreview({ section }: { section: string }) {
     "refer-earn": "Referral terms and reward tracking will be connected when the programme is launched.",
     "exclusively-yours": "This personal area is reserved for curated Tutor resources and future benefits.",
     "how-it-works": "Complete your profile, wait for moderation, then receive suitable job opportunities through the protected Tutor workflow.",
-    community: "Community joining options will be added when the Connect Tutors BD community channels are finalised.",
+    community: "Community joining options will be added when the Connect Tutors community channels are finalised.",
   };
   return <section className="rounded-xl border border-[#dce8f0] bg-white p-7 text-center shadow-[0_12px_30px_rgba(38,83,117,0.06)] sm:p-10"><HeartHandshake className="mx-auto text-j-accent" size={38} /><p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-j-accent">Dashboard design preview</p><h2 className="mt-2 text-xl font-bold text-j-ink">This section is ready for its next workflow</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#627e94]">{descriptions[section]}</p></section>;
 }

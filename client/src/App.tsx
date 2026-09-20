@@ -1,5 +1,5 @@
 /**
- * Connect Tutors BD visual direction: Neighbourhood Learning Blue — routes share one calm branded system,
+ * Connect Tutors visual direction: Neighbourhood Learning Blue — routes share one calm branded system,
  * bringing every user journey back to an easy, visible next step.
  */
 import { Toaster } from "@/components/ui/sonner";

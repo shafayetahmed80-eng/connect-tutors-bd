@@ -23,7 +23,7 @@ const setupSteps = [
   {
     number: "02",
     title: "Sign in with your established account",
-    description: "Use the email address and password for the invited Connect Tutors BD account. The Admin Login page does not create or promote accounts.",
+    description: "Use the email address and password for the invited Connect Tutors account. The Admin Login page does not create or promote accounts.",
   },
   {
     number: "03",

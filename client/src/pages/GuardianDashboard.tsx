@@ -29,7 +29,7 @@ export const guardianDashboardNavigation: DashboardNavigationItem[] = [
   { icon: Settings, label: "Settings", path: "/guardian/dashboard/settings", sectionLabel: "Account" },
   { icon: MessageCircle, label: "Exclusively yours", path: "/guardian/dashboard/exclusive", planned: true },
   { icon: HelpCircle, label: "How it works", path: "/guardian/dashboard/how-it-works", planned: false },
-  { icon: Users, label: "Join Guardian Community", path: "/guardian/dashboard/community", planned: true },
+  { icon: Users, label: "Join Guardian Community", path: "/guardian/dashboard/community", community: true },
   // Last, as in the Tutor sidebar. The path is never navigated to - the layout
   // sees `action: "signout"` and signs out instead - but a nav item needs one.
   { icon: LogOut, label: "Sign Out", path: "/guardian/dashboard/sign-out", sectionLabel: "Account", action: "signout" },

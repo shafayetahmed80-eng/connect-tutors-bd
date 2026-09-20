@@ -47,11 +47,11 @@ describe("Admin security cryptographic helpers", () => {
   });
 
   it("accepts a current authenticator-app TOTP code and rejects an unrelated code", () => {
-    const totp = createAdminTotp("JBSWY3DPEHPK3PXP", "Connect Tutors BD", "admin@example.com");
+    const totp = createAdminTotp("JBSWY3DPEHPK3PXP", "Connect Tutors", "admin@example.com");
     const currentCode = totp.generate();
 
-    expect(validateAdminTotpCode("JBSWY3DPEHPK3PXP", currentCode, "Connect Tutors BD", "admin@example.com")).toBe(true);
-    expect(validateAdminTotpCode("JBSWY3DPEHPK3PXP", "000000", "Connect Tutors BD", "admin@example.com")).toBe(false);
+    expect(validateAdminTotpCode("JBSWY3DPEHPK3PXP", currentCode, "Connect Tutors", "admin@example.com")).toBe(true);
+    expect(validateAdminTotpCode("JBSWY3DPEHPK3PXP", "000000", "Connect Tutors", "admin@example.com")).toBe(false);
   });
 
   it("binds a short-lived two-factor session proof to one Admin account", () => {

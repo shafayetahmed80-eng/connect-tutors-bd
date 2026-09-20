@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK } from "@shared/community";
 import { getSiteContentSizeSlots, getSiteContentSlots, getSiteContentSpacingSlots } from "@shared/site-content";
 import {
   isEmptySiteContentOverride,
@@ -7,8 +8,32 @@ import {
 } from "./site-content";
 
 const textSlotId = getSiteContentSlots("tutor-profile")[0]!.id;
+const communitySlotId = communityLinkSlotId("tutor");
 const spacingSlotId = getSiteContentSpacingSlots("tutor-profile")[0]!.id;
 const sizeSlotId = getSiteContentSizeSlots("tutor-profile")[0]!.id;
+
+describe("a panel's community link", () => {
+  it("takes a full http or https address", () => {
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: communitySlotId, text: DEFAULT_COMMUNITY_LINK }).success).toBe(true);
+    expect(siteContentOverrideInputSchema.safeParse({ slotId: communitySlotId, text: "http://example.org/group" }).success).toBe(true);
+  });
+
+  it("refuses anything a browser cannot open, so no sidebar is left with a dead row", () => {
+    for (const bad of ["facebook.com/groups/connecttutors", "javascript:alert(1)", "not a link"]) {
+      expect(siteContentOverrideInputSchema.safeParse({ slotId: communitySlotId, text: bad }).success).toBe(false);
+    }
+  });
+
+  it("clears back to the shipped address rather than storing a blank", () => {
+    const result = siteContentOverrideInputSchema.safeParse({ slotId: communitySlotId, text: null });
+    expect(result.success).toBe(true);
+    if (result.success) expect(isEmptySiteContentOverride(result.data)).toBe(true);
+  });
+
+  it("belongs to the Admin Control page, not the Dynamic Section's copy editors", () => {
+    expect(resolveSiteContentSlotPage(communitySlotId)).toBe("admin-control");
+  });
+});
 
 describe("site content override input", () => {
   it("accepts a text and size change for a declared text slot", () => {

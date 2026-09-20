@@ -20,8 +20,9 @@ import {
   sidebarSubgroupSlotId,
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
+import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK } from "./community";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
-export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section"] as const;
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -87,12 +88,15 @@ export type SiteContentSlot = {
    * code builds links from, so the editor hides the size control and the server
    * checks the format - a malformed number breaks every wa.me link.
    *
+   * "url" is the same bargain for an address the panel links out to: no size,
+   * and the server refuses anything that is not an http or https link.
+   *
    * "text-only" is copy on a page whose stylesheet selects by element, where
    * injecting a sized wrapper would recolour the whole heading. Those pages read
    * their copy as plain strings, so a size box would be a control that does
    * nothing; the editor hides it too.
    */
-  kind?: "text" | "phone" | "text-only";
+  kind?: "text" | "phone" | "url" | "text-only";
   /**
    * The rung on the type ramp this slot ships at. Only used to show the Admin
    * the starting size; when they leave the size alone the call site's own class
@@ -171,6 +175,22 @@ export function normalizeSiteContentColour(value: string): string | null {
 export function siteContentSizeSlotMetric(slot: SiteContentSizeSlot): "fontSize" | "padding" | "height" {
   return slot.metric ?? "fontSize";
 }
+
+/**
+ * The Owner's own controls, edited on Admin Control rather than through the
+ * Dynamic Section's text editor - they are addresses the panel links out to,
+ * not copy anyone reads on a page.
+ */
+const adminControlSlots: SiteContentSlot[] = communityPanels.map(panel => ({
+  id: communityLinkSlotId(panel),
+  page: "admin-control" as const,
+  surface: "Community",
+  group: "Join our Community",
+  label: panel === "tutor" ? "Tutor panel link" : "Guardian panel link",
+  kind: "url" as const,
+  defaultText: DEFAULT_COMMUNITY_LINK,
+  defaultTextClass: "text-sm" as const,
+}));
 
 /** Site-wide values, shown on public pages as well as the dashboards. */
 const siteSlots: SiteContentSlot[] = [
@@ -432,6 +452,7 @@ const infoPageSlots: SiteContentSlot[] = [
 
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
+  ...adminControlSlots,
   ...tutorProfileSlots,
   ...publicTutorProfileSlots,
   ...guardianProfileSlots,

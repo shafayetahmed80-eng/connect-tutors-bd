@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_COMMUNITY_LINK } from "@shared/community";
 import { TUTOR_PORTAL_SESSION_STORAGE_KEY } from "@/lib/tutorPortalSession";
 
 const logout = vi.fn();
@@ -94,6 +95,19 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
     expect(loadingState.getAttribute("aria-busy")).toBe("true");
     expect(loadingState.getAttribute("data-motion")).toBe("shimmer");
     expect(screen.getByText("Preparing your Tutor workspace")).not.toBeNull();
+  });
+
+  it("sends the community row out to the Owner's group in a new tab, not to a page of its own", () => {
+    window.history.pushState({}, "", "/tutor/dashboard");
+
+    render(<TutorDashboard />);
+
+    const row = screen.getAllByRole("link", { name: "Join our Community" })[0];
+    expect(row.getAttribute("href")).toBe(DEFAULT_COMMUNITY_LINK);
+    expect(row.getAttribute("target")).toBe("_blank");
+    expect(row.getAttribute("rel")).toContain("noreferrer");
+    // It works, so it no longer wears the "Soon" mark.
+    expect(row.textContent).not.toContain("Soon");
   });
 
   it("keeps the protected shell and leads the Dashboard tab with the application stage buttons, and no old overview", () => {
