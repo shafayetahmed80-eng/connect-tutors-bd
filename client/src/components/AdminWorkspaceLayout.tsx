@@ -119,16 +119,16 @@ function AdminSidebarIdentity({ photoUrl }: { photoUrl: string | null }) {
   const profile = trpc.adminProfile.me.useQuery().data;
   const name = profile?.name || "Admin";
   return <div className="sb-card rounded-xl p-3 text-center group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0" aria-label="Admin account identity">
-    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-accent-strong)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">
+    <div className="mx-auto grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--sb-avatar-bg)] text-lg font-black text-white group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:text-2xs">
       {photoUrl ? <img src={photoUrl} alt="Admin profile photo" className="size-full object-cover" /> : getDashboardAvatarInitials(name, "A")}
     </div>
     <div className="mt-2.5 group-data-[collapsible=icon]:hidden">
-      <p className="truncate text-sm font-extrabold text-j-ink">{name}</p>
-      <p className="truncate text-xs text-j-ink-soft">{profile?.email || "Private account"}</p>
-      <div className="mt-2.5 space-y-0.5 border-t border-[#dbe9f2] pt-2 text-2xs text-j-ink-soft">
-        <p><span className="font-bold text-j-ink">User ID:</span> {profile ? profile.loginId ?? "Not set" : "Loading…"}</p>
-        <p><span className="font-bold text-j-ink">Role:</span> {profile ? (profile.isOwner ? "Project Owner" : "Administrator") : "Loading…"}</p>
-        <p><span className="font-bold text-j-ink">Created:</span> {formatAdminDate(profile?.accountCreatedAt)}</p>
+      <p className="truncate text-sm font-extrabold text-white">{name}</p>
+      <p className="truncate text-xs text-[var(--sb-soft)]">{profile?.email || "Private account"}</p>
+      <div className="mt-2.5 space-y-0.5 border-t border-[var(--sb-card-border)] pt-2 text-2xs text-[var(--sb-soft)]">
+        <p><span className="font-bold text-white">User ID:</span> {profile ? profile.loginId ?? "Not set" : "Loading…"}</p>
+        <p><span className="font-bold text-white">Role:</span> {profile ? (profile.isOwner ? "Project Owner" : "Administrator") : "Loading…"}</p>
+        <p><span className="font-bold text-white">Created:</span> {formatAdminDate(profile?.accountCreatedAt)}</p>
       </div>
     </div>
   </div>;

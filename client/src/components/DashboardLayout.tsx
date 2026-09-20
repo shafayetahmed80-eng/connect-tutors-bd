@@ -480,7 +480,7 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
           <Sidebar
             collapsible="icon"
-            className={`sb-root sb-panel-${sidebarPanel ?? "admin"} border-r border-[var(--sb-border)] bg-[#f8fbff] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
+            className={`sb-root sb-panel-${sidebarPanel ?? "admin"} border-r border-[var(--sb-border)] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             disableTransition={isResizing}
           >
           {/* Header, identity, and nav all live inside the one scroll region,
@@ -494,7 +494,7 @@ function DashboardLayoutContent({
             <SidebarHeader className="shrink-0 flex-row items-center justify-end px-2 pb-1 pt-2 group-data-[collapsible=icon]:justify-center">
               <button
                 onClick={toggleSidebar}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="sb-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                 aria-label={getDashboardSidebarToggleLabel(isCollapsed)}
                 aria-expanded={!isCollapsed}
               >
@@ -502,7 +502,7 @@ function DashboardLayoutContent({
               </button>
             </SidebarHeader>
 
-            {sidebarIdentity ? <div className="shrink-0 border-b border-[#e9f0f5] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
+            {sidebarIdentity ? <div className="shrink-0 border-b border-[var(--sb-border)] px-3 pb-4 pt-1 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pb-2">{sidebarIdentity}</div> : null}
 
             <SidebarMenu ref={setMenuEl} className="relative gap-0.5 px-2 py-3">
               {indicator ? <li
