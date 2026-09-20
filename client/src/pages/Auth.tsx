@@ -229,7 +229,7 @@ export default function AuthPage() {
           <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
           <div className="relative">
-            <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors BD</Link>
+            <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors</Link>
             <div className="z-10 mt-16 max-w-md sm:mt-20">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8fd0f5]">A calmer next step</p>
               <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-[-0.04em] sm:text-6xl">Find the right learning connection.</h1>
@@ -280,7 +280,7 @@ export default function AuthPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-4">
                     <label htmlFor="account-password" className="block text-sm font-bold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="password" size={14} className="text-j-accent" />Password</span></label>
-                    <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors BD, I need help recovering my account.")}>Need help signing in?</a>
+                    <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors, I need help recovering my account.")}>Need help signing in?</a>
                   </div>
                   <div className="relative">
                     <input
@@ -328,7 +328,7 @@ export default function AuthPage() {
                 <Link href={selectedJourney.registerHref} className="mt-6 flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-j-accent px-6 py-4 font-bold text-white shadow-[0_12px_25px_rgba(22,125,221,0.24)] transition hover:bg-j-accent-hover">
                   {selectedJourney.registerLabel}<ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors BD, I need help with my account.")}><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
+                <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors, I need help with my account.")}><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
                 <button type="button" onClick={() => switchMode("login")} className="mt-5 block text-sm font-semibold text-[#39779e] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Already registered? Sign in</button>
               </div>
             )}

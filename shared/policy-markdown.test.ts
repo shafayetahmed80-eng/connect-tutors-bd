@@ -79,7 +79,7 @@ describe("policy markdown", () => {
   it("reads a whole document the way an Owner would write one", () => {
     const blocks = parsePolicyMarkdown(`## সেবার উদ্দেশ্য
 
-Connect Tutors BD একটি প্ল্যাটফর্ম।
+Connect Tutors একটি প্ল্যাটফর্ম।
 
 ### ব্যবহারকারীর দায়িত্ব
 

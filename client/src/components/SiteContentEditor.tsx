@@ -203,7 +203,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
    */
   const sizableSelected = () => Array.from(selected).filter(slotId => {
     const slot = textSlots.find(candidate => candidate.id === slotId);
-    if (slot) return slot.kind !== "phone";
+    if (slot) return slot.kind !== "phone" && slot.kind !== "url";
     return sizeSlots.some(candidate => candidate.id === slotId);
   });
 
@@ -388,7 +388,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
                 stylesheet selects by element, where a sized wrapper would
                 recolour the whole heading. Neither can carry a size, so neither
                 offers a box that would quietly do nothing. */}
-            {slot.kind === "phone" || slot.kind === "text-only" ? <span /> : <input
+            {slot.kind === "phone" || slot.kind === "url" || slot.kind === "text-only" ? <span /> : <input
               type="number"
               inputMode="numeric"
               min={MIN_SITE_CONTENT_TEXT_PX}

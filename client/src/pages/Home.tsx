@@ -1,5 +1,5 @@
 /**
- * Connect Tutors BD visual direction: Neighbourhood Learning Blue — a bright, human, guided path
+ * Connect Tutors visual direction: Neighbourhood Learning Blue — a bright, human, guided path
  * from a confident hero promise to understandable matching steps, using Connected Sky as the main signal.
  */
 import { useState } from "react";
@@ -86,7 +86,7 @@ function HomeContent() {
           </div>
         </section>
 
-        <section className="proof-strip" aria-label="How Connect Tutors BD helps">
+        <section className="proof-strip" aria-label="How Connect Tutors helps">
           <div className="shell proof-grid">
             <div className="proof-intro"><Heart size={17} fill="currentColor" /><span>{t("home.proof.introLead", proof.introLead)}<b>{t("home.proof.introStrong", proof.introStrong)}</b></span></div>
             {proof.items.map(item => {

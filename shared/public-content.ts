@@ -88,7 +88,7 @@ export const homeCopy = {
     description: "Before searching for a tutor, it helps to understand how the process works.",
     action: "Ask another question",
     items: [
-      { id: "how-to-find", question: "How do I find a tutor on Connect Tutors BD?", answer: "Share your needs through the Tutor Request form. Our team will then contact you about the next step." },
+      { id: "how-to-find", question: "How do I find a tutor on Connect Tutors?", answer: "Share your needs through the Tutor Request form. Our team will then contact you about the next step." },
       { id: "ease-of-use", question: "Is it easy for students and guardians to use?", answer: "Yes. Start with the essentials—subject, class, location, and preferences. You can add more detail later." },
       { id: "online-or-home", question: "Can I find both online and home tutors?", answer: "Yes. You can choose home tuition or online tuition in the first step of the request form." },
       { id: "demo-purpose", question: "What is the purpose of a demo class?", answer: "A demo class helps you understand the teaching style and the student’s comfort before making a considered decision." },
@@ -106,7 +106,7 @@ export const homeCopy = {
 /** The informational pages, keyed by the route that renders them. */
 export const infoPageCopy = [
   { path: "/tuition", key: "tuition", eyebrow: "Tuition types", title: "Choose the right learning path for your needs.", copy: "Start your search for the right tutor by curriculum, subject, and class format." },
-  { path: "/tutors", key: "tutors", eyebrow: "For tutors", title: "Bring your teaching skills to new connections.", copy: "Share your profile, preferred subjects, and schedule to build your path with Connect Tutors BD." },
+  { path: "/tutors", key: "tutors", eyebrow: "For tutors", title: "Bring your teaching skills to new connections.", copy: "Share your profile, preferred subjects, and schedule to build your path with Connect Tutors." },
   { path: "/blogs", key: "blogs", eyebrow: "Learning notes", title: "Small, practical ideas for better learning.", copy: "Helpful habits, preparation tips, and routines for guardians, students, and tutors will be available here soon." },
   { path: "/events", key: "events", eyebrow: "Events", title: "Plans to bring learning communities together.", copy: "Workshop, information session, and education-focused event updates will be published here." },
   { path: "/contact", key: "contact", eyebrow: "Contact", title: "Start a conversation with your question.", copy: "Send us a message if you want to talk about tutor matching, profiles, or the platform." },

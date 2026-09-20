@@ -46,7 +46,7 @@ export function formatLetterTutor(tutorName: string, tutorReference: string) {
 /** Builds an in-memory bilingual PDF; never accepts address, contact, student, or internal-note fields. */
 export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocument): Promise<Buffer> {
   const font = readFileSync(bengaliFontPath);
-  const document = new PDFDocument({ size: "A4", margin: 56, info: { Title: `Confirmation Letter ${letter.letterNumber}`, Author: "Connect Tutors BD" } });
+  const document = new PDFDocument({ size: "A4", margin: 56, info: { Title: `Confirmation Letter ${letter.letterNumber}`, Author: "Connect Tutors" } });
   const chunks: Buffer[] = [];
 
   return new Promise((resolve, reject) => {
@@ -55,7 +55,7 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
     document.on("error", reject);
 
     document.registerFont("NotoBengali", font);
-    document.font("NotoBengali").fillColor("#173A5E").fontSize(19).text("Connect Tutors BD", { align: "center" });
+    document.font("NotoBengali").fillColor("#173A5E").fontSize(19).text("Connect Tutors", { align: "center" });
     document.moveDown(0.25);
     document.fontSize(15).text("Confirmation Letter / কনফার্মেশন লেটার", { align: "center" });
     document.moveDown(1);
@@ -86,16 +86,16 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
 
     document.moveDown(1.15);
     document.fillColor("#425466").fontSize(9).text(
-      "This private confirmation record is available only to the authorised Guardian, assigned Tutor, and Connect Tutors BD administrators. It does not include home address, contact information, student identity, or internal operational notes.",
+      "This private confirmation record is available only to the authorised Guardian, assigned Tutor, and Connect Tutors administrators. It does not include home address, contact information, student identity, or internal operational notes.",
       { align: "left" },
     );
     document.moveDown(0.3);
     document.text(
-      "এই ব্যক্তিগত কনফার্মেশন রেকর্ডটি কেবল অনুমোদিত Guardian, নির্ধারিত Tutor এবং Connect Tutors BD প্রশাসকদের জন্য। এতে বাসার ঠিকানা, যোগাযোগের তথ্য, শিক্ষার্থীর পরিচয় বা অভ্যন্তরীণ নোট অন্তর্ভুক্ত নেই।",
+      "এই ব্যক্তিগত কনফার্মেশন রেকর্ডটি কেবল অনুমোদিত Guardian, নির্ধারিত Tutor এবং Connect Tutors প্রশাসকদের জন্য। এতে বাসার ঠিকানা, যোগাযোগের তথ্য, শিক্ষার্থীর পরিচয় বা অভ্যন্তরীণ নোট অন্তর্ভুক্ত নেই।",
       { align: "left" },
     );
     document.moveDown(1.1);
-    document.fillColor("#173A5E").fontSize(10).text("Issued by Connect Tutors BD", { align: "right" });
+    document.fillColor("#173A5E").fontSize(10).text("Issued by Connect Tutors", { align: "right" });
     document.end();
   });
 }

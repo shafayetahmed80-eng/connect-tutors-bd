@@ -22,7 +22,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { SiteContentProvider, useSiteContentColour, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentTextStyle } from "@/lib/siteContent";
+import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK, isCommunityPanel } from "@shared/community";
+import { SiteContentProvider, useSiteContentColour, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import {
   sidebarColourSlotId,
   sidebarFontSlotId,
@@ -58,6 +59,12 @@ export type DashboardNavigationItem = {
   sectionLabel?: string;
   planned?: boolean;
   action?: "signout";
+  /**
+   * A row that leaves the panel for the Owner's community group, in a new tab.
+   * The address is theirs to change from Admin Control, so it is resolved from
+   * this panel's community slot rather than written beside the label.
+   */
+  community?: boolean;
   requiresSignOut?: boolean;
   /** Things waiting on this screen - drawn as a count beside the label, never as 0. */
   badge?: number;
@@ -318,6 +325,8 @@ export default function DashboardLayout({
       {/* Merges into whatever the app-wide provider already holds, so the
           sidebar's own overrides load without disturbing the site slots. */}
       <SiteContentProvider page="sidebar-tabs">
+      {/* The community row's address is an Admin Control value, not a sidebar one. */}
+      <SiteContentProvider page="admin-control">
       <DashboardLayoutContent
         setSidebarWidth={setSidebarWidth}
         navigationItems={navigationItems}
@@ -332,6 +341,7 @@ export default function DashboardLayout({
       >
         {children}
       </DashboardLayoutContent>
+      </SiteContentProvider>
       </SiteContentProvider>
     </SidebarProvider>
   );
@@ -367,6 +377,12 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const resolveSlot = useSiteContentResolver();
+  // Only the Tutor and Guardian panels have a community row; an Admin has none,
+  // and the empty slot id resolves to the shipped address either way.
+  const communityHref = useSiteContentText(
+    isCommunityPanel(sidebarPanel) ? communityLinkSlotId(sidebarPanel) : "",
+    DEFAULT_COMMUNITY_LINK,
+  );
   const sidebarFontStyle = useSiteContentTextStyle(sidebarPanel ? sidebarFontSlotId(sidebarPanel) : "");
   const sidebarPaddingStyle = useSiteContentPaddingStyle(sidebarPanel ? sidebarPaddingSlotId(sidebarPanel) : "");
   const sidebarHeightStyle = useSiteContentHeightStyle(sidebarPanel ? sidebarHeightSlotId(sidebarPanel) : "");
@@ -558,6 +574,26 @@ function DashboardLayoutContent({
                 const renderLeaf = (item: DashboardNavigationItem) => {
                   const isActive = item.path === activeMenuItem?.path;
                   const label = sidebarPanel ? resolveSlot(sidebarTabsSlotId(sidebarPanel, item.path), item.label) : item.label;
+                  // A row that leaves the panel is a real link, so it can be
+                  // opened in a new tab or copied like any other.
+                  if (item.community) {
+                    return <SidebarMenuButton
+                      asChild
+                      tooltip={label}
+                      className={getDashboardNavigationItemClassName(false)}
+                      style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
+                    >
+                      <a
+                        href={communityHref}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        onClick={() => closeMobileSidebarAfterNavigation(isMobile, setOpenMobile)}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0 sb-icon" />
+                        <span>{label}</span>
+                      </a>
+                    </SidebarMenuButton>;
+                  }
                   return <SidebarMenuButton
                     isActive={item.action ? false : isActive}
                     onClick={() => handleNavigation(item)}

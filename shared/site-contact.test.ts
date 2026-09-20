@@ -34,7 +34,7 @@ describe("site contact number", () => {
     expect(telHref("8801516131411")).toBe("tel:+8801516131411");
 
     // The message is encoded, so punctuation cannot break the URL.
-    expect(whatsappHref("8801516131411", "Hello Connect Tutors BD, I need help."))
-      .toBe("https://wa.me/8801516131411?text=Hello%20Connect%20Tutors%20BD%2C%20I%20need%20help.");
+    expect(whatsappHref("8801516131411", "Hello Connect Tutors, I need help."))
+      .toBe("https://wa.me/8801516131411?text=Hello%20Connect%20Tutors%2C%20I%20need%20help.");
   });
 });

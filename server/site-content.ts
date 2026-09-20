@@ -1,3 +1,4 @@
+import { isCommunityLink } from "@shared/community";
 import { z } from "zod";
 import { MAX_LOCATION_ID_LENGTH, MAX_LOCATION_LABEL_LENGTH, locationTypes } from "@shared/location-catalog";
 import { MAX_POLICY_BODY_LENGTH, policyPageKeys } from "@shared/policy-pages";
@@ -45,6 +46,12 @@ export const siteContentOverrideInputSchema = z.object({
 
   if (textSlot?.kind === "phone" && value.text != null && value.text.trim() !== "" && !isSiteContactNumber(normalizeSiteContactNumber(value.text))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "Enter a Bangladesh mobile number, for example 8801516131411." });
+  }
+
+  // A link the panel sends people to. A malformed one is a dead row in every
+  // sidebar, so it never reaches the database.
+  if (textSlot?.kind === "url" && value.text != null && value.text.trim() !== "" && !isCommunityLink(value.text)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "Enter a full link, for example https://www.facebook.com/groups/connecttutors." });
   }
 
   if (colourSlot && (value.text !== undefined || value.textSizePx !== undefined || value.paddingPx !== undefined || value.spacing !== undefined)) {

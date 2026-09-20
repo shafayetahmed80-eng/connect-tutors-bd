@@ -1,5 +1,5 @@
 /**
- * Connect Tutors BD visual direction: Neighbourhood Learning Blue — an editorial, supportive footer
+ * Connect Tutors visual direction: Neighbourhood Learning Blue — an editorial, supportive footer
  * that turns service details into clear next steps rather than a dense utility panel.
  */
 import { useSiteContact } from "@/lib/siteContent";
@@ -75,7 +75,7 @@ export default function SiteFooter() {
         ))}
       </div>
       <div className="shell footer-bottom">
-        <p>© {new Date().getFullYear()} Connect Tutors BD. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Connect Tutors. All rights reserved.</p>
         <div className="footer-links">
           {footerQuickLinks.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}
         </div>

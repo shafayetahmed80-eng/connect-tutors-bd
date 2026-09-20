@@ -1,5 +1,5 @@
 /**
- * Connect Tutors BD visual direction: Neighbourhood Learning Blue — lightweight, clear informational pages
+ * Connect Tutors visual direction: Neighbourhood Learning Blue — lightweight, clear informational pages
  * that keep the brand's quiet confidence and always leave users with an obvious next action.
  */
 import { Link, useLocation } from "wouter";

@@ -221,7 +221,7 @@ const plugins = [
     // still present in dev for inspection.
     devOptions: { enabled: false },
     manifest: {
-      name: "Connect Tutors BD",
+      name: "Connect Tutors",
       short_name: "Connect Tutors",
       description: "Coordinator-matched tutors for students and guardians in Bangladesh.",
       id: "/",

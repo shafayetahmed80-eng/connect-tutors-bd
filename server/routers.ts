@@ -96,8 +96,8 @@ const passwordAccountLoginInputSchema = z.object({
   password: z.string().min(1, "Enter your password.").max(128),
 });
 const PASSWORD_ACCOUNT_LOGIN_ERROR = "Email/mobile number or password is not correct.";
-const PASSWORD_ACCOUNT_SUSPENDED_ERROR = "This account has been suspended. Contact Connect Tutors BD support on WhatsApp to restore access.";
-const PASSWORD_ACCOUNT_CLOSED_ERROR = "This account has been closed. Contact Connect Tutors BD support on WhatsApp if you believe this is a mistake.";
+const PASSWORD_ACCOUNT_SUSPENDED_ERROR = "This account has been suspended. Contact Connect Tutors support on WhatsApp to restore access.";
+const PASSWORD_ACCOUNT_CLOSED_ERROR = "This account has been closed. Contact Connect Tutors support on WhatsApp if you believe this is a mistake.";
 
 /**
  * Raises the TRPCError that matches a non-`ok` password sign-in outcome. A wrong
@@ -858,7 +858,7 @@ export const appRouter = router({
           result.reason === "phone"
             ? "This mobile number is already registered to a Tutor account. Sign in instead, or use a different number."
             : result.reason === "email-other-role"
-              ? "This email is already used for a different Connect Tutors BD account. Use another email to register as a Tutor."
+              ? "This email is already used for a different Connect Tutors account. Use another email to register as a Tutor."
               : "An account with this email already exists. Please sign in instead.";
         throw new TRPCError({ code: "CONFLICT", message: conflictMessage });
       }

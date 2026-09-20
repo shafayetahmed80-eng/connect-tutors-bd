@@ -1,14 +1,80 @@
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import type { GuardianApplicantVisibility } from "@shared/admin-control";
+import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK, isCommunityLink, type CommunityPanel } from "@shared/community";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const visibilityOptions: Array<{ value: GuardianApplicantVisibility; label: string }> = [
   { value: "all", label: "All applicants" },
   { value: "shortlisted", label: "Shortlisted only" },
 ];
+
+const communityLabels: Record<CommunityPanel, string> = {
+  tutor: "Tutor panel",
+  guardian: "Guardian panel",
+};
+
+/**
+ * Where each panel's "Join our Community" row goes.
+ *
+ * The two panels are set apart on purpose: the Tutors' group and the
+ * Guardians' need not be the same one. An empty box means the shipped address,
+ * which is what Reset restores.
+ */
+function CommunityLinks() {
+  const utils = trpc.useUtils();
+  const stored = trpc.siteContent.list.useQuery({ page: "admin-control" });
+  const [drafts, setDrafts] = useState<Partial<Record<CommunityPanel, string>>>({});
+  const save = trpc.siteContent.save.useMutation({
+    onSuccess: () => { void utils.siteContent.list.invalidate({ page: "admin-control" }); toast.success("Saved."); },
+    onError: error => { toast.error(error.message); },
+  });
+
+  const savedLink = (panel: CommunityPanel) =>
+    stored.data?.find(row => row.slotId === communityLinkSlotId(panel))?.text?.trim() || DEFAULT_COMMUNITY_LINK;
+
+  // The boxes start on what is stored, and pick up a save made elsewhere.
+  useEffect(() => { if (stored.data) setDrafts({}); }, [stored.data]);
+
+  return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+    <h2 className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Join our Community</h2>
+    <div className="mt-2 space-y-2">
+      {communityPanels.map(panel => {
+        const saved = savedLink(panel);
+        const typed = drafts[panel] ?? saved;
+        const valid = isCommunityLink(typed);
+        const dirty = typed.trim() !== saved;
+        const busy = save.isPending && save.variables?.slotId === communityLinkSlotId(panel);
+        return <div key={panel} className="flex flex-wrap items-center gap-2">
+          <label htmlFor={`community-${panel}`} className="w-28 shrink-0 text-sm font-bold text-j-ink">{communityLabels[panel]}</label>
+          <input
+            id={`community-${panel}`}
+            value={typed}
+            spellCheck={false}
+            inputMode="url"
+            aria-invalid={!valid}
+            onChange={event => setDrafts(current => ({ ...current, [panel]: event.target.value }))}
+            className={`h-10 min-w-0 flex-1 rounded-xl border bg-j-surface-sunken px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
+          />
+          <button
+            type="button"
+            disabled={!dirty || !valid || busy}
+            onClick={() => save.mutate({ slotId: communityLinkSlotId(panel), text: typed.trim() === DEFAULT_COMMUNITY_LINK ? null : typed.trim() })}
+            className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+          >{busy ? "Saving…" : "Save"}</button>
+          <button
+            type="button"
+            disabled={saved === DEFAULT_COMMUNITY_LINK || busy}
+            onClick={() => save.mutate({ slotId: communityLinkSlotId(panel), text: null })}
+            className="h-10 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
+          >Reset</button>
+        </div>;
+      })}
+    </div>
+  </section>;
+}
 
 /**
  * The Owner's switches. One so far: which applicants a Guardian meets.
@@ -68,6 +134,8 @@ export default function AdminControlEditor() {
         })}
       </div>
     </section>
+
+    <CommunityLinks />
 
     {confirming ? <Modal size="sm" onClose={() => setConfirming(false)} busy={setVisibility.isPending}>
       <ModalHeader title="Show Guardians shortlisted Tutors only?" />

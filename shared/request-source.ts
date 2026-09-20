@@ -1,5 +1,5 @@
 /**
- * How a Guardian found Connect Tutors BD, and where the student studies.
+ * How a Guardian found Connect Tutors, and where the student studies.
  *
  * Both travel with a tuition request but neither reaches the Job Board: the
  * referral answer is ours to count, not a Tutor's to read, and naming the

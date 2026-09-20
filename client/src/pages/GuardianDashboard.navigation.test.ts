@@ -24,7 +24,8 @@ describe("Guardian workspace navigation", () => {
 
   it("marks only intentionally deferred destinations as planned", () => {
     const planned = guardianDashboardNavigation.filter(item => item.planned).map(item => item.label);
-    expect(planned).toEqual(["Exclusively yours", "Join Guardian Community"]);
+    // The community row is a working link to the Owner's group, not a deferred page.
+    expect(planned).toEqual(["Exclusively yours"]);
     expect(guardianDashboardNavigation.find(item => item.label === "How it works")?.planned).toBe(false);
   });
 
