@@ -3028,7 +3028,7 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
       .where(and(eq(tutorRequests.id, input.requestId), inArray(tutorRequests.status, ["new", "reviewing", "matched"]))).limit(1).for("update");
     if (!request) return { updated: false as const, lifecycle: "cancelled" as const };
     const cancelledAt = new Date();
-    await tx.update(tutorRequests).set({ status: "closed", publicationState: "closed", contactConsent: "not_required", cancellationReason: input.reason, lastActivityAt: cancelledAt }).where(eq(tutorRequests.id, input.requestId));
+    await tx.update(tutorRequests).set({ status: "closed", publicationState: "closed", contactConsent: "not_required", cancellationReason: input.reason, cancelledAt, lastActivityAt: cancelledAt }).where(eq(tutorRequests.id, input.requestId));
     await tx.update(tutorJobs).set({ publicationStatus: "closed", deactivatedAt: new Date() }).where(eq(tutorJobs.tutorRequestId, input.requestId));
     // A cancelled Confirmed tuition may have been the Tutor's last one.
     if (request.tutorId) await refreshTutorVerification(tx, request.tutorId);
@@ -3683,7 +3683,7 @@ export async function submitTutorJobInterest(input: { tutorId: string; tutorJobI
     if (existing) {
       await tx
         .update(tutorJobInterests)
-        .set({ status: "interested" })
+        .set({ status: "interested", ...tutorInterestStageStamps("interested") })
         .where(eq(tutorJobInterests.id, existing.id));
       return { interestId: existing.id, status: "interested" as const, submittedAt: new Date() };
     }
@@ -3708,7 +3708,7 @@ export async function withdrawTutorJobInterest(input: { tutorId: string; interes
   const transition = transitionTutorInterest(interest.status as TutorInterestDatabaseStatus, "withdrawn", "tutor");
   if (!transition.allowed) throw new Error(`TUTOR_INTEREST_${transition.reason.toUpperCase()}`);
   // A Tutor who withdraws is no longer someone a Guardian's request can wait on.
-  await database.update(tutorJobInterests).set({ status: "withdrawn", appointmentRequestedAt: null }).where(eq(tutorJobInterests.id, interest.id));
+  await database.update(tutorJobInterests).set({ status: "withdrawn", appointmentRequestedAt: null, ...tutorInterestStageStamps("withdrawn") }).where(eq(tutorJobInterests.id, interest.id));
   return { interestId: interest.id, status: "withdrawn" as const };
 }
 
@@ -3716,6 +3716,21 @@ export async function withdrawTutorJobInterest(input: { tutorId: string; interes
  * Tutor-owned history: published job facts plus the Tutor's own status. The
  * query intentionally excludes all Guardian information.
  */
+/**
+ * The date stamps an application carries into a new status.
+ *
+ * A Tutor's Status tab names when each stage happened, and `updatedAt` cannot
+ * answer that - anything touching the row moves it. A stage the application
+ * leaves has its stamp cleared, so one that is applied to again never shows
+ * the date it once ended.
+ */
+function tutorInterestStageStamps(status: TutorInterestDatabaseStatus, at = new Date()) {
+  return {
+    shortlistedAt: status === "shortlisted" ? at : null,
+    endedAt: status === "declined" || status === "withdrawn" ? at : null,
+  };
+}
+
 export async function listTutorJobInterestsForTutor(tutorId: string) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -3724,6 +3739,12 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       interestId: tutorJobInterests.id,
       status: tutorJobInterests.status,
       createdAt: tutorJobInterests.createdAt,
+      // One date per stage: the Status tab shows the one its own stage earned.
+      shortlistedAt: tutorJobInterests.shortlistedAt,
+      endedAt: tutorJobInterests.endedAt,
+      appointedAt: tutorRequests.appointedAt,
+      tuitionCancelledAt: tutorRequests.cancelledAt,
+      paymentStatus: tutorRequests.paymentStatus,
       publicJobId: tutorJobs.publicJobId,
       tuitionType: tutorJobs.tuitionType,
       category: tutorJobs.category,
@@ -3795,7 +3816,9 @@ export async function reviewTutorJobInterestByAdmin(input: {
     const endsRequest = input.status === "declined"
       || (input.status === "interested" && (await getGuardianApplicantVisibility({ tx })) === "shortlisted");
     await tx.update(tutorJobInterests)
-      .set(endsRequest ? { status: input.status, appointmentRequestedAt: null } : { status: input.status })
+      .set(endsRequest
+        ? { status: input.status, appointmentRequestedAt: null, ...tutorInterestStageStamps(input.status) }
+        : { status: input.status, ...tutorInterestStageStamps(input.status) })
       .where(eq(tutorJobInterests.id, interest.id));
     // A decline used to be indistinguishable from the Tutor's own withdrawal:
     // the tab changed and nothing was said. No reason is given - the Admin
@@ -4155,7 +4178,7 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
     const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
     if (job) {
       await tx.update(tutorJobInterests)
-        .set({ status: "matched", appointmentRequestedAt: null })
+        .set({ status: "matched", appointmentRequestedAt: null, ...tutorInterestStageStamps("matched") })
         .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, input.tutorId), ne(tutorJobInterests.status, "withdrawn")));
       // The appointment answers every request still waiting on this tuition.
       await tx.update(tutorJobInterests)
@@ -6764,7 +6787,7 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
       .set({ tutorId: target.tutorId, status: "matched", contactConsent: "approved", appointedAt: now, lastActivityAt: now })
       .where(eq(tutorRequests.id, request.id));
     await tx.update(tutorJobInterests)
-      .set({ status: "matched", appointmentRequestedAt: null })
+      .set({ status: "matched", appointmentRequestedAt: null, ...tutorInterestStageStamps("matched") })
       .where(eq(tutorJobInterests.id, target.interestId));
     // The appointment answers every request still waiting on this tuition.
     await tx.update(tutorJobInterests)
@@ -6944,7 +6967,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
     const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
     if (job) {
       await tx.update(tutorJobInterests)
-        .set({ status: "declined", appointmentRequestedAt: null })
+        .set({ status: "declined", appointmentRequestedAt: null, ...tutorInterestStageStamps("declined") })
         .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, removedTutorId)));
       if (confirmed) {
         // Confirming took the listing down; it goes back up for a full run, not the rest of the old one.

@@ -617,6 +617,13 @@
       "when": 1791700000000,
       "tag": "0087_site_content_colour",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "5",
+      "when": 1791800000000,
+      "tag": "0088_application_stage_dates",
+      "breakpoints": true
     }
   ]
 }
