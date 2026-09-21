@@ -37,7 +37,8 @@ describe("site content slots", () => {
       expect(slots.length).toBeGreaterThan(0);
 
       for (const slot of slots) {
-        expect(slot.defaultText.trim()).not.toBe("");
+        // Copy ships with words. A payment account is a value the Owner types in, so it ships empty and the Tutor sees nothing until it is set.
+        if (!slot.id.startsWith("payment.account.")) expect(slot.defaultText.trim()).not.toBe("");
         expect(slot.surface.trim()).not.toBe("");
         expect(slot.group.trim()).not.toBe("");
         expect(slot.defaultText.length).toBeLessThanOrEqual(MAX_SITE_CONTENT_TEXT_LENGTH);

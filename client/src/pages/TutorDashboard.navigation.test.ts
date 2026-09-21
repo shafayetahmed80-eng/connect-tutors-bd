@@ -6,12 +6,11 @@ describe("Tutor Dashboard navigation", () => {
     expect(getTutorNavigationGroups(tutorDashboardNavigation)).toEqual([
       {
         label: "Active workspace",
-        items: ["Dashboard", "Profile", "Status", "Notifications", "Tuition preferences", "Tutor requests", "Settings", "Job Board", "Confirmation Letter", "Join our Community"],
+        items: ["Dashboard", "Profile", "Status", "Notifications", "Tuition preferences", "Tutor requests", "Settings", "Job Board", "Confirmation Letter", "Payment", "Join our Community"],
       },
       {
         label: "Coming later",
         items: [
-          "Payment",
           "Certificate",
           "Refer & Earn",
           "Exclusively Yours",
@@ -25,7 +24,6 @@ describe("Tutor Dashboard navigation", () => {
   it("keeps all planned Tutor destinations visible but clearly marked", () => {
     const planned = tutorDashboardNavigation.filter(item => item.sectionLabel === "Coming later");
     expect(planned.map(item => item.label)).toEqual([
-      "Payment",
       "Certificate",
       "Refer & Earn",
       "Exclusively Yours",
@@ -45,6 +43,7 @@ describe("Tutor Dashboard navigation", () => {
       "Settings",
       "Job Board",
       "Confirmation Letter",
+      "Payment",
       "Join our Community",
     ]);
   });

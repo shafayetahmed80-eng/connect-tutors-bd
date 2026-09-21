@@ -106,6 +106,9 @@ function tuitionPaymentError(result: db.TuitionPaymentFailure) {
     case "duplicate_reference": return new TRPCError({ code: "CONFLICT", message: "That transaction ID is already on file for this method." });
     case "not_pending": return new TRPCError({ code: "CONFLICT", message: "This payment has already been decided." });
     case "not_holder": return new TRPCError({ code: "CONFLICT", message: "This Tutor no longer holds the tuition, so the payment cannot be counted." });
+    case "not_both": return new TRPCError({ code: "BAD_REQUEST", message: "Only a tuition open to Home or Online is charged by choice." });
+    case "has_payments": return new TRPCError({ code: "CONFLICT", message: "Money has been paid on this tuition, so what it is charged as is settled." });
+    case "too_many_waiting": return new TRPCError({ code: "CONFLICT", message: "Several payments for this tuition are already waiting to be verified. Wait for an Admin to check them first." });
     case "over": return new TRPCError({ code: "BAD_REQUEST", message: `That is more than is owed. The most that can be recorded is ${result.most.toLocaleString("en-US")} Taka.` });
   }
 }
@@ -1084,6 +1087,28 @@ export const appRouter = router({
       return db.listTutorJobInterestsForTutor(tutorId);
     }),
   }),
+  // A Tutor's platform charge: where it stands, and telling us they have paid.
+  tutorPayments: router({
+    mine: activeTutorProcedure.query(async ({ ctx }) => {
+      const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
+      return db.getTutorChargeOverview(tutorId);
+    }),
+    report: activeTutorProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        amount: z.number().int().min(1).max(1_000_000),
+        method: z.enum(tuitionPaymentMethodValues),
+        reference: z.string().trim().max(80).nullish(),
+        paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the day you made the payment."),
+        note: z.string().trim().max(280).nullish(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
+        const result = await db.reportTuitionPayment({ tutorId, userId: ctx.user.id, ...input });
+        if (result.outcome === "reported") return result;
+        throw tuitionPaymentError(result);
+      }),
+  }),
   siteContent: router({
     // Public: the overrides are the published copy, and some of the pages that
     // read them are visible to signed-out visitors.
@@ -1863,6 +1888,13 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const result = await db.recordTuitionPayment({ adminUserId: ctx.user.id, ...input });
         if (result.outcome === "recorded") return result;
+        throw tuitionPaymentError(result);
+      }),
+    setTuitionChargeKind: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive(), kind: z.enum(["home", "online"]) }))
+      .mutation(async ({ input }) => {
+        const result = await db.setTuitionChargeKind(input);
+        if (result.outcome === "set") return result;
         throw tuitionPaymentError(result);
       }),
     decideTuitionPayment: adminProcedure

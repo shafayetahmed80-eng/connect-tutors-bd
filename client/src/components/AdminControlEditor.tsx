@@ -3,6 +3,8 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import type { GuardianApplicantVisibility } from "@shared/admin-control";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK, isCommunityLink, type CommunityPanel } from "@shared/community";
+import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels, type PaymentAccountMethod } from "@shared/platform-charge";
+import { MAX_SITE_CONTENT_TEXT_LENGTH } from "@shared/site-content";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -78,6 +80,61 @@ function CommunityLinks() {
 }
 
 /**
+ * Where a Tutor sends a platform charge, one line per method: the number or
+ * account, and whose it is. A method left empty is not offered to Tutors.
+ */
+function PaymentAccounts() {
+  const utils = trpc.useUtils();
+  const stored = trpc.siteContent.list.useQuery({ page: "admin-control" });
+  const [drafts, setDrafts] = useState<Partial<Record<PaymentAccountMethod, string>>>({});
+  const save = trpc.siteContent.save.useMutation({
+    onSuccess: () => { void utils.siteContent.list.invalidate({ page: "admin-control" }); toast.success("Saved."); },
+    onError: error => { toast.error(error.message); },
+  });
+
+  const savedLine = (method: PaymentAccountMethod) =>
+    stored.data?.find(row => row.slotId === paymentAccountSlotId(method))?.text?.trim() ?? "";
+
+  useEffect(() => { if (stored.data) setDrafts({}); }, [stored.data]);
+
+  return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+    <h2 className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Where Tutors pay</h2>
+    <div className="mt-2 space-y-2">
+      {paymentAccountMethods.map(method => {
+        const saved = savedLine(method);
+        const typed = drafts[method] ?? saved;
+        const dirty = typed.trim() !== saved;
+        const busy = save.isPending && save.variables?.slotId === paymentAccountSlotId(method);
+        const label = tuitionPaymentMethodLabels[method];
+        return <div key={method} className="flex flex-wrap items-center gap-2">
+          <label htmlFor={`account-${method}`} className="w-28 shrink-0 text-sm font-bold text-j-ink">{label}</label>
+          <input
+            id={`account-${method}`}
+            value={typed}
+            maxLength={MAX_SITE_CONTENT_TEXT_LENGTH}
+            spellCheck={false}
+            onChange={event => setDrafts(current => ({ ...current, [method]: event.target.value }))}
+            className="h-10 min-w-0 flex-1 rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          />
+          <button
+            type="button"
+            disabled={!dirty || busy}
+            onClick={() => save.mutate({ slotId: paymentAccountSlotId(method), text: typed.trim() || null })}
+            className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+          >{busy ? "Saving…" : "Save"}</button>
+          <button
+            type="button"
+            disabled={!saved || busy}
+            onClick={() => save.mutate({ slotId: paymentAccountSlotId(method), text: null })}
+            className="h-10 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
+          >Reset</button>
+        </div>;
+      })}
+    </div>
+  </section>;
+}
+
+/**
  * The Owner's switches. One so far: which applicants a Guardian meets.
  *
  * A choice saves as soon as it is picked, except turning to "Shortlisted only"
@@ -137,6 +194,8 @@ export default function AdminControlEditor() {
     </section>
 
     <CommunityLinks />
+
+    <PaymentAccounts />
 
     <section className="mt-3">
       <h2 className="mb-2 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Platform charge</h2>

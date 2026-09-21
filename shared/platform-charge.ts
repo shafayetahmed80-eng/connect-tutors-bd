@@ -39,6 +39,15 @@ export const tuitionPaymentMethodLabels: Record<TuitionPaymentMethod, string> = 
   other: "Other",
 };
 
+/** The methods the Owner has an account for; cash and other need none. */
+export const paymentAccountMethods = ["bkash", "nagad", "rocket", "bank"] as const satisfies readonly TuitionPaymentMethod[];
+export type PaymentAccountMethod = (typeof paymentAccountMethods)[number];
+
+/** The site-content slot that holds where a Tutor should send money for a method. */
+export function paymentAccountSlotId(method: PaymentAccountMethod): string {
+  return `payment.account.${method}`;
+}
+
 /** Only a verified payment counts towards what is paid. */
 export const tuitionPaymentStatusValues = ["submitted", "verified", "rejected"] as const;
 export type TuitionPaymentStatus = (typeof tuitionPaymentStatusValues)[number];

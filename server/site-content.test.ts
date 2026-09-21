@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK } from "@shared/community";
+import { paymentAccountMethods, paymentAccountSlotId } from "@shared/platform-charge";
 import { getSiteContentSizeSlots, getSiteContentSlots, getSiteContentSpacingSlots } from "@shared/site-content";
 import {
   isEmptySiteContentOverride,
@@ -11,6 +12,19 @@ const textSlotId = getSiteContentSlots("tutor-profile")[0]!.id;
 const communitySlotId = communityLinkSlotId("tutor");
 const spacingSlotId = getSiteContentSpacingSlots("tutor-profile")[0]!.id;
 const sizeSlotId = getSiteContentSizeSlots("tutor-profile")[0]!.id;
+
+describe("where Tutors pay", () => {
+  it("takes a line of text for each method, and clears back to nothing", () => {
+    for (const method of paymentAccountMethods) {
+      const slotId = paymentAccountSlotId(method);
+      expect(resolveSiteContentSlotPage(slotId)).toBe("admin-control");
+      expect(siteContentOverrideInputSchema.safeParse({ slotId, text: "01712345678 (Personal)" }).success).toBe(true);
+      expect(siteContentOverrideInputSchema.safeParse({ slotId, text: "x".repeat(241) }).success).toBe(false);
+      const cleared = siteContentOverrideInputSchema.safeParse({ slotId, text: null });
+      expect(cleared.success && isEmptySiteContentOverride(cleared.data)).toBe(true);
+    }
+  });
+});
 
 describe("a panel's community link", () => {
   it("takes a full http or https address", () => {
