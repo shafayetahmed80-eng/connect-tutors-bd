@@ -28,6 +28,8 @@ vi.mock("@/lib/trpc", () => ({
     },
   },
 }));
+// The rates are the limit editor's own concern and have their own tests.
+vi.mock("@/components/SiteLimitEditor", () => ({ default: ({ groups }: { groups?: string[] }) => <div data-testid="limit-editor">{groups?.join(",")}</div> }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK } from "@shared/community";

@@ -624,6 +624,13 @@
       "when": 1791800000000,
       "tag": "0088_application_stage_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "5",
+      "when": 1791900000000,
+      "tag": "0089_tuition_payments",
+      "breakpoints": true
     }
   ]
 }
