@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
-  setPayment: vi.fn(),
   data: {
     items: [
       {
@@ -13,7 +12,7 @@ const mocks = vi.hoisted(() => ({
         tuitionLocationLabel: "Mohakhali, Dhaka", locationText: "Mohakhali", budgetAmount: 7000, daysPerWeek: 4,
         appointedAt: new Date("2026-09-10T08:00:00.000Z"), confirmedAt: new Date("2026-09-13T08:30:00.000Z"),
         paymentStatus: "full_due",
-        charge: { owed: 4200, paid: 2100, balance: 2100 } as { owed: number; paid: number; balance: number } | null,
+        charge: { owed: 4200, paid: 2100, balance: 2100, status: "partial_paid" } as { owed: number; paid: number; balance: number; status: string } | null,
         tutorId: "tutor-175", tutorNumber: 777 as number | null, tutorName: "Tania Sultana", tutorPhone: "+8801711111111" as string | null,
       },
       {
@@ -21,7 +20,7 @@ const mocks = vi.hoisted(() => ({
         tuitionLocationLabel: "Shyamoli, Dhaka", locationText: "Shyamoli", budgetAmount: 6000, daysPerWeek: 3,
         appointedAt: null as Date | null, confirmedAt: new Date("2026-09-12T08:30:00.000Z"),
         paymentStatus: "half_paid",
-        charge: { owed: 3600, paid: 3600, balance: 0 } as { owed: number; paid: number; balance: number } | null,
+        charge: { owed: 3600, paid: 3600, balance: 0, status: "full_paid" } as { owed: number; paid: number; balance: number; status: string } | null,
         tutorId: "tutor-404", tutorNumber: null, tutorName: "Tanvir Ahmed", tutorPhone: null,
       },
     ],
@@ -39,9 +38,13 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
-      setJobPaymentStatus: { useMutation: () => ({ mutate: mocks.setPayment, isPending: false, variables: undefined }) },
     },
   },
+}));
+// The payments dialog has its own tests; here it only has to open for the right tuition.
+vi.mock("@/components/TuitionPaymentsModal", () => ({
+  default: ({ requestId, onClose }: { requestId: number; onClose: () => void }) =>
+    <div role="dialog" aria-label="Payments"><span>Payments of {requestId}</span><button type="button" onClick={onClose}>Close</button></div>,
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
@@ -56,7 +59,7 @@ describe("Admin Confirmed Jobs", () => {
     expect(mocks.lastInput).toMatchObject({ query: "", page: 1 });
     expect(screen.getAllByRole("columnheader").map(cell => cell.textContent)).toEqual([
       "Job ID", "Posted By", "Tutor ID", "Name", "Mobile", "Appointed", "Confirmed", "Payment Status",
-      "Charge", "Paid", "Balance", "Class", "Subjects", "Location", "Salary", "Days", "Tutor profile",
+      "Charge", "Paid", "Balance", "Class", "Subjects", "Location", "Salary", "Days", "Payments", "Tutor profile",
     ]);
   });
 
@@ -103,16 +106,24 @@ describe("Admin Confirmed Jobs", () => {
     }
   });
 
-  it("shows each payment status, Full Due to Full Paid, and saves a change from the row", () => {
+  it("shows the status the payments work out to, not a label typed in", () => {
     render(<AdminConfirmedJobsContent />);
 
-    const first = screen.getByRole("combobox", { name: "Payment status of Job ID 6820" }) as HTMLSelectElement;
-    expect(first.value).toBe("full_due");
-    expect(within(first).getAllByRole("option").map(option => option.textContent)).toEqual(["Full Due", "Half Paid", "Partial Paid", "Full Paid"]);
-    expect((screen.getByRole("combobox", { name: "Payment status of Job ID 6804" }) as HTMLSelectElement).value).toBe("half_paid");
+    // The first row's stored label is Full Due, but its verified payments make it Partial Paid.
+    expect(within(screen.getAllByRole("row")[1]).getByText("Partial Paid")).toBeTruthy();
+    expect(within(screen.getAllByRole("row")[2]).getByText("Full Paid")).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
 
-    fireEvent.change(first, { target: { value: "full_paid" } });
-    expect(mocks.setPayment).toHaveBeenCalledWith({ requestId: 21, paymentStatus: "full_paid" });
+  it("opens a tuition's payments from its row, and closes them again", () => {
+    render(<AdminConfirmedJobsContent />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Payments of Job ID 6804" }));
+    expect(within(screen.getByRole("dialog", { name: "Payments" })).getByText("Payments of 5")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("opens the Tutor's own profile from the arrow, and says Not set where a detail is missing", () => {
@@ -123,7 +134,7 @@ describe("Admin Confirmed Jobs", () => {
     expect(within(screen.getAllByRole("row")[2]).getAllByText("Not set")).toHaveLength(3);
   });
 
-  it("gives a phone one card per job, carrying every column and the payment control", () => {
+  it("gives a phone one card per job, carrying every column and the payments button", () => {
     window.innerWidth = 375;
     render(<AdminConfirmedJobsContent />);
 
@@ -136,10 +147,10 @@ describe("Admin Confirmed Jobs", () => {
     expect(card.getByText("Biology")).toBeTruthy();
     expect(card.getByText("Mohakhali, Dhaka")).toBeTruthy();
     expect(card.getByText("4 days / week")).toBeTruthy();
-    // The one control on this screen still changes the status from the card.
-    const payment = card.getByRole("combobox", { name: "Payment status of Job ID 6820" });
-    fireEvent.change(payment, { target: { value: "full_paid" } });
-    expect(mocks.setPayment).toHaveBeenCalledWith({ requestId: 21, paymentStatus: "full_paid" });
+    expect(card.getByText("Partial Paid")).toBeTruthy();
+    // The payments open from the card as they do from the row.
+    fireEvent.click(card.getByRole("button", { name: "Payments of Job ID 6820" }));
+    expect(screen.getByText("Payments of 21")).toBeTruthy();
     expect(card.getByRole("link", { name: "Open the profile of Tania Sultana" })).toBeTruthy();
   });
 

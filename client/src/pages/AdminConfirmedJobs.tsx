@@ -1,16 +1,16 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
+import PaymentStatusPill from "@/components/PaymentStatusPill";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
+import TuitionPaymentsModal from "@/components/TuitionPaymentsModal";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
-import { jobPaymentStatusLabels, jobPaymentStatusValues, type JobPaymentStatus } from "@shared/job-payment-status";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Loader2, Search, Wallet } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Link } from "wouter";
 
 const PAGE_SIZE = 20;
@@ -20,22 +20,15 @@ const onDate = (value: Date | string | null) =>
 
 const notSet = <span className="italic text-j-ink-faint">Not set</span>;
 
-/** Owed reads warm, paid reads green, the two part-payments sit between. */
-const paymentTone: Record<JobPaymentStatus, string> = {
-  full_due: "border-red-200 bg-red-50 text-red-800",
-  half_paid: "border-amber-200 bg-amber-50 text-amber-800",
-  partial_paid: "border-sky-200 bg-sky-50 text-sky-800",
-  full_paid: "border-emerald-200 bg-emerald-50 text-emerald-800",
-};
-
 /**
  * Every Confirmed tuition - the Guardian kept the Tutor after the demo class -
  * with that Tutor, when they were appointed and confirmed, and how much of the
  * fee has been paid.
  *
  * It reads like Applied Tutors' own list of tuitions. The payment status is
- * the one thing an Admin changes here, straight from its row; a tuition starts
- * at Full Due. The arrow opens the Tutor's profile.
+ * worked out from the payments on file, never set by hand: the wallet button
+ * opens them, and is where an Admin records or verifies one. The arrow opens
+ * the Tutor's profile.
  */
 export function AdminConfirmedJobsContent() {
   const [query, setQuery] = useState("");
@@ -43,11 +36,7 @@ export function AdminConfirmedJobsContent() {
   const jobs = trpc.admin.listConfirmedJobs.useQuery({ query, page, pageSize: PAGE_SIZE });
   const items = jobs.data?.items ?? [];
 
-  const utils = trpc.useUtils();
-  const setPayment = trpc.admin.setJobPaymentStatus.useMutation({
-    onSuccess: () => { void utils.admin.listConfirmedJobs.invalidate(); toast.success("Payment status saved."); },
-    onError: error => toast.error(error.message),
-  });
+  const [payingRequestId, setPayingRequestId] = useState<number | null>(null);
 
   type ConfirmedJob = (typeof items)[number];
   const columns: RecordColumn<ConfirmedJob>[] = [
@@ -65,18 +54,8 @@ export function AdminConfirmedJobsContent() {
     { key: "tutorPhone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{job.tutorPhone || notSet}</span> },
     { key: "appointedAt", label: "Appointed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.appointedAt) ?? notSet}</span> },
     { key: "confirmedAt", label: "Confirmed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.confirmedAt) ?? notSet}</span> },
-    {
-      key: "paymentStatus", label: "Payment Status", place: "action", cellClassName: "py-2",
-      cell: job => <select
-        aria-label={`Payment status of Job ID ${jobIdForRequest(job.id)}`}
-        value={job.paymentStatus}
-        disabled={setPayment.isPending && setPayment.variables?.requestId === job.id}
-        onChange={event => setPayment.mutate({ requestId: job.id, paymentStatus: event.target.value as JobPaymentStatus })}
-        className={`h-8 cursor-pointer rounded-full border px-2.5 text-2xs font-bold outline-none transition-colors focus:ring-2 focus:ring-sky-100 disabled:cursor-wait disabled:opacity-60 ${paymentTone[job.paymentStatus]}`}
-      >
-        {jobPaymentStatusValues.map(value => <option key={value} value={value}>{jobPaymentStatusLabels[value]}</option>)}
-      </select>,
-    },
+    // The stored status follows the ledger, and the ledger's own reading is what a row shows.
+    { key: "paymentStatus", label: "Payment Status", cell: job => <PaymentStatusPill status={job.charge?.status ?? job.paymentStatus} /> },
     // What the Tutor owes Connect Tutors, worked out from the rates the tuition
     // was confirmed on and the payments verified so far.
     { key: "charge", label: "Charge", cellClassName: "whitespace-nowrap", cell: job => <span className="tabular-nums text-j-ink-strong">{job.charge ? formatSalaryAmount(job.charge.owed) : notSet}</span> },
@@ -92,6 +71,17 @@ export function AdminConfirmedJobsContent() {
     { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },
     { key: "salary", label: "Salary", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
     { key: "days", label: "Days", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
+    {
+      key: "payments", label: "Payments", place: "action", headingHidden: true, cellClassName: "text-right",
+      cell: job => <button
+        type="button"
+        onClick={() => setPayingRequestId(job.id)}
+        aria-label={`Payments of Job ID ${jobIdForRequest(job.id)}`}
+        className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50"
+      >
+        <Wallet size={16} />
+      </button>,
+    },
     {
       key: "profile", label: "Tutor profile", place: "action", headingHidden: true, cellClassName: "text-right",
       cell: job => <Link href={`/admin/tutor-profiles/${encodeURIComponent(job.tutorId)}`} aria-label={`Open the profile of ${job.tutorName}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
@@ -125,6 +115,8 @@ export function AdminConfirmedJobsContent() {
     /> : null}
 
     <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Confirmed job pages" />
+
+    {payingRequestId !== null ? <TuitionPaymentsModal requestId={payingRequestId} onClose={() => setPayingRequestId(null)} /> : null}
   </div>;
 }
 

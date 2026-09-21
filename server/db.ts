@@ -7141,9 +7141,7 @@ async function getChargeSummaries(items: Array<{ id: number; tutorId: string; co
     .where(and(inArray(tuitionPayments.tutorRequestId, items.map(item => item.id)), eq(tuitionPayments.status, "verified")));
   for (const item of items) {
     if (!item.confirmedAt) continue;
-    const terms: ChargeTerms | null = item.chargeTerms
-      ? JSON.parse(item.chargeTerms) as ChargeTerms
-      : buildChargeTerms({ tuitionType: item.tuitionType, salary: item.budgetAmount, limits });
+    const terms = chargeTermsFor(item, limits);
     if (!terms) continue;
     const own = payments.filter(payment => payment.requestId === item.id && payment.tutorId === item.tutorId);
     summaries.set(item.id, chargeSummary(terms, item.confirmedAt, own.map(payment => ({ amount: payment.amount, paidAt: payment.paidAt }))));
@@ -7161,36 +7159,226 @@ export function listAdminConfirmedJobsPage(filters: AdminAppointedJobFilters) {
   return listAdminTutorHeldJobsPage("confirmed", filters);
 }
 
-/**
- * An Admin's record of how much of a Confirmed tuition's fee has been paid.
- *
- * Only a tuition that is Confirmed has one to set. The change goes into the
- * request's operation history with every other Admin decision.
- */
-export async function setConfirmedJobPaymentStatus(input: { adminUserId: number; requestId: number; paymentStatus: JobPaymentStatus }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
-    const [request] = await tx
-      .select({ id: tutorRequests.id, guardianUserId: tutorRequests.guardianUserId, paymentStatus: tutorRequests.paymentStatus })
-      .from(tutorRequests)
-      .where(and(eq(tutorRequests.id, input.requestId), adminPostedJobStageCondition("confirmed")))
-      .limit(1)
-      .for("update");
-    if (!request) return { outcome: "not_found" as const };
-    if (request.paymentStatus === input.paymentStatus) return { outcome: "unchanged" as const, paymentStatus: request.paymentStatus };
+/** The charge terms a tuition is on: the ones kept at confirmation, else today's rates for one confirmed before they were kept. */
+function chargeTermsFor(row: { chargeTerms: string | null; tuitionType: string; budgetAmount: number | null }, limits: Record<string, number>): ChargeTerms | null {
+  if (row.chargeTerms) return JSON.parse(row.chargeTerms) as ChargeTerms;
+  return buildChargeTerms({ tuitionType: row.tuitionType, salary: row.budgetAmount, limits });
+}
 
-    await tx.update(tutorRequests)
-      .set({ paymentStatus: input.paymentStatus, lastActivityAt: new Date() })
-      .where(eq(tutorRequests.id, request.id));
+type ChargeRequestRow = {
+  id: number;
+  guardianUserId: number;
+  tutorId: string | null;
+  confirmedAt: Date | null;
+  tuitionType: string;
+  budgetAmount: number | null;
+  chargeTerms: string | null;
+  paymentStatus: JobPaymentStatus;
+};
+
+async function loadConfirmedChargeRequest(tx: any, requestId: number): Promise<ChargeRequestRow | undefined> {
+  const [request] = await tx
+    .select({
+      id: tutorRequests.id,
+      guardianUserId: tutorRequests.guardianUserId,
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+      paymentStatus: tutorRequests.paymentStatus,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, requestId), adminPostedJobStageCondition("confirmed")))
+    .limit(1)
+    .for("update");
+  return request;
+}
+
+/** The verified payments that count towards the Tutor who holds the tuition now. */
+async function verifiedChargePayments(tx: any, request: ChargeRequestRow) {
+  if (!request.tutorId) return [] as Array<{ id: number; amount: number; paidAt: Date }>;
+  const rows: Array<{ id: number; amount: number; paidAt: Date }> = await tx
+    .select({ id: tuitionPayments.id, amount: tuitionPayments.amount, paidAt: tuitionPayments.paidAt })
+    .from(tuitionPayments)
+    .where(and(eq(tuitionPayments.tutorRequestId, request.id), eq(tuitionPayments.tutorId, request.tutorId), eq(tuitionPayments.status, "verified")));
+  return rows;
+}
+
+const sumAmounts = (rows: ReadonlyArray<{ amount: number }>) => rows.reduce((sum, row) => sum + row.amount, 0);
+
+/**
+ * Brings the tuition's stored Payment Status in line with the ledger, and puts
+ * a change in its history. The status is worked out, never typed: this is the
+ * only place that writes it after confirmation.
+ */
+async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId: number) {
+  const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+  if (!terms || !request.confirmedAt) return null;
+  const summary = chargeSummary(terms, request.confirmedAt, await verifiedChargePayments(tx, request));
+  if (summary.status !== request.paymentStatus) {
+    await tx.update(tutorRequests).set({ paymentStatus: summary.status, lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
     await tx.insert(tutorRequestOperationEvents).values({
       tutorRequestId: request.id,
       guardianUserId: request.guardianUserId,
-      actorUserId: input.adminUserId,
+      actorUserId: adminUserId,
       action: "admin_payment_status_changed",
       changedFields: JSON.stringify(["payment_status"]),
     });
-    return { outcome: "updated" as const, paymentStatus: input.paymentStatus };
+  }
+  return summary;
+}
+
+/** A calendar day an Admin picked, as noon in Dhaka: a day is what a payment record means, and noon is far from any edge of it. */
+function paidOnToDate(paidOn: string) {
+  return new Date(`${paidOn}T12:00:00+06:00`);
+}
+
+export type TuitionPaymentFailure =
+  | { outcome: "not_found" }
+  | { outcome: "no_charge" }
+  | { outcome: "too_early" }
+  | { outcome: "in_future" }
+  | { outcome: "duplicate_reference" }
+  | { outcome: "not_pending" }
+  | { outcome: "not_holder" }
+  | { outcome: "over"; most: number };
+
+/**
+ * Everything an Admin needs to see about a Confirmed tuition's payments: where
+ * the charge stands, and each payment on file with who it is from.
+ */
+export async function getTuitionPaymentLedger(requestId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [request] = await database
+    .select({
+      id: tutorRequests.id,
+      guardianUserId: tutorRequests.guardianUserId,
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+      paymentStatus: tutorRequests.paymentStatus,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, requestId), adminPostedJobStageCondition("confirmed")))
+    .limit(1);
+  if (!request) return null;
+  const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+  const rows = await database
+    .select({
+      id: tuitionPayments.id,
+      tutorId: tuitionPayments.tutorId,
+      amount: tuitionPayments.amount,
+      method: tuitionPayments.method,
+      reference: tuitionPayments.reference,
+      status: tuitionPayments.status,
+      source: tuitionPayments.source,
+      paidAt: tuitionPayments.paidAt,
+      note: tuitionPayments.note,
+      decidedAt: tuitionPayments.decidedAt,
+    })
+    .from(tuitionPayments)
+    .where(eq(tuitionPayments.tutorRequestId, requestId))
+    .orderBy(desc(tuitionPayments.paidAt), desc(tuitionPayments.id));
+  const verified = rows.filter(row => row.status === "verified" && row.tutorId === request.tutorId);
+  return {
+    charge: terms && request.confirmedAt ? chargeSummary(terms, request.confirmedAt, verified) : null,
+    // A payment from a Tutor since removed stays on file but is not this Tutor's balance.
+    payments: rows.map(row => ({ ...row, fromCurrentTutor: row.tutorId === request.tutorId })),
+  };
+}
+
+/**
+ * An Admin records a payment the Tutor has made. It is verified as it is
+ * recorded - the Admin is the one confirming the money arrived - and refused if
+ * it would take what is paid above what is owed, or repeats a transaction id
+ * already on file.
+ */
+export async function recordTuitionPayment(input: {
+  adminUserId: number;
+  requestId: number;
+  amount: number;
+  method: (typeof tuitionPayments.$inferInsert)["method"];
+  reference?: string | null;
+  paidOn: string;
+  note?: string | null;
+}): Promise<TuitionPaymentFailure | { outcome: "recorded"; charge: ReturnType<typeof chargeSummary> }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const request = await loadConfirmedChargeRequest(tx, input.requestId);
+    if (!request || !request.tutorId || !request.confirmedAt) return { outcome: "not_found" as const };
+    const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+    if (!terms) return { outcome: "no_charge" as const };
+
+    const paidAt = paidOnToDate(input.paidOn);
+    if (paidAt.getTime() > Date.now() + 24 * 60 * 60 * 1000) return { outcome: "in_future" as const };
+    if (paidAt.getTime() < request.confirmedAt.getTime() - 24 * 60 * 60 * 1000) return { outcome: "too_early" as const };
+
+    const reference = input.reference?.trim() || null;
+    if (reference) {
+      const [same] = await tx.select({ id: tuitionPayments.id }).from(tuitionPayments)
+        .where(and(eq(tuitionPayments.method, input.method), eq(tuitionPayments.reference, reference), ne(tuitionPayments.status, "rejected")))
+        .limit(1);
+      if (same) return { outcome: "duplicate_reference" as const };
+    }
+
+    const prior = await verifiedChargePayments(tx, request);
+    const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: input.amount, paidAt }]);
+    if (after.paid > after.owed) return { outcome: "over" as const, most: Math.max(0, after.owed - sumAmounts(prior)) };
+
+    await tx.insert(tuitionPayments).values({
+      tutorRequestId: request.id,
+      tutorId: request.tutorId,
+      amount: input.amount,
+      method: input.method,
+      reference,
+      status: "verified",
+      source: "manual",
+      paidAt,
+      note: input.note?.trim() || null,
+      recordedByUserId: input.adminUserId,
+      decidedByUserId: input.adminUserId,
+      decidedAt: new Date(),
+    });
+    const charge = (await syncChargeStatus(tx, request, input.adminUserId))!;
+    return { outcome: "recorded" as const, charge };
+  });
+}
+
+/**
+ * An Admin's answer to a payment a Tutor reported: the money arrived, or it did
+ * not. Only a payment still waiting can be decided, and verifying one is held to
+ * the same ceiling as recording one.
+ */
+export async function decideTuitionPayment(input: { adminUserId: number; paymentId: number; decision: "verified" | "rejected" }): Promise<TuitionPaymentFailure | { outcome: "decided"; status: "verified" | "rejected" }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [payment] = await tx.select().from(tuitionPayments).where(eq(tuitionPayments.id, input.paymentId)).limit(1).for("update");
+    if (!payment) return { outcome: "not_found" as const };
+    if (payment.status !== "submitted") return { outcome: "not_pending" as const };
+    const request = await loadConfirmedChargeRequest(tx, payment.tutorRequestId);
+
+    if (input.decision === "verified") {
+      if (!request || !request.confirmedAt) return { outcome: "not_found" as const };
+      // A payment from a Tutor who no longer holds the tuition cannot be counted towards the new one.
+      if (request.tutorId !== payment.tutorId) return { outcome: "not_holder" as const };
+      const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+      if (!terms) return { outcome: "no_charge" as const };
+      const prior = await verifiedChargePayments(tx, request);
+      const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: payment.amount, paidAt: payment.paidAt }]);
+      if (after.paid > after.owed) return { outcome: "over" as const, most: Math.max(0, after.owed - sumAmounts(prior)) };
+    }
+
+    await tx.update(tuitionPayments)
+      .set({ status: input.decision, decidedByUserId: input.adminUserId, decidedAt: new Date() })
+      .where(eq(tuitionPayments.id, payment.id));
+    if (request && input.decision === "verified") await syncChargeStatus(tx, request, input.adminUserId);
+    return { outcome: "decided" as const, status: input.decision };
   });
 }
 

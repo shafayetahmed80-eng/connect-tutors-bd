@@ -1,9 +1,10 @@
+import PaymentStatusPill from "@/components/PaymentStatusPill";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { RecordIcon } from "@/components/recordIcons";
 import StatusTabRow from "@/components/StatusTabRow";
 import { trpc } from "@/lib/trpc";
 import { formatSubjects, formatTuitionType } from "@shared/job-card";
-import { jobPaymentStatusLabels, type JobPaymentStatus } from "@shared/job-payment-status";
+import type { JobPaymentStatus } from "@shared/job-payment-status";
 import {
   countTutorApplicationStages,
   filterTutorApplicationsByStage,
@@ -48,14 +49,6 @@ function StageDate({ value }: { value: string | Date | null }) {
   return value ? <span className="tabular-nums text-j-ink-strong">{formatDate(value)}</span> : notRecorded;
 }
 
-/** Owed reads warm, paid reads green, the two part-payments sit between. */
-const paymentTone: Record<JobPaymentStatus, string> = {
-  full_due: "border-red-200 bg-red-50 text-red-800",
-  half_paid: "border-amber-200 bg-amber-50 text-amber-800",
-  partial_paid: "border-sky-200 bg-sky-50 text-sky-800",
-  full_paid: "border-emerald-200 bg-emerald-50 text-emerald-800",
-};
-
 /**
  * Each stage carries the date it happened, and the one column that belongs to
  * it alone. A Tutor reading Confirmed Jobs wants the confirmation date and how
@@ -68,9 +61,7 @@ function stageColumns(stage: TutorApplicationStage): RecordColumn<ApplicationRow
     { key: "confirmedAt", label: "Confirmation Date", cellClassName: "whitespace-nowrap", cell: application => <StageDate value={application.appointmentConfirmedAt} /> },
     {
       key: "paymentStatus", label: "Payment Status", cellClassName: "whitespace-nowrap",
-      cell: application => <span className={`inline-flex rounded-full border px-2.5 py-1 text-2xs font-bold ${paymentTone[application.paymentStatus]}`}>
-        {jobPaymentStatusLabels[application.paymentStatus]}
-      </span>,
+      cell: application => <PaymentStatusPill status={application.paymentStatus} />,
     },
   ];
   if (stage === "cancelled") return [{ key: "cancelledAt", label: "Cancelled", cellClassName: "whitespace-nowrap", cell: application => <StageDate value={application.endedAt ?? application.tuitionCancelledAt} /> }];
