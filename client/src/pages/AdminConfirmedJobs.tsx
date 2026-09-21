@@ -1,3 +1,4 @@
+import AdminCancelledChargesContent from "@/components/AdminCancelledCharges";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
@@ -120,6 +121,33 @@ export function AdminConfirmedJobsContent() {
   </div>;
 }
 
+const tabs = [
+  { key: "confirmed", label: "Confirmed" },
+  { key: "cancelled", label: "Cancelled" },
+] as const;
+
+/**
+ * Confirmed tuitions, and the ones cancelled after they were confirmed - where
+ * an Admin settles what the Tutor owes or is owed back.
+ */
 export default function AdminConfirmedJobs() {
-  return <AdminWorkspaceLayout title="Confirmed Jobs"><AdminConfirmedJobsContent /></AdminWorkspaceLayout>;
+  const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("confirmed");
+  return <AdminWorkspaceLayout title="Confirmed Jobs">
+    <div className="mx-auto w-full max-w-[100rem] space-y-4">
+      <div role="tablist" aria-label="Confirmed jobs" className="flex gap-5 border-b border-[#dce9f1]">
+        {tabs.map(item => <button
+          key={item.key}
+          type="button"
+          role="tab"
+          aria-selected={tab === item.key}
+          onClick={() => setTab(item.key)}
+          className={`relative pb-2.5 pt-1.5 text-xs font-semibold transition-colors ${tab === item.key ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
+        >
+          {item.label}
+          {tab === item.key ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
+        </button>)}
+      </div>
+      {tab === "confirmed" ? <AdminConfirmedJobsContent /> : <AdminCancelledChargesContent />}
+    </div>
+  </AdminWorkspaceLayout>;
 }

@@ -1362,7 +1362,7 @@ export const tuitionPayments = mysqlTable("tuition_payments", {
     .notNull()
     .references(() => tutors.id),
   amount: int("amount").notNull(),
-  method: mysqlEnum("method", ["bkash", "nagad", "rocket", "bank", "cash", "other"]).notNull(),
+  method: mysqlEnum("method", ["bkash", "nagad", "rocket", "bank", "cash", "other", "credit"]).notNull(),
   /** The wallet or bank's own transaction id, as the Tutor or Admin typed it. */
   reference: varchar("reference", { length: 80 }),
   /** Only a verified payment counts towards what is paid. */
@@ -1382,6 +1382,43 @@ export const tuitionPayments = mysqlTable("tuition_payments", {
   index("tuition_payments_request_idx").on(table.tutorRequestId, table.status),
   index("tuition_payments_tutor_idx").on(table.tutorId),
   uniqueIndex("tuition_payments_gateway_txn_unique").on(table.gatewayTxnId),
+]);
+
+/**
+ * How a confirmed tuition that ended was settled: what the Tutor keeps owing,
+ * and what of their payments comes back.
+ *
+ * One row per tuition. The Admin decides it - the rates give the figure they
+ * start from, but whether the Guardian's reason was valid, and whether the
+ * Tutor reported it in time, are judgements - so it records who decided and on
+ * what grounds. A refund is either sent back, or kept as credit the Tutor can
+ * spend on their other tuitions; `disposition` says which.
+ */
+export const tuitionSettlements = mysqlTable("tuition_settlements", {
+  id: int("id").autoincrement().primaryKey(),
+  tutorRequestId: int("tutorRequestId")
+    .notNull()
+    .references(() => tutorRequests.id),
+  tutorId: varchar("tutorId", { length: 32 })
+    .notNull()
+    .references(() => tutors.id),
+  reason: mysqlEnum("reason", ["guardian_valid", "tutor_fault", "late_notice", "other"]).notNull(),
+  /** The salary the Tutor actually received, for a tuition that ended before anything was paid. */
+  receivedSalary: int("receivedSalary"),
+  /** What the Tutor owes for the tuition now that it ended. */
+  retained: int("retained").notNull(),
+  /** What was paid when the Admin decided, so the figures stay readable if payments change later. */
+  paidAtSettlement: int("paidAtSettlement").notNull(),
+  refundAmount: int("refundAmount").default(0).notNull(),
+  dueAmount: int("dueAmount").default(0).notNull(),
+  disposition: mysqlEnum("disposition", ["none", "refunded", "credited"]).default("none").notNull(),
+  note: varchar("note", { length: 280 }),
+  decidedByUserId: int("decidedByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  uniqueIndex("tuition_settlements_request_unique").on(table.tutorRequestId),
+  index("tuition_settlements_tutor_idx").on(table.tutorId, table.disposition),
 ]);
 
 /**

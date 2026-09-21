@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
 import {
   chargeKindLabels,
+  tuitionPaymentMethodValues,
   tuitionPaymentMethodLabels,
   tuitionPaymentStatusLabels,
   type TuitionPaymentStatus,
@@ -98,6 +99,7 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
 
         {charge ? <PaymentForm
           label="Record a payment"
+          methods={tuitionPaymentMethodValues}
           submitLabel="Record payment"
           pendingLabel="Recording…"
           pending={record.isPending}

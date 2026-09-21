@@ -80,6 +80,7 @@ import {
   tutorRegistrations,
   tutorJobInterests,
   tuitionPayments,
+  tuitionSettlements,
   tutorJobs,
   tutorRequestPublicationStateValues,
   tutorStudentTypes,
@@ -128,8 +129,8 @@ import {
   type RegistrationLocationRow,
 } from "@shared/registration-location-selector";
 import type { JobPaymentStatus } from "@shared/job-payment-status";
-import { buildChargeTerms, chargeKindForTuitionType, chargeSummary, type ChargeTerms } from "@shared/platform-charge";
-import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification } from "./payment-notifications";
+import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSummary, type CancellationReason, type ChargeTerms, type SettlementDisposition } from "@shared/platform-charge";
+import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
 import {
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
@@ -7175,10 +7176,28 @@ type ChargeRequestRow = {
   budgetAmount: number | null;
   chargeTerms: string | null;
   paymentStatus: JobPaymentStatus;
+  /** What a cancelled tuition was settled at; null while it is still Confirmed. */
+  settledOwed: number | null;
 };
 
-async function loadConfirmedChargeRequest(tx: any, requestId: number): Promise<ChargeRequestRow | undefined> {
-  const [request] = await tx
+/** A confirmed tuition that has since been cancelled: it keeps its Tutor and its confirmation date. */
+function cancelledChargeCondition(): SQL {
+  return and(
+    isNotNull(tutorRequests.appointmentConfirmedAt),
+    isNotNull(tutorRequests.tutorId),
+    or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed")),
+  )!;
+}
+
+const settledOptions = (request: { settledOwed: number | null }) => request.settledOwed !== null ? { settledOwed: request.settledOwed } : {};
+
+/**
+ * The tuition a payment is about: one that is Confirmed, or one that was
+ * cancelled after being confirmed and has been settled. A cancelled tuition
+ * that has not been settled has no figure to pay against yet.
+ */
+async function loadChargeRequest(tx: any, requestId: number): Promise<ChargeRequestRow | undefined> {
+  const [row] = await tx
     .select({
       id: tutorRequests.id,
       guardianUserId: tutorRequests.guardianUserId,
@@ -7188,12 +7207,31 @@ async function loadConfirmedChargeRequest(tx: any, requestId: number): Promise<C
       budgetAmount: tutorRequests.budgetAmount,
       chargeTerms: tutorRequests.chargeTerms,
       paymentStatus: tutorRequests.paymentStatus,
+      settledOwed: tuitionSettlements.retained,
+      closed: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
     })
     .from(tutorRequests)
-    .where(and(eq(tutorRequests.id, requestId), adminPostedJobStageCondition("confirmed")))
+    .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .where(and(eq(tutorRequests.id, requestId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
     .limit(1)
     .for("update");
+  if (!row) return undefined;
+  if (Number(row.closed) && row.settledOwed === null) return undefined;
+  const { closed: _closed, ...request } = row;
   return request;
+}
+
+/** What a Tutor has been given credit for by cancelled tuitions, less what an Admin has since applied to their other tuitions. */
+async function tutorCreditBalance(tx: any, tutorId: string) {
+  const [granted] = await tx
+    .select({ total: sql<number>`coalesce(sum(${tuitionSettlements.refundAmount}), 0)` })
+    .from(tuitionSettlements)
+    .where(and(eq(tuitionSettlements.tutorId, tutorId), eq(tuitionSettlements.disposition, "credited")));
+  const [used] = await tx
+    .select({ total: sql<number>`coalesce(sum(${tuitionPayments.amount}), 0)` })
+    .from(tuitionPayments)
+    .where(and(eq(tuitionPayments.tutorId, tutorId), eq(tuitionPayments.method, "credit"), eq(tuitionPayments.status, "verified")));
+  return Number(granted?.total ?? 0) - Number(used?.total ?? 0);
 }
 
 /** The verified payments that count towards the Tutor who holds the tuition now. */
@@ -7216,7 +7254,7 @@ const sumAmounts = (rows: ReadonlyArray<{ amount: number }>) => rows.reduce((sum
 async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId: number) {
   const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
   if (!terms || !request.confirmedAt) return null;
-  const summary = chargeSummary(terms, request.confirmedAt, await verifiedChargePayments(tx, request));
+  const summary = chargeSummary(terms, request.confirmedAt, await verifiedChargePayments(tx, request), settledOptions(request));
   if (summary.status !== request.paymentStatus) {
     await tx.update(tutorRequests).set({ paymentStatus: summary.status, lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
     await tx.insert(tutorRequestOperationEvents).values({
@@ -7246,6 +7284,8 @@ export type TuitionPaymentFailure =
   | { outcome: "not_both" }
   | { outcome: "has_payments" }
   | { outcome: "too_many_waiting" }
+  | { outcome: "no_credit"; available: number }
+  | { outcome: "credit_used" }
   | { outcome: "over"; most: number };
 
 /**
@@ -7255,7 +7295,7 @@ export type TuitionPaymentFailure =
 export async function getTuitionPaymentLedger(requestId: number) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const [request] = await database
+  const [row] = await database
     .select({
       id: tutorRequests.id,
       guardianUserId: tutorRequests.guardianUserId,
@@ -7265,11 +7305,15 @@ export async function getTuitionPaymentLedger(requestId: number) {
       budgetAmount: tutorRequests.budgetAmount,
       chargeTerms: tutorRequests.chargeTerms,
       paymentStatus: tutorRequests.paymentStatus,
+      settledOwed: tuitionSettlements.retained,
+      closed: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
     })
     .from(tutorRequests)
-    .where(and(eq(tutorRequests.id, requestId), adminPostedJobStageCondition("confirmed")))
+    .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .where(and(eq(tutorRequests.id, requestId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
     .limit(1);
-  if (!request) return null;
+  if (!row || (Number(row.closed) && row.settledOwed === null)) return null;
+  const request = row;
   const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
   const rows = await database
     .select({
@@ -7293,7 +7337,8 @@ export async function getTuitionPaymentLedger(requestId: number) {
     kind: terms?.kind ?? chargeKindForTuitionType(request.tuitionType),
     // A tuition open to Home or Online is charged as one of them, and an Admin says which - until money has been paid on it.
     canChooseKind: request.tuitionType === "both" && !rows.some(row => row.status !== "rejected"),
-    charge: terms && request.confirmedAt ? chargeSummary(terms, request.confirmedAt, verified) : null,
+    cancelled: Boolean(Number(request.closed)),
+    charge: terms && request.confirmedAt ? chargeSummary(terms, request.confirmedAt, verified, settledOptions(request)) : null,
     // A payment from a Tutor since removed stays on file but is not this Tutor's balance.
     payments: rows.map(row => ({ ...row, fromCurrentTutor: row.tutorId === request.tutorId })),
   };
@@ -7317,7 +7362,7 @@ export async function recordTuitionPayment(input: {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
-    const request = await loadConfirmedChargeRequest(tx, input.requestId);
+    const request = await loadChargeRequest(tx, input.requestId);
     if (!request || !request.tutorId || !request.confirmedAt) return { outcome: "not_found" as const };
     const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
     if (!terms) return { outcome: "no_charge" as const };
@@ -7335,7 +7380,12 @@ export async function recordTuitionPayment(input: {
     }
 
     const prior = await verifiedChargePayments(tx, request);
-    const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: input.amount, paidAt }]);
+    // Credit is money the Tutor was already owed, so it can only be applied up to what they hold.
+    if (input.method === "credit") {
+      const available = await tutorCreditBalance(tx, request.tutorId);
+      if (input.amount > available) return { outcome: "no_credit" as const, available: Math.max(0, available) };
+    }
+    const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: input.amount, paidAt }], settledOptions(request));
     if (after.paid > after.owed) return { outcome: "over" as const, most: Math.max(0, after.owed - sumAmounts(prior)) };
 
     const [inserted] = await tx.insert(tuitionPayments).values({
@@ -7376,7 +7426,7 @@ export async function decideTuitionPayment(input: { adminUserId: number; payment
     const [payment] = await tx.select().from(tuitionPayments).where(eq(tuitionPayments.id, input.paymentId)).limit(1).for("update");
     if (!payment) return { outcome: "not_found" as const };
     if (payment.status !== "submitted") return { outcome: "not_pending" as const };
-    const request = await loadConfirmedChargeRequest(tx, payment.tutorRequestId);
+    const request = await loadChargeRequest(tx, payment.tutorRequestId);
 
     if (input.decision === "verified") {
       if (!request || !request.confirmedAt) return { outcome: "not_found" as const };
@@ -7385,7 +7435,7 @@ export async function decideTuitionPayment(input: { adminUserId: number; payment
       const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
       if (!terms) return { outcome: "no_charge" as const };
       const prior = await verifiedChargePayments(tx, request);
-      const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: payment.amount, paidAt: payment.paidAt }]);
+      const after = chargeSummary(terms, request.confirmedAt, [...prior, { amount: payment.amount, paidAt: payment.paidAt }], settledOptions(request));
       if (after.paid > after.owed) return { outcome: "over" as const, most: Math.max(0, after.owed - sumAmounts(prior)) };
     }
 
@@ -7413,7 +7463,7 @@ export async function setTuitionChargeKind(input: { requestId: number; kind: "ho
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
-    const request = await loadConfirmedChargeRequest(tx, input.requestId);
+    const request = await loadChargeRequest(tx, input.requestId);
     if (!request) return { outcome: "not_found" as const };
     if (request.tuitionType !== "both") return { outcome: "not_both" as const };
     const [paid] = await tx.select({ id: tuitionPayments.id }).from(tuitionPayments)
@@ -7443,11 +7493,19 @@ export async function getTutorChargeOverview(tutorId: string) {
       budgetAmount: tutorRequests.budgetAmount,
       confirmedAt: tutorRequests.appointmentConfirmedAt,
       chargeTerms: tutorRequests.chargeTerms,
+      settledOwed: tuitionSettlements.retained,
+      settledRefund: tuitionSettlements.refundAmount,
+      settledDisposition: tuitionSettlements.disposition,
+      closed: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
     })
     .from(tutorRequests)
-    .where(and(eq(tutorRequests.tutorId, tutorId), adminPostedJobStageCondition("confirmed")))
+    .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .where(and(eq(tutorRequests.tutorId, tutorId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
     .orderBy(desc(tutorRequests.appointmentConfirmedAt), desc(tutorRequests.id));
-  if (requests.length === 0) return [];
+  // A tuition that was cancelled shows once an Admin has settled it: until then there is no figure to show.
+  const visible = requests.filter(request => !Number(request.closed) || request.settledOwed !== null);
+  const credit = Math.max(0, await tutorCreditBalance(database, tutorId));
+  if (visible.length === 0) return { items: [], credit };
   const limits = (await getSiteLimits()) as Record<string, number>;
   const payments = await database
     .select({
@@ -7460,9 +7518,9 @@ export async function getTutorChargeOverview(tutorId: string) {
       paidAt: tuitionPayments.paidAt,
     })
     .from(tuitionPayments)
-    .where(and(eq(tuitionPayments.tutorId, tutorId), inArray(tuitionPayments.tutorRequestId, requests.map(request => request.id))))
+    .where(and(eq(tuitionPayments.tutorId, tutorId), inArray(tuitionPayments.tutorRequestId, visible.map(request => request.id))))
     .orderBy(desc(tuitionPayments.paidAt), desc(tuitionPayments.id));
-  return requests.map(request => {
+  const items = visible.map(request => {
     const own = payments.filter(payment => payment.requestId === request.id);
     const terms = chargeTermsFor(request, limits);
     return {
@@ -7473,11 +7531,17 @@ export async function getTutorChargeOverview(tutorId: string) {
       salary: request.budgetAmount,
       kind: terms?.kind ?? chargeKindForTuitionType(request.tuitionType),
       confirmedAt: request.confirmedAt,
-      charge: terms && request.confirmedAt ? chargeSummary(terms, request.confirmedAt, own.filter(payment => payment.status === "verified")) : null,
+      cancelled: Boolean(Number(request.closed)),
+      /** What comes back to the Tutor from a cancelled tuition, and what became of it. */
+      refund: request.settledRefund && request.settledDisposition && request.settledDisposition !== "none"
+        ? { amount: request.settledRefund, disposition: request.settledDisposition }
+        : null,
+      charge: terms && request.confirmedAt ? chargeSummary(terms, request.confirmedAt, own.filter(payment => payment.status === "verified"), settledOptions(request)) : null,
       waiting: own.filter(payment => payment.status === "submitted").reduce((sum, payment) => sum + payment.amount, 0),
       payments: own.map(({ requestId: _requestId, ...payment }) => payment),
     };
   });
+  return { items, credit };
 }
 
 /** How many reports of one tuition can wait on an Admin at once: enough for any honest run of instalments, few enough to stop a flood. */
@@ -7501,7 +7565,7 @@ export async function reportTuitionPayment(input: {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return database.transaction(async tx => {
-    const request = await loadConfirmedChargeRequest(tx, input.requestId);
+    const request = await loadChargeRequest(tx, input.requestId);
     // Someone else's tuition looks exactly like one that does not exist.
     if (!request || request.tutorId !== input.tutorId || !request.confirmedAt) return { outcome: "not_found" as const };
     const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
@@ -7526,7 +7590,7 @@ export async function reportTuitionPayment(input: {
     if (waiting.length >= MAX_WAITING_PAYMENTS) return { outcome: "too_many_waiting" as const };
 
     const verified = await verifiedChargePayments(tx, request);
-    const after = chargeSummary(terms, request.confirmedAt, [...verified, ...waiting, { amount: input.amount, paidAt }]);
+    const after = chargeSummary(terms, request.confirmedAt, [...verified, ...waiting, { amount: input.amount, paidAt }], settledOptions(request));
     if (after.paid > after.owed) return { outcome: "over" as const, most: Math.max(0, after.owed - sumAmounts(verified) - sumAmounts(waiting)) };
 
     await tx.insert(tuitionPayments).values({
@@ -7543,6 +7607,212 @@ export async function reportTuitionPayment(input: {
     });
     return { outcome: "reported" as const };
   });
+}
+
+/**
+ * A cancelled tuition an Admin is settling, or has settled: the figures the
+ * rates suggest for the grounds they give, so they can see what a change of
+ * reason or of salary received would do before they commit to it.
+ */
+export async function previewTuitionSettlement(input: { requestId: number; reason: CancellationReason; receivedSalary?: number | null }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [request] = await database
+    .select({
+      id: tutorRequests.id,
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      cancelledAt: tutorRequests.cancelledAt,
+      lastActivityAt: tutorRequests.lastActivityAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, input.requestId), cancelledChargeCondition()))
+    .limit(1);
+  if (!request || !request.confirmedAt || !request.tutorId) return null;
+  const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+  if (!terms) return { outcome: "no_charge" as const };
+  const verified = await verifiedChargePayments(database, { ...request, guardianUserId: 0, paymentStatus: "full_due", settledOwed: null } as ChargeRequestRow);
+  const paid = sumAmounts(verified);
+  const cancelledAt = request.cancelledAt ?? request.lastActivityAt;
+  return {
+    outcome: "preview" as const,
+    paid,
+    confirmedAt: request.confirmedAt,
+    cancelledAt,
+    ...chargeSettlement({ terms, confirmedAt: request.confirmedAt, cancelledAt, paid, reason: input.reason, receivedSalary: input.receivedSalary }),
+  };
+}
+
+/**
+ * An Admin settles a cancelled tuition: what the Tutor keeps owing for it, and
+ * so what of their payments comes back or what is still due.
+ *
+ * The figure starts from the rates for the grounds given and the Admin may move
+ * it - it is their decision, and the record says who made it. A refund is sent
+ * back or kept as credit; a settlement can be revised until credit it granted
+ * has been spent.
+ */
+export async function saveTuitionSettlement(input: {
+  adminUserId: number;
+  requestId: number;
+  reason: CancellationReason;
+  receivedSalary?: number | null;
+  /** What the Tutor keeps owing; the rates' figure when left out. */
+  retained?: number | null;
+  disposition: SettlementDisposition;
+  note?: string | null;
+}): Promise<TuitionPaymentFailure | { outcome: "saved"; refund: number; due: number }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database.transaction(async tx => {
+    const [request] = await tx
+      .select({
+        id: tutorRequests.id,
+        guardianUserId: tutorRequests.guardianUserId,
+        tutorId: tutorRequests.tutorId,
+        confirmedAt: tutorRequests.appointmentConfirmedAt,
+        cancelledAt: tutorRequests.cancelledAt,
+        lastActivityAt: tutorRequests.lastActivityAt,
+        tuitionType: tutorRequests.tuitionType,
+        budgetAmount: tutorRequests.budgetAmount,
+        chargeTerms: tutorRequests.chargeTerms,
+        paymentStatus: tutorRequests.paymentStatus,
+      })
+      .from(tutorRequests)
+      .where(and(eq(tutorRequests.id, input.requestId), cancelledChargeCondition()))
+      .limit(1)
+      .for("update");
+    if (!request || !request.confirmedAt || !request.tutorId) return { outcome: "not_found" as const };
+    const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+    if (!terms) return { outcome: "no_charge" as const };
+
+    const asRow = { ...request, settledOwed: null } as ChargeRequestRow;
+    const paid = sumAmounts(await verifiedChargePayments(tx, asRow));
+    const suggested = chargeSettlement({ terms, confirmedAt: request.confirmedAt, cancelledAt: request.cancelledAt ?? request.lastActivityAt, paid, reason: input.reason, receivedSalary: input.receivedSalary });
+    const retained = Math.min(suggested.total, Math.max(0, Math.round(input.retained ?? suggested.retained)));
+    const refund = Math.max(0, paid - retained);
+    const due = Math.max(0, retained - paid);
+    // A refund has to go somewhere; without one there is nothing to dispose of.
+    const disposition: SettlementDisposition = refund > 0 ? (input.disposition === "none" ? "refunded" : input.disposition) : "none";
+
+    // Credit already spent cannot be taken back by revising the settlement that granted it.
+    const [existing] = await tx.select().from(tuitionSettlements).where(eq(tuitionSettlements.tutorRequestId, request.id)).limit(1);
+    if (existing?.disposition === "credited" && disposition !== "credited") {
+      if (await tutorCreditBalance(tx, request.tutorId) < existing.refundAmount) return { outcome: "credit_used" as const };
+    }
+    if (existing?.disposition === "credited" && disposition === "credited" && refund < existing.refundAmount) {
+      if (await tutorCreditBalance(tx, request.tutorId) < existing.refundAmount - refund) return { outcome: "credit_used" as const };
+    }
+
+    const values = {
+      tutorRequestId: request.id,
+      tutorId: request.tutorId,
+      reason: input.reason,
+      receivedSalary: input.receivedSalary ?? null,
+      retained,
+      paidAtSettlement: paid,
+      refundAmount: refund,
+      dueAmount: due,
+      disposition,
+      note: input.note?.trim() || null,
+      decidedByUserId: input.adminUserId,
+    };
+    await tx.insert(tuitionSettlements).values(values).onDuplicateKeyUpdate({ set: { ...values, tutorRequestId: request.id } });
+
+    await syncChargeStatus(tx, { ...asRow, settledOwed: retained }, input.adminUserId);
+    await createTutorNotification(tx, {
+      tutorId: request.tutorId,
+      type: "payment",
+      ...tuitionSettledTutorNotification(jobIdForRequest(request.id), { refund, due, disposition }),
+      actionPath: "/tutor/dashboard/payment",
+      deduplicationKey: `settlement:${request.id}:${retained}:${disposition}`,
+    });
+    return { outcome: "saved" as const, refund, due };
+  });
+}
+
+/**
+ * Tuitions that were cancelled after being confirmed, each with the Tutor who
+ * held it and where its settlement stands: not settled yet, or what came of it.
+ */
+export async function listAdminCancelledChargesPage(filters: AdminAppointedJobFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const conditions: SQL[] = [cancelledChargeCondition()];
+  const search = filters.query.trim();
+  if (search) {
+    const pattern = `%${search}%`;
+    conditions.push(or(
+      like(tutorRequests.classCourse, pattern),
+      like(tutorRequests.subjects, pattern),
+      like(tutors.name, pattern),
+      like(tutors.phone, pattern),
+      like(sql`cast(${tutorRegistrations.tutorNumber} as char)`, pattern),
+    )!);
+  }
+  const where = and(...conditions);
+  const offset = (filters.page - 1) * filters.pageSize;
+  const items = await database
+    .select({
+      id: tutorRequests.id,
+      classCourse: tutorRequests.classCourse,
+      subjects: tutorRequests.subjects,
+      budgetAmount: tutorRequests.budgetAmount,
+      tuitionType: tutorRequests.tuitionType,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      cancelledAt: tutorRequests.cancelledAt,
+      cancellationReason: tutorRequests.cancellationReason,
+      chargeTerms: tutorRequests.chargeTerms,
+      tutorId: tutors.id,
+      tutorNumber: tutorRegistrations.tutorNumber,
+      tutorName: tutors.name,
+      tutorPhone: tutors.phone,
+      settledOwed: tuitionSettlements.retained,
+      settledRefund: tuitionSettlements.refundAmount,
+      settledDue: tuitionSettlements.dueAmount,
+      settledDisposition: tuitionSettlements.disposition,
+      settledReason: tuitionSettlements.reason,
+    })
+    .from(tutorRequests)
+    .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .where(where)
+    .orderBy(desc(tutorRequests.cancelledAt), desc(tutorRequests.id))
+    .limit(filters.pageSize)
+    .offset(offset);
+  const [totals] = await database
+    .select({ value: count() })
+    .from(tutorRequests)
+    .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(where);
+  const total = Number(totals?.value ?? 0);
+
+  const limits = (await getSiteLimits()) as Record<string, number>;
+  const payments = items.length === 0 ? [] : await database
+    .select({ requestId: tuitionPayments.tutorRequestId, tutorId: tuitionPayments.tutorId, amount: tuitionPayments.amount, paidAt: tuitionPayments.paidAt })
+    .from(tuitionPayments)
+    .where(and(inArray(tuitionPayments.tutorRequestId, items.map(item => item.id)), eq(tuitionPayments.status, "verified")));
+  return {
+    items: items.map(({ chargeTerms, settledOwed, settledRefund, settledDue, settledDisposition, settledReason, ...item }) => {
+      const terms = chargeTermsFor({ chargeTerms, tuitionType: item.tuitionType, budgetAmount: item.budgetAmount }, limits);
+      const own = payments.filter(payment => payment.requestId === item.id && payment.tutorId === item.tutorId);
+      const settlement = settledOwed === null ? null : { retained: settledOwed, refund: settledRefund!, due: settledDue!, disposition: settledDisposition!, reason: settledReason! };
+      return {
+        ...item,
+        charge: terms && item.confirmedAt ? chargeSummary(terms, item.confirmedAt, own, settlement ? { settledOwed: settlement.retained } : {}) : null,
+        settlement,
+      };
+    }),
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+  };
 }
 
 export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {

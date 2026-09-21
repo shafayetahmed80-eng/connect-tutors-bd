@@ -68,7 +68,7 @@ import {
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
-import { tuitionPaymentMethodValues } from "@shared/platform-charge";
+import { cancellationReasons, settlementDispositions, tuitionPaymentMethodValues, tutorReportableMethods } from "@shared/platform-charge";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -109,6 +109,8 @@ function tuitionPaymentError(result: db.TuitionPaymentFailure) {
     case "not_both": return new TRPCError({ code: "BAD_REQUEST", message: "Only a tuition open to Home or Online is charged by choice." });
     case "has_payments": return new TRPCError({ code: "CONFLICT", message: "Money has been paid on this tuition, so what it is charged as is settled." });
     case "too_many_waiting": return new TRPCError({ code: "CONFLICT", message: "Several payments for this tuition are already waiting to be verified. Wait for an Admin to check them first." });
+    case "no_credit": return new TRPCError({ code: "BAD_REQUEST", message: `Only ${result.available.toLocaleString("en-US")} Taka of credit is available.` });
+    case "credit_used": return new TRPCError({ code: "CONFLICT", message: "Credit from this tuition has already been spent, so its settlement cannot be reduced." });
     case "over": return new TRPCError({ code: "BAD_REQUEST", message: `That is more than is owed. The most that can be recorded is ${result.most.toLocaleString("en-US")} Taka.` });
   }
 }
@@ -1097,7 +1099,7 @@ export const appRouter = router({
       .input(z.object({
         requestId: z.number().int().positive(),
         amount: z.number().int().min(1).max(1_000_000),
-        method: z.enum(tuitionPaymentMethodValues),
+        method: z.enum(tutorReportableMethods),
         reference: z.string().trim().max(80).nullish(),
         paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the day you made the payment."),
         note: z.string().trim().max(280).nullish(),
@@ -1888,6 +1890,40 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const result = await db.recordTuitionPayment({ adminUserId: ctx.user.id, ...input });
         if (result.outcome === "recorded") return result;
+        throw tuitionPaymentError(result);
+      }),
+    // A confirmed tuition that ended: what the Tutor owes for it now, and what comes back.
+    listCancelledCharges: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(100).default(""),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().min(1).max(50).default(20),
+      }))
+      .query(({ input }) => db.listAdminCancelledChargesPage(input)),
+    previewTuitionSettlement: adminProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        reason: z.enum(cancellationReasons),
+        receivedSalary: z.number().int().min(0).max(10_000_000).nullish(),
+      }))
+      .query(async ({ input }) => {
+        const result = await db.previewTuitionSettlement(input);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This cancelled tuition is unavailable." });
+        if (result.outcome === "no_charge") throw tuitionPaymentError(result);
+        return result;
+      }),
+    saveTuitionSettlement: adminProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        reason: z.enum(cancellationReasons),
+        receivedSalary: z.number().int().min(0).max(10_000_000).nullish(),
+        retained: z.number().int().min(0).max(10_000_000).nullish(),
+        disposition: z.enum(settlementDispositions),
+        note: z.string().trim().max(280).nullish(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.saveTuitionSettlement({ adminUserId: ctx.user.id, ...input });
+        if (result.outcome === "saved") return result;
         throw tuitionPaymentError(result);
       }),
     setTuitionChargeKind: adminProcedure

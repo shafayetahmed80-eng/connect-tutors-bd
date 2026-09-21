@@ -48,7 +48,11 @@ vi.mock("@/components/TuitionPaymentsModal", () => ({
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
-import { AdminConfirmedJobsContent } from "./AdminConfirmedJobs";
+// The Cancelled tab has its own tests; here it only has to appear when asked for.
+vi.mock("@/components/AdminCancelledCharges", () => ({ default: () => <div>Cancelled charges</div> }));
+vi.mock("@/components/AdminWorkspaceLayout", () => ({ default: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
+
+import AdminConfirmedJobs, { AdminConfirmedJobsContent } from "./AdminConfirmedJobs";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); window.innerWidth = 1024; });
 
@@ -158,5 +162,21 @@ describe("Admin Confirmed Jobs", () => {
     render(<AdminConfirmedJobsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location or Tutor/), { target: { value: "777" } });
     expect(mocks.lastInput).toMatchObject({ query: "777", page: 1 });
+  });
+});
+
+describe("the Confirmed Jobs page's two tabs", () => {
+  it("opens on Confirmed, and moves to the tuitions that were cancelled afterwards", () => {
+    render(<AdminConfirmedJobs />);
+
+    expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Confirmed", "Cancelled"]);
+    expect(screen.getByRole("tab", { name: "Confirmed" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByText("Cancelled charges")).toBeNull();
+    expect(screen.getAllByRole("columnheader").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Cancelled" }));
+    expect(screen.getByRole("tab", { name: "Cancelled" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Cancelled charges")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Payment Status" })).toBeNull();
   });
 });

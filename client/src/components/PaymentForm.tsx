@@ -1,8 +1,4 @@
-import {
-  tuitionPaymentMethodLabels,
-  tuitionPaymentMethodValues,
-  type TuitionPaymentMethod,
-} from "@shared/platform-charge";
+import { tuitionPaymentMethodLabels, type TuitionPaymentMethod } from "@shared/platform-charge";
 import { useEffect, useState } from "react";
 
 /** Today as the Dhaka calendar reads it, in the `YYYY-MM-DD` a date box wants. */
@@ -10,9 +6,9 @@ export function todayInDhaka() {
   return new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-export type PaymentFormValues = {
+export type PaymentFormValues<M extends TuitionPaymentMethod = TuitionPaymentMethod> = {
   amount: number;
-  method: TuitionPaymentMethod;
+  method: M;
   reference: string | null;
   paidOn: string;
   note: string | null;
@@ -25,20 +21,24 @@ const labelClass = "mb-1 block text-2xs font-bold uppercase tracking-wide text-j
  * The fields for one payment, the same whoever is typing them: an Admin
  * recording money that arrived, or a Tutor reporting money they sent.
  *
+ * `methods` is what can be chosen: an Admin may apply a Tutor's credit, a Tutor
+ * can only report money they sent.
+ *
  * The amount takes digits only, so a stray letter cannot become a payment.
  * `clearSignal` empties the fields when it changes - the parent bumps it once
  * a payment has gone through.
  */
-export default function PaymentForm({ label, submitLabel, pendingLabel, pending, clearSignal, onSubmit }: {
+export default function PaymentForm<M extends TuitionPaymentMethod>({ label, methods, submitLabel, pendingLabel, pending, clearSignal, onSubmit }: {
   label: string;
+  methods: readonly M[];
   submitLabel: string;
   pendingLabel: string;
   pending: boolean;
   clearSignal: number;
-  onSubmit: (values: PaymentFormValues) => void;
+  onSubmit: (values: PaymentFormValues<M>) => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<TuitionPaymentMethod>("bkash");
+  const [method, setMethod] = useState<M>(methods[0]);
   const [reference, setReference] = useState("");
   const [paidOn, setPaidOn] = useState(todayInDhaka);
   const [note, setNote] = useState("");
@@ -67,8 +67,8 @@ export default function PaymentForm({ label, submitLabel, pendingLabel, pending,
     </div>
     <div>
       <label htmlFor="payment-method" className={labelClass}>Method</label>
-      <select id="payment-method" value={method} onChange={event => setMethod(event.target.value as TuitionPaymentMethod)} className={fieldClass}>
-        {tuitionPaymentMethodValues.map(value => <option key={value} value={value}>{tuitionPaymentMethodLabels[value]}</option>)}
+      <select id="payment-method" value={method} onChange={event => setMethod(event.target.value as M)} className={fieldClass}>
+        {methods.map(value => <option key={value} value={value}>{tuitionPaymentMethodLabels[value]}</option>)}
       </select>
     </div>
     <div>
