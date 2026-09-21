@@ -1228,6 +1228,13 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   appointedAt: timestamp("appointedAt"),
   /** When an Admin cancelled the tuition; the date every application on it ended. */
   cancelledAt: timestamp("cancelledAt"),
+  /**
+   * The platform-charge terms this tuition was confirmed on, as JSON
+   * (`ChargeTerms` in `@shared/platform-charge`). Kept with the tuition so a
+   * rate the Owner changes later does not reach back into one already confirmed.
+   * Null until confirmed, and cleared if the confirmation is undone.
+   */
+  chargeTerms: text("chargeTerms"),
   /** How much of a Confirmed tuition's fee has been paid; values repeat `@shared/job-payment-status`. */
   paymentStatus: mysqlEnum("paymentStatus", ["full_due", "half_paid", "partial_paid", "full_paid"]).default("full_due").notNull(),
   /** Private operational reason recorded by an Admin when closing a request. */
@@ -1334,6 +1341,47 @@ export const tutorJobInterests = mysqlTable("tutor_job_interests", {
   uniqueIndex("tutor_job_interests_job_tutor_unique").on(table.tutorJobId, table.tutorId),
   index("tutor_job_interests_job_status_idx").on(table.tutorJobId, table.status),
   index("tutor_job_interests_tutor_status_idx").on(table.tutorId, table.status),
+]);
+
+/**
+ * What a Tutor has paid Connect Tutors on a confirmed tuition, one row per
+ * payment.
+ *
+ * A row records a payment; it is not a status. How much is owed and paid, and
+ * so the tuition's Payment Status, is worked out from the verified rows by
+ * `@shared/platform-charge`. `source` says where the row came from - typed in
+ * by an Admin, or (later) reported by a payment gateway - and the gateway's own
+ * transaction id is unique, so the same payment cannot be counted twice.
+ */
+export const tuitionPayments = mysqlTable("tuition_payments", {
+  id: int("id").autoincrement().primaryKey(),
+  tutorRequestId: int("tutorRequestId")
+    .notNull()
+    .references(() => tutorRequests.id),
+  tutorId: varchar("tutorId", { length: 32 })
+    .notNull()
+    .references(() => tutors.id),
+  amount: int("amount").notNull(),
+  method: mysqlEnum("method", ["bkash", "nagad", "rocket", "bank", "cash", "other"]).notNull(),
+  /** The wallet or bank's own transaction id, as the Tutor or Admin typed it. */
+  reference: varchar("reference", { length: 80 }),
+  /** Only a verified payment counts towards what is paid. */
+  status: mysqlEnum("status", ["submitted", "verified", "rejected"]).default("submitted").notNull(),
+  source: mysqlEnum("source", ["manual", "gateway"]).default("manual").notNull(),
+  provider: varchar("provider", { length: 40 }),
+  gatewayTxnId: varchar("gatewayTxnId", { length: 120 }),
+  /** When the money was sent, which is what the first payment window is measured against. */
+  paidAt: timestamp("paidAt").notNull(),
+  note: varchar("note", { length: 280 }),
+  recordedByUserId: int("recordedByUserId").references(() => users.id),
+  decidedByUserId: int("decidedByUserId").references(() => users.id),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("tuition_payments_request_idx").on(table.tutorRequestId, table.status),
+  index("tuition_payments_tutor_idx").on(table.tutorId),
+  uniqueIndex("tuition_payments_gateway_txn_unique").on(table.gatewayTxnId),
 ]);
 
 /**

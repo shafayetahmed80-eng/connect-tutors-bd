@@ -79,6 +79,7 @@ import {
   tutorPortalSessions,
   tutorRegistrations,
   tutorJobInterests,
+  tuitionPayments,
   tutorJobs,
   tutorRequestPublicationStateValues,
   tutorStudentTypes,
@@ -127,6 +128,7 @@ import {
   type RegistrationLocationRow,
 } from "@shared/registration-location-selector";
 import type { JobPaymentStatus } from "@shared/job-payment-status";
+import { buildChargeTerms, chargeSummary, type ChargeTerms } from "@shared/platform-charge";
 import {
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
@@ -2951,6 +2953,22 @@ async function refreshTutorVerification(tx: any, tutorId: string) {
   await tx.update(tutors).set({ verified: confirmed ? 1 : 0 }).where(eq(tutors.id, tutorId));
 }
 
+/**
+ * Keeps the platform-charge terms a tuition is confirmed on: the Owner's rates
+ * and the salary as they stand now. A rate changed afterwards reaches tuitions
+ * confirmed from then on, not this one. A tuition with no salary has no charge
+ * to take a share of, so nothing is kept.
+ */
+export async function snapshotChargeTerms(tx: any, requestId: number) {
+  const [row] = await tx
+    .select({ tuitionType: tutorRequests.tuitionType, budgetAmount: tutorRequests.budgetAmount })
+    .from(tutorRequests)
+    .where(eq(tutorRequests.id, requestId))
+    .limit(1);
+  const terms = row ? buildChargeTerms({ tuitionType: row.tuitionType, salary: row.budgetAmount, limits: await getSiteLimits() as Record<string, number> }) : null;
+  await tx.update(tutorRequests).set({ chargeTerms: terms ? JSON.stringify(terms) : null }).where(eq(tutorRequests.id, requestId));
+}
+
 /** Finalizes an Admin-verified appointment only after a Tutor has been assigned. */
 /**
  * Confirms an appointment: the Guardian keeps the Tutor after the demo class.
@@ -2978,6 +2996,7 @@ export async function confirmTutorRequestAppointment(input: {
         ...(input.tutorId ? [eq(tutorRequests.tutorId, input.tutorId)] : []),
       ));
     if (!result[0].affectedRows) return { updated: false as const, lifecycle: "confirmed" as const };
+    await snapshotChargeTerms(tx, input.requestId);
     const [request] = await tx.select({ guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId }).from(tutorRequests).where(eq(tutorRequests.id, input.requestId)).limit(1);
     const closedListing = await tx.update(tutorJobs)
       .set({ publicationStatus: "closed", deactivatedAt: now })
@@ -6960,7 +6979,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
     await tx.update(tutorRequests)
       .set({
         tutorId: null, status: "reviewing", contactConsent: "not_required", appointedAt: null, lastActivityAt: now,
-        ...(confirmed ? { appointmentConfirmedAt: null, paymentStatus: "full_due" as const } : {}),
+        ...(confirmed ? { appointmentConfirmedAt: null, paymentStatus: "full_due" as const, chargeTerms: null } : {}),
       })
       .where(eq(tutorRequests.id, request.id));
     const changedFields = confirmed ? ["tutor_removed", "confirmation_removed", "live_again"] : ["tutor_removed", "live_again"];
@@ -7066,6 +7085,8 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
       appointedAt: tutorRequests.appointedAt,
       confirmedAt: tutorRequests.appointmentConfirmedAt,
       paymentStatus: tutorRequests.paymentStatus,
+      tuitionType: tutorRequests.tuitionType,
+      chargeTerms: tutorRequests.chargeTerms,
       // The internal key addresses the profile page; the Tutor ID people see is the number.
       tutorId: tutors.id,
       tutorNumber: tutorRegistrations.tutorNumber,
@@ -7089,13 +7110,45 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
   // A Guardian's waiting Confirm, Remove or Cancel request is marked on the row.
   const guardianRequests = await getWaitingGuardianTuitionRequests(items.map(item => ({ ...item, appointmentConfirmedAt: item.confirmedAt })));
 
+  const charges = stage === "confirmed" ? await getChargeSummaries(items) : new Map<number, ReturnType<typeof chargeSummary>>();
+
   return {
-    items: items.map(item => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null })),
+    // The terms stay on the server: the row carries what they work out to.
+    items: items.map(({ chargeTerms: _terms, ...item }) => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null, charge: charges.get(item.id) ?? null })),
     total,
     page: filters.page,
     pageSize: filters.pageSize,
     totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
   };
+}
+
+/**
+ * What each Confirmed tuition's charge comes to, and how much of it is paid.
+ *
+ * A tuition confirmed before terms were kept has none stored, so they are built
+ * from today's rates. Only verified payments by the Tutor who holds the tuition
+ * count: a submitted one is a claim, and one from a Tutor since removed belongs
+ * to the refund, not to the new Tutor's balance.
+ */
+async function getChargeSummaries(items: Array<{ id: number; tutorId: string; confirmedAt: Date | null; tuitionType: string; budgetAmount: number | null; chargeTerms: string | null }>) {
+  const summaries = new Map<number, ReturnType<typeof chargeSummary>>();
+  const database = await getDb();
+  if (!database || items.length === 0) return summaries;
+  const limits = await getSiteLimits() as Record<string, number>;
+  const payments = await database
+    .select({ requestId: tuitionPayments.tutorRequestId, tutorId: tuitionPayments.tutorId, amount: tuitionPayments.amount, paidAt: tuitionPayments.paidAt })
+    .from(tuitionPayments)
+    .where(and(inArray(tuitionPayments.tutorRequestId, items.map(item => item.id)), eq(tuitionPayments.status, "verified")));
+  for (const item of items) {
+    if (!item.confirmedAt) continue;
+    const terms: ChargeTerms | null = item.chargeTerms
+      ? JSON.parse(item.chargeTerms) as ChargeTerms
+      : buildChargeTerms({ tuitionType: item.tuitionType, salary: item.budgetAmount, limits });
+    if (!terms) continue;
+    const own = payments.filter(payment => payment.requestId === item.id && payment.tutorId === item.tutorId);
+    summaries.set(item.id, chargeSummary(terms, item.confirmedAt, own.map(payment => ({ amount: payment.amount, paidAt: payment.paidAt }))));
+  }
+  return summaries;
 }
 
 /** Tuitions in the Appointed stage, each with the Tutor who holds it. */

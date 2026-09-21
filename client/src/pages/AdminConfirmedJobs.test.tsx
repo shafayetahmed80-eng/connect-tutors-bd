@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
         tuitionLocationLabel: "Mohakhali, Dhaka", locationText: "Mohakhali", budgetAmount: 7000, daysPerWeek: 4,
         appointedAt: new Date("2026-09-10T08:00:00.000Z"), confirmedAt: new Date("2026-09-13T08:30:00.000Z"),
         paymentStatus: "full_due",
+        charge: { owed: 4200, paid: 2100, balance: 2100 } as { owed: number; paid: number; balance: number } | null,
         tutorId: "tutor-175", tutorNumber: 777 as number | null, tutorName: "Tania Sultana", tutorPhone: "+8801711111111" as string | null,
       },
       {
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
         tuitionLocationLabel: "Shyamoli, Dhaka", locationText: "Shyamoli", budgetAmount: 6000, daysPerWeek: 3,
         appointedAt: null as Date | null, confirmedAt: new Date("2026-09-12T08:30:00.000Z"),
         paymentStatus: "half_paid",
+        charge: { owed: 3600, paid: 3600, balance: 0 } as { owed: number; paid: number; balance: number } | null,
         tutorId: "tutor-404", tutorNumber: null, tutorName: "Tanvir Ahmed", tutorPhone: null,
       },
     ],
@@ -54,7 +56,7 @@ describe("Admin Confirmed Jobs", () => {
     expect(mocks.lastInput).toMatchObject({ query: "", page: 1 });
     expect(screen.getAllByRole("columnheader").map(cell => cell.textContent)).toEqual([
       "Job ID", "Posted By", "Tutor ID", "Name", "Mobile", "Appointed", "Confirmed", "Payment Status",
-      "Class", "Subjects", "Location", "Salary", "Days", "Tutor profile",
+      "Charge", "Paid", "Balance", "Class", "Subjects", "Location", "Salary", "Days", "Tutor profile",
     ]);
   });
 
@@ -78,6 +80,29 @@ describe("Admin Confirmed Jobs", () => {
     expect(row.getByText("4 days / week")).toBeTruthy();
   });
 
+  it("shows what the Tutor owes, what is paid, and what is left", () => {
+    render(<AdminConfirmedJobsContent />);
+
+    const owing = within(screen.getAllByRole("row")[1]);
+    expect(owing.getByText(/^4,200/)).toBeTruthy();
+    expect(owing.getAllByText(/^2,100/)).toHaveLength(2);
+    // What is still owed reads as a warning, and clear once nothing is.
+    expect(owing.getAllByText(/^2,100/)[1].className).toContain("text-red-800");
+    expect(within(screen.getAllByRole("row")[2]).getAllByText(/^0 /)[0].className).toContain("text-emerald-800");
+  });
+
+  it("says Not set for the charge of a tuition that has no salary to take a share of", () => {
+    const original = mocks.data.items[1];
+    mocks.data.items[1] = { ...original, charge: null };
+    try {
+      render(<AdminConfirmedJobsContent />);
+
+      expect(within(screen.getAllByRole("row")[2]).getAllByText("Not set").length).toBeGreaterThanOrEqual(6);
+    } finally {
+      mocks.data.items[1] = original;
+    }
+  });
+
   it("shows each payment status, Full Due to Full Paid, and saves a change from the row", () => {
     render(<AdminConfirmedJobsContent />);
 
@@ -98,7 +123,7 @@ describe("Admin Confirmed Jobs", () => {
     expect(within(screen.getAllByRole("row")[2]).getAllByText("Not set")).toHaveLength(3);
   });
 
-  it("gives a phone one card per job, carrying the fourteen columns and the payment control", () => {
+  it("gives a phone one card per job, carrying every column and the payment control", () => {
     window.innerWidth = 375;
     render(<AdminConfirmedJobsContent />);
 

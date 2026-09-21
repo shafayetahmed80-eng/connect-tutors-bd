@@ -77,6 +77,16 @@ export function AdminConfirmedJobsContent() {
         {jobPaymentStatusValues.map(value => <option key={value} value={value}>{jobPaymentStatusLabels[value]}</option>)}
       </select>,
     },
+    // What the Tutor owes Connect Tutors, worked out from the rates the tuition
+    // was confirmed on and the payments verified so far.
+    { key: "charge", label: "Charge", cellClassName: "whitespace-nowrap", cell: job => <span className="tabular-nums text-j-ink-strong">{job.charge ? formatSalaryAmount(job.charge.owed) : notSet}</span> },
+    { key: "paid", label: "Paid", cellClassName: "whitespace-nowrap", cell: job => <span className="tabular-nums text-j-ink-strong">{job.charge ? formatSalaryAmount(job.charge.paid) : notSet}</span> },
+    {
+      key: "balance", label: "Balance", cellClassName: "whitespace-nowrap",
+      cell: job => job.charge
+        ? <span className={`tabular-nums font-bold ${job.charge.balance > 0 ? "text-red-800" : "text-emerald-800"}`}>{formatSalaryAmount(job.charge.balance)}</span>
+        : notSet,
+    },
     { key: "classCourse", label: "Class", cell: job => <span className="font-bold text-j-ink">{job.classCourse}</span> },
     { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: job => <span className="text-j-ink-strong">{formatSubjects(job.subjects)}</span> },
     { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },

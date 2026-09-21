@@ -1,3 +1,4 @@
+import SiteLimitEditor from "@/components/SiteLimitEditor";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import type { GuardianApplicantVisibility } from "@shared/admin-control";
@@ -136,6 +137,11 @@ export default function AdminControlEditor() {
     </section>
 
     <CommunityLinks />
+
+    <section className="mt-3">
+      <h2 className="mb-2 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Platform charge</h2>
+      <SiteLimitEditor groups={["Platform charge"]} />
+    </section>
 
     {confirming ? <Modal size="sm" onClose={() => setConfirming(false)} busy={setVisibility.isPending}>
       <ModalHeader title="Show Guardians shortlisted Tutors only?" />
