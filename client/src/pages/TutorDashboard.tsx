@@ -18,6 +18,7 @@ import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutor
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorApplicationStatus } from "./TutorApplicationStatus";
 import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
+import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
@@ -37,8 +38,8 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Active workspace" },
   { icon: BriefcaseBusiness, label: "Job Board", path: "/tutor/dashboard/jobs", sectionLabel: "Active workspace" },
   { icon: FileCheck2, label: "Confirmation Letter", path: "/tutor/dashboard/confirmation-letter", sectionLabel: "Active workspace" },
+  { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Active workspace" },
   { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Active workspace", community: true },
-  { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Coming later", planned: true },
   { icon: GraduationCap, label: "Certificate", path: "/tutor/dashboard/certificate", sectionLabel: "Coming later", planned: true },
   { icon: Share2, label: "Refer & Earn", path: "/tutor/dashboard/refer-earn", sectionLabel: "Coming later", planned: true },
   { icon: Sparkles, label: "Exclusively Yours", path: "/tutor/dashboard/exclusively-yours", sectionLabel: "Coming later", planned: true },
@@ -285,7 +286,8 @@ export default function TutorDashboard() {
       {section === "confirmation-letter" && <TutorConfirmationLetterPanel />}
       {section === "status" && <TutorApplicationStatus />}
       {section === "notifications" && <TutorNotificationInbox />}
-      {["payment", "certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} />}
+      {section === "payment" && <TutorPaymentsPanel />}
+      {["certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>
   </DashboardLayout>;
 }

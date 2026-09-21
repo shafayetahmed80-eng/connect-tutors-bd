@@ -31,6 +31,7 @@ const JOB_BOARD: AdminDynamicDestination = { label: "জব বোর্ড", pa
 const REGISTER: AdminDynamicDestination = { label: "রেজিস্ট্রেশন পেজ", path: "/register" };
 const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভাবকের Applied Tutors", path: "/guardian/dashboard/applied-tutors" };
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
+const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
 const GUARDIAN_DASHBOARD: AdminDynamicDestination = { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" };
 
 export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
@@ -121,8 +122,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/admin-control",
     label: "Admin Control",
-    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক, দুই প্যানেলের জন্য আলাদাভাবে।",
-    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
+    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)।",
+    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT],
   },
 ];
 

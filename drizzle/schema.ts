@@ -1513,6 +1513,8 @@ export const tutorNotificationTypeValues = [
   "confirmation_letter",
   /** An Admin decided a name, mobile or account change the Tutor asked for from Settings. */
   "account_change",
+  /** A payment of theirs was recorded, verified or rejected. */
+  "payment",
 ] as const;
 export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
 

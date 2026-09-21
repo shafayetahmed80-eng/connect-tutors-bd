@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   ledger: { data: undefined as unknown, isLoading: false, isError: false },
   record: vi.fn(),
   decide: vi.fn(),
+  chooseKind: vi.fn(),
   invalidateLedger: vi.fn(),
   invalidateJobs: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock("@/lib/trpc", () => ({
       listTuitionPayments: { useQuery: () => state.ledger },
       recordTuitionPayment: { useMutation: () => ({ mutate: state.record, isPending: false }) },
       decideTuitionPayment: { useMutation: () => ({ mutate: state.decide, isPending: false }) },
+      setTuitionChargeKind: { useMutation: () => ({ mutate: state.chooseKind, isPending: false }) },
     },
   },
 }));
@@ -34,8 +36,8 @@ const payment = (over: Record<string, unknown>) => ({
   paidAt: new Date("2026-09-15T06:00:00.000Z"), note: null, decidedAt: null, fromCurrentTutor: true, ...over,
 });
 
-const open = (ledger: unknown) => {
-  state.ledger = { data: ledger, isLoading: false, isError: false };
+const open = (ledger: Record<string, unknown>) => {
+  state.ledger = { data: { tuitionType: "home", kind: "home", canChooseKind: false, ...ledger }, isLoading: false, isError: false };
   return render(<TuitionPaymentsModal requestId={21} onClose={vi.fn()} />);
 };
 
@@ -118,6 +120,26 @@ describe("a tuition's payments", () => {
 
     expect(screen.getByText("This tuition has no salary, so there is no charge.")).toBeTruthy();
     expect(screen.queryByRole("form", { name: "Record a payment" })).toBeNull();
+  });
+
+  it("lets an Admin choose what a tuition open to Home or Online is charged as", () => {
+    open({ tuitionType: "both", kind: "home", canChooseKind: true, charge, payments: [] });
+
+    const select = screen.getByLabelText("Charged as") as HTMLSelectElement;
+    expect(select.value).toBe("home");
+    expect(within(select).getAllByRole("option").map(option => option.textContent)).toEqual(["Home Tutoring", "Online Tutoring"]);
+
+    fireEvent.change(select, { target: { value: "online" } });
+    expect(state.chooseKind).toHaveBeenCalledWith({ requestId: 21, kind: "online" });
+  });
+
+  it("settles the choice once money has been paid, and offers none on a tuition that is one or the other", () => {
+    open({ tuitionType: "both", kind: "online", canChooseKind: false, charge, payments: [payment({})] });
+    expect((screen.getByLabelText("Charged as") as HTMLSelectElement).disabled).toBe(true);
+
+    cleanup();
+    open({ tuitionType: "home", kind: "home", canChooseKind: false, charge, payments: [] });
+    expect(screen.queryByLabelText("Charged as")).toBeNull();
   });
 
   it("says so when the payments cannot be loaded", () => {

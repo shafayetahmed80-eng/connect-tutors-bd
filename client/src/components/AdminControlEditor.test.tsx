@@ -33,6 +33,7 @@ vi.mock("@/components/SiteLimitEditor", () => ({ default: ({ groups }: { groups?
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK } from "@shared/community";
+import { paymentAccountSlotId } from "@shared/platform-charge";
 import AdminControlEditor from "./AdminControlEditor";
 
 afterEach(() => {
@@ -134,5 +135,40 @@ describe("the community link of each panel", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Reset" })[0]);
 
     expect(state.saveLink).toHaveBeenCalledWith({ slotId: communityLinkSlotId("tutor"), text: null });
+  });
+});
+
+describe("where Tutors send their payments", () => {
+  it("shows a box per method, empty until the Owner fills it in", () => {
+    render(<AdminControlEditor />);
+
+    for (const label of ["bKash", "Nagad", "Rocket", "Bank transfer"]) {
+      expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe("");
+    }
+  });
+
+  it("shows what is stored, and saves one method without touching the others", () => {
+    state.overrides = [{ slotId: paymentAccountSlotId("nagad"), text: "01812345678" }];
+    render(<AdminControlEditor />);
+
+    expect((screen.getByLabelText("Nagad") as HTMLInputElement).value).toBe("01812345678");
+    fireEvent.change(screen.getByLabelText("bKash"), { target: { value: "  01712345678 (Personal) " } });
+    // The bKash row is the first payment-account Save; the community rows come before it.
+    const saves = screen.getAllByRole("button", { name: "Save" });
+    fireEvent.click(saves[2]);
+
+    expect(state.saveLink).toHaveBeenCalledTimes(1);
+    expect(state.saveLink).toHaveBeenCalledWith({ slotId: paymentAccountSlotId("bkash"), text: "01712345678 (Personal)" });
+  });
+
+  it("resets a method that has an account back to nothing", () => {
+    state.overrides = [{ slotId: paymentAccountSlotId("rocket"), text: "01912345678" }];
+    render(<AdminControlEditor />);
+
+    // Reset is enabled only on the row that has something stored.
+    const enabled = screen.getAllByRole("button", { name: "Reset" }).filter(button => !(button as HTMLButtonElement).disabled);
+    expect(enabled).toHaveLength(1);
+    fireEvent.click(enabled[0]);
+    expect(state.saveLink).toHaveBeenCalledWith({ slotId: paymentAccountSlotId("rocket"), text: null });
   });
 });

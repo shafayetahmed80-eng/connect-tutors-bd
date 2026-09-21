@@ -21,6 +21,7 @@ import {
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK } from "./community";
+import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels } from "./platform-charge";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
 export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
@@ -189,6 +190,21 @@ const adminControlSlots: SiteContentSlot[] = communityPanels.map(panel => ({
   label: panel === "tutor" ? "Tutor panel link" : "Guardian panel link",
   kind: "url" as const,
   defaultText: DEFAULT_COMMUNITY_LINK,
+  defaultTextClass: "text-sm" as const,
+}));
+
+/**
+ * Where a Tutor sends a platform charge, one line per method. Edited on Admin
+ * Control beside the rates; a method with nothing here is simply not offered.
+ */
+const paymentAccountSlots: SiteContentSlot[] = paymentAccountMethods.map(method => ({
+  id: paymentAccountSlotId(method),
+  page: "admin-control" as const,
+  surface: "Payment accounts",
+  group: "Where Tutors pay",
+  label: `${tuitionPaymentMethodLabels[method]} account`,
+  kind: "text-only" as const,
+  defaultText: "",
   defaultTextClass: "text-sm" as const,
 }));
 
@@ -453,6 +469,7 @@ const infoPageSlots: SiteContentSlot[] = [
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
   ...adminControlSlots,
+  ...paymentAccountSlots,
   ...tutorProfileSlots,
   ...publicTutorProfileSlots,
   ...guardianProfileSlots,
