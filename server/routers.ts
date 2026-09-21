@@ -68,7 +68,7 @@ import {
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
-import { jobPaymentStatusValues } from "@shared/job-payment-status";
+import { tuitionPaymentMethodValues } from "@shared/platform-charge";
 
 export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
@@ -96,6 +96,20 @@ const passwordAccountLoginInputSchema = z.object({
   password: z.string().min(1, "Enter your password.").max(128),
 });
 const PASSWORD_ACCOUNT_LOGIN_ERROR = "Email/mobile number or password is not correct.";
+/** What an Admin reads when the ledger refuses a payment. */
+function tuitionPaymentError(result: db.TuitionPaymentFailure) {
+  switch (result.outcome) {
+    case "not_found": return new TRPCError({ code: "NOT_FOUND", message: "This payment or confirmed tuition is unavailable." });
+    case "no_charge": return new TRPCError({ code: "BAD_REQUEST", message: "This tuition has no salary, so there is no charge to pay." });
+    case "too_early": return new TRPCError({ code: "BAD_REQUEST", message: "The payment cannot be dated before the tuition was confirmed." });
+    case "in_future": return new TRPCError({ code: "BAD_REQUEST", message: "The payment cannot be dated in the future." });
+    case "duplicate_reference": return new TRPCError({ code: "CONFLICT", message: "That transaction ID is already on file for this method." });
+    case "not_pending": return new TRPCError({ code: "CONFLICT", message: "This payment has already been decided." });
+    case "not_holder": return new TRPCError({ code: "CONFLICT", message: "This Tutor no longer holds the tuition, so the payment cannot be counted." });
+    case "over": return new TRPCError({ code: "BAD_REQUEST", message: `That is more than is owed. The most that can be recorded is ${result.most.toLocaleString("en-US")} Taka.` });
+  }
+}
+
 const PASSWORD_ACCOUNT_SUSPENDED_ERROR = "This account has been suspended. Contact Connect Tutors support on WhatsApp to restore access.";
 const PASSWORD_ACCOUNT_CLOSED_ERROR = "This account has been closed. Contact Connect Tutors support on WhatsApp if you believe this is a mistake.";
 
@@ -1829,12 +1843,34 @@ export const appRouter = router({
         pageSize: z.number().int().min(1).max(50).default(20),
       }))
       .query(({ input }) => db.listAdminConfirmedJobsPage(input)),
-    setJobPaymentStatus: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive(), paymentStatus: z.enum(jobPaymentStatusValues) }))
+    // A tuition's Payment Status is worked out from these payments; it is never set by hand.
+    listTuitionPayments: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const ledger = await db.getTuitionPaymentLedger(input.requestId);
+        if (!ledger) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmed tuition is unavailable." });
+        return ledger;
+      }),
+    recordTuitionPayment: adminProcedure
+      .input(z.object({
+        requestId: z.number().int().positive(),
+        amount: z.number().int().min(1).max(1_000_000),
+        method: z.enum(tuitionPaymentMethodValues),
+        reference: z.string().trim().max(80).nullish(),
+        paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the day the payment was made."),
+        note: z.string().trim().max(280).nullish(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        const result = await db.setConfirmedJobPaymentStatus({ adminUserId: ctx.user.id, ...input });
-        if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This confirmed tuition is unavailable." });
-        return result;
+        const result = await db.recordTuitionPayment({ adminUserId: ctx.user.id, ...input });
+        if (result.outcome === "recorded") return result;
+        throw tuitionPaymentError(result);
+      }),
+    decideTuitionPayment: adminProcedure
+      .input(z.object({ paymentId: z.number().int().positive(), decision: z.enum(["verified", "rejected"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.decideTuitionPayment({ adminUserId: ctx.user.id, ...input });
+        if (result.outcome === "decided") return result;
+        throw tuitionPaymentError(result);
       }),
     listGuardianProfiles: adminProcedure.input(z.object({
       query: z.string().trim().max(120).default(""),

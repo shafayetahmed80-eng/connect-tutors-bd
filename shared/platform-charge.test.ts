@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { tuitionPayments, tutorRequests } from "../drizzle/schema";
 import {
   buildChargeTerms,
   chargeKindForTuitionType,
   chargeSchedule,
   chargeSummary,
   endOfDhakaDayAfter,
+  tuitionPaymentMethodValues,
+  tuitionPaymentStatusValues,
 } from "./platform-charge";
 import { defaultSiteLimits } from "./site-limits";
 
@@ -110,5 +113,16 @@ describe("the other kinds follow their own first instalment", () => {
   it("gives an Online tuition its 4,500 reduced total inside the window", () => {
     const summary = chargeSummary(terms("online"), confirmedAt, [{ amount: 4500, paidAt: day(5) }]);
     expect(summary).toMatchObject({ status: "full_paid", owed: 4500, discounted: true });
+  });
+});
+
+describe("the ledger's vocabulary", () => {
+  it("is the same list the columns accept", () => {
+    expect(tuitionPayments.method.enumValues).toEqual([...tuitionPaymentMethodValues]);
+    expect(tuitionPayments.status.enumValues).toEqual([...tuitionPaymentStatusValues]);
+  });
+
+  it("keeps the terms snapshot beside the tuition, empty until it is confirmed", () => {
+    expect(tutorRequests.chargeTerms.notNull).toBe(false);
   });
 });

@@ -23,6 +23,32 @@ export const chargeKindLabels: Record<ChargeKind, string> = {
   group: "Group Tutoring",
 };
 
+/**
+ * How a Tutor can pay. `drizzle/schema.ts` repeats these values for the column
+ * (it imports nothing from here); a test keeps the two lists the same.
+ */
+export const tuitionPaymentMethodValues = ["bkash", "nagad", "rocket", "bank", "cash", "other"] as const;
+export type TuitionPaymentMethod = (typeof tuitionPaymentMethodValues)[number];
+
+export const tuitionPaymentMethodLabels: Record<TuitionPaymentMethod, string> = {
+  bkash: "bKash",
+  nagad: "Nagad",
+  rocket: "Rocket",
+  bank: "Bank transfer",
+  cash: "Cash",
+  other: "Other",
+};
+
+/** Only a verified payment counts towards what is paid. */
+export const tuitionPaymentStatusValues = ["submitted", "verified", "rejected"] as const;
+export type TuitionPaymentStatus = (typeof tuitionPaymentStatusValues)[number];
+
+export const tuitionPaymentStatusLabels: Record<TuitionPaymentStatus, string> = {
+  submitted: "Waiting",
+  verified: "Verified",
+  rejected: "Rejected",
+};
+
 /** The limit ids the Owner's numbers are stored under. */
 export const CHARGE_WINDOW_DAYS_ID = "charge.windowDays";
 export const CHARGE_SECOND_DUE_DAYS_ID = "charge.secondDueDays";
