@@ -1,3 +1,4 @@
+import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import {
   LOCATION_PAGE_SIZE,
@@ -9,8 +10,6 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import {
-  ChevronLeft,
-  ChevronRight,
   CornerDownRight,
   Eye,
   EyeOff,
@@ -55,6 +54,7 @@ export default function LocationCatalogManager() {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(LOCATION_PAGE_SIZE);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState<LocationType | "">("");
   const [drafts, setDrafts] = useState<Record<string, { label: string; active: boolean }>>({});
@@ -79,13 +79,13 @@ export default function LocationCatalogManager() {
 
   const searching = searchTerm.length > 0;
   const utils = trpc.useUtils();
-  const browse = trpc.locationCatalog.browse.useQuery({ parentId, query: "", page }, { enabled: !searching });
-  const search = trpc.locationCatalog.search.useQuery({ query: searchTerm, page }, { enabled: searching });
+  const browse = trpc.locationCatalog.browse.useQuery({ parentId, query: "", page, pageSize }, { enabled: !searching });
+  const search = trpc.locationCatalog.search.useQuery({ query: searchTerm, page, pageSize }, { enabled: searching });
   const active = searching ? search : browse;
 
   const rows = useMemo<Row[]>(() => (active.data?.rows ?? []) as Row[], [active.data]);
   const total = active.data?.total ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / LOCATION_PAGE_SIZE));
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const trail = (browse.data?.trail ?? []) as Array<{ id: string; label: string }>;
   const parentType = (browse.data?.parentType ?? null) as LocationType | null;
   const addableTypes = parentType ? childTypesFor(parentType) : [];
@@ -414,15 +414,16 @@ export default function LocationCatalogManager() {
             </div>;
           })}
 
-        {total > LOCATION_PAGE_SIZE ? <div className="mt-3 flex items-center justify-between gap-2 border-t border-j-border pt-2">
-          <button type="button" disabled={page <= 1 || active.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
-            <ChevronLeft size={14} /> Previous
-          </button>
-          <span className="text-xs font-bold text-j-ink-muted">Page {page} of {lastPage}</span>
-          <button type="button" disabled={page >= lastPage || active.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
-            Next <ChevronRight size={14} />
-          </button>
-        </div> : null}
+        <div className="mt-3 border-t border-j-border pt-2"><TutorListPager
+          page={page}
+          totalPages={lastPage}
+          onPage={setPage}
+          label="Place pages"
+          pageSize={pageSize}
+          pageSizeOptions={[20, 50, 100]}
+          onPageSize={next => { setPageSize(next); setPage(1); }}
+          totalItems={total}
+        /></div>
       </section>}
   </div>;
 }

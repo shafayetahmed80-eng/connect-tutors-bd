@@ -70,7 +70,8 @@ import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFie
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
 import { cancellationReasons, settlementDispositions, tuitionPaymentMethodValues, tutorReportableMethods } from "@shared/platform-charge";
 
-export const tuitionTypeSchema = z.enum(["home", "online", "both"]);
+/** How a Tutor teaches - "both" doesn't exist here: a Tutor who does home and online just selects both. */
+export const tuitionTypeSchema = z.enum(["home", "online", "group", "package"]);
 export const guardianRequestTuitionTypeSchema = z.enum(["home", "online", "both", "group", "package"]);
 const tutorAuthInputSchema = z.object({
   name: z.string().trim().min(2, "Enter your full name.").max(160),
@@ -286,7 +287,7 @@ const adminMatchingRequestInputSchema = z.object({
   lastActivityAfter: z.coerce.date().optional(),
   lastActivityBefore: z.coerce.date().optional(),
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(50).default(20),
+  pageSize: z.number().int().min(1).max(100).default(20),
 })
   .refine(value => value.budgetMinimum === undefined || value.budgetMaximum === undefined || value.budgetMinimum <= value.budgetMaximum, { message: "Minimum budget cannot exceed maximum budget.", path: ["budgetMinimum"] })
   .refine(value => value.createdAfter === undefined || value.createdBefore === undefined || value.createdAfter <= value.createdBefore, { message: "Created-date range is invalid.", path: ["createdAfter"] })
@@ -311,7 +312,7 @@ const adminMatchingSavedViewFiltersInputSchema = z.object({
   createdBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
   lastActivityAfter: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
   lastActivityBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
-  pageSize: z.number().int().min(1).max(50).optional(),
+  pageSize: z.number().int().min(1).max(100).optional(),
 }).strict()
   .refine(value => value.budgetMinimum === undefined || value.budgetMaximum === undefined || value.budgetMinimum <= value.budgetMaximum, { message: "Minimum budget cannot exceed maximum budget.", path: ["budgetMinimum"] })
   .refine(value => !value.createdAfter || !value.createdBefore || value.createdAfter <= value.createdBefore, { message: "Created-date range is invalid.", path: ["createdAfter"] })
@@ -374,7 +375,7 @@ const publishedTutorJobBoardInputSchema = z.object({
   preferredTutorGender: z.enum(["male", "female", "any"]).optional(),
   jobId: z.string().trim().min(3).max(32).optional(),
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(50).default(20),
+  pageSize: z.number().int().min(1).max(100).default(20),
 }).refine(value => !value.postedFrom || !value.postedTo || value.postedFrom <= value.postedTo, {
   message: "The 'from' date cannot be later than the 'to' date.",
   path: ["postedFrom"],
@@ -389,7 +390,7 @@ const adminTutorDirectoryInputSchema = z.object({
   subject: z.string().trim().max(100).default(""),
   tuitionType: tuitionTypeSchema.or(z.literal("all")).default("all"),
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(50).default(20),
+  pageSize: z.number().int().min(1).max(100).default(20),
 });
 
 /** Tutor Matching's own page sizes: a ranked list is worth scanning further than the 50-row directory ceiling. */
@@ -417,7 +418,7 @@ const adminGuardianRequestInputSchema = z.object({
   tuitionType: guardianRequestTuitionTypeSchema.or(z.literal("all")).default("all"),
   location: z.string().trim().max(160).default(""),
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(50).default(20),
+  pageSize: z.number().int().min(1).max(100).default(20),
 });
 
 const GUARDIAN_INTAKE_HANDOFF_TTL_MS = 20 * 60 * 1000;
@@ -1243,11 +1244,12 @@ export const appRouter = router({
         catalog: largeCatalogSchema,
         query: z.string().trim().max(120).default(""),
         page: z.number().int().min(1).max(10_000).default(1),
+        pageSize: z.number().int().min(1).max(100).default(LARGE_CATALOG_PAGE_SIZE),
       }))
       .query(({ input }) => db.searchLargeCatalogEntries(input.catalog, {
         query: input.query,
         page: input.page,
-        pageSize: LARGE_CATALOG_PAGE_SIZE,
+        pageSize: input.pageSize,
       })),
     createLarge: ownerAdminProcedure
       .input(z.object({ catalog: largeCatalogSchema, name: largeCatalogNameSchema }))
@@ -1484,6 +1486,7 @@ export const appRouter = router({
       query: z.string().trim().max(SCHOOL_NAME_MAX).default(""),
       division: z.enum(["all", ...schoolCollegeDivisionValues]).default("all"),
       page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(50),
     })).query(({ input }) => db.listSchoolCollegesForOwner(input)),
     add: ownerAdminProcedure.input(z.object({
       name: z.string().trim().min(SCHOOL_NAME_MIN, `Enter at least ${SCHOOL_NAME_MIN} characters.`).max(SCHOOL_NAME_MAX),
@@ -1579,22 +1582,24 @@ export const appRouter = router({
         parentId: locationIdSchema.nullable().default(null),
         query: z.string().trim().max(120).default(""),
         page: z.number().int().min(1).max(10_000).default(1),
+        pageSize: z.number().int().min(1).max(100).default(LOCATION_PAGE_SIZE),
       }))
       .query(({ input }) => db.browseLocations({
         parentId: input.parentId,
         query: input.query,
         page: input.page,
-        pageSize: LOCATION_PAGE_SIZE,
+        pageSize: input.pageSize,
       })),
     search: ownerAdminProcedure
       .input(z.object({
         query: z.string().trim().max(120),
         page: z.number().int().min(1).max(10_000).default(1),
+        pageSize: z.number().int().min(1).max(100).default(LOCATION_PAGE_SIZE),
       }))
       .query(({ input }) => db.searchLocations({
         query: input.query,
         page: input.page,
-        pageSize: LOCATION_PAGE_SIZE,
+        pageSize: input.pageSize,
       })),
     create: ownerAdminProcedure
       .input(z.object({ parentId: locationIdSchema, type: locationTypeSchema, label: locationLabelSchema }))
@@ -1736,7 +1741,7 @@ export const appRouter = router({
       event: z.enum(["all", "login_success", "login_failure", "two_factor_required", "two_factor_success", "two_factor_failure", "recovery_code_used", "invitation_created", "invitation_accepted", "invitation_revoked", "two_factor_reset", "credential_provisioned", "credential_reset"]).default("all"),
       email: z.string().trim().max(320).default(""),
       page: z.number().int().min(1).default(1),
-      pageSize: z.number().int().min(1).max(50).default(20),
+      pageSize: z.number().int().min(1).max(100).default(20),
     })).query(({ input }) => db.listAdminAuditLogPage(input)),
     getAuthEvents: ownerAdminProcedure.input(z.object({
       event: z.enum([
@@ -1746,7 +1751,7 @@ export const appRouter = router({
       role: z.enum(["all", "tutor", "guardian", "admin"]).default("all"),
       ip: z.string().trim().max(64).default(""),
       page: z.number().int().min(1).default(1),
-      pageSize: z.number().int().min(1).max(50).default(20),
+      pageSize: z.number().int().min(1).max(100).default(20),
     })).query(({ input }) => db.listAuthEventsPage({ ...input, ip: input.ip || undefined })),
     getActivityReport: ownerAdminProcedure
       .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30) }))
@@ -1860,7 +1865,7 @@ export const appRouter = router({
         query: z.string().trim().max(100).default(""),
         stage: z.enum(["all", "pending", "live", "appointed", "confirmed", "cancelled"]).default("all"),
         page: z.number().int().positive().default(1),
-        pageSize: z.number().int().min(1).max(50).default(12),
+        pageSize: z.number().int().min(1).max(100).default(20),
         postedBy: z.enum(["all", "admin"]).default("all"),
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "cancelled"])).min(1).max(5).optional(),
       }))
@@ -1870,7 +1875,7 @@ export const appRouter = router({
       .input(z.object({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
-        pageSize: z.number().int().min(1).max(50).default(20),
+        pageSize: z.number().int().min(1).max(100).default(20),
       }))
       .query(({ input }) => db.listAdminAppointedJobsPage(input)),
     /** Tuitions in the Confirmed stage, each with its Tutor, dates and payment status. */
@@ -1878,7 +1883,7 @@ export const appRouter = router({
       .input(z.object({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
-        pageSize: z.number().int().min(1).max(50).default(20),
+        pageSize: z.number().int().min(1).max(100).default(20),
       }))
       .query(({ input }) => db.listAdminConfirmedJobsPage(input)),
     // A tuition's Payment Status is worked out from these payments; it is never set by hand.
@@ -1908,7 +1913,7 @@ export const appRouter = router({
       .input(z.object({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
-        pageSize: z.number().int().min(1).max(50).default(20),
+        pageSize: z.number().int().min(1).max(100).default(20),
       }))
       .query(({ input }) => db.listAdminCancelledChargesPage(input)),
     previewTuitionSettlement: adminProcedure
@@ -2134,6 +2139,7 @@ export const appRouter = router({
       kind: z.enum(["shortlist", "appoint", "confirm", "cancel"]),
       status: z.enum(["pending", "approved", "declined"]).default("pending"),
       page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(20),
     })).query(({ input }) => db.listGuardianRequestActions(input)),
     approveAppointmentRequest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive() }))

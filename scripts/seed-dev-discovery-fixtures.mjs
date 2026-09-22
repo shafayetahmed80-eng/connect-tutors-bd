@@ -28,11 +28,17 @@ try {
   ];
   for (const t of tutors) {
     await c.query(
-      `INSERT INTO tutors (id, name, gender, locationId, verified, profileStatus, subjects, levels, languages, mode, headline, institution, education, experience, fee, about)
-       VALUES (?, ?, ?, ?, 1, 'approved', ?, ?, ?, 'both', 'Experienced tutor', 'University of Dhaka', 'BSc', 4, 6500, 'Clear explanations and regular progress checks.')
+      `INSERT INTO tutors (id, name, gender, locationId, verified, profileStatus, subjects, levels, languages, headline, institution, education, experience, fee, about)
+       VALUES (?, ?, ?, ?, 1, 'approved', ?, ?, ?, 'Experienced tutor', 'University of Dhaka', 'BSc', 4, 6500, 'Clear explanations and regular progress checks.')
        ON DUPLICATE KEY UPDATE verified = 1, profileStatus = 'approved', subjects = VALUES(subjects), levels = VALUES(levels), locationId = VALUES(locationId)`,
       [t.id, t.name, t.gender, city.id, JSON.stringify(t.subjects), JSON.stringify(t.levels), JSON.stringify(t.languages)],
     );
+    for (const mode of ["home", "online"]) {
+      await c.query(
+        `INSERT INTO tutor_tuition_modes (tutorId, mode) VALUES (?, ?) ON DUPLICATE KEY UPDATE mode = VALUES(mode)`,
+        [t.id, mode],
+      );
+    }
   }
 
   const [[loc]] = await c.query("SELECT COUNT(*) n FROM locations WHERE type = 'country'");

@@ -86,7 +86,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   curriculumIds: tutorProfileCopy.fields.curricula,
   teachingExperienceYears: tutorProfileCopy.fields.teachingExperience,
   studentTypeIds: tutorProfileCopy.fields.studentTypes,
-  tuitionType: tutorProfileCopy.fields.tuitionType,
+  tuitionTypes: tutorProfileCopy.fields.tuitionType,
   preferredStudentGender: tutorProfileCopy.fields.preferredStudentGender,
   preferredClassSizes: tutorProfileCopy.fields.classSizes,
   preferredTeachingDays: tutorProfileCopy.fields.teachingDays,
@@ -136,7 +136,7 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
   if (!/^\d+$/.test(form.teachingExperienceYears) || Number(form.teachingExperienceYears) < 0 || Number(form.teachingExperienceYears) > 60) errors.teachingExperienceYears = "Enter teaching experience between 0 and 60 years.";
-  if (!form.tuitionType) errors.tuitionType = "Select a tuition type.";
+  requiredSelection(errors, "tuitionTypes", "Select at least one tuition type.", form.tuitionTypes);
   if (!form.preferredStudentGender) errors.preferredStudentGender = "Select a preferred student gender.";
   requiredSelection(errors, "preferredClassSizes", "Select at least one class size.", form.preferredClassSizes);
   requiredSelection(errors, "preferredTeachingDays", "Select at least one teaching day.", form.preferredTeachingDays);
@@ -144,7 +144,7 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!Number.isInteger(feeMin) || (feeMin ?? 0) < 0) errors.feeMin = "Enter a minimum monthly fee.";
   if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
   else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
-  if ((form.tuitionType === "online" || form.tuitionType === "both") && !form.availableNationwide) errors.availableNationwide = "Enable available nationwide when you select Online or Both.";
+  if (form.tuitionTypes.includes("online") && !form.availableNationwide) errors.availableNationwide = "Enable available nationwide when you select Online tuition.";
 
   return errors;
 }
@@ -160,7 +160,7 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   // and nationwide availability only applies to online tuition.
   const totalRequired = 24
     + (form.studyStatus ? 1 : 0)
-    + (form.tuitionType === "online" || form.tuitionType === "both" ? 1 : 0);
+    + (form.tuitionTypes.includes("online") ? 1 : 0);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);
 

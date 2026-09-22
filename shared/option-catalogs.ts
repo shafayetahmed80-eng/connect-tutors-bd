@@ -91,4 +91,4 @@ export function findLargeCatalog(id: string): LargeCatalogMeta | undefined {
 export const MAX_LARGE_CATALOG_NAME_LENGTH = 240;
 
 /** Rows returned per page. Enough to scan, small enough to render instantly. */
-export const LARGE_CATALOG_PAGE_SIZE = 25;
+export const LARGE_CATALOG_PAGE_SIZE = 20;

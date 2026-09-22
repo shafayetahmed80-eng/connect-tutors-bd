@@ -21,7 +21,7 @@ export type TutorMatchingFilters = {
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
-  tuitionType: "all" | "home" | "online" | "both";
+  tuitionType: "all" | "home" | "online" | "group" | "package";
   page: number;
   pageSize: 20 | 50 | 100;
 };
@@ -54,7 +54,7 @@ function TutorMatchingFilterBar({ filters, onChange, onClear }: {
     <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorMatchingFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
     <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
     <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorMatchingFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="both">Both</option></select>
+    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorMatchingFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
     <button type="button" onClick={onClear} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
   </div>;
 }

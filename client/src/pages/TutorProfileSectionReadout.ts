@@ -16,7 +16,7 @@ import type { TeachingProfileState } from "./TutorProfileWorkspace";
 const staticLabels = {
   gender: { male: "Male", female: "Female" },
   studyStatus: { studying: "Studying", graduated: "Graduated", professional: "Professional" },
-  tuitionType: { home: "Home tuition", online: "Online tuition", both: "Home & online" },
+  tuitionType: { home: "Home tuition", online: "Online tuition", group: "Group tuition", package: "Package tuition" },
   preferredStudentGender: { male: "Male", female: "Female", both: "Both" },
   classSize: { one_to_one: "One-to-one", small_group: "Small group", group: "Group" },
   day: {
@@ -195,7 +195,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   specialExpertise: form => ({ label: "Special expertise", value: text(form.specialExpertise) }),
   academicAchievement: form => ({ label: "Academic achievement", value: text(form.academicAchievement) }),
 
-  tuitionType: form => ({ label: "Tuition type", value: fromMap(staticLabels.tuitionType, form.tuitionType) }),
+  tuitionType: form => ({ label: "Tuition type", value: list(form.tuitionTypes, id => fromMap(staticLabels.tuitionType, id)) }),
   preferredStudentGender: form => ({ label: "Preferred student gender", value: fromMap(staticLabels.preferredStudentGender, form.preferredStudentGender) }),
   preferredClassSizes: form => ({ label: "Preferred class size", value: list(form.preferredClassSizes, id => fromMap(staticLabels.classSize, id)) }),
   preferredTeachingDays: form => ({ label: "Preferred teaching days", value: list(form.preferredTeachingDays, id => fromMap(staticLabels.day, id)) }),

@@ -10,8 +10,6 @@ import { ChevronRight, Loader2, Scale, Search, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 
-const PAGE_SIZE = 20;
-
 const onDate = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
 
@@ -28,7 +26,8 @@ const notSet = <span className="italic text-j-ink-faint">Not set</span>;
 export default function AdminCancelledChargesContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const jobs = trpc.admin.listCancelledCharges.useQuery({ query, page, pageSize: PAGE_SIZE });
+  const [pageSize, setPageSize] = useState(20);
+  const jobs = trpc.admin.listCancelledCharges.useQuery({ query, page, pageSize });
   const items = jobs.data?.items ?? [];
   const [settlingId, setSettlingId] = useState<number | null>(null);
   const [payingId, setPayingId] = useState<number | null>(null);
@@ -112,7 +111,16 @@ export default function AdminCancelledChargesContent() {
       tableClassName="min-w-[84rem]"
     /> : null}
 
-    <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Cancelled job pages" />
+    <TutorListPager
+      page={page}
+      totalPages={jobs.data?.totalPages ?? 1}
+      onPage={setPage}
+      label="Cancelled job pages"
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={jobs.data?.total}
+    />
 
     {settlingId !== null ? <TuitionSettlementModal
       requestId={settlingId}

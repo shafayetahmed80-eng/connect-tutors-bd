@@ -11,8 +11,6 @@ import { ChevronRight, Loader2, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 
-const PAGE_SIZE = 20;
-
 const appointedOn = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
 
@@ -29,7 +27,8 @@ const notSet = <span className="italic text-j-ink-faint">Not set</span>;
 export function AdminAppointedJobsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize: PAGE_SIZE });
+  const [pageSize, setPageSize] = useState(20);
+  const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize });
   const items = jobs.data?.items ?? [];
 
   type AppointedJob = (typeof items)[number];
@@ -84,7 +83,16 @@ export function AdminAppointedJobsContent() {
       tableClassName="min-w-[80rem]"
     /> : null}
 
-    <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Appointed job pages" />
+    <TutorListPager
+      page={page}
+      totalPages={jobs.data?.totalPages ?? 1}
+      onPage={setPage}
+      label="Appointed job pages"
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={jobs.data?.total}
+    />
   </div>;
 }
 

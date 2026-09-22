@@ -1,8 +1,9 @@
 import AdminDynamicSectionPage from "@/components/AdminDynamicSectionPage";
 import StatusTabRow from "@/components/StatusTabRow";
+import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { SCHOOL_NAME_MAX, schoolCollegeDivisionLabels, schoolCollegeDivisionValues, type SchoolCollegeDivision } from "@shared/school-colleges";
-import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -75,6 +76,7 @@ export function SchoolCollegeManager() {
   const [query, setQuery] = useState("");
   const [division, setDivision] = useState("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [newName, setNewName] = useState("");
   const [newDivision, setNewDivision] = useState("");
 
@@ -84,14 +86,14 @@ export function SchoolCollegeManager() {
   }, [queryInput]);
 
   const utils = trpc.useUtils();
-  const list = trpc.schoolColleges.list.useQuery({ view, query, division: division as "all" | SchoolCollegeDivision, page });
+  const list = trpc.schoolColleges.list.useQuery({ view, query, division: division as "all" | SchoolCollegeDivision, page, pageSize });
   const refresh = () => { void utils.schoolColleges.list.invalidate(); };
   const add = trpc.schoolColleges.add.useMutation({
     onSuccess: () => { toast.success("Added."); setNewName(""); refresh(); },
     onError: error => toast.error(error.message),
   });
   const rows = (list.data?.rows ?? []) as Row[];
-  const lastPage = Math.max(1, Math.ceil((list.data?.total ?? 0) / (list.data?.pageSize ?? 50)));
+  const lastPage = Math.max(1, Math.ceil((list.data?.total ?? 0) / (list.data?.pageSize ?? pageSize)));
 
   return <div className="space-y-4">
     <StatusTabRow
@@ -125,13 +127,16 @@ export function SchoolCollegeManager() {
         {rows.map(row => view === "shared" ? <SharedRow key={row.id} row={row} onSaved={refresh} /> : <CreatedRow key={row.id} row={row} onSaved={refresh} />)}
       </ul> : null}
 
-    {lastPage > 1 ? <nav aria-label="Name pages" className="flex items-center justify-between text-sm text-j-ink-soft">
-      <span className="tabular-nums">Page {page} of {lastPage}</span>
-      <span className="flex gap-2">
-        <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="inline-flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 font-bold disabled:opacity-40"><ChevronLeft size={14} /> Previous</button>
-        <button type="button" disabled={page >= lastPage} onClick={() => setPage(page + 1)} className="inline-flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 font-bold disabled:opacity-40">Next <ChevronRight size={14} /></button>
-      </span>
-    </nav> : null}
+    <TutorListPager
+      page={page}
+      totalPages={lastPage}
+      onPage={setPage}
+      label="Name pages"
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={list.data?.total}
+    />
   </div>;
 }
 

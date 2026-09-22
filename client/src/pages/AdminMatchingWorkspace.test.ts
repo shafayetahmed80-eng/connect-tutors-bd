@@ -408,8 +408,8 @@ describe("the Tutor picker on a matching card", () => {
     locationText: "Uttara, Dhaka",
   };
   const tutors = [
-    { id: "far", name: "Far Away", subjects: ["Biology"], levels: [], fee: 9000, gender: "male" as const, mode: "online", locationLabel: "Khulna", city: "Khulna", experience: 1 },
-    { id: "near", name: "Near Match", subjects: ["Physics"], levels: ["HSC 1st Year"], fee: 5000, gender: "female" as const, mode: "home", locationLabel: "Uttara", city: "Dhaka", experience: 6 },
+    { id: "far", name: "Far Away", subjects: ["Biology"], levels: [], fee: 9000, gender: "male" as const, modes: ["online"], locationLabel: "Khulna", city: "Khulna", experience: 1 },
+    { id: "near", name: "Near Match", subjects: ["Physics"], levels: ["HSC 1st Year"], fee: 5000, gender: "female" as const, modes: ["home"], locationLabel: "Uttara", city: "Dhaka", experience: 6 },
   ];
 
   function renderPicker(overrides: Record<string, unknown> = {}) {

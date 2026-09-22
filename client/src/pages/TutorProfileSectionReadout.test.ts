@@ -122,7 +122,7 @@ describe("getTutorProfileReadoutSections", () => {
         classLevelIds: ["5"],
         universityId: "10",
         currentLocationId: "dhaka-uttara",
-        tuitionType: "both",
+        tuitionTypes: ["home", "online"],
         preferredTeachingDays: ["monday", "friday"],
       }),
       resolvers,
@@ -138,7 +138,7 @@ describe("getTutorProfileReadoutSections", () => {
     expect(education.find(row => row.label === "Institute")?.value).toBe("Dhaka University");
 
     const teaching = sections[2].groups.flatMap(group => group.rows);
-    expect(teaching.find(row => row.label === "Tuition type")?.value).toBe("Home & online");
+    expect(teaching.find(row => row.label === "Tuition type")?.value).toBe("Home tuition, Online tuition");
     expect(teaching.find(row => row.label === "Preferred teaching days")?.value).toBe("Monday, Friday");
     expect(teaching.find(row => row.label === "Current location")?.value).toBe("Uttara");
   });

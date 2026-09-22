@@ -28,8 +28,8 @@ export type MatchingTutorOption = {
   levels: string[];
   fee: number;
   gender: "male" | "female";
-  /** How the Tutor teaches: at home, online, or either. */
-  mode: string;
+  /** How the Tutor teaches - every mode they've selected. */
+  modes: string[];
   locationLabel: string;
   city: string;
   experience: number;
@@ -126,17 +126,20 @@ export function getRequestBudget(request: Pick<MatchingTutorRequestBrief, "budge
 }
 
 /**
- * Whether a Tutor's teaching mode can serve this request.
+ * Whether a Tutor's teaching modes can serve this request.
  *
- * `both` serves either. Group and package tuition happen in person, so they
- * read as home tuition here rather than as modes of their own.
+ * A request for "both" is served by a Tutor who teaches home, online, or
+ * both. Group and package requests only match a Tutor who lists that same
+ * mode. No modes recorded yet is treated as unknown, never a mismatch.
  */
-export function tutorModeServesRequest(mode: string, tuitionType: MatchingTutorRequestBrief["tuitionType"]) {
-  const normalized = normalize(mode);
-  if (normalized === "both" || normalized === "") return true;
-  const wanted = tuitionType === "online" ? "online" : tuitionType === "both" ? "both" : "home";
-  if (wanted === "both") return true;
-  return normalized === wanted;
+export function tutorModeServesRequest(modes: string[], tuitionType: MatchingTutorRequestBrief["tuitionType"]) {
+  if (modes.length === 0) return true;
+  const set = new Set(modes.map(normalize));
+  if (tuitionType === "both") return set.has("home") || set.has("online");
+  if (tuitionType === "online") return set.has("online");
+  if (tuitionType === "group") return set.has("group");
+  if (tuitionType === "package") return set.has("package");
+  return set.has("home");
 }
 
 /** True when the request is taught in person, so the Tutor's area matters. */
@@ -187,10 +190,11 @@ export function scoreTutorForRequest(
     }
   }
 
-  if (tutorModeServesRequest(tutor.mode, request.tuitionType)) {
+  if (tutorModeServesRequest(tutor.modes, request.tuitionType)) {
     score += weights.mode;
   } else {
-    cautions.push({ kind: "mode", label: `Teaches ${normalize(tutor.mode) === "online" ? "online only" : "in person only"}` });
+    const modeSet = new Set(tutor.modes.map(normalize));
+    cautions.push({ kind: "mode", label: `Teaches ${modeSet.has("online") && !modeSet.has("home") ? "online only" : "in person only"}` });
   }
 
   if (request.preferredGender !== "any") {

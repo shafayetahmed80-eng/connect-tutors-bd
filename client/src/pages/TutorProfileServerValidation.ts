@@ -39,7 +39,7 @@ const serverFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, string>>
   curriculumIds: tutorProfileCopy.fields.curricula,
   teachingExperienceYears: tutorProfileCopy.fields.teachingExperience,
   studentTypeIds: tutorProfileCopy.fields.studentTypes,
-  tuitionType: tutorProfileCopy.fields.tuitionType,
+  tuitionTypes: tutorProfileCopy.fields.tuitionType,
   preferredStudentGender: tutorProfileCopy.fields.preferredStudentGender,
   preferredClassSizes: tutorProfileCopy.fields.classSizes,
   preferredTeachingDays: tutorProfileCopy.fields.teachingDays,

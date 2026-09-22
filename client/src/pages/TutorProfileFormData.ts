@@ -47,7 +47,7 @@ export type PersistedTutorProfileForForm = {
   studyStatus: "studying" | "graduated" | "professional" | null;
   yearSemester?: string | null;
   graduationYear: number | null;
-  tuitionType?: "home" | "online" | "both" | null;
+  tuitionTypes?: string[];
   preferredStudentGender?: "male" | "female" | "both" | null;
   preferredClassSizes?: string[];
   preferredTeachingDays?: string[];
@@ -217,7 +217,7 @@ export type TutorProfileFormState = {
   studyStatus: "" | "studying" | "graduated" | "professional";
   yearSemester: string;
   graduationYear: string;
-  tuitionType: "" | "home" | "online" | "both";
+  tuitionTypes: string[];
   preferredStudentGender: "" | "male" | "female" | "both";
   preferredClassSizes: string[];
   preferredTeachingDays: string[];
@@ -291,7 +291,7 @@ export function hydrateTutorProfileForm(
       studyStatus: "",
       yearSemester: "",
       graduationYear: "",
-      tuitionType: "",
+      tuitionTypes: [],
       preferredStudentGender: "",
       preferredClassSizes: [],
       preferredTeachingDays: [],
@@ -333,7 +333,7 @@ export function hydrateTutorProfileForm(
     studyStatus: profile.studyStatus ?? "",
     yearSemester: profile.yearSemester ?? "",
     graduationYear: profile.graduationYear ? String(profile.graduationYear) : "",
-    tuitionType: profile.tuitionType ?? "",
+    tuitionTypes: toStringList(profile.tuitionTypes),
     preferredStudentGender: profile.preferredStudentGender ?? "",
     preferredClassSizes: toStringList(profile.preferredClassSizes),
     preferredTeachingDays: toStringList(profile.preferredTeachingDays),
@@ -378,7 +378,7 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     studyStatus: form.studyStatus || undefined,
     yearSemester: optionalText(form.yearSemester),
     graduationYear: Number.isInteger(graduationYear) ? graduationYear : undefined,
-    tuitionType: form.tuitionType || undefined,
+    ...(form.tuitionTypes.length > 0 ? { tuitionTypes: form.tuitionTypes } : {}),
     preferredStudentGender: form.preferredStudentGender || undefined,
     ...(form.preferredClassSizes.length > 0 ? { preferredClassSizes: form.preferredClassSizes } : {}),
     ...(form.preferredTeachingDays.length > 0 ? { preferredTeachingDays: form.preferredTeachingDays } : {}),

@@ -59,7 +59,7 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   currentLocationId: 2,
   teachingAreaIds: 2,
   availableNationwide: 2,
-  tuitionType: 2,
+  tuitionTypes: 2,
   preferredStudentGender: 2,
   preferredClassSizes: 2,
   preferredTeachingDays: 2,

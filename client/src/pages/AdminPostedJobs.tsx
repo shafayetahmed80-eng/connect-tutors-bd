@@ -12,8 +12,9 @@ import { formatPostedDate } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildJobTitle } from "@shared/job-title";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
+import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
-import { AlignLeft, ChevronLeft, ChevronRight, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
+import { AlignLeft, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,8 +24,6 @@ const stages: Array<{ key: StageKey; label: string }> = [
   { key: "pending", label: "Pending" }, { key: "live", label: "Live" }, { key: "appointed", label: "Appointed" },
   { key: "confirmed", label: "Confirmed" }, { key: "cancelled", label: "Cancelled" },
 ];
-
-const PAGE_SIZE = 12;
 
 /**
  * The Admin's copy of the Guardian "Posted jobs" board - the same five stages,
@@ -42,12 +41,13 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
   const [stage, setStage] = useState<StageKey>("pending");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusJobId, setStatusJobId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize: PAGE_SIZE, postedBy });
+  const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize, postedBy });
   const items = jobs.data?.items ?? [];
   const counts = jobs.data?.counts;
   const totalPages = jobs.data?.totalPages ?? 1;
@@ -149,13 +149,16 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         </div>
       : null}
 
-    {totalPages > 1 ? <nav aria-label="Posted job pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm">
-      <p className="text-sm text-j-ink-soft">Page {page} of {totalPages}</p>
-      <div className="flex gap-2">
-        <button type="button" disabled={page <= 1} onClick={() => setPage(current => current - 1)} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40"><ChevronLeft size={15} /> Previous</button>
-        <button type="button" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40">Next <ChevronRight size={15} /></button>
-      </div>
-    </nav> : null}
+    <TutorListPager
+      page={page}
+      totalPages={totalPages}
+      onPage={setPage}
+      label="Posted job pages"
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={jobs.data?.total}
+    />
 
     {openJob ? <JobDetailsModal
       job={{

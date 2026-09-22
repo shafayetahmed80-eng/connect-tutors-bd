@@ -24,7 +24,7 @@ describe("Tutor Profile section draft payloads", () => {
     const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       headline: "Experienced Mathematics Tutor for SSC Students",
-      tuitionType: "home",
+      tuitionTypes: ["home"],
       preferredStudentGender: "both",
       preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
@@ -35,7 +35,7 @@ describe("Tutor Profile section draft payloads", () => {
     });
 
     expect(payload).toMatchObject({
-      tuitionType: "home",
+      tuitionTypes: ["home"],
       currentCityId: "dhaka-city",
       currentLocationId: "dhaka-uttara",
       feeMin: 5000,
@@ -50,7 +50,7 @@ describe("Tutor Profile section draft payloads", () => {
   it("keeps the online/nationwide and fee cross-field pairs together in Section D", () => {
     const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
-      tuitionType: "online",
+      tuitionTypes: ["online"],
       availableNationwide: true,
       feeMin: "4000",
       feeMax: "9000",
@@ -60,7 +60,7 @@ describe("Tutor Profile section draft payloads", () => {
       preferredTimeSlots: ["evening"],
     });
 
-    expect(payload).toMatchObject({ tuitionType: "online", availableNationwide: true, feeMin: 4000, feeMax: 9000 });
+    expect(payload).toMatchObject({ tuitionTypes: ["online"], availableNationwide: true, feeMin: 4000, feeMax: 9000 });
     expect(payload).not.toHaveProperty("aboutMe");
   });
 
@@ -162,7 +162,7 @@ describe("Tutor Profile section draft payloads", () => {
       additionalSubjectIds: ["3"],
       teachingExperienceYears: "4",
       priorTeachingExperience: "Two years of home tuition.",
-      tuitionType: "home",
+      tuitionTypes: ["home"],
       preferredStudentGender: "both",
       preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
@@ -174,7 +174,7 @@ describe("Tutor Profile section draft payloads", () => {
       additionalSubjectIds: [3],
       teachingExperienceYears: 4,
       priorTeachingExperience: "Two years of home tuition.",
-      tuitionType: "home",
+      tuitionTypes: ["home"],
     });
     // Section C keeps the Tutor's own education, and nothing else.
     expect(payload).not.toHaveProperty("highestEducation");

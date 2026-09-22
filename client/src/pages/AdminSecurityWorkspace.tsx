@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
+import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { adminPasswordPolicy, getAdminPasswordFeedback } from "@/pages/admin-password-policy";
 import { AlertTriangle, CircleUserRound, ClipboardCopy, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, UserMinus, Users } from "lucide-react";
@@ -118,10 +119,12 @@ function SecurityWorkspaceContent() {
   const [event, setEvent] = useState<(typeof events)[number]>("all");
   const [auditEmail, setAuditEmail] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [authEvent, setAuthEvent] = useState<(typeof authEventTypeOptions)[number]>("all");
   const [authRole, setAuthRole] = useState<(typeof authRoleOptions)[number]>("all");
   const [authIp, setAuthIp] = useState("");
   const [authPage, setAuthPage] = useState(1);
+  const [authPageSize, setAuthPageSize] = useState(20);
   const [invitationLink, setInvitationLink] = useState("");
   const [credentialTarget, setCredentialTarget] = useState<{ id: number; name: string; existingLoginId: string | null } | null>(null);
   const [loginId, setLoginId] = useState("");
@@ -129,8 +132,8 @@ function SecurityWorkspaceContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const isOwner = Boolean(workspaceAccess.data?.isOwner);
   const admins = trpc.admin.listAdmins.useQuery(undefined, { enabled: isOwner });
-  const audit = trpc.admin.getAuditLog.useQuery({ event, email: auditEmail.trim(), page, pageSize: 20 }, { enabled: isOwner });
-  const authEvents = trpc.admin.getAuthEvents.useQuery({ event: authEvent, role: authRole, ip: authIp.trim(), page: authPage, pageSize: 20 }, { enabled: isOwner });
+  const audit = trpc.admin.getAuditLog.useQuery({ event, email: auditEmail.trim(), page, pageSize }, { enabled: isOwner });
+  const authEvents = trpc.admin.getAuthEvents.useQuery({ event: authEvent, role: authRole, ip: authIp.trim(), page: authPage, pageSize: authPageSize }, { enabled: isOwner });
 
   // Both logs are read as a table on a laptop and as a card per event on a phone.
   type AuditEntry = NonNullable<typeof audit.data>["items"][number];
@@ -189,7 +192,16 @@ function SecurityWorkspaceContent() {
         rows={authEvents.data?.items ?? []}
         rowKey={entry => entry.id}
         empty="No matching authentication events."
-      /></div>{(audit.data?.totalPages ?? 1) > 1 ? <div className="mt-4 flex items-center justify-between"><p className="text-sm text-j-ink-soft">Page {audit.data?.page} of {audit.data?.totalPages}</p><div className="flex gap-2"><button type="button" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="rounded-lg border border-j-border px-3 py-2 text-sm font-bold disabled:opacity-40">Previous</button><button type="button" disabled={page >= (audit.data?.totalPages ?? 1)} onClick={() => setPage(p => p + 1)} className="rounded-lg border border-j-border px-3 py-2 text-sm font-bold disabled:opacity-40">Next</button></div></div> : null}</>}</section>
+      /></div><div className="mt-4"><TutorListPager
+        page={page}
+        totalPages={audit.data?.totalPages ?? 1}
+        onPage={setPage}
+        label="Audit log pages"
+        pageSize={pageSize}
+        pageSizeOptions={[20, 50, 100]}
+        onPageSize={next => { setPageSize(next); setPage(1); }}
+        totalItems={audit.data?.total}
+      /></div></>}</section>
     <section className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-bold text-j-ink">Public authentication events</h2></div><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="text-sm font-semibold text-j-ink-strong">IP<input type="search" value={authIp} onChange={e => { setAuthIp(e.target.value); setAuthPage(1); }} placeholder="Filter by IP" className="mt-2 block h-10 rounded-xl border border-j-field-border px-3 text-sm font-normal outline-none focus:border-j-accent" /></label><label className="text-sm font-semibold text-j-ink-strong">Role<select value={authRole} onChange={e => { setAuthRole(e.target.value as typeof authRole); setAuthPage(1); }} className="mt-2 block h-10 rounded-xl border border-j-field-border bg-white px-3 text-sm font-normal outline-none focus:border-j-accent">{authRoleOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label><label className="text-sm font-semibold text-j-ink-strong">Event<select value={authEvent} onChange={e => { setAuthEvent(e.target.value as typeof authEvent); setAuthPage(1); }} className="mt-2 block h-10 rounded-xl border border-j-field-border bg-white px-3 text-sm font-normal outline-none focus:border-j-accent">{authEventTypeOptions.map(option => <option key={option} value={option}>{option.replaceAll("_", " ")}</option>)}</select></label></div></div>{authEvents.isLoading ? <div className="mt-5 flex items-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading authentication events…</div> : authEvents.isError ? <InlineError message="The authentication events could not be loaded." /> : <><div className="mt-5 overflow-x-auto"><RecordTable
         plain
         caption="Security events: when, what, whose account and its context"
@@ -197,7 +209,16 @@ function SecurityWorkspaceContent() {
         rows={audit.data?.items ?? []}
         rowKey={entry => entry.id}
         empty="No matching security events."
-      /></div>{(authEvents.data?.totalPages ?? 1) > 1 ? <div className="mt-4 flex items-center justify-between"><p className="text-sm text-j-ink-soft">Page {authEvents.data?.page} of {authEvents.data?.totalPages}</p><div className="flex gap-2"><button type="button" disabled={authPage <= 1} onClick={() => setAuthPage(p => p - 1)} className="rounded-lg border border-j-border px-3 py-2 text-sm font-bold disabled:opacity-40">Previous</button><button type="button" disabled={authPage >= (authEvents.data?.totalPages ?? 1)} onClick={() => setAuthPage(p => p + 1)} className="rounded-lg border border-j-border px-3 py-2 text-sm font-bold disabled:opacity-40">Next</button></div></div> : null}</>}</section>
+      /></div><div className="mt-4"><TutorListPager
+        page={authPage}
+        totalPages={authEvents.data?.totalPages ?? 1}
+        onPage={setAuthPage}
+        label="Authentication event pages"
+        pageSize={authPageSize}
+        pageSizeOptions={[20, 50, 100]}
+        onPageSize={next => { setAuthPageSize(next); setAuthPage(1); }}
+        totalItems={authEvents.data?.total}
+      /></div></>}</section>
 
     <p className="flex items-start gap-2 rounded-xl border border-sky-100 bg-sky-50 p-4 text-xs leading-5 text-sky-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Give temporary passwords only through a verified private channel and require the Admin to change it after their first successful sign-in. Historical 2FA records remain inactive and are not required for workspace access.</p>
   </div>;
