@@ -158,9 +158,15 @@ describe("Admin Tutor Matching page", () => {
     expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-902" }, expect.anything());
   });
 
-  it("colours what lines up with the tuition green and what does not the warning colour", () => {
+  it("keeps the match notes collapsed to a count until clicked, then colours what lines up green and what does not the warning colour", () => {
     render(<AdminTutorMatchingContent requestId={13} />);
     const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).queryByText("Teaches Mathematics")).toBeNull();
+
+    const disclosure = within(rows[0]).getByRole("button", { name: /1 match/i });
+    expect(disclosure.textContent).toContain("1 caution");
+    fireEvent.click(disclosure);
+
     const reason = within(rows[0]).getByText("Teaches Mathematics");
     const caution = within(rows[0]).getByText("Based in Uttara");
     expect(reason.className).toContain("text-emerald-800");

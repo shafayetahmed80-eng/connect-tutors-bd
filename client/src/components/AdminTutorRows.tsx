@@ -3,7 +3,8 @@ import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
 import type { TutorMatchNote } from "@shared/tutor-matching";
-import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 
 /**
@@ -103,6 +104,37 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
+/**
+ * What lines up with the tuition and what does not, collapsed to two counts
+ * until an Admin asks for the sentences behind them.
+ *
+ * A full sentence per note - "Teaches Mathematics", "Based in Uttara" - reads
+ * well one Tutor at a time on the Matching workspace's picker, but a whole
+ * ranked table of them at once is mostly noise: the count is the fact worth
+ * scanning down a column, and the wording only matters for the Tutor an Admin
+ * is actually weighing.
+ */
+function MatchNotesDisclosure({ reasons, cautions }: { reasons: TutorMatchNote[]; cautions: TutorMatchNote[] }) {
+  const [open, setOpen] = useState(false);
+  if (reasons.length === 0 && cautions.length === 0) return <span className="italic text-j-ink-faint">Not set</span>;
+  return <div>
+    <button
+      type="button"
+      onClick={() => setOpen(current => !current)}
+      aria-expanded={open}
+      className="inline-flex items-center gap-2 rounded-full border border-j-border bg-white px-2.5 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+    >
+      {reasons.length ? <span className="inline-flex items-center gap-1 text-emerald-800"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{reasons.length} match</span> : null}
+      {cautions.length ? <span className="inline-flex items-center gap-1 text-amber-800"><span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />{cautions.length} caution</span> : null}
+      <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+    </button>
+    {open ? <div className="mt-1.5 flex max-w-[14rem] flex-wrap gap-1">
+      {reasons.map(reason => <span key={reason.kind} className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-800">{reason.label}</span>)}
+      {cautions.map(caution => <span key={caution.kind} className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-800">{caution.label}</span>)}
+    </div> : null}
+  </div>;
+}
+
 export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
   tutors: AdminTutorRow[];
   caption: string;
@@ -160,16 +192,11 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
       </span>,
     }] : []),
     ...(showMatchNotes ? [{
-      // What lines up with the tuition in green, what does not in the same
-      // warning colour a caution reads in everywhere else - never a reason to
-      // hide the Tutor, only to read the match at a glance. Pills that wrap,
-      // not one line per note - a Tutor can carry five or six of these, and a
-      // stacked list of full sentences was pushing the row off the screen.
-      key: "match", label: "Match", wide: true, cellClassName: "max-w-[16rem]",
-      cell: (tutor: AdminTutorRow) => (tutor.matchReasons?.length || tutor.matchCautions?.length) ? <span className="flex flex-wrap gap-1">
-        {(tutor.matchReasons ?? []).map(reason => <span key={reason.kind} title={reason.label} className="inline-block max-w-[9rem] truncate rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-800">{reason.label}</span>)}
-        {(tutor.matchCautions ?? []).map(caution => <span key={caution.kind} title={caution.label} className="inline-block max-w-[9rem] truncate rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-800">{caution.label}</span>)}
-      </span> : <span className="italic text-j-ink-faint">Not set</span>,
+      // Collapsed to a match count and a caution count until asked - the same
+      // green-for-match, warning-for-caution colouring, at a fraction of the
+      // row height a full sentence per note took.
+      key: "match", label: "Match", cellClassName: "max-w-[16rem]",
+      cell: (tutor: AdminTutorRow) => <MatchNotesDisclosure reasons={tutor.matchReasons ?? []} cautions={tutor.matchCautions ?? []} />,
     }] : []),
     ...(applicantRowActions ? [{
       key: "action", label: "Action", place: "action" as const,
