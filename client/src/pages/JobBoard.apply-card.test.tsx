@@ -74,6 +74,13 @@ describe("applying from a Job Board card", () => {
     expect(within(cardFor("6801")).getByRole("button", { name: "Apply Now" })).toBeTruthy();
   });
 
+  it("colours the tutor preference word and icon on the card - one colour per Male, Female, Any", () => {
+    render(<JobBoardContent embedded />);
+    // Both fixture jobs ship "any" (see the job() factory above).
+    const word = within(cardFor("6801")).getByText("Any");
+    expect(word.className).toContain("text-[#7c3aed]");
+  });
+
   it("replaces the button with Applied and the day it was made", () => {
     mocks.interests = [{ interestId: 7, status: "interested", createdAt: new Date("2026-11-20T00:00:00.000Z"), publicJobId: "6801" }];
     render(<JobBoardContent embedded />);

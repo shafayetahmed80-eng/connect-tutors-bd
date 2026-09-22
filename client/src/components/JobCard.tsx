@@ -4,6 +4,7 @@ import {
   formatSubjects,
   formatTuitionType,
   formatTutorPreference,
+  tutorPreferenceToneClass,
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { AlignLeft, BookOpen, House, MapPin, Wallet } from "lucide-react";
@@ -97,8 +98,8 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
       </div>
 
       <p className="mt-2.5 flex items-center gap-1.5 text-2xs text-j-ink-muted">
-        <TutorPreferenceIcon preference={job.preferredTutorGender} className="text-[#1677e8]" />
-        <span><strong className="font-semibold text-[#173d60]">{formatTutorPreference(job.preferredTutorGender)}</strong> tutor preferred</span>
+        <TutorPreferenceIcon preference={job.preferredTutorGender} className={tutorPreferenceToneClass(job.preferredTutorGender)} />
+        <span><strong className={`font-bold ${tutorPreferenceToneClass(job.preferredTutorGender)}`}>{formatTutorPreference(job.preferredTutorGender)}</strong> tutor preferred</span>
       </p>
 
       {/* Pushed to the foot so every card in a row ends level. */}
