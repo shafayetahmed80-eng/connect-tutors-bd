@@ -31,7 +31,6 @@ describe("Admin workspace navigation", () => {
       "Cancel Requests",
       "Matching workspace",
     ]);
-    expect(adminItems.find(item => item.path === "/tutors")).toMatchObject({ sectionLabel: "Public reference" });
 
     const ownerItems = buildAdminWorkspaceNavigation(true);
     expect(ownerItems.filter(item => item.sectionLabel === "Owner controls").map(item => item.label)).toEqual([
@@ -102,7 +101,7 @@ describe("Admin workspace navigation", () => {
     const sections = buildAdminWorkspaceNavigation(true)
       .map(item => item.sectionLabel)
       .filter((label, index, all) => label !== all[index - 1]);
-    expect(sections).toEqual(["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"]);
+    expect(sections).toEqual(["Operations", "Dynamic Section", "Owner controls", "Account"]);
   });
 
   it("keeps Owner-only security management in the Owner navigation boundary", () => {

@@ -79,8 +79,6 @@ describe("Site content editor", () => {
     render(<SiteContentEditor page="tutor-profile" />);
 
     expect(screen.getByRole("button", { name: `Reset Tutor dashboard ${EDUCATION_TAB}` })).toHaveProperty("disabled", false);
-    // The same label exists on the public profile, so the name is surface-qualified.
-    expect(screen.getByRole("button", { name: `Reset Public tutor profile ${EDUCATION_TAB}` })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Reset Tutor dashboard Personal tab" })).toHaveProperty("disabled", true);
   });
 

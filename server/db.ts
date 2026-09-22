@@ -123,7 +123,6 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { storageGetSignedUrl, storagePut } from "./storage";
-import { getTutorListingPage, type TutorListingFilters } from "@shared/tutor-listing";
 import {
   buildCombinedCityLocationOptions,
   type RegistrationLocationRow,
@@ -1163,8 +1162,24 @@ function parseJsonList(value: string | null): string[] {
   }
 }
 
-function mapTutor(row: typeof tutors.$inferSelect, location?: typeof locations.$inferSelect, includePrivate = false) {
-  const publicTutor = {
+export async function listLocations() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(locations).where(eq(locations.enabled, 1)).orderBy(asc(locations.country), asc(locations.label));
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join("") || "TU";
+}
+
+/** Approved-Tutor candidates for the Admin matching workspace's picker - safe, public-shaped fields only. */
+function mapTutor(row: typeof tutors.$inferSelect, location?: typeof locations.$inferSelect) {
+  return {
     id: row.id,
     name: row.name,
     locationId: row.locationId,
@@ -1189,16 +1204,6 @@ function mapTutor(row: typeof tutors.$inferSelect, location?: typeof locations.$
     district: location?.type === "district" ? location.label : undefined,
     locationLabel: location?.label ?? row.locationId,
   };
-
-  return includePrivate
-    ? { ...publicTutor, phone: row.phone, contactEmail: row.contactEmail, profileStatus: row.profileStatus }
-    : publicTutor;
-}
-
-export async function listLocations() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(locations).where(eq(locations.enabled, 1)).orderBy(asc(locations.country), asc(locations.label));
 }
 
 export async function listTutors() {
@@ -1210,33 +1215,6 @@ export async function listTutors() {
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .where(eq(tutors.profileStatus, "approved"));
   return rows.map(({ tutor, location }) => mapTutor(tutor, location ?? undefined));
-}
-
-export async function listTutorListingPage(filters: TutorListingFilters) {
-  const tutorList = await listTutors();
-  return getTutorListingPage(tutorList, filters);
-}
-
-export async function getTutorById(id: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db
-    .select({ tutor: tutors, location: locations })
-    .from(tutors)
-    .leftJoin(locations, eq(tutors.locationId, locations.id))
-    .where(and(eq(tutors.id, id), eq(tutors.profileStatus, "approved")))
-    .limit(1);
-  const row = rows[0];
-  return row ? mapTutor(row.tutor, row.location ?? undefined) : undefined;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
-    .join("") || "TU";
 }
 
 export class TutorProfileValidationError extends Error {

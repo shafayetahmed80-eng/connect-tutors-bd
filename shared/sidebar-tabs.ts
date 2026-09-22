@@ -96,7 +96,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
     heightPx: SHIPPED_ROW_HEIGHT_PX,
-    groups: ["Operations", "Dynamic Section", "Public reference", "Owner controls", "Account"],
+    groups: ["Operations", "Dynamic Section", "Owner controls", "Account"],
     subgroups: ["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"],
     items: [
       ["/admin/dashboard", "Overview"],
@@ -130,7 +130,6 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/dynamic/button-section", "Button Section"],
       ["/admin/dynamic/limits", "Limits"],
       ["/admin/dynamic/admin-control", "Admin Control"],
-      ["/tutors", "Public Tutor directory"],
       ["/admin/admin-profiles", "Admin Profiles"],
       ["/admin/reports", "Admin activity report"],
       ["/admin/security", "Admin security"],

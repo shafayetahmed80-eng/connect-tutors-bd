@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appRouter, tutorProfileInputSchema } from "./routers";
-import { getTutorById, listTutors } from "./db";
+import { listTutors } from "./db";
 
 const validTutorProfile = {
   name: "Amina Rahman",
@@ -67,32 +67,10 @@ describe("Tutor secure login handoff", () => {
   });
 });
 
-describe("Public Tutor discovery privacy", () => {
-  it("does not include private phone, email, or moderation status fields", async () => {
-    const publicTutors = await listTutors();
-    expect(publicTutors.length).toBeGreaterThan(0);
-    expect(publicTutors.every(tutor => !("phone" in tutor) && !("contactEmail" in tutor) && !("profileStatus" in tutor))).toBe(true);
-  });
-
-  it("omits every private Profile, account, and storage field from list and detail DTOs", async () => {
-    const privateKeys = [
-      "phone",
-      "contactEmail",
-      "profileStatus",
-      "dateOfBirth",
-      "accountStatus",
-      "assignedRequestCount",
-      "profilePhotoKey",
-      "profilePhotoUrl",
-    ];
-    const publicTutors = await listTutors();
-    const firstTutor = publicTutors[0];
-    const publicDetail = await getTutorById(firstTutor.id);
-
-    expect(firstTutor).toBeDefined();
-    expect(publicDetail).toBeDefined();
-    for (const tutor of [firstTutor, publicDetail]) {
-      expect(privateKeys.every(key => !(key in tutor!))).toBe(true);
-    }
+describe("Approved-Tutor candidate privacy", () => {
+  it("omits private phone, email, and moderation status fields from the matching candidate list", async () => {
+    const candidates = await listTutors();
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.every(tutor => !("phone" in tutor) && !("contactEmail" in tutor) && !("profileStatus" in tutor))).toBe(true);
   });
 });
