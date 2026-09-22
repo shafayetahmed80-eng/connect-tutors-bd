@@ -52,7 +52,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     tutor: {
       myJobInterests: { useQuery: () => ({ data: mocks.interests }) },
-      getMyProfile: { useQuery: () => ({ data: { profileStatus: "approved" } }) },
+      getMyProfile: { useQuery: () => ({ data: { profileStatus: "approved", gender: "male" } }) },
     },
   },
 }));
@@ -87,12 +87,69 @@ describe("applying from a Job Board card", () => {
     expect(within(cardFor("6802")).getByRole("button", { name: "Apply Now" })).toBeTruthy();
   });
 
-  it("applies to the job whose button was pressed", () => {
+  it("asks first, and only applies once the Tutor confirms", () => {
     render(<JobBoardContent embedded />);
 
     fireEvent.click(within(cardFor("6802")).getByRole("button", { name: "Apply Now" }));
+    expect(mocks.express).not.toHaveBeenCalled();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText(/Are you sure you want to apply/)).toBeTruthy();
+
+    fireEvent.click(dialog.getByRole("button", { name: "Yes, apply" }));
     expect(mocks.express).toHaveBeenCalledTimes(1);
     expect(mocks.express.mock.calls[0][0]).toEqual({ tutorJobId: 2 });
+  });
+
+  it("applies nothing when the Tutor says No", () => {
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(within(cardFor("6801")).getByRole("button", { name: "Apply Now" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "No" }));
+
+    expect(mocks.express).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("warns when the job wants a tutor of the other gender, and says nothing for one that takes any", () => {
+    render(<JobBoardContent embedded />);
+
+    // Job 1 ships "any"; a mismatched one is exercised in the gender-note test below.
+    fireEvent.click(within(cardFor("6801")).getByRole("button", { name: "Apply Now" }));
+    expect(within(screen.getByRole("dialog")).queryByText(/requires a/)).toBeNull();
+  });
+
+  it("shows the success dialog once the application lands, and lets the Tutor close it", () => {
+    mocks.express.mockImplementation((_input: unknown, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(within(cardFor("6801")).getByRole("button", { name: "Apply Now" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Yes, apply" }));
+
+    const success = within(screen.getByRole("dialog"));
+    expect(success.getByText("Successfully Applied!")).toBeTruthy();
+    expect(success.getByText(/Guardian will review your profile/)).toBeTruthy();
+
+    fireEvent.click(success.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("carries the post-apply reassurance into the details dialog, in the same red as the gender warning", () => {
+    mocks.interests = [{ interestId: 7, status: "interested", createdAt: new Date("2026-11-20T00:00:00.000Z"), publicJobId: "6801" }];
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(cardFor("6801"));
+    const dialog = within(screen.getByRole("dialog"));
+    const note = dialog.getByText(/Guardian will review your profile/);
+    expect(note.textContent).toContain("Note:");
+    expect(note.className).toContain("text-[#bd3535]");
+  });
+
+  it("drops the reassurance once the Guardian has shortlisted, declined or matched the application", () => {
+    mocks.interests = [{ interestId: 7, status: "shortlisted", createdAt: new Date("2026-11-20T00:00:00.000Z"), publicJobId: "6801" }];
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(cardFor("6801"));
+    expect(within(screen.getByRole("dialog")).queryByText(/Guardian will review your profile/)).toBeNull();
   });
 
   it("does not put any other card into the saving state while one is in flight", () => {

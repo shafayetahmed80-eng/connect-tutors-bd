@@ -7,9 +7,10 @@ import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
 import ChipMultiSelect, { type ChipOption } from "@/components/ChipMultiSelect";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
-import { BriefcaseBusiness, Check, ChevronLeft, ChevronRight, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
+import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, ChevronLeft, ChevronRight, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
@@ -194,6 +195,22 @@ function formatTutorGender(gender: TutorGender) {
   return gender === "any" ? "Any tutor preferred" : gender === "female" ? "Female tutor preferred" : "Male tutor preferred";
 }
 
+/** The confirm dialog's warning line, or none when the job takes any gender or the Tutor's own is not on file. */
+export function jobBoardGenderMismatchNote(preferredTutorGender: TutorGender, tutorOwnGender?: "male" | "female") {
+  if (preferredTutorGender === "any" || !tutorOwnGender || tutorOwnGender === preferredTutorGender) return null;
+  return `This job requires a "${preferredTutorGender === "female" ? "Female" : "Male"}" tutor.`;
+}
+
+/**
+ * The reassurance a fresh application carries into the details dialog - the
+ * same line the success popup showed at the moment of applying, kept in view
+ * for as long as it is still true. Once the Guardian has acted (shortlisted,
+ * declined, matched), the statement is no longer the honest one.
+ */
+export function jobBoardAppliedNote(status?: TutorInterestStatus) {
+  return status === "interested" ? "Guardian will review your profile & shortlist you if your profile strongly matches with their requirements." : null;
+}
+
 type JobBoardStudentFacts = {
   studentCount: number;
   studentGender?: "male" | "female" | null;
@@ -242,6 +259,47 @@ export function getJobBoardApplicationCopy({ isTutor, isApprovedTutor }: { isTut
 
 export const JOB_BOARD_DISCLOSURE_NOTICE = "Only Student Gender may be shown. Student name, Guardian phone, email, exact address, and private notes are not available here.";
 
+/**
+ * "Are you sure?" before an application goes out - it cannot be undone from
+ * here, only withdrawn from the details dialog. A gender-mismatched job says
+ * so, since the Tutor's own gender is fixed and cannot be changed to fit it.
+ */
+function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mismatchNote: string | null; busy: boolean; onConfirm: () => void; onClose: () => void }) {
+  return <Modal size="sm" onClose={onClose} busy={busy}>
+    <ModalHeader title="Apply for this tuition?" />
+    <ModalBody>
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+        <div>
+          <p className="text-sm leading-6 text-j-ink-strong">Are you sure you want to apply for this tuition job?</p>
+          {mismatchNote ? <p className="mt-2 text-sm font-bold leading-6 text-[#bd3535]">{mismatchNote}</p> : null}
+        </div>
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <button type="button" onClick={onClose} disabled={busy} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">No</button>
+      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} className="h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
+    </ModalFooter>
+  </Modal>;
+}
+
+/** What follows a successful application: not a promise of a match, only that it was sent and what happens next. */
+function JobBoardApplySuccess({ onClose }: { onClose: () => void }) {
+  return <Modal size="sm" onClose={onClose}>
+    <ModalHeader title="Application sent" />
+    <ModalBody>
+      <div className="flex flex-col items-center py-2 text-center">
+        <CheckCircle2 className="h-11 w-11 text-emerald-600" aria-hidden="true" />
+        <p className="mt-3 text-lg font-extrabold text-j-ink">Successfully Applied!</p>
+        <p className="mt-2 text-sm leading-6 text-j-ink-soft">Guardian will review your profile & shortlist you if your profile strongly matches with their requirements.</p>
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <button type="button" onClick={onClose} className="h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button>
+    </ModalFooter>
+  </Modal>;
+}
+
 function formatJobBoardDate(value: Date | string) {
   return new Date(value).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -257,6 +315,10 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const [activeJob, setActiveJob] = useState<JobBoardJob | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [interestError, setInterestError] = useState<string | null>(null);
+  // Applying asks first, since it cannot be undone from the card; a job sits
+  // here only between that question and the answer.
+  const [confirmJob, setConfirmJob] = useState<JobBoardJob | null>(null);
+  const [showApplySuccess, setShowApplySuccess] = useState(false);
   const isTutor = user?.role === "tutor";
   const utils = trpc.useUtils();
   const queryInput = useMemo(() => buildJobBoardQuery(filters), [filters]);
@@ -318,7 +380,8 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       onSettled: () => setSavingJobId(null),
     };
     if (presentation.action === "withdraw" && interest) withdrawInterest.mutate({ interestId: interest.interestId }, settle);
-    else expressInterest.mutate({ tutorJobId: job.id }, settle);
+    // Applying is the one action that gets a success notice - withdrawing already says so on the card.
+    else expressInterest.mutate({ tutorJobId: job.id }, { ...settle, onSuccess: () => setShowApplySuccess(true) });
   };
 
   const startApplication = (job: JobBoardJob) => {
@@ -334,6 +397,10 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       return;
     }
 
+    const interest = tutorInterestByJobId.get(job.jobId);
+    const presentation = getTutorInterestPresentation(interest?.status);
+    // Applying asks first; withdrawing, from the details dialog, does not.
+    if (presentation.action === "express") { setConfirmJob(job); return; }
     updateInterest(job);
   };
 
@@ -377,6 +444,14 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       {totalCount > PAGE_SIZE ? <nav className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white p-3" aria-label="Job Board pagination" aria-busy={jobsQuery.isFetching}><button type="button" disabled={!pagination.previousPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.previousPage ?? 1)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><ol className="flex items-center gap-1" aria-label={`Page ${queryInput.page} of ${pagination.totalPages}`}>{pageLinks.map((pageLink, index) => pageLink === "ellipsis" ? <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-sm font-bold text-[#7893a6]">…</li> : <li key={pageLink}><button type="button" onClick={() => goToPage(pageLink)} disabled={jobsQuery.isFetching} aria-current={pageLink === queryInput.page ? "page" : undefined} aria-label={`Go to page ${pageLink}`} className={`motion-interactive grid min-h-10 min-w-10 place-items-center rounded-xl px-2 text-sm font-bold disabled:cursor-progress ${pageLink === queryInput.page ? "bg-j-accent text-white" : "text-[#245676] hover:bg-[#f4fbff]"}`}>{pageLink}</button></li>)}</ol><button type="button" disabled={!pagination.nextPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.nextPage ?? queryInput.page)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></nav> : null}
     </div>
     {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
+
+    {confirmJob ? <JobBoardApplyConfirm
+      mismatchNote={jobBoardGenderMismatchNote(confirmJob.preferredTutorGender, tutorProfileQuery.data?.gender)}
+      busy={savingJobId === confirmJob.id}
+      onClose={() => setConfirmJob(null)}
+      onConfirm={() => { const job = confirmJob; setConfirmJob(null); updateInterest(job); }}
+    /> : null}
+    {showApplySuccess ? <JobBoardApplySuccess onClose={() => setShowApplySuccess(false)} /> : null}
   </section>;
 }
 
@@ -549,6 +624,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
   const applied = getJobBoardAppliedState(interest);
   const label = interestCopy.actionLabel ?? applyCopy.label;
   const reason = interestCopy.description ?? applyCopy.description;
+  const appliedNote = jobBoardAppliedNote(interest?.status);
 
   return <SharedJobDetailsModal
     job={{
@@ -568,6 +644,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
       notes: job.notes,
     }}
     onClose={onClose}
+    extraRows={appliedNote ? <div className="sm:col-span-2 border-t border-[#eef4f9] pt-2.5"><p className="text-2xs font-semibold leading-[1.6] text-[#bd3535]">Note: {appliedNote}</p></div> : null}
     action={<>
       {/* The day the application was made, beside the reason it cannot be made
           again - only one of the two is ever set. */}
