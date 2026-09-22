@@ -109,7 +109,7 @@ describe("Tutor Profile form hydration", () => {
   it("hydrates persisted Sections D–G preferences and optional biography fields from the private owner DTO", () => {
     const hydrated = hydrateTutorProfileForm({
       ...serverProfile,
-      tuitionType: "both",
+      tuitionTypes: ["home", "online"],
       preferredStudentGender: "female",
       preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
@@ -124,7 +124,7 @@ describe("Tutor Profile form hydration", () => {
     } as any, onboardingFallback) as any;
 
     expect(hydrated).toMatchObject({
-      tuitionType: "both",
+      tuitionTypes: ["home", "online"],
       preferredStudentGender: "female",
       preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
@@ -139,7 +139,7 @@ describe("Tutor Profile form hydration", () => {
   it("normalizes controlled Sections D–G values for a draft without emitting system-managed fields", () => {
     const state = {
       ...hydrateTutorProfileForm(serverProfile, onboardingFallback),
-      tuitionType: "both",
+      tuitionTypes: ["home", "online"],
       preferredStudentGender: "both",
       preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
@@ -156,7 +156,7 @@ describe("Tutor Profile form hydration", () => {
     const payload = createProfileDraftPayload(state);
 
     expect(payload).toMatchObject({
-      tuitionType: "both",
+      tuitionTypes: ["home", "online"],
       preferredStudentGender: "both",
       preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],

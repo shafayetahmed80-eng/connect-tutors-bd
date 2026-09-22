@@ -17,7 +17,8 @@ describe("tutor request validation", () => {
   };
 
   it("accepts Home, Online, Group, and Package Tutoring with the approved conditional location rules", () => {
-    expect(tuitionTypeSchema.parse("both")).toBe("both");
+    expect(guardianRequestTuitionTypeSchema.parse("both")).toBe("both");
+    expect(tuitionTypeSchema.parse("group")).toBe("group");
     expect(guardianRequestTuitionTypeSchema.parse("group")).toBe("group");
     expect(guardianRequestTuitionTypeSchema.parse("package")).toBe("package");
     expect(tutorRequestInputSchema.safeParse({

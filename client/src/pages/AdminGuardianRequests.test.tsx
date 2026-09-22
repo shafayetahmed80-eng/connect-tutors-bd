@@ -56,7 +56,7 @@ describe("Guardian Requests", () => {
 
     const tabs = screen.getByRole("tablist", { name: "Request status" });
     expect(within(tabs).getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Pending 02", "Approved 05", "Declined 01"]);
-    expect(state.lastQuery).toEqual({ kind: "confirm", status: "pending", page: 1 });
+    expect(state.lastQuery).toEqual({ kind: "confirm", status: "pending", page: 1, pageSize: 20 });
     expect(screen.getByRole("link", { name: "Rina Akter" }).getAttribute("href")).toBe("/admin/guardians/21");
     expect(screen.getByRole("link", { name: "Tania Sultana" }).getAttribute("href")).toBe("/admin/tutor-profiles/tutor-175");
 

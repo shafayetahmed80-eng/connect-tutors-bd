@@ -54,7 +54,7 @@ const completeDraftPayload = {
   curriculumIds: [1],
   teachingExperienceYears: 4,
   studentTypeIds: [1],
-  tuitionType: "both" as const,
+  tuitionTypes: ["home", "online"] as const,
   preferredStudentGender: "both" as const,
   preferredClassSizes: ["one_to_one" as const],
   preferredTeachingDays: ["monday" as const, "wednesday" as const],

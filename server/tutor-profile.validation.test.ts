@@ -32,7 +32,7 @@ const completeSubmission = {
   curriculumIds: [1],
   teachingExperienceYears: 3,
   studentTypeIds: [1],
-  tuitionType: "both",
+  tuitionTypes: ["home", "online"],
   preferredStudentGender: "both",
   preferredClassSizes: ["one_to_one"],
   preferredTeachingDays: ["monday"],

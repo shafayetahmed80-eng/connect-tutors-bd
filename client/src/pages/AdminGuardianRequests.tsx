@@ -81,10 +81,11 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
   const copy = kindCopy[kind];
   const [status, setStatus] = useState<Status>("pending");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [approving, setApproving] = useState<GuardianRequestRow | null>(null);
   useEffect(() => { setStatus("pending"); setPage(1); }, [kind]);
 
-  const list = trpc.admin.listGuardianRequestActions.useQuery({ kind, status, page });
+  const list = trpc.admin.listGuardianRequestActions.useQuery({ kind, status, page, pageSize });
   const utils = trpc.useUtils();
   const refresh = () => {
     void utils.admin.listGuardianRequestActions.invalidate();
@@ -147,7 +148,16 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
     {!list.isLoading && !list.isError
       ? <RecordTable caption={copy.caption} columns={columns} rows={rows} rowKey={row => row.key} empty={copy.empty} tableClassName="min-w-[56rem]" />
       : null}
-    <TutorListPager page={page} totalPages={list.data?.totalPages ?? 1} onPage={setPage} label={`${copy.title} pages`} />
+    <TutorListPager
+      page={page}
+      totalPages={list.data?.totalPages ?? 1}
+      onPage={setPage}
+      label={`${copy.title} pages`}
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={list.data?.total}
+    />
 
     {approving && approving.type === "appoint" ? <Modal size="sm" onClose={() => setApproving(null)} busy={appointApprove.isPending}>
       <ModalHeader title={`Appoint ${approving.tutorName ?? "this Tutor"}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(approving.requestId)}`} />

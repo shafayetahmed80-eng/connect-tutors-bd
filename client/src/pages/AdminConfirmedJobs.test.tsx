@@ -116,7 +116,7 @@ describe("Admin Confirmed Jobs", () => {
     // The first row's stored label is Full Due, but its verified payments make it Partial Paid.
     expect(within(screen.getAllByRole("row")[1]).getByText("Partial Paid")).toBeTruthy();
     expect(within(screen.getAllByRole("row")[2]).getByText("Full Paid")).toBeTruthy();
-    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(within(screen.getAllByRole("row")[1]).queryByRole("combobox")).toBeNull();
   });
 
   it("opens a tuition's payments from its row, and closes them again", () => {

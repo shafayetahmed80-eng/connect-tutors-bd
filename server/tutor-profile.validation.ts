@@ -186,7 +186,7 @@ const profileShape = {
   studentTypeIds: optionalUniqueIdList(8),
   academicAchievement: optionalTrimmedText(1000),
 
-  tuitionType: z.enum(["home", "online", "both"]).optional(),
+  tuitionTypes: uniqueEnumList(["home", "online", "group", "package"], 4).optional(),
   preferredStudentGender: z.enum(["male", "female", "both"]).optional(),
   preferredClassSizes: uniqueEnumList(["one_to_one", "small_group", "group"], 3).optional(),
   preferredTeachingDays: uniqueEnumList(
@@ -232,11 +232,11 @@ function addCrossFieldIssues(
     });
   }
 
-  if ((value.tuitionType === "online" || value.tuitionType === "both") && value.availableNationwide !== true) {
+  if (value.tuitionTypes?.includes("online") && value.availableNationwide !== true) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["availableNationwide"],
-      message: "Online or both tuition requires nationwide availability.",
+      message: "Online tuition requires nationwide availability.",
     });
   }
 
@@ -261,6 +261,7 @@ export const tutorProfileEditableDraftSchema = z.object(editableProfileShape).st
  */
 const registryIdToSchemaKey: Record<string, string> = {
   profilePhotoUrl: "profilePhotoKey",
+  tuitionType: "tuitionTypes",
 };
 
 function isSubmissionFieldPresent(value: TutorProfileDraftInput, fieldId: string): boolean {
@@ -549,7 +550,7 @@ export function calculateTutorProfileCompletion(
     { id: "classLevelIds", ok: hasSelections(profile.classLevelIds) },
     { id: "curriculumIds", ok: hasSelections(profile.curriculumIds) },
     { id: "teachingExperienceYears", ok: typeof profile.teachingExperienceYears === "number" && Number.isInteger(profile.teachingExperienceYears) && profile.teachingExperienceYears >= 0 },
-    { id: "tuitionType", ok: profile.tuitionType === "home" || profile.tuitionType === "online" || profile.tuitionType === "both" },
+    { id: "tuitionType", ok: hasSelections(profile.tuitionTypes) },
     { id: "preferredStudentGender", ok: profile.preferredStudentGender === "male" || profile.preferredStudentGender === "female" || profile.preferredStudentGender === "both" },
     { id: "preferredClassSizes", ok: hasSelections(profile.preferredClassSizes) },
     { id: "preferredTeachingDays", ok: hasSelections(profile.preferredTeachingDays) },

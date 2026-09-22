@@ -17,7 +17,7 @@ export type TutorFilters = {
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
-  tuitionType: "all" | "home" | "online" | "both";
+  tuitionType: "all" | "home" | "online" | "group" | "package";
   page: number;
   pageSize: number;
 };
@@ -56,7 +56,7 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
     <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
     <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
     <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="both">Both</option></select>
+    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
     <button type="button" onClick={onClear} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
   </div>;
 }
@@ -103,7 +103,16 @@ export function AdminTutorProfilesContent() {
       ? <AdminTutorRows tutors={tutors.data?.items ?? []} caption="Every Tutor profile" emptyLabel="No Tutor profile matches the active filters." />
       : null}
 
-    <TutorListPager page={filters.page} totalPages={tutors.data?.totalPages ?? 1} onPage={next => updateFilter({ page: next })} label="Tutor profile pages" />
+    <TutorListPager
+      page={filters.page}
+      totalPages={tutors.data?.totalPages ?? 1}
+      onPage={next => updateFilter({ page: next })}
+      label="Tutor profile pages"
+      pageSize={filters.pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => updateFilter({ pageSize: next })}
+      totalItems={tutors.data?.total}
+    />
   </div>;
 }
 

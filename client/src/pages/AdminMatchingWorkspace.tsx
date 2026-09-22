@@ -5,6 +5,7 @@ import {
   type TutorMatchFilters,
 } from "@shared/tutor-matching";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { TutorListPager } from "@/components/TutorListPager";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
@@ -16,8 +17,6 @@ import { trpc } from "@/lib/trpc";
 import {
   BadgeCheck,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   FilePenLine,
   FileText,
@@ -824,7 +823,16 @@ function MatchingWorkspaceContent() {
       </div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div>
       <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Guardian</dt><dd className="mt-1 text-j-ink-strong">{request.guardianName ?? "Account unavailable"}{request.guardianPhone ? <a href={`tel:${request.guardianPhone}`} aria-label={`Call ${request.guardianName ?? "the Guardian"} on ${request.guardianPhone}`} className="ml-1.5 font-semibold text-j-accent underline underline-offset-2 hover:text-[#0d5da4]">{request.guardianPhone}</a> : <span className="ml-1.5 text-j-ink-muted">no number on file</span>}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="tutorGender" size={12} className="text-j-ink-faint" />Tutor preference</dt><dd className="mt-1 capitalize text-j-ink-strong">{request.preferredGender}</dd></div></dl>{request.studentFirstName || request.notes ? <div className="mt-4 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft"><strong>Admin-only note</strong>{request.studentFirstName ? <span> · Student: {request.studentFirstName}</span> : null}{request.notes ? <p className="mt-1 leading-6">{request.notes}</p> : null}</div> : null}</div><div className="grid w-full gap-3 lg:w-80"><PublicationControls request={request} busy={isBusy} onAction={action => runAction(request.id, action)} onEdit={event => saveEdit(request.id, event)} /><PublicationAuditTrail requestId={request.id} /><div className="grid gap-2 border-t border-j-border pt-3"><TutorMatchPicker request={request} tutors={(tutors.data ?? []) as MatchingTutorOption[]} isLoading={tutors.isLoading} disabled={assignmentBlocked} selectedTutorId={selectedTutor} onSelect={tutorId => setSelectedTutorByRequest(current => ({ ...current, [request.id]: tutorId }))} /><button type="button" disabled={!selectedTutor || assignmentBlocked || isBusy} onClick={() => assignTutor.mutate({ requestId: request.id, tutorId: selectedTutor })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50"><UserCheck className="h-4 w-4" /> {assignTutor.isPending ? "Assigning…" : "Assign Tutor"}</button>{request.publicationState === "published" ? <p className="text-xs leading-5 text-j-ink-muted">Unpublish before manual tutor assignment to prevent conflicting availability.</p> : null}</div></div></div></article>;
     })}</section>}
-    {totalPages > 1 ? <nav aria-label="Matching request pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm"><p className="text-sm text-j-ink-soft">Page {page} of {totalPages}</p><div className="flex gap-2"><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.max(1, page - 1) }))} disabled={page <= 1} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><button type="button" onClick={() => setFilters(current => ({ ...current, page: Math.min(totalPages, page + 1) }))} disabled={page >= totalPages} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-semibold text-j-ink-soft disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></div></nav> : null}
+    <TutorListPager
+      page={page}
+      totalPages={totalPages}
+      onPage={next => setFilters(current => ({ ...current, page: next }))}
+      label="Matching request pages"
+      pageSize={filters.pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => setFilters(current => ({ ...current, pageSize: next, page: 1 }))}
+      totalItems={matchingQueue.data?.total}
+    />
   </div>;
 }
 

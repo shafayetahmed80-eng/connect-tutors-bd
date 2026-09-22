@@ -9,7 +9,8 @@ import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadg
 import { RecordIcon } from "@/components/recordIcons";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { countActiveFilters } from "@/components/activeFilterCount";
-import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { TutorListPager } from "@/components/TutorListPager";
+import { BadgeCheck, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -204,7 +205,16 @@ export function GuardianActivityContent() {
       const privateDetails = getAdminGuardianPrivateDetails(request);
       return <article key={request.id} className="rounded-xl border border-j-border bg-white p-5 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-bold capitalize text-j-ink-soft">{request.status}</span><span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800">{request.contactConsent.replaceAll("_", " ")}</span></div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="created" size={12} className="text-j-ink-faint" />Created</dt><dd className="mt-1 text-j-ink-strong">{new Date(request.createdAt).toLocaleDateString()}</dd></div>{privateDetails.map(detail => <div key={detail.label}><dt className="text-xs font-bold uppercase tracking-wide text-j-ink-muted">{detail.label}</dt><dd className="mt-1 whitespace-pre-wrap text-j-ink-strong">{detail.value}</dd></div>)}</dl></div><div className="flex shrink-0 flex-col gap-2"><button type="button" disabled={contact.isFetching} onClick={() => setContactRequestId(request.id)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-j-accent bg-white px-3 text-sm font-bold text-j-accent hover:bg-sky-50 disabled:opacity-50"><Eye size={16} /> View Guardian contact</button><button type="button" onClick={() => setVerifyGuardianUserId(request.guardianUserId)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-j-border bg-white px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"><ShieldCheck size={16} /> Verify Guardian</button></div></div></article>;
     })}{requests.data?.items.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center text-sm text-j-ink-soft">No Guardian request matches the active filters.</div> : null}</section> : null}
-    {totalPages > 1 ? <nav aria-label="Guardian request pages" className="flex items-center justify-between rounded-xl border border-j-border bg-white p-3 shadow-sm"><p className="text-sm text-j-ink-soft">Page {filters.page} of {totalPages}</p><div className="flex gap-2"><button type="button" disabled={filters.page <= 1} onClick={() => updateFilter({ page: filters.page - 1 })} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40"><ChevronLeft size={15} /> Previous</button><button type="button" disabled={filters.page >= totalPages} onClick={() => updateFilter({ page: filters.page + 1 })} className="inline-flex h-9 items-center gap-1 rounded-lg border border-j-border px-3 text-sm font-bold disabled:opacity-40">Next <ChevronRight size={15} /></button></div></nav> : null}
+    <TutorListPager
+      page={filters.page}
+      totalPages={totalPages}
+      onPage={next => updateFilter({ page: next })}
+      label="Guardian request pages"
+      pageSize={filters.pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => updateFilter({ pageSize: next })}
+      totalItems={requests.data?.total}
+    />
     {contactRequestId !== null ? <Modal size="sm" onClose={() => setContactRequestId(null)}>
       <ModalHeader title={`Guardian contact · Job ID ${jobIdForRequest(contactRequestId)}`} />
       <ModalBody className="space-y-4">

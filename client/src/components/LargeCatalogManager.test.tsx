@@ -52,7 +52,7 @@ afterEach(cleanup);
 describe("large catalog manager", () => {
   it("asks the server for the first page of institutes", () => {
     render(<LargeCatalogManager />);
-    expect(state.lastInput).toEqual({ catalog: "institutes", query: "", page: 1 });
+    expect(state.lastInput).toEqual({ catalog: "institutes", query: "", page: 1, pageSize: LARGE_CATALOG_PAGE_SIZE });
   });
 
   it("waits for typing to settle before searching, rather than querying per keystroke", () => {
@@ -74,10 +74,10 @@ describe("large catalog manager", () => {
     expect(screen.queryByRole("button", { name: /Move .* down/ })).toBeNull();
   });
 
-  it("pages only when there is more than one page, and asks the server for the next one", () => {
+  it("disables Next on a single page, and moves to the next one once there is more than one", () => {
     render(<LargeCatalogManager />);
-    // Three rows fit on one page, so no pager is drawn.
-    expect(screen.queryByRole("button", { name: /Next/ })).toBeNull();
+    // Three rows fit on one page - the rows-per-page control still draws the pager, but Next is disabled.
+    expect(screen.getByRole("button", { name: /Next/ })).toHaveProperty("disabled", true);
 
     cleanup();
     state.total = LARGE_CATALOG_PAGE_SIZE * 3;
@@ -85,7 +85,6 @@ describe("large catalog manager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
     expect(state.lastInput).toMatchObject({ page: 2 });
-    expect(screen.getByText(`Page 2 of 3`)).toBeTruthy();
   });
 
   it("refuses to delete a built-in row or one that is in use", () => {

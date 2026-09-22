@@ -607,7 +607,6 @@ export const tutors = mysqlTable("tutors", {
   monthlyFeeMax: int("monthlyFeeMax"),
   travelDistanceKm: int("travelDistanceKm"),
   gender: mysqlEnum("gender", ["male", "female"]).notNull(),
-  mode: mysqlEnum("mode", ["home", "online", "both"]),
   preferredStudentGender: mysqlEnum("preferredStudentGender", [
     "male",
     "female",
@@ -1126,6 +1125,23 @@ export const tutorPreferredClassSizes = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [primaryKey({ columns: [table.tutorId, table.classSize] })]
+);
+
+export const tutorTuitionModes = mysqlTable(
+  "tutor_tuition_modes",
+  {
+    tutorId: varchar("tutorId", { length: 32 })
+      .notNull()
+      .references(() => tutors.id),
+    mode: mysqlEnum("mode", [
+      "home",
+      "online",
+      "group",
+      "package",
+    ]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [primaryKey({ columns: [table.tutorId, table.mode] })]
 );
 
 export const tutorPreferredTeachingDays = mysqlTable(
@@ -1816,6 +1832,7 @@ export const tutorsRelations = relations(tutors, ({ one, many }) => ({
   curriculumSelections: many(tutorCurricula),
   studentTypeSelections: many(tutorStudentTypes),
   preferredClassSizes: many(tutorPreferredClassSizes),
+  tuitionModes: many(tutorTuitionModes),
   preferredTeachingDays: many(tutorPreferredTeachingDays),
   preferredTimeSlots: many(tutorPreferredTimeSlots),
 }));

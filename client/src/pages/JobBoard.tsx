@@ -10,7 +10,8 @@ import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
-import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, ChevronLeft, ChevronRight, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
+import { TutorListPager } from "@/components/TutorListPager";
+import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
@@ -27,6 +28,7 @@ type TutorJobInterest = { interestId: number; status: TutorInterestStatus; appli
  */
 export type JobBoardFilterState = {
   page: number;
+  pageSize: number;
   /** `yyyy-mm-dd`, as a date input gives it. */
   postedFrom: string;
   postedTo: string;
@@ -69,6 +71,7 @@ export type JobBoardJob = {
 
 export const DEFAULT_FILTERS: JobBoardFilterState = {
   page: 1,
+  pageSize: 20,
   postedFrom: "",
   postedTo: "",
   country: "",
@@ -109,7 +112,7 @@ export function buildJobBoardQuery(filters: JobBoardFilterState) {
   const to = optionalTrimmed(filters.postedTo);
   return {
     page: Math.max(1, Math.floor(filters.page || 1)),
-    pageSize: PAGE_SIZE,
+    pageSize: filters.pageSize || PAGE_SIZE,
     ...(from ? { postedFrom: new Date(`${from}T00:00:00`) } : {}),
     ...(to ? { postedTo: new Date(`${to}T23:59:59.999`) } : {}),
     ...(optionalTrimmed(filters.country) ? { country: optionalTrimmed(filters.country) } : {}),
@@ -151,7 +154,7 @@ export function reconcileJobBoardFilters(
 
 /** How many filters are actually narrowing the board. */
 export function countJobBoardFilters(filters: JobBoardFilterState) {
-  const { page, ...rest } = filters;
+  const { page, pageSize, ...rest } = filters;
   return Object.values(rest).filter(value => (Array.isArray(value) ? value.length > 0 : Boolean(value))).length;
 }
 
@@ -332,8 +335,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const withdrawInterest = trpc.jobBoard.withdrawInterest.useMutation({ onSuccess: () => utils.tutor.myJobInterests.invalidate() });
   const jobs = (jobsQuery.data?.items ?? []) as JobBoardJob[];
   const totalCount = jobsQuery.data?.totalCount ?? 0;
-  const pagination = getJobBoardPagination({ page: queryInput.page, pageSize: PAGE_SIZE, totalCount });
-  const pageLinks = buildJobBoardPageLinks({ page: queryInput.page, totalPages: pagination.totalPages });
+  const pagination = getJobBoardPagination({ page: queryInput.page, pageSize: filters.pageSize, totalCount });
   const cities = citiesQuery.data ?? [];
   const locations = locationsQuery.data ?? [];
   const tutorInterestByJobId = useMemo(() => new Map((tutorInterestsQuery.data ?? []).map(interest => [interest.publicJobId, { interestId: interest.interestId, status: interest.status as TutorInterestStatus, appliedAt: interest.createdAt }])), [tutorInterestsQuery.data]);
@@ -363,6 +365,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   }, [activeJob, jobs, location]);
 
   const goToPage = (page: number) => setFilters(current => ({ ...current, page }));
+  const changePageSize = (pageSize: number) => setFilters(current => ({ ...current, pageSize, page: 1 }));
   const applyFilters = () => setFilters(draft);
   const clearFilters = () => { setDraft(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); };
   const appliedFilterCount = countJobBoardFilters(filters);
@@ -441,7 +444,16 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? clearFilters : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
       {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map(job => <JobCard key={job.id} job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} />)}</div> : null}
-      {totalCount > PAGE_SIZE ? <nav className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white p-3" aria-label="Job Board pagination" aria-busy={jobsQuery.isFetching}><button type="button" disabled={!pagination.previousPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.previousPage ?? 1)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button><ol className="flex items-center gap-1" aria-label={`Page ${queryInput.page} of ${pagination.totalPages}`}>{pageLinks.map((pageLink, index) => pageLink === "ellipsis" ? <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-sm font-bold text-[#7893a6]">…</li> : <li key={pageLink}><button type="button" onClick={() => goToPage(pageLink)} disabled={jobsQuery.isFetching} aria-current={pageLink === queryInput.page ? "page" : undefined} aria-label={`Go to page ${pageLink}`} className={`motion-interactive grid min-h-10 min-w-10 place-items-center rounded-xl px-2 text-sm font-bold disabled:cursor-progress ${pageLink === queryInput.page ? "bg-j-accent text-white" : "text-[#245676] hover:bg-[#f4fbff]"}`}>{pageLink}</button></li>)}</ol><button type="button" disabled={!pagination.nextPage || jobsQuery.isFetching} onClick={() => goToPage(pagination.nextPage ?? queryInput.page)} className="motion-interactive inline-flex min-h-10 items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-[#245676] hover:bg-[#f4fbff] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button></nav> : null}
+      <div className="mt-7"><TutorListPager
+        page={queryInput.page}
+        totalPages={pagination.totalPages}
+        onPage={goToPage}
+        label="Job Board pagination"
+        pageSize={filters.pageSize}
+        pageSizeOptions={[20, 50, 100]}
+        onPageSize={changePageSize}
+        totalItems={totalCount}
+      /></div>
     </div>
     {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
 

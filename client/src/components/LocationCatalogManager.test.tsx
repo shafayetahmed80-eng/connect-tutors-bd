@@ -88,7 +88,7 @@ afterEach(cleanup);
 describe("location catalog manager", () => {
   it("opens at the root and does not search until asked to", () => {
     render(<LocationCatalogManager />);
-    expect(state.browseInput).toEqual({ parentId: null, query: "", page: 1 });
+    expect(state.browseInput).toEqual({ parentId: null, query: "", page: 1, pageSize: LOCATION_PAGE_SIZE });
     expect(state.browseEnabled).toBe(true);
     expect(state.searchEnabled).toBe(false);
   });
@@ -205,7 +205,7 @@ describe("location catalog manager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
     expect(state.browseInput).toMatchObject({ page: 2 });
-    expect(screen.getByText("Page 2 of 5")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to page 2" })).toHaveProperty("ariaCurrent", "page");
   });
 
   it("surfaces a rejected save instead of pretending it worked", async () => {

@@ -85,7 +85,7 @@ export const MAX_LOCATION_LABEL_LENGTH = 160;
 export const MAX_LOCATION_ID_LENGTH = 80;
 
 /** Rows per page. Dhaka alone holds 101 children, so a level still pages. */
-export const LOCATION_PAGE_SIZE = 25;
+export const LOCATION_PAGE_SIZE = 20;
 
 /**
  * Turns a label into an id in the style of the ones already stored

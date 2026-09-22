@@ -74,6 +74,7 @@ import {
   tutorProfileFieldOverrides as tutorProfileFieldOverridesTable,
   sitePolicyDocuments,
   tutorPreferredClassSizes,
+  tutorTuitionModes,
   tutorPreferredTeachingDays,
   tutorPreferredTimeSlots,
   tutorProfileModerationEvents,
@@ -1194,7 +1195,7 @@ function mapTutor(row: typeof tutors.$inferSelect, location?: typeof locations.$
     experience: row.experience ?? 0,
     fee: row.fee ?? 0,
     gender: row.gender,
-    mode: row.mode ?? "both",
+    modes: [],
     availability: row.availability ?? "Not specified",
     languages: parseJsonList(row.languages),
     about: row.about ?? "",
@@ -1248,13 +1249,14 @@ async function loadTutorProfileOwner(database: any, userId: number) {
   if (!row) return undefined;
 
   const tutorId = row.tutor.id;
-  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, teachingDayRows, timeSlotRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
+  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, tuitionModeRows, teachingDayRows, timeSlotRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
     database.select().from(tutorTeachingAreas).where(eq(tutorTeachingAreas.tutorId, tutorId)),
     database.select().from(tutorSubjects).where(eq(tutorSubjects.tutorId, tutorId)),
     database.select().from(tutorClassLevels).where(eq(tutorClassLevels.tutorId, tutorId)),
     database.select().from(tutorCurricula).where(eq(tutorCurricula.tutorId, tutorId)),
     database.select().from(tutorStudentTypes).where(eq(tutorStudentTypes.tutorId, tutorId)),
     database.select().from(tutorPreferredClassSizes).where(eq(tutorPreferredClassSizes.tutorId, tutorId)),
+    database.select().from(tutorTuitionModes).where(eq(tutorTuitionModes.tutorId, tutorId)),
     database.select().from(tutorPreferredTeachingDays).where(eq(tutorPreferredTeachingDays.tutorId, tutorId)),
     database.select().from(tutorPreferredTimeSlots).where(eq(tutorPreferredTimeSlots.tutorId, tutorId)),
     database.select().from(tutorEducationRecords).where(eq(tutorEducationRecords.tutorId, tutorId)),
@@ -1310,7 +1312,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     specialExpertise: row.tutor.specialExpertise ?? undefined,
     studentTypeIds: studentTypeRows.map((selection: typeof tutorStudentTypes.$inferSelect) => selection.studentTypeId),
     academicAchievement: row.tutor.academicAchievement ?? undefined,
-    tuitionType: row.tutor.mode ?? undefined,
+    tuitionTypes: tuitionModeRows.map((selection: typeof tutorTuitionModes.$inferSelect) => selection.mode),
     preferredStudentGender: row.tutor.preferredStudentGender ?? undefined,
     preferredClassSizes: classSizeRows.map((selection: typeof tutorPreferredClassSizes.$inferSelect) => selection.classSize),
     preferredTeachingDays: teachingDayRows.map((selection: typeof tutorPreferredTeachingDays.$inferSelect) => selection.dayOfWeek),
@@ -1327,7 +1329,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     levels: parseJsonList(row.tutor.levels),
     experience: row.tutor.experience ?? row.tutor.teachingExperienceYears ?? 0,
     fee: row.tutor.fee ?? row.tutor.monthlyFeeMin ?? 0,
-    mode: row.tutor.mode ?? "both",
     verified: Boolean(row.tutor.verified),
     teachingApproach: row.tutor.teachingApproach ?? undefined,
     whyChooseMe: row.tutor.whyChooseMe ?? undefined,
@@ -1658,7 +1659,7 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     specialExpertise: input.specialExpertise ?? existing.specialExpertise,
     studentTypeIds: keepList(input.studentTypeIds, existing.studentTypeIds),
     academicAchievement: input.academicAchievement ?? existing.academicAchievement,
-    tuitionType: input.tuitionType ?? existing.tuitionType,
+    tuitionTypes: keepList(input.tuitionTypes, existing.tuitionTypes),
     preferredStudentGender: input.preferredStudentGender ?? existing.preferredStudentGender,
     preferredClassSizes: keepList(input.preferredClassSizes, existing.preferredClassSizes),
     preferredTeachingDays: keepList(input.preferredTeachingDays, existing.preferredTeachingDays),
@@ -1723,7 +1724,6 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (input.priorTeachingExperience !== undefined) tutorValues.priorTeachingExperience = input.priorTeachingExperience;
     if (input.specialExpertise !== undefined) tutorValues.specialExpertise = input.specialExpertise;
     if (input.academicAchievement !== undefined) tutorValues.academicAchievement = input.academicAchievement;
-    if (input.tuitionType !== undefined) tutorValues.mode = input.tuitionType;
     if (input.preferredStudentGender !== undefined) tutorValues.preferredStudentGender = input.preferredStudentGender;
     if (input.feeMin !== undefined) tutorValues.monthlyFeeMin = input.feeMin;
     if (input.feeMax !== undefined) tutorValues.monthlyFeeMax = input.feeMax;
@@ -1821,6 +1821,7 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     await replaceSelections(tutorCurricula, input.curriculumIds?.map(curriculumId => ({ tutorId, curriculumId })));
     await replaceSelections(tutorStudentTypes, input.studentTypeIds?.map(studentTypeId => ({ tutorId, studentTypeId })));
     await replaceSelections(tutorPreferredClassSizes, input.preferredClassSizes?.map(classSize => ({ tutorId, classSize })));
+    await replaceSelections(tutorTuitionModes, input.tuitionTypes?.map(mode => ({ tutorId, mode })));
     await replaceSelections(tutorPreferredTeachingDays, input.preferredTeachingDays?.map(dayOfWeek => ({ tutorId, dayOfWeek })));
     await replaceSelections(tutorPreferredTimeSlots, input.preferredTimeSlots?.map(timeSlot => ({ tutorId, timeSlot })));
   });
@@ -1873,7 +1874,7 @@ export async function submitTutorProfile(userId: number) {
       // block every submission - send `undefined` when there is nothing.
       studentTypeIds: profile.studentTypeIds?.length ? profile.studentTypeIds : undefined,
       academicAchievement: profile.academicAchievement,
-      tuitionType: profile.tuitionType,
+      tuitionTypes: profile.tuitionTypes,
       preferredStudentGender: profile.preferredStudentGender,
       preferredClassSizes: profile.preferredClassSizes,
       preferredTeachingDays: profile.preferredTeachingDays,
@@ -4862,6 +4863,7 @@ export async function listGuardianProfilesForAdmin(input: {
   return {
     items: items.map(item => ({ ...item, tuitions: Number(item.tuitions), pendingRequests: Number(item.pendingRequests) })),
     counts,
+    total,
     totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
   };
 }
@@ -5025,9 +5027,11 @@ export async function listSchoolCollegesForOwner(input: {
   query: string;
   division: string;
   page: number;
+  pageSize?: number;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
+  const pageSize = input.pageSize ?? SCHOOL_ADMIN_PAGE_SIZE;
   const key = normalizeSchoolName(input.query);
   const escaped = key.replace(/[\\%_]/g, character => `\\${character}`);
   const where = and(
@@ -5054,8 +5058,8 @@ export async function listSchoolCollegesForOwner(input: {
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, schoolColleges.createdByUserId))
     .where(where)
     .orderBy(input.view === "shared" ? asc(schoolColleges.name) : desc(schoolColleges.id))
-    .limit(SCHOOL_ADMIN_PAGE_SIZE)
-    .offset((input.page - 1) * SCHOOL_ADMIN_PAGE_SIZE);
+    .limit(pageSize)
+    .offset((input.page - 1) * pageSize);
   const sizes = await database
     .select({ shared: sql<number>`sum(${schoolColleges.createdByUserId} is null)`, created: sql<number>`sum(${schoolColleges.createdByUserId} is not null)` })
     .from(schoolColleges);
@@ -5063,7 +5067,7 @@ export async function listSchoolCollegesForOwner(input: {
     rows: rows.map(row => ({ ...row, active: row.active === 1 })),
     total: Number(total),
     counts: { shared: Number(sizes[0]?.shared ?? 0), created: Number(sizes[0]?.created ?? 0) },
-    pageSize: SCHOOL_ADMIN_PAGE_SIZE,
+    pageSize,
   };
 }
 
@@ -5162,10 +5166,11 @@ export async function countGuardianRequestActions() {
  * leaves no trace once answered, so only the waiting ones can be listed);
  * Confirm and Cancel are rows of their own, kept after they are decided.
  */
-export async function listGuardianRequestActions(input: { kind: GuardianRequestKind; status: "pending" | "approved" | "declined"; page: number }) {
+export async function listGuardianRequestActions(input: { kind: GuardianRequestKind; status: "pending" | "approved" | "declined"; page: number; pageSize?: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const offset = (input.page - 1) * GUARDIAN_REQUEST_PAGE_SIZE;
+  const pageSize = input.pageSize ?? GUARDIAN_REQUEST_PAGE_SIZE;
+  const offset = (input.page - 1) * pageSize;
 
   if (input.kind === "shortlist" || input.kind === "appoint") {
     const stamp = input.kind === "appoint" ? tutorJobInterests.appointmentRequestedAt : tutorJobInterests.guardianShortlistedAt;
@@ -5195,7 +5200,7 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
       .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
       .where(where);
     const [{ total }] = await database.select({ total: count() }).from(tutorJobInterests).where(where);
-    const rows = await base.orderBy(desc(stamp), desc(tutorJobInterests.id)).limit(GUARDIAN_REQUEST_PAGE_SIZE).offset(offset);
+    const rows = await base.orderBy(desc(stamp), desc(tutorJobInterests.id)).limit(pageSize).offset(offset);
     return {
       items: rows.map(row => ({
         ...row,
@@ -5206,7 +5211,8 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
         tuitionConfirmed: Boolean(Number(row.tuitionConfirmed)),
       })),
       counts: { pending: Number(total), approved: 0, declined: 0 },
-      totalPages: Math.max(1, Math.ceil(Number(total) / GUARDIAN_REQUEST_PAGE_SIZE)),
+      total: Number(total),
+      totalPages: Math.max(1, Math.ceil(Number(total) / pageSize)),
     };
   }
 
@@ -5246,12 +5252,13 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(and(typeFilter, eq(guardianTuitionRequests.status, input.status)))
     .orderBy(input.status === "pending" ? asc(guardianTuitionRequests.createdAt) : desc(guardianTuitionRequests.decidedAt), desc(guardianTuitionRequests.id))
-    .limit(GUARDIAN_REQUEST_PAGE_SIZE)
+    .limit(pageSize)
     .offset(offset);
   return {
     items: rows.map(row => ({ ...row, tuitionConfirmed: Boolean(Number(row.tuitionConfirmed)) })),
     counts,
-    totalPages: Math.max(1, Math.ceil(counts[input.status] / GUARDIAN_REQUEST_PAGE_SIZE)),
+    total: counts[input.status],
+    totalPages: Math.max(1, Math.ceil(counts[input.status] / pageSize)),
   };
 }
 
@@ -5555,7 +5562,7 @@ export type AdminTutorDirectoryFilters = {
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
-  tuitionType: "all" | "home" | "online" | "both";
+  tuitionType: "all" | "home" | "online" | "group" | "package";
   page: number;
   pageSize: number;
 };
@@ -5595,7 +5602,9 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   if (filters.jobStage !== "all") conditions.push(tutorJobStageCondition(filters.jobStage));
   if (filters.verified === "verified") conditions.push(eq(tutors.verified, 1));
   if (filters.verified === "unverified") conditions.push(eq(tutors.verified, 0));
-  if (filters.tuitionType !== "all") conditions.push(eq(tutors.mode, filters.tuitionType));
+  if (filters.tuitionType !== "all") {
+    conditions.push(sql`${tutors.id} in (select ${tutorTuitionModes.tutorId} from ${tutorTuitionModes} where ${tutorTuitionModes.mode} = ${filters.tuitionType})`);
+  }
   if (filters.location) conditions.push(like(locations.label, `%${filters.location}%`));
   if (filters.subject) conditions.push(like(tutors.subjects, `%${filters.subject}%`));
   if (filters.query) {
@@ -5622,7 +5631,6 @@ const adminTutorRecordFields = {
   subjects: tutors.subjects,
   levels: tutors.levels,
   teachingExperienceYears: tutors.teachingExperienceYears,
-  mode: tutors.mode,
   profileStatus: tutors.profileStatus,
   verified: tutors.verified,
   locationLabel: locations.label,
@@ -5672,7 +5680,7 @@ async function enrichAdminTutorDirectoryRows<
 ) {
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
-  const [educationRows, cityRows] = await Promise.all([
+  const [educationRows, cityRows, modeRows] = await Promise.all([
     tutorIds.length
       ? database
           .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
@@ -5682,6 +5690,9 @@ async function enrichAdminTutorDirectoryRows<
     cityIds.length
       ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
       : [],
+    tutorIds.length
+      ? database.select({ tutorId: tutorTuitionModes.tutorId, mode: tutorTuitionModes.mode }).from(tutorTuitionModes).where(inArray(tutorTuitionModes.tutorId, tutorIds))
+      : [],
   ]);
   const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
   for (const record of educationRows) {
@@ -5690,10 +5701,17 @@ async function enrichAdminTutorDirectoryRows<
     educationByTutor.set(record.tutorId, list);
   }
   const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
+  const modesByTutor = new Map<string, string[]>();
+  for (const record of modeRows) {
+    const list = modesByTutor.get(record.tutorId) ?? [];
+    list.push(record.mode);
+    modesByTutor.set(record.tutorId, list);
+  }
   return rows.map(row => ({
     ...row,
     cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
     instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
+    modes: modesByTutor.get(row.id) ?? [],
   }));
 }
 /** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
@@ -5952,7 +5970,7 @@ export type AdminMatchingCandidateFilters = {
   verified: "all" | "verified" | "unverified";
   location: string;
   subject: string;
-  tuitionType: "all" | "home" | "online" | "both";
+  tuitionType: "all" | "home" | "online" | "group" | "package";
   page: number;
   pageSize: number;
 };
@@ -6028,7 +6046,7 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
     levels: parseJsonList(row.levels),
     fee: row.monthlyFeeMin ?? row.fee ?? 0,
     gender: row.gender,
-    mode: row.mode ?? "both",
+    modes: row.modes,
     locationLabel: row.locationLabel ?? "",
     city: row.cityLabel ?? "",
     experience: row.teachingExperienceYears ?? 0,

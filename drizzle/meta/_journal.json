@@ -652,6 +652,13 @@
       "when": 1792200000000,
       "tag": "0092_matching_weights",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "5",
+      "when": 1792300000000,
+      "tag": "0093_tutor_group_package_mode",
+      "breakpoints": true
     }
   ]
 }

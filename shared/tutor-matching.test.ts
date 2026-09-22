@@ -32,7 +32,7 @@ function tutor(overrides: Partial<MatchingTutorOption> = {}): MatchingTutorOptio
     levels: ["HSC 1st Year", "HSC 2nd Year"],
     fee: 5000,
     gender: "female",
-    mode: "home",
+    modes: ["home"],
     locationLabel: "Uttara",
     city: "Dhaka",
     experience: 4,
@@ -60,13 +60,14 @@ describe("reading a request", () => {
     expect(requestNeedsTravel("online")).toBe(false);
   });
 
-  it("lets a both-modes Tutor serve either kind of request", () => {
-    expect(tutorModeServesRequest("both", "online")).toBe(true);
-    expect(tutorModeServesRequest("both", "home")).toBe(true);
-    expect(tutorModeServesRequest("online", "home")).toBe(false);
-    expect(tutorModeServesRequest("home", "online")).toBe(false);
-    // Group tuition happens in person, so a home Tutor serves it.
-    expect(tutorModeServesRequest("home", "group")).toBe(true);
+  it("lets a Tutor who teaches both home and online serve either kind of request", () => {
+    expect(tutorModeServesRequest(["home", "online"], "online")).toBe(true);
+    expect(tutorModeServesRequest(["home", "online"], "home")).toBe(true);
+    expect(tutorModeServesRequest(["online"], "home")).toBe(false);
+    expect(tutorModeServesRequest(["home"], "online")).toBe(false);
+    // Group and package are their own distinct modes now.
+    expect(tutorModeServesRequest(["home"], "group")).toBe(false);
+    expect(tutorModeServesRequest(["group"], "group")).toBe(true);
   });
 });
 
@@ -88,7 +89,7 @@ describe("why this Tutor", () => {
       gender: "male",
       fee: 9000,
       locationLabel: "Mirpur",
-      mode: "online",
+      modes: ["online"],
     }), request);
 
     expect(ranked.cautions.map(caution => caution.kind)).toEqual(["subject", "area", "mode", "gender", "fee"]);
@@ -101,7 +102,7 @@ describe("why this Tutor", () => {
 
   it("never asks an online request about the Tutor's area", () => {
     const onlineRequest = { ...request, tuitionType: "online" as const };
-    const ranked = scoreTutorForRequest(tutor({ locationLabel: "Sylhet", city: "Sylhet", mode: "online" }), onlineRequest);
+    const ranked = scoreTutorForRequest(tutor({ locationLabel: "Sylhet", city: "Sylhet", modes: ["online"] }), onlineRequest);
 
     expect(ranked.reasons.some(reason => reason.kind === "area")).toBe(false);
     expect(ranked.cautions.some(caution => caution.kind === "area")).toBe(false);

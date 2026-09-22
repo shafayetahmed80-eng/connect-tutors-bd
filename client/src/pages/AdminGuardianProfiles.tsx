@@ -71,7 +71,8 @@ export function AdminGuardianProfilesContent() {
   const [query, setQuery] = useState("");
   const [verification, setVerification] = useState<Verification>("all");
   const [page, setPage] = useState(1);
-  const guardians = trpc.admin.listGuardianProfiles.useQuery({ query, verification, page, pageSize: 20 });
+  const [pageSize, setPageSize] = useState(20);
+  const guardians = trpc.admin.listGuardianProfiles.useQuery({ query, verification, page, pageSize });
   const counts = guardians.data?.counts;
 
   return <div className="space-y-4">
@@ -89,7 +90,16 @@ export function AdminGuardianProfilesContent() {
     {!guardians.isLoading && !guardians.isError
       ? <RecordTable caption="Guardian profiles" columns={columns} rows={(guardians.data?.items ?? []) as GuardianRow[]} rowKey={row => row.userId} empty="No Guardian matches." tableClassName="min-w-[60rem]" />
       : null}
-    <TutorListPager page={page} totalPages={guardians.data?.totalPages ?? 1} onPage={setPage} label="Guardian profile pages" />
+    <TutorListPager
+      page={page}
+      totalPages={guardians.data?.totalPages ?? 1}
+      onPage={setPage}
+      label="Guardian profile pages"
+      pageSize={pageSize}
+      pageSizeOptions={[20, 50, 100]}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
+      totalItems={guardians.data?.total}
+    />
   </div>;
 }
 

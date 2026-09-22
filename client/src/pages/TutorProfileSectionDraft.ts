@@ -131,6 +131,8 @@ const PRIVATE_DETAIL_PREFIX = "privateDetails.";
 const BLOCK_FIELD_DRAFT_KEYS: Record<string, string> = {
   secondaryRecord: "educationRecords",
   higherSecondaryRecord: "educationRecords",
+  // The registry id predates the field becoming a multi-select; the draft key is plural.
+  tuitionType: "tuitionTypes",
 };
 
 /** The fields one editor owns: a sub-group's own, or every field in a section. */

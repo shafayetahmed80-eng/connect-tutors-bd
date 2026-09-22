@@ -11,7 +11,7 @@ const validTutorProfile = {
   levels: ["Class 9–10"],
   experience: 4,
   fee: 6500,
-  mode: "both" as const,
+  mode: "home" as const,
   locationId: "bd-dhaka",
   institution: "University of Dhaka",
   education: "BSc in Mathematics",

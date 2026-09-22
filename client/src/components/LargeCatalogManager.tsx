@@ -1,3 +1,4 @@
+import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import {
   LARGE_CATALOG_PAGE_SIZE,
@@ -5,7 +6,7 @@ import {
   largeCatalogs,
   type LargeCatalogId,
 } from "@shared/option-catalogs";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
@@ -31,6 +32,7 @@ export default function LargeCatalogManager() {
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(LARGE_CATALOG_PAGE_SIZE);
   const [newName, setNewName] = useState("");
   const [drafts, setDrafts] = useState<Record<number, { name: string; active: boolean }>>({});
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -49,12 +51,12 @@ export default function LargeCatalogManager() {
   }, [queryInput]);
 
   const utils = trpc.useUtils();
-  const results = trpc.optionCatalogs.searchLarge.useQuery({ catalog, query, page });
+  const results = trpc.optionCatalogs.searchLarge.useQuery({ catalog, query, page, pageSize });
   const meta = largeCatalogs.find(item => item.id === catalog)!;
 
   const rows = useMemo<Entry[]>(() => (results.data?.rows ?? []) as Entry[], [results.data]);
   const total = results.data?.total ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / LARGE_CATALOG_PAGE_SIZE));
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
 
   // Re-seed on content, not array identity, so a refetch cannot wipe typing.
   const savedKey = JSON.stringify(rows.map(row => [row.id, row.name, row.active]));
@@ -283,15 +285,16 @@ export default function LargeCatalogManager() {
             </div>;
           })}
 
-        {total > LARGE_CATALOG_PAGE_SIZE ? <div className="mt-3 flex items-center justify-between gap-2 border-t border-j-border pt-2">
-          <button type="button" disabled={page <= 1 || results.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
-            <ChevronLeft size={14} /> Previous
-          </button>
-          <span className="text-xs font-bold text-j-ink-muted">Page {page} of {lastPage}</span>
-          <button type="button" disabled={page >= lastPage || results.isFetching} onClick={() => setPage(current => Math.min(lastPage, current + 1))} className="flex h-8 items-center gap-1 rounded-lg border border-j-border px-2.5 text-sm font-bold text-j-ink-soft disabled:opacity-30">
-            Next <ChevronRight size={14} />
-          </button>
-        </div> : null}
+        <div className="mt-3 border-t border-j-border pt-2"><TutorListPager
+          page={page}
+          totalPages={lastPage}
+          onPage={setPage}
+          label={`${meta.label} pages`}
+          pageSize={pageSize}
+          pageSizeOptions={[20, 50, 100]}
+          onPageSize={next => { setPageSize(next); setPage(1); }}
+          totalItems={total}
+        /></div>
       </section>}
   </div>;
 }
