@@ -55,7 +55,7 @@ describe("site content slots", () => {
   });
 
   it("covers both surfaces behind each admin page", () => {
-    expect(getSiteContentSurfaces("tutor-profile")).toEqual(["Tutor dashboard", "Public tutor profile"]);
+    expect(getSiteContentSurfaces("tutor-profile")).toEqual(["Tutor dashboard"]);
     expect(getSiteContentSurfaces("guardian-profile")).toEqual(["Guardian dashboard", "Request a tutor"]);
   });
 

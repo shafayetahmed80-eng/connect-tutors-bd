@@ -233,32 +233,6 @@ const tutorProfileSlots: SiteContentSlot[] = [
   { id: "tutor-profile.form.location-fee-travel", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Location, fee and travel heading", defaultText: "Location, fee and travel", defaultTextClass: "text-sm" },
 ];
 
-/** The public Tutor profile at /tutors/:id, shared under the same admin page. */
-const publicTutorProfileSlots: SiteContentSlot[] = [
-  { id: "public-tutor.hero.eyebrow", page: "tutor-profile", surface: "Public tutor profile", group: "Header", label: "Header eyebrow", defaultText: "Verified tutor profile", defaultTextClass: "text-xs" },
-  { id: "public-tutor.hero.cta", page: "tutor-profile", surface: "Public tutor profile", group: "Header", label: "Request button", defaultText: "Request this tutor", defaultTextClass: "text-sm" },
-  { id: "public-tutor.hero.cta-note", page: "tutor-profile", surface: "Public tutor profile", group: "Header", label: "Note under the button", defaultText: "Contact details stay private", defaultTextClass: "text-xs" },
-
-  { id: "public-tutor.tab.personal", page: "tutor-profile", surface: "Public tutor profile", group: "Section tabs", label: "Personal tab", defaultText: "Personal", defaultTextClass: "text-sm" },
-  { id: "public-tutor.tab.education", page: "tutor-profile", surface: "Public tutor profile", group: "Section tabs", label: "Education tab", defaultText: "Education", defaultTextClass: "text-sm" },
-  { id: "public-tutor.tab.preferences", page: "tutor-profile", surface: "Public tutor profile", group: "Section tabs", label: "Preferences tab", defaultText: "Tuition preferences", defaultTextClass: "text-sm" },
-
-  { id: "public-tutor.personal.eyebrow", page: "tutor-profile", surface: "Public tutor profile", group: "Personal section", label: "Eyebrow", defaultText: "A little about the tutor", defaultTextClass: "text-xs" },
-  { id: "public-tutor.personal.heading", page: "tutor-profile", surface: "Public tutor profile", group: "Personal section", label: "Heading", defaultText: "Personal overview", defaultTextClass: "text-xl" },
-
-  { id: "public-tutor.education.eyebrow", page: "tutor-profile", surface: "Public tutor profile", group: "Education section", label: "Eyebrow", defaultText: "Academic background", defaultTextClass: "text-xs" },
-  { id: "public-tutor.education.heading", page: "tutor-profile", surface: "Public tutor profile", group: "Education section", label: "Heading", defaultText: "Education & expertise", defaultTextClass: "text-xl" },
-
-  { id: "public-tutor.preferences.eyebrow", page: "tutor-profile", surface: "Public tutor profile", group: "Preferences section", label: "Eyebrow", defaultText: "How learning can happen", defaultTextClass: "text-xs" },
-  { id: "public-tutor.preferences.heading", page: "tutor-profile", surface: "Public tutor profile", group: "Preferences section", label: "Heading", defaultText: "Tuition preferences", defaultTextClass: "text-xl" },
-
-  { id: "public-tutor.trust.title", page: "tutor-profile", surface: "Public tutor profile", group: "Trust panel", label: "Panel title", defaultText: "Connect Tutors promise", defaultTextClass: "text-sm" },
-  { id: "public-tutor.trust.heading", page: "tutor-profile", surface: "Public tutor profile", group: "Trust panel", label: "Panel heading", defaultText: "A considered start for every learner.", defaultTextClass: "text-lg" },
-  { id: "public-tutor.trust.body", page: "tutor-profile", surface: "Public tutor profile", group: "Trust panel", label: "Panel body", defaultText: "Begin with a structured request. We share contact details only through the existing matching and consent process.", defaultTextClass: "text-sm" },
-  { id: "public-tutor.trust.cta", page: "tutor-profile", surface: "Public tutor profile", group: "Trust panel", label: "Panel button", defaultText: "Start a request", defaultTextClass: "text-sm" },
-  { id: "public-tutor.privacy.title", page: "tutor-profile", surface: "Public tutor profile", group: "Trust panel", label: "Privacy note title", defaultText: "Privacy by design", defaultTextClass: "text-sm" },
-];
-
 /** Guardian dashboard profile at /guardian/dashboard/profile. */
 const guardianProfileSlots: SiteContentSlot[] = [
   { id: "guardian-profile.photo.title", page: "guardian-profile", surface: "Guardian dashboard", group: "Profile page", label: "Photo card title", defaultText: "Profile photo", defaultTextClass: "text-xl" },
@@ -471,7 +445,6 @@ const siteContentSlots: SiteContentSlot[] = [
   ...adminControlSlots,
   ...paymentAccountSlots,
   ...tutorProfileSlots,
-  ...publicTutorProfileSlots,
   ...guardianProfileSlots,
   ...requestTutorSlots,
   ...sidebarTabsSlots,
@@ -668,7 +641,6 @@ export type SiteContentAnchor = {
 const siteContentAnchors: SiteContentAnchor[] = [
   { id: "tutor-profile.top", page: "tutor-profile", surface: "Tutor dashboard", label: "Above the profile tabs" },
   { id: "tutor-profile.bottom", page: "tutor-profile", surface: "Tutor dashboard", label: "Below the profile sections" },
-  { id: "public-tutor.top", page: "tutor-profile", surface: "Public tutor profile", label: "Above the profile body" },
   { id: "guardian-profile.top", page: "guardian-profile", surface: "Guardian dashboard", label: "Above the profile form" },
   { id: "request-tutor.top", page: "guardian-profile", surface: "Request a tutor", label: "Above the journey" },
 ];

@@ -265,27 +265,6 @@ const catalogSearchInputSchema = z.object({
   limit: z.number().int().min(1).max(CATALOG_SEARCH_LIMIT).default(30),
 });
 
-const tutorListingInputSchema = z.object({
-  query: z.string().trim().max(100).default(""),
-  country: z.string().trim().max(120).default("all"),
-  city: z.string().trim().max(120).default("all"),
-  division: z.string().trim().max(120).default("all"),
-  district: z.string().trim().max(120).default("all"),
-  mode: tuitionTypeSchema.or(z.literal("all")).default("all"),
-  subjects: z.array(z.string().trim().min(1).max(80)).max(siteLimitCeiling("request.subjects")).default([]),
-  levels: z.array(z.string().trim().min(1).max(80)).max(siteLimitCeiling("request.levels")).default([]),
-  languages: z.array(z.string().trim().min(1).max(60)).max(siteLimitCeiling("request.languages")).default([]),
-  gender: z.enum(["all", "male", "female"]).default("all"),
-  verifiedOnly: z.boolean().default(false),
-  minFee: z.number().int().min(0).max(500000).optional(),
-  maxFee: z.number().int().min(0).max(500000).optional(),
-  page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(50).default(6),
-}).refine(value => value.minFee === undefined || value.maxFee === undefined || value.minFee <= value.maxFee, {
-  message: "Minimum fee cannot exceed maximum fee.",
-  path: ["minFee"],
-});
-
 const adminMatchingRequestInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
   status: z.enum(["all", "new", "reviewing", "matched", "closed"]).default("all"),
@@ -1029,11 +1008,6 @@ export const appRouter = router({
         limit: z.number().int().min(1).max(300).default(300),
       }))
       .query(({ input }) => db.searchRegistrationCityLocations(input)),
-  }),
-  tutors: router({
-    list: publicProcedure.query(() => db.listTutors()),
-    listPage: publicProcedure.input(tutorListingInputSchema).query(({ input }) => db.listTutorListingPage(input)),
-    byId: publicProcedure.input(z.object({ id: z.string().min(1) })).query(({ input }) => db.getTutorById(input.id)),
   }),
   jobBoard: router({
     list: publicProcedure.input(publishedTutorJobBoardInputSchema).query(({ input }) => db.listPublishedTutorJobs(input)),
