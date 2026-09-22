@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -59,6 +59,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations" },
     { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
     { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Operations" },
+    { icon: Target, label: "Tutor Matching", path: "/admin/tutor-matching", sectionLabel: "Operations" },
     // The shortlist is a signal, not a question, so it carries no count.
     { icon: Star, label: "Shortlist Requests", path: "/admin/guardian-requests/shortlist", sectionLabel: "Operations", subgroup: requests },
     { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.appoint },

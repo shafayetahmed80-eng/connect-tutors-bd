@@ -109,6 +109,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/confirmed-jobs", "Confirmed Jobs"],
       ["/admin/admin-posted-jobs", "Admin Posted Jobs"],
       ["/admin/applied-tutors", "Applied Tutors"],
+      ["/admin/tutor-matching", "Tutor Matching"],
       ["/admin/guardian-requests/shortlist", "Shortlist Requests"],
       ["/admin/guardian-requests/appoint", "Appoint Requests"],
       ["/admin/guardian-requests/confirm", "Confirm Requests"],

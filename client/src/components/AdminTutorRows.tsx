@@ -2,6 +2,7 @@ import { AdminGuardianTuitionRequestMark, type AdminGuardianTuitionRequest } fro
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
+import type { TutorMatchNote } from "@shared/tutor-matching";
 import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
 import { Link } from "wouter";
 
@@ -35,6 +36,9 @@ export type AdminTutorRow = {
   applicationStage?: TutorApplicationStage;
   /** The application's own status, which the Action column reads. Applied-Tutor rows only. */
   applicationStatus?: TutorApplicationRecord["status"];
+  /** What lines up with the tuition, and what does not - Tutor Matching rows only. */
+  matchReasons?: TutorMatchNote[];
+  matchCautions?: TutorMatchNote[];
 };
 
 /** Approve and Decline on a row whose Guardian asked for an appointment. */
@@ -99,7 +103,7 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -113,6 +117,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   showApplicationStage?: boolean;
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
+  /** A column naming what lines up with the tuition and what does not, on Tutor Matching's ranked rows. */
+  showMatchNotes?: boolean;
   appointmentActions?: AdminAppointmentRequestActions;
   /** A Guardian's waiting Confirm or Remove request, shown on the row of the Tutor it is about. */
   guardianTuitionRequest?: AdminGuardianTuitionRequestActions;
@@ -152,6 +158,16 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           ? <AdminGuardianTuitionRequestMark {...guardianTuitionRequest} />
           : null}
       </span>,
+    }] : []),
+    ...(showMatchNotes ? [{
+      // What lines up with the tuition in green, what does not in the same
+      // warning colour a caution reads in everywhere else - never a reason to
+      // hide the Tutor, only to read the match at a glance.
+      key: "match", label: "Match", wide: true, cellClassName: "max-w-[18rem]",
+      cell: (tutor: AdminTutorRow) => (tutor.matchReasons?.length || tutor.matchCautions?.length) ? <span className="block space-y-0.5">
+        {(tutor.matchReasons ?? []).map(reason => <span key={reason.kind} className="block text-2xs leading-5 text-emerald-800">{reason.label}</span>)}
+        {(tutor.matchCautions ?? []).map(caution => <span key={caution.kind} className="block text-2xs leading-5 text-amber-800">{caution.label}</span>)}
+      </span> : <span className="italic text-j-ink-faint">Not set</span>,
     }] : []),
     ...(applicantRowActions ? [{
       key: "action", label: "Action", place: "action" as const,

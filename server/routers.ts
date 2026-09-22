@@ -392,6 +392,18 @@ const adminTutorDirectoryInputSchema = z.object({
   pageSize: z.number().int().min(1).max(50).default(20),
 });
 
+/** Tutor Matching's own page sizes: a ranked list is worth scanning further than the 50-row directory ceiling. */
+const adminMatchingCandidateInputSchema = z.object({
+  requestId: z.number().int().positive(),
+  query: z.string().trim().max(100).default(""),
+  verified: z.enum(["all", "verified", "unverified"]).default("all"),
+  location: z.string().trim().max(160).default(""),
+  subject: z.string().trim().max(100).default(""),
+  tuitionType: tuitionTypeSchema.or(z.literal("all")).default("all"),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.union([z.literal(20), z.literal(50), z.literal(100)]).default(20),
+});
+
 const adminTutorModerationInputSchema = z.object({
   tutorId: z.string().trim().min(1).max(32),
   nextStatus: z.enum(["approved", "changes_requested", "suspended"]),
@@ -1780,6 +1792,24 @@ export const appRouter = router({
         const page = await db.listAppliedTutorsForRequest(input);
         if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
         return page;
+      }),
+    listMatchingCandidates: adminProcedure
+      .input(adminMatchingCandidateInputSchema)
+      .query(async ({ input }) => {
+        const page = await db.listMatchingCandidatesForRequest(input);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
+        return page;
+      }),
+    /** Shortlist or Appoint on Tutor Matching's own row: an application is created first if the Tutor never applied. */
+    matchTutorToRequest: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32), status: z.enum(["shortlisted", "matched"]) }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { interestId } = await db.ensureTutorJobInterestForRequest({ requestId: input.requestId, tutorId: input.tutorId });
+          return await db.reviewTutorJobInterestByAdmin({ interestId, status: input.status, adminUserId: ctx.user.id });
+        } catch (error) {
+          return rethrowTutorInterestError(error);
+        }
       }),
     getTutorReview: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))

@@ -28,6 +28,7 @@ import {
 import type { RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
+import { rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief } from "@shared/tutor-matching";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -3694,6 +3695,53 @@ export async function submitTutorJobInterest(input: { tutorId: string; tutorJobI
   });
 }
 
+/**
+ * An Admin adding a well-matched Tutor to a tuition's applicant pool, exactly
+ * as if the Tutor had applied themselves - same eligibility, same starting
+ * status. Tutor Matching offers every approved Tutor, most of whom never
+ * applied, so Shortlist and Appoint need an application to act on before they
+ * can run the same transition Applied Tutors already uses.
+ */
+export async function ensureTutorJobInterestForRequest(input: { requestId: number; tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  return database.transaction(async tx => {
+    const [job] = await tx
+      .select({ id: tutorJobs.id, publicationStatus: tutorJobs.publicationStatus, expiresAt: tutorJobs.expiresAt })
+      .from(tutorJobs)
+      .where(eq(tutorJobs.tutorRequestId, input.requestId))
+      .limit(1)
+      .for("update");
+    if (!job) throw new Error("TUTOR_INTEREST_JOB_UNAVAILABLE");
+
+    const [existing] = await tx
+      .select({ id: tutorJobInterests.id, status: tutorJobInterests.status })
+      .from(tutorJobInterests)
+      .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, input.tutorId)))
+      .limit(1)
+      .for("update");
+
+    if (existing && existing.status !== "withdrawn") return { interestId: existing.id };
+
+    const eligibility = canSubmitTutorInterest({
+      tutorId: input.tutorId,
+      jobStatus: job.publicationStatus,
+      expiresAt: job.expiresAt,
+      now: new Date(),
+      existingStatus: (existing?.status as TutorInterestDatabaseStatus | undefined) ?? null,
+    });
+    if (!eligibility.allowed) throw new Error(`TUTOR_INTEREST_${eligibility.reason.toUpperCase()}`);
+
+    if (existing) {
+      await tx.update(tutorJobInterests).set({ status: "interested", ...tutorInterestStageStamps("interested") }).where(eq(tutorJobInterests.id, existing.id));
+      return { interestId: existing.id };
+    }
+    const [result] = await tx.insert(tutorJobInterests).values({ tutorJobId: job.id, tutorId: input.tutorId, status: "interested" });
+    return { interestId: Number(result.insertId) };
+  });
+}
+
 /** Tutor-only withdrawal. An interest never discloses Guardian data to the Tutor. */
 export async function withdrawTutorJobInterest(input: { tutorId: string; interestId: number }) {
   const database = await getDb();
@@ -5716,10 +5764,12 @@ export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId:
  * Ordered oldest first: on an applicant list the row number is application
  * order, so #1 is the Tutor who applied first.
  */
-export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilters) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-
+/**
+ * The tuition itself, in the shape both one tuition's Applied Tutors and its
+ * Tutor Matching candidates head their page with - so the two screens never
+ * disagree about what job they are looking at.
+ */
+async function getAppliedJobHeader(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, requestId: number) {
   const [job] = await database
     .select({
       id: tutorRequests.id,
@@ -5747,8 +5797,16 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
-    .where(eq(tutorRequests.id, filters.requestId))
+    .where(eq(tutorRequests.id, requestId))
     .limit(1);
+  return job;
+}
+
+export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const job = await getAppliedJobHeader(database, filters.requestId);
   if (!job) return undefined;
 
   const conditions = [
@@ -5845,6 +5903,113 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
   };
 }
+
+export type AdminMatchingCandidateFilters = {
+  requestId: number;
+  query: string;
+  verified: "all" | "verified" | "unverified";
+  location: string;
+  subject: string;
+  tuitionType: "all" | "home" | "online" | "both";
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Every approved Tutor for one tuition, best match first - Tutor Matching's
+ * counterpart to Applied Tutors: the same header, the same rows, the same
+ * actions, but starting from every approved profile instead of only the ones
+ * who applied. Most of these Tutors never applied; a Tutor who already has an
+ * application on this job carries it (`interestId`, `applicationStatus`) so
+ * their row reads exactly as it does on Applied Tutors.
+ *
+ * Ranking is the same arithmetic the Matching workspace's picker uses
+ * (@shared/tutor-matching), run over the real Tutor Profile fields Applied
+ * Tutors already reads rather than the old directory demo columns.
+ */
+export async function listMatchingCandidatesForRequest(filters: AdminMatchingCandidateFilters) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const job = await getAppliedJobHeader(database, filters.requestId);
+  if (!job) return undefined;
+
+  // A sentinel no real row ever has, so the join always has the same shape
+  // whether or not this tuition has reached the Job Board yet.
+  const [tutorJob] = await database.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, filters.requestId)).limit(1);
+  const tutorJobId = tutorJob?.id ?? -1;
+
+  const conditions = getAdminTutorDirectoryConditions({ ...filters, profileStatus: "approved", jobStage: "all" });
+  const rows = await database
+    .select({
+      ...adminTutorDirectoryFields,
+      fee: tutors.fee,
+      monthlyFeeMin: tutors.monthlyFeeMin,
+      gender: tutors.gender,
+      interestId: tutorJobInterests.id,
+      appliedAt: tutorJobInterests.createdAt,
+      applicationStatus: tutorJobInterests.status,
+      guardianShortlistedAt: tutorJobInterests.guardianShortlistedAt,
+      appointmentRequestedAt: tutorJobInterests.appointmentRequestedAt,
+    })
+    .from(tutors)
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(tutorJobInterests, and(eq(tutorJobInterests.tutorJobId, tutorJobId), eq(tutorJobInterests.tutorId, tutors.id), ne(tutorJobInterests.status, "withdrawn")))
+    .where(and(...conditions));
+
+  const enriched = await enrichAdminTutorDirectoryRows(database, rows);
+
+  const requestBrief: MatchingTutorRequestBrief = {
+    subjects: job.subjects,
+    classCourse: job.classCourse,
+    category: job.category,
+    preferredGender: job.preferredGender,
+    tuitionType: job.tuitionType,
+    budgetAmount: job.budgetAmount,
+    monthlyBudget: null,
+    tuitionLocationLabel: job.tuitionLocationLabel,
+    locationText: job.locationText,
+  };
+  const candidates: MatchingTutorOption[] = enriched.map(row => ({
+    id: row.id,
+    name: row.name,
+    subjects: parseJsonList(row.subjects),
+    levels: parseJsonList(row.levels),
+    fee: row.monthlyFeeMin ?? row.fee ?? 0,
+    gender: row.gender,
+    mode: row.mode ?? "both",
+    locationLabel: row.locationLabel ?? "",
+    city: row.cityLabel ?? "",
+    experience: row.teachingExperienceYears ?? 0,
+  }));
+  const ranked = rankTutorsForRequest(candidates, requestBrief);
+  const byId = new Map(enriched.map(row => [row.id, row]));
+  // Best match leads; the Admin never re-sorts this list by hand.
+  const ordered = ranked.map(entry => ({ ...byId.get(entry.tutor.id)!, matchScore: entry.score, matchReasons: entry.reasons, matchCautions: entry.cautions }));
+
+  const total = ordered.length;
+  const offset = (filters.page - 1) * filters.pageSize;
+  const items = ordered.slice(offset, offset + filters.pageSize);
+
+  // Same two facts Applied Tutors' header shows, read the same way.
+  const appliedTotal = (await countAppliedTutorsByRequest(database, [filters.requestId])).get(filters.requestId) ?? 0;
+  const guardianRequest = (await getWaitingGuardianTuitionRequests([{ ...job, tutorId: job.appointedTutorId }])).get(job.id) ?? null;
+
+  return {
+    job,
+    guardianRequest,
+    appliedTotal,
+    items,
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+  };
+}
+
 /** Single-Tutor review context deliberately excludes private contact and document references. */
 export async function getAdminTutorReview(tutorId: string) {
   const database = await getDb();

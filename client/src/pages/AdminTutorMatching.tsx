@@ -4,97 +4,150 @@ import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentReq
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import PostTypeBadge from "@/components/PostTypeBadge";
-import RecordTable, { type RecordColumn } from "@/components/RecordTable";
-import TuitionStatusPill from "@/components/TuitionStatusPill";
-import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
-import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
-import { TutorDirectoryFilters, defaultTutorFilters, type TutorFilters } from "./AdminTutorProfiles";
-import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
-import { formatSalaryAmount } from "@shared/salary-amount";
+import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
 import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, CircleX, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { AdminAppliedTuitionsContent, TuitionStatus } from "./AdminAppliedTutors";
+import { ArrowLeft, CircleX, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
 
+export type TutorMatchingFilters = {
+  query: string;
+  verified: "all" | "verified" | "unverified";
+  location: string;
+  subject: string;
+  tuitionType: "all" | "home" | "online" | "both";
+  page: number;
+  pageSize: 20 | 50 | 100;
+};
+
+export const defaultTutorMatchingFilters: TutorMatchingFilters = { query: "", verified: "all", location: "", subject: "", tuitionType: "all", page: 1, pageSize: 20 };
+
+const matchingPageSizeOptions = [20, 50, 100] as const;
+
 /**
- * Everyone who applied to one tuition.
- *
- * The rows are the Admin's own Tutor Profiles rows - the same component, not a
- * copy - with the application order in front of them, so a Tutor reads the same
- * on both screens and the arrow leads to the same profile. What this page adds
- * above them is the tuition itself: an Admin is judging these applicants
- * against one job, and should not have to hold its subjects and salary in their
- * head while they scroll.
+ * How many active filters read differently from the defaults, for the badge
+ * on the Filter button. Page and page size are navigation, not a filter.
  */
-export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) {
-  const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
+function countMatchingFilters(filters: TutorMatchingFilters): number {
+  return (Object.keys(defaultTutorMatchingFilters) as Array<keyof TutorMatchingFilters>)
+    .filter(key => key !== "page" && key !== "pageSize")
+    .filter(key => filters[key] !== defaultTutorMatchingFilters[key]).length;
+}
+
+function TutorMatchingFilterBar({ filters, onChange, onClear }: {
+  filters: TutorMatchingFilters;
+  onChange: (change: Partial<TutorMatchingFilters>) => void;
+  onClear: () => void;
+}) {
+  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <label className="relative sm:col-span-2">
+      <span className="sr-only">Search Tutors</span>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+      <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+    </label>
+    <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorMatchingFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
+    <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
+    <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
+    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorMatchingFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="both">Both</option></select>
+    <button type="button" onClick={onClear} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
+  </div>;
+}
+
+/**
+ * One tuition's best-matching Tutors, first to worst.
+ *
+ * Applied Tutors starts from who applied; this starts from every approved
+ * Tutor Profile and ranks them against the tuition instead, so an Admin can
+ * shortlist or appoint a strong match who never saw the Job Board. Rows are
+ * the same `AdminTutorRows` component with the same actions - a Tutor already
+ * on this tuition's applicant list carries that application here too, and
+ * reads identically on both screens. A Tutor met here for the first time gets
+ * one silently created the moment an Admin shortlists or appoints them, the
+ * same way applying themselves would have.
+ */
+export function AdminTutorMatchingContent({ requestId }: { requestId: number }) {
+  const [filters, setFilters] = useState<TutorMatchingFilters>(defaultTutorMatchingFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize"] });
-  const applied = trpc.admin.listAppliedTutors.useQuery({ ...filters, requestId }, { retry: false });
-  const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
-  const job = applied.data?.job;
-  const tuitionStage = job ? getGuardianRequestLifecycle({ ...job, tutorId: job.appointedTutorId }).key : null;
+  const activeFilterCount = countMatchingFilters(filters);
+  const matching = trpc.admin.listMatchingCandidates.useQuery({ ...filters, requestId }, { retry: false });
+  const updateFilter = (change: Partial<TutorMatchingFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
+  const job = matching.data?.job;
+  const lifecycleStage = job ? getGuardianRequestLifecycle({ ...job, tutorId: job.appointedTutorId }).key : null;
 
   const utils = trpc.useUtils();
-  const [approving, setApproving] = useState<AdminTutorRow | null>(null);
   const refresh = () => {
+    void utils.admin.listMatchingCandidates.invalidate();
     void utils.admin.listAppliedTutors.invalidate();
     void utils.admin.listPostedJobs.invalidate();
-    // A move here changes the Appointed and Confirmed lists and the Tutor's own job stages too.
     void utils.admin.listAppointedJobs.invalidate();
     void utils.admin.listConfirmedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
   };
   const onError = (error: { message: string }) => { toast.error(error.message); };
+
+  const [approving, setApproving] = useState<AdminTutorRow | null>(null);
   const approve = trpc.admin.approveAppointmentRequest.useMutation({ onSuccess: () => { setApproving(null); refresh(); }, onError });
   const decline = trpc.admin.declineAppointmentRequest.useMutation({ onSuccess: refresh, onError });
   const appointmentActions: AdminAppointmentRequestActions = {
     busy: approve.isPending || decline.isPending,
-    // Approving hands both people each other's number, so it is confirmed first.
     onApprove: tutor => setApproving(tutor),
     onDecline: tutor => { if (tutor.interestId) decline.mutate({ interestId: tutor.interestId }); },
   };
 
-  // A Guardian's Confirm, Remove or Cancel request is answered here: Approve makes that move.
-  const guardianRequest = applied.data?.guardianRequest ?? null;
+  const guardianRequest = matching.data?.guardianRequest ?? null;
   const [approvingGuardianRequest, setApprovingGuardianRequest] = useState(false);
   const guardianAnswer = useAdminGuardianTuitionRequest(() => setApprovingGuardianRequest(false));
 
   const review = trpc.admin.reviewTutorJobInterest.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
+  // A candidate who never applied has no application yet - this creates one and moves it in the same step.
+  const matchTutor = trpc.admin.matchTutorToRequest.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const confirmTutor = trpc.admin.confirmTutorRequestAppointment.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const removeTutor = trpc.admin.reopenAppointedTuition.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const removeConfirmed = trpc.admin.removeConfirmedTutor.useMutation({ onError: error => { toast.error(error.message); refresh(); } });
   const [deciding, setDeciding] = useState<{ tutor: AdminTutorRow; action: "appoint" | "confirm" | "remove_appointed" | "remove_confirmed" } | null>(null);
-  const actionPending = review.isPending || confirmTutor.isPending || removeTutor.isPending || removeConfirmed.isPending;
+  const actionPending = review.isPending || matchTutor.isPending || confirmTutor.isPending || removeTutor.isPending || removeConfirmed.isPending;
   const settle = (message: string) => { setDeciding(null); refresh(); toast.success(message); };
+
   const rowActions: AdminApplicantRowActions = {
     busy: actionPending || guardianAnswer.busy,
-    optionsFor: tutor => !job || !tuitionStage || !tutor.applicationStatus ? [] : applicantActions({
-      tuitionStage,
-      applicationStatus: tutor.applicationStatus,
-      holdsTuition: tutor.id === job.appointedTutorId,
-      tutorApproved: tutor.profileStatus === "approved",
-    }).filter(({ action }) =>
-      // A Guardian's waiting request is answered by Approve beside it, which appoints the same way.
-      !(action === "appoint" && tutor.appointmentRequestedAt)
-      // So is a Confirm or Remove the Guardian asked for about this Tutor.
-      && !(guardianRequest?.tutorId === tutor.id && (
-        (guardianRequest.type === "confirm" && action === "confirm")
-        || (guardianRequest.type === "remove_tutor" && (action === "remove_appointed" || action === "remove_confirmed"))
-      ))),
+    optionsFor: tutor => {
+      if (!job || !lifecycleStage) return [];
+      // No application yet reads as a fresh, un-shortlisted applicant - unless
+      // this Tutor already holds the tuition without one, the one shape a
+      // manual assignment from the old Matching workspace can still leave.
+      const status = tutor.applicationStatus ?? (tutor.id === job.appointedTutorId ? "matched" : "interested");
+      return applicantActions({
+        tuitionStage: lifecycleStage,
+        applicationStatus: status,
+        holdsTuition: tutor.id === job.appointedTutorId,
+        tutorApproved: tutor.profileStatus === "approved",
+      }).filter(({ action }) =>
+        !(action === "appoint" && tutor.appointmentRequestedAt)
+        && !(guardianRequest?.tutorId === tutor.id && (
+          (guardianRequest.type === "confirm" && action === "confirm")
+          || (guardianRequest.type === "remove_tutor" && (action === "remove_appointed" || action === "remove_confirmed"))
+        )));
+    },
     onAction: (tutor, action) => {
       if (action === "shortlist" || action === "unshortlist") {
-        if (!tutor.interestId) return;
-        review.mutate(
-          { interestId: tutor.interestId, status: action === "shortlist" ? "shortlisted" : "interested" },
-          { onSuccess: () => { refresh(); toast.success(action === "shortlist" ? `${tutor.name} is shortlisted.` : `${tutor.name} is off the shortlist.`); } },
-        );
+        if (tutor.interestId) {
+          review.mutate(
+            { interestId: tutor.interestId, status: action === "shortlist" ? "shortlisted" : "interested" },
+            { onSuccess: () => { refresh(); toast.success(action === "shortlist" ? `${tutor.name} is shortlisted.` : `${tutor.name} is off the shortlist.`); } },
+          );
+        } else {
+          matchTutor.mutate(
+            { requestId, tutorId: tutor.id, status: "shortlisted" },
+            { onSuccess: () => { refresh(); toast.success(`${tutor.name} is shortlisted.`); } },
+          );
+        }
       } else {
         setDeciding({ tutor, action });
       }
@@ -103,8 +156,12 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   const decide = () => {
     if (!deciding) return;
     const { tutor, action } = deciding;
-    if (action === "appoint" && tutor.interestId) {
-      review.mutate({ interestId: tutor.interestId, status: "matched" }, { onSuccess: () => settle(`${tutor.name} is appointed.`) });
+    if (action === "appoint") {
+      if (tutor.interestId) {
+        review.mutate({ interestId: tutor.interestId, status: "matched" }, { onSuccess: () => settle(`${tutor.name} is appointed.`) });
+      } else {
+        matchTutor.mutate({ requestId, tutorId: tutor.id, status: "matched" }, { onSuccess: () => settle(`${tutor.name} is appointed.`) });
+      }
     } else if (action === "confirm") {
       confirmTutor.mutate({ requestId, tutorId: tutor.id }, { onSuccess: () => settle(`${tutor.name} is confirmed.`) });
     } else if (action === "remove_appointed") {
@@ -114,7 +171,6 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     }
   };
 
-  // Cancelling is the tuition's, not an applicant's: the Guardian is not taking a Tutor from us.
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const cancelTuition = trpc.admin.cancelTutorRequest.useMutation({
@@ -123,13 +179,13 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   });
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <Link href="/admin/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Posted jobs
+    <Link href="/admin/tutor-matching" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
+      <ArrowLeft size={15} /> Back to Tutor Matching
     </Link>
 
     <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">
-        Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
+        Applied: <span className="tabular-nums">{matching.data?.appliedTotal ?? 0}</span>
       </span>
 
       {job ? <AppliedJobFacts job={job} afterJobId={<>
@@ -141,7 +197,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 
       {guardianRequest?.type === "cancel_tuition"
         ? <AdminGuardianTuitionRequestMark request={guardianRequest} busy={guardianAnswer.busy} onApprove={() => setApprovingGuardianRequest(true)} onDecline={() => guardianAnswer.decline.mutate({ guardianRequestId: guardianRequest.id })} />
-        : tuitionStage && canCancelTuition(tuitionStage) ? <button
+        : lifecycleStage && canCancelTuition(lifecycleStage) ? <button
         type="button"
         onClick={() => { setCancelReason(""); setCancelling(true); }}
         className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
@@ -161,27 +217,32 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     </section>
 
     {filtersOpen ? <section className="rounded-2xl border border-j-border bg-white p-4 shadow-sm">
-      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} />
+      <TutorMatchingFilterBar filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorMatchingFilters)} />
     </section> : null}
 
-    {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading applied Tutors…</div> : null}
-    {applied.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{applied.error?.message ?? "The applied Tutors could not be loaded."}</div> : null}
+    {matching.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading matching Tutors…</div> : null}
+    {matching.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{matching.error?.message ?? "Matching Tutors could not be loaded."}</div> : null}
 
-    {!applied.isLoading && !applied.isError
+    {!matching.isLoading && !matching.isError
       ? <AdminTutorRows
-          tutors={(applied.data?.items ?? []).map(row => ({
+          tutors={(matching.data?.items ?? []).map(row => ({
             ...row,
-            applicationStage: getTutorApplicationStage({
-              status: row.applicationStatus,
-              appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
-              tuitionCancelled: tuitionStage === "cancelled",
-            }),
+            interestId: row.interestId ?? undefined,
+            applicationStatus: row.applicationStatus ?? undefined,
+            applicationStage: row.applicationStatus || row.id === job?.appointedTutorId
+              ? getTutorApplicationStage({
+                  status: row.applicationStatus ?? "matched",
+                  appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
+                  tuitionCancelled: lifecycleStage === "cancelled",
+                })
+              : undefined,
           }))}
-          caption="Tutors who applied to this tuition"
-          emptyLabel={activeFilterCount ? "No applicant matches the active filters." : "No Tutor has applied to this tuition yet."}
+          caption="Approved Tutors, best match first"
+          emptyLabel={activeFilterCount ? "No Tutor matches the active filters." : "No approved Tutor is available to match against this tuition."}
           serialFrom={(filters.page - 1) * filters.pageSize + 1}
           showApplicationStage
           showGuardianMarks
+          showMatchNotes
           appointmentActions={appointmentActions}
           guardianTuitionRequest={guardianRequest ? {
             request: guardianRequest,
@@ -193,7 +254,15 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         />
       : null}
 
-    <TutorListPager page={filters.page} totalPages={applied.data?.totalPages ?? 1} onPage={next => updateFilter({ page: next })} label="Applied Tutor pages" />
+    <TutorListPager
+      page={filters.page}
+      totalPages={matching.data?.totalPages ?? 1}
+      onPage={next => updateFilter({ page: next })}
+      label="Tutor Matching pages"
+      pageSize={filters.pageSize}
+      pageSizeOptions={matchingPageSizeOptions}
+      onPageSize={next => updateFilter({ pageSize: next as TutorMatchingFilters["pageSize"] })}
+    />
 
     {approving ? <Modal size="sm" onClose={() => setApproving(null)} busy={approve.isPending}>
       <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
@@ -209,8 +278,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     {approvingGuardianRequest && guardianRequest ? <ApproveGuardianTuitionRequestDialog
       request={guardianRequest}
       jobId={jobIdForRequest(requestId)}
-      tutorName={applied.data?.items.find(row => row.id === guardianRequest.tutorId)?.name}
-      confirmed={tuitionStage === "confirmed"}
+      tutorName={matching.data?.items.find(row => row.id === guardianRequest.tutorId)?.name}
+      confirmed={lifecycleStage === "confirmed"}
       busy={guardianAnswer.approve.isPending}
       onClose={() => setApprovingGuardianRequest(false)}
       onApprove={() => guardianAnswer.approve.mutate({ guardianRequestId: guardianRequest.id })}
@@ -270,86 +339,11 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   </div>;
 }
 
-/** A tuition's stage, named by the same rule as the Posted jobs cards. */
-export function TuitionStatus({ job }: { job: Parameters<typeof getGuardianRequestLifecycle>[0] }) {
-  const lifecycle = getGuardianRequestLifecycle(job);
-  return <TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} />;
-}
-
-const APPLIED_PAGE_SIZE = 20;
-
-/** Every stage a tuition can have applicants in: on the Job Board, or past it. */
-export const appliedTuitionStages = ["live", "appointed", "confirmed"] as const;
-
-/**
- * Which tuition's applicants to read.
- *
- * The sidebar tab lands here, because the page below it is about one tuition
- * and arriving from the sidebar you have not chosen one yet. Every tuition that
- * reached the Job Board and was not cancelled is listed - Live, Appointed and
- * Confirmed, each with its stage - since an Appointed or Confirmed tuition
- * keeps the applicants it had. It reads the same `admin.listPostedJobs` the
- * Posted jobs board reads, so the counts on the two screens cannot disagree.
- */
-export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors", linkLabel = "applicants" }: { basePath?: string; linkLabel?: string } = {}) {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stages: [...appliedTuitionStages], query, page, pageSize: APPLIED_PAGE_SIZE });
-  const items = jobs.data?.items ?? [];
-
-  type PostedTuition = (typeof items)[number];
-  const tuitionColumns: RecordColumn<PostedTuition>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
-    { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
-    { key: "tuitionStatus", label: "Tuition Status", place: "head", cell: job => <TuitionStatus job={job} /> },
-    { key: "classCourse", label: "Class / Level", cell: job => <span className="font-bold text-j-ink">{job.classCourse}</span> },
-    { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: job => <span className="text-j-ink-strong">{formatSubjects(job.subjects)}</span> },
-    { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },
-    { key: "salary", label: "Salary", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
-    { key: "days", label: "Days / Week", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
-    { key: "guardian", label: "Guardian", cell: job => <span className="text-j-ink-strong">{job.guardianName}</span> },
-    { key: "applied", label: "Applied", cell: job => <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{job.appliedTutorCount}</span> },
-    {
-      key: "applicants", label: "Applicants", place: "action", headingHidden: true, cellClassName: "text-right",
-      cell: job => <Link href={`${basePath}/${job.id}`} aria-label={`Open the ${linkLabel} of Job ID ${jobIdForRequest(job.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
-        <ChevronRight size={16} />
-      </Link>,
-    },
-  ];
-
-  return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <label className="relative block max-w-sm">
-      <span className="sr-only">Search tuitions</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input
-        value={query}
-        onChange={event => { setQuery(event.target.value); setPage(1); }}
-        placeholder="Search subject, class, location or Guardian"
-        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-      />
-    </label>
-
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading tuitions…</div> : null}
-    {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
-
-    {!jobs.isLoading && !jobs.isError ? <RecordTable
-      caption="Tuitions, their stage, and how many Tutors applied to each"
-      columns={tuitionColumns}
-      rows={items}
-      rowKey={job => job.id}
-      empty={`No live, appointed or confirmed tuition${query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.`}
-      tableClassName="min-w-[70rem]"
-    /> : null}
-
-    <TutorListPager page={page} totalPages={jobs.data?.totalPages ?? 1} onPage={setPage} label="Tuition pages" />
-  </div>;
-}
-
-export default function AdminAppliedTutors() {
-  const [, params] = useRoute("/admin/applied-tutors/:requestId");
+export default function AdminTutorMatching() {
+  const [, params] = useRoute("/admin/tutor-matching/:requestId");
   const requestId = Number(params?.requestId);
   const chosen = Number.isInteger(requestId) && requestId > 0;
-  return <AdminWorkspaceLayout title="Applied Tutors">
-    {chosen ? <AdminAppliedTutorsContent requestId={requestId} /> : <AdminAppliedTuitionsContent />}
+  return <AdminWorkspaceLayout title="Tutor Matching">
+    {chosen ? <AdminTutorMatchingContent requestId={requestId} /> : <AdminAppliedTuitionsContent basePath="/admin/tutor-matching" linkLabel="matching Tutors" />}
   </AdminWorkspaceLayout>;
 }
