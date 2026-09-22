@@ -162,11 +162,13 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     ...(showMatchNotes ? [{
       // What lines up with the tuition in green, what does not in the same
       // warning colour a caution reads in everywhere else - never a reason to
-      // hide the Tutor, only to read the match at a glance.
-      key: "match", label: "Match", wide: true, cellClassName: "max-w-[18rem]",
-      cell: (tutor: AdminTutorRow) => (tutor.matchReasons?.length || tutor.matchCautions?.length) ? <span className="block space-y-0.5">
-        {(tutor.matchReasons ?? []).map(reason => <span key={reason.kind} className="block text-2xs leading-5 text-emerald-800">{reason.label}</span>)}
-        {(tutor.matchCautions ?? []).map(caution => <span key={caution.kind} className="block text-2xs leading-5 text-amber-800">{caution.label}</span>)}
+      // hide the Tutor, only to read the match at a glance. Pills that wrap,
+      // not one line per note - a Tutor can carry five or six of these, and a
+      // stacked list of full sentences was pushing the row off the screen.
+      key: "match", label: "Match", wide: true, cellClassName: "max-w-[16rem]",
+      cell: (tutor: AdminTutorRow) => (tutor.matchReasons?.length || tutor.matchCautions?.length) ? <span className="flex flex-wrap gap-1">
+        {(tutor.matchReasons ?? []).map(reason => <span key={reason.kind} title={reason.label} className="inline-block max-w-[9rem] truncate rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-800">{reason.label}</span>)}
+        {(tutor.matchCautions ?? []).map(caution => <span key={caution.kind} title={caution.label} className="inline-block max-w-[9rem] truncate rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-800">{caution.label}</span>)}
       </span> : <span className="italic text-j-ink-faint">Not set</span>,
     }] : []),
     ...(applicantRowActions ? [{
