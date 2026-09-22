@@ -1,3 +1,4 @@
+import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { Button } from "@/components/ui/button";
@@ -351,8 +352,16 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
   </label>;
 }
 
-function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><textarea {...props} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, maxLength, value, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean; maxLength?: number; value?: string } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "maxLength" | "value">) {
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
+    <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
+      {maxLength ? <CharacterRemaining value={value ?? ""} maxLength={maxLength} /> : null}
+    </span>
+    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />
+    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+  </label>;
 }
 
 /**
@@ -1122,10 +1131,10 @@ function TutorProfileWorkspaceBody({
       case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
       case "travelDistanceKm": return <FormInput label={fieldLabel(fieldId, "Travel Distance (km)")} placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
 
-      case "aboutMe": return <FormTextArea label={fieldLabel(fieldId, "About Me")} rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." hint={`${form.aboutMe.length}/2000 characters`} />;
-      case "teachingApproach": return <FormTextArea label={fieldLabel(fieldId, "Teaching Approach")} rows={5} maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." hint={`${form.teachingApproach.length}/2000 characters`} />;
-      case "whyChooseMe": return <FormTextArea label={fieldLabel(fieldId, "Why Choose Me")} rows={5} maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." hint={`${form.whyChooseMe.length}/2000 characters`} />;
-      case "additionalNotes": return <FormTextArea label={fieldLabel(fieldId, "Additional Notes")} rows={4} maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." hint={`${form.additionalNotes.length}/2000 characters`} />;
+      case "aboutMe": return <FormTextArea label={fieldLabel(fieldId, "About Me")} rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." />;
+      case "teachingApproach": return <FormTextArea label={fieldLabel(fieldId, "Teaching Approach")} rows={5} maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." />;
+      case "whyChooseMe": return <FormTextArea label={fieldLabel(fieldId, "Why Choose Me")} rows={5} maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." />;
+      case "additionalNotes": return <FormTextArea label={fieldLabel(fieldId, "Additional Notes")} rows={4} maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." />;
 
       default:
         if (fieldId.startsWith("supportingDocument.")) {

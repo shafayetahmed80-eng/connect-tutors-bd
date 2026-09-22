@@ -1,4 +1,5 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import CharacterRemaining from "@/components/CharacterRemaining";
 import { Link as WouterLink, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Facebook, Globe, House, KeyRound, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
@@ -1299,7 +1300,10 @@ function NumberField({ label, slotId, labelIcon, id, value, onChange, min, max }
 
 function TextAreaField({ label, slotId, labelIcon, id, value, onChange, maxLength, optional, minHeight = "min-h-24" }: { label: string; slotId?: string; labelIcon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; maxLength?: number; optional?: boolean; minHeight?: string }) {
   return <label className="block">
-    <FieldLabelText label={label} slotId={slotId} labelIcon={labelIcon} optional={optional} />
+    <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <FieldLabelText label={label} slotId={slotId} labelIcon={labelIcon} optional={optional} />
+      {maxLength ? <CharacterRemaining value={value} maxLength={maxLength} /> : null}
+    </span>
     <textarea id={id} className={`${filledArea} mt-2 ${minHeight}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength={maxLength} />
   </label>;
 }

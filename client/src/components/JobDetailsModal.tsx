@@ -8,6 +8,7 @@ import {
   formatSubjects,
   formatTuitionType,
   formatTutorPreference,
+  tutorPreferenceToneClass,
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
@@ -32,7 +33,7 @@ export type JobDetailsData = JobCardData & {
  * same distinction the Tutor profile draws between an unanswered optional
  * field and a missing required one.
  */
-export function JobDetailRow({ label, value, muted, required, icon, valueIcon }: {
+export function JobDetailRow({ label, value, muted, required, icon, valueIcon, valueClassName }: {
   label: string;
   value: string;
   /** The value is a blank rather than an answer. */
@@ -41,13 +42,15 @@ export function JobDetailRow({ label, value, muted, required, icon, valueIcon }:
   required?: boolean;
   icon?: React.ReactNode;
   valueIcon?: React.ReactNode;
+  /** Overrides the value's default ink - the one row (Preferred Tutor) where the value itself carries a colour. */
+  valueClassName?: string;
 }) {
   const blankTone = required ? "font-medium text-j-err" : "italic text-j-ink-faint";
   return <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5 last:border-b-0">
     <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
       <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]">{icon}</span>{label}
     </p>
-    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-2xs leading-[1.5] ${muted ? blankTone : "text-[#173d60]"}`}>
+    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-2xs leading-[1.5] ${muted ? blankTone : valueClassName ?? "text-[#173d60]"}`}>
       {valueIcon}{value}
     </p>
   </div>;
@@ -111,7 +114,8 @@ export default function JobDetailsModal({
             label="Preferred Tutor"
             value={formatTutorPreference(job.preferredTutorGender)}
             required
-            valueIcon={<TutorPreferenceIcon preference={job.preferredTutorGender} className="text-[#1677e8]" />}
+            valueIcon={<TutorPreferenceIcon preference={job.preferredTutorGender} className={tutorPreferenceToneClass(job.preferredTutorGender)} />}
+            valueClassName={`font-bold ${tutorPreferenceToneClass(job.preferredTutorGender)}`}
           />
           <JobDetailRow icon={<CalendarDays size={12} />} label="Days / Week" value={formatDaysPerWeek(job.daysPerWeek)} required />
           <JobDetailRow icon={<Users size={12} />} label="No. of Students" value={formatStudentCount(job.studentCount)} required />

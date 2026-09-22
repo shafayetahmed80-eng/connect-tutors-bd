@@ -19,6 +19,17 @@ export function formatTuitionType(value: string): string {
   }
 }
 
+/**
+ * One colour per preference, so a Guardian scanning a page of cards reads it
+ * before the word - the icon and the word always carry the same one. Each
+ * passes 4.5:1 on the white a card and the details dialog both sit on.
+ */
+export function tutorPreferenceToneClass(value: TutorGenderPreference): string {
+  if (value === "male") return "text-[#15803d]";
+  if (value === "female") return "text-[#db2777]";
+  return "text-[#7c3aed]";
+}
+
 /** "Male" / "Female" / "Any". Written as a word so the icon is not the only cue. */
 export function formatTutorPreference(value: TutorGenderPreference): string {
   if (value === "male") return "Male";

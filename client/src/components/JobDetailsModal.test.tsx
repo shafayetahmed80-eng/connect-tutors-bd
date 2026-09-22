@@ -24,6 +24,17 @@ const job: JobDetailsData = {
   notes: null,
 };
 
+describe("the Preferred Tutor colour", () => {
+  it("gives Male, Female and Any their own colour on the row and its icon", () => {
+    for (const [gender, tone] of [["male", "#15803d"], ["female", "#db2777"], ["any", "#7c3aed"]] as const) {
+      const { unmount } = render(<JobDetailsModal job={{ ...job, preferredTutorGender: gender }} onClose={vi.fn()} action={null} />);
+      const row = screen.getByText(new RegExp(gender === "any" ? "Any" : gender === "male" ? "Male" : "Female")).closest("p")!;
+      expect(row.className).toContain(`text-[${tone}]`);
+      unmount();
+    }
+  });
+});
+
 describe("JobDetailsModal on the shared Modal shell", () => {
   it("announces itself as a dialog named by the job title", () => {
     render(<JobDetailsModal job={job} onClose={vi.fn()} action={<button type="button">Apply Now</button>} />);
