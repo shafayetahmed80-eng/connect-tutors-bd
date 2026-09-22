@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FILTERS, buildJobBoardPageLinks, buildJobBoardQuery, buildMapsDirectionUrl, countJobBoardFilters, formatJobBoardTuitionType, formatJobBudget, getJobBoardPagination, getTutorInterestPresentation, reconcileJobBoardFilters } from "./JobBoard";
+import { DEFAULT_FILTERS, buildJobBoardPageLinks, buildJobBoardQuery, buildMapsDirectionUrl, countJobBoardFilters, formatJobBoardTuitionType, formatJobBudget, getJobBoardPagination, getTutorInterestPresentation, jobBoardAppliedNote, jobBoardGenderMismatchNote, reconcileJobBoardFilters } from "./JobBoard";
 
 describe("Job Board view helpers", () => {
   it("sends only the filters actually in use, and whole days for a date range", () => {
@@ -117,5 +117,30 @@ describe("Job Board view helpers", () => {
     expect(getTutorInterestPresentation("shortlisted")).toMatchObject({ statusLabel: "Shortlisted", description: null, action: "withdraw", actionLabel: "Withdraw application" });
     expect(getTutorInterestPresentation("withdrawn")).toMatchObject({ statusLabel: "Application withdrawn", action: "express", actionLabel: "Apply again" });
     expect(getTutorInterestPresentation("matched")).toMatchObject({ statusLabel: "Matched", description: null, action: null });
+  });
+});
+
+describe("the apply-confirm dialog's gender note", () => {
+  it("warns when the job wants a tutor of the other gender", () => {
+    expect(jobBoardGenderMismatchNote("female", "male")).toBe(`This job requires a "Female" tutor.`);
+    expect(jobBoardGenderMismatchNote("male", "female")).toBe(`This job requires a "Male" tutor.`);
+  });
+
+  it("says nothing when the job takes any tutor, the genders already match, or the Tutor's own is not on file", () => {
+    expect(jobBoardGenderMismatchNote("any", "male")).toBeNull();
+    expect(jobBoardGenderMismatchNote("female", "female")).toBeNull();
+    expect(jobBoardGenderMismatchNote("female", undefined)).toBeNull();
+  });
+});
+
+describe("the details dialog's post-apply reassurance", () => {
+  it("shows it right after applying", () => {
+    expect(jobBoardAppliedNote("interested")).toBe("Guardian will review your profile & shortlist you if your profile strongly matches with their requirements.");
+  });
+
+  it("says nothing once the Guardian has actually acted, or before anything was applied to", () => {
+    for (const status of ["shortlisted", "declined", "matched", "withdrawn", undefined] as const) {
+      expect(jobBoardAppliedNote(status)).toBeNull();
+    }
   });
 });
