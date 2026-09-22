@@ -79,7 +79,7 @@ export type LargeCatalogId = (typeof largeCatalogIds)[number];
 export type LargeCatalogMeta = Omit<OptionCatalogMeta, "id"> & { id: LargeCatalogId };
 
 export const largeCatalogs: LargeCatalogMeta[] = [
-  { id: "institutes", label: "Institutes", usedFor: "Tutor profile education", itemLabel: "institute" },
+  { id: "institutes", label: "Institutes", usedFor: "Tutor profile education, and the Tutor Matching featured-institute bonus", itemLabel: "institute" },
   { id: "departments", label: "Departments / subjects", usedFor: "Tutor profile education", itemLabel: "department" },
 ];
 

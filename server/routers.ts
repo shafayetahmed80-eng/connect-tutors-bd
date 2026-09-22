@@ -1284,6 +1284,13 @@ export const appRouter = router({
         }
         return { id: input.id };
       }),
+    /** Institutes only: on or off the Tutor Matching featured-institute bonus (Dynamic Section → Limits → Matching). */
+    setInstituteFeatured: ownerAdminProcedure
+      .input(z.object({ id: z.number().int().positive(), featured: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await db.setInstituteFeatured(input.id, input.featured);
+        return { id: input.id, featured: input.featured };
+      }),
   }),
   /**
    * The numbers the Owner can move. `resolved` is public because the forms

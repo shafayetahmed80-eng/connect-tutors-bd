@@ -28,7 +28,7 @@ import {
 import type { RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
-import { rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief } from "@shared/tutor-matching";
+import { emptyTutorMatchFilters, rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief, type MatchingWeights } from "@shared/tutor-matching";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -5904,6 +5904,48 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   };
 }
 
+/** The Owner's Matching weights (Dynamic Section → Limits → Matching), folded onto the shipped defaults. */
+async function getMatchingWeights(): Promise<MatchingWeights> {
+  const limits = await getSiteLimits();
+  return {
+    subject: limits["matching.weight.subject"],
+    level: limits["matching.weight.level"],
+    area: limits["matching.weight.area"],
+    mode: limits["matching.weight.mode"],
+    gender: limits["matching.weight.gender"],
+    fee: limits["matching.weight.fee"],
+    institute: limits["matching.weight.institute"],
+    verified: limits["matching.weight.verified"],
+    trackRecordPerConfirmed: limits["matching.weight.trackRecord"],
+    trackRecordCap: limits["matching.trackRecordCap"],
+  };
+}
+
+/**
+ * How many tuitions each of these Tutors has taken all the way to Confirmed -
+ * the same "still counts once cancelled elsewhere" rule Verified reads by.
+ */
+async function getConfirmedTuitionCounts(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorIds: string[]): Promise<Map<string, number>> {
+  if (tutorIds.length === 0) return new Map();
+  const rows = await database
+    .select({ tutorId: tutorRequests.tutorId, value: count() })
+    .from(tutorRequests)
+    .where(and(
+      inArray(tutorRequests.tutorId, tutorIds),
+      isNotNull(tutorRequests.appointmentConfirmedAt),
+      ne(tutorRequests.status, "closed"),
+      ne(tutorRequests.publicationState, "closed"),
+    ))
+    .groupBy(tutorRequests.tutorId);
+  return new Map(rows.filter((row): row is typeof row & { tutorId: string } => row.tutorId !== null).map(row => [row.tutorId, Number(row.value)]));
+}
+
+/** Normalised names on the Owner's featured-institute list, for matching against a Tutor's free-text institute. */
+async function getFeaturedInstituteNormalizedNames(database: NonNullable<Awaited<ReturnType<typeof getDb>>>): Promise<Set<string>> {
+  const rows = await database.select({ normalizedName: universities.normalizedName }).from(universities).where(eq(universities.featured, 1));
+  return new Set(rows.map(row => row.normalizedName));
+}
+
 export type AdminMatchingCandidateFilters = {
   requestId: number;
   query: string;
@@ -5962,6 +6004,12 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
 
   const enriched = await enrichAdminTutorDirectoryRows(database, rows);
 
+  const [weights, confirmedCounts, featuredInstitutes] = await Promise.all([
+    getMatchingWeights(),
+    getConfirmedTuitionCounts(database, enriched.map(row => row.id)),
+    getFeaturedInstituteNormalizedNames(database),
+  ]);
+
   const requestBrief: MatchingTutorRequestBrief = {
     subjects: job.subjects,
     classCourse: job.classCourse,
@@ -5984,8 +6032,12 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
     locationLabel: row.locationLabel ?? "",
     city: row.cityLabel ?? "",
     experience: row.teachingExperienceYears ?? 0,
+    instituteName: row.instituteName ?? undefined,
+    verified: Boolean(row.verified),
+    confirmedTuitionCount: confirmedCounts.get(row.id) ?? 0,
+    featuredInstitute: row.instituteName ? featuredInstitutes.has(normalizeCatalogName(row.instituteName)) : false,
   }));
-  const ranked = rankTutorsForRequest(candidates, requestBrief);
+  const ranked = rankTutorsForRequest(candidates, requestBrief, emptyTutorMatchFilters, weights);
   const byId = new Map(enriched.map(row => [row.id, row]));
   // Best match leads; the Admin never re-sorts this list by hand.
   const ordered = ranked.map(entry => ({ ...byId.get(entry.tutor.id)!, matchScore: entry.score, matchReasons: entry.reasons, matchCautions: entry.cautions }));
@@ -8624,10 +8676,27 @@ export async function searchLargeCatalogEntries(
     .limit(input.pageSize)
     .offset(Math.max(0, input.page - 1) * input.pageSize);
 
+  // Institutes alone carry the featured flag - departments have no such column.
+  const featuredById = catalog === "institutes" && rows.length
+    ? new Map((await db.select({ id: universities.id, featured: universities.featured }).from(universities).where(inArray(universities.id, rows.map(row => row.id)))).map(row => [row.id, row.featured === 1]))
+    : null;
+
   return {
     total: Number(total ?? 0),
-    rows: rows.map(row => ({ ...row, active: row.active === 1, usageCount: Number(row.usageCount ?? 0) })),
+    rows: rows.map(row => ({
+      ...row,
+      active: row.active === 1,
+      usageCount: Number(row.usageCount ?? 0),
+      ...(featuredById ? { featured: featuredById.get(row.id) ?? false } : {}),
+    })),
   };
+}
+
+/** Institutes only: sets the Tutor Matching featured-institute flag. */
+export async function setInstituteFeatured(id: number, featured: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.update(universities).set({ featured: featured ? 1 : 0 }).where(eq(universities.id, id));
 }
 
 export async function createLargeCatalogEntry(catalog: LargeCatalogKey, name: string) {

@@ -5,7 +5,7 @@ import {
   largeCatalogs,
   type LargeCatalogId,
 } from "@shared/option-catalogs";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
@@ -13,7 +13,8 @@ const iconButtonClass = "flex h-7 w-7 shrink-0 items-center justify-center round
 const checkboxClass = "h-3.5 w-3.5 shrink-0 accent-j-accent";
 const rowClass = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-j-border py-1 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_5rem_auto]";
 
-type Entry = { id: number; name: string; active: boolean; origin: string; usageCount: number };
+/** `featured` is present only on Institutes rows - Departments carry no such column. */
+type Entry = { id: number; name: string; active: boolean; origin: string; usageCount: number; featured?: boolean };
 
 /**
  * Owner-facing editor for the two large catalogs: Institutes, and the
@@ -73,6 +74,7 @@ export default function LargeCatalogManager() {
   const create = trpc.optionCatalogs.createLarge.useMutation();
   const update = trpc.optionCatalogs.updateLarge.useMutation();
   const remove = trpc.optionCatalogs.removeLarge.useMutation();
+  const setFeatured = trpc.optionCatalogs.setInstituteFeatured.useMutation();
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     setBusy(true);
@@ -253,6 +255,14 @@ export default function LargeCatalogManager() {
               </span>
 
               <div className="flex shrink-0 items-center gap-1">
+                {catalog === "institutes" && row.featured !== undefined ? <button
+                  type="button"
+                  disabled={busy || setFeatured.isPending}
+                  onClick={() => void run(() => setFeatured.mutateAsync({ id: row.id, featured: !row.featured }), "The featured mark could not be saved.")}
+                  className={iconButtonClass}
+                  aria-label={row.featured ? `Unmark ${row.name} as featured` : `Mark ${row.name} as featured`}
+                  title={row.featured ? "Featured - counts toward the Tutor Matching bonus" : "Not featured - click to give it the Tutor Matching bonus"}
+                ><Star className={`h-3.5 w-3.5 ${row.featured ? "fill-amber-400 text-amber-500" : ""}`} /></button> : null}
                 <button
                   type="button"
                   disabled={busy}

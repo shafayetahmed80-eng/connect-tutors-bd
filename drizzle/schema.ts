@@ -641,6 +641,8 @@ export const universities = mysqlTable(
     sortOrder: int("sortOrder").default(0).notNull(),
     /** Same meaning as `catalogFields.origin`; the seed refreshes only its own rows. */
     origin: varchar("origin", { length: 10 }).default("seed").notNull(),
+    /** On the Owner's featured list - a Tutor Matching bonus, matched against a Tutor's free-text institute name. */
+    featured: int("featured").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },

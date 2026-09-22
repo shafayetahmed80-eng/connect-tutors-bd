@@ -5,13 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 
 const state = vi.hoisted(() => ({
-  rows: [] as Array<{ id: number; name: string; active: boolean; origin: string; usageCount: number }>,
+  rows: [] as Array<{ id: number; name: string; active: boolean; origin: string; usageCount: number; featured?: boolean }>,
   total: 0,
   isFetching: false,
   lastInput: null as any,
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  setFeatured: vi.fn(),
   invalidate: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock("@/lib/trpc", () => ({
       createLarge: { useMutation: () => ({ mutateAsync: state.create }) },
       updateLarge: { useMutation: () => ({ mutateAsync: state.update }) },
       removeLarge: { useMutation: () => ({ mutateAsync: state.remove }) },
+      setInstituteFeatured: { useMutation: () => ({ mutateAsync: state.setFeatured, isPending: false }) },
     },
   },
 }));
@@ -42,7 +44,7 @@ beforeEach(() => {
   state.rows = [seedRow, usedRow, adminRow];
   state.total = 3;
   state.isFetching = false;
-  for (const spy of [state.create, state.update, state.remove, state.invalidate]) spy.mockReset().mockResolvedValue(undefined);
+  for (const spy of [state.create, state.update, state.remove, state.setFeatured, state.invalidate]) spy.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(cleanup);
@@ -138,6 +140,27 @@ describe("large catalog manager", () => {
     expect(screen.queryByText("1 selected")).toBeNull();
     expect((screen.getByPlaceholderText("Search departments / subjects") as HTMLInputElement).value).toBe("");
     expect(state.lastInput).toMatchObject({ catalog: "departments", page: 1 });
+  });
+
+  it("offers the featured star only on institutes, and only once a row carries the flag", () => {
+    render(<LargeCatalogManager />);
+    // Plain fixture rows above carry no `featured` field yet - departments never will.
+    expect(screen.queryByRole("button", { name: /featured/i })).toBeNull();
+
+    cleanup();
+    state.rows = [{ ...seedRow, featured: true }, { ...adminRow, featured: false }];
+    render(<LargeCatalogManager />);
+    expect(screen.getByRole("button", { name: "Unmark University of Dhaka as featured" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mark New Private College as featured" })).toBeTruthy();
+  });
+
+  it("toggles the featured mark immediately, apart from the batched name/hide save", () => {
+    state.rows = [{ ...adminRow, featured: false }];
+    render(<LargeCatalogManager />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark New Private College as featured" }));
+    expect(state.setFeatured).toHaveBeenCalledWith({ id: adminRow.id, featured: true });
+    expect(state.update).not.toHaveBeenCalled();
   });
 
   it("surfaces a rejected save instead of pretending it worked", async () => {
