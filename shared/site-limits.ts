@@ -83,11 +83,24 @@ export const siteLimitIds = [
   "charge.group.refund2",
   "charge.windowDays",
   "charge.secondDueDays",
+  // Tutor Matching's ranking arithmetic (@shared/tutor-matching). Same shipped
+  // values as the hardcoded points that preceded this - moving them here
+  // changes nothing until an Owner touches one.
+  "matching.weight.subject",
+  "matching.weight.level",
+  "matching.weight.area",
+  "matching.weight.mode",
+  "matching.weight.gender",
+  "matching.weight.fee",
+  "matching.weight.institute",
+  "matching.weight.verified",
+  "matching.weight.trackRecord",
+  "matching.trackRecordCap",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge";
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -418,7 +431,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 30,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.home.second",
     group: "Platform charge",
@@ -428,7 +441,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 30,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.home.early",
     group: "Platform charge",
@@ -438,7 +451,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 50,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.online.first",
     group: "Platform charge",
@@ -448,7 +461,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 25,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.online.second",
     group: "Platform charge",
@@ -458,7 +471,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 25,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.online.early",
     group: "Platform charge",
@@ -468,7 +481,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 45,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.package.first",
     group: "Platform charge",
@@ -478,7 +491,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 20,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.package.second",
     group: "Platform charge",
@@ -488,7 +501,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 15,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.package.early",
     group: "Platform charge",
@@ -498,7 +511,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 30,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.group.first",
     group: "Platform charge",
@@ -508,7 +521,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 20,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.group.second",
     group: "Platform charge",
@@ -518,7 +531,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 20,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.group.early",
     group: "Platform charge",
@@ -528,7 +541,7 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 35,
     min: 0,
     max: 100,
-  },
+  },
   {
     id: "charge.home.refund1",
     group: "Platform charge",
@@ -628,6 +641,106 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 30,
     min: 1,
     max: 90,
+  },
+  {
+    id: "matching.weight.subject",
+    group: "Matching",
+    label: "Points per matching subject",
+    help: "How much a Tutor Matching score gains for each subject the Tutor and the tuition share.",
+    unit: "points",
+    value: 3,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.level",
+    group: "Matching",
+    label: "Points for a matching class / level",
+    help: "How much a Tutor Matching score gains when the Tutor's levels cover the tuition's class.",
+    unit: "points",
+    value: 2,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.area",
+    group: "Matching",
+    label: "Points for the same area",
+    help: "How much a Tutor Matching score gains when the Tutor's own area matches the tuition's, for tuition taught in person.",
+    unit: "points",
+    value: 2,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.mode",
+    group: "Matching",
+    label: "Points for teaching the right mode",
+    help: "How much a Tutor Matching score gains when the Tutor teaches home, online or both, as the tuition needs.",
+    unit: "points",
+    value: 1,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.gender",
+    group: "Matching",
+    label: "Points for the preferred gender",
+    help: "How much a Tutor Matching score gains when the Tutor's gender is the one the Guardian asked for.",
+    unit: "points",
+    value: 1,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.fee",
+    group: "Matching",
+    label: "Points for fitting the budget",
+    help: "How much a Tutor Matching score gains when the Tutor's fee is within the Guardian's budget.",
+    unit: "points",
+    value: 1,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.weight.institute",
+    group: "Matching",
+    label: "Points for a featured institute",
+    help: "How much a Tutor Matching score gains when the Tutor's institute is on the Owner's featured list (Dynamic Section → Institutes & departments).",
+    unit: "points",
+    value: 3,
+    min: 0,
+    max: 15,
+  },
+  {
+    id: "matching.weight.verified",
+    group: "Matching",
+    label: "Points for a Verified badge",
+    help: "How much a Tutor Matching score gains when the Tutor carries the site's Verified badge.",
+    unit: "points",
+    value: 2,
+    min: 0,
+    max: 15,
+  },
+  {
+    id: "matching.weight.trackRecord",
+    group: "Matching",
+    label: "Points per Confirmed tuition",
+    help: "How much a Tutor Matching score gains for each of the Tutor's past Confirmed tuitions, up to the cap below.",
+    unit: "points",
+    value: 2,
+    min: 0,
+    max: 10,
+  },
+  {
+    id: "matching.trackRecordCap",
+    group: "Matching",
+    label: "Confirmed tuitions counted",
+    help: "How many of a Tutor's past Confirmed tuitions earn points - the rest still count toward the Verified badge, but add no further Matching score.",
+    unit: "tuitions",
+    value: 5,
+    min: 1,
+    max: 30,
   },
 ];
 

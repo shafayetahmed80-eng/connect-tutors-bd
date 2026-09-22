@@ -33,6 +33,51 @@ export type MatchingTutorOption = {
   locationLabel: string;
   city: string;
   experience: number;
+  /** The institute a match note names, when one is known. */
+  instituteName?: string;
+  /**
+   * Track record and standing - optional because not every caller resolves
+   * them yet (the Matching workspace's older picker still does not). Absent
+   * means "nothing to say", never a caution: a new Tutor is not penalised for
+   * being new.
+   */
+  verified?: boolean;
+  /** How many tuitions this Tutor has taken all the way to Confirmed. */
+  confirmedTuitionCount?: number;
+  /** Whether this Tutor's institute is on the Owner's featured list. */
+  featuredInstitute?: boolean;
+};
+
+/**
+ * How many points each signal is worth, and how far the track record climbs
+ * before it stops adding more. An Owner moves these from Dynamic Section →
+ * Limits → Matching; these are only the shipped starting point.
+ */
+export type MatchingWeights = {
+  subject: number;
+  level: number;
+  area: number;
+  mode: number;
+  gender: number;
+  fee: number;
+  institute: number;
+  verified: number;
+  trackRecordPerConfirmed: number;
+  /** Confirmed tuitions beyond this add no further points - a proven Tutor still loses to a stronger subject match. */
+  trackRecordCap: number;
+};
+
+export const defaultMatchingWeights: MatchingWeights = {
+  subject: 3,
+  level: 2,
+  area: 2,
+  mode: 1,
+  gender: 1,
+  fee: 1,
+  institute: 3,
+  verified: 2,
+  trackRecordPerConfirmed: 2,
+  trackRecordCap: 5,
 };
 
 /** Only the parts of a request this ranking reads. */
@@ -48,7 +93,7 @@ export type MatchingTutorRequestBrief = {
   locationText: string;
 };
 
-export type TutorMatchNote = { kind: "subject" | "level" | "area" | "fee" | "mode" | "gender"; label: string };
+export type TutorMatchNote = { kind: "subject" | "level" | "area" | "fee" | "mode" | "gender" | "institute" | "verified" | "trackRecord"; label: string };
 
 export type RankedMatchingTutor = {
   tutor: MatchingTutorOption;
@@ -59,13 +104,6 @@ export type RankedMatchingTutor = {
   cautions: TutorMatchNote[];
   matchedSubjects: string[];
 };
-
-const SUBJECT_POINTS = 3;
-const LEVEL_POINTS = 2;
-const AREA_POINTS = 2;
-const MODE_POINTS = 1;
-const GENDER_POINTS = 1;
-const FEE_POINTS = 1;
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -106,7 +144,11 @@ export function requestNeedsTravel(tuitionType: MatchingTutorRequestBrief["tuiti
   return tuitionType !== "online";
 }
 
-export function scoreTutorForRequest(tutor: MatchingTutorOption, request: MatchingTutorRequestBrief): RankedMatchingTutor {
+export function scoreTutorForRequest(
+  tutor: MatchingTutorOption,
+  request: MatchingTutorRequestBrief,
+  weights: MatchingWeights = defaultMatchingWeights,
+): RankedMatchingTutor {
   const reasons: TutorMatchNote[] = [];
   const cautions: TutorMatchNote[] = [];
   let score = 0;
@@ -115,7 +157,7 @@ export function scoreTutorForRequest(tutor: MatchingTutorOption, request: Matchi
   const taught = new Set(tutor.subjects.map(normalize));
   const matchedSubjects = wanted.filter(subject => taught.has(normalize(subject)));
   if (matchedSubjects.length > 0) {
-    score += matchedSubjects.length * SUBJECT_POINTS;
+    score += matchedSubjects.length * weights.subject;
     reasons.push({ kind: "subject", label: `Teaches ${matchedSubjects.join(", ")}` });
   }
   const missingSubjects = wanted.filter(subject => !taught.has(normalize(subject)));
@@ -130,7 +172,7 @@ export function scoreTutorForRequest(tutor: MatchingTutorOption, request: Matchi
   const levelTargets = [request.classCourse, request.category].map(normalize).filter(Boolean);
   const matchedLevel = levelTargets.find(target => levels.some(level => level.includes(target) || target.includes(level)));
   if (matchedLevel) {
-    score += LEVEL_POINTS;
+    score += weights.level;
     reasons.push({ kind: "level", label: `Covers ${request.classCourse || request.category}` });
   }
 
@@ -138,7 +180,7 @@ export function scoreTutorForRequest(tutor: MatchingTutorOption, request: Matchi
     const area = normalize(request.tuitionLocationLabel ?? request.locationText ?? "");
     const tutorArea = normalize(`${tutor.locationLabel} ${tutor.city}`);
     if (area && tutorArea && (tutorArea.includes(area) || area.includes(normalize(tutor.locationLabel)))) {
-      score += AREA_POINTS;
+      score += weights.area;
       reasons.push({ kind: "area", label: `Based in ${tutor.locationLabel || tutor.city}` });
     } else if (area) {
       cautions.push({ kind: "area", label: `Based in ${tutor.locationLabel || tutor.city || "an unrecorded area"}` });
@@ -146,14 +188,14 @@ export function scoreTutorForRequest(tutor: MatchingTutorOption, request: Matchi
   }
 
   if (tutorModeServesRequest(tutor.mode, request.tuitionType)) {
-    score += MODE_POINTS;
+    score += weights.mode;
   } else {
     cautions.push({ kind: "mode", label: `Teaches ${normalize(tutor.mode) === "online" ? "online only" : "in person only"}` });
   }
 
   if (request.preferredGender !== "any") {
     if (tutor.gender === request.preferredGender) {
-      score += GENDER_POINTS;
+      score += weights.gender;
       reasons.push({ kind: "gender", label: `${request.preferredGender === "female" ? "Female" : "Male"} Tutor, as asked` });
     } else {
       cautions.push({ kind: "gender", label: `Guardian asked for a ${request.preferredGender} Tutor` });
@@ -163,11 +205,29 @@ export function scoreTutorForRequest(tutor: MatchingTutorOption, request: Matchi
   const budget = getRequestBudget(request);
   if (budget !== null && tutor.fee > 0) {
     if (tutor.fee <= budget) {
-      score += FEE_POINTS;
+      score += weights.fee;
       reasons.push({ kind: "fee", label: `Asks ${tutor.fee} within ${budget}` });
     } else {
       cautions.push({ kind: "fee", label: `Asks ${tutor.fee} over the ${budget} budget` });
     }
+  }
+
+  // Credential, standing and track record - never a caution when absent, a
+  // new or unlisted Tutor simply carries no bonus for them yet.
+  if (tutor.featuredInstitute) {
+    score += weights.institute;
+    reasons.push({ kind: "institute", label: tutor.instituteName ? `${tutor.instituteName} - featured institute` : "Featured institute" });
+  }
+
+  if (tutor.verified) {
+    score += weights.verified;
+    reasons.push({ kind: "verified", label: "Verified Tutor" });
+  }
+
+  const confirmedCount = tutor.confirmedTuitionCount ?? 0;
+  if (confirmedCount > 0) {
+    score += Math.min(confirmedCount, weights.trackRecordCap) * weights.trackRecordPerConfirmed;
+    reasons.push({ kind: "trackRecord", label: `${confirmedCount} tuition${confirmedCount === 1 ? "" : "s"} Confirmed` });
   }
 
   return { tutor, score, reasons, cautions, matchedSubjects };
@@ -198,10 +258,11 @@ export function rankTutorsForRequest(
   tutors: MatchingTutorOption[],
   request: MatchingTutorRequestBrief,
   filters: TutorMatchFilters = emptyTutorMatchFilters,
+  weights: MatchingWeights = defaultMatchingWeights,
 ): RankedMatchingTutor[] {
   const needle = normalize(filters.query);
   return tutors
-    .map(tutor => scoreTutorForRequest(tutor, request))
+    .map(tutor => scoreTutorForRequest(tutor, request, weights))
     .filter(ranked => {
       if (filters.subjectMatchOnly && ranked.matchedSubjects.length === 0) return false;
       if (filters.sameAreaOnly && !ranked.reasons.some(reason => reason.kind === "area")) return false;

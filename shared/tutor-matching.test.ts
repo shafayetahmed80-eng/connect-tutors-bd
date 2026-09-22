@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultMatchingWeights,
   emptyTutorMatchFilters,
   getRequestBudget,
   parseRequestSubjects,
@@ -114,6 +115,33 @@ describe("why this Tutor", () => {
   it("leaves the budget unmentioned when neither side names a figure", () => {
     const ranked = scoreTutorForRequest(tutor({ fee: 0 }), { ...request, budgetAmount: null, monthlyBudget: null });
     expect([...ranked.reasons, ...ranked.cautions].some(note => note.kind === "fee")).toBe(false);
+  });
+
+  it("rewards a featured institute, a Verified badge, and a track record - never as a caution when absent", () => {
+    const plain = scoreTutorForRequest(tutor(), request);
+    expect(plain.reasons.some(reason => ["institute", "verified", "trackRecord"].includes(reason.kind))).toBe(false);
+    expect(plain.cautions.some(caution => ["institute", "verified", "trackRecord"].includes(caution.kind))).toBe(false);
+
+    const standout = scoreTutorForRequest(tutor({ instituteName: "BUET", featuredInstitute: true, verified: true, confirmedTuitionCount: 3 }), request);
+    expect(standout.reasons.find(r => r.kind === "institute")?.label).toBe("BUET - featured institute");
+    expect(standout.reasons.find(r => r.kind === "verified")?.label).toBe("Verified Tutor");
+    expect(standout.reasons.find(r => r.kind === "trackRecord")?.label).toBe("3 tuitions Confirmed");
+    // The plain Tutor's 13 (see the first test above) plus institute 3, verified 2, and 3 × 2 track-record points.
+    expect(standout.score).toBe(13 + 3 + 2 + 6);
+  });
+
+  it("stops the track record adding more once it passes the cap", () => {
+    const capped = scoreTutorForRequest(tutor({ confirmedTuitionCount: 9 }), request, { ...defaultMatchingWeights, trackRecordCap: 5 });
+    const atCap = scoreTutorForRequest(tutor({ confirmedTuitionCount: 5 }), request, { ...defaultMatchingWeights, trackRecordCap: 5 });
+    expect(capped.score).toBe(atCap.score);
+  });
+
+  it("lets an Owner's weights change what a point is worth without changing what it means", () => {
+    const heavyInstitute = { ...defaultMatchingWeights, institute: 10, subject: 0 };
+    const ranked = scoreTutorForRequest(tutor({ featuredInstitute: true }), request, heavyInstitute);
+    expect(ranked.reasons.find(r => r.kind === "institute")).toBeTruthy();
+    // Subjects worth nothing now, institute worth 10: level 2 + area 2 + mode 1 + gender 1 + fee 1 + institute 10.
+    expect(ranked.score).toBe(17);
   });
 });
 

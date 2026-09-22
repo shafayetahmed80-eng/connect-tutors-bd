@@ -3,7 +3,7 @@ import { siteLimits, type SiteLimitGroup, type SiteLimitId } from "@shared/site-
 import { Loader2, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const allGroups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge"];
+const allGroups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching"];
 
 /**
  * Owner-facing editor for the numbers that used to be literals in the code.
