@@ -25,6 +25,7 @@ describe("Admin workspace navigation", () => {
       "Confirmed Jobs",
       "Admin Posted Jobs",
       "Applied Tutors",
+      "Tutor Matching",
       "Shortlist Requests",
       "Appoint Requests",
       "Confirm Requests",

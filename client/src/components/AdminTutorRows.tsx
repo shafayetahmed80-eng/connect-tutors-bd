@@ -2,7 +2,9 @@ import { AdminGuardianTuitionRequestMark, type AdminGuardianTuitionRequest } fro
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
-import { BadgeCheck, ChevronRight, CircleAlert } from "lucide-react";
+import type { TutorMatchNote } from "@shared/tutor-matching";
+import { BadgeCheck, ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 
 /**
@@ -35,6 +37,9 @@ export type AdminTutorRow = {
   applicationStage?: TutorApplicationStage;
   /** The application's own status, which the Action column reads. Applied-Tutor rows only. */
   applicationStatus?: TutorApplicationRecord["status"];
+  /** What lines up with the tuition, and what does not - Tutor Matching rows only. */
+  matchReasons?: TutorMatchNote[];
+  matchCautions?: TutorMatchNote[];
 };
 
 /** Approve and Decline on a row whose Guardian asked for an appointment. */
@@ -99,7 +104,38 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
+/**
+ * What lines up with the tuition and what does not, collapsed to two counts
+ * until an Admin asks for the sentences behind them.
+ *
+ * A full sentence per note - "Teaches Mathematics", "Based in Uttara" - reads
+ * well one Tutor at a time on the Matching workspace's picker, but a whole
+ * ranked table of them at once is mostly noise: the count is the fact worth
+ * scanning down a column, and the wording only matters for the Tutor an Admin
+ * is actually weighing.
+ */
+function MatchNotesDisclosure({ reasons, cautions }: { reasons: TutorMatchNote[]; cautions: TutorMatchNote[] }) {
+  const [open, setOpen] = useState(false);
+  if (reasons.length === 0 && cautions.length === 0) return <span className="italic text-j-ink-faint">Not set</span>;
+  return <div>
+    <button
+      type="button"
+      onClick={() => setOpen(current => !current)}
+      aria-expanded={open}
+      className="inline-flex items-center gap-2 rounded-full border border-j-border bg-white px-2.5 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+    >
+      {reasons.length ? <span className="inline-flex items-center gap-1 text-emerald-800"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{reasons.length} match</span> : null}
+      {cautions.length ? <span className="inline-flex items-center gap-1 text-amber-800"><span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />{cautions.length} caution</span> : null}
+      <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+    </button>
+    {open ? <div className="mt-1.5 flex max-w-[14rem] flex-wrap gap-1">
+      {reasons.map(reason => <span key={reason.kind} className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-800">{reason.label}</span>)}
+      {cautions.map(caution => <span key={caution.kind} className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-800">{caution.label}</span>)}
+    </div> : null}
+  </div>;
+}
+
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
@@ -113,6 +149,8 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
   showApplicationStage?: boolean;
   /** A column for the Guardian's shortlist and appointment request, on one tuition's applicants. */
   showGuardianMarks?: boolean;
+  /** A column naming what lines up with the tuition and what does not, on Tutor Matching's ranked rows. */
+  showMatchNotes?: boolean;
   appointmentActions?: AdminAppointmentRequestActions;
   /** A Guardian's waiting Confirm or Remove request, shown on the row of the Tutor it is about. */
   guardianTuitionRequest?: AdminGuardianTuitionRequestActions;
@@ -152,6 +190,13 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
           ? <AdminGuardianTuitionRequestMark {...guardianTuitionRequest} />
           : null}
       </span>,
+    }] : []),
+    ...(showMatchNotes ? [{
+      // Collapsed to a match count and a caution count until asked - the same
+      // green-for-match, warning-for-caution colouring, at a fraction of the
+      // row height a full sentence per note took.
+      key: "match", label: "Match", cellClassName: "max-w-[16rem]",
+      cell: (tutor: AdminTutorRow) => <MatchNotesDisclosure reasons={tutor.matchReasons ?? []} cautions={tutor.matchCautions ?? []} />,
     }] : []),
     ...(applicantRowActions ? [{
       key: "action", label: "Action", place: "action" as const,

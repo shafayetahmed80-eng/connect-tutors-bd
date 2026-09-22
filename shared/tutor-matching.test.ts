@@ -9,7 +9,7 @@ import {
   tutorModeServesRequest,
   type MatchingTutorOption,
   type MatchingTutorRequestBrief,
-} from "./adminTutorMatch";
+} from "./tutor-matching";
 
 const request: MatchingTutorRequestBrief = {
   subjects: JSON.stringify(["Physics", "Higher Mathematics"]),

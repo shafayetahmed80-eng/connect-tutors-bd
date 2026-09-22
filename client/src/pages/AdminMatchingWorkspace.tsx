@@ -3,7 +3,7 @@ import {
   rankTutorsForRequest,
   type MatchingTutorOption,
   type TutorMatchFilters,
-} from "./adminTutorMatch";
+} from "@shared/tutor-matching";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
