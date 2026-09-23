@@ -62,6 +62,14 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // on the icon's own <svg>, or on a box it shares with the field.
     `.input-text-profile svg, svg.input-text-profile { width: 1em; height: 1em; }`,
     `.input-text-journey svg, svg.input-text-journey { width: 1em; height: 1em; }`,
+    // The dashboard shell's own shapes, apart from a dialog (Modals above)
+    // and an input box (Input Field Text above): the sidebar's highlighted
+    // row, the two differently-shaped profile tab bars, and every section
+    // or group card.
+    `.nav-item { border-radius: ${limits["nav.itemRadius"]}px; }`,
+    `.nav-tab-outer { border-radius: ${limits["nav.tabRadius"]}px; }`,
+    `.nav-pill-tab { border-radius: ${limits["nav.pillTabRadius"]}px; }`,
+    `.nav-section-card { border-radius: ${limits["nav.sectionRadius"]}px; }`,
     // The shared Button component's "ordinary" case only - `data-size` names
     // it, so an icon-only button or one explicitly given sm/lg keeps the size
     // it was given on purpose. Two attribute selectors outrank the single

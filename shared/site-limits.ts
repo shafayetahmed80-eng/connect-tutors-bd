@@ -100,11 +100,18 @@ export const siteLimitIds = [
   "matching.weight.verified",
   "matching.weight.trackRecord",
   "matching.trackRecordCap",
+  // Corner rounding for the pieces of the dashboard shell that are neither a
+  // dialog (Modals) nor an input box (Input Field Text): the sidebar's own
+  // nav rows, the two profile tab bars, and every section/group card.
+  "nav.itemRadius",
+  "nav.tabRadius",
+  "nav.pillTabRadius",
+  "nav.sectionRadius",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching";
+export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -371,7 +378,7 @@ export const siteLimits: SiteLimitMeta[] = [
     label: "Tutor profile editor corners",
     help: "How rounded a box's own corners are inside the profile section popup - inputs, dropdowns, and its own text areas.",
     unit: "px",
-    value: 8,
+    value: 16,
     min: 0,
     max: 24,
   },
@@ -381,9 +388,9 @@ export const siteLimits: SiteLimitMeta[] = [
     label: "Guardian journey and registration corners",
     help: "How rounded a box's own corners are in the Hire a tutor sheet and the Tutor/Guardian sign-up forms.",
     unit: "px",
-    value: 12,
+    value: 20,
     min: 0,
-    max: 24,
+    max: 32,
   },
   {
     id: "button.textSize",
@@ -765,6 +772,46 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 5,
     min: 1,
     max: 30,
+  },
+  {
+    id: "nav.itemRadius",
+    group: "Navigation",
+    label: "Sidebar row corners",
+    help: "How rounded a highlighted row is in the Tutor, Guardian, and Admin sidebar - the same menu on all three.",
+    unit: "px",
+    value: 16,
+    min: 0,
+    max: 24,
+  },
+  {
+    id: "nav.tabRadius",
+    group: "Navigation",
+    label: "Tutor Profile tab bar corners",
+    help: "The segmented tab bar at the top of the Tutor Profile editor - Personal, Education, Tuition Related, Credential, Introduction.",
+    unit: "px",
+    value: 20,
+    min: 0,
+    max: 32,
+  },
+  {
+    id: "nav.pillTabRadius",
+    group: "Navigation",
+    label: "Guardian/Admin profile tab corners",
+    help: "The Personal/Emergency Contact switch on a Guardian's or Admin's own profile - a different, pill-shaped tab bar from the Tutor Profile's above.",
+    unit: "px",
+    value: 20,
+    min: 0,
+    max: 32,
+  },
+  {
+    id: "nav.sectionRadius",
+    group: "Navigation",
+    label: "Section and group card corners",
+    help: "Every profile section and group card - the Tutor Profile's tabbed panels and preview, and the Guardian's and Admin's own profile cards.",
+    unit: "px",
+    value: 24,
+    min: 0,
+    max: 40,
   },
 ];
 

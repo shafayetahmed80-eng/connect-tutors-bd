@@ -9,9 +9,9 @@ export const tutorProfileTheme = {
   stack: "space-y-4",
 
   /** Standard elevated card. */
-  card: "rounded-2xl border border-j-border bg-white shadow-[0_1px_2px_rgba(23,59,96,0.04),0_10px_28px_rgba(23,59,96,0.06)]",
+  card: "nav-section-card rounded-2xl border border-j-border bg-white shadow-[0_1px_2px_rgba(23,59,96,0.04),0_10px_28px_rgba(23,59,96,0.06)]",
   /** Quiet inset panel (help text, review strip). */
-  cardSunken: "rounded-2xl border border-j-border bg-j-surface-sunken",
+  cardSunken: "nav-section-card rounded-2xl border border-j-border bg-j-surface-sunken",
   /** Default card padding. */
   cardPad: "p-5",
   /** Hairline divider colour. */
