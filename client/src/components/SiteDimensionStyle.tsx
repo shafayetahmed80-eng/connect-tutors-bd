@@ -49,6 +49,11 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // height rule above deliberately does not.
     `.input-text-profile { font-size: ${limits["inputText.profile"]}px; }`,
     `.input-text-journey { font-size: ${limits["inputText.journey"]}px; }`,
+    // A box's own corner rounding, kept apart from its text size above - one
+    // is shape, the other is type. Harmless on the value-icon spans that also
+    // carry this class, since they draw no border or fill of their own.
+    `.input-text-profile { border-radius: ${limits["inputRadius.profile"]}px; }`,
+    `.input-text-journey { border-radius: ${limits["inputRadius.journey"]}px; }`,
     // A value-matching icon inside a box (a location pin, a category glyph)
     // is sized in `em`, so it tracks that same font-size - large in a big
     // field, small in a dense one - instead of sitting fixed while the text

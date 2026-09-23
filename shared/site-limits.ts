@@ -49,6 +49,10 @@ export const siteLimitIds = [
   // should not have to think about the other.
   "inputText.profile",
   "inputText.journey",
+  // How rounded a box's own corners are, kept apart from the text size above -
+  // one is shape, the other is type.
+  "inputRadius.profile",
+  "inputRadius.journey",
   // Sizes for the two systematic button vocabularies - the shared Button
   // component and the Guardian journey's own primary/ghost buttons. A fixed
   // width is not offered for either: a button sizes to its label by design,
@@ -360,6 +364,26 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 14,
     min: 10,
     max: 20,
+  },
+  {
+    id: "inputRadius.profile",
+    group: "Input Field Text",
+    label: "Tutor profile editor corners",
+    help: "How rounded a box's own corners are inside the profile section popup - inputs, dropdowns, and its own text areas.",
+    unit: "px",
+    value: 8,
+    min: 0,
+    max: 24,
+  },
+  {
+    id: "inputRadius.journey",
+    group: "Input Field Text",
+    label: "Guardian journey and registration corners",
+    help: "How rounded a box's own corners are in the Hire a tutor sheet and the Tutor/Guardian sign-up forms.",
+    unit: "px",
+    value: 12,
+    min: 0,
+    max: 24,
   },
   {
     id: "button.textSize",

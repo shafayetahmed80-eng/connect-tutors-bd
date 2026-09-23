@@ -2,9 +2,9 @@ import AdminDynamicSectionPage from "@/components/AdminDynamicSectionPage";
 import SiteLimitEditor from "@/components/SiteLimitEditor";
 
 /**
- * The size of the letters typed into a box, apart from the Modals screen's
- * box heights - one is type, the other is layout, and an Owner reaching for
- * one should not have to think about the other.
+ * The size of the letters typed into a box, and how rounded the box's own
+ * corners are - apart from the Modals screen's box heights, since that is
+ * layout rather than the field itself.
  */
 export default function AdminDynamicInputFieldText() {
   return <AdminDynamicSectionPage
