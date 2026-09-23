@@ -14,12 +14,18 @@ describe("the letter size an Owner sets for input fields", () => {
       const meta = findSiteLimit(id)!;
       expect(css, id).toContain(`${meta.value}${meta.unit}`);
     }
-    expect(textLimitIds).toHaveLength(2);
+    expect(textLimitIds).toHaveLength(4);
   });
 
   it("sizes text areas along with single-line fields, unlike the height rule beside it", () => {
     const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "inputText.journey": 18 });
     expect(css).toContain(".input-text-journey { font-size: 18px; }");
+  });
+
+  it("keeps a box's own corner rounding apart from its text size", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "inputRadius.profile": 4, "inputRadius.journey": 16 });
+    expect(css).toContain(".input-text-profile { border-radius: 4px; }");
+    expect(css).toContain(".input-text-journey { border-radius: 16px; }");
   });
 
   it("scales a value-matching icon inside a box with that box's own text", () => {
