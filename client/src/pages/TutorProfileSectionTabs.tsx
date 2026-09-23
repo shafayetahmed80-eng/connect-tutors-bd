@@ -32,7 +32,7 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
   return <div
     role="tablist"
     aria-label="Profile sections"
-    className="sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-j-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur"
+    className="nav-tab-outer sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-j-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur"
   >
     {sections.map(section => <SectionTab
       key={section.id}

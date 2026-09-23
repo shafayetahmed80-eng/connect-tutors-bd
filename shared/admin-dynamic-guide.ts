@@ -114,6 +114,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [REGISTER, GUARDIAN_JOURNEY, TUTOR_PROFILE],
   },
   {
+    path: "/admin/dynamic/navigation",
+    label: "Navigation & Sections",
+    summary: "সাইডবারের সিলেক্টেড সারি, প্রোফাইলের দুই ধরনের ট্যাব বার, আর সেকশন/গ্রুপ কার্ড — এসবের কোণা কতটা গোল।",
+    seeAt: [TUTOR_PROFILE, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
+  },
+  {
     path: "/admin/dynamic/limits",
     label: "Limits",
     summary: "সংখ্যার সীমা — সর্বোচ্চ কয়টা বাছা যাবে, লেখা কত লম্বা হতে পারে, ফাইল কত বড়। সীমা ছাড়ালে কাজটা আটকে যায়।",

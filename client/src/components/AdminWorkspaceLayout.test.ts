@@ -75,6 +75,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Modals", path: "/admin/dynamic/modals" }),
       expect.objectContaining({ label: "Input Field Text", path: "/admin/dynamic/input-field-text" }),
       expect.objectContaining({ label: "Button Section", path: "/admin/dynamic/button-section" }),
+      expect.objectContaining({ label: "Navigation & Sections", path: "/admin/dynamic/navigation" }),
       expect.objectContaining({ label: "Limits", path: "/admin/dynamic/limits" }),
       expect.objectContaining({ label: "Admin Control", path: "/admin/dynamic/admin-control" }),
     ]);

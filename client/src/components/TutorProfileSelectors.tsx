@@ -22,6 +22,7 @@ type SearchableMultiSelectProps = {
   error?: string;
   disabled?: boolean;
   maxSelections?: number;
+  className?: string;
 };
 
 /**
@@ -50,8 +51,9 @@ export function SearchableMultiSelect({
   error,
   disabled = false,
   maxSelections,
+  className,
 }: SearchableMultiSelectProps) {
-  return <div className={tutorProfileResponsiveClasses.selectorRoot}>
+  return <div className={`${tutorProfileResponsiveClasses.selectorRoot}${className ? ` ${className}` : ""}`}>
     <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
     {description ? <p className="mt-0.5 text-2xs leading-4 text-[#72889a]">{description}</p> : null}
     <div className="mt-1">

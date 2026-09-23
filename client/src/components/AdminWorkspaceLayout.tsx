@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -37,6 +37,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: SquareDashed, label: "Modals", path: "/admin/dynamic/modals", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: Type, label: "Input Field Text", path: "/admin/dynamic/input-field-text", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: MousePointerClick, label: "Button Section", path: "/admin/dynamic/button-section", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: Squircle, label: "Navigation & Sections", path: "/admin/dynamic/navigation", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
   { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
 ];

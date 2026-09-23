@@ -42,6 +42,32 @@ describe("the letter size an Owner sets for input fields", () => {
     expect(css).toContain(".input-text-journey { font-size: 15px; }");
   });
 });
+describe("the corner rounding an Owner sets for navigation and sections", () => {
+  const navLimitIds = siteLimits.filter(limit => limit.group === "Navigation").map(limit => limit.id);
+
+  it("reaches the stylesheet, every one of them", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    for (const id of navLimitIds) {
+      const meta = findSiteLimit(id)!;
+      expect(css, id).toContain(`${meta.value}${meta.unit}`);
+    }
+    expect(navLimitIds).toHaveLength(4);
+  });
+
+  it("keeps the sidebar row, the two differently-shaped tab bars, and the section card apart", () => {
+    const css = buildSiteDimensionCss({
+      ...defaultSiteLimits(),
+      "nav.itemRadius": 4,
+      "nav.tabRadius": 10,
+      "nav.pillTabRadius": 20,
+      "nav.sectionRadius": 24,
+    });
+    expect(css).toContain(".nav-item { border-radius: 4px; }");
+    expect(css).toContain(".nav-tab-outer { border-radius: 10px; }");
+    expect(css).toContain(".nav-pill-tab { border-radius: 20px; }");
+    expect(css).toContain(".nav-section-card { border-radius: 24px; }");
+  });
+});
 describe("the size an Owner sets for buttons", () => {
   const buttonLimitIds = siteLimits.filter(limit => limit.group === "Button Section").map(limit => limit.id);
 
