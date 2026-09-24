@@ -110,7 +110,7 @@ describe("the dialog sizes an Owner sets", () => {
       // entrance, a bare percentage inside color-mix for the two opacities.
       expect(css, id).toContain(`${meta.value}${meta.unit}`);
     }
-    expect(modalLimitIds).toHaveLength(11);
+    expect(modalLimitIds).toHaveLength(12);
   });
 
   it("writes the widths inside a media query, because a phone ignores them", () => {
@@ -134,6 +134,17 @@ describe("the dialog sizes an Owner sets", () => {
 
     expect(afterQuery).toContain(".modal-field-profile { height: 40px; }");
     expect(afterQuery).toContain(".modal-field-journey { height: 52px; }");
+  });
+
+  it("gives the profile editor's boxes their own height on a phone, 44px unless the Owner moves it", () => {
+    const shipped = buildSiteDimensionCss(defaultSiteLimits());
+    expect(shipped).toContain("@media (max-width: 639px) { .modal-field-profile { height: 44px; } }");
+    expect(shipped).toContain(".modal-field-profile { height: 30px; }");
+    expect(shipped).toContain("--profile-field-height-phone: 44px;");
+
+    const moved = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.fieldHeight.profilePhone": 48 });
+    expect(moved).toContain("@media (max-width: 639px) { .modal-field-profile { height: 48px; } }");
+    expect(moved).toContain("--profile-field-height-phone: 48px;");
   });
 
   it("keeps only the top corners rounded on a phone, all four above it", () => {

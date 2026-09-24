@@ -114,7 +114,7 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
       {options.map(([optionValue, optionLabel]) => <label
         key={optionValue}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-tp-accent-wash ${value === optionValue ? "border-tp-accent bg-tp-accent-wash font-semibold text-tp-accent-hover" : "border-tp-border text-tp-value hover:border-tp-accent-soft"}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition max-sm:min-h-10 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-tp-accent-wash ${value === optionValue ? "border-tp-accent bg-tp-accent-wash font-semibold text-tp-accent-hover" : "border-tp-border text-tp-value hover:border-tp-accent-soft"}`}
       >
         <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-tp-accent-soft text-tp-accent" />
         {optionLabel}

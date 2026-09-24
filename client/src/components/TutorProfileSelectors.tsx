@@ -170,7 +170,7 @@ export function SearchableSingleSelect({
     aria-invalid={Boolean(error)}
     aria-label={`${label}, ${triggerText}`}
     onClick={isMobile ? () => (isOpen ? close() : setIsOpen(true)) : undefined}
-    className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-tp-heading outline-none transition hover:border-tp-accent-soft focus:border-tp-accent focus:ring-4 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-tp-danger" : "border-tp-border"}`}
+    className={`mt-1 flex min-h-9 max-sm:min-h-[var(--profile-field-height-phone,44px)] items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-tp-heading outline-none transition hover:border-tp-accent-soft focus:border-tp-accent focus:ring-4 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-tp-danger" : "border-tp-border"}`}
   >
     <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOption ? "text-tp-heading" : "text-tp-label-faint"}`}>{triggerText}</span>
     <ChevronDown aria-hidden="true" size={16} className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />

@@ -43,6 +43,11 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // Single-line controls only. A text box grows with what is typed and keeps
     // its own class, so it is not matched here.
     `.modal-field-profile { height: ${limits["modal.fieldHeight.profile"]}px; }`,
+    // A phone is tapped, not clicked, so it has its own height; the one above
+    // takes over again from where the dialog stops being a sheet.
+    `@media (max-width: 639px) { .modal-field-profile { height: ${limits["modal.fieldHeight.profilePhone"]}px; } }`,
+    // Pickers that grow a line per row of chosen chips can take only a floor.
+    `:root { --profile-field-height-phone: ${limits["modal.fieldHeight.profilePhone"]}px; }`,
     `.modal-field-journey { height: ${limits["modal.fieldHeight.journey"]}px; }`,
     // The letters inside a box, kept apart from the box's own height above -
     // one is type, the other is layout. Covers text areas too, which the
