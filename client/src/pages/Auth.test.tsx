@@ -189,6 +189,29 @@ describe("Public Guardian and Tutor account access", () => {
     expect(tutor.textContent).toContain("Select and login as a Tutor");
   });
 
+  it("pops the selected role's icon to the accent colour and back to muted when the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+    const guardianIcon = guardian.querySelector("svg")!;
+    const tutorIcon = tutor.querySelector("svg")!;
+
+    // Guardian is the default choice: its icon is popped, Tutor's is idle.
+    expect(guardianIcon.getAttribute("class")).toContain("text-j-accent");
+    expect(guardianIcon.getAttribute("class")).toContain("scale-110");
+    expect(tutorIcon.getAttribute("class")).toContain("text-j-ink-muted");
+    expect(tutorIcon.getAttribute("class")).toContain("scale-100");
+
+    await user.click(tutor);
+
+    expect(tutorIcon.getAttribute("class")).toContain("text-j-accent");
+    expect(tutorIcon.getAttribute("class")).toContain("scale-110");
+    expect(guardianIcon.getAttribute("class")).toContain("text-j-ink-muted");
+    expect(guardianIcon.getAttribute("class")).toContain("scale-100");
+  });
+
   it("keeps the chosen role on the sign-in button", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);

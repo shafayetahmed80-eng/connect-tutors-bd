@@ -86,7 +86,12 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
       className={`rounded-xl border p-[1.25em] text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
     >
       <span className="flex items-center gap-[0.6em]">
-        <Icon className="shrink-0 text-j-accent" size="1.5em" aria-hidden="true" />
+        {/* Idle in the ink-muted tone (3.75:1 on white); selecting pops it to the accent colour and up a touch. */}
+        <Icon
+          className={`shrink-0 transition-[color,transform] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${selected ? "scale-110 text-j-accent" : "scale-100 text-j-ink-muted"}`}
+          size="1.5em"
+          aria-hidden="true"
+        />
         <strong className="text-[1.3em] leading-[1.3]">{name}</strong>
       </span>
       <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{line}</span>
