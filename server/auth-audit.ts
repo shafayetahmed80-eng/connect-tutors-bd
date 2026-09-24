@@ -17,7 +17,9 @@ export type AuthAuditEvent =
   | "registration_rejected"
   | "registration_blocked"
   | "phone_intake"
-  | "phone_intake_blocked";
+  | "phone_intake_blocked"
+  /** Stdout only - `auth_events.event` is a fixed enum and this is an Admin action, not a sign-in. */
+  | "login_unblocked";
 
 export type AuthAuditFields = {
   role?: "tutor" | "guardian" | "admin";
