@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowRight, Camera, ChevronDown, Eye, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Check, ChevronDown, Eye, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
@@ -56,6 +56,7 @@ export function TutorProfileIdentityRail({
   onRemovePhoto,
   onPhotoPreviewError,
   completionPercentage,
+  requiredLeft,
   email,
   phone,
   address,
@@ -80,6 +81,8 @@ export function TutorProfileIdentityRail({
   onRemovePhoto: () => void;
   onPhotoPreviewError: () => void;
   completionPercentage: number;
+  /** Required answers still blank across every section; omitted, no count is shown. */
+  requiredLeft?: number;
   email: string;
   phone: string;
   address: string;
@@ -94,6 +97,8 @@ export function TutorProfileIdentityRail({
   // Phones only: from `lg` up the list is always on screen and this is unused.
   const [contactOpen, setContactOpen] = useState(false);
   const completionWidth = Math.max(0, Math.min(100, completionPercentage));
+  // The photo is required here but is not one of the section rows, so it is counted on its own.
+  const left = requiredLeft === undefined ? undefined : requiredLeft + (photoUrl ? 0 : 1);
 
   return <section
     aria-label="Profile summary"
@@ -178,9 +183,12 @@ export function TutorProfileIdentityRail({
     */}
     <div className="mt-4 border-b border-tp-border pb-4">
       <p className="text-xs text-tp-label">Profile completed: <span className="font-semibold tabular-nums text-tp-heading">{completionPercentage}%</span></p>
-      <div aria-hidden={true} className="mt-2 h-1 w-full overflow-hidden rounded-full bg-j-surface-muted">
-        <div className="h-full rounded-full bg-tp-accent transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${completionWidth}%` }} />
+      <div aria-hidden={true} className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-j-surface-muted">
+        <div className={`h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${left === 0 ? "bg-j-ok" : "bg-tp-accent"}`} style={{ width: `${completionWidth}%` }} />
       </div>
+      {left === undefined ? null : left === 0
+        ? <p className="mt-2 inline-flex items-center gap-1 text-2xs font-semibold text-j-ok"><Check size={12} aria-hidden={true} />Every required field is filled</p>
+        : <p className="mt-2 text-2xs text-tp-label"><span className="font-semibold tabular-nums text-tp-danger-ink">{left}</span> required {left === 1 ? "field" : "fields"} left</p>}
     </div>
 
     {onReturnToSelectedJob ? <Button

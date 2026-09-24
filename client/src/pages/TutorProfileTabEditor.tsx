@@ -39,13 +39,13 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
               type="button"
               aria-label={`Edit ${heading}`}
               onClick={() => onEditSection(active.id, groupTarget)}
-              className={`-my-1 shrink-0 ${tp.ghostIconButton}`}
+              className={`-my-1 shrink-0 gap-1.5 sm:inline-flex sm:items-center sm:border sm:border-tp-border sm:px-2.5 sm:text-xs sm:font-semibold ${tp.ghostIconButton}`}
             >
-              <PencilLine size={15} />
+              <PencilLine size={15} aria-hidden={true} /><span className="max-sm:hidden">Edit</span>
             </button>
           </div>
           <div className="mt-3">
-            <TutorProfileReadoutRows rows={group.rows} />
+            <TutorProfileReadoutRows rows={group.rows} onAdd={() => onEditSection(active.id, groupTarget)} />
           </div>
         </section>;
       })}
