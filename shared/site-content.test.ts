@@ -145,7 +145,7 @@ describe("the sidebars' colours", () => {
       "Sidebar colour", "Menu text colour", "Current page background", "Current page text colour",
     ]);
     // A page with no colour slots is unaffected.
-    expect(getSiteContentColourSlots("tutor-profile")).toHaveLength(0);
+    expect(getSiteContentColourSlots("guardian-profile")).toHaveLength(0);
   });
 
   it("tidies a typed colour, and refuses what is not one", () => {

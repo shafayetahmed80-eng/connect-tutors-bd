@@ -31,6 +31,7 @@ import SchoolNameField from "@/components/SchoolNameField";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
+import { useTutorProfileColours } from "./TutorProfileColours";
 import { BANGLADESH_COUNTRY_CODE } from "@/lib/tutorOnboarding";
 import { useIsMobile } from "@/hooks/useMobile";
 import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
@@ -51,7 +52,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
-const fieldClassName = "modal-field-profile input-text-profile mt-1 w-full rounded-lg border border-[#dbe7ef] bg-white px-2.5 py-1.5 text-j-ink outline-none transition placeholder:text-[#99aabb] focus:border-j-accent focus:ring-2 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb]";
+const fieldClassName = "modal-field-profile input-text-profile mt-1 w-full rounded-lg border border-tp-border bg-white px-2.5 py-1.5 text-tp-heading outline-none transition placeholder:text-tp-label-faint focus:border-tp-accent focus:ring-2 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken";
 
 /**
  * Two columns of controls that are all one line tall.
@@ -101,7 +102,7 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
   if (dropdownOnWide && !isMobile) {
     return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
       <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
-      <select aria-label={label} aria-invalid={Boolean(error)} aria-required={required || undefined} value={value} onChange={event => onChange(event.target.value)} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
+      <select aria-label={label} aria-invalid={Boolean(error)} aria-required={required || undefined} value={value} onChange={event => onChange(event.target.value)} className={`${fieldClassName} ${error ? "border-tp-danger" : ""}`}>
         <option value="">Select…</option>
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
@@ -113,9 +114,9 @@ function ChoiceGroup({ label, name, value, options, onChange, required = false, 
     <div className="mt-1 grid gap-1.5 sm:grid-cols-3">
       {options.map(([optionValue, optionLabel]) => <label
         key={optionValue}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${value === optionValue ? "border-j-accent bg-[#f0faff] font-semibold text-[#15557f]" : "border-[#dbe7ef] text-[#315b78] hover:border-[#b9d5e6]"}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-tp-accent-wash ${value === optionValue ? "border-tp-accent bg-tp-accent-wash font-semibold text-tp-accent-hover" : "border-tp-border text-tp-value hover:border-tp-accent-soft"}`}
       >
-        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-[#9fc7de] text-j-accent" />
+        <input type="radio" name={name} value={optionValue} checked={value === optionValue} onChange={() => onChange(optionValue)} className="h-4 w-4 border-tp-accent-soft text-tp-accent" />
         {optionLabel}
       </label>)}
     </div>
@@ -262,7 +263,7 @@ function CatalogSearchField({
     <span className={tp.fieldLabel}>{label}{required ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
     <span className="relative mt-1 block">
       <input
-        className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? "border-[#d84a4a]" : ""}`}
+        className={`${fieldClassName} mt-0 ${query ? "pr-9" : ""} ${error ? "border-tp-danger" : ""}`}
         type="text"
         role="combobox"
         aria-expanded={false}
@@ -282,20 +283,20 @@ function CatalogSearchField({
         type="button"
         onClick={clearSelection}
         aria-label={`Clear ${label}`}
-        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-[#6b8497] hover:bg-[#eef5fb] hover:text-[#244a6a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40"
+        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-tp-label hover:bg-tp-accent-wash hover:text-tp-value focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40"
       >
         <X size={14} />
       </button> : null}
     </span>
     <datalist id={listId}>{(options ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
-    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}
-    {truncated ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">Showing the first {limit} matches — type more to narrow the list.</span> : null}
-    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}
+    {truncated ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">Showing the first {limit} matches — type more to narrow the list.</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
 }
 
 function FormInput({ label, hint, error, required = false, showRequiredMarker = required, className: extraClassName, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${extraClassName ?? ""} ${error ? "border-[#d84a4a]" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}</label>;
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${extraClassName ?? ""} ${error ? "border-tp-danger" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}</label>;
 }
 
 /**
@@ -313,8 +314,8 @@ function FormPhoneInput({ label, error, required = false, showRequiredMarker = r
 }) {
   return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
-    <span className={`${fieldClassName} flex items-stretch overflow-hidden !px-0 !py-0 focus-within:border-j-accent focus-within:ring-2 focus-within:ring-[#dceffe] ${error ? "border-[#d84a4a]" : ""}`}>
-      <span aria-hidden="true" className="flex items-center border-r border-[#e4edf4] bg-[#f7fafc] px-2.5 font-bold text-[#5b7c94]">{BANGLADESH_COUNTRY_CODE}</span>
+    <span className={`${fieldClassName} flex items-stretch overflow-hidden !px-0 !py-0 focus-within:border-tp-accent focus-within:ring-2 focus-within:ring-tp-accent-wash ${error ? "border-tp-danger" : ""}`}>
+      <span aria-hidden="true" className="flex items-center border-r border-tp-border bg-j-surface-sunken px-2.5 font-bold text-tp-label">{BANGLADESH_COUNTRY_CODE}</span>
       <input
         type="tel"
         inputMode="numeric"
@@ -327,10 +328,10 @@ function FormPhoneInput({ label, error, required = false, showRequiredMarker = r
         aria-required={showRequiredMarker || undefined}
         value={toLocalPhoneDigits(value)}
         onChange={event => onChange(toStoredPhoneValue(event.target.value))}
-        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-j-ink outline-none placeholder:text-[#99aabb]"
+        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-tp-heading outline-none placeholder:text-tp-label-faint"
       />
     </span>
-    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
 }
 
@@ -344,11 +345,11 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
-    <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-[#d84a4a]" : ""}`}>
+    <select {...props} aria-label={label} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${error ? "border-tp-danger" : ""}`}>
       <option value="">{placeholder}</option>
       {options.map(option => <option key={option} value={option}>{option}</option>)}
     </select>
-    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
 }
 
@@ -358,9 +359,9 @@ function FormTextArea({ label, hint, error, required = false, showRequiredMarker
       <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
       {maxLength ? <CharacterRemaining value={value ?? ""} maxLength={maxLength} /> : null}
     </span>
-    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-[#d84a4a]" : ""}`} />
-    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-[#72889a]">{hint}</span> : null}
-    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-[#b43e3e]">{error}</span> : null}
+    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-tp-danger" : ""}`} />
+    {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}
+    {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
 }
 
@@ -379,7 +380,7 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
   onSelectFile: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-j-border py-3 first:pt-0">
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-tp-border py-3 first:pt-0">
     <input
       ref={inputRef}
       id={inputId}
@@ -390,14 +391,14 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
       aria-required={required || undefined}
       onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
     />
-    <p className="flex items-center gap-2 text-sm font-bold text-[#244a6a]">
-      {required ? <LockKeyhole className="shrink-0 text-j-accent" size={16} aria-hidden="true" /> : null}
+    <p className="flex items-center gap-2 text-sm font-bold text-tp-value">
+      {required ? <LockKeyhole className="shrink-0 text-tp-accent" size={16} aria-hidden="true" /> : null}
       {label}
-      {required ? <span aria-hidden="true" className="text-[#d84a4a]">*</span> : null}
+      {required ? <span aria-hidden="true" className="text-tp-danger">*</span> : null}
     </p>
     <div className="flex items-center gap-2">
-      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-[#20734c]"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
-      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-[#9dcde7] text-j-accent"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-j-ok"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
+      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-tp-accent-soft text-tp-accent"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
     </div>
   </div>;
 }
@@ -408,7 +409,7 @@ function digitsOnly(value: string, maxLength: number) {
 }
 
 function InlineError({ message }: { message?: string }) {
-  return message ? <p role="alert" className="mt-1.5 text-xs font-medium leading-5 text-[#b43e3e]">{message}</p> : null;
+  return message ? <p role="alert" className="mt-1.5 text-xs font-medium leading-5 text-tp-danger-ink">{message}</p> : null;
 }
 
 function TutorProfileWorkspaceBody({
@@ -1055,16 +1056,16 @@ function TutorProfileWorkspaceBody({
   const renderField = (fieldId: string): React.ReactNode => {
     switch (fieldId) {
       case "name": return nameLocked
-        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required readOnly value={form.name} className="bg-j-surface-muted text-j-ink-soft" />
+        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required readOnly value={form.name} className="bg-j-surface-muted text-tp-value" />
         : <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />;
-      case "gender": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.gender)}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.gender)} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-[#d84a4a]" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>;
+      case "gender": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.gender)}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.gender)} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-tp-danger" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>;
       case "dateOfBirth": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />;
       case "headline": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.headline)} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />;
       case "phone": return phoneLocked
-        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required readOnly value={form.phone} className="bg-j-surface-muted text-j-ink-soft" />
+        ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required readOnly value={form.phone} className="bg-j-surface-muted text-tp-value" />
         : <FormPhoneInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
       case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
-      case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}<span aria-hidden="true" className="text-[#d84a4a]"> *</span></span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
+      case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}<span aria-hidden="true" className="text-tp-danger"> *</span></span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
       case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
       case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />;
@@ -1080,7 +1081,7 @@ function TutorProfileWorkspaceBody({
       case "privateDetails.emergencyContactAddress": return <FormTextArea label={fieldLabel(fieldId, "Emergency Contact Address")} rows={2} value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />;
 
       case "highestEducation": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />;
-      case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-[#d84a4a]" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;
+      case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-tp-danger" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;
       case "universityId": return <CatalogSearchField label={fieldLabel(fieldId, "Institute")} query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.universityId} />;
       case "facultyDepartmentId": return <CatalogSearchField label={fieldLabel(fieldId, "Department / Subject")} query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.facultyDepartmentId} />;
       case "degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />;
@@ -1119,10 +1120,10 @@ function TutorProfileWorkspaceBody({
       case "preferredTeachingDays": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingDays)} required options={teachingDayOptions} selectedIds={selectedTeachingDayIds(form.preferredTeachingDays)} onChange={value => update("preferredTeachingDays", expandTeachingDayIds(value))} emptyMessage="No days found." error={fieldErrors.preferredTeachingDays} />;
       case "preferredTimeSlots": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.timeSlots)} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />;
       case "availableNationwide": return <label
-        className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-[#f7fbfd] p-3.5 text-sm text-[#315b78] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#dceffe] ${fieldErrors.availableNationwide ? "border-[#d84a4a]" : "border-[#d5e7f0]"}`}
+        className={`${wideFieldClassName} flex cursor-pointer items-start gap-3 rounded-lg border bg-j-surface-sunken p-3.5 text-sm text-tp-value has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-tp-accent-wash ${fieldErrors.availableNationwide ? "border-tp-danger" : "border-tp-border"}`}
       >
-        <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionTypes.includes("online") || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#9fc7de] text-j-accent" />
-        <span><strong className="block text-sm font-semibold text-[#244a6a]">{fieldLabel(fieldId, "Available nationwide for online tuition")}{form.tuitionTypes.includes("online") ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-[#72889a]">Required for Online tuition.</span><InlineError message={fieldErrors.availableNationwide} /></span>
+        <input type="checkbox" checked={form.availableNationwide} aria-required={form.tuitionTypes.includes("online") || undefined} onChange={event => update("availableNationwide", event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-tp-accent-soft text-tp-accent" />
+        <span><strong className="block text-sm font-semibold text-tp-value">{fieldLabel(fieldId, "Available nationwide for online tuition")}{form.tuitionTypes.includes("online") ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</strong><span className="mt-0.5 block text-xs leading-5 text-tp-label">Required for Online tuition.</span><InlineError message={fieldErrors.availableNationwide} /></span>
       </label>;
       case "currentCityId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentCity)} query={currentCityQuery} onQueryChange={setCurrentCityQuery} options={currentCityOptions} selectedId={form.currentCityId} onSelectedIdChange={handleCurrentCityChange} required error={fieldErrors.currentCityId} />;
       case "currentLocationId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentLocation)} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} disabled={!form.currentCityId} required error={fieldErrors.currentLocationId} />;
@@ -1183,7 +1184,7 @@ function TutorProfileWorkspaceBody({
       case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       // An ongoing qualification has no end year to give.
       case "educationRecords.studyEndYear": return record.currentlyStudying ? null : <FormInput label={fieldLabel(fieldId, "Study End Year")} required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
-      case "educationRecords.currentlyStudying": return <label className="flex items-center gap-2 self-end rounded-lg border border-[#dce8f0] px-3 py-2 text-sm font-medium text-[#244a6a]"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />{fieldLabel(fieldId, "Currently studying")}</label>;
+      case "educationRecords.currentlyStudying": return <label className="flex items-center gap-2 self-end rounded-lg border border-tp-border px-3 py-2 text-sm font-medium text-tp-value"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />{fieldLabel(fieldId, "Currently studying")}</label>;
       case "educationRecords.instituteIdCardNumber": return <FormInput label={fieldLabel(fieldId, "Institute ID Card Number")} placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />;
       case "educationRecords.passingYear": return <FormInput label={fieldLabel(fieldId, "Passing Year")} required inputMode="numeric" maxLength={4} value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       case "educationRecords.rollNumber": return <FormInput label={fieldLabel(fieldId, "Roll Number")} placeholder="Ex- 123456" value={record.rollNumber} onChange={event => updateEducationRecord(index, "rollNumber", event.target.value)} />;
@@ -1213,33 +1214,33 @@ function TutorProfileWorkspaceBody({
   };
   /** The repeatable Qualification history block, drawn for the `educationRecords` field. */
   const renderQualificationHistory = (recordFields: readonly ResolvedTutorProfileField[]): React.ReactNode => <div className="space-y-3">
-    <h3 className="font-bold text-[#244a6a]"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-[#d84a4a]">*</span></h3>
+    <h3 className="font-bold text-tp-value"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-tp-danger">*</span></h3>
     {form.educationRecords.map((record, index) => ({ record, index }))
       // Secondary and Higher Secondary have sections of their own above.
       .filter(({ record }) => !isSchoolQualification(record.qualificationLevel))
       .map(({ record, index }) => {
       const isOpen = openQualificationIndices.has(index);
       const summary = [record.degreeExamTitle || record.qualificationLevel, record.instituteName, isSchoolQualification(record.qualificationLevel) ? record.passingYear : record.currentlyStudying ? "Ongoing" : record.studyEndYear].filter(Boolean).join(" · ");
-      return <div key={index} className={`overflow-hidden rounded-xl border bg-white transition-shadow motion-reduce:transition-none ${isOpen ? "border-[#bcdcf3] shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-j-border"}`}>
+      return <div key={index} className={`overflow-hidden rounded-xl border bg-tp-card transition-shadow motion-reduce:transition-none ${isOpen ? "border-tp-accent-soft shadow-[0_6px_20px_-12px_rgba(22,125,221,0.45)]" : "border-tp-border"}`}>
         <div className="flex items-center gap-2 p-3 sm:px-4">
-          <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40">
-            <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-j-accent text-white" : "bg-[#eef5fb] text-[#4a708f]"}`}>{index + 1}</span>
+          <button type="button" aria-expanded={isOpen} onClick={() => toggleQualification(index)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40">
+            <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${isOpen ? "bg-tp-accent text-white" : "bg-tp-accent-wash text-tp-value"}`}>{index + 1}</span>
             <span className="min-w-0 flex-1">
               <span className={`block text-sm font-bold ${tp.heading}`}>{record.qualificationLevel || `Qualification ${index + 1}`}</span>
               {!isOpen && summary ? <span className={`mt-0.5 block truncate text-xs ${tp.bodySoft}`}>{summary}</span> : null}
             </span>
-            <ChevronDown size={16} className={`shrink-0 text-[#6b8497] transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
+            <ChevronDown size={16} className={`shrink-0 text-tp-label transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} aria-hidden={true} />
           </button>
-          {<Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-[#b23f3f] hover:bg-[#fff4f4] hover:text-[#9e3030]"><Trash2 size={15} /> Remove</Button>}
+          {<Button type="button" variant="ghost" onClick={() => removeEducationRecord(index)} className="shrink-0 text-tp-danger-ink hover:bg-j-err-wash hover:text-tp-danger-ink"><Trash2 size={15} /> Remove</Button>}
         </div>
-        {isOpen ? <div className="border-t border-j-border bg-[#fbfdfe] p-4">
+        {isOpen ? <div className="border-t border-tp-border bg-j-surface-sunken p-4">
           <div className="grid gap-x-5 gap-y-3.5 md:grid-cols-2">
             {recordFields.map(field => <React.Fragment key={field.id}>{renderEducationRecordField(field.id, record, index)}</React.Fragment>)}
           </div>
         </div> : null}
       </div>;
     })}
-    <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-[#9dcde7] text-j-accent"><Plus size={16} /> Add another qualification</Button>
+    <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-tp-accent-soft text-tp-accent"><Plus size={16} /> Add another qualification</Button>
   </div>;
 
   /**
@@ -1343,14 +1344,14 @@ function TutorProfileWorkspaceBody({
         {/* What an Admin asked for, to the Tutor being asked. It sits above the
             tabs rather than inside one, because the changes it names can be in
             any section. */}
-        {profile?.moderationNote ? <section role="status" className="rounded-xl border border-[#f0d9a8] bg-[#fdf8ee] px-4 py-3">
-          <p className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-[#8a6420]">
-            <RecordIcon name="notes" size={13} />Changes requested{profile.moderationNoteAt ? <span className="font-medium normal-case tracking-normal text-[#a08454]"> · {new Date(profile.moderationNoteAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> : null}
+        {profile?.moderationNote ? <section role="status" className="rounded-xl border border-j-warn-border bg-j-warn-wash px-4 py-3">
+          <p className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-j-warn-ink">
+            <RecordIcon name="notes" size={13} />Changes requested{profile.moderationNoteAt ? <span className="font-medium normal-case tracking-normal text-j-warn-ink/75"> · {new Date(profile.moderationNoteAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> : null}
           </p>
-          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-[#6b5326]">{profile.moderationNote}</p>
+          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-j-warn-ink">{profile.moderationNote}</p>
         </section> : null}
 
-        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]" : "border-j-err-border bg-j-err-wash text-j-err"}`}>{feedback.message}</p> : null}
+        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-j-ok-border bg-j-ok-wash text-j-ok" : "border-j-err-border bg-j-err-wash text-tp-danger-ink"}`}>{feedback.message}</p> : null}
 
         {previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
           sections={readoutSections}
@@ -1359,7 +1360,7 @@ function TutorProfileWorkspaceBody({
           onEditSection={openSectionEditor}
         />}
 
-        {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-j-border pt-4">
+        {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-tp-border pt-4">
           <Button type="button" disabled={isSavingProfile} onClick={() => void submitForReview()} className={`${tp.primaryButton} ${tutorProfileResponsiveClasses.completionActionButton} sm:w-auto`}><LockKeyhole size={16} />{submitProfileMutation.isPending ? "Submitting…" : "Submit profile for review"}</Button>
         </div> : null}
       </div>
@@ -1374,5 +1375,10 @@ function TutorProfileWorkspaceBody({
  * page renders unchanged when nothing has been overridden.
  */
 export function TutorProfileWorkspace(props: React.ComponentProps<typeof TutorProfileWorkspaceBody>) {
-  return <SiteContentProvider page="tutor-profile"><TutorProfileWorkspaceBody {...props} /></SiteContentProvider>;
+  return <SiteContentProvider page="tutor-profile"><TutorProfileColourScope /><TutorProfileWorkspaceBody {...props} /></SiteContentProvider>;
+}
+
+function TutorProfileColourScope() {
+  useTutorProfileColours();
+  return null;
 }

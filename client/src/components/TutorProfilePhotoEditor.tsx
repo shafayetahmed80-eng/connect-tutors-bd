@@ -61,13 +61,13 @@ export function TutorProfilePhotoEditor({ imageUrl, isSubmitting = false, onCanc
           <Cropper image={imageUrl} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)} />
         </div>
         <div className="space-y-3 px-4 pb-1 sm:px-5">
-          <label className="block text-sm font-semibold text-[#244a6a]">Zoom <input className="mt-2 w-full accent-j-accent" type="range" min={1} max={3} step={0.05} value={zoom} onChange={event => setZoom(Number(event.target.value))} aria-label="Photo zoom" /></label>
-          {error ? <p role="alert" className="text-sm font-medium text-[#bf3b3b]">{error}</p> : null}
+          <label className="block text-sm font-semibold text-tp-value">Zoom <input className="mt-2 w-full accent-tp-accent" type="range" min={1} max={3} step={0.05} value={zoom} onChange={event => setZoom(Number(event.target.value))} aria-label="Photo zoom" /></label>
+          {error ? <p role="alert" className="text-sm font-medium text-tp-danger-ink">{error}</p> : null}
         </div>
       </ModalBody>
       <ModalFooter>
-        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); }} className="border-[#c9ddeb] text-[#42657d]"><RotateCcw size={15} /> <SiteText slotId="button-section.profile.photoReset" fallback="Reset" /></Button>
-        <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-j-accent font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : <SiteText slotId="button-section.profile.photoUse" fallback="Use this photo" />}</Button>
+        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); }} className="border-tp-border text-tp-value"><RotateCcw size={15} /> <SiteText slotId="button-section.profile.photoReset" fallback="Reset" /></Button>
+        <Button type="button" disabled={isSubmitting || !croppedAreaPixels} onClick={() => void confirmCrop()} className="bg-tp-accent font-bold"><Check size={16} /> {isSubmitting ? "Uploading…" : <SiteText slotId="button-section.profile.photoUse" fallback="Use this photo" />}</Button>
       </ModalFooter>
     </Modal>
   );

@@ -61,10 +61,10 @@ describe("TutorProfileSummaryView", () => {
     // tutor whether a blank actually blocks submission.
     const missing = screen.getAllByText("Not given");
     expect(missing).toHaveLength(4);
-    expect(missing.filter(node => node.className.includes("text-j-err"))).toHaveLength(2);
-    expect(missing.filter(node => node.className.includes("#9aabbb"))).toHaveLength(2);
+    expect(missing.filter(node => node.className.includes("text-tp-danger-ink"))).toHaveLength(2);
+    expect(missing.filter(node => node.className.includes("text-tp-label-faint"))).toHaveLength(2);
 
-    expect(screen.getByText("Sojib").className).toContain("#243b52");
+    expect(screen.getByText("Sojib").className).toContain("text-tp-value");
   });
 
   it("lists sections the way the tabs lay them out, without repeating a heading", () => {

@@ -38,10 +38,10 @@ export function TutorProfileSummaryView({ sections, showProgress = true }: {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h2 className={`text-sm ${tp.heading}`}>Profile preview</h2>
-          <p className="mt-0.5 text-2xs text-[#8496a6]">Every detail on your profile, filled or still missing.</p>
+          <p className="mt-0.5 text-2xs text-tp-label">Every detail on your profile, filled or still missing.</p>
         </div>
-        <p className="shrink-0 text-2xs font-bold text-j-ink tabular-nums">
-          {overall.filled}<span className="text-[#8496a6]">/{overall.total} required filled</span>
+        <p className="shrink-0 text-2xs font-bold text-tp-heading tabular-nums">
+          {overall.filled}<span className="text-tp-label">/{overall.total} required filled</span>
         </p>
       </div>
     </div> : null}
@@ -55,7 +55,7 @@ export function TutorProfileSummaryView({ sections, showProgress = true }: {
         <div className="flex items-baseline justify-between gap-3 px-1 pt-1">
           <h3 className={`text-sm ${tp.heading}`}>{section.title}</h3>
           {/* A section with no required field shows no count - and no "Optional" in its place. */}
-          {showProgress && sectionCount.total > 0 ? <span className="shrink-0 text-2xs font-bold text-[#8496a6] tabular-nums">
+          {showProgress && sectionCount.total > 0 ? <span className="shrink-0 text-2xs font-bold text-tp-label tabular-nums">
             {`${sectionCount.filled}/${sectionCount.total}`}
           </span> : null}
         </div>
@@ -66,7 +66,7 @@ export function TutorProfileSummaryView({ sections, showProgress = true }: {
           // title, which the header above already shows - so the card just
           // carries its rows rather than saying the same thing twice.
           return <section key={groupIndex} className={`${tp.card} ${sectionPadding}`}>
-            {group.heading ? <div className="mb-3 border-b border-j-border pb-3">
+            {group.heading ? <div className="mb-3 border-b border-tp-border pb-3">
               <h4 className={tp.heading}>
                 {groupTarget
                   ? <SiteText slotId={`tutor-profile.group.${groupTarget}`} fallback={group.heading} className="text-sm" />

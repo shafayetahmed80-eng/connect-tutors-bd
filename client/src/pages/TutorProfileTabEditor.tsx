@@ -31,7 +31,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
         const heading = group.heading ?? active.title;
         const groupTarget = group.editTarget;
         return <section key={groupIndex} className={`${tp.card} ${sectionPadding}`}>
-          <div className="flex items-center justify-between gap-3 border-b border-j-border pb-3">
+          <div className="flex items-center justify-between gap-3 border-b border-tp-border pb-3">
             <h3 className={tp.heading}>
               {groupTarget ? <SiteText slotId={`tutor-profile.group.${groupTarget}`} fallback={heading} className="text-sm" /> : <span className="text-sm">{heading}</span>}
             </h3>

@@ -54,8 +54,8 @@ export function SearchableMultiSelect({
   className,
 }: SearchableMultiSelectProps) {
   return <div className={`${tutorProfileResponsiveClasses.selectorRoot}${className ? ` ${className}` : ""}`}>
-    <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
-    {description ? <p className="mt-0.5 text-2xs leading-4 text-[#72889a]">{description}</p> : null}
+    <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</span>
+    {description ? <p className="mt-0.5 text-2xs leading-4 text-tp-label">{description}</p> : null}
     <div className="mt-1">
       <ChipMultiSelect
         label={label}
@@ -71,7 +71,7 @@ export function SearchableMultiSelect({
         emptyMessage={emptyMessage}
       />
     </div>
-    {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
+    {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-tp-danger-ink">{error}</p> : null}
   </div>;
 }
 
@@ -127,7 +127,7 @@ export function SearchableSingleSelect({
   const triggerText = selectedOption?.label ?? placeholder ?? `Select ${label.toLocaleLowerCase()}`;
 
   const optionList = <>
-    <label className="flex items-center gap-2 rounded-xl border border-[#dbe7ef] px-3 py-2 text-[#59788e] focus-within:border-j-accent focus-within:ring-4 focus-within:ring-[#dceffe]">
+    <label className="flex items-center gap-2 rounded-xl border border-tp-border px-3 py-2 text-tp-label focus-within:border-tp-accent focus-within:ring-4 focus-within:ring-tp-accent-wash">
       <Search aria-hidden="true" size={16} />
       <input
         autoFocus
@@ -135,12 +135,12 @@ export function SearchableSingleSelect({
         aria-label={`Search ${label}`}
         value={query}
         onChange={event => setQuery(event.target.value)}
-        className="min-w-0 flex-1 bg-transparent text-sm text-j-ink outline-none placeholder:text-[#99aabb]"
+        className="min-w-0 flex-1 bg-transparent text-sm text-tp-heading outline-none placeholder:text-tp-label-faint"
         placeholder={`Search ${label.toLocaleLowerCase()}`}
       />
     </label>
     <div role="listbox" aria-label={`${label} options`} className="mt-2 max-h-52 overflow-y-auto px-1 pb-1">
-      {results.length === 0 ? <p className="px-2 py-4 text-sm text-[#72889a]">{emptyMessage}</p> : results.map(option => {
+      {results.length === 0 ? <p className="px-2 py-4 text-sm text-tp-label">{emptyMessage}</p> : results.map(option => {
         const selected = option.id === value;
         return <button
           key={option.id}
@@ -149,10 +149,10 @@ export function SearchableSingleSelect({
           aria-selected={selected}
           disabled={option.disabled}
           onClick={() => pick(option.id)}
-          className="flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-[#284e6d] outline-none hover:bg-[#f1f9ff] focus-visible:ring-2 focus-visible:ring-j-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-tp-value outline-none hover:bg-tp-accent-wash focus-visible:ring-2 focus-visible:ring-tp-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="flex-1">{option.label}</span>
-          {selected ? <Check aria-label="Selected" size={15} className="text-j-accent" /> : null}
+          {selected ? <Check aria-label="Selected" size={15} className="text-tp-accent" /> : null}
         </button>;
       })}
     </div>
@@ -170,14 +170,14 @@ export function SearchableSingleSelect({
     aria-invalid={Boolean(error)}
     aria-label={`${label}, ${triggerText}`}
     onClick={isMobile ? () => (isOpen ? close() : setIsOpen(true)) : undefined}
-    className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-j-ink outline-none transition hover:border-[#96c9e8] focus:border-j-accent focus:ring-4 focus:ring-[#dceffe] disabled:cursor-not-allowed disabled:bg-[#f4f8fb] ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-[#d84a4a]" : "border-[#dbe7ef]"}`}
+    className={`mt-1 flex min-h-9 items-center justify-between gap-3 rounded-lg border bg-white px-2.5 py-1.5 text-left text-xs text-tp-heading outline-none transition hover:border-tp-accent-soft focus:border-tp-accent focus:ring-4 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken ${tutorProfileResponsiveClasses.selectorTrigger} ${error ? "border-tp-danger" : "border-tp-border"}`}
   >
-    <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOption ? "text-j-ink" : "text-[#99aabb]"}`}>{triggerText}</span>
+    <span className={`${tutorProfileResponsiveClasses.selectorText} ${selectedOption ? "text-tp-heading" : "text-tp-label-faint"}`}>{triggerText}</span>
     <ChevronDown aria-hidden="true" size={16} className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
   </button>;
 
   return <div className={tutorProfileResponsiveClasses.selectorRoot} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } }}>
-    <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-[#d84a4a]"> *</span> : null}</span>
+    <span className={tutorProfileTheme.fieldLabel}>{label}{required ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</span>
     {isMobile ? triggerButton : (
       <Popover.Root open={isOpen} onOpenChange={nextOpen => (nextOpen ? setIsOpen(true) : close())}>
         <Popover.Trigger asChild>{triggerButton}</Popover.Trigger>
@@ -193,17 +193,17 @@ export function SearchableSingleSelect({
             side="bottom"
             sideOffset={8}
             collisionPadding={12}
-            className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-[#cae0ee] bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
+            className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-tp-border bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
           >
             {optionList}
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
     )}
-    {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-[#b43e3e]">{error}</p> : null}
+    {error ? <p role="alert" className="mt-1 text-2xs font-medium leading-4 text-tp-danger-ink">{error}</p> : null}
     <Sheet open={isOpen && isMobile} onOpenChange={nextOpen => nextOpen ? setIsOpen(true) : close()}>
-      <SheetContent id={listboxId} side="bottom" aria-label={`${label} selection`} className="h-[min(70dvh,34rem)] w-full gap-0 rounded-t-3xl border-[#cae0ee] bg-white p-0 sm:max-w-none">
-        <SheetHeader className="border-b border-[#e3edf4] px-5 pb-3 pt-5">
+      <SheetContent id={listboxId} side="bottom" aria-label={`${label} selection`} className="h-[min(70dvh,34rem)] w-full gap-0 rounded-t-3xl border-tp-border bg-white p-0 sm:max-w-none">
+        <SheetHeader className="border-b border-tp-border px-5 pb-3 pt-5">
           <SheetTitle>{label}</SheetTitle>
           <SheetDescription>Search and pick one.</SheetDescription>
         </SheetHeader>

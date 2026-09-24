@@ -16,10 +16,10 @@ import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
  */
 function MetaRow({ icon: Icon, label, value }: { icon: typeof GraduationCap; label: string; value: string }) {
   return <div className="flex items-start gap-2.5">
-    <Icon size={15} className="mt-0.5 shrink-0 text-[#8fa6b6]" aria-hidden={true} />
+    <Icon size={15} className="mt-0.5 shrink-0 text-tp-label-faint" aria-hidden={true} />
     <span className="min-w-0">
-      <span className="block text-[11px] leading-4 text-[#8496a6]">{label}</span>
-      <span className={`block break-words text-sm leading-5 ${value ? "text-j-ink" : tp.rowValueMissingTone}`}>{value || "Not given"}</span>
+      <span className="block text-[11px] leading-4 text-tp-label">{label}</span>
+      <span className={`block break-words text-sm leading-5 ${value ? "text-tp-heading" : tp.rowValueMissingTone}`}>{value || "Not given"}</span>
     </span>
   </div>;
 }
@@ -117,7 +117,7 @@ export function TutorProfileIdentityRail({
           disabled={uploadingPhoto}
           onClick={() => photoInputRef.current?.click()}
           aria-label={hasPhoto ? "Replace photo" : "Upload photo"}
-          className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-j-accent text-white shadow-sm transition hover:bg-j-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:size-10"
+          className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full border-2 border-white bg-tp-accent text-white shadow-sm transition hover:bg-tp-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 disabled:opacity-60 max-md:size-10"
         >
           <Camera size={15} aria-hidden={true} />
         </button>
@@ -137,22 +137,22 @@ export function TutorProfileIdentityRail({
       */}
       {hasPhoto ? <p className="col-start-2 row-start-3 mt-1.5 text-xs lg:col-auto lg:row-auto lg:mt-2.5">
         {/* Two words a thumb has to hit: on a phone they carry 40px of their own. */}
-        <button type="button" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className="inline-flex items-center rounded font-medium text-j-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:pr-2">
+        <button type="button" disabled={uploadingPhoto} onClick={() => photoInputRef.current?.click()} className="inline-flex items-center rounded font-medium text-tp-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:pr-2">
           {uploadingPhoto ? "Uploading…" : "Replace"}
         </button>
-        <span className="px-1.5 text-[#c3d1db]" aria-hidden={true}>·</span>
-        <button type="button" disabled={uploadingPhoto} onClick={onRemovePhoto} className="inline-flex items-center rounded font-medium text-[#bf3b3b] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:px-2">
+        <span className="px-1.5 text-tp-label-faint" aria-hidden={true}>·</span>
+        <button type="button" disabled={uploadingPhoto} onClick={onRemovePhoto} className="inline-flex items-center rounded font-medium text-tp-danger-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 disabled:opacity-60 max-md:min-h-10 max-md:px-2">
           Remove photo
         </button>
-      </p> : <p className="col-start-2 row-start-3 mt-1.5 text-xs font-medium text-j-err lg:col-auto lg:row-auto lg:mt-2.5">
+      </p> : <p className="col-start-2 row-start-3 mt-1.5 text-xs font-medium text-tp-danger-ink lg:col-auto lg:row-auto lg:mt-2.5">
         {uploadingPhoto ? "Uploading…" : "Add photo · required"}
       </p>}
 
-      <h2 className="col-start-2 row-start-1 break-words text-base font-semibold leading-6 tracking-[-0.02em] text-j-ink lg:col-auto lg:row-auto lg:mt-3">
+      <h2 className="col-start-2 row-start-1 break-words text-base font-semibold leading-6 tracking-[-0.02em] text-tp-heading lg:col-auto lg:row-auto lg:mt-3">
         {name || "Your Tutor profile"}
       </h2>
-      <p className="col-start-2 row-start-2 mt-0.5 flex items-center gap-1.5 text-xs tabular-nums text-[#6b8497] lg:col-auto lg:row-auto lg:mt-1 lg:justify-center">
-        <IdCard size={15} className="shrink-0 text-[#8fa6b6]" aria-hidden={true} />
+      <p className="col-start-2 row-start-2 mt-0.5 flex items-center gap-1.5 text-xs tabular-nums text-tp-label lg:col-auto lg:row-auto lg:mt-1 lg:justify-center">
+        <IdCard size={15} className="shrink-0 text-tp-label-faint" aria-hidden={true} />
         Tutor ID: {tutorNumber ?? "Preparing"}
         {verified ? <TutorVerifiedBadge className="ml-0.5" /> : null}
       </p>
@@ -169,17 +169,17 @@ export function TutorProfileIdentityRail({
       accept="image/jpeg,image/jpg,image/pjpeg,image/png,image/webp"
       onChange={onSelectPhoto}
     />
-    {photoError ? <p role="alert" className="mt-2 text-2xs font-medium leading-4 text-j-err">{photoError}</p> : null}
+    {photoError ? <p role="alert" className="mt-2 text-2xs font-medium leading-4 text-tp-danger-ink">{photoError}</p> : null}
 
     {/*
       The percentage keeps its sentence; the bar underneath is decoration for
       it and is hidden from assistive tech, which would otherwise hear the same
       number twice.
     */}
-    <div className="mt-4 border-b border-j-border pb-4">
-      <p className="text-xs text-[#6b8497]">Profile completed: <span className="font-semibold tabular-nums text-j-ink">{completionPercentage}%</span></p>
-      <div aria-hidden={true} className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#e8eff5]">
-        <div className="h-full rounded-full bg-j-accent transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${completionWidth}%` }} />
+    <div className="mt-4 border-b border-tp-border pb-4">
+      <p className="text-xs text-tp-label">Profile completed: <span className="font-semibold tabular-nums text-tp-heading">{completionPercentage}%</span></p>
+      <div aria-hidden={true} className="mt-2 h-1 w-full overflow-hidden rounded-full bg-j-surface-muted">
+        <div className="h-full rounded-full bg-tp-accent transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${completionWidth}%` }} />
       </div>
     </div>
 
@@ -195,7 +195,7 @@ export function TutorProfileIdentityRail({
       type="button"
       onClick={() => setContactOpen(open => !open)}
       aria-expanded={contactOpen}
-      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-xs font-medium text-[#6b8497] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 max-md:min-h-10 lg:hidden"
+      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-xs font-medium text-tp-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 max-md:min-h-10 lg:hidden"
     >
       Contact and institute
       <ChevronDown size={15} aria-hidden={true} className={`shrink-0 transition-transform motion-reduce:transition-none ${contactOpen ? "rotate-180" : ""}`} />
@@ -212,7 +212,7 @@ export function TutorProfileIdentityRail({
       type="button"
       variant="outline"
       onClick={onTogglePreview}
-      className={`mt-4 rounded-xl border-j-accent/40 bg-j-accent-wash font-semibold text-j-accent transition hover:bg-j-accent hover:text-white ${tutorProfileResponsiveClasses.completionActionButton}`}
+      className={`mt-4 rounded-xl border-tp-accent/40 bg-tp-accent-wash font-semibold text-tp-accent transition hover:bg-tp-accent hover:text-white ${tutorProfileResponsiveClasses.completionActionButton}`}
     >
       {previewMode ? <><PencilLine size={15} /> Edit Information</> : <><Eye size={15} /> View Profile</>}
     </Button>
