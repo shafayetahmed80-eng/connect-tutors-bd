@@ -133,6 +133,7 @@ import type { JobPaymentStatus } from "@shared/job-payment-status";
 import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSummary, type CancellationReason, type ChargeTerms, type SettlementDisposition } from "@shared/platform-charge";
 import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
 import {
+  buildOnlineTuitionNationwideRefinement,
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
   tutorProfileDraftSchema,
@@ -1696,7 +1697,8 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (existingProfile.name?.trim()) input = { ...input, name: undefined };
     if (existingProfile.phone?.trim()) input = { ...input, phone: undefined };
     const effectiveDraft = mergeTutorProfileDraft(existingProfile, input);
-    const effectiveDraftResult = tutorProfileDraftSchema.safeParse(effectiveDraft);
+    const fieldConfig = await getTutorProfileFieldConfig();
+    const effectiveDraftResult = tutorProfileDraftSchema.superRefine(buildOnlineTuitionNationwideRefinement(fieldConfig)).safeParse(effectiveDraft);
     if (!effectiveDraftResult.success) {
       throw new TutorProfileValidationError(effectiveDraftResult.error.issues.map(issue => ({ path: issue.path.map(String), message: issue.message })));
     }
@@ -1891,7 +1893,10 @@ export async function submitTutorProfile(userId: number) {
       universityIdDocumentStatus: profile.universityIdDocumentStatus,
     };
     const fieldConfig = await getTutorProfileFieldConfig();
-    const parsed = tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(fieldConfig)).safeParse(editableProfile);
+    const parsed = tutorProfileDraftSchema
+      .superRefine(buildTutorProfileSubmissionRefinement(fieldConfig))
+      .superRefine(buildOnlineTuitionNationwideRefinement(fieldConfig))
+      .safeParse(editableProfile);
     if (!parsed.success) {
       throw new TutorProfileValidationError(parsed.error.issues.map(issue => ({ path: issue.path.map(String), message: issue.message })));
     }
