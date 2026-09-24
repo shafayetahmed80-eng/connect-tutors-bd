@@ -32,7 +32,7 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
   return <div
     role="tablist"
     aria-label="Profile sections"
-    className="nav-tab-outer sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-j-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur"
+    className="nav-tab-outer sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-tp-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur"
   >
     {sections.map(section => <SectionTab
       key={section.id}
@@ -68,13 +68,13 @@ function SectionTab({ section, isActive, onSelect }: {
     aria-selected={isActive}
     onClick={onSelect}
     style={textStyle}
-    className={`flex min-w-max flex-1 items-center justify-center gap-[0.4em] rounded-lg px-[0.85em] py-[0.5em] text-sm leading-[1.4] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent/40 ${
-      isActive ? "bg-white font-semibold text-j-ink shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-j-ink-soft hover:text-j-ink"
+    className={`flex min-w-max flex-1 items-center justify-center gap-[0.4em] rounded-lg px-[0.85em] py-[0.5em] text-sm leading-[1.4] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 ${
+      isActive ? "bg-white font-semibold text-tp-heading shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-tp-value hover:text-tp-heading"
     }`}
   >
     <span className="truncate">{label}</span>
     {total === 0 ? null : <span className={`shrink-0 text-[0.8em] font-bold tabular-nums ${
-      complete ? "text-[#1c8a5b]" : isActive ? "text-j-accent" : "text-[#94a6b4]"
+      complete ? "text-j-ok" : isActive ? "text-tp-accent" : "text-tp-label-faint"
     }`}>
       {complete ? <Check size="1em" aria-hidden={true} /> : `${filled}/${total}`}
     </span>}

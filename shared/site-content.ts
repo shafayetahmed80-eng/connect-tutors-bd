@@ -21,6 +21,7 @@ import {
   sidebarTabsSlotId,
 } from "./sidebar-tabs";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK } from "./community";
+import { tutorProfileColourParts, tutorProfileColours, tutorProfileColourSlotId } from "./tutor-profile-colours";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels } from "./platform-charge";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
 export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control"] as const;
@@ -464,15 +465,26 @@ const sidebarColourLabels: Record<(typeof sidebarColourParts)[number], { label: 
   "pill-text": { label: "Current page text colour", help: "The name of the page being viewed, on that pill." },
 };
 
-const siteContentColourSlots: SiteContentColourSlot[] = sidebarPanels.flatMap(panel => sidebarColourParts.map(part => ({
-  id: sidebarColourSlotId(panel.id, part),
-  page: "sidebar-tabs" as const,
-  surface: panel.surface,
-  group: "Colours",
-  label: sidebarColourLabels[part].label,
-  defaultHex: part === "pill-text" ? panel.colours.pillText : part === "pill" ? panel.colours.pill : part === "text" ? panel.colours.text : panel.colours.panel,
-  help: sidebarColourLabels[part].help,
-})));
+const siteContentColourSlots: SiteContentColourSlot[] = [
+  ...sidebarPanels.flatMap(panel => sidebarColourParts.map(part => ({
+    id: sidebarColourSlotId(panel.id, part),
+    page: "sidebar-tabs" as const,
+    surface: panel.surface,
+    group: "Colours",
+    label: sidebarColourLabels[part].label,
+    defaultHex: part === "pill-text" ? panel.colours.pillText : part === "pill" ? panel.colours.pill : part === "text" ? panel.colours.text : panel.colours.panel,
+    help: sidebarColourLabels[part].help,
+  }))),
+  ...tutorProfileColourParts.map(part => ({
+    id: tutorProfileColourSlotId(part),
+    page: "tutor-profile" as const,
+    surface: "Tutor dashboard",
+    group: "Colours",
+    label: tutorProfileColours[part].label,
+    defaultHex: tutorProfileColours[part].defaultHex,
+    help: tutorProfileColours[part].help,
+  })),
+];
 
 const siteContentSizeSlots: SiteContentSizeSlot[] = [
   {

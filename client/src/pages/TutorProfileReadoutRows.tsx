@@ -29,10 +29,10 @@ export function TutorProfileReadoutRows({ rows }: { rows: TutorProfileReadoutRow
   return <dl className="grid lg:grid-cols-2 lg:gap-x-10">
     {rows.map(row => <div
       key={row.label}
-      className="flex flex-col gap-px border-b border-j-border/60 py-1.5 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3 sm:py-2 lg:[&:nth-last-child(2)]:border-b-0"
+      className="flex flex-col gap-px border-b border-tp-border/60 py-1.5 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3 sm:py-2 lg:[&:nth-last-child(2)]:border-b-0"
     >
       <dt className={`flex items-center gap-1.5 text-[11px] sm:w-40 sm:shrink-0 sm:text-[12px] ${tp.rowLabelTone}`} style={sizeStyle}>
-        <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]"><LabelIcon label={row.label} /></span>{row.label}
+        <span aria-hidden="true" className="shrink-0 text-tp-accent-soft"><LabelIcon label={row.label} /></span>{row.label}
       </dt>
       <dd className={`min-w-0 break-words text-[13px] sm:text-[12px] ${row.missing && !row.optional ? tp.rowValueMissingTone : row.missing ? tp.rowValueMutedTone : tp.rowValueTone}`} style={sizeStyle}>{row.value}</dd>
     </div>)}

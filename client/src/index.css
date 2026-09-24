@@ -20,8 +20,14 @@
   --color-j-ink: var(--j-ink); --color-j-ink-strong: var(--j-ink-strong); --color-j-ink-soft: var(--j-ink-soft); --color-j-ink-muted: var(--j-ink-muted); --color-j-ink-faint: var(--j-ink-faint);
   --color-j-accent: var(--j-accent); --color-j-accent-hover: var(--j-accent-hover); --color-j-accent-wash: var(--j-accent-wash);
   --color-j-ok: var(--j-ok); --color-j-ok-wash: var(--j-ok-wash); --color-j-ok-border: var(--j-ok-border);
-  --color-j-warn: var(--j-warn);
+  --color-j-warn: var(--j-warn); --color-j-warn-wash: var(--j-warn-wash); --color-j-warn-border: var(--j-warn-border); --color-j-warn-ink: var(--j-warn-ink);
   --color-j-err: var(--j-err); --color-j-err-wash: var(--j-err-wash); --color-j-err-border: var(--j-err-border);
+  /* Tutor Profile (`tp-*`) — the colours an Owner may change for the Tutor's profile. */
+  --color-tp-accent: var(--tp-accent); --color-tp-accent-hover: var(--tp-accent-hover); --color-tp-accent-wash: var(--tp-accent-wash); --color-tp-accent-soft: var(--tp-accent-soft);
+  --color-tp-heading: var(--tp-heading); --color-tp-value: var(--tp-value);
+  --color-tp-label: var(--tp-label); --color-tp-label-faint: var(--tp-label-faint);
+  --color-tp-danger: var(--tp-danger); --color-tp-danger-ink: var(--tp-danger-ink);
+  --color-tp-card: var(--tp-card); --color-tp-border: var(--tp-border);
 }
 
 :root { --background: #fffefa; --foreground: #102849; --card: #ffffff; --card-foreground: #102849; --popover: #ffffff; --popover-foreground: #102849; --primary: #1677e8; --primary-foreground: #ffffff; --secondary: #eaf5ff; --secondary-foreground: #102849; --muted: #f4f8fb; --muted-foreground: #68809d; --accent: #eaf5ff; --accent-foreground: #102849; --destructive: #dc4c4c; --destructive-foreground: #fff; --border: #dce8f1; --input: #dce8f1; --ring: #1677e8; --sidebar: #fbfdff; --sidebar-foreground: #102849; --sidebar-border: #e6eef4; --sidebar-accent: #f1f5f9; --sidebar-accent-foreground: #2b4d66; --radius: 1rem; }
@@ -51,9 +57,44 @@
   --j-ok-wash: #f1fbf5;
   --j-ok-border: #bfe5cf;
   --j-warn: #df9a1d;
+  --j-warn-wash: #fdf8ee;
+  --j-warn-border: #f0d9a8;
+  --j-warn-ink: #7a5b23;
   --j-err: #a43232;
   --j-err-wash: #fff5f5;
   --j-err-border: #f2c4c4;
+}
+
+/* Tutor Profile colours. The seven base colours are what an Owner may change
+ * (Admin > Dynamic Section > Tutor Profile); the rest are mixed from them.
+ * The Owner's choices are set on <html> itself while the profile is open, not
+ * on a wrapper: a mix resolves where it is declared, and the profile's
+ * dropdowns and sheets render outside the page, where a wrapper cannot reach. */
+:root {
+  --tp-accent: var(--j-accent);
+  --tp-heading: var(--j-ink);
+  --tp-value: #243b52;
+  --tp-label: #6b8497;
+  --tp-danger: #d84a4a;
+  --tp-card: #ffffff;
+  --tp-border: #dbe7ef;
+  /* The shipped shades, for a browser without color-mix(); without these the
+   * build's own fallback is the base colour itself - a pale wash would paint
+   * solid accent. Such a browser keeps these even under an Owner's colours. */
+  --tp-accent-hover: #1267b5;
+  --tp-accent-wash: #e8f2fc;
+  --tp-accent-soft: #a6cef2;
+  --tp-label-faint: #9aabb8;
+  --tp-danger-ink: #b13d3d;
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  :root {
+    --tp-accent-hover: color-mix(in srgb, var(--tp-accent) 82%, #000);
+    --tp-accent-wash: color-mix(in srgb, var(--tp-accent) 10%, #fff);
+    --tp-accent-soft: color-mix(in srgb, var(--tp-accent) 38%, #fff);
+    --tp-label-faint: color-mix(in srgb, var(--tp-label) 68%, #fff);
+    --tp-danger-ink: color-mix(in srgb, var(--tp-danger) 82%, #000);
+  }
 }
 
 /* Element resets belong in `base`, not outside every layer. Unlayered rules

@@ -67,9 +67,9 @@ describe("tutor profile readout rows", () => {
     // telling a tutor which blank actually blocks submission.
     const missing = screen.getAllByText("Not given");
     expect(missing).toHaveLength(2);
-    expect(missing[0].className).toContain("text-j-err");
-    expect(missing[1].className).toContain("#9aabbb");
-    expect(screen.getByText("English Medium").className).toContain("#243b52");
+    expect(missing[0].className).toContain("text-tp-danger-ink");
+    expect(missing[1].className).toContain("text-tp-label-faint");
+    expect(screen.getByText("English Medium").className).toContain("text-tp-value");
   });
 
   it("keeps the shipped class and the registry's default on the same number", () => {
@@ -107,7 +107,7 @@ describe("tutor profile readout rows", () => {
     // Combining rowValueMissing with another text-* class leaves two font
     // sizes on one element and no reliable winner.
     expect(tp.rowValueMissingTone).not.toMatch(/\btext-\[/);
-    expect(tp.rowValueMissingTone).toContain("text-j-err");
+    expect(tp.rowValueMissingTone).toContain("text-tp-danger-ink");
   });
 
   it("clamps a size stored outside the supported range", () => {

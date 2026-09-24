@@ -92,15 +92,15 @@ export default function SchoolNameField({ label, value, onChange, placeholder, r
         className={`${inputClassName ?? ""} pr-8`}
       />
       {create.isPending || (searchable && results.isFetching)
-        ? <Loader2 aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 animate-spin text-[#8ba1b2]" />
-        : <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 text-[#8ba1b2]" />}
+        ? <Loader2 aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 animate-spin text-tp-label-faint" />
+        : <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 text-tp-label-faint" />}
       {open && rowCount > 0 ? <ul
         id={`${listId}-list`}
         role="listbox"
         aria-label={label}
         // A press on the list would blur the box first and close the list under the pointer.
         onMouseDown={event => event.preventDefault()}
-        className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-[#dbe7ef] bg-white py-1 text-sm shadow-lg"
+        className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-tp-border bg-white py-1 text-sm shadow-lg"
       >
         {options.map((option, index) => <li
           key={option.id}
@@ -109,10 +109,10 @@ export default function SchoolNameField({ label, value, onChange, placeholder, r
           aria-selected={index === highlight}
           onMouseEnter={() => setHighlight(index)}
           onClick={() => pick(index)}
-          className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-2 ${index === highlight ? "bg-[#eef6fd]" : ""}`}
+          className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-2 ${index === highlight ? "bg-tp-accent-wash" : ""}`}
         >
-          <span className="min-w-0 break-words text-j-ink">{option.name}</span>
-          {option.division ? <span className="shrink-0 text-2xs text-[#8ba1b2]">{schoolCollegeDivisionLabels[option.division as SchoolCollegeDivision] ?? option.division}</span> : null}
+          <span className="min-w-0 break-words text-tp-heading">{option.name}</span>
+          {option.division ? <span className="shrink-0 text-2xs text-tp-label-faint">{schoolCollegeDivisionLabels[option.division as SchoolCollegeDivision] ?? option.division}</span> : null}
         </li>)}
         {canCreate ? <li
           id={`${listId}-option-${options.length}`}
@@ -120,7 +120,7 @@ export default function SchoolNameField({ label, value, onChange, placeholder, r
           aria-selected={highlight === options.length}
           onMouseEnter={() => setHighlight(options.length)}
           onClick={() => pick(options.length)}
-          className={`flex cursor-pointer items-center gap-2 border-t border-[#eef4f9] px-3 py-2 font-medium text-[#1267c8] ${highlight === options.length ? "bg-[#eef6fd]" : ""}`}
+          className={`flex cursor-pointer items-center gap-2 border-t border-tp-border px-3 py-2 font-medium text-tp-accent ${highlight === options.length ? "bg-tp-accent-wash" : ""}`}
         >
           <Plus aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 break-words">Create "{typed}"</span>
         </li> : null}

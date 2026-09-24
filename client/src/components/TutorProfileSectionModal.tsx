@@ -30,7 +30,7 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
     <Modal size="md" onClose={onClose} busy={submitting} isSuspended={photoCropperIsOpen} decor="water-wide">
       <ModalHeader title={title} eyebrow="Edit section" srPrefix="Edit" />
       <ModalBody className="space-y-3.5">
-        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-j-err" : "border-[#bde6d1] bg-[#f1fbf5] text-[#17714c]"}`}>{notice.text}</p> : null}
+        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-tp-danger-ink" : "border-j-ok-border bg-j-ok-wash text-j-ok"}`}>{notice.text}</p> : null}
         {children}
       </ModalBody>
       <ModalFooter>
