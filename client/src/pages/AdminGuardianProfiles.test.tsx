@@ -27,6 +27,7 @@ vi.mock("@/lib/trpc", () => ({
           };
         },
       },
+      createPasswordResetLink: { useMutation: () => ({ mutate: vi.fn(), isPending: false, isError: false, data: undefined }) },
       getGuardianProfile: {
         useQuery: () => ({
           data: {
@@ -70,5 +71,7 @@ describe("Guardian Profiles", () => {
     expect(screen.getByRole("heading", { name: "Change requests" })).toBeTruthy();
     expect(screen.getByText("+8801822222222")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open Change requests" }).getAttribute("href")).toBe("/admin/change-requests");
+    expect(screen.getByRole("heading", { name: "Password reset" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create reset link" })).toBeTruthy();
   });
 });

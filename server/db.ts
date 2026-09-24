@@ -45,6 +45,7 @@ import {
   adminTwoFactorRecoveryCodes,
   adminTwoFactorSettings,
   authEvents,
+  passwordResetLinks,
   classLevels,
   confirmationLetters,
   curricula,
@@ -398,6 +399,107 @@ export async function revokeAllTutorPortalSessions(input: { userId: number; now:
     .update(tutorPortalSessions)
     .set({ revokedAt: input.now })
     .where(and(eq(tutorPortalSessions.userId, input.userId), isNull(tutorPortalSessions.revokedAt)));
+}
+
+export type PasswordResetAccountRole = "guardian" | "tutor";
+
+/** The legacy `user` role is a Guardian; anything else cannot be reset this way. */
+function passwordResetRole(role: string): PasswordResetAccountRole | null {
+  return role === "tutor" ? "tutor" : role === "guardian" || role === "user" ? "guardian" : null;
+}
+
+/**
+ * Issues a one-time reset link for an active Guardian or Tutor account, and
+ * revokes any link still open for it - only the newest link an Admin sent works.
+ */
+export async function createPasswordResetLink(input: { userId: number; createdByUserId: number; tokenHash: string; expiresAt: Date; now?: Date }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const target = (await database
+    .select({ id: users.id, role: users.role, name: users.name, email: users.email, loginPhone: users.loginPhone, accountStatus: users.accountStatus })
+    .from(users)
+    .where(eq(users.id, input.userId))
+    .limit(1))[0];
+  const role = target ? passwordResetRole(target.role) : null;
+  if (!target || !role) return { created: false as const, reason: "NOT_FOUND" as const };
+  if (target.accountStatus !== "active") return { created: false as const, reason: "NOT_ACTIVE" as const };
+  const now = input.now ?? new Date();
+  await database.transaction(async tx => {
+    await tx
+      .update(passwordResetLinks)
+      .set({ revokedAt: now })
+      .where(and(eq(passwordResetLinks.userId, target.id), isNull(passwordResetLinks.usedAt), isNull(passwordResetLinks.revokedAt)));
+    await tx.insert(passwordResetLinks).values({ userId: target.id, tokenHash: input.tokenHash, createdByUserId: input.createdByUserId, expiresAt: input.expiresAt });
+  });
+  return { created: true as const, role, name: target.name, identifier: target.email ?? target.loginPhone ?? "" };
+}
+
+export type PasswordResetLinkState =
+  | { status: "valid"; role: PasswordResetAccountRole; name: string | null; userId: number; linkId: number }
+  | { status: "expired" | "used" | "invalid" };
+
+function passwordResetLinkState(
+  row: { linkId: number; userId: number; expiresAt: Date; usedAt: Date | null; revokedAt: Date | null; role: string; name: string | null; accountStatus: string } | undefined,
+  now: Date,
+): PasswordResetLinkState {
+  const role = row ? passwordResetRole(row.role) : null;
+  if (!row || !role || row.revokedAt || row.accountStatus !== "active") return { status: "invalid" };
+  if (row.usedAt) return { status: "used" };
+  if (row.expiresAt.getTime() <= now.getTime()) return { status: "expired" };
+  return { status: "valid", role, name: row.name, userId: row.userId, linkId: row.linkId };
+}
+
+const passwordResetLinkColumns = {
+  linkId: passwordResetLinks.id,
+  userId: passwordResetLinks.userId,
+  expiresAt: passwordResetLinks.expiresAt,
+  usedAt: passwordResetLinks.usedAt,
+  revokedAt: passwordResetLinks.revokedAt,
+  role: users.role,
+  name: users.name,
+  accountStatus: users.accountStatus,
+};
+
+/** What a reset link is good for right now. A replaced link reads as invalid, not as "used". */
+export async function getPasswordResetLink(tokenHash: string, now: Date = new Date()): Promise<PasswordResetLinkState> {
+  const database = await getDb();
+  if (!database) return { status: "invalid" };
+  const row = (await database
+    .select(passwordResetLinkColumns)
+    .from(passwordResetLinks)
+    .innerJoin(users, eq(passwordResetLinks.userId, users.id))
+    .where(eq(passwordResetLinks.tokenHash, tokenHash))
+    .limit(1))[0];
+  return passwordResetLinkState(row, now);
+}
+
+/**
+ * Sets the new password and spends the link in one transaction, so two tabs
+ * racing the same link cannot both succeed. Every open Tutor portal tab for the
+ * account is signed out too - whoever held the old password loses those.
+ */
+export async function usePasswordResetLink(input: { tokenHash: string; passwordHash: string; now?: Date }): Promise<PasswordResetLinkState> {
+  const database = await getDb();
+  if (!database) return { status: "invalid" };
+  const now = input.now ?? new Date();
+  return database.transaction(async tx => {
+    const row = (await tx
+      .select(passwordResetLinkColumns)
+      .from(passwordResetLinks)
+      .innerJoin(users, eq(passwordResetLinks.userId, users.id))
+      .where(eq(passwordResetLinks.tokenHash, input.tokenHash))
+      .limit(1)
+      .for("update"))[0];
+    const state = passwordResetLinkState(row, now);
+    if (state.status !== "valid") return state;
+    await tx.update(users).set({ passwordHash: input.passwordHash }).where(eq(users.id, state.userId));
+    await tx.update(passwordResetLinks).set({ usedAt: now }).where(eq(passwordResetLinks.id, state.linkId));
+    await tx
+      .update(tutorPortalSessions)
+      .set({ revokedAt: now })
+      .where(and(eq(tutorPortalSessions.userId, state.userId), isNull(tutorPortalSessions.revokedAt)));
+    return state;
+  });
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

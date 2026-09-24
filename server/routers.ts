@@ -67,6 +67,7 @@ import {
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { describeSignInBlock, signInBlockId, summariseSignInEvents } from "./sign-in-report";
+import { PASSWORD_RESET_LINK_MESSAGES, PASSWORD_RESET_TOKEN_PATTERN } from "@shared/password-reset";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
 import { cancellationReasons, settlementDispositions, tuitionPaymentMethodValues, tutorReportableMethods } from "@shared/platform-charge";
@@ -149,6 +150,24 @@ const adminPasswordLoginInputSchema = z.object({
   password: z.string().min(1, "Enter your password.").max(128),
 });
 const ADMIN_PASSWORD_LOGIN_ERROR = "User ID or password is not correct.";
+
+/** An Admin-issued reset link works once, for a day. */
+const PASSWORD_RESET_LINK_TTL_MS = 24 * 60 * 60 * 1000;
+/** The same 64-hex shape `generateAdminInviteToken` makes; the HMAC is what is stored. */
+const passwordResetTokenSchema = z.string().trim().regex(PASSWORD_RESET_TOKEN_PATTERN);
+const passwordResetInputSchema = z.object({
+  token: passwordResetTokenSchema,
+  password: z.string().min(8, "Password must be at least 8 characters.").max(128, "Password must be 128 characters or fewer."),
+  confirmPassword: z.string().max(128),
+}).refine(value => value.password === value.confirmPassword, { path: ["confirmPassword"], message: "Passwords do not match." });
+
+/** `https://host` of the request, for links sent outside the site. */
+function requestOrigin(ctx: { req: { headers: Record<string, string | string[] | undefined>; protocol?: string } }) {
+  const forwardedProtocol = ctx.req.headers["x-forwarded-proto"];
+  const protocol = (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() || ctx.req.protocol || "https";
+  const host = ctx.req.headers.host;
+  return host ? `${protocol}://${host}` : "";
+}
 
 const activeTutorIdentityProcedure = tutorProcedure.use(async ({ ctx, next }) => {
   const accountStatus = await db.getTutorAccountStatusByUserId(ctx.user.id);
@@ -932,6 +951,25 @@ export const appRouter = router({
       auditAuth("login_success", { role: input.role, ip, identifier: input.identifier });
       return { success: true, user: toClientAuthIdentity(user), tutorPortalToken } as const;
     }),
+    checkPasswordResetLink: publicProcedure.input(z.object({ token: passwordResetTokenSchema })).query(async ({ input }) => {
+      const state = await db.getPasswordResetLink(hashAdminInviteToken(input.token, ENV.cookieSecret));
+      return state.status === "valid" ? { status: state.status, role: state.role, name: state.name } : { status: state.status };
+    }),
+    resetPasswordWithLink: publicProcedure.input(passwordResetInputSchema).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      const ipKey = `ip:${ip}`;
+      if (ipLoginRateLimiter.check(ipKey).blocked) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: LOGIN_RATE_LIMITED_MESSAGE });
+      const state = await db.usePasswordResetLink({
+        tokenHash: hashAdminInviteToken(input.token, ENV.cookieSecret),
+        passwordHash: await db.hashPassword(input.password),
+      });
+      if (state.status !== "valid") {
+        ipLoginRateLimiter.record(ipKey);
+        throw new TRPCError({ code: "BAD_REQUEST", message: PASSWORD_RESET_LINK_MESSAGES[state.status] });
+      }
+      auditAuth("password_reset_completed", { role: state.role, ip });
+      return { role: state.role };
+    }),
     loginAdmin: publicProcedure.input(adminPasswordLoginInputSchema).mutation(async ({ ctx, input }) => {
       const ip = getRequestIp(ctx);
       const ipKey = `ip:${ip}`;
@@ -1710,6 +1748,18 @@ export const appRouter = router({
         loginId: await db.getAdminLoginId(ctx.user.id),
       };
     }),
+    createPasswordResetLink: adminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const token = generateAdminInviteToken();
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_LINK_TTL_MS);
+      const result = await db.createPasswordResetLink({ userId: input.userId, createdByUserId: ctx.user.id, tokenHash: hashAdminInviteToken(token, ENV.cookieSecret), expiresAt });
+      if (!result.created) {
+        throw result.reason === "NOT_FOUND"
+          ? new TRPCError({ code: "NOT_FOUND", message: "This Guardian or Tutor account was not found." })
+          : new TRPCError({ code: "BAD_REQUEST", message: "This account is suspended or closed, so a new password would not let them sign in." });
+      }
+      auditAuth("password_reset_link_created", { role: result.role, ip: getRequestIp(ctx), identifier: result.identifier, reason: `by admin ${ctx.user.id}` });
+      return { link: `${requestOrigin(ctx)}/reset-password/${token}`, expiresAt, role: result.role };
+    }),
     createInvitation: ownerAdminProcedure.input(z.object({ email: z.string().trim().email().max(320), expiresInHours: z.number().int().min(1).max(24 * 30).default(24 * 7) })).mutation(async ({ ctx, input }) => {
       const token = generateAdminInviteToken();
       const expiresAt = new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000);
@@ -1775,6 +1825,7 @@ export const appRouter = router({
       event: z.enum([
         "all", "login_success", "login_failure", "login_blocked", "login_account_suspended", "login_account_closed",
         "registration_success", "registration_rejected", "registration_blocked", "phone_intake", "phone_intake_blocked",
+        "password_reset_link_created", "password_reset_completed",
       ]).default("all"),
       role: z.enum(["all", "tutor", "guardian", "admin"]).default("all"),
       ip: z.string().trim().max(64).default(""),

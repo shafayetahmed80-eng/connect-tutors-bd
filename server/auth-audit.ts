@@ -18,6 +18,8 @@ export type AuthAuditEvent =
   | "registration_blocked"
   | "phone_intake"
   | "phone_intake_blocked"
+  | "password_reset_link_created"
+  | "password_reset_completed"
   /** Stdout only - `auth_events.event` is a fixed enum and this is an Admin action, not a sign-in. */
   | "login_unblocked";
 
