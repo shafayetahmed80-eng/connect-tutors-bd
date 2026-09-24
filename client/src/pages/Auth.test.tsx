@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TRPCClientError } from "@trpc/client";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mutateAsync = vi.fn();
+/** Owner overrides every SiteContentProvider in these tests reads. */
+const siteContentRows: Array<{ slotId: string; text: string }> = [];
 const fetchAuthenticatedUser = vi.fn();
 // The form invalidates before fetching so it cannot read the pre-login cache.
 const invalidateAuthenticatedUser = vi.fn().mockResolvedValue(undefined);
@@ -31,6 +33,9 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({ mutateAsync, isPending: false }),
       },
     },
+    siteContent: {
+      list: { useQuery: () => ({ data: siteContentRows }) },
+    },
   },
 }));
 
@@ -38,6 +43,7 @@ vi.mock("@/components/SiteHeader", () => ({ default: () => null }));
 vi.mock("@/components/SiteFooter", () => ({ default: () => null }));
 
 import AuthPage from "./Auth";
+import { SiteContentProvider } from "@/lib/siteContent";
 
 afterEach(() => {
   cleanup();
@@ -45,6 +51,8 @@ afterEach(() => {
   fetchAuthenticatedUser.mockReset();
   invalidateAuthenticatedUser.mockClear();
   window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
+  siteContentRows.length = 0;
 });
 
 describe("Public Guardian and Tutor account access", () => {
@@ -176,6 +184,88 @@ describe("Public Guardian and Tutor account access", () => {
   });
 });
 
+
+describe("remembering the last account type on this device", () => {
+  it("opens with the Tutor card chosen after this device last signed in as a Tutor", () => {
+    window.localStorage.setItem("connect-tutors.sign-in-role", "tutor");
+    render(<AuthPage />);
+
+    expect(screen.getByRole("radio", { name: "Select Tutor account" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("button", { name: "Sign in as Tutor" })).not.toBeNull();
+  });
+
+  it("still lets a ?role= in the link win over the remembered choice", () => {
+    window.localStorage.setItem("connect-tutors.sign-in-role", "tutor");
+    window.history.replaceState({}, "", "/auth?role=guardian");
+    render(<AuthPage />);
+
+    expect(screen.getByRole("radio", { name: "Select Guardian account" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("remembers the account type after a successful sign-in", async () => {
+    const user = userEvent.setup({ document: window.document });
+    mutateAsync.mockResolvedValue({ success: true, user: { id: 1, name: "Guardian", role: "guardian", accountStatus: "active" } });
+    fetchAuthenticatedUser.mockResolvedValue({ id: 1, name: "Guardian", role: "guardian", accountStatus: "active" });
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "correct-password");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    expect(window.localStorage.getItem("connect-tutors.sign-in-role")).toBe("guardian");
+  });
+});
+
+describe("right details, wrong account type", () => {
+  it("names the real account type and signs in as it with one click", async () => {
+    const user = userEvent.setup({ document: window.document });
+    const mismatch = new TRPCClientError("These details belong to a Tutor account.");
+    Object.defineProperty(mismatch, "data", { value: { code: "UNAUTHORIZED", accountRole: "tutor" }, configurable: true });
+    mutateAsync.mockRejectedValueOnce(mismatch).mockResolvedValueOnce({ success: true, user: { id: 2, name: "Tutor", role: "tutor", accountStatus: "active" }, tutorPortalToken: "portal-proof" });
+    fetchAuthenticatedUser.mockResolvedValue({ id: 2, name: "Tutor", role: "tutor", accountStatus: "active" });
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "tutor@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "correct-password");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("These details belong to a Tutor account.");
+    await user.click(within(alert).getByRole("button", { name: "Sign in as Tutor" }));
+
+    expect(mutateAsync).toHaveBeenLastCalledWith({ role: "tutor", identifier: "tutor@example.com", password: "correct-password" });
+    expect(await screen.findByText("Preparing your Tutor Dashboard…")).not.toBeNull();
+    expect(window.localStorage.getItem("connect-tutors.sign-in-role")).toBe("tutor");
+  });
+
+  it("offers no switch for a plain wrong password", async () => {
+    const user = userEvent.setup({ document: window.document });
+    mutateAsync.mockRejectedValue(trpcErrorWithCode("Email/mobile number or password is not correct.", "UNAUTHORIZED"));
+    render(<AuthPage />);
+
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "wrong-password");
+    await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).queryByRole("button")).toBeNull();
+  });
+});
+
+describe("Owner-editable sign-in copy", () => {
+  it("shows the Owner's wording for the heading, the cards and the button", () => {
+    siteContentRows.push(
+      { slotId: "sign-in.title", text: "লগইন করুন" },
+      { slotId: "sign-in.role.guardian.line", text: "অভিভাবক হিসেবে লগইন" },
+      { slotId: "button-section.signIn.guardian", text: "Guardian login" },
+    );
+    render(<SiteContentProvider page="button-section"><AuthPage /></SiteContentProvider>);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("লগইন করুন");
+    expect(screen.getByRole("radio", { name: "Select Guardian account" }).textContent).toContain("অভিভাবক হিসেবে লগইন");
+    expect(screen.getByRole("button", { name: "Guardian login" })).not.toBeNull();
+  });
+});
 
 describe("sign-in error messages", () => {
   it("shows a rate-limit block message verbatim instead of the wrong-password hint", async () => {

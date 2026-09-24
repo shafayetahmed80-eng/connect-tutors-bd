@@ -4,6 +4,7 @@ import { fieldGrid, fieldLabel, filledField, primaryButton } from "@/components/
 import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, RequiredMark, SignInPrompt } from "@/components/registrationFields";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { rememberSignInRole } from "@/lib/signInRoleMemory";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
@@ -143,6 +144,7 @@ export default function JoinTutor() {
         navigate,
         destination: TUTOR_REGISTRATION_DESTINATION,
       });
+      rememberSignInRole("tutor");
       toast.success("Tutor account created. Welcome to the Job Board.");
     } catch (cause) {
       // The account already exists server-side; a failure past this point is a

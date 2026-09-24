@@ -33,6 +33,16 @@ export function getZodFieldErrorsFromCause(cause: unknown): Record<string, strin
   return Object.keys(fieldErrors).length ? fieldErrors : undefined;
 }
 
+/**
+ * The account type a refused sign-in's details really belong to - set only by
+ * `auth.loginAccount` once the password has matched the other public role.
+ */
+export function getAccountRoleFromCause(cause: unknown): "guardian" | "tutor" | undefined {
+  if (!cause || typeof cause !== "object") return undefined;
+  const role = (cause as { accountRole?: unknown }).accountRole;
+  return role === "guardian" || role === "tutor" ? role : undefined;
+}
+
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error, path }) {
@@ -41,7 +51,9 @@ const t = initTRPC.context<TrpcContext>().create({
       ? getSafeTutorProfileFieldIssues(getValidationIssuesFromCause(error.cause))
       : [];
 
-    if (!zodFieldErrors && tutorProfileFieldIssues.length === 0) return shape;
+    const accountRole = path === "auth.loginAccount" && error.code === "UNAUTHORIZED" ? getAccountRoleFromCause(error.cause) : undefined;
+
+    if (!zodFieldErrors && tutorProfileFieldIssues.length === 0 && !accountRole) return shape;
 
     return {
       ...shape,
@@ -49,6 +61,7 @@ const t = initTRPC.context<TrpcContext>().create({
         ...shape.data,
         ...(zodFieldErrors ? { zodFieldErrors } : {}),
         ...(tutorProfileFieldIssues.length ? { tutorProfileFieldIssues } : {}),
+        ...(accountRole ? { accountRole } : {}),
       },
     };
   },

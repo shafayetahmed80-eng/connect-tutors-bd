@@ -16,6 +16,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, primaryButton, ghostButton, requiredMark } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
+import { rememberSignInRole } from "@/lib/signInRoleMemory";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
@@ -642,6 +643,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       setJourneyError("");
       setAccountFieldErrors({});
       void utils.auth.me.invalidate();
+      rememberSignInRole("guardian");
       toast.success("Guardian account created.");
       navigate("/guardian/dashboard/hire");
     },

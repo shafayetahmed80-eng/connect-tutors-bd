@@ -311,6 +311,9 @@ const buttonSectionSlots: SiteContentSlot[] = [
   { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
   { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },
   { id: "button-section.tutorRegistration.create", page: "button-section", surface: "Tutor registration", group: "Registration form", label: "Create account button", defaultText: "Create Tutor account", defaultTextClass: "text-sm" },
+  { id: "button-section.signIn.guardian", page: "button-section", surface: "Sign in page", group: "Sign in button", label: "Guardian chosen", defaultText: "Sign in as Guardian", defaultTextClass: "text-sm" },
+  { id: "button-section.signIn.tutor", page: "button-section", surface: "Sign in page", group: "Sign in button", label: "Tutor chosen", defaultText: "Sign in as Tutor", defaultTextClass: "text-sm" },
+  { id: "button-section.signIn.tutorDashboard", page: "button-section", surface: "Tutor sign in page", group: "Sign in button", label: "Sign in button", defaultText: "Sign in to Tutor Dashboard", defaultTextClass: "text-sm" },
   { id: "button-section.profile.cancel", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Cancel button", defaultText: "Cancel", defaultTextClass: "text-sm" },
   { id: "button-section.profile.submit", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Submit button", defaultText: "Submit", defaultTextClass: "text-sm" },
   { id: "button-section.profile.photoReset", page: "button-section", surface: "Tutor profile editor", group: "Photo cropper", label: "Reset button", defaultText: "Reset", defaultTextClass: "text-sm" },
@@ -453,6 +456,23 @@ const infoPageSlots: SiteContentSlot[] = [
   { id: "info.action.joinTutor", page: "info-pages", surface: "Shared buttons", group: "Calls to action", label: "Join as a tutor button", defaultText: infoPageActions.joinTutor, defaultTextClass: "text-sm" , kind: "text-only" },
 ];
 
+/**
+ * The two sign-in pages, edited on the Public pages screen: /auth (Guardian or
+ * Tutor) and /tutor/login. Their button labels live in the Button Section.
+ */
+const signInSlots: SiteContentSlot[] = [
+  { id: "sign-in.eyebrow", page: "info-pages", surface: "Sign in", group: "/auth", label: "Eyebrow", defaultText: "Welcome back", defaultTextClass: "text-xs", kind: "text-only" },
+  { id: "sign-in.title", page: "info-pages", surface: "Sign in", group: "/auth", label: "Heading", defaultText: "Sign in to your account", defaultTextClass: "text-3xl", kind: "text-only" },
+  { id: "sign-in.copy", page: "info-pages", surface: "Sign in", group: "/auth", label: "Line under the heading", defaultText: "Choose the account type you registered with, then use your email address or Bangladesh mobile number.", defaultTextClass: "text-sm", kind: "text-only" },
+  { id: "sign-in.role.guardian.title", page: "info-pages", surface: "Sign in", group: "Guardian card", label: "Name", defaultText: "Guardian", defaultTextClass: "text-lg", kind: "text-only" },
+  { id: "sign-in.role.guardian.line", page: "info-pages", surface: "Sign in", group: "Guardian card", label: "Line under the name", defaultText: "Select and login as a Guardian/Student", defaultTextClass: "text-sm", kind: "text-only" },
+  { id: "sign-in.role.tutor.title", page: "info-pages", surface: "Sign in", group: "Tutor card", label: "Name", defaultText: "Tutor", defaultTextClass: "text-lg", kind: "text-only" },
+  { id: "sign-in.role.tutor.line", page: "info-pages", surface: "Sign in", group: "Tutor card", label: "Line under the name", defaultText: "Select and login as a Tutor", defaultTextClass: "text-sm", kind: "text-only" },
+  { id: "tutor-sign-in.eyebrow", page: "info-pages", surface: "Tutor sign in", group: "/tutor/login", label: "Eyebrow", defaultText: "Tutor sign in", defaultTextClass: "text-xs", kind: "text-only" },
+  { id: "tutor-sign-in.title", page: "info-pages", surface: "Tutor sign in", group: "/tutor/login", label: "Heading", defaultText: "Welcome back", defaultTextClass: "text-3xl", kind: "text-only" },
+  { id: "tutor-sign-in.copy", page: "info-pages", surface: "Tutor sign in", group: "/tutor/login", label: "Line under the heading", defaultText: "Use the email address or Bangladesh mobile number and password you created during Tutor registration.", defaultTextClass: "text-sm", kind: "text-only" },
+];
+
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
   ...adminControlSlots,
@@ -464,6 +484,7 @@ const siteContentSlots: SiteContentSlot[] = [
   ...sidebarTabsSlots,
   ...homeSlots,
   ...infoPageSlots,
+  ...signInSlots,
   ...buttonSectionSlots,
 ];
 

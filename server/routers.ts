@@ -116,6 +116,19 @@ function tuitionPaymentError(result: db.TuitionPaymentFailure) {
   }
 }
 
+/**
+ * Carried as the cause of a sign-in refused for the wrong account type, when the
+ * password is right for the other one. The error formatter turns it into
+ * `data.accountRole` so the sign-in page can offer a one-click switch. It is
+ * only raised after the password has matched, so it tells a stranger nothing
+ * about which emails or numbers have accounts.
+ */
+export class AccountRoleMismatch extends Error {
+  constructor(readonly accountRole: "guardian" | "tutor") {
+    super(`These details belong to a ${accountRole === "tutor" ? "Tutor" : "Guardian"} account.`);
+  }
+}
+
 const PASSWORD_ACCOUNT_SUSPENDED_ERROR = "This account has been suspended. Contact Connect Tutors support on WhatsApp to restore access.";
 const PASSWORD_ACCOUNT_CLOSED_ERROR = "This account has been closed. Contact Connect Tutors support on WhatsApp if you believe this is a mistake.";
 
@@ -895,10 +908,18 @@ export const appRouter = router({
       if (outcome.status !== "ok") {
         ipLoginRateLimiter.record(ipKey);
         pairLoginRateLimiter.record(pairKey);
+        // Right password, wrong card: the details open the other public account.
+        const otherRole = input.role === "guardian" ? "tutor" : "guardian";
+        const roleMismatch = outcome.status === "invalid-credentials"
+          && (await db.verifyPasswordAccount({ ...input, role: otherRole })).status === "ok";
         auditAuth(
           outcome.status === "suspended" ? "login_account_suspended" : outcome.status === "closed" ? "login_account_closed" : "login_failure",
-          { role: input.role, ip, identifier: input.identifier, reason: outcome.status },
+          { role: input.role, ip, identifier: input.identifier, reason: roleMismatch ? "role-mismatch" : outcome.status },
         );
+        if (roleMismatch) {
+          const cause = new AccountRoleMismatch(otherRole);
+          throw new TRPCError({ code: "UNAUTHORIZED", message: cause.message, cause });
+        }
         throwPasswordAccountSignInError(outcome.status);
       }
 

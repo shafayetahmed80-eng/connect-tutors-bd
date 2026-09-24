@@ -1,10 +1,13 @@
 import React, { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
 import { GraduationCap, UsersRound } from "lucide-react";
+import { ghostButton } from "@/components/journeyField";
 import { SignInForm, SignInHeading, SignInShell } from "@/components/SignInLayout";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { TRPCClientError } from "@trpc/client";
+import { SiteText, useSiteContentText } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
+import { readRememberedSignInRole, rememberSignInRole } from "@/lib/signInRoleMemory";
 import { getSafeTutorApplyReturnPath, getTutorApplyPostLoginPath, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { clearCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 
@@ -33,32 +36,31 @@ function getTutorApplyReturnFromLocation(location: string) {
   return returnToValues.length === 1 ? getSafeTutorApplyReturnPath(returnToValues[0]) : null;
 }
 
-const roleContent: Record<PublicAccountRole, { title: string; description: string }> = {
-  guardian: {
-    title: "Guardian",
-    description: "Select and login as a Guardian/Student",
-  },
-  tutor: {
-    title: "Tutor",
-    description: "Select and login as a Tutor",
-  },
-};
+/** The fixed English name each card is announced by; what it shows is the Owner's slot. */
+const roleNames: Record<PublicAccountRole, string> = { guardian: "Guardian", tutor: "Tutor" };
 
+/** A `?role=` in the link wins; otherwise the role this device last used; otherwise Guardian. */
 function getInitialRole(): PublicAccountRole {
   if (typeof window === "undefined") return "guardian";
   const roles = new URLSearchParams(window.location.search).getAll("role");
-  return roles.length === 1 && roles[0] === "tutor" ? "tutor" : "guardian";
+  if (roles.length === 1 && (roles[0] === "tutor" || roles[0] === "guardian")) return roles[0];
+  return readRememberedSignInRole() ?? "guardian";
+}
+
+function signInButtonLabel(role: PublicAccountRole) {
+  return <SiteText slotId={`button-section.signIn.${role}`} />;
 }
 
 function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; selected: boolean; onSelect: (role: PublicAccountRole) => void }) {
-  const content = roleContent[role];
   const Icon = role === "guardian" ? UsersRound : GraduationCap;
+  const name = useSiteContentText(`sign-in.role.${role}.title`);
+  const line = useSiteContentText(`sign-in.role.${role}.line`);
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
-      aria-label={`Select ${content.title} account`}
+      aria-label={`Select ${roleNames[role]} account`}
       onClick={() => onSelect(role)}
       onKeyDown={event => {
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -71,9 +73,9 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
     >
       <span className="flex items-center gap-[0.6em]">
         <Icon className="shrink-0 text-j-accent" size="1.5em" aria-hidden="true" />
-        <strong className="text-[1.3em] leading-[1.3]">{content.title}</strong>
+        <strong className="text-[1.3em] leading-[1.3]">{name}</strong>
       </span>
-      <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{content.description}</span>
+      <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{line}</span>
     </button>
   );
 }
@@ -84,6 +86,8 @@ export default function AuthPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  // Set when the details were right but belong to the other card.
+  const [accountRole, setAccountRole] = useState<PublicAccountRole | null>(null);
   const [isEnteringTutorWorkspace, setIsEnteringTutorWorkspace] = useState(false);
   const utils = trpc.useUtils();
   const loginAccount = trpc.auth.loginAccount.useMutation();
@@ -91,15 +95,16 @@ export default function AuthPage() {
   const chooseRole = (nextRole: PublicAccountRole) => {
     setRole(nextRole);
     setFormError(null);
+    setAccountRole(null);
   };
 
-  const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const signIn = async (signInRole: PublicAccountRole) => {
     setFormError(null);
+    setAccountRole(null);
     setIsEnteringTutorWorkspace(false);
     let tutorPortalTokenStored = false;
     try {
-      const result = await loginAccount.mutateAsync({ role, identifier, password });
+      const result = await loginAccount.mutateAsync({ role: signInRole, identifier, password });
       if (result.user.role === "tutor") {
         if (!result.tutorPortalToken) throw new SignedInButBlockedError("Signed in, but the Tutor portal proof was not issued. Please try again.");
         storeCurrentTutorPortalToken(result.tutorPortalToken);
@@ -116,6 +121,7 @@ export default function AuthPage() {
         clearCurrentTutorPortalToken();
         throw new SignedInButBlockedError("Signed in, but this account is not a Tutor account.");
       }
+      rememberSignInRole(result.user.role);
       const tutorApplyReturnPath = getTutorApplyReturnFromLocation(location);
       if (result.user.role === "tutor" && tutorApplyReturnPath && typeof window !== "undefined") {
         storeTutorApplyReturnPath(window.sessionStorage, tutorApplyReturnPath);
@@ -134,6 +140,14 @@ export default function AuthPage() {
       if (tutorPortalTokenStored) {
         clearCurrentTutorPortalToken();
       }
+      // Right password, wrong card: the server names the account type, and the
+      // error box offers a one-click sign-in as that type.
+      const mismatchRole = cause instanceof TRPCClientError ? (cause.data as { accountRole?: unknown } | undefined)?.accountRole : undefined;
+      if ((mismatchRole === "guardian" || mismatchRole === "tutor") && mismatchRole !== signInRole) {
+        setAccountRole(mismatchRole);
+        setFormError(cause instanceof Error ? cause.message : null);
+        return;
+      }
       // A suspended/closed account (FORBIDDEN) or a rate-limit block
       // (TOO_MANY_REQUESTS) carries an honest, actionable server message; show
       // it verbatim. Only UNAUTHORIZED (wrong credentials) keeps the generic hint.
@@ -147,23 +161,38 @@ export default function AuthPage() {
     }
   };
 
-  const selectedRole = roleContent[role];
+  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void signIn(role);
+  };
+
+  const switchAndSignIn = (nextRole: PublicAccountRole) => {
+    setRole(nextRole);
+    void signIn(nextRole);
+  };
 
   return (
     <SignInShell>
       {isEnteringTutorWorkspace ? <TutorWorkspaceTransition /> : <>
-      <SignInHeading
-        eyebrow="Welcome back"
-        title="Sign in to your account"
-        body="Choose the account type you registered with, then use your email address or Bangladesh mobile number."
-      />
+      <SignInHeading slotPrefix="sign-in" />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Account type">
         <RoleChoice role="guardian" selected={role === "guardian"} onSelect={chooseRole} />
         <RoleChoice role="tutor" selected={role === "tutor"} onSelect={chooseRole} />
       </div>
 
-      <SignInForm idPrefix="account" identifier={identifier} onIdentifier={setIdentifier} password={password} onPassword={setPassword} error={formError} pending={loginAccount.isPending} submitLabel={`Sign in as ${selectedRole.title}`} onSubmit={submitLogin} />
+      <SignInForm
+        idPrefix="account"
+        identifier={identifier}
+        onIdentifier={setIdentifier}
+        password={password}
+        onPassword={setPassword}
+        error={formError}
+        errorAction={accountRole ? <button type="button" className={ghostButton} disabled={loginAccount.isPending} onClick={() => switchAndSignIn(accountRole)}>{signInButtonLabel(accountRole)}</button> : null}
+        pending={loginAccount.isPending}
+        submitLabel={signInButtonLabel(role)}
+        onSubmit={submitLogin}
+      />
       </>}
     </SignInShell>
   );
