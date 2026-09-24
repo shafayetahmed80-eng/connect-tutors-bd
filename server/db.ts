@@ -46,6 +46,8 @@ import {
   adminTwoFactorSettings,
   authEvents,
   passwordResetLinks,
+  phoneVerificationCodes,
+  type PhoneVerificationPurpose,
   classLevels,
   confirmationLetters,
   curricula,
@@ -169,6 +171,7 @@ import {
   type AdminMatchingSavedViewFilters,
 } from "@shared/admin-matching-saved-views";
 import { guardianVerificationNotice } from "./guardian-verification-notice";
+import { phoneCodeHashesMatch } from "./phone-verification";
 import {
   canRequestTuitionChange,
   guardianTuitionRequestApplies,
@@ -502,6 +505,86 @@ export async function usePasswordResetLink(input: { tokenHash: string; passwordH
   });
 }
 
+/** When the newest code for a number was sent, and how many went out in the last hour. */
+export async function getPhoneCodeSendState(phone: string, purpose: PhoneVerificationPurpose, now: Date = new Date()) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const recent = await database
+    .select({ createdAt: phoneVerificationCodes.createdAt })
+    .from(phoneVerificationCodes)
+    .where(and(eq(phoneVerificationCodes.phone, phone), eq(phoneVerificationCodes.purpose, purpose), gte(phoneVerificationCodes.createdAt, hourAgo)))
+    .orderBy(desc(phoneVerificationCodes.createdAt));
+  return { lastSentAt: recent[0]?.createdAt ?? null, sentLastHour: recent.length };
+}
+
+export async function createPhoneVerificationCode(input: { phone: string; purpose: PhoneVerificationPurpose; codeHash: string; expiresAt: Date; ip?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.insert(phoneVerificationCodes).values({ phone: input.phone, purpose: input.purpose, codeHash: input.codeHash, expiresAt: input.expiresAt, ip: input.ip ?? null });
+  return { id: Number(result[0].insertId) };
+}
+
+/** A code the SMS provider refused to deliver should not hold up the next try. */
+export async function deletePhoneVerificationCode(id: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.delete(phoneVerificationCodes).where(eq(phoneVerificationCodes.id, id));
+}
+
+/**
+ * Checks a code against the newest open one for the number and purpose. A
+ * wrong guess counts an attempt; the fifth spends the code. `consume` spends a
+ * right one straight away - Tutor registration leaves it open until the
+ * account really exists, so a clashing email does not cost them a new SMS.
+ */
+export async function checkPhoneVerificationCode(input: {
+  phone: string;
+  purpose: PhoneVerificationPurpose;
+  codeHash: string;
+  consume: boolean;
+  maxAttempts: number;
+  now?: Date;
+}): Promise<{ status: "ok"; id: number } | { status: "missing" | "expired" | "locked" } | { status: "wrong"; attemptsLeft: number }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const now = input.now ?? new Date();
+  return database.transaction(async tx => {
+    const code = (await tx
+      .select()
+      .from(phoneVerificationCodes)
+      .where(and(eq(phoneVerificationCodes.phone, input.phone), eq(phoneVerificationCodes.purpose, input.purpose), isNull(phoneVerificationCodes.consumedAt)))
+      .orderBy(desc(phoneVerificationCodes.createdAt), desc(phoneVerificationCodes.id))
+      .limit(1)
+      .for("update"))[0];
+    if (!code) return { status: "missing" as const };
+    if (code.expiresAt.getTime() <= now.getTime()) return { status: "expired" as const };
+    if (code.attempts >= input.maxAttempts) return { status: "locked" as const };
+    if (!phoneCodeHashesMatch(code.codeHash, input.codeHash)) {
+      const attempts = code.attempts + 1;
+      await tx.update(phoneVerificationCodes).set({ attempts }).where(eq(phoneVerificationCodes.id, code.id));
+      return attempts >= input.maxAttempts ? { status: "locked" as const } : { status: "wrong" as const, attemptsLeft: input.maxAttempts - attempts };
+    }
+    if (input.consume) await tx.update(phoneVerificationCodes).set({ consumedAt: now }).where(eq(phoneVerificationCodes.id, code.id));
+    return { status: "ok" as const, id: code.id };
+  });
+}
+
+export async function consumePhoneVerificationCode(id: number, now: Date = new Date()) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(phoneVerificationCodes).set({ consumedAt: now }).where(and(eq(phoneVerificationCodes.id, id), isNull(phoneVerificationCodes.consumedAt)));
+}
+
+/** Whether a Tutor account already signs in with this number - checked before an SMS is spent on it. */
+export async function isTutorPhoneRegistered(phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const loginPhone = normalizeBangladeshMobile(phone);
+  const existing = await database.select({ id: users.id }).from(users).where(and(eq(users.role, "tutor"), eq(users.loginPhone, loginPhone))).limit(1);
+  return Boolean(existing[0]);
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
@@ -727,7 +810,7 @@ export async function registerGuardianFromIntake(input: GuardianRegistrationTran
 
   return withGuardianNumberAllocationRetry(() => withTutorNumberAllocationLock(() => database.transaction(async tx => {
     const intake = (await tx.select().from(guardianPhoneIntakes).where(eq(guardianPhoneIntakes.handoffTokenHash, input.handoffTokenHash)).limit(1))[0];
-    if (!intake || intake.status !== "pending" || intake.handoffExpiresAt.getTime() < Date.now()) {
+    if (!intake || intake.status !== "pending" || !intake.phoneVerifiedAt || intake.handoffExpiresAt.getTime() < Date.now()) {
       throw new GuardianRegistrationError("handoff-expired");
     }
     const city = (await tx.select().from(locations).where(eq(locations.id, input.cityLocationId)).limit(1))[0];
@@ -4409,6 +4492,8 @@ export async function createOrResumeGuardianPhoneIntake(input: {
   phone: string;
   handoffTokenHash: string;
   handoffExpiresAt: Date;
+  /** When the SMS code for this number was confirmed; registration requires it. */
+  phoneVerifiedAt: Date;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
@@ -4420,13 +4505,14 @@ export async function createOrResumeGuardianPhoneIntake(input: {
       status: "pending",
       handoffTokenHash: input.handoffTokenHash,
       handoffExpiresAt: input.handoffExpiresAt,
+      phoneVerifiedAt: input.phoneVerifiedAt,
     })
     .onDuplicateKeyUpdate({
       set: {
         status: "pending",
         handoffTokenHash: input.handoffTokenHash,
         handoffExpiresAt: input.handoffExpiresAt,
-        phoneVerifiedAt: null,
+        phoneVerifiedAt: input.phoneVerifiedAt,
         completedAt: null,
       },
     });

@@ -54,6 +54,9 @@ beforeEach(() => {
   __resetAuthRateLimitsForTests();
   vi.spyOn(console, "info").mockImplementation(() => {}); // silence [auth-audit] lines
   vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 0 }); // keep the durable audit write off the real DB
+  // Registration needs a right SMS code; the code rules have tests of their own.
+  vi.spyOn(db, "checkPhoneVerificationCode").mockResolvedValue({ status: "ok", id: 1 });
+  vi.spyOn(db, "consumePhoneVerificationCode").mockResolvedValue(undefined);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -210,13 +213,17 @@ describe("Tutor password authentication", () => {
       cityId: "dhaka-city",
       locationId: "dhaka-city",
       termsAccepted: true,
+      phoneCode: "1234",
     } as const;
     const result = await appRouter.createCaller(createContext(cookies)).auth.registerTutor(registrationInput);
 
     expect(result.success).toBe(true);
     // The browser says whether they agreed; the server decides which version
     // that was, so a client cannot claim consent to a document it chose.
-    expect(registerPasswordTutor).toHaveBeenCalledWith({ ...registrationInput, termsVersion: TERMS_VERSION });
+    // The SMS code is checked by the router and never reaches the account write.
+    const { phoneCode: _code, ...accountFields } = registrationInput;
+    expect(registerPasswordTutor).toHaveBeenCalledWith({ ...accountFields, termsVersion: TERMS_VERSION });
+    expect(db.consumePhoneVerificationCode).toHaveBeenCalledWith(1);
     expect(result.user).toEqual({
       id: user.id,
       name: user.name,
@@ -247,6 +254,7 @@ describe("Tutor password authentication", () => {
     cityId: "dhaka-city",
     locationId: "uttara-sector-7",
     termsAccepted: true,
+    phoneCode: "1234",
   } as const;
 
   it("reports an invalid City/location combination as a fixable BAD_REQUEST, not a 500", async () => {
@@ -485,6 +493,7 @@ describe("Tutor terms consent", () => {
     cityId: "dhaka-city",
     locationId: "dhaka-city",
     termsAccepted: true,
+    phoneCode: "1234",
   } as const;
 
   it("refuses to create the account when the box is not ticked", async () => {

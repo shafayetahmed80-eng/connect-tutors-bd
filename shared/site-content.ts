@@ -251,6 +251,7 @@ const tutorRegistrationSlots: SiteContentSlot[] = [
   { id: "tutor-registration.field.confirmPassword", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Confirm password", defaultText: "Confirm password", defaultTextClass: "text-sm" },
   { id: "tutor-registration.field.city", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "City", defaultText: "City", defaultTextClass: "text-sm" },
   { id: "tutor-registration.field.location", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Location", defaultText: "Location", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.phoneCode", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "SMS code", defaultText: "Verification code", defaultTextClass: "text-sm" },
 ];
 
 /** The public "Request a tutor" journey at /request-tutor. */
@@ -264,6 +265,7 @@ const requestTutorSlots: SiteContentSlot[] = [
   // without a deploy. The wording resolves through `useSiteContentResolver`
   // at each field; an untouched slot renders the shipped label below.
   { id: "request-tutor.field.phone", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Phone step — mobile number", defaultText: "Bangladesh mobile number", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.phoneCode", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Phone step — SMS code", defaultText: "Verification code", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.fullName", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Full name", defaultText: "Full name", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.gender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Gender", defaultText: "Gender", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.accountPhone", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Account — Phone number", defaultText: "Phone number", defaultTextClass: "text-sm" },
@@ -305,11 +307,13 @@ const requestTutorSlots: SiteContentSlot[] = [
  */
 const buttonSectionSlots: SiteContentSlot[] = [
   { id: "button-section.journey.phoneContinue", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Continue button", defaultText: "Continue securely", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.phoneVerify", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Verify code button", defaultText: "Verify code", defaultTextClass: "text-sm" },
   { id: "button-section.journey.accountCreate", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Create account button", defaultText: "Create Guardian account", defaultTextClass: "text-sm" },
   { id: "button-section.journey.accountBack", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Back button", defaultText: "Back to phone", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepContinue", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
   { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },
+  { id: "button-section.tutorRegistration.verify", page: "button-section", surface: "Tutor registration", group: "Registration form", label: "Verify code and create button", defaultText: "Verify and create account", defaultTextClass: "text-sm" },
   { id: "button-section.tutorRegistration.create", page: "button-section", surface: "Tutor registration", group: "Registration form", label: "Create account button", defaultText: "Create Tutor account", defaultTextClass: "text-sm" },
   { id: "button-section.signIn.guardian", page: "button-section", surface: "Sign in page", group: "Sign in button", label: "Guardian chosen", defaultText: "Sign in as Guardian", defaultTextClass: "text-sm" },
   { id: "button-section.signIn.tutor", page: "button-section", surface: "Sign in page", group: "Sign in button", label: "Tutor chosen", defaultText: "Sign in as Tutor", defaultTextClass: "text-sm" },

@@ -355,6 +355,9 @@ export const authEventTypeValues = [
   "phone_intake_blocked",
   "password_reset_link_created",
   "password_reset_completed",
+  "phone_code_sent",
+  "phone_code_rejected",
+  "phone_verified",
 ] as const;
 export type AuthEventType = (typeof authEventTypeValues)[number];
 
@@ -401,6 +404,31 @@ export const passwordResetLinks = mysqlTable(
   table => [index("password_reset_links_user_idx").on(table.userId)]
 );
 export type PasswordResetLink = typeof passwordResetLinks.$inferSelect;
+
+export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake"] as const;
+export type PhoneVerificationPurpose = (typeof phoneVerificationPurposeValues)[number];
+
+/**
+ * One-time 4-digit SMS codes that prove a person holds a mobile number before
+ * a Tutor account or a Guardian intake is created on it. Only the HMAC of the
+ * code is stored; the newest open code for a number and purpose is the one
+ * that counts.
+ */
+export const phoneVerificationCodes = mysqlTable(
+  "phone_verification_codes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    purpose: mysqlEnum("purpose", phoneVerificationPurposeValues).notNull(),
+    codeHash: varchar("codeHash", { length: 128 }).notNull(),
+    attempts: int("attempts").default(0).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    consumedAt: timestamp("consumedAt"),
+    ip: varchar("ip", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("phone_verification_codes_phone_purpose_idx").on(table.phone, table.purpose, table.createdAt)]
+);
 
 /** Encrypted TOTP seed and enrollment metadata for one Admin account. */
 export const adminTwoFactorSettings = mysqlTable("admin_two_factor_settings", {

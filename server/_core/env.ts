@@ -9,4 +9,10 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramChatId: process.env.TELEGRAM_CHAT_ID ?? "",
+  // SMS gateway (BulkSMSBD). With no key outside production, codes are only
+  // printed to the terminal; OTP_DEV_LOG=true forces that even with a key.
+  smsApiUrl: process.env.SMS_API_URL ?? "https://bulksmsbd.net/api/smsapi",
+  smsApiKey: process.env.SMS_API_KEY ?? "",
+  smsSenderId: process.env.SMS_SENDER_ID ?? "",
+  otpDevLog: process.env.OTP_DEV_LOG === "true",
 };
