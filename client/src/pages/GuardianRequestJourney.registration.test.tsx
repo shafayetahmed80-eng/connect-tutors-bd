@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   verifyPhone: vi.fn(),
   register: vi.fn(),
   intakeOptions: null as null | { onSuccess?: (result: { resendAfterSeconds: number }, variables: { phone: string }) => void; onError?: (error: { message: string }) => void },
-  verifyOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string; data?: unknown }) => void },
+  verifyOptions: null as null | { onSuccess?: (result: unknown, variables: { phone: string }) => void; onError?: (error: { message: string; data?: unknown }) => void },
   registerOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string; data?: unknown }) => void },
   authMe: { data: null as unknown, isLoading: false, refetch: vi.fn() },
   invalidate: vi.fn(),
@@ -127,12 +127,44 @@ describe("GuardianRequestJourney account creation flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
     expect(mocks.verifyPhone).toHaveBeenCalledWith({ phone: "+8801712345678", code: "4821" });
 
-    act(() => mocks.verifyOptions?.onSuccess?.());
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
 
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to phone" })).toBeTruthy();
     const phone = screen.getByDisplayValue("1712345678") as HTMLInputElement;
     expect(phone.readOnly).toBe(true);
+  });
+
+  it("does not ask again for a number this visit already proved", () => {
+    render(<GuardianRequestJourney />);
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
+    expect(mocks.capturePhone).toHaveBeenCalledTimes(1);
+
+    // A different number is a new proof.
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01812345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(mocks.capturePhone).toHaveBeenLastCalledWith({ phone: "+8801812345678" });
+  });
+
+  it("asks for a new code once the intake has lapsed", () => {
+    render(<GuardianRequestJourney />);
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+    act(() => mocks.registerOptions?.onError?.({ message: "আপনার নিবন্ধন সেশনটি আর সক্রিয় নেই। ফোন নম্বর দিয়ে আবার শুরু করুন।", data: { code: "UNAUTHORIZED" } }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(mocks.capturePhone).toHaveBeenCalledTimes(2);
   });
 
   it("shows a wrong code's message under the code box", () => {
@@ -149,7 +181,7 @@ describe("GuardianRequestJourney account creation flow", () => {
 
   it("sends a completed Guardian straight to the dashboard Hire a tutor tab", () => {
     render(<GuardianRequestJourney />);
-    act(() => mocks.verifyOptions?.onSuccess?.());
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
 
     act(() => mocks.registerOptions?.onSuccess?.());
 

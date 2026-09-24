@@ -25,6 +25,8 @@ import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, Pa
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
+/** A little under the server's 20-minute intake handoff, so a reused number never outlives its cookie. */
+const VERIFIED_PHONE_REUSE_MS = 18 * 60 * 1000;
 export function getGuardianPendingEditId(search: string) {
   const value = new URLSearchParams(search).get("edit");
   const requestId = value ? Number(value) : Number.NaN;
@@ -654,8 +656,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       toast.error(error.message);
     },
   });
+  // The number this visit already proved, so "Back to phone" and on again does
+  // not cost a second SMS while the server's intake cookie is still good.
+  const [verifiedPhone, setVerifiedPhone] = useState<{ phone: string; at: number } | null>(null);
   const verifyPhoneMutation = trpc.guardianIntake.verifyPhone.useMutation({
-    onSuccess: () => { setJourneyError(""); setCodeSentTo(null); setPhoneCode(""); setStage("register"); },
+    onSuccess: (_result, variables) => { setJourneyError(""); setCodeSentTo(null); setPhoneCode(""); setVerifiedPhone({ phone: variables.phone, at: Date.now() }); setStage("register"); },
     onError: (error) => {
       const fieldMessage = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors?.phoneCode?.[0];
       setPhoneCodeError(fieldMessage ?? error.message);
@@ -673,6 +678,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     },
     onError: (error) => {
       const data = error.data as { zodFieldErrors?: Record<string, string[]>; code?: string } | null | undefined;
+      // The intake cookie has lapsed; the number has to be proved again.
+      if (data?.code === "UNAUTHORIZED") setVerifiedPhone(null);
       const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
       if (Object.keys(mapped).length) {
         setAccountFieldErrors((current) => ({ ...current, ...mapped }));
@@ -916,7 +923,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); if (codeSentTo) forgetPhoneCode(); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
-          intakeMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
+          const fullPhone = `+880${localPhone.slice(1)}`;
+          if (verifiedPhone?.phone === fullPhone && Date.now() - verifiedPhone.at < VERIFIED_PHONE_REUSE_MS) { setStage("register"); return; }
+          intakeMutation.mutate({ phone: fullPhone });
         }} code={codeSentTo ? {
           sentTo: codeSentTo,
           value: phoneCode,

@@ -3,10 +3,11 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { clearBlock, reportQuery, blocksQuery } = vi.hoisted(() => ({
+const { clearBlock, reportQuery, blocksQuery, balanceQuery } = vi.hoisted(() => ({
   clearBlock: vi.fn(),
   reportQuery: vi.fn(),
   blocksQuery: vi.fn(),
+  balanceQuery: vi.fn((): { isLoading: boolean; isError: boolean; data?: unknown } => ({ isLoading: false, isError: false, data: { configured: false } })),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/lib/trpc", () => ({
     admin: {
       getSignInReport: { useQuery: (input: unknown) => reportQuery(input) },
       listSignInBlocks: { useQuery: () => blocksQuery() },
+      getSmsBalance: { useQuery: () => balanceQuery() },
       clearSignInBlock: { useMutation: () => ({ mutate: clearBlock, isPending: false }) },
     },
   },
@@ -22,8 +24,9 @@ vi.mock("@/lib/trpc", () => ({
 
 import { AdminSignInReport } from "./AdminSignInReport";
 
-const day = (date: string, counts: Partial<Record<"newGuardians" | "newTutors" | "signIns" | "failed" | "wrongCard" | "blocked", number>> = {}) => ({
-  date, newGuardians: 0, newTutors: 0, signIns: 0, failed: 0, wrongCard: 0, blocked: 0, ...counts,
+type CountKey = "newGuardians" | "newTutors" | "signIns" | "failed" | "wrongCard" | "blocked" | "codesSent" | "codesVerified" | "wrongCodes";
+const day = (date: string, counts: Partial<Record<CountKey, number>> = {}) => ({
+  date, newGuardians: 0, newTutors: 0, signIns: 0, failed: 0, wrongCard: 0, blocked: 0, codesSent: 0, codesVerified: 0, wrongCodes: 0, ...counts,
 });
 
 afterEach(() => {
@@ -34,18 +37,32 @@ afterEach(() => {
 describe("AdminSignInReport", () => {
   it("shows the period totals and one row per day", () => {
     reportQuery.mockReturnValue({ isLoading: false, isError: false, data: {
-      days: [day("2026-09-24", { newTutors: 2, signIns: 5 }), day("2026-09-23", { failed: 3, wrongCard: 1 })],
-      totals: { newGuardians: 0, newTutors: 2, signIns: 5, failed: 3, wrongCard: 1, blocked: 0 },
+      days: [day("2026-09-24", { newTutors: 2, signIns: 5, codesSent: 4, codesVerified: 2 }), day("2026-09-23", { failed: 3, wrongCard: 1, wrongCodes: 1 })],
+      totals: { newGuardians: 0, newTutors: 2, signIns: 5, failed: 3, wrongCard: 1, blocked: 0, codesSent: 4, codesVerified: 2, wrongCodes: 1 },
     } });
     blocksQuery.mockReturnValue({ isLoading: false, isError: false, data: [] });
     render(<AdminSignInReport />);
 
-    const totals = screen.getAllByRole("definition").slice(0, 6).map(cell => cell.textContent);
-    expect(totals).toEqual(["0", "2", "5", "3", "1", "0"]);
+    const totals = screen.getAllByRole("definition").slice(0, 9).map(cell => cell.textContent);
+    expect(totals).toEqual(["0", "2", "5", "3", "1", "0", "4", "2", "1"]);
+    expect(screen.getByText("not set up")).not.toBeNull();
     const table = screen.getByRole("table", { name: "Sign-in and registration counts per day" });
     expect(within(table).getAllByRole("row")).toHaveLength(3);
     expect(reportQuery).toHaveBeenLastCalledWith({ windowDays: 7 });
     expect(screen.getByText("No one is blocked right now.")).not.toBeNull();
+  });
+
+  it("shows the SMS balance, or why there is none", () => {
+    reportQuery.mockReturnValue({ isLoading: true });
+    blocksQuery.mockReturnValue({ isLoading: true });
+    balanceQuery.mockReturnValueOnce({ isLoading: false, isError: false, data: { configured: true, balance: 1234.5 } });
+    const { unmount } = render(<AdminSignInReport />);
+    expect(screen.getByText(/SMS balance/).textContent).toBe("SMS balance: 1,234.5 Taka");
+    unmount();
+
+    balanceQuery.mockReturnValueOnce({ isLoading: false, isError: false, data: { configured: true, balance: null, problem: "this server's IP is not whitelisted at the SMS provider" } });
+    render(<AdminSignInReport />);
+    expect(screen.getByText(/SMS balance/).textContent).toContain("not whitelisted");
   });
 
   it("switches to 30 days", () => {

@@ -6,7 +6,7 @@ import { Loader2, LockOpen } from "lucide-react";
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
-type Counts = { newGuardians: number; newTutors: number; signIns: number; failed: number; wrongCard: number; blocked: number };
+type Counts = { newGuardians: number; newTutors: number; signIns: number; failed: number; wrongCard: number; blocked: number; codesSent: number; codesVerified: number; wrongCodes: number };
 
 const columns: Array<{ key: keyof Counts; label: string; tone: string }> = [
   { key: "newGuardians", label: "New Guardians", tone: "text-j-ink" },
@@ -15,7 +15,23 @@ const columns: Array<{ key: keyof Counts; label: string; tone: string }> = [
   { key: "failed", label: "Failed", tone: "text-j-err" },
   { key: "wrongCard", label: "Wrong card", tone: "text-j-warn" },
   { key: "blocked", label: "Blocked", tone: "text-j-err" },
+  { key: "codesSent", label: "Codes sent", tone: "text-j-ink" },
+  { key: "codesVerified", label: "Codes verified", tone: "text-j-ok" },
+  { key: "wrongCodes", label: "Wrong codes", tone: "text-j-warn" },
 ];
+
+/** BulkSMSBD balance beside the heading: the one number that stops every verification SMS when it runs out. */
+function SmsBalance() {
+  const balance = trpc.admin.getSmsBalance.useQuery(undefined, { refetchInterval: 5 * 60_000 });
+  const data = balance.data;
+  const text = balance.isLoading ? "…"
+    : balance.isError || !data ? "unavailable"
+    : !data.configured ? "not set up"
+    : data.balance === null ? data.problem
+    : `${data.balance.toLocaleString("en-US", { maximumFractionDigits: 2 })} Taka`;
+  const tone = data?.configured && data.balance !== null ? (data.balance < 100 ? "text-j-err" : "text-j-ink-strong") : "text-j-ink-muted";
+  return <p className="text-sm text-j-ink-soft">SMS balance: <span className={`font-bold tabular-nums ${tone}`}>{text}</span></p>;
+}
 
 const blockKindLabel = { account: "Account", connection: "Connection", registration: "Registration" } as const;
 
@@ -40,7 +56,10 @@ export function AdminSignInReport() {
 
   return <section aria-labelledby="sign-in-report-title" className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 id="sign-in-report-title" className="text-lg font-bold text-j-ink">Sign-in report</h2>
+      <div>
+        <h2 id="sign-in-report-title" className="text-lg font-bold text-j-ink">Sign-in report</h2>
+        <SmsBalance />
+      </div>
       <div className="inline-flex w-max rounded-full bg-j-surface-muted p-1" role="group" aria-label="Report period">
         {([7, 30] as const).map(days => <button key={days} type="button" aria-pressed={windowDays === days} onClick={() => setWindowDays(days)} className={`min-h-9 rounded-full px-4 text-sm font-bold transition ${windowDays === days ? "bg-white text-j-accent shadow-sm" : "text-j-ink-muted"}`}>{days} days</button>)}
       </div>
@@ -49,7 +68,7 @@ export function AdminSignInReport() {
     {report.isLoading ? <p className="mt-5 flex items-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the sign-in report…</p>
       : report.isError || !report.data ? <p role="alert" className="mt-5 rounded-xl border border-j-err-border bg-j-err-wash p-3 text-sm font-semibold text-j-err">The sign-in report could not be loaded.</p>
       : <>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-9">
           {columns.map(column => <div key={column.key} className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
             <dt className="text-xs font-semibold text-j-ink-soft">{column.label}</dt>
             <dd className={`mt-1 text-2xl font-extrabold tabular-nums ${column.tone}`}>{report.data.totals[column.key]}</dd>

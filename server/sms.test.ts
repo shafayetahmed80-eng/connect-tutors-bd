@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ENV } from "./_core/env";
 import * as telegram from "./telegram-notification";
-import { sendSms, smsNumber } from "./sms";
+import { getSmsBalance, sendSms, smsNumber } from "./sms";
 
 const saved = { ...ENV };
 
@@ -59,6 +59,29 @@ describe("sendSms (BulkSMSBD)", () => {
   it("logs instead of sending on a developer machine with no key", async () => {
     Object.assign(ENV, { smsApiKey: "", isProduction: false });
     await expect(sendSms("+8801712345678", "x", providerReplies({ response_code: 202 }))).resolves.toEqual({ sent: true, devLogged: true });
+  });
+
+  it("reads the balance from the provider's balance API", async () => {
+    const fetchImpl = providerReplies({ response_code: 202, balance: 523.75 });
+    await expect(getSmsBalance(fetchImpl)).resolves.toEqual({ configured: true, balance: 523.75 });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe("https://bulksmsbd.net/api/getBalanceApi");
+    expect(Object.fromEntries(new URLSearchParams(String(init!.body)))).toEqual({ api_key: "test-key" });
+  });
+
+  it("accepts a balance sent as text", async () => {
+    await expect(getSmsBalance(providerReplies({ balance: "98.50" }))).resolves.toEqual({ configured: true, balance: 98.5 });
+  });
+
+  it("explains a refused balance request instead of showing a number", async () => {
+    await expect(getSmsBalance(providerReplies({ response_code: 1032 }))).resolves.toEqual({ configured: true, balance: null, problem: "this server's IP is not whitelisted at the SMS provider" });
+  });
+
+  it("says not set up without a key, and asks nothing", async () => {
+    ENV.smsApiKey = "";
+    const fetchImpl = providerReplies({ balance: 1 });
+    await expect(getSmsBalance(fetchImpl)).resolves.toEqual({ configured: false });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("strips only the plus from the number", () => {

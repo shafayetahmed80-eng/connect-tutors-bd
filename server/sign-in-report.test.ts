@@ -19,13 +19,17 @@ describe("summariseSignInEvents", () => {
       { event: "login_failure", role: "guardian", reason: "role-mismatch", createdAt: at("2026-09-23T08:00:00Z") },
       { event: "login_blocked", role: "tutor", reason: null, createdAt: at("2026-09-22T08:00:00Z") },
       { event: "phone_intake", role: "guardian", reason: null, createdAt: at("2026-09-24T08:00:00Z") },
+      { event: "phone_code_sent", role: "tutor", reason: null, createdAt: at("2026-09-24T09:00:00Z") },
+      { event: "phone_code_sent", role: "guardian", reason: "dev-log", createdAt: at("2026-09-24T09:05:00Z") },
+      { event: "phone_code_rejected", role: "tutor", reason: "wrong", createdAt: at("2026-09-24T09:06:00Z") },
+      { event: "phone_verified", role: "tutor", reason: null, createdAt: at("2026-09-24T09:07:00Z") },
     ], 3, now);
 
     expect(report.days.map(day => day.date)).toEqual(["2026-09-24", "2026-09-23", "2026-09-22"]);
-    expect(report.days[0]).toMatchObject({ newGuardians: 1, newTutors: 1, signIns: 1, failed: 0, wrongCard: 0, blocked: 0 });
+    expect(report.days[0]).toMatchObject({ newGuardians: 1, newTutors: 1, signIns: 1, failed: 0, wrongCard: 0, blocked: 0, codesSent: 2, codesVerified: 1, wrongCodes: 1 });
     expect(report.days[1]).toMatchObject({ failed: 1, wrongCard: 1 });
     expect(report.days[2]).toMatchObject({ blocked: 1 });
-    expect(report.totals).toEqual({ newGuardians: 1, newTutors: 1, signIns: 1, failed: 1, wrongCard: 1, blocked: 1 });
+    expect(report.totals).toEqual({ newGuardians: 1, newTutors: 1, signIns: 1, failed: 1, wrongCard: 1, blocked: 1, codesSent: 2, codesVerified: 1, wrongCodes: 1 });
   });
 
   it("files a late-evening UTC event under the next Dhaka day", () => {
