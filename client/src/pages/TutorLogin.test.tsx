@@ -37,6 +37,10 @@ vi.mock("@/components/SiteHeader", () => ({
   default: () => null,
 }));
 
+vi.mock("@/components/SiteFooter", () => ({
+  default: () => null,
+}));
+
 import TutorLogin, { getTutorSignInErrorMessage } from "./TutorLogin";
 
 afterEach(() => {
@@ -109,6 +113,23 @@ describe("Tutor sign-in transition", () => {
     expect(screen.getByRole("status").textContent).toContain("Caps Lock is on.");
     fireEvent.blur(password);
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("uses the shared sign-in form: journey button, required marks, icon-only toggle, no label icons or arrows", () => {
+    render(<TutorLogin />);
+
+    expect(screen.getByRole("button", { name: "Sign in to Tutor Dashboard" }).className).toContain("journey-button");
+    expect(screen.getAllByLabelText("required")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Show password" }).textContent).toBe("");
+    expect(document.querySelectorAll("label svg")).toHaveLength(0);
+    expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
+  });
+
+  it("has no side panel: the sign-in heading is the page's only h1", () => {
+    render(<TutorLogin />);
+
+    expect(screen.queryByText("Continue building your teaching profile.")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual(["Welcome back"]);
   });
 
   it("keeps the Tutor sign-in password visibility control accessible", async () => {
