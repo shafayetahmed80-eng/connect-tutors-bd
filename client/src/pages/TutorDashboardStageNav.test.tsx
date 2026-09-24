@@ -54,14 +54,13 @@ describe("the Dashboard's stage buttons", () => {
 
     const nav = screen.getByRole("navigation", { name: "Application stages" });
     expect(nav.className).toContain("sb-strip");
-    expect(nav.className).toContain("sb-panel-tutor");
     // Attached: no gap between the buttons, and none of them draws a card of its own.
     expect(nav.className).not.toMatch(/gap-/);
     for (const link of screen.getAllByRole("link")) {
       expect(link.className).toContain("sb-strip-item");
       expect(link.className).not.toMatch(/bg-white|border|shadow-/);
     }
-    // Nothing is set until the Owner sets it: the shipped teal comes from the stylesheet.
+    // Nothing is set until the Owner sets it: the shipped blue comes from the stylesheet.
     expect(nav.getAttribute("style")).toBeNull();
   });
 

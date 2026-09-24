@@ -148,6 +148,14 @@ describe("the sidebars' colours", () => {
     expect(getSiteContentColourSlots("guardian-profile")).toHaveLength(0);
   });
 
+  it("ships the Tutor and Guardian sidebars in the Admin sidebar's colours", () => {
+    const slots = getSiteContentColourSlots("sidebar-tabs");
+    const defaults = (panel: string) => slots.filter(slot => slot.id.startsWith(`sidebar-tabs.${panel}.`)).map(slot => slot.defaultHex);
+    expect(defaults("admin")).toEqual(["#0d5fae", "#ffffff", "#ffffff", "#0b4b86"]);
+    expect(defaults("tutor")).toEqual(defaults("admin"));
+    expect(defaults("guardian")).toEqual(defaults("admin"));
+  });
+
   it("tidies a typed colour, and refuses what is not one", () => {
     expect(normalizeSiteContentColour("#1677E8")).toBe("#1677e8");
     expect(normalizeSiteContentColour("1677e8")).toBe("#1677e8");

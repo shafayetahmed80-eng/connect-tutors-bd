@@ -234,7 +234,8 @@ export function sidebarColourStyle(colours: { panel?: string | null; text?: stri
 
 export function getDashboardNavigationItemClassName(isActive: boolean) {
   // The colours come from the sidebar's tokens (`.sb-*` in index.css), so the
-  // three panels share one set of classes and differ only by accent.
+  // three panels share one set of classes and differ only where an Owner has
+  // repainted one.
   const shared = "sb-item nav-item relative h-[38px] rounded-lg px-3 transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1 motion-reduce:transition-none";
   return isActive
     ? `${shared} sb-item-active font-semibold before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:content-['']`
@@ -525,7 +526,7 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
           <Sidebar
             collapsible="icon"
-            className={`sb-root sb-panel-${sidebarPanel ?? "admin"} border-r border-[var(--sb-border)] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
+            className={`sb-root border-r border-[var(--sb-border)] ${DASHBOARD_SIDEBAR_MOTION_CLASS}`}
             style={sidebarColours}
             disableTransition={isResizing}
           >

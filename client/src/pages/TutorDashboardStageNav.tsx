@@ -40,7 +40,7 @@ export function TutorStageButtons({ counts }: { counts: Record<TutorApplicationS
     pill: useSiteContentColour(sidebarColourSlotId("tutor", "pill")),
     pillText: useSiteContentColour(sidebarColourSlotId("tutor", "pill-text")),
   });
-  return <nav aria-label="Application stages" style={colours} className="sb-strip sb-panel-tutor grid grid-cols-5 overflow-hidden rounded-xl lg:rounded-2xl">
+  return <nav aria-label="Application stages" style={colours} className="sb-strip grid grid-cols-5 overflow-hidden rounded-xl lg:rounded-2xl">
     {tutorApplicationStages.map(stage => {
       const Icon = stageIcon[stage.key];
       const shortLabel = stage.label.replace(/\s*Jobs$/, "");
