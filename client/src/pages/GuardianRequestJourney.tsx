@@ -1,7 +1,7 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { Link as WouterLink, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Facebook, Globe, House, KeyRound, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
+import { Check, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
@@ -20,6 +20,7 @@ import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
+import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt } from "@/components/registrationFields";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
@@ -494,10 +495,7 @@ function focusFirstGuardianAccountError(errors: GuardianAccountFieldErrors) {
 }
 
 export const guardianRequestSteps = requestSteps;
-export const guardianAccountPolicyLinks = [
-  { label: "Terms of Use", href: "/terms-conditions" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-] as const;
+export const guardianAccountPolicyLinks = registrationPolicyLinks;
 
 export function normalizeGuardianPublicHref(href: string) {
   if (href === "/terms") return guardianAccountPolicyLinks[0].href;
@@ -566,7 +564,6 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [accountCityId, setAccountCityId] = useState("");
   const [accountLocationId, setAccountLocationId] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -895,7 +892,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           clearJourneyError();
           intakeMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
         }} /> : null}
-        {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} showPassword={showPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onTogglePassword={() => setShowPassword((current) => !current)} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
+        {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
         {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><Loader2 className="mx-auto mb-3 animate-spin text-j-accent" size={22} />Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
           step={step}
@@ -953,149 +950,80 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
     </label>
     <div className="mt-6 flex max-w-md flex-col gap-3">
-      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /> <ArrowRight size={18} /></button>
-      <p className="text-center text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
+      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /></button>
+      <div className="text-center"><SignInPrompt href="/auth?role=guardian" /></div>
     </div>
   </div>;
 }
 
 export type GuardianAccountStageProps = {
-  name: string; email: string; phone: string; gender: "" | "male" | "female"; password: string; confirmPassword: string; showPassword: boolean;
+  name: string; email: string; phone: string; gender: "" | "male" | "female"; password: string; confirmPassword: string;
   cities: Array<{ id: string; label: string }>; accountCityId: string; accountLocations: Array<{ id: string; label: string }>;
   accountLocationId: string; accountCityLabel: string; termsAccepted: boolean; pending: boolean;
   fieldErrors?: GuardianAccountFieldErrors;
   onName: (value: string) => void; onEmail: (value: string) => void; onGender: (value: "male" | "female") => void;
-  onPassword: (value: string) => void; onConfirmPassword: (value: string) => void; onTogglePassword: () => void;
+  onPassword: (value: string) => void; onConfirmPassword: (value: string) => void;
   onCity: (value: string) => void; onLocation: (value: string) => void; onTerms: (value: boolean) => void; onBack: () => void; onCreate: () => void;
 };
-
-export function getGuardianPasswordStrength(password: string) {
-  if (!password) return { score: 0, label: "Getting started", hint: "Use at least 8 characters.", color: "bg-[#b9cbd8]" };
-  const score = [password.length >= 8, /[a-z]/.test(password) && /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
-  if (score <= 1) return { score, label: "Weak", hint: "Add mixed case, a number, and a symbol.", color: "bg-[#dc5b5b]" };
-  if (score === 2) return { score, label: "Fair", hint: "Add one more character type.", color: "bg-[#df9a1d]" };
-  if (score === 3) return { score, label: "Strong", hint: "Longer is even better.", color: "bg-j-ok" };
-  return { score, label: "Excellent", hint: "", color: "bg-j-accent" };
-}
-
-function GuardianPasswordStrength({ password }: { password: string }) {
-  const strength = getGuardianPasswordStrength(password);
-  return <div className="mt-2.5">
-    <div role="progressbar" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} className="flex gap-1.5">{[0, 1, 2, 3].map((segment) => <span key={segment} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none ${segment < strength.score ? strength.color : "bg-[#dceaf2]"}`} />)}</div>
-    <p id="guardian-password-strength" role="status" aria-live="polite" aria-label={`Password strength: ${strength.label}.${strength.hint ? ` ${strength.hint}` : ""}`} className="mt-2 text-xs font-medium leading-5 text-[#6c8295]"><span className="font-bold text-j-ink-strong">{strength.label}</span>{strength.hint ? ` — ${strength.hint}` : ""}</p>
-  </div>;
-}
-
-function getGuardianPasswordMatch(password: string, confirmPassword: string) {
-  if (!confirmPassword) return null;
-  if (password === confirmPassword) return { matches: true, label: "Passwords match", hint: "Your password confirmation is ready.", color: "text-j-ok", dotColor: "bg-j-ok" };
-  return { matches: false, label: "Passwords do not match yet", hint: "Check both password entries and try again.", color: "text-[#b34a4a]", dotColor: "bg-[#dc5b5b]" };
-}
-
-function GuardianPasswordMatch({ password, confirmPassword }: { password: string; confirmPassword: string }) {
-  const match = getGuardianPasswordMatch(password, confirmPassword);
-  if (!match) return null;
-  return <p id="guardian-password-match" role="status" aria-live="polite" className={`mt-2 flex items-center gap-2 text-xs font-semibold leading-5 ${match.matches ? "text-j-ok" : match.color}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${match.matches ? "bg-j-ok" : match.dotColor}`} />{match.label}</p>;
-}
-
-function GuardianPasswordManagerHint() {
-  return <p role="note" aria-label="Password manager guidance" className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium leading-5 text-[#8496a6]"><KeyRound className="shrink-0 text-[#a9bccc]" size={13} aria-hidden="true" />A browser or device password manager can generate and save a strong one.</p>;
-}
 
 export function getGuardianLocationSelectionState(cityId: string, locationId: string, cityLabel: string, locationLabel: string) {
   if (!cityId || !locationId || !cityLabel || !locationLabel) return null;
   return { complete: true as const, cityLabel, locationLabel };
 }
 
-function GenderSegment({ value, current, onSelect }: { value: "female" | "male"; current: "" | "female" | "male"; onSelect: (value: "female" | "male") => void }) {
-  const label = value === "female" ? "Female" : "Male";
-  return <label className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${current === value ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}>
-    <input type="radio" name="guardian-gender" className="sr-only" checked={current === value} onChange={() => onSelect(value)} />{label}
-  </label>;
-}
-
-function FieldError({ id, message, children }: { id: string; message?: string; children: ReactNode }) {
-  return <div>{children}{message ? <p id={id} role="alert" className="mt-1.5 text-xs font-semibold text-[#bd3535]">{message}</p> : null}</div>;
-}
-
 export function AccountStage(props: GuardianAccountStageProps) {
   const errors = props.fieldErrors ?? {};
   const resolveSlot = useSiteContentResolver();
-  const passwordMatch = getGuardianPasswordMatch(props.password, props.confirmPassword);
-  const star = <span className={requiredMark}>*</span>;
-  const confirmBorder = errors.confirmPassword
-    ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
-    : passwordMatch?.matches
-      ? "border-j-ok focus:border-j-ok"
-      : passwordMatch
-        ? "border-[#dc5b5b] focus:border-[#dc5b5b]"
-        : "";
+  const passwordMatch = getPasswordMatch(props.password, props.confirmPassword);
   const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
     <div className={`mt-6 ${fieldGrid}`}>
-      <FieldError id="guardian-full-name-error" message={errors.name}>
-        <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>{resolveSlot("request-tutor.field.fullName", "Full name")} {star}</span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
-      </FieldError>
+      <RegistrationFieldError id="guardian-full-name-error" message={errors.name}>
+        <label className="block" htmlFor="guardian-full-name"><span className={fieldLabel}>{resolveSlot("request-tutor.field.fullName", "Full name")}<RequiredMark /></span><input id="guardian-full-name" maxLength={160} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "guardian-full-name-error" : undefined} className={`${filledField} mt-2`} value={props.name} onChange={(event) => props.onName(event.target.value)} autoComplete="name" placeholder="Your full name" /></label>
+      </RegistrationFieldError>
 
-      <FieldError id="guardian-gender-error" message={errors.gender}>
-        <fieldset id="guardian-gender">
-          <legend className={fieldLabel}>{resolveSlot("request-tutor.field.gender", "Gender")} {star}</legend>
-          <div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">
-            <GenderSegment value="female" current={props.gender} onSelect={props.onGender} />
-            <GenderSegment value="male" current={props.gender} onSelect={props.onGender} />
-          </div>
-        </fieldset>
-      </FieldError>
+      <RegistrationFieldError id="guardian-gender-error" message={errors.gender}>
+        <GenderField id="guardian-gender" name="guardian-gender" label={resolveSlot("request-tutor.field.gender", "Gender")} value={props.gender} onSelect={props.onGender} />
+      </RegistrationFieldError>
 
-      <label className="block" htmlFor="guardian-phone">
-        <span className={fieldLabel}>{resolveSlot("request-tutor.field.accountPhone", "Phone number")} {star}</span>
-        <span className="input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-[#eef3f8]">
-          <span className="flex items-center border-r border-j-border px-3.5 font-bold text-j-ink-soft">+880</span>
-          <input id="guardian-phone" readOnly aria-readonly="true" tabIndex={-1} value={displayPhone} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-j-ink-soft outline-none" />
-        </span>
-        <span className="mt-1.5 block text-xs font-medium text-[#8496a6]">Taken from the previous step. Use “Back to phone” to change it.</span>
-      </label>
+      <PhoneField id="guardian-phone" label={resolveSlot("request-tutor.field.accountPhone", "Phone number")} value={displayPhone} readOnly />
 
-      <FieldError id="guardian-email-error" message={errors.email}>
-        <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>{resolveSlot("request-tutor.field.email", "Email")} {star}</span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
-      </FieldError>
+      <RegistrationFieldError id="guardian-email-error" message={errors.email}>
+        <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>{resolveSlot("request-tutor.field.email", "Email")}<RequiredMark /></span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
+      </RegistrationFieldError>
 
-      <FieldError id="guardian-password-error" message={errors.password}>
-        <label className="block" htmlFor="guardian-password">
-          <span className={fieldLabel}>{resolveSlot("request-tutor.field.password", "Password")} {star}</span>
-          <span className="relative mt-2 block">
-            <input id="guardian-password" minLength={8} maxLength={128} aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? "guardian-password-error" : "guardian-password-strength"} className={`${filledField} pr-24`} type={props.showPassword ? "text" : "password"} value={props.password} onChange={(event) => props.onPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" />
-            <button type="button" className="absolute inset-y-0 right-0 inline-flex items-center gap-1 rounded-lg px-3 text-xs font-bold text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/30" aria-label={props.showPassword ? "Hide password" : "Show password"} onClick={props.onTogglePassword}>{props.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}{props.showPassword ? "Hide" : "Show"}</button>
-          </span>
-          <GuardianPasswordStrength password={props.password} />
-          <GuardianPasswordManagerHint />
-        </label>
-      </FieldError>
+      <RegistrationFieldError id="guardian-password-error" message={errors.password}>
+        <PasswordField id="guardian-password" label={resolveSlot("request-tutor.field.password", "Password")} value={props.password} onChange={props.onPassword} placeholder="At least 8 characters" invalid={Boolean(errors.password)} describedBy={errors.password ? "guardian-password-error" : "guardian-password-strength"}>
+          <PasswordStrength id="guardian-password-strength" password={props.password} />
+        </PasswordField>
+      </RegistrationFieldError>
 
-      <FieldError id="guardian-confirm-password-error" message={errors.confirmPassword}>
-        <label className="block" htmlFor="guardian-confirm-password"><span className={fieldLabel}>{resolveSlot("request-tutor.field.confirmPassword", "Confirm password")} {star}</span><input id="guardian-confirm-password" maxLength={128} aria-describedby={errors.confirmPassword ? "guardian-confirm-password-error" : passwordMatch ? "guardian-password-match" : undefined} aria-invalid={errors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} className={`${filledField} mt-2 ${confirmBorder}`} type={props.showPassword ? "text" : "password"} value={props.confirmPassword} onChange={(event) => props.onConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" /><GuardianPasswordMatch password={props.password} confirmPassword={props.confirmPassword} /></label>
-      </FieldError>
+      <RegistrationFieldError id="guardian-confirm-password-error" message={errors.confirmPassword}>
+        <PasswordField id="guardian-confirm-password" label={resolveSlot("request-tutor.field.confirmPassword", "Confirm password")} value={props.confirmPassword} onChange={props.onConfirmPassword} placeholder="Re-enter your password" invalid={errors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} describedBy={errors.confirmPassword ? "guardian-confirm-password-error" : passwordMatch ? "guardian-password-match" : undefined} inputClassName={confirmPasswordBorder(props.password, props.confirmPassword, errors.confirmPassword)}>
+          <PasswordMatch id="guardian-password-match" password={props.password} confirmPassword={props.confirmPassword} />
+        </PasswordField>
+      </RegistrationFieldError>
 
-      <FieldError id="guardian-account-city-error" message={errors.cityLocationId}>
+      <RegistrationFieldError id="guardian-account-city-error" message={errors.cityLocationId}>
         <SearchableLocationSelect triggerId="guardian-account-city" label="City" slotId="request-tutor.field.accountCity" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
-      </FieldError>
-      <FieldError id="guardian-account-location-error" message={errors.locationId}>
+      </RegistrationFieldError>
+      <RegistrationFieldError id="guardian-account-location-error" message={errors.locationId}>
         <SearchableLocationSelect triggerId="guardian-account-location" label="Location" slotId="request-tutor.field.accountLocation" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required onChange={props.onLocation} />
-      </FieldError>
+      </RegistrationFieldError>
     </div>
 
-    <FieldError id="guardian-terms-error" message={errors.terms}>
-      <label className="mt-5 flex items-start gap-2.5 text-sm leading-6 text-[#526f87]" htmlFor="guardian-terms"><input id="guardian-terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" checked={props.termsAccepted} onChange={(event) => props.onTerms(event.target.checked)} /><span>I agree to the <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/terms">Terms of Use</Link> and <Link className="font-extrabold text-j-accent underline underline-offset-2" href="/privacy">Privacy Policy</Link>.</span></label>
-    </FieldError>
+    <RegistrationFieldError id="guardian-terms-error" message={errors.terms}>
+      <PolicyConsent id="guardian-terms" checked={props.termsAccepted} onChange={props.onTerms} />
+    </RegistrationFieldError>
 
-    <div className="mt-6 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-5 sm:flex-row sm:items-center sm:justify-between">
+    <div className={registrationFooter}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-        <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.accountBack" fallback="Back to phone" /></button>
-        <p className="text-sm text-[#59748b]">Already registered? <Link href="/auth?role=guardian" className="font-extrabold text-[#147fc0] underline underline-offset-2">Sign in with email or mobile</Link></p>
+        <button type="button" className={ghostButton} onClick={props.onBack}><SiteText slotId="button-section.journey.accountBack" fallback="Back to phone" /></button>
+        <SignInPrompt href="/auth?role=guardian" />
       </div>
-      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Create Guardian account" /> <ArrowRight size={18} /></button>
+      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Create Guardian account" /></button>
     </div>
   </section>;
 }
@@ -1194,15 +1122,15 @@ export function RequestStage(props: RequestStageProps) {
         two actions and none of the journey's - there is nothing left to go
         Back to and nothing left to send. */}
     {props.step === 3 ? <SuccessState requestId={props.requestId ?? null} input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onPostAnother={props.onPostAnother ?? (() => undefined)} /> : null}
-    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><ArrowLeft size={17} /> <SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1
+    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1
       // Distinct keys, so React mounts a fresh node for each rather than reusing
       // one and only flipping `type`. Reusing it means the click that runs
       // `onAdvance` (setting step 2) leaves the very same element as a
       // `type="submit"` button, whose default action then submits the form -
       // in edit mode every step-2 field is prefilled, so that stray submit
       // saves and leaves the journey the instant "Continue" is pressed.
-      ? <button key="advance" type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /> <ArrowRight size={17} /></button>
-      : <button key="submit" type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel} <ArrowRight size={17} /></button>}</div>}
+      ? <button key="advance" type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /></button>
+      : <button key="submit" type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel}</button>}</div>}
   </form>;
 }
 
@@ -1233,7 +1161,7 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
     <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
 
     <div className="mt-7 flex justify-center border-t border-[#e6eef4] pt-6">
-      <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}><SiteText slotId="button-section.journey.viewRequest" fallback="View my request" /> <ArrowRight size={18} /></Link>
+      <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}><SiteText slotId="button-section.journey.viewRequest" fallback="View my request" /></Link>
     </div>
   </div>;
 }

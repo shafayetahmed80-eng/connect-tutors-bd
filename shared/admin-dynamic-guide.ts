@@ -151,6 +151,7 @@ export function findAdminDynamicGuide(path: string): AdminDynamicGuideEntry | un
 const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "tutor-profile": {
     "Tutor dashboard": "/tutor/dashboard/profile",
+    "Tutor registration": "/become-tutor",
   },
   "guardian-profile": {
     "Guardian dashboard": "/guardian/dashboard",
@@ -159,6 +160,7 @@ const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string
   "button-section": {
     "Guardian journey": "/request-tutor",
     "Registration page": "/register",
+    "Tutor registration": "/become-tutor",
     "Tutor profile editor": "/tutor/dashboard/profile",
   },
   "sidebar-tabs": {

@@ -1,16 +1,17 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
+import { fieldGrid, fieldLabel, filledField, primaryButton } from "@/components/journeyField";
+import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, RequiredMark, SignInPrompt } from "@/components/registrationFields";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { useSiteContentResolver } from "@/lib/siteContent";
-import { BANGLADESH_COUNTRY_CODE, formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
+import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
+import { formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
-import { ArrowRight, ChevronDown, Eye, EyeOff, LoaderCircle, MapPin, MapPinned } from "lucide-react";
+import { ChevronDown, LoaderCircle, MapPin, MapPinned } from "lucide-react";
 import React, { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 const fieldClass = `${filledField} mt-2`;
@@ -76,8 +77,7 @@ export default function JoinTutor() {
   const [agreed, setAgreed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<TutorRegistrationErrors>({});
   const [submitError, setSubmitError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const resolveSlot = useSiteContentResolver();
 
   useEffect(() => {
     if (!authLoading && user?.role === "tutor" && getCurrentTutorPortalToken()) navigate("/tutor/dashboard");
@@ -86,7 +86,7 @@ export default function JoinTutor() {
   const cities = cityCatalog.data ?? [];
   const cityLocations = locationCatalog.data ?? [];
   const locationsLoading = cityCatalog.isLoading || locationCatalog.isLoading;
-  const selectedCity = cities.find((city) => city.id === form.cityId);
+  const passwordMatch = getPasswordMatch(form.password, form.confirmPassword);
 
   const focusFirstError = (errors: TutorRegistrationErrors) => {
     const firstErrorField = Object.keys(errors)[0];
@@ -212,50 +212,38 @@ export default function JoinTutor() {
     }
   };
 
-  return <div className="site-page min-h-screen bg-j-page text-j-ink">
+  return <SiteContentProvider page="tutor-profile"><div className="site-page min-h-screen bg-j-page text-j-ink">
     <SiteHeader variant="journey" journeyAudience="tutor" />
     <main className="px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-4xl">
         <div className="mb-5 text-center">
-          <h1 id="tutor-registration-title" className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl">Create your Tutor account</h1>
+          <h1 id="tutor-registration-title" className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="tutor-registration.heading" /></h1>
         </div>
 
         <form noValidate onSubmit={submitRegistration} className="mx-auto mt-4 rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6">
           <section aria-labelledby="tutor-registration-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-            <div className="grid gap-x-7 gap-y-4 md:grid-cols-2">
-              <FieldError id="name-error" message={fieldErrors.name}><label className={fieldLabel} htmlFor="name">Full name <RequiredMark /><input id="name" required maxLength={160} value={form.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} className={fieldClass} placeholder="Your full name" autoComplete="name" /></label></FieldError>
-              <FieldError id="gender-error" message={fieldErrors.gender}><fieldset><legend className={fieldLabel}>Gender <RequiredMark /></legend><div className="mt-2 inline-flex rounded-xl bg-[#eef3f8] p-1">{(["male", "female"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${form.gender === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-[#6a8398] hover:text-j-ink-soft"}`}><input type="radio" name="gender" className="sr-only" checked={form.gender === option} onChange={() => update("gender", option)} />{option === "male" ? "Male" : "Female"}</label>)}</div></fieldset></FieldError>
-              <FieldError id="phone-error" message={fieldErrors.phone}><label className={fieldLabel} htmlFor="phone">Phone number <RequiredMark /><span className="input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12"><span className="flex items-center border-r border-j-border px-3.5 font-bold text-j-ink-soft">{BANGLADESH_COUNTRY_CODE}</span><input id="phone" required value={form.phone} onChange={(event) => update("phone", normalizeBangladeshLocalMobile(event.target.value))} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "phone-error" : undefined} className="min-w-0 flex-1 bg-transparent px-3.5 py-3 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder="1XXXXXXXXX" inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" /></span></label></FieldError>
-              <FieldError id="contactEmail-error" message={fieldErrors.contactEmail}><label className={fieldLabel} htmlFor="contactEmail">Email <RequiredMark /><input id="contactEmail" required maxLength={320} value={form.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} aria-invalid={Boolean(fieldErrors.contactEmail)} aria-describedby={fieldErrors.contactEmail ? "contactEmail-error" : undefined} className={fieldClass} placeholder="name@example.com" type="email" autoComplete="email" /></label></FieldError>
-              <FieldError id="password-error" message={fieldErrors.password}><label className={fieldLabel} htmlFor="password">Password <RequiredMark /><PasswordInput id="password" value={form.password} onChange={(value) => update("password", value)} show={showPassword} onToggle={() => setShowPassword((current) => !current)} placeholder="At least 8 characters" error={fieldErrors.password} autoComplete="new-password" /></label></FieldError>
-              <FieldError id="confirmPassword-error" message={fieldErrors.confirmPassword}><label className={fieldLabel} htmlFor="confirmPassword">Confirm password <RequiredMark /><PasswordInput id="confirmPassword" value={form.confirmPassword} onChange={(value) => update("confirmPassword", value)} show={showConfirmPassword} onToggle={() => setShowConfirmPassword((current) => !current)} placeholder="Re-enter your password" error={fieldErrors.confirmPassword} autoComplete="new-password" /></label></FieldError>
-              <FieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} /></FieldError>
-              <FieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} /></FieldError>
+            <div className={fieldGrid}>
+              <RegistrationFieldError id="name-error" message={fieldErrors.name}><label className="block" htmlFor="name"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.fullName", "Full name")}<RequiredMark /></span><input id="name" required maxLength={160} value={form.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} className={fieldClass} placeholder="Your full name" autoComplete="name" /></label></RegistrationFieldError>
+              <RegistrationFieldError id="gender-error" message={fieldErrors.gender}><GenderField id="gender" name="gender" label={resolveSlot("tutor-registration.field.gender", "Gender")} value={form.gender} onSelect={(value) => update("gender", value)} /></RegistrationFieldError>
+              <RegistrationFieldError id="phone-error" message={fieldErrors.phone}><PhoneField id="phone" label={resolveSlot("tutor-registration.field.phone", "Phone number")} value={form.phone} onChange={(value) => update("phone", normalizeBangladeshLocalMobile(value))} placeholder="1XXXXXXXXX" invalid={Boolean(fieldErrors.phone)} describedBy={fieldErrors.phone ? "phone-error" : undefined} /></RegistrationFieldError>
+              <RegistrationFieldError id="contactEmail-error" message={fieldErrors.contactEmail}><label className="block" htmlFor="contactEmail"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.email", "Email")}<RequiredMark /></span><input id="contactEmail" required maxLength={320} value={form.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} aria-invalid={Boolean(fieldErrors.contactEmail)} aria-describedby={fieldErrors.contactEmail ? "contactEmail-error" : undefined} className={fieldClass} placeholder="name@example.com" type="email" autoComplete="email" /></label></RegistrationFieldError>
+              <RegistrationFieldError id="password-error" message={fieldErrors.password}><PasswordField id="password" label={resolveSlot("tutor-registration.field.password", "Password")} value={form.password} onChange={(value) => update("password", value)} placeholder="At least 8 characters" invalid={Boolean(fieldErrors.password)} describedBy={fieldErrors.password ? "password-error" : "password-strength"}><PasswordStrength id="password-strength" password={form.password} /></PasswordField></RegistrationFieldError>
+              <RegistrationFieldError id="confirmPassword-error" message={fieldErrors.confirmPassword}><PasswordField id="confirmPassword" label={resolveSlot("tutor-registration.field.confirmPassword", "Confirm password")} value={form.confirmPassword} onChange={(value) => update("confirmPassword", value)} placeholder="Re-enter your password" invalid={fieldErrors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} describedBy={fieldErrors.confirmPassword ? "confirmPassword-error" : passwordMatch ? "password-match" : undefined} inputClassName={confirmPasswordBorder(form.password, form.confirmPassword, fieldErrors.confirmPassword)}><PasswordMatch id="password-match" password={form.password} confirmPassword={form.confirmPassword} /></PasswordField></RegistrationFieldError>
+              <RegistrationFieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" slotId="tutor-registration.field.city" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} /></RegistrationFieldError>
+              <RegistrationFieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" slotId="tutor-registration.field.location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} /></RegistrationFieldError>
             </div>
-            <FieldError id="agreed-error" message={fieldErrors.agreed}><label className="mt-5 flex items-start gap-2.5 text-sm leading-6 text-[#526f87]" htmlFor="agreed"><input id="agreed" checked={agreed} onChange={(event) => { setAgreed(event.target.checked); setFieldErrors((current) => ({ ...current, agreed: undefined })); }} type="checkbox" className="mt-1 h-4 w-4 rounded border-[#9dbbd1] text-j-accent" /><span>I agree to the <Link href="/terms-conditions" className="font-extrabold text-j-accent underline underline-offset-2">Terms of Use</Link> and <Link href="/privacy-policy" className="font-extrabold text-j-accent underline underline-offset-2">Privacy Policy</Link>.</span></label></FieldError>
+            <RegistrationFieldError id="agreed-error" message={fieldErrors.agreed}><PolicyConsent id="agreed" checked={agreed} onChange={(checked) => { setAgreed(checked); setFieldErrors((current) => ({ ...current, agreed: undefined })); }} /></RegistrationFieldError>
             {submitError ? <p role="alert" className="mt-4 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{submitError}</p> : null}
-            <div className="mt-6 flex flex-col-reverse gap-4 border-t border-[#e5edf3] pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-[#59748b]">Already registered? <Link href={TUTOR_SIGN_IN_HREF} className="font-extrabold text-j-accent underline underline-offset-2">Sign in with email or mobile</Link></p>
-              <button type="submit" disabled={registerTutor.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : <>Create Tutor account <ArrowRight size={17} /></>}</button>
+            <div className={registrationFooter}>
+              <SignInPrompt href={TUTOR_SIGN_IN_HREF} />
+              <button type="submit" disabled={registerTutor.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : <><SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" /></>}</button>
             </div>
           </section>
         </form>
       </section>
     </main>
     <SiteFooter />
-  </div>;
-}
-
-function RequiredMark() {
-  return <span className={requiredMark} aria-label="required"> *</span>;
-}
-
-function FieldError({ children, id, message }: { children: React.ReactNode; id: string; message?: string }) {
-  return <div>{children}{message ? <p id={id} role="alert" className="mt-2 text-xs font-semibold text-[#bd3535]">{message}</p> : null}</div>;
-}
-
-function PasswordInput({ id, value, onChange, show, onToggle, placeholder, error, autoComplete }: { id: string; value: string; onChange: (value: string) => void; show: boolean; onToggle: () => void; placeholder: string; error?: string; autoComplete: string }) {
-  return <span className="relative mt-2 block"><input id={id} required value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} className={`${filledField} pr-12`} placeholder={placeholder} type={show ? "text" : "password"} autoComplete={autoComplete} minLength={8} maxLength={128} /><button type="button" onClick={onToggle} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 inline-flex items-center rounded-r-xl px-3 text-j-ink-soft transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{show ? <EyeOff size={17} /> : <Eye size={17} />}</button></span>;
+  </div></SiteContentProvider>;
 }
 
 /**
