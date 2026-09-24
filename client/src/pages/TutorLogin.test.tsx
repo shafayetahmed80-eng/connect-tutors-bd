@@ -178,5 +178,6 @@ describe("Tutor sign-in transition", () => {
 
     const help = screen.getByRole("link", { name: "Need help signing in?" });
     expect(help.getAttribute("href")).toContain("wa.me/8801516131411");
+    expect(screen.queryByText(/For password recovery/)).toBeNull();
   });
 });
