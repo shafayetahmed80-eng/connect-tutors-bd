@@ -74,9 +74,9 @@ const registerJourney: Record<PublicAccountRole, {
     registerHref: "/request-tutor",
   },
   tutor: {
-    heading: "Register as a Tutor in two simple steps",
-    summary: "Secure your account first, then choose your teaching location and consent preferences. Your teaching profile can be completed from the Tutor Dashboard.",
-    steps: ["Secure account details", "Teaching location and consent"],
+    heading: "Register as a Tutor",
+    summary: "Create your account on one form. Your teaching profile can be completed from the Tutor Dashboard.",
+    steps: ["Create Tutor account", "Complete your profile"],
     privacyCue: "Your contact details stay private while you prepare your public teaching profile.",
     registerLabel: "Start Tutor Registration",
     registerHref: "/become-tutor",
@@ -253,7 +253,7 @@ export default function AuthPage() {
 
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-j-accent">{mode === "login" ? "Welcome back" : "Join the community"}</p>
             <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">{mode === "login" ? "Sign in to your account" : "Choose your next step"}</h2>
-            <p className="mt-3 leading-7 text-[#728ba0]">{mode === "login" ? "Choose the account type you registered with, then use your email address or Bangladesh mobile number." : "Registration happens in the journey designed for your role. It is not completed on this screen."}</p>
+            {mode === "login" ? <p className="mt-3 leading-7 text-[#728ba0]">Choose the account type you registered with, then use your email address or Bangladesh mobile number.</p> : null}
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Account type">
               <RoleChoice role="guardian" selected={role === "guardian"} onSelect={chooseRole} />
@@ -333,7 +333,6 @@ export default function AuthPage() {
               </div>
             )}
 
-            <p className="mt-7 text-center text-xs leading-5 text-[#8aa0b2]">Admin access is separate and requires an invited Admin account with two-factor authentication.</p>
             </>}
           </div>
         </section>

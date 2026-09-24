@@ -139,9 +139,18 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.getByRole("button", { name: "Already registered? Sign in" })).not.toBeNull();
 
     await user.click(screen.getByRole("radio", { name: "Select Tutor account" }));
-    expect(screen.getByText("Secure account details")).not.toBeNull();
-    expect(screen.getByText("Teaching location and consent")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Register as a Tutor" })).not.toBeNull();
+    expect(screen.getByText("Create Tutor account")).not.toBeNull();
+    expect(screen.getByText("Complete your profile")).not.toBeNull();
+    expect(screen.queryByText(/two simple steps/i)).toBeNull();
+    expect(screen.queryByText(/not completed on this screen/i)).toBeNull();
     expect(screen.getByRole("link", { name: "Start Tutor Registration" }).getAttribute("href")).toBe("/become-tutor");
+  });
+
+  it("does not claim Admin two-factor, which is not built yet", () => {
+    render(<AuthPage />);
+
+    expect(screen.queryByText(/two-factor/i)).toBeNull();
   });
 
   it("returns to sign-in without losing the selected role", async () => {
