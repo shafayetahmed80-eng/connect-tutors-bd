@@ -2,15 +2,13 @@ import { useSiteContact, useSiteContentText, useSiteContentTextStyle } from "@/l
 import React, { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  CheckCircle2,
   GraduationCap,
-  LockKeyhole,
   MessageCircle,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
 import { primaryButton } from "@/components/journeyField";
-import { SignInForm, SignInHeading, SignInShell, type SignInRail } from "@/components/SignInLayout";
+import { SignInForm, SignInHeading, SignInShell } from "@/components/SignInLayout";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { TRPCClientError } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
@@ -78,17 +76,6 @@ const registerJourney: Record<PublicAccountRole, {
     registerLabel: "Start Tutor Registration",
     registerHref: "/become-tutor",
   },
-};
-
-const authRail: SignInRail = {
-  eyebrow: "A calmer next step",
-  title: "Find the right learning connection.",
-  body: "Sign in to manage a tutor request or your teaching profile. Each account type keeps its own private workspace.",
-  points: [
-    { icon: CheckCircle2, label: "Verified professional profiles" },
-    { icon: ShieldCheck, label: "Privacy-conscious contact flow" },
-    { icon: LockKeyhole, label: "Role-specific account access" },
-  ],
 };
 
 function getInitialRole(): PublicAccountRole {
@@ -229,7 +216,7 @@ export default function AuthPage() {
   const selectedJourney = registerJourney[role];
 
   return (
-    <SignInShell rail={authRail}>
+    <SignInShell>
       {isEnteringTutorWorkspace ? <TutorWorkspaceTransition /> : <>
       <div className="mb-8 inline-flex w-max max-w-full gap-1 overflow-x-auto rounded-full bg-j-surface-muted p-1" aria-label="Account access mode">
         <AccessModeTab slotId="button-section.auth.signIn" fallback="Sign in" active={mode === "login"} onSelect={() => switchMode("login")} />

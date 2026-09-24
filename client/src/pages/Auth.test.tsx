@@ -160,6 +160,13 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.getByRole("link", { name: "Start Tutor Registration" }).getAttribute("href")).toBe("/become-tutor");
   });
 
+  it("has no side panel: the sign-in heading is the page's only h1", () => {
+    render(<AuthPage />);
+
+    expect(screen.queryByText("Find the right learning connection.")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual(["Sign in to your account"]);
+  });
+
   it("does not claim Admin two-factor, which is not built yet", () => {
     render(<AuthPage />);
 

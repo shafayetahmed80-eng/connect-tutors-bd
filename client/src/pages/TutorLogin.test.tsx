@@ -125,6 +125,13 @@ describe("Tutor sign-in transition", () => {
     expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
   });
 
+  it("has no side panel: the sign-in heading is the page's only h1", () => {
+    render(<TutorLogin />);
+
+    expect(screen.queryByText("Continue building your teaching profile.")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual(["Welcome back"]);
+  });
+
   it("keeps the Tutor sign-in password visibility control accessible", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorLogin />);

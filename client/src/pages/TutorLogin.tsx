@@ -68,7 +68,7 @@ export default function TutorLogin() {
     }
   };
 
-  return <SignInShell rail={{ eyebrow: "Tutor workspace", title: "Continue building your teaching profile.", body: "Sign in to manage your Tutor ID, profile information, requests, and account settings." }}>
+  return <SignInShell>
     <SignInHeading eyebrow="Tutor sign in" title="Welcome back" body="Use the email address or Bangladesh mobile number and password you created during Tutor registration." />
     {signedOutSuccessfully ? <p role="status" className="mt-6 rounded-xl border border-j-ok-border bg-j-ok-wash px-4 py-3 text-sm font-semibold text-j-ok">Signed out successfully.</p> : null}
     {needsTabReauth && !signedOutSuccessfully ? <p role="status" className="mt-6 rounded-xl border border-j-border bg-j-accent-wash px-4 py-3 text-sm font-semibold leading-6 text-j-ink-soft">For your security, each browser tab signs in separately. Please sign in again to open your Tutor Dashboard here.</p> : null}

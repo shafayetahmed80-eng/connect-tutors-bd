@@ -5,12 +5,12 @@
 // header, a rounded-full button and plain inputs; the other a rounded-lg
 // button, an icon inside the field and its own red for the asterisk. Both now
 // render from here and use the same journey tokens as the registration forms.
+// The blue side panel both pages had is gone too; the form stands alone.
 // Labels and buttons carry no icons (no arrows either) - the Owner does not
 // want them on sign-in or registration forms.
 
-import { Eye, EyeOff, LoaderCircle, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import React, { type FormEvent, type ReactNode, useState } from "react";
-import { Link } from "wouter";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
@@ -20,37 +20,12 @@ import { useSiteContact } from "@/lib/siteContent";
 export const SIGN_IN_RECOVERY_NOTE = "For password recovery, contact support on WhatsApp. We do not offer email reset links yet.";
 const RECOVERY_MESSAGE = "Hello Connect Tutors, I need help recovering my account.";
 
-export type SignInRail = {
-  eyebrow: string;
-  title: string;
-  body: string;
-  points?: ReadonlyArray<{ icon: LucideIcon; label: string }>;
-};
-
-export function SignInShell({ rail, children }: { rail: SignInRail; children: ReactNode }) {
+/** One centred card under the site header - no side panel, at the Owner's request. */
+export function SignInShell({ children }: { children: ReactNode }) {
   return <div className="site-page min-h-screen bg-j-page text-j-ink">
     <SiteHeader />
     <main className="px-4 py-10 sm:px-6 lg:py-16">
-      <section className="mx-auto grid max-w-5xl overflow-hidden rounded-[1.65rem] border border-j-border bg-white shadow-[0_20px_56px_rgba(27,84,122,0.13)] lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="relative overflow-hidden bg-j-rail px-7 py-10 text-white sm:px-12 sm:py-14">
-          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#0a4c85]/50 blur-2xl" />
-          <div className="relative">
-            <Link href="/" className="text-sm font-bold text-[#bde9ff]">Connect Tutors</Link>
-            <div className="mt-16 max-w-md sm:mt-20">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8fd0f5]">{rail.eyebrow}</p>
-              <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-[-0.04em] sm:text-5xl">{rail.title}</h1>
-              <p className="mt-5 text-sm leading-7 text-[#c8ddf0]">{rail.body}</p>
-              {rail.points?.length ? <ul className="mt-10 space-y-4 text-sm font-semibold">
-                {rail.points.map(({ icon: Icon, label }) => <li key={label} className="flex items-center gap-3"><Icon className="text-[#ffd37a]" size={19} aria-hidden="true" />{label}</li>)}
-              </ul> : null}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center px-7 py-10 sm:px-14 sm:py-14">
-          <div className="mx-auto w-full max-w-lg">{children}</div>
-        </div>
-      </section>
+      <section className="mx-auto max-w-xl rounded-[1.65rem] border border-j-border bg-white p-6 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-10">{children}</section>
     </main>
     <SiteFooter />
   </div>;
@@ -59,7 +34,7 @@ export function SignInShell({ rail, children }: { rail: SignInRail; children: Re
 export function SignInHeading({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
   return <>
     <p className="text-xs font-bold uppercase tracking-[0.2em] text-j-accent">{eyebrow}</p>
-    <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">{title}</h2>
+    <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">{title}</h1>
     {body ? <p className="mt-3 text-sm leading-7 text-j-ink-muted">{body}</p> : null}
   </>;
 }
