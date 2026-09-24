@@ -212,6 +212,39 @@ describe("Public Guardian and Tutor account access", () => {
     expect(guardianIcon.getAttribute("class")).toContain("scale-100");
   });
 
+  it("carries hover-lift and press-down feedback classes on both cards", () => {
+    render(<AuthPage />);
+
+    for (const name of ["Select Guardian account", "Select Tutor account"]) {
+      const card = screen.getByRole("radio", { name });
+      expect(card.className).toContain("hover:-translate-y-0.5");
+      expect(card.className).toContain("active:scale-[0.98]");
+    }
+  });
+
+  it("pops a check badge into the selected card's corner and moves it when the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+    const guardianBadge = guardian.lastElementChild!;
+    const tutorBadge = tutor.lastElementChild!;
+
+    // Guardian is the default choice: its badge is popped in, Tutor's is hidden but present.
+    expect(guardianBadge.className).toContain("scale-100");
+    expect(guardianBadge.className).toContain("opacity-100");
+    expect(tutorBadge.className).toContain("scale-50");
+    expect(tutorBadge.className).toContain("opacity-0");
+
+    await user.click(tutor);
+
+    expect(tutorBadge.className).toContain("scale-100");
+    expect(tutorBadge.className).toContain("opacity-100");
+    expect(guardianBadge.className).toContain("scale-50");
+    expect(guardianBadge.className).toContain("opacity-0");
+  });
+
   it("keeps the chosen role on the sign-in button", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);
