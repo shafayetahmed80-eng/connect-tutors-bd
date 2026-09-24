@@ -17,7 +17,6 @@ import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarnin
 import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
 import { useSiteContact } from "@/lib/siteContent";
 
-export const SIGN_IN_RECOVERY_NOTE = "For password recovery, contact support on WhatsApp. We do not offer email reset links yet.";
 const RECOVERY_MESSAGE = "Hello Connect Tutors, I need help recovering my account.";
 
 /** One centred card under the site header - no side panel, at the Owner's request. */
@@ -39,7 +38,7 @@ export function SignInHeading({ eyebrow, title, body }: { eyebrow: string; title
   </>;
 }
 
-/** Email-or-mobile + password, the error box, the submit button and the recovery note. */
+/** Email-or-mobile + password, the error box and the submit button. */
 export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPassword, error, pending, submitLabel, onSubmit }: {
   idPrefix: string;
   identifier: string;
@@ -78,6 +77,5 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
     {error ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{error}</p> : null}
 
     <button type="submit" disabled={pending} className={`${primaryButton} w-full`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : submitLabel}</button>
-    <p className="text-center text-xs leading-5 text-j-ink-muted">{SIGN_IN_RECOVERY_NOTE}</p>
   </form>;
 }

@@ -36,11 +36,11 @@ function getTutorApplyReturnFromLocation(location: string) {
 const roleContent: Record<PublicAccountRole, { title: string; description: string }> = {
   guardian: {
     title: "Guardian",
-    description: "Find tutors and manage your learning requests.",
+    description: "Select and login as a Guardian/Student",
   },
   tutor: {
     title: "Tutor",
-    description: "Create a professional profile and receive enquiries.",
+    description: "Select and login as a Tutor",
   },
 };
 
@@ -69,9 +69,11 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
       tabIndex={selected ? 0 : -1}
       className={`rounded-xl border p-[1.25em] text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
     >
-      <Icon className="text-j-accent" size="1.75em" aria-hidden="true" />
-      <strong className="mt-[0.9em] block text-[1.3em] leading-[1.3]">{content.title}</strong>
-      <span className="mt-[0.35em] block leading-[1.55] text-j-ink-muted">{content.description}</span>
+      <span className="flex items-center gap-[0.6em]">
+        <Icon className="shrink-0 text-j-accent" size="1.5em" aria-hidden="true" />
+        <strong className="text-[1.3em] leading-[1.3]">{content.title}</strong>
+      </span>
+      <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{content.description}</span>
     </button>
   );
 }

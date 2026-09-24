@@ -91,7 +91,7 @@ describe("Public Guardian and Tutor account access", () => {
 
     const recoveryLink = screen.getByRole("link", { name: "Need help signing in?" });
     expect(recoveryLink.getAttribute("href")).toContain("wa.me/8801516131411");
-    expect(screen.getByText("For password recovery, contact support on WhatsApp. We do not offer email reset links yet.")).not.toBeNull();
+    expect(screen.queryByText(/For password recovery/)).toBeNull();
     expect(screen.queryByRole("link", { name: /reset password/i })).toBeNull();
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();
   });
@@ -151,6 +151,19 @@ describe("Public Guardian and Tutor account access", () => {
     render(<AuthPage />);
 
     expect(screen.queryByText(/two-factor/i)).toBeNull();
+  });
+
+  it("puts each role's name beside its icon, with the select-and-login line under it", () => {
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+    const nameRow = guardian.firstElementChild!;
+    expect(nameRow.querySelector("svg")).not.toBeNull();
+    expect(nameRow.textContent).toBe("Guardian");
+    expect(guardian.textContent).toContain("Select and login as a Guardian/Student");
+    expect(tutor.firstElementChild!.textContent).toBe("Tutor");
+    expect(tutor.textContent).toContain("Select and login as a Tutor");
   });
 
   it("keeps the chosen role on the sign-in button", async () => {
