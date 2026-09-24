@@ -5,6 +5,8 @@
 // header, a rounded-full button and plain inputs; the other a rounded-lg
 // button, an icon inside the field and its own red for the asterisk. Both now
 // render from here and use the same journey tokens as the registration forms.
+// Labels carry no icons - the Owner does not want them on sign-in or
+// registration forms.
 
 import { ArrowRight, Eye, EyeOff, LoaderCircle, type LucideIcon } from "lucide-react";
 import React, { type FormEvent, type ReactNode, useState } from "react";
@@ -13,7 +15,6 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
-import { RecordIcon } from "@/components/recordIcons";
 import { useSiteContact } from "@/lib/siteContent";
 
 export const SIGN_IN_RECOVERY_NOTE = "For password recovery, contact support on WhatsApp. We do not offer email reset links yet.";
@@ -84,12 +85,12 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
 
   return <form className="mt-8 space-y-5" onSubmit={onSubmit}>
     <div>
-      <label htmlFor={identifierId} className={fieldLabel}><span className="inline-flex items-center gap-1.5"><RecordIcon name="email" size={14} className="text-j-accent" />Email or mobile number</span>{star}</label>
+      <label htmlFor={identifierId} className={fieldLabel}>Email or mobile number{star}</label>
       <input id={identifierId} name="identifier" required type="text" inputMode="text" autoComplete="username" value={identifier} onChange={(event) => onIdentifier(event.target.value)} placeholder="name@example.com or 017XXXXXXXX" className={`${filledField} mt-2`} />
     </div>
     <div>
       <div className="flex items-center justify-between gap-4">
-        <label htmlFor={passwordId} className={fieldLabel}><span className="inline-flex items-center gap-1.5"><RecordIcon name="password" size={14} className="text-j-accent" />Password</span>{star}</label>
+        <label htmlFor={passwordId} className={fieldLabel}>Password{star}</label>
         <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp(RECOVERY_MESSAGE)}>Need help signing in?</a>
       </div>
       <span className="relative mt-2 block">

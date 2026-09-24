@@ -69,12 +69,13 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("uses the shared sign-in form: journey button, required marks, icon-only toggle", () => {
+  it("uses the shared sign-in form: journey button, required marks, icon-only toggle, no label icons", () => {
     render(<AuthPage />);
 
     expect(screen.getByRole("button", { name: "Sign in as Guardian" }).className).toContain("journey-button");
     expect(screen.getAllByLabelText("required")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Show password" }).textContent).toBe("");
+    expect(document.querySelectorAll("label svg")).toHaveLength(0);
   });
 
   it("shows email-or-mobile sign-in, password visibility, and safe WhatsApp recovery", async () => {

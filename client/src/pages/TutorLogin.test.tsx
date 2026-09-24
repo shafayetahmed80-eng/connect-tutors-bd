@@ -115,12 +115,13 @@ describe("Tutor sign-in transition", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("uses the shared sign-in form: journey button, required marks, icon-only toggle", () => {
+  it("uses the shared sign-in form: journey button, required marks, icon-only toggle, no label icons", () => {
     render(<TutorLogin />);
 
     expect(screen.getByRole("button", { name: "Sign in to Tutor Dashboard" }).className).toContain("journey-button");
     expect(screen.getAllByLabelText("required")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Show password" }).textContent).toBe("");
+    expect(document.querySelectorAll("label svg")).toHaveLength(0);
   });
 
   it("keeps the Tutor sign-in password visibility control accessible", async () => {
