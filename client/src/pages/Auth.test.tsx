@@ -148,6 +148,14 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.getByRole("radio", { name: "Select Guardian account" }).getAttribute("aria-checked")).toBe("true");
   });
 
+  it("points someone with no account to both registrations under the form", () => {
+    render(<AuthPage />);
+
+    expect(screen.getByText(/New here\?/)).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Register as Guardian" }).getAttribute("href")).toBe("/request-tutor");
+    expect(screen.getByRole("link", { name: "Register as Tutor" }).getAttribute("href")).toBe("/become-tutor");
+  });
+
   it("has no line under the heading", () => {
     render(<AuthPage />);
 
