@@ -232,14 +232,6 @@ function addCrossFieldIssues(
     });
   }
 
-  if (value.tuitionTypes?.includes("online") && value.availableNationwide !== true) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["availableNationwide"],
-      message: "Online tuition requires nationwide availability.",
-    });
-  }
-
   if (value.feeMin !== undefined && value.feeMax !== undefined && value.feeMin > value.feeMax) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -252,6 +244,29 @@ function addCrossFieldIssues(
 export const tutorProfileDraftSchema = z.object(profileShape).strict().superRefine(addCrossFieldIssues);
 /** Client profile edits cannot set a storage key; only the protected upload route may do so. */
 export const tutorProfileEditableDraftSchema = z.object(editableProfileShape).strict().superRefine(addCrossFieldIssues);
+
+/**
+ * "Online tuition needs Available Nationwide confirmed" depends on whether an
+ * Owner still offers that field at all - baked into the schema itself this
+ * became unenforceable and unfixable the moment an Owner disabled Available
+ * Nationwide: a Tutor who picked Online could never save any Tuition Related
+ * section again, since the one field that would satisfy the rule was hidden
+ * from them. Built per request from the resolved field config instead, so a
+ * disabled field stops demanding an answer nobody can give it.
+ */
+export function buildOnlineTuitionNationwideRefinement(config: ResolvedTutorProfileFieldConfig) {
+  const nationwideFieldEnabled = config.byId.get("availableNationwide")?.enabled ?? true;
+  return (value: TutorProfileDraftInput, ctx: z.RefinementCtx) => {
+    if (!nationwideFieldEnabled) return;
+    if (value.tuitionTypes?.includes("online") && value.availableNationwide !== true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["availableNationwide"],
+        message: "Online tuition requires nationwide availability.",
+      });
+    }
+  };
+}
 
 /**
  * A registry id like `"profilePhotoUrl"` doesn't always name the schema key
@@ -364,9 +379,9 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
 }
 
 /** The submission schema at the shipped defaults - what every existing test validates against. */
-export const tutorProfileSubmissionSchema = tutorProfileDraftSchema.superRefine(
-  buildTutorProfileSubmissionRefinement(defaultTutorProfileFieldConfig()),
-);
+export const tutorProfileSubmissionSchema = tutorProfileDraftSchema
+  .superRefine(buildTutorProfileSubmissionRefinement(defaultTutorProfileFieldConfig()))
+  .superRefine(buildOnlineTuitionNationwideRefinement(defaultTutorProfileFieldConfig()));
 
 export type TutorProfileDraftInput = z.infer<typeof tutorProfileDraftSchema>;
 export type TutorProfileEditableDraftInput = z.infer<typeof tutorProfileEditableDraftSchema>;
