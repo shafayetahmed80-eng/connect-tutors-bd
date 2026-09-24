@@ -95,6 +95,8 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
         <strong className="text-[1.3em] leading-[1.3]">{name}</strong>
       </span>
       <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{line}</span>
+      {/* Announces the choice with three pulses, then leaves the card to its own static selected style - not an endless loop. Placed before the badge so the badge stays the button's last child either way. */}
+      {selected ? <span aria-hidden="true" className="sign-in-role-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
       {/* Pops in from the corner on select rather than appearing instantly; always in the DOM so the scale/opacity has somewhere to transition from. */}
       <span
         aria-hidden="true"

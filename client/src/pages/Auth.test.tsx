@@ -245,6 +245,24 @@ describe("Public Guardian and Tutor account access", () => {
     expect(guardianBadge.className).toContain("opacity-0");
   });
 
+  it("pulses a halo ring only on the selected card, fresh each time the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+
+    // Guardian is the default choice: it gets the halo, Tutor gets none at all (not just hidden).
+    expect(guardian.querySelector(".sign-in-role-halo")).not.toBeNull();
+    expect(tutor.querySelector(".sign-in-role-halo")).toBeNull();
+
+    await user.click(tutor);
+
+    // A fresh element, not the same one made visible, so the pulse restarts from its first frame.
+    expect(tutor.querySelector(".sign-in-role-halo")).not.toBeNull();
+    expect(guardian.querySelector(".sign-in-role-halo")).toBeNull();
+  });
+
   it("keeps the chosen role on the sign-in button", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);

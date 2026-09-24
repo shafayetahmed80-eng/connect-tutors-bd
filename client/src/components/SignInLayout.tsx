@@ -91,6 +91,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
 
     {error ? <div role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{error}{errorAction ? <div className="mt-3">{errorAction}</div> : null}</div> : null}
 
-    <button type="submit" disabled={pending} className={`${primaryButton} w-full`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : submitLabel}</button>
+    {/* A slow breathing glow while the request is in flight - reinforcement, not a second spinner. */}
+    <button type="submit" disabled={pending} className={`${primaryButton} w-full ${pending ? "sign-in-submit-glow" : ""}`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : submitLabel}</button>
   </form>;
 }

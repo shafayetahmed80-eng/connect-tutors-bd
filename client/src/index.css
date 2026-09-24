@@ -282,6 +282,33 @@
   100% { box-shadow: 0 0 0 8px rgba(22, 119, 232, 0); }
 }
 
+/*
+ * The same idea, sized for the sign-in role cards: a wider ring since the
+ * card is much bigger than a chip, and three pulses rather than an endless
+ * loop - it announces the choice once, then settles into the card's own
+ * static selected style instead of drawing the eye forever.
+ */
+.sign-in-role-halo {
+  animation: sign-in-role-halo 1.1s cubic-bezier(.22, .61, .36, 1) 3;
+}
+
+@keyframes sign-in-role-halo {
+  0% { box-shadow: 0 0 0 0 rgba(22, 125, 221, .35); }
+  70% { box-shadow: 0 0 0 14px rgba(22, 125, 221, 0); }
+  100% { box-shadow: 0 0 0 14px rgba(22, 125, 221, 0); }
+}
+
+/* A slow breathing glow around the sign-in button while the request is in
+   flight - reinforcement that something is happening, not a spinner replacement. */
+.sign-in-submit-glow {
+  animation: sign-in-submit-glow 1.6s cubic-bezier(.22, .61, .36, 1) infinite;
+}
+
+@keyframes sign-in-submit-glow {
+  0%, 100% { box-shadow: 0 10px 20px rgba(22, 125, 221, .24), 0 0 0 0 rgba(22, 125, 221, .35); }
+  50% { box-shadow: 0 10px 20px rgba(22, 125, 221, .24), 0 0 0 10px rgba(22, 125, 221, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
