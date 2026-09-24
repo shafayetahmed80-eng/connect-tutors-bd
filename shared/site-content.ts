@@ -239,6 +239,19 @@ const guardianProfileSlots: SiteContentSlot[] = [
   { id: "guardian-profile.photo.help", page: "guardian-profile", surface: "Guardian dashboard", group: "Profile page", label: "Photo help text", defaultText: "JPEG, PNG, or WebP only; up to 5 MB; minimum 300 × 300 pixels. Uploads are private and must be approved before they appear in your Guardian identity header.", defaultTextClass: "text-xs" },
 ];
 
+/** The public Tutor registration form at /become-tutor. */
+const tutorRegistrationSlots: SiteContentSlot[] = [
+  { id: "tutor-registration.heading", page: "tutor-profile", surface: "Tutor registration", group: "Page", label: "Page heading", defaultText: "Create your Tutor account", defaultTextClass: "text-2xl" },
+  { id: "tutor-registration.field.fullName", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Full name", defaultText: "Full name", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.gender", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Gender", defaultText: "Gender", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.phone", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Phone number", defaultText: "Phone number", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.email", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Email", defaultText: "Email", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.password", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Password", defaultText: "Password", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.confirmPassword", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Confirm password", defaultText: "Confirm password", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.city", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "City", defaultText: "City", defaultTextClass: "text-sm" },
+  { id: "tutor-registration.field.location", page: "tutor-profile", surface: "Tutor registration", group: "Field labels", label: "Location", defaultText: "Location", defaultTextClass: "text-sm" },
+];
+
 /** The public "Request a tutor" journey at /request-tutor. */
 const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.phone.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Phone step heading", defaultText: "Start with your phone number", defaultTextClass: "text-2xl" },
@@ -296,6 +309,7 @@ const buttonSectionSlots: SiteContentSlot[] = [
   { id: "button-section.journey.stepContinue", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
   { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },
+  { id: "button-section.tutorRegistration.create", page: "button-section", surface: "Tutor registration", group: "Registration form", label: "Create account button", defaultText: "Create Tutor account", defaultTextClass: "text-sm" },
   { id: "button-section.auth.signIn", page: "button-section", surface: "Registration page", group: "Account access mode", label: "Sign in tab", defaultText: "Sign in", defaultTextClass: "text-sm" },
   { id: "button-section.auth.register", page: "button-section", surface: "Registration page", group: "Account access mode", label: "Register tab", defaultText: "Register", defaultTextClass: "text-sm" },
   { id: "button-section.profile.cancel", page: "button-section", surface: "Tutor profile editor", group: "Section popup", label: "Cancel button", defaultText: "Cancel", defaultTextClass: "text-sm" },
@@ -446,6 +460,7 @@ const siteContentSlots: SiteContentSlot[] = [
   ...paymentAccountSlots,
   ...tutorProfileSlots,
   ...guardianProfileSlots,
+  ...tutorRegistrationSlots,
   ...requestTutorSlots,
   ...sidebarTabsSlots,
   ...homeSlots,

@@ -14,7 +14,6 @@ const accountStageProps = {
   gender: "female" as const,
   password: "",
   confirmPassword: "",
-  showPassword: false,
   cities: [{ id: "dhaka", label: "Dhaka" }],
   accountCityId: "",
   accountLocations: [],
@@ -27,7 +26,6 @@ const accountStageProps = {
   onGender: vi.fn(),
   onPassword: vi.fn(),
   onConfirmPassword: vi.fn(),
-  onTogglePassword: vi.fn(),
   onCity: vi.fn(),
   onLocation: vi.fn(),
   onTerms: vi.fn(),
@@ -68,7 +66,7 @@ describe("Guardian private-account presentation", () => {
     expect(phoneField.readOnly).toBe(true);
     expect((screen.getByRole("radio", { name: "Female" }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole("radio", { name: "Male" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Show password" })).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: "Show password" })).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
     expect(screen.getByRole("link", { name: "Sign in with email or mobile" }).getAttribute("href")).toBe("/auth?role=guardian");
     expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
@@ -86,7 +84,7 @@ describe("Guardian private-account presentation", () => {
     render(<PasswordStrengthHarness />);
 
     const passwordInput = screen.getByPlaceholderText("At least 8 characters") as HTMLInputElement;
-    expect(screen.getByText(/Use at least 8 characters/).textContent).toContain("Use at least 8 characters");
+    expect(screen.queryByRole("status")).toBeNull();
 
     fireEvent.change(passwordInput, { target: { value: "guardian" } });
     expect(screen.getByRole("status", { name: /Password strength: Weak/ }).textContent).toContain("Weak");
@@ -117,18 +115,24 @@ describe("Guardian private-account presentation", () => {
     expect(confirmInput.type).toBe("password");
   });
 
-  it("shows a concise password-manager hint without exposing the password value", () => {
+  it("carries no helper text under the phone or password fields", () => {
     render(<PasswordStrengthHarness />);
 
-    const passwordInput = screen.getByPlaceholderText("At least 8 characters") as HTMLInputElement;
-    fireEvent.change(passwordInput, { target: { value: "GuardianPass2026!" } });
+    expect(screen.queryByRole("note", { name: /password manager/i })).toBeNull();
+    expect(screen.queryByText(/Taken from the previous step/)).toBeNull();
+    expect((screen.getByPlaceholderText("At least 8 characters") as HTMLInputElement).getAttribute("autocomplete")).toBe("new-password");
+  });
 
-    const hint = screen.getByRole("note", { name: /password manager/i });
-    expect(hint.textContent).toMatch(/browser or device password manager/i);
-    expect(hint.textContent).toMatch(/generate and save/i);
-    expect(hint.textContent).not.toContain("GuardianPass2026!");
-    expect(hint.getAttribute("class")).toContain("flex-wrap");
-    expect(passwordInput.getAttribute("autocomplete")).toBe("new-password");
+  it("orders Gender Male then Female and gives each password field its own toggle", () => {
+    render(<AccountStage {...accountStageProps} />);
+
+    expect(screen.getAllByRole("radio").map((radio) => radio.closest("label")?.textContent)).toEqual(["Male", "Female"]);
+    const toggles = screen.getAllByRole("button", { name: "Show password" });
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0].textContent).toBe("");
+    fireEvent.click(toggles[0]);
+    expect((screen.getByPlaceholderText("At least 8 characters") as HTMLInputElement).type).toBe("text");
+    expect((screen.getByPlaceholderText("Re-enter your password") as HTMLInputElement).type).toBe("password");
   });
 
   it("recognises only a current City and Area pair as a complete location selection", () => {
