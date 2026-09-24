@@ -133,7 +133,11 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
 
     render(<TutorDashboard />);
 
-    expect(screen.getByRole("banner", { name: "Tutor Portal workspace header" })).not.toBeNull();
+    const header = screen.getByRole("banner", { name: "Tutor Portal workspace header" });
+    expect(header).not.toBeNull();
+    // Takes the Tutor sidebar's own colours, not the plain light bar.
+    expect(header.className).toContain("sb-header");
+    expect(header.className).not.toContain("bg-white/95");
     expect(screen.getByRole("heading", { name: "Dashboard" })).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Open notifications" }));
     expect(screen.getByText("No notifications yet.")).not.toBeNull();

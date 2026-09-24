@@ -687,6 +687,9 @@ function DashboardLayoutContent({
               const settingsItem = navigationItems.find(item => item.path === settingsPath) ?? { icon: Settings, label: "Settings", path: settingsPath };
               handleNavigation(settingsItem);
             } : undefined}
+            // Tutor and Guardian take the sidebar's own colours across their header too; Admin's stays the plain light bar.
+            themed={isCommunityPanel(sidebarPanel)}
+            colours={sidebarColours}
           />
         ) : isMobile ? (
           <div className="flex h-16 items-center justify-between border-b border-[#d9e5ed] bg-white/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
@@ -736,28 +739,40 @@ function WorkspaceHeader({
   isSigningOut,
   onSignOut,
   onOpenSettings,
+  themed,
+  colours,
 }: {
   heading: string;
   identity: WorkspaceHeaderIdentity;
   isSigningOut: boolean;
   onSignOut: () => void;
   onOpenSettings?: () => void;
+  /** Tutor and Guardian take the sidebar's own colours here too; Admin keeps the plain light bar. */
+  themed: boolean;
+  colours: CSSProperties;
 }) {
   const initials = getDashboardAvatarInitials(identity.name);
+  const iconButton = themed
+    ? "text-[var(--sb-icon)] hover:bg-[var(--sb-hover-bg)] hover:text-[var(--sb-text)] focus-visible:ring-[var(--sb-text)]"
+    : "text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent";
 
   return (
-    <header aria-label={`${identity.portal} workspace header`} className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-[#d9e5ed] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:backdrop-blur sm:px-6">
+    <header
+      aria-label={`${identity.portal} workspace header`}
+      style={themed ? colours : undefined}
+      className={`sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:backdrop-blur sm:px-6 ${themed ? "sb-header border-[var(--sb-border)]" : "border-[#d9e5ed] bg-white/95"}`}
+    >
       <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className="size-10 shrink-0 rounded-xl text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent md:hidden" />
+        <SidebarTrigger aria-label={`Open ${identity.portal} navigation`} title={`Open ${identity.portal} navigation`} className={`size-10 shrink-0 rounded-xl md:hidden ${iconButton}`} />
         <div className="min-w-0">
-          <p className="text-2xs font-bold uppercase tracking-[0.14em] text-[#6d8799]">{identity.portal}</p>
-          <h1 className="truncate text-base font-semibold tracking-tight text-j-ink sm:text-lg">{heading}</h1>
+          <p className={`text-2xs font-bold uppercase tracking-[0.14em] ${themed ? "text-[var(--sb-soft)]" : "text-[#6d8799]"}`}>{identity.portal}</p>
+          <h1 className={`truncate text-base font-semibold tracking-tight sm:text-lg ${themed ? "text-[var(--sb-text)]" : "text-j-ink"}`}>{heading}</h1>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <button type="button" aria-label="Open notifications" className="grid size-10 place-items-center rounded-xl text-[#527086] transition hover:bg-[#eef8ff] hover:text-j-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">
+            <button type="button" aria-label="Open notifications" className={`grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}>
               <Bell className="size-[19px]" aria-hidden="true" />
             </button>
           </PopoverTrigger>
@@ -768,10 +783,10 @@ function WorkspaceHeader({
         </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={`Open ${identity.portal} account menu`} className="rounded-full p-0.5 transition hover:bg-[#eef8ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">
-              <Avatar className="size-9 border border-[#d6e5ee] sm:size-10">
+            <button type="button" aria-label={`Open ${identity.portal} account menu`} className={`rounded-full p-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${themed ? "hover:bg-[var(--sb-hover-bg)] focus-visible:ring-[var(--sb-text)]" : "hover:bg-[#eef8ff] focus-visible:ring-j-accent"}`}>
+              <Avatar className={`size-9 border sm:size-10 ${themed ? "border-[var(--sb-border)]" : "border-[#d6e5ee]"}`}>
                 {identity.profilePhotoUrl ? <AvatarImage src={identity.profilePhotoUrl} alt={`${identity.name}'s profile`} /> : null}
-                <AvatarFallback className="bg-[#dff3ff] text-xs font-bold text-[#126fb5]">{initials}</AvatarFallback>
+                <AvatarFallback className={`text-xs font-bold ${themed ? "bg-[var(--sb-avatar-bg)] text-[var(--sb-text)]" : "bg-[#dff3ff] text-[#126fb5]"}`}>{initials}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>

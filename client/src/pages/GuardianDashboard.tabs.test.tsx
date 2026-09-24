@@ -61,9 +61,19 @@ vi.mock("@/pages/GuardianRequestJourney", () => ({
   default: ({ embedded }: { embedded?: boolean }) => <div data-testid="guardian-request-journey">{embedded ? "Embedded hire journey" : "Standalone hire journey"}</div>,
 }));
 
-import { GuardianDashboardContent } from "./GuardianDashboard";
+import GuardianDashboard, { GuardianDashboardContent } from "./GuardianDashboard";
 
 afterEach(cleanup);
+
+describe("Guardian workspace header colours", () => {
+  it("takes the Guardian sidebar's colours, not the plain light bar", () => {
+    render(<GuardianDashboard />);
+
+    const header = screen.getByRole("banner", { name: "Guardian Portal workspace header" });
+    expect(header.className).toContain("sb-header");
+    expect(header.className).not.toContain("bg-white/95");
+  });
+});
 
 describe("Guardian dashboard working tabs", () => {
   it("embeds Guardian-owned request tracking under Posted jobs without public job detail claims", () => {
