@@ -1,11 +1,23 @@
 import { describe, expect, it } from "vitest";
+import { isCommunityPanel } from "@shared/community";
 import { getDashboardAvatarInitials, type WorkspaceHeaderIdentity } from "./DashboardLayout";
 
 /**
- * All three panels now share one header, so what differs between them is the
- * identity each one hands it. These pin the shapes, which is where a mistake
- * would actually be made - the header itself has nothing panel-specific left.
+ * All three panels share one header component; what differs between them is
+ * the identity each one hands it, and - since PR #223 - whether the header
+ * takes the sidebar's colours. That "themed" flag is `isCommunityPanel`
+ * (Tutor and Guardian only), reused from the community row so the two never
+ * drift apart; the Admin header stays the plain light bar it has always been.
  */
+describe("workspace header colours", () => {
+  it("themes only the Tutor and Guardian header, never the Admin one", () => {
+    expect(isCommunityPanel("tutor")).toBe(true);
+    expect(isCommunityPanel("guardian")).toBe(true);
+    expect(isCommunityPanel("admin")).toBe(false);
+    expect(isCommunityPanel(undefined)).toBe(false);
+  });
+});
+
 describe("workspace header identity", () => {
   const tutor: WorkspaceHeaderIdentity = {
     portal: "Tutor Portal",

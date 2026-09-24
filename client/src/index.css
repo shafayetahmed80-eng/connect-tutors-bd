@@ -309,7 +309,8 @@
  * Owner's font, padding and height dials are untouched.
  */
 .sb-root,
-.sb-strip {
+.sb-strip,
+.sb-header {
   --sb-panel-top: #0d5fae;
   --sb-panel-bottom: #0a4c8c;
   --sb-ink: #0b4b86;
@@ -338,6 +339,15 @@
   background-color: var(--sb-panel-bottom);
   background-image: linear-gradient(90deg, var(--sb-panel-top) 0%, var(--sb-panel-bottom) 100%);
   box-shadow: 0 10px 24px -16px rgb(6 26 48 / 0.55);
+}
+/*
+ * The Tutor and Guardian workspace header is the same panel again, laid
+ * along the top of the page - same tokens, same Owner colour dial. The
+ * Admin header is left as the plain light bar it has always been.
+ */
+.sb-header {
+  background-color: var(--sb-panel-bottom);
+  background-image: linear-gradient(90deg, var(--sb-panel-top) 0%, var(--sb-panel-bottom) 100%);
   color: var(--sb-text);
 }
 .sb-strip-item { color: var(--sb-text); transition: background-color 200ms ease-out; }
