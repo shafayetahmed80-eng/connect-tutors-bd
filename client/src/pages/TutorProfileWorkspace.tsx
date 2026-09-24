@@ -687,6 +687,7 @@ function TutorProfileWorkspaceBody({
     };
   }, [subjects.data, classLevels.data, curricula.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers, fieldConfig), [form, readoutResolvers, fieldConfig]);
+  const requiredLeft = useMemo(() => readoutSections.flatMap(section => section.groups.flatMap(group => group.rows)).filter(row => row.missing && !row.optional).length, [readoutSections]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
     const step = getTutorProfileWizardStepForErrors(errors);
@@ -1326,6 +1327,7 @@ function TutorProfileWorkspaceBody({
         onRemovePhoto={() => void removePhoto()}
         onPhotoPreviewError={() => setPhotoPreviewFailed(true)}
         completionPercentage={completionPercentage}
+        requiredLeft={requiredLeft}
         email={form.contactEmail}
         phone={form.phone}
         address={[

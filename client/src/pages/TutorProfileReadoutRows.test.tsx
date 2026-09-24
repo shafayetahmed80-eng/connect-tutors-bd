@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,10 +28,10 @@ const rows = [
   { label: "Curriculum", value: "English Medium", missing: false },
 ];
 
-function renderRows() {
+function renderRows(onAdd?: () => void) {
   return render(
     <SiteContentProvider page="tutor-profile">
-      <TutorProfileReadoutRows rows={rows} />
+      <TutorProfileReadoutRows rows={rows} onAdd={onAdd} />
     </SiteContentProvider>,
   );
 }
@@ -115,5 +115,20 @@ describe("tutor profile readout rows", () => {
     renderRows();
 
     expect(screen.getByText("Primary subjects").style.fontSize).toBe("48px");
+  });
+
+  it("offers Add beside a required blank only, and it opens that group's editor", () => {
+    const onAdd = vi.fn();
+    renderRows(onAdd);
+    const add = screen.getByRole("button", { name: "Add Primary subjects" });
+    expect(screen.queryByRole("button", { name: "Add Additional subjects" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Curriculum" })).toBeNull();
+    fireEvent.click(add);
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no Add where nothing can be opened, such as the preview", () => {
+    renderRows();
+    expect(screen.queryByRole("button", { name: /^Add / })).toBeNull();
   });
 });

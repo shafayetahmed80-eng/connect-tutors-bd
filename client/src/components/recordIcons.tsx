@@ -110,7 +110,7 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
   "Full name": "name", "Gender": "studentGender", "Date of birth": "birthday",
   "Nationality": "nationality", "Religion": "religion", "Mobile number": "phone",
   "Additional phone": "phone", "Email address": "email", "Present address": "address",
-  "Permanent address": "address", "Current location": "location",
+  "Permanent address": "address", "Current location": "location", "Current City": "location",
   "Social profile links": "social", "Communication preferences": "contact",
 
   // tutor profile - family and emergency
@@ -124,7 +124,7 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
   "Related department / subject": "department", "Dept ID": "department",
   "Result / GPA": "result", "Graduation year": "degree", "Year/semester": "posted",
   "Current study status": "education", "Academic achievement": "result",
-  "Qualification history": "degree", "Supporting documents": "document",
+  "Qualification history": "degree", "Qualification": "degree", "Supporting documents": "document",
   "University ID card": "document",
 
   // tutor profile - teaching

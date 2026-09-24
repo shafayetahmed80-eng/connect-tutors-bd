@@ -124,4 +124,22 @@ describe("TutorProfileIdentityRail", () => {
     expect(screen.getByRole("button", { name: "Edit Information" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "View Profile" })).toBeNull();
   });
+
+  it("says how many required fields are left, counting a missing photo", () => {
+    renderRail({ requiredLeft: 3 });
+    expect(screen.getByText(/required fields left/).textContent).toBe("4 required fields left");
+    cleanup();
+
+    renderRail({ requiredLeft: 0, photoUrl: "https://example.test/photo.jpg" });
+    expect(screen.getByText("Every required field is filled")).toBeTruthy();
+    cleanup();
+
+    renderRail({ requiredLeft: 0 });
+    expect(screen.getByText(/required field left/).textContent).toBe("1 required field left");
+  });
+
+  it("shows no count when none is given", () => {
+    renderRail();
+    expect(screen.queryByText(/required fields? left|Every required field/)).toBeNull();
+  });
 });
