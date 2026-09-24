@@ -1,12 +1,14 @@
 import type { TrpcContext } from "./_core/context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeSchoolName } from "@shared/school-colleges";
+import { ENV } from "./_core/env";
 
 const dbMocks = vi.hoisted(() => ({
   getTutorAccountStatusByUserId: vi.fn(),
   renewTutorPortalSession: vi.fn(),
   searchSchoolColleges: vi.fn(),
   createSchoolCollegeForTutor: vi.fn(),
+  bulkAddSharedSchoolColleges: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -63,5 +65,33 @@ describe("the Owner's Schools & colleges page", () => {
     await expect(createCaller().schoolColleges.list({})).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller({ id: 2, role: "admin", name: "Other", openId: "admin-2" } as TrpcContext["user"]).schoolColleges.add({ name: "Dhaka College", division: "dhaka" }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("bulk-importing schools and colleges", () => {
+  const owner = { id: 1, role: "admin" as const, name: "Owner", openId: ENV.ownerOpenId };
+
+  it("passes the parsed rows through and reports what was added and skipped", async () => {
+    dbMocks.bulkAddSharedSchoolColleges.mockResolvedValueOnce({ added: 2, skipped: 1 });
+    const rows = [
+      { name: "Notre Dame College", division: "dhaka" as const },
+      { name: "Rajshahi Collegiate School", division: "rajshahi" as const },
+    ];
+    await expect(createCaller(owner as TrpcContext["user"]).schoolColleges.bulkAdd({ rows })).resolves.toEqual({ added: 2, skipped: 1 });
+    expect(dbMocks.bulkAddSharedSchoolColleges).toHaveBeenCalledWith({ rows });
+  });
+
+  it("is refused to anyone but the Project Owner", async () => {
+    const rows = [{ name: "Notre Dame College", division: "dhaka" as const }];
+    await expect(createCaller().schoolColleges.bulkAdd({ rows })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller({ id: 2, role: "admin", name: "Other", openId: "admin-2" } as TrpcContext["user"]).schoolColleges.bulkAdd({ rows }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.bulkAddSharedSchoolColleges).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty list and a list past the limit", async () => {
+    await expect(createCaller(owner as TrpcContext["user"]).schoolColleges.bulkAdd({ rows: [] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const tooMany = Array.from({ length: 1001 }, (_, index) => ({ name: `School ${index}`, division: "dhaka" as const }));
+    await expect(createCaller(owner as TrpcContext["user"]).schoolColleges.bulkAdd({ rows: tooMany })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

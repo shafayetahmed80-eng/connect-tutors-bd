@@ -2,9 +2,9 @@ import AdminDynamicSectionPage from "@/components/AdminDynamicSectionPage";
 import StatusTabRow from "@/components/StatusTabRow";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
-import { SCHOOL_NAME_MAX, schoolCollegeDivisionLabels, schoolCollegeDivisionValues, type SchoolCollegeDivision } from "@shared/school-colleges";
-import { Loader2, Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { parseBulkSchoolColleges, SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, schoolCollegeDivisionLabels, schoolCollegeDivisionValues, type SchoolCollegeDivision } from "@shared/school-colleges";
+import { ChevronDown, ChevronUp, Loader2, Plus, Search, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
@@ -67,6 +67,60 @@ function CreatedRow({ row, onSaved }: { row: Row; onSaved: () => void }) {
 }
 
 /**
+ * Paste many names at once - one per line, each optionally ending with
+ * `, Division` to set its own; a line without one falls back to the division
+ * picked below. Names already on the list, or repeated in the paste, are
+ * skipped rather than refused.
+ */
+function BulkImportForm({ onImported }: { onImported: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [defaultDivision, setDefaultDivision] = useState("");
+  const bulkAdd = trpc.schoolColleges.bulkAdd.useMutation({
+    onSuccess: result => {
+      toast.success(result.skipped > 0 ? `Added ${result.added}, skipped ${result.skipped} already on the list.` : `Added ${result.added}.`);
+      setText("");
+      onImported();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const parsed = useMemo(
+    () => parseBulkSchoolColleges(text, (defaultDivision || null) as SchoolCollegeDivision | null),
+    [text, defaultDivision],
+  );
+  const tooMany = parsed.rows.length > SCHOOL_BULK_IMPORT_MAX;
+  const canImport = parsed.rows.length > 0 && !tooMany && !bulkAdd.isPending;
+
+  return <div className="rounded-xl border border-dashed border-j-field-border p-2.5">
+    <button type="button" onClick={() => setOpen(current => !current)} className="flex w-full items-center justify-between gap-2 text-xs font-bold text-j-ink">
+      <span className="inline-flex items-center gap-1.5"><Upload size={14} /> Bulk import</span>
+      {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    </button>
+    {open ? <div className="mt-2.5 space-y-2">
+      <textarea
+        aria-label="Names to import, one per line"
+        value={text}
+        onChange={event => setText(event.target.value)}
+        placeholder={"One name per line, e.g.\nNotre Dame College, Dhaka\nRajshahi Collegiate School"}
+        rows={6}
+        className="w-full resize-y rounded-lg border border-j-border bg-white p-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <DivisionSelect label="Default division for lines without one" value={defaultDivision} onChange={setDefaultDivision} />
+        <span className="text-xs text-j-ink-soft">
+          {parsed.rows.length} ready
+          {parsed.invalidLines.length > 0 ? `, ${parsed.invalidLines.length} need a division` : ""}
+          {tooMany ? ` — up to ${SCHOOL_BULK_IMPORT_MAX} at a time` : ""}
+        </span>
+        <button type="button" disabled={!canImport} onClick={() => bulkAdd.mutate({ rows: parsed.rows })} className={`${buttonClass} ml-auto`}>
+          {bulkAdd.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Import
+        </button>
+      </div>
+    </div> : null}
+  </div>;
+}
+
+/**
  * The school and college list Tutors pick from for Secondary and Higher
  * Secondary, and the names Tutors created that nobody else sees yet.
  */
@@ -118,6 +172,7 @@ export function SchoolCollegeManager() {
       <DivisionSelect label="Division for the new name" value={newDivision} onChange={setNewDivision} />
       <button type="submit" disabled={newName.trim().length < 3 || !newDivision || add.isPending} className={buttonClass}><Plus size={14} /> Add</button>
     </form> : null}
+    {view === "shared" ? <BulkImportForm onImported={refresh} /> : null}
 
     {list.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div> : null}
     {list.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{list.error.message}</p> : null}
