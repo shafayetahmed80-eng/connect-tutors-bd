@@ -1,5 +1,5 @@
 import React, { FormEvent, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { GraduationCap, UsersRound } from "lucide-react";
 import { ghostButton } from "@/components/journeyField";
 import { SignInForm, SignInHeading, SignInShell } from "@/components/SignInLayout";
@@ -49,6 +49,20 @@ function getInitialRole(): PublicAccountRole {
 
 function signInButtonLabel(role: PublicAccountRole) {
   return <SiteText slotId={`button-section.signIn.${role}`} />;
+}
+
+/**
+ * The way in for someone who has no account yet. The Register section left this
+ * page (#216), so this one line is all that points to the two registrations.
+ */
+function RegisterLinks() {
+  const newHere = useSiteContentText("sign-in.newHere");
+  const guardian = useSiteContentText("sign-in.registerGuardian");
+  const tutor = useSiteContentText("sign-in.registerTutor");
+  const link = "font-extrabold text-j-accent underline underline-offset-2";
+  return <p className="mt-6 text-center text-sm leading-6 text-j-ink-muted">
+    {newHere} <Link href="/request-tutor" className={link}>{guardian}</Link> <span aria-hidden="true">/</span> <Link href="/become-tutor" className={link}>{tutor}</Link>
+  </p>;
 }
 
 function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; selected: boolean; onSelect: (role: PublicAccountRole) => void }) {
@@ -193,6 +207,7 @@ export default function AuthPage() {
         submitLabel={signInButtonLabel(role)}
         onSubmit={submitLogin}
       />
+      <RegisterLinks />
       </>}
     </SignInShell>
   );
