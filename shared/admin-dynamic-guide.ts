@@ -29,6 +29,7 @@ const GUARDIAN_JOURNEY: AdminDynamicDestination = { label: "টিউটর চ�
 const HOME: AdminDynamicDestination = { label: "হোমপেইজ", path: "/" };
 const JOB_BOARD: AdminDynamicDestination = { label: "জব বোর্ড", path: "/job-board" };
 const TUTOR_REGISTRATION: AdminDynamicDestination = { label: "টিউটর রেজিস্ট্রেশন", path: "/become-tutor" };
+const SIGN_IN: AdminDynamicDestination = { label: "Sign in পাতা", path: "/auth" };
 const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভাবকের Applied Tutors", path: "/guardian/dashboard/applied-tutors" };
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
 const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
@@ -56,8 +57,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/public-pages",
     label: "Public pages",
-    summary: "সাতটা তথ্য পাতার শিরোনাম ও বর্ণনা — Tuition, For tutors, Blogs, Events, Contact, Privacy, Terms।",
-    seeAt: [{ label: "Tuition", path: "/tuition" }, { label: "Contact", path: "/contact" }],
+    summary: "সাতটা তথ্য পাতার শিরোনাম ও বর্ণনা — Tuition, For tutors, Blogs, Events, Contact, Privacy, Terms। সাথে দুই Sign in পাতার শিরোনাম, নিচের লাইন আর Guardian/Tutor কার্ডের লেখা।",
+    seeAt: [{ label: "Tuition", path: "/tuition" }, { label: "Contact", path: "/contact" }, SIGN_IN],
   },
   {
     path: "/admin/dynamic/legal-pages",
@@ -110,8 +111,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/button-section",
     label: "Button Section",
-    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, টিউটর রেজিস্ট্রেশন আর টিউটর প্রোফাইলের পপআপ।",
-    seeAt: [GUARDIAN_JOURNEY, TUTOR_REGISTRATION, TUTOR_PROFILE],
+    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, টিউটর রেজিস্ট্রেশন, Sign in পাতা আর টিউটর প্রোফাইলের পপআপ।",
+    seeAt: [GUARDIAN_JOURNEY, TUTOR_REGISTRATION, SIGN_IN, TUTOR_PROFILE],
   },
   {
     path: "/admin/dynamic/navigation",
@@ -160,6 +161,8 @@ const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string
   "button-section": {
     "Guardian journey": "/request-tutor",
     "Tutor registration": "/become-tutor",
+    "Sign in page": "/auth",
+    "Tutor sign in page": "/tutor/login",
     "Tutor profile editor": "/tutor/dashboard/profile",
   },
   "sidebar-tabs": {
@@ -185,6 +188,8 @@ const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string
     Contact: "/contact",
     Privacy: "/privacy-policy",
     Terms: "/terms-conditions",
+    "Sign in": "/auth",
+    "Tutor sign in": "/tutor/login",
   },
 };
 

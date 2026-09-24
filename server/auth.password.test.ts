@@ -5,6 +5,7 @@ import type { TrpcContext } from "./_core/context";
 import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
+import { getAccountRoleFromCause } from "./_core/trpc";
 
 const user = {
   id: 44,
@@ -338,6 +339,38 @@ describe("Guardian and Tutor account authentication", () => {
       message: "Email/mobile number or password is not correct.",
     });
     expect(cookies).toHaveLength(0);
+  });
+
+  it("names the other account type, with no session, when the password is right for it", async () => {
+    const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+    const guardian = { ...user, id: 46, email: "guardian@example.com", role: "guardian" as const };
+    const verify = vi.spyOn(db, "verifyPasswordAccount")
+      .mockResolvedValueOnce({ status: "invalid-credentials" })
+      .mockResolvedValueOnce({ status: "ok", user: guardian });
+
+    const failure = await appRouter.createCaller(createContext(cookies)).auth.loginAccount({
+      role: "tutor",
+      identifier: "guardian@example.com",
+      password: "strong-pass-123",
+    }).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ code: "UNAUTHORIZED", message: "These details belong to a Guardian account." });
+    expect(getAccountRoleFromCause((failure as { cause?: unknown }).cause)).toBe("guardian");
+    expect(verify).toHaveBeenLastCalledWith({ role: "guardian", identifier: "guardian@example.com", password: "strong-pass-123" });
+    expect(cookies).toHaveLength(0);
+  });
+
+  it("keeps the generic failure when the password matches neither account type", async () => {
+    vi.spyOn(db, "verifyPasswordAccount").mockResolvedValue({ status: "invalid-credentials" });
+
+    const failure = await appRouter.createCaller(createContext([])).auth.loginAccount({
+      role: "guardian",
+      identifier: "someone@example.com",
+      password: "wrong-pass-123",
+    }).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ code: "UNAUTHORIZED", message: "Email/mobile number or password is not correct." });
+    expect(getAccountRoleFromCause((failure as { cause?: unknown }).cause)).toBeUndefined();
   });
 
   it("locks out repeated failed sign-ins from one connection with TOO_MANY_REQUESTS", async () => {

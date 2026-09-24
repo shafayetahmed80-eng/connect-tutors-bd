@@ -18,6 +18,7 @@ vi.mock("@/lib/trpc", () => ({
       me: { useQuery: () => ({ data: null, isLoading: false }) },
       loginAccount: { useMutation: () => ({ mutateAsync: loginAccount, isPending: false }) },
     },
+    siteContent: { list: { useQuery: () => ({ data: [] }) } },
   },
 }));
 
@@ -56,6 +57,13 @@ function trpcErrorWithCode(message: string, code: string): TRPCClientError<never
 }
 
 describe("getTutorSignInErrorMessage", () => {
+  it("passes on the server's words when the details belong to a Guardian account", () => {
+    const mismatch = new TRPCClientError("These details belong to a Guardian account.");
+    Object.defineProperty(mismatch, "data", { value: { code: "UNAUTHORIZED", accountRole: "guardian" }, configurable: true });
+
+    expect(getTutorSignInErrorMessage(mismatch)).toBe("These details belong to a Guardian account.");
+  });
+
   it("keeps the generic hint for wrong credentials (UNAUTHORIZED)", () => {
     const message = getTutorSignInErrorMessage(
       trpcErrorWithCode("Invalid credentials.", "UNAUTHORIZED"),

@@ -15,39 +15,54 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
-import { useSiteContact } from "@/lib/siteContent";
+import { SiteContentProvider, useSiteContact, useSiteContentText } from "@/lib/siteContent";
 
 const RECOVERY_MESSAGE = "Hello Connect Tutors, I need help recovering my account.";
 
-/** One centred card under the site header - no side panel, at the Owner's request. */
+/**
+ * One centred card under the site header - no side panel, at the Owner's
+ * request - that widens on a laptop so the Guardian/Tutor cards and fields are
+ * not squeezed into a phone-width column. Its copy is the Owner's, edited on the
+ * Public pages screen.
+ */
 export function SignInShell({ children }: { children: ReactNode }) {
-  return <div className="site-page min-h-screen bg-j-page text-j-ink">
+  return <SiteContentProvider page="info-pages"><div className="site-page min-h-screen bg-j-page text-j-ink">
     <SiteHeader />
     <main className="px-4 py-10 sm:px-6 lg:py-16">
-      <section className="mx-auto max-w-xl rounded-[1.65rem] border border-j-border bg-white p-6 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-10">{children}</section>
+      <section className="mx-auto max-w-xl rounded-[1.65rem] border border-j-border bg-white p-6 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-10 lg:max-w-3xl lg:p-12">{children}</section>
     </main>
     <SiteFooter />
-  </div>;
+  </div></SiteContentProvider>;
 }
 
-export function SignInHeading({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
+/**
+ * Eyebrow, h1 and the line under it, read from `<slotPrefix>.eyebrow|title|copy`.
+ * /auth has no line under its heading (the Owner removed it), so it has no
+ * `sign-in.copy` slot and nothing renders there.
+ */
+export function SignInHeading({ slotPrefix }: { slotPrefix: "sign-in" | "tutor-sign-in" }) {
+  const eyebrow = useSiteContentText(`${slotPrefix}.eyebrow`);
+  const title = useSiteContentText(`${slotPrefix}.title`);
+  const copy = useSiteContentText(`${slotPrefix}.copy`);
   return <>
     <p className="text-xs font-bold uppercase tracking-[0.2em] text-j-accent">{eyebrow}</p>
     <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">{title}</h1>
-    {body ? <p className="mt-3 text-sm leading-7 text-j-ink-muted">{body}</p> : null}
+    {copy ? <p className="mt-3 text-sm leading-7 text-j-ink-muted">{copy}</p> : null}
   </>;
 }
 
 /** Email-or-mobile + password, the error box and the submit button. */
-export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPassword, error, pending, submitLabel, onSubmit }: {
+export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPassword, error, errorAction, pending, submitLabel, onSubmit }: {
   idPrefix: string;
   identifier: string;
   onIdentifier: (value: string) => void;
   password: string;
   onPassword: (value: string) => void;
   error?: string | null;
+  /** A way out of the error, shown inside its box - the switch to the right account type. */
+  errorAction?: ReactNode;
   pending: boolean;
-  submitLabel: string;
+  submitLabel: ReactNode;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const contact = useSiteContact();
@@ -74,7 +89,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
       <CapsLockWarning isCapsLockOn={capsLock.isCapsLockOn} />
     </div>
 
-    {error ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{error}</p> : null}
+    {error ? <div role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{error}{errorAction ? <div className="mt-3">{errorAction}</div> : null}</div> : null}
 
     <button type="submit" disabled={pending} className={`${primaryButton} w-full`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : submitLabel}</button>
   </form>;
