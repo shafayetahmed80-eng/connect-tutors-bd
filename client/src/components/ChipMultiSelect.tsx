@@ -64,6 +64,29 @@ export default function ChipMultiSelect({
   /** The tighter scale the Tutor Profile modal uses. */
   dense?: boolean;
 }) {
+  // The profile's editor is the only `dense` caller, and it paints in the
+  // Owner's profile colours; every other caller keeps the colours it ships with.
+  const tone = dense ? {
+    focus: "focus-within:border-tp-accent focus-within:ring-tp-accent-wash",
+    border: invalid ? "border-tp-danger" : "border-tp-border",
+    surface: disabled ? "bg-j-surface-sunken" : "bg-white",
+    chip: "bg-tp-accent-wash text-tp-accent-hover",
+    chipRemove: "hover:bg-tp-accent-soft/40 focus-visible:ring-tp-accent",
+    text: "text-tp-heading placeholder:text-tp-label-faint",
+    icon: "text-tp-label-faint",
+    list: "border-tp-border",
+    option: "text-tp-heading hover:bg-tp-accent-wash focus-visible:bg-tp-accent-wash",
+  } : {
+    focus: "focus-within:border-j-accent focus-within:ring-sky-100",
+    border: invalid ? "border-[#d84a4a]" : "border-[#dbe7ef]",
+    surface: disabled ? "bg-[#f4f8fb]" : "bg-white",
+    chip: "bg-[#eaf4fd] text-[#1267c8]",
+    chipRemove: "hover:bg-[#cfe6fa] focus-visible:ring-j-accent",
+    text: "text-j-ink placeholder:text-[#8fa3b4]",
+    icon: "text-[#8fa3b4]",
+    list: "border-[#dbe7ef]",
+    option: "text-j-ink hover:bg-[#f2f8fd] focus-visible:bg-[#f2f8fd]",
+  };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -144,15 +167,15 @@ export default function ChipMultiSelect({
     // a keyboard user collects one open list per field they pass through.
     onBlur={event => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) close(); }}
   >
-    <div className={`flex w-full items-start gap-1.5 border transition focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${dense ? "min-h-9 max-sm:min-h-[var(--profile-field-height-phone,44px)] max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${invalid ? "border-[#d84a4a]" : "border-[#dbe7ef]"} ${disabled ? "bg-[#f4f8fb]" : "bg-white"}`}>
+    <div className={`flex w-full items-start gap-1.5 border transition focus-within:ring-2 ${tone.focus} ${dense ? "min-h-9 max-sm:min-h-[var(--profile-field-height-phone,44px)] max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${tone.border} ${tone.surface}`}>
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        {selected.map(option => <span key={option.id} className="inline-flex max-w-full items-center gap-1 rounded-lg bg-[#eaf4fd] py-0.5 pl-2 pr-1 text-xs font-semibold text-[#1267c8]">
+        {selected.map(option => <span key={option.id} className={`inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pl-2 pr-1 text-xs font-semibold ${tone.chip}`}>
           <span className="truncate">{option.label}</span>
           <button
             type="button"
             aria-label={`Remove ${option.label}`}
             onClick={() => remove(option.id)}
-            className="grid size-4 shrink-0 place-items-center rounded outline-none hover:bg-[#cfe6fa] focus-visible:ring-2 focus-visible:ring-j-accent max-sm:size-6"
+            className={`grid size-4 shrink-0 place-items-center rounded outline-none focus-visible:ring-2 max-sm:size-6 ${tone.chipRemove}`}
           ><X size={11} aria-hidden={true} /></button>
         </span>)}
         <input
@@ -176,7 +199,7 @@ export default function ChipMultiSelect({
           // the editor the moment it appeared.
           onClick={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className={`min-w-[6rem] flex-1 bg-transparent py-0.5 text-j-ink outline-none placeholder:text-[#8fa3b4] disabled:cursor-not-allowed ${dense ? "text-xs" : "text-sm"}`}
+          className={`min-w-[6rem] flex-1 bg-transparent py-0.5 outline-none disabled:cursor-not-allowed ${tone.text} ${dense ? "text-xs" : "text-sm"}`}
         />
       </span>
       <button
@@ -189,7 +212,7 @@ export default function ChipMultiSelect({
           setOpen(true);
           inputRef.current?.focus();
         }}
-        className="mt-1 shrink-0 rounded text-[#8fa3b4] outline-none disabled:cursor-not-allowed"
+        className={`mt-1 shrink-0 rounded outline-none disabled:cursor-not-allowed ${tone.icon}`}
       ><ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} /></button>
     </div>
 
@@ -197,7 +220,7 @@ export default function ChipMultiSelect({
       id={listId}
       role="listbox"
       aria-label={label}
-      className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#dbe7ef] bg-white py-1 shadow-[0_12px_28px_rgba(38,83,117,.14)]"
+      className={`absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border bg-white py-1 shadow-[0_12px_28px_rgba(38,83,117,.14)] ${tone.list}`}
     >
       {matches.length === 0
         ? <li className="px-3 py-2 text-xs text-j-ink-muted">{available.length === 0 ? emptyMessage : noMatchMessage}</li>
@@ -208,7 +231,7 @@ export default function ChipMultiSelect({
               // away; without this the click would take focus and shut the list.
               onMouseDown={event => event.preventDefault()}
               onClick={() => add(option.id)}
-              className="w-full px-3 py-2 text-left text-sm text-j-ink outline-none hover:bg-[#f2f8fd] focus-visible:bg-[#f2f8fd]"
+              className={`w-full px-3 py-2 text-left text-sm outline-none ${tone.option}`}
             >{option.label}</button>
           </li>)}
     </ul> : null}
