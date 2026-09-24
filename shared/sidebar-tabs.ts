@@ -88,10 +88,13 @@ const SHIPPED_ROW_PADDING_PX = 10;
 const SHIPPED_ROW_FONT_PX = 14;
 const SHIPPED_ROW_HEIGHT_PX = 38;
 
+/** The three sidebars ship in the same colours - the ones in `index.css`. */
+const SHIPPED_SIDEBAR_COLOURS = { panel: "#0d5fae", text: "#ffffff", pill: "#ffffff", pillText: "#0b4b86" };
+
 export const sidebarPanels: SidebarPanelMeta[] = [
   {
     id: "admin",
-    colours: { panel: "#0d5fae", text: "#ffffff", pill: "#ffffff", pillText: "#0b4b86" },
+    colours: SHIPPED_SIDEBAR_COLOURS,
     surface: "Admin panel",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
@@ -141,7 +144,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
   },
   {
     id: "tutor",
-    colours: { panel: "#0a6f61", text: "#ffffff", pill: "#ffffff", pillText: "#075247" },
+    colours: SHIPPED_SIDEBAR_COLOURS,
     surface: "Tutor dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
@@ -169,7 +172,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
   },
   {
     id: "guardian",
-    colours: { panel: "#3a47c4", text: "#ffffff", pill: "#ffffff", pillText: "#2c3795" },
+    colours: SHIPPED_SIDEBAR_COLOURS,
     surface: "Guardian dashboard",
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,

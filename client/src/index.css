@@ -299,9 +299,10 @@
 /*
  * The three dashboard sidebars - a filled panel, after the Owner's reference.
  *
- * Each panel is its own deep colour (Admin blue, Tutor teal, Guardian indigo)
- * with white text; the current page is a white pill carrying that colour as
- * its ink, and it glides between pages. Every pair is measured: white on the
+ * All three panels ship in the same deep blue with white text; the current
+ * page is a white pill carrying that blue as its ink, and it glides between
+ * pages. An Owner may repaint any one panel from the Sidebar Tabs page,
+ * which sets these tokens inline. Every pair is measured: white on the
  * lightest part of the panel is 6:1 or better, the soft tone 4.5:1, icons
  * above 3:1, and the pill's ink 8.8:1 or better on white. Unlayered so these
  * beat the shared Sidebar's utility classes without `!important`. The
@@ -326,20 +327,6 @@
   background-color: var(--sb-panel-bottom);
   background-image: linear-gradient(180deg, var(--sb-panel-top) 0%, var(--sb-panel-bottom) 100%);
   box-shadow: 10px 0 28px -18px rgb(6 26 48 / 0.55);
-}
-.sb-panel-tutor {
-  --sb-panel-top: #0a6f61;
-  --sb-panel-bottom: #07524a;
-  --sb-ink: #075247;
-  --sb-soft: #cfe7e2;
-  --sb-icon: #b3d7d0;
-}
-.sb-panel-guardian {
-  --sb-panel-top: #3a47c4;
-  --sb-panel-bottom: #2c3795;
-  --sb-ink: #2c3795;
-  --sb-soft: #d6dbf7;
-  --sb-icon: #bcc4f0;
 }
 /*
  * The Tutor Dashboard's stage buttons are the sidebar's own panel laid on its
