@@ -16,6 +16,7 @@ const events = ["all", "login_success", "login_failure", "invitation_created", "
 export const authEventTypeOptions = [
   "all", "login_success", "login_failure", "login_blocked", "login_account_suspended", "login_account_closed",
   "registration_success", "registration_rejected", "registration_blocked", "phone_intake", "phone_intake_blocked",
+  "password_reset_link_created", "password_reset_completed",
 ] as const;
 const authRoleOptions = ["all", "tutor", "guardian", "admin"] as const;
 

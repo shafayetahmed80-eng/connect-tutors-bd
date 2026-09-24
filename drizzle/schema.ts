@@ -353,6 +353,8 @@ export const authEventTypeValues = [
   "registration_blocked",
   "phone_intake",
   "phone_intake_blocked",
+  "password_reset_link_created",
+  "password_reset_completed",
 ] as const;
 export type AuthEventType = (typeof authEventTypeValues)[number];
 
@@ -378,6 +380,27 @@ export const authEvents = mysqlTable(
   ]
 );
 export type AuthEvent = typeof authEvents.$inferSelect;
+
+/**
+ * One-time password reset links an Admin issues for a Guardian or Tutor who
+ * asked for help signing in. Only the HMAC of the token is stored; a link is
+ * spent on use, and issuing a new one revokes any still open for that account.
+ */
+export const passwordResetLinks = mysqlTable(
+  "password_reset_links",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id),
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
+    createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("password_reset_links_user_idx").on(table.userId)]
+);
+export type PasswordResetLink = typeof passwordResetLinks.$inferSelect;
 
 /** Encrypted TOTP seed and enrollment metadata for one Admin account. */
 export const adminTwoFactorSettings = mysqlTable("admin_two_factor_settings", {

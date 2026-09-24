@@ -1,4 +1,5 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
+import { AdminPasswordResetLink } from "@/components/AdminPasswordResetLink";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { SiteContentProvider } from "@/lib/siteContent";
@@ -217,6 +218,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     <ModerationHistory tutorId={tutorId} />
 
     {profile.userId ? <AccountChangeHistory userId={profile.userId} /> : null}
+
+    {profile.userId ? <AdminPasswordResetLink userId={profile.userId} phone={profile.phone} /> : null}
 
     {/* Private documents - Admin-only signed URLs. */}
     <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">

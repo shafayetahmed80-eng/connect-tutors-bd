@@ -1,4 +1,5 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
+import { AdminPasswordResetLink } from "@/components/AdminPasswordResetLink";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -161,6 +162,7 @@ export function AdminGuardianProfileDetailContent({ userId }: { userId: number }
         </div>
       </section>
       <AccountChangeHistory userId={userId} />
+      <AdminPasswordResetLink userId={userId} phone={profile.phone} />
     </> : null}
     {verifying ? <GuardianVerificationModal guardianUserId={userId} onClose={() => setVerifying(false)} /> : null}
   </div>;
