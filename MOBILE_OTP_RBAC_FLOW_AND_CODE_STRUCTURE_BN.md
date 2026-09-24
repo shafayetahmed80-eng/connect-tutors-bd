@@ -1,5 +1,7 @@
 # Connect Tutors BD: Mobile OTP Authentication ও Role-Based Access Control
 
+> **পুরনো প্রস্তাব (২৪ সেপ্টেম্বর ২০২৬):** এখানকার OTP-only লগইনের পরিকল্পনা আর প্রযোজ্য নয়। লগইন email/mobile + password দিয়েই থাকবে। এখনকার পরিকল্পনা দেখুন `OTP_AND_EMAIL_VERIFICATION_SETUP_BN.md`-এ।
+
 **প্রস্তুতকারক:** Manus AI  
 **প্রকল্প:** Connect Tutors BD / Connecttutorsbd.com  
 **প্রযুক্তি ভিত্তি:** React, Express, tRPC, Drizzle ORM এবং MySQL
