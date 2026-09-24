@@ -76,6 +76,17 @@ export function createAuthRateLimiter(config: AuthRateLimitConfig, now: () => nu
       for (const key of stale) buckets.delete(key);
     },
 
+    /** Every key blocked right now, for the Owner's sign-in report. */
+    blockedKeys(): Array<{ key: string; retryAfterSeconds: number }> {
+      const at = now();
+      const blocked: Array<{ key: string; retryAfterSeconds: number }> = [];
+      buckets.forEach((bucket, key) => {
+        const decision = decisionFor(bucket, at);
+        if (decision.blocked) blocked.push({ key, retryAfterSeconds: decision.retryAfterSeconds });
+      });
+      return blocked;
+    },
+
     /** Test hook: forget every key. */
     clear() {
       buckets.clear();

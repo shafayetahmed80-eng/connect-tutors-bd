@@ -5430,6 +5430,22 @@ export async function listAuthEventsPage(filters: AuthEventFilters) {
 }
 
 /**
+ * The fields the Owner's sign-in report counts, for every public auth event
+ * since `since`. Capped so a flood cannot make the report unbounded; at the
+ * cap the oldest days simply under-count.
+ */
+export async function listAuthEventsSince(since: Date, limit = 50_000) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return database
+    .select({ event: authEvents.event, role: authEvents.role, reason: authEvents.reason, createdAt: authEvents.createdAt })
+    .from(authEvents)
+    .where(gte(authEvents.createdAt, since))
+    .orderBy(desc(authEvents.createdAt))
+    .limit(limit);
+}
+
+/**
  * Stores encrypted seed material only after a successful first-time enrollment
  * verification. The unique user key makes a concurrent replacement attempt
  * fail instead of silently overwriting an established authenticator.

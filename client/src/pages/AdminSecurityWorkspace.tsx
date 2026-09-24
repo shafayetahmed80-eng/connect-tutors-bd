@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminSignInReport } from "@/components/AdminSignInReport";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
@@ -177,6 +178,7 @@ function SecurityWorkspaceContent() {
   if (user?.role !== "admin" || !isOwner) return <AccessDenied />;
 
   return <div className="mx-auto max-w-7xl space-y-5 pb-10">
+    <AdminSignInReport />
     
 
     <section className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">

@@ -66,6 +66,7 @@ import {
   hashTutorPortalToken,
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
+import { describeSignInBlock, signInBlockId, summariseSignInEvents } from "./sign-in-report";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
 import { cancellationReasons, settlementDispositions, tuitionPaymentMethodValues, tutorReportableMethods } from "@shared/platform-charge";
@@ -473,7 +474,7 @@ function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string
  * logging failure must never turn a successful sign-in or registration into an
  * error — and only ever stores the masked identifier.
  */
-function auditAuth(event: AuthAuditEvent, fields: AuthAuditFields = {}) {
+function auditAuth(event: Exclude<AuthAuditEvent, "login_unblocked">, fields: AuthAuditFields = {}) {
   recordAuthAudit(event, fields);
   void db
     .recordAuthEvent({
@@ -1780,6 +1781,29 @@ export const appRouter = router({
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(20),
     })).query(({ input }) => db.listAuthEventsPage({ ...input, ip: input.ip || undefined })),
+    getSignInReport: ownerAdminProcedure
+      .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30)]).default(7) }))
+      .query(async ({ input }) => {
+        const since = new Date(Date.now() - input.windowDays * 24 * 60 * 60 * 1000);
+        return summariseSignInEvents(await db.listAuthEventsSince(since), input.windowDays);
+      }),
+    listSignInBlocks: ownerAdminProcedure.query(() => [
+      ...pairLoginRateLimiter.blockedKeys().map(({ key, retryAfterSeconds }) => describeSignInBlock("account", key, retryAfterSeconds)),
+      ...ipLoginRateLimiter.blockedKeys().map(({ key, retryAfterSeconds }) => describeSignInBlock("connection", key, retryAfterSeconds)),
+      ...ipRegistrationRateLimiter.blockedKeys().map(({ key, retryAfterSeconds }) => describeSignInBlock("registration", key, retryAfterSeconds)),
+    ]),
+    clearSignInBlock: ownerAdminProcedure
+      .input(z.object({ id: z.string().trim().regex(/^[0-9a-f]{24}$/) }))
+      .mutation(({ ctx, input }) => {
+        for (const [kind, limiter] of [["account", pairLoginRateLimiter], ["connection", ipLoginRateLimiter], ["registration", ipRegistrationRateLimiter]] as const) {
+          const match = limiter.blockedKeys().find(({ key }) => signInBlockId(key) === input.id);
+          if (!match) continue;
+          limiter.reset(match.key);
+          recordAuthAudit("login_unblocked", { ip: describeSignInBlock(kind, match.key, 0).ip, reason: `${kind} cleared by admin ${ctx.user.id}` });
+          return { cleared: true } as const;
+        }
+        return { cleared: false } as const;
+      }),
     getActivityReport: ownerAdminProcedure
       .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30) }))
       .query(({ input }) => db.getOwnerAdminActivityReport(input)),
