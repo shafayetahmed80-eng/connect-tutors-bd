@@ -148,6 +148,13 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.getByRole("radio", { name: "Select Guardian account" }).getAttribute("aria-checked")).toBe("true");
   });
 
+  it("has no line under the heading", () => {
+    render(<AuthPage />);
+
+    expect(screen.queryByText(/Choose the account type you registered with/)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).nextElementSibling?.getAttribute("role")).toBe("radiogroup");
+  });
+
   it("has no side panel: the sign-in heading is the page's only h1", () => {
     render(<AuthPage />);
 

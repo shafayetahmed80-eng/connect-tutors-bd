@@ -35,7 +35,11 @@ export function SignInShell({ children }: { children: ReactNode }) {
   </div></SiteContentProvider>;
 }
 
-/** Eyebrow, h1 and the line under it, read from `<slotPrefix>.eyebrow|title|copy`. */
+/**
+ * Eyebrow, h1 and the line under it, read from `<slotPrefix>.eyebrow|title|copy`.
+ * /auth has no line under its heading (the Owner removed it), so it has no
+ * `sign-in.copy` slot and nothing renders there.
+ */
 export function SignInHeading({ slotPrefix }: { slotPrefix: "sign-in" | "tutor-sign-in" }) {
   const eyebrow = useSiteContentText(`${slotPrefix}.eyebrow`);
   const title = useSiteContentText(`${slotPrefix}.title`);
@@ -43,7 +47,7 @@ export function SignInHeading({ slotPrefix }: { slotPrefix: "sign-in" | "tutor-s
   return <>
     <p className="text-xs font-bold uppercase tracking-[0.2em] text-j-accent">{eyebrow}</p>
     <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">{title}</h1>
-    <p className="mt-3 text-sm leading-7 text-j-ink-muted">{copy}</p>
+    {copy ? <p className="mt-3 text-sm leading-7 text-j-ink-muted">{copy}</p> : null}
   </>;
 }
 

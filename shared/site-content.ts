@@ -463,7 +463,6 @@ const infoPageSlots: SiteContentSlot[] = [
 const signInSlots: SiteContentSlot[] = [
   { id: "sign-in.eyebrow", page: "info-pages", surface: "Sign in", group: "/auth", label: "Eyebrow", defaultText: "Welcome back", defaultTextClass: "text-xs", kind: "text-only" },
   { id: "sign-in.title", page: "info-pages", surface: "Sign in", group: "/auth", label: "Heading", defaultText: "Sign in to your account", defaultTextClass: "text-3xl", kind: "text-only" },
-  { id: "sign-in.copy", page: "info-pages", surface: "Sign in", group: "/auth", label: "Line under the heading", defaultText: "Choose the account type you registered with, then use your email address or Bangladesh mobile number.", defaultTextClass: "text-sm", kind: "text-only" },
   { id: "sign-in.role.guardian.title", page: "info-pages", surface: "Sign in", group: "Guardian card", label: "Name", defaultText: "Guardian", defaultTextClass: "text-lg", kind: "text-only" },
   { id: "sign-in.role.guardian.line", page: "info-pages", surface: "Sign in", group: "Guardian card", label: "Line under the name", defaultText: "Select and login as a Guardian/Student", defaultTextClass: "text-sm", kind: "text-only" },
   { id: "sign-in.role.tutor.title", page: "info-pages", surface: "Sign in", group: "Tutor card", label: "Name", defaultText: "Tutor", defaultTextClass: "text-lg", kind: "text-only" },
