@@ -49,7 +49,7 @@ export function TutorProfileReadoutRows({ rows, onAdd }: { rows: TutorProfileRea
               type="button"
               onClick={onAdd}
               aria-label={`Add ${row.label}`}
-              className="inline-flex items-center gap-0.5 rounded font-semibold text-tp-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40"
+              className="inline-flex items-center gap-0.5 rounded font-semibold text-tp-accent hover:underline max-sm:-my-3 max-sm:-mr-2 max-sm:px-2 max-sm:py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40"
             ><Plus size={12} aria-hidden={true} />Add</button>
           </dd>
           : <dd className={`min-w-0 break-words text-[13px] leading-[1.6] sm:text-[12px] ${requiredBlank ? tp.rowValueMissingTone : row.missing ? tp.rowValueMutedTone : tp.rowValueTone}`} style={sizeStyle}>{row.value}</dd>}

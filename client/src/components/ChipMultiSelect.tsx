@@ -144,7 +144,7 @@ export default function ChipMultiSelect({
     // a keyboard user collects one open list per field they pass through.
     onBlur={event => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) close(); }}
   >
-    <div className={`flex w-full items-start gap-1.5 border transition focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${dense ? "min-h-9 rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${invalid ? "border-[#d84a4a]" : "border-[#dbe7ef]"} ${disabled ? "bg-[#f4f8fb]" : "bg-white"}`}>
+    <div className={`flex w-full items-start gap-1.5 border transition focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${dense ? "min-h-9 max-sm:min-h-[var(--profile-field-height-phone,44px)] max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${invalid ? "border-[#d84a4a]" : "border-[#dbe7ef]"} ${disabled ? "bg-[#f4f8fb]" : "bg-white"}`}>
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         {selected.map(option => <span key={option.id} className="inline-flex max-w-full items-center gap-1 rounded-lg bg-[#eaf4fd] py-0.5 pl-2 pr-1 text-xs font-semibold text-[#1267c8]">
           <span className="truncate">{option.label}</span>
@@ -152,7 +152,7 @@ export default function ChipMultiSelect({
             type="button"
             aria-label={`Remove ${option.label}`}
             onClick={() => remove(option.id)}
-            className="grid size-4 shrink-0 place-items-center rounded outline-none hover:bg-[#cfe6fa] focus-visible:ring-2 focus-visible:ring-j-accent"
+            className="grid size-4 shrink-0 place-items-center rounded outline-none hover:bg-[#cfe6fa] focus-visible:ring-2 focus-visible:ring-j-accent max-sm:size-6"
           ><X size={11} aria-hidden={true} /></button>
         </span>)}
         <input
