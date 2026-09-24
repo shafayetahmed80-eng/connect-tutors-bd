@@ -135,6 +135,14 @@ describe("Guardian private-account presentation", () => {
     expect((screen.getByPlaceholderText("Re-enter your password") as HTMLInputElement).type).toBe("password");
   });
 
+  it("puts no arrow icons on the account step's buttons", () => {
+    render(<AccountStage {...accountStageProps} />);
+
+    expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
+  });
+
   it("recognises only a current City and Area pair as a complete location selection", () => {
     expect(getGuardianLocationSelectionState("dhaka", "mirpur-10", "Dhaka", "Mirpur 10")).toEqual({
       complete: true,

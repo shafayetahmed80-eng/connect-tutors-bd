@@ -9,7 +9,7 @@ import { formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBanglade
 import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
-import { ArrowRight, ChevronDown, LoaderCircle, MapPin, MapPinned } from "lucide-react";
+import { ChevronDown, LoaderCircle, MapPin, MapPinned } from "lucide-react";
 import React, { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -236,7 +236,7 @@ export default function JoinTutor() {
             {submitError ? <p role="alert" className="mt-4 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{submitError}</p> : null}
             <div className={registrationFooter}>
               <SignInPrompt href={TUTOR_SIGN_IN_HREF} />
-              <button type="submit" disabled={registerTutor.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : <><SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" /> <ArrowRight size={17} /></>}</button>
+              <button type="submit" disabled={registerTutor.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : <><SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" /></>}</button>
             </div>
           </section>
         </form>
