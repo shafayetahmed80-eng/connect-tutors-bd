@@ -53,7 +53,7 @@ vi.mock("@/lib/trpc", () => ({
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },
       searchRegistrationLocations: { useQuery: () => ({ data: [] }) },
     },
-    guardianIntake: { capturePhone: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
+    guardianIntake: { capturePhone: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) }, verifyPhone: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
     guardianAuth: { register: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
     tutorRequests: {
       create: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },

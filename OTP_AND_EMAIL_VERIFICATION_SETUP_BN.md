@@ -1,7 +1,7 @@
 # Connect Tutors — Mobile OTP ও Email Verification সেটআপ গাইড
 
 **তারিখ:** ২৪ সেপ্টেম্বর ২০২৬
-**অবস্থা:** এখনো বানানো হয়নি। এই গাইড অনুযায়ী আপনার দিকের সেটআপ শেষ হলে কোড দুই ধাপে বানানো হবে।
+**অবস্থা:** Mobile OTP বানানো হয়েছে: Tutor রেজিস্ট্রেশন আর Guardian ফোন ধাপ, BulkSMSBD দিয়ে, ৪ অঙ্কের কোড। Email যাচাই (Brevo) এখনো বাকি।
 
 > এই গাইড পুরনো `MOBILE_OTP_RBAC_FLOW_AND_CODE_STRUCTURE_BN.md`-এর জায়গা নেয়। ওই ফাইলের প্রস্তাব ছিল password বাদ দিয়ে শুধু OTP দিয়ে লগইন। এখনকার সাইটে লগইন **email বা mobile + password** দিয়েই থাকবে। OTP আর email যাচাই শুধু নিচের কাজগুলোর জন্য ব্যবহার হবে।
 
@@ -11,7 +11,7 @@
 
 | জায়গা | এখন যা হয় | OTP/Email যাচাইয়ের পর |
 |---|---|---|
-| Tutor রেজিস্ট্রেশন (`/become-tutor`) | নম্বর যাচাই ছাড়াই account তৈরি হয় | নম্বরে ৬ অঙ্কের কোড যাবে; কোড মিললে তবেই account তৈরি |
+| Tutor রেজিস্ট্রেশন (`/become-tutor`) | নম্বর যাচাই ছাড়াই account তৈরি হয় | নম্বরে ৪ অঙ্কের কোড যাবে; কোড মিললে তবেই account তৈরি |
 | Guardian যাত্রার ফোন ধাপ (`/request-tutor`) | "Continue securely" চাপলেই পরের ধাপ | নম্বরে কোড যাবে; কোড মিললে account ধাপে যাবে |
 | Password ভুলে গেলে | WhatsApp-এ জানালে Admin reset লিংক পাঠান (#221) | Sign in পেজে "Forgot password?" থেকে নিজে নিজেই mobile-এ কোড বা email-এ লিংক। Admin-এর লিংক ব্যাকআপ হিসেবে থাকবে |
 | Email যাচাই | কোনো যাচাই নেই | রেজিস্ট্রেশনের পর email-এ একবার-ব্যবহারযোগ্য লিংক। Account settings-এ email বদলালে নতুন email আবার যাচাই |
@@ -41,10 +41,10 @@
 6. Provider যদি **IP whitelist** চায়, তাহলে আপনার cPanel সার্ভারের IP দিন (hosting provider থেকে জানা যাবে)।
 7. Dashboard থেকে নিজের নম্বরে একটা **test SMS** পাঠিয়ে দেখুন।
 
-**OTP বার্তার ধরন** (নিয়ম অনুযায়ী ব্র্যান্ডের নাম থাকতে হবে):
+**OTP বার্তার ধরন:** BulkSMSBD-এর বাধ্যতামূলক format ("Your {Brand} OTP is XXXX") অনুযায়ী:
 
 ```
-Connect Tutors code: 482913. Valid for 5 minutes. Do not share it with anyone.
+Your Connect Tutors OTP is 4821
 ```
 
 ইংরেজি বার্তা এক SMS-এ ১৬০ অক্ষর পর্যন্ত যায়। বাংলা (Unicode) বার্তায় যায় মাত্র ৭০ অক্ষর, তাই দুই-তিন SMS-এর খরচ হতে পারে। OTP-র জন্য ছোট ইংরেজি বার্তাই সস্তা।
@@ -70,9 +70,9 @@ Localhost-এ রিপোর `.env` ফাইলে বসাবেন। Live 
 
 ```
 # SMS
-SMS_API_URL=            # provider-এর API ঠিকানা
+SMS_API_URL=https://bulksmsbd.net/api/smsapi
 SMS_API_KEY=            # provider-এর API key
-SMS_SENDER_ID=          # non-masking নম্বর বা masking নাম
+SMS_SENDER_ID=8809617623229
 
 # Email (Brevo SMTP উদাহরণ)
 SMTP_HOST=smtp-relay.brevo.com
@@ -107,7 +107,7 @@ OTP_DEV_LOG=true
 - **নতুন টেবিল `email_verifications`**: একবার-ব্যবহারযোগ্য লিংক, মেয়াদ ২৪ ঘণ্টা। #221-এর reset লিংকের মতোই ব্যবস্থা।
 - **`users` টেবিলে দুটো নতুন ঘর:** `phoneVerifiedAt`, `emailVerifiedAt`।
 - **নিয়ম:**
-  - কোড ৬ অঙ্কের, নিরাপদ random
+  - কোড ৪ অঙ্কের (Owner-এর সিদ্ধান্ত), নিরাপদ random। ৪ অঙ্কে মাত্র ১০,০০০ সম্ভাবনা, তাই নিচের সীমাগুলোই নিরাপত্তা দেয়
   - একটা কোডে ৫ বার ভুল দিলে কোড বাতিল
   - নতুন কোড চাওয়া যাবে ৬০ সেকেন্ড পরপর
   - এক নম্বরে ঘণ্টায় সর্বোচ্চ ৫টা SMS, এক IP থেকেও সীমা থাকবে
@@ -152,14 +152,27 @@ Email Brevo-র ফ্রি সীমার (দিনে ৩০০) মধ্�
 
 ---
 
-## ৬. শুরুর আগে আপনার সিদ্ধান্ত
+## ৬. সিদ্ধান্ত (২৪ সেপ্টেম্বর ২০২৬)
 
-1. কোন SMS provider? (API ডকুমেন্টেশনের লিংকটা আমাকে দেবেন)
-2. Email: Brevo নাকি cPanel mailbox?
-3. Tutor রেজিস্ট্রেশনে কোড মেলার **আগে** account তৈরি হবে না, এটা ঠিক আছে তো?
-4. Guardian যাত্রায়ও কোড বাধ্যতামূলক হবে?
+1. SMS provider: **BulkSMSBD**, non-masking sender `8809617623229`।
+2. কোড: **৪ অঙ্কের**।
+3. Email: **Brevo**।
+4. Tutor রেজিস্ট্রেশন: কোড মেলার **আগে** account তৈরি হবে না।
+5. Guardian যাত্রা: কোড **বাধ্যতামূলক**।
 
-এই চারটা ঠিক হলে, আর API key ও SMTP তথ্য `.env`-এ বসানো হলে, ধাপ ১ থেকে কাজ শুরু করা যাবে।
+### BulkSMSBD-এর response code
+
+| Code | মানে | আমরা যা করি |
+|---|---|---|
+| 202 | SMS গেছে | কোড চালু |
+| 1001 | ভুল নম্বর | "কোড পাঠানো যায়নি" |
+| 1006 / 1007 | Balance-এর মেয়াদ শেষ / balance শেষ | Telegram-এ Admin-কে সতর্কবার্তা |
+| 1012 | Masking SMS বাংলায় পাঠাতে হবে | এখন non-masking, প্রযোজ্য নয় |
+| 1031 | Account verified নয় | Telegram-এ সতর্কবার্তা |
+| 1032 | IP whitelist করা নেই | Telegram-এ সতর্কবার্তা |
+| অন্য সব | Account/gateway সমস্যা | "কোড পাঠানো যায়নি" |
+
+**IP whitelist:** BulkSMSBD শুধু অনুমোদিত IP থেকে আসা অনুরোধ নেয়। Localhost-এ পরীক্ষার জন্য আপনার PC-র public IP, আর live সাইটের জন্য সার্ভারের IP, তাদের dashboard-এ যোগ করতে হবে।
 
 ---
 

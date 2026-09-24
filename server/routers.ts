@@ -67,6 +67,9 @@ import {
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { describeSignInBlock, signInBlockId, summariseSignInEvents } from "./sign-in-report";
+import { sendSms } from "./sms";
+import { generatePhoneCode, hashPhoneCode, PHONE_CODE_MAX_ATTEMPTS, PHONE_CODE_PATTERN, PHONE_CODE_RESEND_MS, PHONE_CODE_TTL_MS, PHONE_CODES_PER_HOUR, PhoneCodeFieldError, phoneCodeCheckMessage, phoneCodeMessage, phoneCodeSendMessage, type PhoneCodeLanguage } from "./phone-verification";
+import type { PhoneVerificationPurpose } from "../drizzle/schema";
 import { PASSWORD_RESET_LINK_MESSAGES, PASSWORD_RESET_TOKEN_PATTERN } from "@shared/password-reset";
 import { maskIdentifier, recordAuthAudit, type AuthAuditEvent, type AuthAuditFields } from "./auth-audit";
 import { JOB_ID_OFFSET, requestIdFromJobId } from "@shared/job-id";
@@ -86,6 +89,8 @@ const tutorAuthInputSchema = z.object({
   locationId: z.string().trim().min(1).max(80),
   // The box was always on the form; its answer just never left the browser.
   termsAccepted: z.boolean(),
+  /** The 4-digit SMS code sent by `auth.sendTutorPhoneCode`. */
+  phoneCode: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your mobile."),
 }).refine(value => value.password === value.confirmPassword, {
   message: "Passwords do not match.",
   path: ["confirmPassword"],
@@ -487,6 +492,57 @@ function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string
 }
 
 /**
+ * Sends a fresh 4-digit code by SMS after the per-number limits (one a minute,
+ * five an hour). A code the provider would not deliver is deleted again, so
+ * trying once more is not blocked by it.
+ */
+async function sendPhoneVerificationCode(input: { ip: string; phone: string; purpose: PhoneVerificationPurpose; role: "tutor" | "guardian"; language: PhoneCodeLanguage }) {
+  const now = new Date();
+  const state = await db.getPhoneCodeSendState(input.phone, input.purpose, now);
+  if (state.lastSentAt && now.getTime() - state.lastSentAt.getTime() < PHONE_CODE_RESEND_MS) {
+    const seconds = Math.ceil((PHONE_CODE_RESEND_MS - (now.getTime() - state.lastSentAt.getTime())) / 1000);
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: phoneCodeSendMessage("wait", input.language, seconds) });
+  }
+  if (state.sentLastHour >= PHONE_CODES_PER_HOUR) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: phoneCodeSendMessage("hourly", input.language) });
+  }
+  const code = generatePhoneCode();
+  const created = await db.createPhoneVerificationCode({
+    phone: input.phone,
+    purpose: input.purpose,
+    codeHash: hashPhoneCode(code, input.phone, input.purpose, ENV.cookieSecret),
+    expiresAt: new Date(now.getTime() + PHONE_CODE_TTL_MS),
+    ip: input.ip,
+  });
+  const sms = await sendSms(input.phone, phoneCodeMessage(code));
+  if (!sms.sent) {
+    await db.deletePhoneVerificationCode(created.id);
+    console.error(`[sms] verification code not sent: ${sms.reason}`);
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: phoneCodeSendMessage("notSent", input.language) });
+  }
+  auditAuth("phone_code_sent", { role: input.role, ip: input.ip, identifier: input.phone, reason: sms.devLogged ? "dev-log" : undefined });
+  return { success: true as const, resendAfterSeconds: PHONE_CODE_RESEND_MS / 1000, expiresInSeconds: PHONE_CODE_TTL_MS / 1000 };
+}
+
+/** Throws a `phoneCode` field error unless the code is right; returns the code's id when it is. */
+async function checkPhoneVerification(input: { ip: string; phone: string; code: string; purpose: PhoneVerificationPurpose; role: "tutor" | "guardian"; language: PhoneCodeLanguage; consume: boolean }) {
+  const check = await db.checkPhoneVerificationCode({
+    phone: input.phone,
+    purpose: input.purpose,
+    codeHash: hashPhoneCode(input.code, input.phone, input.purpose, ENV.cookieSecret),
+    consume: input.consume,
+    maxAttempts: PHONE_CODE_MAX_ATTEMPTS,
+  });
+  if (check.status !== "ok") {
+    auditAuth("phone_code_rejected", { role: input.role, ip: input.ip, identifier: input.phone, reason: check.status });
+    const cause = new PhoneCodeFieldError(phoneCodeCheckMessage(check, input.language));
+    throw new TRPCError({ code: "BAD_REQUEST", message: cause.message, cause });
+  }
+  auditAuth("phone_verified", { role: input.role, ip: input.ip, identifier: input.phone });
+  return check.id;
+}
+
+/**
  * One call, two sinks: the immediate `[auth-audit]` stdout line (collected by the
  * log pipeline) and a durable `auth_events` row (Owner/Admin-queryable, the
  * counterpart to `db.logAdminAuditEvent`). The row is written best-effort — a
@@ -757,6 +813,24 @@ export const appRouter = router({
           throw error;
         }
 
+        // The number is only taken in once its SMS code comes back (verifyPhone).
+        return sendPhoneVerificationCode({ ip, phone, purpose: "guardian_intake", role: "guardian", language: "bn" });
+      }),
+    verifyPhone: publicProcedure
+      .input(z.object({ phone: z.string().trim().min(1).max(32), code: z.string().trim().regex(PHONE_CODE_PATTERN, "৪ অঙ্কের কোডটি লিখুন।") }))
+      .mutation(async ({ ctx, input }) => {
+        const ip = getRequestIp(ctx);
+        let phone: string;
+        try {
+          phone = normalizeBangladeshMobile(input.phone);
+        } catch (error) {
+          if (error instanceof GuardianIntakeValidationError) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          }
+          throw error;
+        }
+        await checkPhoneVerification({ ip, phone, code: input.code, purpose: "guardian_intake", role: "guardian", language: "bn", consume: true });
+
         const handoff = createGuardianIntakeHandoff({
           secret: ENV.cookieSecret,
           ttlMs: GUARDIAN_INTAKE_HANDOFF_TTL_MS,
@@ -766,6 +840,7 @@ export const appRouter = router({
             phone,
             handoffTokenHash: handoff.tokenHash,
             handoffExpiresAt: handoff.expiresAt,
+            phoneVerifiedAt: new Date(),
           });
         } catch {
           throw new TRPCError({
@@ -881,6 +956,21 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
+    sendTutorPhoneCode: publicProcedure
+      .input(z.object({ phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number.") }))
+      .mutation(async ({ ctx, input }) => {
+        const ip = getRequestIp(ctx);
+        if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
+          auditAuth("registration_blocked", { role: "tutor", ip, identifier: input.phone });
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+        }
+        ipRegistrationRateLimiter.record(`reg:${ip}`);
+        // Registration would refuse this number anyway; say so before an SMS is paid for.
+        if (await db.isTutorPhoneRegistered(input.phone)) {
+          throw new TRPCError({ code: "CONFLICT", message: "This mobile number is already registered to a Tutor account. Sign in instead, or use a different number." });
+        }
+        return sendPhoneVerificationCode({ ip, phone: input.phone, purpose: "tutor_registration", role: "tutor", language: "en" });
+      }),
     registerTutor: publicProcedure.input(tutorAuthInputSchema).mutation(async ({ ctx, input }) => {
       const ip = getRequestIp(ctx);
       if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
@@ -889,7 +979,10 @@ export const appRouter = router({
       }
       ipRegistrationRateLimiter.record(`reg:${ip}`);
 
-      const result = await db.registerPasswordTutor({ ...input, termsVersion: TERMS_VERSION });
+      // Checked, not spent: a clashing email should not cost the Tutor another SMS.
+      const phoneCodeId = await checkPhoneVerification({ ip, phone: input.phone, code: input.phoneCode, purpose: "tutor_registration", role: "tutor", language: "en", consume: false });
+      const { phoneCode: _phoneCode, ...registration } = input;
+      const result = await db.registerPasswordTutor({ ...registration, termsVersion: TERMS_VERSION });
       if (!result.created) {
         auditAuth("registration_rejected", { role: "tutor", ip, identifier: input.email, reason: result.reason });
         if (result.reason === "invalid-location") {
@@ -906,6 +999,7 @@ export const appRouter = router({
               : "An account with this email already exists. Please sign in instead.";
         throw new TRPCError({ code: "CONFLICT", message: conflictMessage });
       }
+      await db.consumePhoneVerificationCode(phoneCodeId);
       await setPasswordSession(ctx, result.user);
       const tutorPortalToken = await issueTutorPortalSession(result.user.id);
       auditAuth("registration_success", { role: "tutor", ip, identifier: input.email });
@@ -1825,7 +1919,7 @@ export const appRouter = router({
       event: z.enum([
         "all", "login_success", "login_failure", "login_blocked", "login_account_suspended", "login_account_closed",
         "registration_success", "registration_rejected", "registration_blocked", "phone_intake", "phone_intake_blocked",
-        "password_reset_link_created", "password_reset_completed",
+        "password_reset_link_created", "password_reset_completed", "phone_code_sent", "phone_code_rejected", "phone_verified",
       ]).default("all"),
       role: z.enum(["all", "tutor", "guardian", "admin"]).default("all"),
       ip: z.string().trim().max(64).default(""),
