@@ -34,6 +34,9 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("@/components/SiteHeader", () => ({ default: () => null }));
+vi.mock("@/components/SiteFooter", () => ({ default: () => null }));
+
 import AuthPage from "./Auth";
 
 afterEach(() => {
@@ -54,7 +57,7 @@ describe("Public Guardian and Tutor account access", () => {
   it("warns that Caps Lock is on while a public-account password is being entered", () => {
     render(<AuthPage />);
 
-    const password = screen.getByLabelText("Password");
+    const password = screen.getByLabelText(/^Password/);
     const keyDown = createEvent.keyDown(password, { key: "A" });
     Object.defineProperty(keyDown, "getModifierState", {
       value: (key: string) => key === "CapsLock",
@@ -66,19 +69,27 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("uses the shared sign-in form: journey button, required marks, icon-only toggle", () => {
+    render(<AuthPage />);
+
+    expect(screen.getByRole("button", { name: "Sign in as Guardian" }).className).toContain("journey-button");
+    expect(screen.getAllByLabelText("required")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Show password" }).textContent).toBe("");
+  });
+
   it("shows email-or-mobile sign-in, password visibility, and safe WhatsApp recovery", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);
 
-    expect(screen.getByLabelText("Email or mobile number")).not.toBeNull();
-    const password = screen.getByLabelText("Password") as HTMLInputElement;
+    expect(screen.getByLabelText(/^Email or mobile number/)).not.toBeNull();
+    const password = screen.getByLabelText(/^Password/) as HTMLInputElement;
     expect(password.type).toBe("password");
     await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(password.type).toBe("text");
 
     const recoveryLink = screen.getByRole("link", { name: "Need help signing in?" });
     expect(recoveryLink.getAttribute("href")).toContain("wa.me/8801516131411");
-    expect(screen.getByText("For password recovery, contact our support team on WhatsApp. We do not offer email reset links yet.")).not.toBeNull();
+    expect(screen.getByText("For password recovery, contact support on WhatsApp. We do not offer email reset links yet.")).not.toBeNull();
     expect(screen.queryByRole("link", { name: /reset password/i })).toBeNull();
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();
   });
@@ -174,8 +185,8 @@ describe("sign-in error messages", () => {
     );
     render(<AuthPage />);
 
-    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
-    await user.type(screen.getByLabelText("Password"), "whatever");
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "whatever");
     await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
 
     const alert = await screen.findByRole("alert");
@@ -189,8 +200,8 @@ describe("sign-in error messages", () => {
     );
     render(<AuthPage />);
 
-    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
-    await user.type(screen.getByLabelText("Password"), "correct-password");
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "correct-password");
     await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
 
     const alert = await screen.findByRole("alert");
@@ -202,8 +213,8 @@ describe("sign-in error messages", () => {
     mutateAsync.mockRejectedValue(trpcErrorWithCode("Invalid credentials.", "UNAUTHORIZED"));
     render(<AuthPage />);
 
-    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
-    await user.type(screen.getByLabelText("Password"), "wrong-password");
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "wrong-password");
     await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
 
     const alert = await screen.findByRole("alert");
@@ -225,8 +236,8 @@ describe("post-login destinations", () => {
     fetchAuthenticatedUser.mockImplementation(() => new Promise(() => undefined));
     render(<AuthPage />);
 
-    await user.type(screen.getByLabelText("Email or mobile number"), "tutor@example.com");
-    await user.type(screen.getByLabelText("Password"), "correct-password");
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "tutor@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "correct-password");
     await user.click(screen.getByRole("button", { name: "Sign in as Tutor" }));
 
     expect(await screen.findByRole("status", { name: "Preparing your Tutor workspace" })).not.toBeNull();
@@ -248,8 +259,8 @@ describe("post-login destinations", () => {
     });
     render(<AuthPage />);
 
-    await user.type(screen.getByLabelText("Email or mobile number"), "guardian@example.com");
-    await user.type(screen.getByLabelText("Password"), "correct-password");
+    await user.type(screen.getByLabelText(/^Email or mobile number/), "guardian@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "correct-password");
     await user.click(screen.getByRole("button", { name: "Sign in as Guardian" }));
 
     expect(fetchAuthenticatedUser).toHaveBeenCalledOnce();

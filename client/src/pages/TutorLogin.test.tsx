@@ -37,6 +37,10 @@ vi.mock("@/components/SiteHeader", () => ({
   default: () => null,
 }));
 
+vi.mock("@/components/SiteFooter", () => ({
+  default: () => null,
+}));
+
 import TutorLogin, { getTutorSignInErrorMessage } from "./TutorLogin";
 
 afterEach(() => {
@@ -109,6 +113,14 @@ describe("Tutor sign-in transition", () => {
     expect(screen.getByRole("status").textContent).toContain("Caps Lock is on.");
     fireEvent.blur(password);
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("uses the shared sign-in form: journey button, required marks, icon-only toggle", () => {
+    render(<TutorLogin />);
+
+    expect(screen.getByRole("button", { name: "Sign in to Tutor Dashboard" }).className).toContain("journey-button");
+    expect(screen.getAllByLabelText("required")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Show password" }).textContent).toBe("");
   });
 
   it("keeps the Tutor sign-in password visibility control accessible", async () => {
