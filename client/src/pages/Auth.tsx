@@ -1,6 +1,6 @@
 import React, { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { GraduationCap, UsersRound } from "lucide-react";
+import { Check, GraduationCap, UsersRound } from "lucide-react";
 import { ghostButton } from "@/components/journeyField";
 import { SignInForm, SignInHeading, SignInShell } from "@/components/SignInLayout";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
@@ -83,7 +83,7 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
         }
       }}
       tabIndex={selected ? 0 : -1}
-      className={`rounded-xl border p-[1.25em] text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
+      className={`relative rounded-xl border p-[1.25em] text-left text-sm transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2 ${selected ? "border-j-accent bg-j-accent-wash shadow-[0_12px_28px_rgba(36,136,214,0.12)]" : "border-j-border bg-white hover:border-j-accent/50"}`}
     >
       <span className="flex items-center gap-[0.6em]">
         {/* Idle in the ink-muted tone (3.75:1 on white); selecting pops it to the accent colour and up a touch. */}
@@ -95,6 +95,13 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
         <strong className="text-[1.3em] leading-[1.3]">{name}</strong>
       </span>
       <span className="mt-[0.5em] block leading-[1.55] text-j-ink-muted">{line}</span>
+      {/* Pops in from the corner on select rather than appearing instantly; always in the DOM so the scale/opacity has somewhere to transition from. */}
+      <span
+        aria-hidden="true"
+        className={`absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-j-accent text-white shadow-[0_4px_10px_rgba(22,125,221,.35)] ring-2 ring-white transition-[opacity,transform] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] motion-reduce:transition-none ${selected ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
+      >
+        <Check size={13} strokeWidth={3} aria-hidden="true" />
+      </span>
     </button>
   );
 }
