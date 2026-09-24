@@ -5099,6 +5099,35 @@ export async function addSharedSchoolCollege(input: { name: string; division: st
   return { outcome: "added" as const, id: Number(created[0].insertId) };
 }
 
+/**
+ * Many names the Owner pastes into the bulk importer at once. A name already
+ * on the list in that division, or repeated within the paste, is skipped
+ * rather than refused.
+ */
+export async function bulkAddSharedSchoolColleges(input: { rows: { name: string; division: string }[] }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const divisions = Array.from(new Set(input.rows.map(row => row.division)));
+  const existing = await database
+    .select({ normalizedName: schoolColleges.normalizedName, division: schoolColleges.division })
+    .from(schoolColleges)
+    .where(and(isNull(schoolColleges.createdByUserId), inArray(schoolColleges.division, divisions)));
+  const existingKeys = new Set(existing.map(row => `${row.normalizedName}|${row.division}`));
+  const seen = new Set<string>();
+  const toInsert: { name: string; normalizedName: string; division: string; origin: string }[] = [];
+  let skipped = 0;
+  for (const row of input.rows) {
+    const name = tidySchoolName(row.name);
+    const normalizedName = normalizeSchoolName(name);
+    const key = `${normalizedName}|${row.division}`;
+    if (seen.has(key) || existingKeys.has(key)) { skipped++; continue; }
+    seen.add(key);
+    toInsert.push({ name, normalizedName, division: row.division, origin: "owner" });
+  }
+  if (toInsert.length) await database.insert(schoolColleges).values(toInsert);
+  return { added: toInsert.length, skipped };
+}
+
 /** Renames, moves or hides a shared row. Tutor records keep the name they saved. */
 export async function updateSharedSchoolCollege(input: { id: number; name: string; division: string; active: boolean }) {
   const database = await getDb();

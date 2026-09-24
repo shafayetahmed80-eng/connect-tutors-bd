@@ -27,7 +27,7 @@ import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } fr
 import { guardianApplicantVisibilityValues } from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
-import { SCHOOL_NAME_MAX, SCHOOL_NAME_MIN, schoolCollegeDivisionValues } from "@shared/school-colleges";
+import { SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, SCHOOL_NAME_MIN, schoolCollegeDivisionValues } from "@shared/school-colleges";
 import { accountChangeTypeValues, accountChangeTypesFor, ACCOUNT_CHANGE_NAME_MAX, ACCOUNT_CHANGE_REASON_MAX } from "@shared/account-change-requests";
 import { accountChangeDecisionRefusalMessages, accountChangeRefusalMessages, checkAccountChange } from "./account-change-requests";
 import {
@@ -1512,6 +1512,12 @@ export const appRouter = router({
       if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This name is no longer waiting." });
       return result;
     }),
+    bulkAdd: ownerAdminProcedure.input(z.object({
+      rows: z.array(z.object({
+        name: z.string().trim().min(SCHOOL_NAME_MIN).max(SCHOOL_NAME_MAX),
+        division: z.enum(schoolCollegeDivisionValues),
+      })).min(1).max(SCHOOL_BULK_IMPORT_MAX),
+    })).mutation(({ input }) => db.bulkAddSharedSchoolColleges(input)),
   }),
   /** The Owner's switches on the Dynamic Section's Admin Control page. */
   adminControl: router({
