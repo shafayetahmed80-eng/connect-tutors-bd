@@ -5,10 +5,10 @@
 // header, a rounded-full button and plain inputs; the other a rounded-lg
 // button, an icon inside the field and its own red for the asterisk. Both now
 // render from here and use the same journey tokens as the registration forms.
-// Labels carry no icons - the Owner does not want them on sign-in or
-// registration forms.
+// Labels and buttons carry no icons (no arrows either) - the Owner does not
+// want them on sign-in or registration forms.
 
-import { ArrowRight, Eye, EyeOff, LoaderCircle, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, type LucideIcon } from "lucide-react";
 import React, { type FormEvent, type ReactNode, useState } from "react";
 import { Link } from "wouter";
 import SiteFooter from "@/components/SiteFooter";
@@ -102,7 +102,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
 
     {error ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{error}</p> : null}
 
-    <button type="submit" disabled={pending} className={`${primaryButton} w-full`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : <>{submitLabel} <ArrowRight size={17} /></>}</button>
+    <button type="submit" disabled={pending} className={`${primaryButton} w-full`}>{pending ? <><LoaderCircle className="animate-spin" size={17} /> Signing in…</> : submitLabel}</button>
     <p className="text-center text-xs leading-5 text-j-ink-muted">{SIGN_IN_RECOVERY_NOTE}</p>
   </form>;
 }

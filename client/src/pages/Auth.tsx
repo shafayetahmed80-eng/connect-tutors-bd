@@ -2,7 +2,6 @@ import { useSiteContact, useSiteContentText, useSiteContentTextStyle } from "@/l
 import React, { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  ArrowRight,
   CheckCircle2,
   GraduationCap,
   LockKeyhole,
@@ -265,7 +264,7 @@ export default function AuthPage() {
           </ol>
           <p className="mt-5 flex gap-2 rounded-xl bg-j-accent-wash px-4 py-3 text-sm leading-6 text-j-ink-soft"><ShieldCheck className="mt-0.5 shrink-0 text-j-accent" size={17} aria-hidden="true" />{selectedJourney.privacyCue}</p>
           <Link href={selectedJourney.registerHref} className={`${primaryButton} mt-6 w-full`}>
-            {selectedJourney.registerLabel}<ArrowRight size={17} aria-hidden="true" />
+            {selectedJourney.registerLabel}
           </Link>
           <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors, I need help with my account.")}><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
           <button type="button" onClick={() => switchMode("login")} className="mt-5 block text-sm font-semibold text-j-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Already registered? Sign in</button>
