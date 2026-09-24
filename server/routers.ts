@@ -67,7 +67,7 @@ import {
 } from "./tutor-portal-session";
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { describeSignInBlock, signInBlockId, summariseSignInEvents } from "./sign-in-report";
-import { sendSms } from "./sms";
+import { getSmsBalance, sendSms } from "./sms";
 import { generatePhoneCode, hashPhoneCode, PHONE_CODE_MAX_ATTEMPTS, PHONE_CODE_PATTERN, PHONE_CODE_RESEND_MS, PHONE_CODE_TTL_MS, PHONE_CODES_PER_HOUR, PhoneCodeFieldError, phoneCodeCheckMessage, phoneCodeMessage, phoneCodeSendMessage, type PhoneCodeLanguage } from "./phone-verification";
 import type { PhoneVerificationPurpose } from "../drizzle/schema";
 import { PASSWORD_RESET_LINK_MESSAGES, PASSWORD_RESET_TOKEN_PATTERN } from "@shared/password-reset";
@@ -1932,6 +1932,7 @@ export const appRouter = router({
         const since = new Date(Date.now() - input.windowDays * 24 * 60 * 60 * 1000);
         return summariseSignInEvents(await db.listAuthEventsSince(since), input.windowDays);
       }),
+    getSmsBalance: ownerAdminProcedure.query(() => getSmsBalance()),
     listSignInBlocks: ownerAdminProcedure.query(() => [
       ...pairLoginRateLimiter.blockedKeys().map(({ key, retryAfterSeconds }) => describeSignInBlock("account", key, retryAfterSeconds)),
       ...ipLoginRateLimiter.blockedKeys().map(({ key, retryAfterSeconds }) => describeSignInBlock("connection", key, retryAfterSeconds)),

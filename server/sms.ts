@@ -28,6 +28,32 @@ export function smsNumber(phone: string) {
   return phone.replace(/^\+/, "");
 }
 
+export type SmsBalance =
+  | { configured: false }
+  | { configured: true; balance: number }
+  | { configured: true; balance: null; problem: string };
+
+/** The Taka left on the BulkSMSBD account, for the Owner's sign-in report. */
+export async function getSmsBalance(fetchImpl: typeof fetch = fetch): Promise<SmsBalance> {
+  if (!ENV.smsApiKey) return { configured: false };
+  const url = ENV.smsApiUrl.replace(/\/smsapi\/?$/, "/getBalanceApi");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetchImpl(url, { method: "POST", body: new URLSearchParams({ api_key: ENV.smsApiKey }), signal: controller.signal });
+    const payload = await response.json().catch(() => null) as { balance?: unknown; response_code?: unknown } | null;
+    const balance = typeof payload?.balance === "number" ? payload.balance : Number.parseFloat(String(payload?.balance ?? ""));
+    if (Number.isFinite(balance)) return { configured: true, balance };
+    const code = Number(payload?.response_code ?? NaN);
+    const known = Number.isFinite(code) ? OWNER_ACTION_CODES[code] : undefined;
+    return { configured: true, balance: null, problem: known ?? (Number.isFinite(code) ? `BulkSMSBD answered ${code}` : "BulkSMSBD gave no balance") };
+  } catch {
+    return { configured: true, balance: null, problem: "BulkSMSBD could not be reached" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function sendSms(phone: string, message: string, fetchImpl: typeof fetch = fetch): Promise<SmsResult> {
   if (ENV.otpDevLog || (!ENV.smsApiKey && !ENV.isProduction)) {
     console.info(`[sms-dev] to ${smsNumber(phone)}: ${message}`);

@@ -20,11 +20,16 @@ export type SignInReportDay = {
   /** Right password, other account type - see `AccountRoleMismatch`. */
   wrongCard: number;
   blocked: number;
+  /** SMS verification codes sent (Tutor registration and Guardian phone step). */
+  codesSent: number;
+  codesVerified: number;
+  /** Wrong, expired or used-up codes entered. */
+  wrongCodes: number;
 };
 
 type Counts = Omit<SignInReportDay, "date">;
 
-const emptyCounts = (): Counts => ({ newGuardians: 0, newTutors: 0, signIns: 0, failed: 0, wrongCard: 0, blocked: 0 });
+const emptyCounts = (): Counts => ({ newGuardians: 0, newTutors: 0, signIns: 0, failed: 0, wrongCard: 0, blocked: 0, codesSent: 0, codesVerified: 0, wrongCodes: 0 });
 
 const dhakaDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -39,6 +44,9 @@ function columnFor(row: SignInReportRow): keyof Counts | null {
     case "login_success": return "signIns";
     case "login_failure": return row.reason === "role-mismatch" ? "wrongCard" : "failed";
     case "login_blocked": return "blocked";
+    case "phone_code_sent": return "codesSent";
+    case "phone_verified": return "codesVerified";
+    case "phone_code_rejected": return "wrongCodes";
     default: return null;
   }
 }
