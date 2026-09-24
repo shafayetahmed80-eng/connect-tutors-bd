@@ -5,7 +5,7 @@ import {
   resolveTutorProfileFieldConfig,
   tutorProfileFieldRegistry,
   guardianPrivateFieldIds,
-} from "@shared/tutor-profile-field-registry";
+} from "./tutor-profile-field-registry";
 import {
   guardianCatalogIds,
   guardianReadableFields,

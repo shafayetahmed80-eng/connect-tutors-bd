@@ -11,12 +11,12 @@
  *   configuration can open, however it arrives;
  * - the Admin's choice (`guardianVisible`), on a field that is enabled at all.
  */
-import { isSchoolQualification } from "@shared/tutor-education";
+import { isSchoolQualification } from "./tutor-education";
 import {
   isGuardianPrivateField,
   type ResolvedTutorProfileField,
   type ResolvedTutorProfileFieldConfig,
-} from "@shared/tutor-profile-field-registry";
+} from "./tutor-profile-field-registry";
 
 type RecordSource = { qualificationLevel: string | null } & Record<string, unknown>;
 

@@ -187,7 +187,7 @@ export function TutorProfileIdentityRail({
         <div className={`h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${left === 0 ? "bg-j-ok" : "bg-tp-accent"}`} style={{ width: `${completionWidth}%` }} />
       </div>
       {left === undefined ? null : left === 0
-        ? <p className="mt-2 inline-flex items-center gap-1 text-2xs font-semibold text-j-ok"><Check size={12} aria-hidden={true} />Every required field is filled</p>
+        ? <p className="mt-2 inline-flex items-center gap-1 text-2xs font-semibold text-j-ok-ink"><Check size={12} aria-hidden={true} />Every required field is filled</p>
         : <p className="mt-2 text-2xs text-tp-label"><span className="font-semibold tabular-nums text-tp-danger-ink">{left}</span> required {left === 1 ? "field" : "fields"} left</p>}
     </div>
 

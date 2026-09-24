@@ -21,6 +21,7 @@ import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
 import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
+import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
 import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
@@ -278,7 +279,8 @@ export default function TutorDashboard() {
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
-      {section === "profile" && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}
+      {section === "profile" && profileQuery.isLoading && <TutorProfileSkeleton />}
+      {section === "profile" && !profileQuery.isLoading && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}
       {section === "preferences" && <Preferences profile={profile} navigate={navigate} />}
       {section === "requests" && <TutorRequests requests={assignedRequestsQuery.data ?? []} isLoading={assignedRequestsQuery.isLoading} />}
       {section === "settings" && <TutorSettingsContent profile={profile} />}

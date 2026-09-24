@@ -19,7 +19,7 @@
   --color-j-border: var(--j-border); --color-j-field-border: var(--j-field-border);
   --color-j-ink: var(--j-ink); --color-j-ink-strong: var(--j-ink-strong); --color-j-ink-soft: var(--j-ink-soft); --color-j-ink-muted: var(--j-ink-muted); --color-j-ink-faint: var(--j-ink-faint);
   --color-j-accent: var(--j-accent); --color-j-accent-hover: var(--j-accent-hover); --color-j-accent-wash: var(--j-accent-wash);
-  --color-j-ok: var(--j-ok); --color-j-ok-wash: var(--j-ok-wash); --color-j-ok-border: var(--j-ok-border);
+  --color-j-ok: var(--j-ok); --color-j-ok-wash: var(--j-ok-wash); --color-j-ok-border: var(--j-ok-border); --color-j-ok-ink: var(--j-ok-ink);
   --color-j-warn: var(--j-warn); --color-j-warn-wash: var(--j-warn-wash); --color-j-warn-border: var(--j-warn-border); --color-j-warn-ink: var(--j-warn-ink);
   --color-j-err: var(--j-err); --color-j-err-wash: var(--j-err-wash); --color-j-err-border: var(--j-err-border);
   /* Tutor Profile (`tp-*`) — the colours an Owner may change for the Tutor's profile. */
@@ -56,6 +56,8 @@
   --j-ok: #188f73;
   --j-ok-wash: #f1fbf5;
   --j-ok-border: #bfe5cf;
+  /* `ok` as text on its own wash is 3.8:1; this is the same green at 4.7:1. */
+  --j-ok-ink: #157e65;
   --j-warn: #df9a1d;
   --j-warn-wash: #fdf8ee;
   --j-warn-border: #f0d9a8;
@@ -74,7 +76,7 @@
   --tp-accent: var(--j-accent);
   --tp-heading: var(--j-ink);
   --tp-value: #243b52;
-  --tp-label: #6b8497;
+  --tp-label: #5e7485;
   --tp-danger: #d84a4a;
   --tp-card: #ffffff;
   --tp-border: #dbe7ef;
@@ -84,7 +86,7 @@
   --tp-accent-hover: #1267b5;
   --tp-accent-wash: #e8f2fc;
   --tp-accent-soft: #a6cef2;
-  --tp-label-faint: #9aabb8;
+  --tp-label-faint: #92a0ac;
   --tp-danger-ink: #b13d3d;
 }
 @supports (color: color-mix(in srgb, red, blue)) {

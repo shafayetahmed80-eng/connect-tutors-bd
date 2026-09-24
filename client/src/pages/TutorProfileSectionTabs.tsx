@@ -76,6 +76,17 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
       section={section}
       isActive={section.id === activeTab}
       onSelect={() => onTabChange(section.id)}
+      onKeyDown={event => {
+        // The keys a tab strip answers to: the arrows step, Home and End jump.
+        const index = sections.findIndex(candidate => candidate.id === section.id);
+        const next = event.key === "ArrowRight" ? (index + 1) % sections.length
+          : event.key === "ArrowLeft" ? (index - 1 + sections.length) % sections.length
+            : event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1 : -1;
+        if (next < 0) return;
+        event.preventDefault();
+        onTabChange(sections[next].id);
+        listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+      }}
     />)}
   </div>;
 }
@@ -89,10 +100,11 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
  * inner span, and every measurement below is in `em` - halve the text and the
  * chip halves with it, raise it and the chip grows.
  */
-function SectionTab({ section, isActive, onSelect }: {
+function SectionTab({ section, isActive, onSelect, onKeyDown }: {
   section: TutorProfileReadoutSection;
   isActive: boolean;
   onSelect: () => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const slotId = `tutor-profile.tab.${section.id}`;
   const label = useSiteContentText(slotId, TAB_LABELS[section.id]);
@@ -103,7 +115,10 @@ function SectionTab({ section, isActive, onSelect }: {
     type="button"
     role="tab"
     aria-selected={isActive}
+    // Only the open tab is a Tab stop; the arrows reach the rest.
+    tabIndex={isActive ? 0 : -1}
     onClick={onSelect}
+    onKeyDown={onKeyDown}
     style={textStyle}
     className={`flex min-w-max flex-1 items-center justify-center gap-[0.4em] rounded-lg px-[0.85em] py-[0.5em] text-sm max-sm:py-[0.7em] leading-[1.4] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 ${
       isActive ? "bg-white font-semibold text-tp-heading shadow-[0_1px_3px_rgba(23,59,96,0.14),0_1px_1px_rgba(23,59,96,0.06)]" : "font-medium text-tp-value hover:text-tp-heading"
