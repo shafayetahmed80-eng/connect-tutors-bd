@@ -1,13 +1,6 @@
-import { useSiteContact, useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import React, { FormEvent, useState } from "react";
-import { Link, useLocation } from "wouter";
-import {
-  GraduationCap,
-  MessageCircle,
-  ShieldCheck,
-  UsersRound,
-} from "lucide-react";
-import { primaryButton } from "@/components/journeyField";
+import { useLocation } from "wouter";
+import { GraduationCap, UsersRound } from "lucide-react";
 import { SignInForm, SignInHeading, SignInShell } from "@/components/SignInLayout";
 import { TutorWorkspaceTransition } from "@/components/TutorWorkspaceTransition";
 import { TRPCClientError } from "@trpc/client";
@@ -23,7 +16,6 @@ import { clearCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/li
 class SignedInButBlockedError extends Error {}
 
 type PublicAccountRole = "guardian" | "tutor";
-type AuthMode = "login" | "register";
 
 export function getPostLoginPath(role: string, returnTo?: string | null, tutorProfileStatus?: string | null): string {
   if (role === "tutor") return getTutorApplyPostLoginPath(tutorProfileStatus, returnTo);
@@ -52,62 +44,10 @@ const roleContent: Record<PublicAccountRole, { title: string; description: strin
   },
 };
 
-const registerJourney: Record<PublicAccountRole, {
-  heading: string;
-  summary: string;
-  steps: readonly string[];
-  privacyCue: string;
-  registerLabel: string;
-  registerHref: string;
-}> = {
-  guardian: {
-    heading: "Request a Tutor with a private Guardian account",
-    summary: "Your account is created within the guided Tutor Request journey, so we can understand the student’s needs before matching begins.",
-    steps: ["Confirm mobile", "Create private account", "Request a Tutor"],
-    privacyCue: "Your contact details and request stay private from public Tutor profiles.",
-    registerLabel: "Start your Tutor Request",
-    registerHref: "/request-tutor",
-  },
-  tutor: {
-    heading: "Register as a Tutor",
-    summary: "Create your account on one form. Your teaching profile can be completed from the Tutor Dashboard.",
-    steps: ["Create Tutor account", "Complete your profile"],
-    privacyCue: "Your contact details stay private while you prepare your public teaching profile.",
-    registerLabel: "Start Tutor Registration",
-    registerHref: "/become-tutor",
-  },
-};
-
 function getInitialRole(): PublicAccountRole {
   if (typeof window === "undefined") return "guardian";
   const roles = new URLSearchParams(window.location.search).getAll("role");
   return roles.length === 1 && roles[0] === "tutor" ? "tutor" : "guardian";
-}
-
-function getInitialMode(location: string): AuthMode {
-  return location.split("?")[0] === "/register" ? "register" : "login";
-}
-
-/**
- * One of the two access-mode pills, sized by its own text.
- *
- * The Owner sets the label size from the Button Section, so the pill has to
- * follow it: with a fixed `px-4 py-3` the chip kept its height and width no
- * matter how small the label got, leaving the empty space around it. Every
- * measurement below is in `em`, so the chip tracks whatever size is set.
- */
-function AccessModeTab({ slotId, fallback, active, onSelect }: { slotId: string; fallback: string; active: boolean; onSelect: () => void }) {
-  const label = useSiteContentText(slotId, fallback);
-  const textStyle = useSiteContentTextStyle(slotId);
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      style={textStyle}
-      className={`min-w-max rounded-full px-[1.35em] py-[0.5em] text-sm font-bold leading-[1.45] transition ${active ? "bg-white text-j-accent shadow-sm" : "text-[#7590a5]"}`}
-    >{label}</button>
-  );
 }
 
 function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; selected: boolean; onSelect: (role: PublicAccountRole) => void }) {
@@ -131,15 +71,13 @@ function RoleChoice({ role, selected, onSelect }: { role: PublicAccountRole; sel
     >
       <Icon className="text-j-accent" size="1.75em" aria-hidden="true" />
       <strong className="mt-[0.9em] block text-[1.3em] leading-[1.3]">{content.title}</strong>
-      <span className="mt-[0.35em] block leading-[1.55] text-[#7890a4]">{content.description}</span>
+      <span className="mt-[0.35em] block leading-[1.55] text-j-ink-muted">{content.description}</span>
     </button>
   );
 }
 
 export default function AuthPage() {
-  const contact = useSiteContact();
   const [location, navigate] = useLocation();
-  const [mode, setMode] = useState<AuthMode>(() => getInitialMode(location));
   const [role, setRole] = useState<PublicAccountRole>(getInitialRole);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -150,11 +88,6 @@ export default function AuthPage() {
 
   const chooseRole = (nextRole: PublicAccountRole) => {
     setRole(nextRole);
-    setFormError(null);
-  };
-
-  const switchMode = (nextMode: AuthMode) => {
-    setMode(nextMode);
     setFormError(null);
   };
 
@@ -213,20 +146,14 @@ export default function AuthPage() {
   };
 
   const selectedRole = roleContent[role];
-  const selectedJourney = registerJourney[role];
 
   return (
     <SignInShell>
       {isEnteringTutorWorkspace ? <TutorWorkspaceTransition /> : <>
-      <div className="mb-8 inline-flex w-max max-w-full gap-1 overflow-x-auto rounded-full bg-j-surface-muted p-1" aria-label="Account access mode">
-        <AccessModeTab slotId="button-section.auth.signIn" fallback="Sign in" active={mode === "login"} onSelect={() => switchMode("login")} />
-        <AccessModeTab slotId="button-section.auth.register" fallback="Register" active={mode === "register"} onSelect={() => switchMode("register")} />
-      </div>
-
       <SignInHeading
-        eyebrow={mode === "login" ? "Welcome back" : "Join the community"}
-        title={mode === "login" ? "Sign in to your account" : "Choose your next step"}
-        body={mode === "login" ? "Choose the account type you registered with, then use your email address or Bangladesh mobile number." : undefined}
+        eyebrow="Welcome back"
+        title="Sign in to your account"
+        body="Choose the account type you registered with, then use your email address or Bangladesh mobile number."
       />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Account type">
@@ -234,29 +161,7 @@ export default function AuthPage() {
         <RoleChoice role="tutor" selected={role === "tutor"} onSelect={chooseRole} />
       </div>
 
-      {mode === "login" ? (
-        <SignInForm idPrefix="account" identifier={identifier} onIdentifier={setIdentifier} password={password} onPassword={setPassword} error={formError} pending={loginAccount.isPending} submitLabel={`Sign in as ${selectedRole.title}`} onSubmit={submitLogin} />
-      ) : (
-        <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-j-accent">Your {selectedRole.title} journey</p>
-          <h3 className="mt-2 text-xl font-bold text-j-ink">{selectedJourney.heading}</h3>
-          <p className="mt-2 text-sm leading-7 text-j-ink-muted">{selectedJourney.summary}</p>
-          <ol className="mt-6 grid gap-3 sm:grid-cols-3" aria-label={`${selectedRole.title} registration steps`}>
-            {selectedJourney.steps.map((step, index) => (
-              <li key={step} className="flex min-h-11 items-center gap-2 rounded-xl border border-j-border bg-white px-3 py-2.5 text-sm font-semibold leading-5 text-j-ink-strong">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-j-accent-wash text-xs font-extrabold text-j-accent">{index + 1}</span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-5 flex gap-2 rounded-xl bg-j-accent-wash px-4 py-3 text-sm leading-6 text-j-ink-soft"><ShieldCheck className="mt-0.5 shrink-0 text-j-accent" size={17} aria-hidden="true" />{selectedJourney.privacyCue}</p>
-          <Link href={selectedJourney.registerHref} className={`${primaryButton} mt-6 w-full`}>
-            {selectedJourney.registerLabel}
-          </Link>
-          <a className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp("Hello Connect Tutors, I need help with my account.")}><MessageCircle size={17} aria-hidden="true" />Contact support via WhatsApp</a>
-          <button type="button" onClick={() => switchMode("login")} className="mt-5 block text-sm font-semibold text-j-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2">Already registered? Sign in</button>
-        </div>
-      )}
+      <SignInForm idPrefix="account" identifier={identifier} onIdentifier={setIdentifier} password={password} onPassword={setPassword} error={formError} pending={loginAccount.isPending} submitLabel={`Sign in as ${selectedRole.title}`} onSubmit={submitLogin} />
       </>}
     </SignInShell>
   );

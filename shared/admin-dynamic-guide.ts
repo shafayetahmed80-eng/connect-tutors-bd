@@ -28,7 +28,7 @@ const TUTOR_PROFILE: AdminDynamicDestination = { label: "টিউটর প্�
 const GUARDIAN_JOURNEY: AdminDynamicDestination = { label: "টিউটর চেয়ে অনুরোধ", path: "/request-tutor" };
 const HOME: AdminDynamicDestination = { label: "হোমপেইজ", path: "/" };
 const JOB_BOARD: AdminDynamicDestination = { label: "জব বোর্ড", path: "/job-board" };
-const REGISTER: AdminDynamicDestination = { label: "রেজিস্ট্রেশন পেজ", path: "/register" };
+const TUTOR_REGISTRATION: AdminDynamicDestination = { label: "টিউটর রেজিস্ট্রেশন", path: "/become-tutor" };
 const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভাবকের Applied Tutors", path: "/guardian/dashboard/applied-tutors" };
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
 const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
@@ -110,8 +110,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/button-section",
     label: "Button Section",
-    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, রেজিস্ট্রেশন পেজের ট্যাব আর টিউটর প্রোফাইলের পপআপ।",
-    seeAt: [REGISTER, GUARDIAN_JOURNEY, TUTOR_PROFILE],
+    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, টিউটর রেজিস্ট্রেশন আর টিউটর প্রোফাইলের পপআপ।",
+    seeAt: [GUARDIAN_JOURNEY, TUTOR_REGISTRATION, TUTOR_PROFILE],
   },
   {
     path: "/admin/dynamic/navigation",
@@ -159,7 +159,6 @@ const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string
   },
   "button-section": {
     "Guardian journey": "/request-tutor",
-    "Registration page": "/register",
     "Tutor registration": "/become-tutor",
     "Tutor profile editor": "/tutor/dashboard/profile",
   },
