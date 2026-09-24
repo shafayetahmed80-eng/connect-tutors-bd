@@ -96,15 +96,15 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();
   });
 
-  it("routes new accounts into their existing role-specific journeys", async () => {
-    const user = userEvent.setup({ document: window.document });
+  it("is sign-in only: no Register tab and no registration section", () => {
+    window.history.replaceState({}, "", "/register");
     render(<AuthPage />);
 
-    await user.click(screen.getByRole("button", { name: "Register" }));
-    expect(screen.getByRole("link", { name: "Start your Tutor Request" }).getAttribute("href")).toBe("/request-tutor");
-
-    await user.click(screen.getByRole("radio", { name: "Select Tutor account" }));
-    expect(screen.getByRole("link", { name: "Start Tutor Registration" }).getAttribute("href")).toBe("/become-tutor");
+    expect(screen.queryByRole("button", { name: "Register" })).toBeNull();
+    expect(screen.queryByLabelText("Account access mode")).toBeNull();
+    expect(screen.queryByText("Choose your next step")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Start (your Tutor Request|Tutor Registration)/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sign in as Guardian" })).not.toBeNull();
   });
 
   it("keeps the account-type radio choice usable from the keyboard", async () => {
@@ -140,26 +140,6 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.getByRole("radio", { name: "Select Guardian account" }).getAttribute("aria-checked")).toBe("true");
   });
 
-  it("describes the real Guardian and Tutor journeys without embedding a registration form", async () => {
-    const user = userEvent.setup({ document: window.document });
-    render(<AuthPage />);
-
-    await user.click(screen.getByRole("button", { name: "Register" }));
-    expect(screen.getByText("Confirm mobile")).not.toBeNull();
-    expect(screen.getByText("Create private account")).not.toBeNull();
-    expect(screen.getByText("Request a Tutor")).not.toBeNull();
-    expect(screen.queryByLabelText("Email or mobile number")).toBeNull();
-    expect(screen.getByRole("button", { name: "Already registered? Sign in" })).not.toBeNull();
-
-    await user.click(screen.getByRole("radio", { name: "Select Tutor account" }));
-    expect(screen.getByRole("heading", { name: "Register as a Tutor" })).not.toBeNull();
-    expect(screen.getByText("Create Tutor account")).not.toBeNull();
-    expect(screen.getByText("Complete your profile")).not.toBeNull();
-    expect(screen.queryByText(/two simple steps/i)).toBeNull();
-    expect(screen.queryByText(/not completed on this screen/i)).toBeNull();
-    expect(screen.getByRole("link", { name: "Start Tutor Registration" }).getAttribute("href")).toBe("/become-tutor");
-  });
-
   it("has no side panel: the sign-in heading is the page's only h1", () => {
     render(<AuthPage />);
 
@@ -173,13 +153,11 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.queryByText(/two-factor/i)).toBeNull();
   });
 
-  it("returns to sign-in without losing the selected role", async () => {
+  it("keeps the chosen role on the sign-in button", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);
 
-    await user.click(screen.getByRole("button", { name: "Register" }));
     await user.click(screen.getByRole("radio", { name: "Select Tutor account" }));
-    await user.click(screen.getByRole("button", { name: "Already registered? Sign in" }));
 
     expect(screen.getByRole("button", { name: "Sign in as Tutor" })).not.toBeNull();
   });
