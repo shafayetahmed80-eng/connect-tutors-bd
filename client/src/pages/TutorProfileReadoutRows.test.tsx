@@ -68,7 +68,8 @@ describe("tutor profile readout rows", () => {
     const missing = screen.getAllByText("Not given");
     expect(missing).toHaveLength(2);
     expect(missing[0].className).toContain("text-tp-danger-ink");
-    expect(missing[1].className).toContain("text-tp-label-faint");
+    expect(missing[1].className).toContain("text-tp-label");
+    expect(missing[1].className).not.toContain("tp-danger");
     expect(screen.getByText("English Medium").className).toContain("text-tp-value");
   });
 

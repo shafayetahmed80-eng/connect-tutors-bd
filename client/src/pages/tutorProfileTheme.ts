@@ -29,7 +29,7 @@ export const tutorProfileTheme = {
   rowLabel: "text-[12px] text-tp-label",
   rowValue: "text-[12px] font-medium text-tp-value",
   /** Value shown for an empty optional field ("—"). */
-  rowValueMuted: "text-[12px] text-tp-label-faint",
+  rowValueMuted: "text-[12px] text-tp-label",
   /** Value shown for an empty required field. */
   rowValueMissing: "text-[12px] font-medium text-tp-danger-ink",
   /**
@@ -41,7 +41,7 @@ export const tutorProfileTheme = {
    */
   rowLabelTone: "text-tp-label",
   rowValueTone: "font-medium text-tp-value",
-  rowValueMutedTone: "text-tp-label-faint",
+  rowValueMutedTone: "text-tp-label",
   rowValueMissingTone: "font-medium text-tp-danger-ink",
 
   /**

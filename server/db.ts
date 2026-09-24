@@ -116,7 +116,7 @@ import {
   isGuardianApplicantStage,
   pickGuardianApplicantEducation,
 } from "./guardian-applicants";
-import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "./guardian-tutor-profile";
+import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "@shared/guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
 import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition, canReopenConfirmedTuition, tuitionCancelledTutorNotification } from "./appointed-tuition";

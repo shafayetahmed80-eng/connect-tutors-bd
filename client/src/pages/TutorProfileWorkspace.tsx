@@ -48,7 +48,9 @@ import {
   type TutorProfileFieldPanel,
 } from "@shared/tutor-profile-field-registry";
 import { expandGroupedClassLevelIds, getGroupedClassLevelSelector } from "./TutorProfileClassLevels";
-import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
+import { getTutorProfileReadoutSections, withoutMissingRows, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
+import { guardianReadableFields, projectTutorProfileForGuardian } from "@shared/guardian-tutor-profile";
+import { GuardianTutorProfileHeader } from "@/components/GuardianTutorProfileHeader";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
 
@@ -640,6 +642,15 @@ function TutorProfileWorkspaceBody({
   // "View Profile" swaps the tabbed editor for the read-only whole-profile
   // preview; the rail's button becomes "Edit Information" to come back.
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewAudience, setPreviewAudience] = useState<"self" | "guardian">("self");
+  // The card just saved, marked on the card itself for a few seconds: the
+  // page's own notice sits above the tabs, off screen when the card is low.
+  const [justSaved, setJustSaved] = useState<TutorProfileEditTarget | null>(null);
+  useEffect(() => {
+    if (!justSaved) return;
+    const timer = window.setTimeout(() => setJustSaved(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [justSaved]);
   const [editingSection, setEditingSection] = useState<TutorProfileSectionId | null>(null);
   // When set, the section popup shows only this sub-group (Section C is split so
   // its editor opens Education or Teaching expertise, not the whole thing).
@@ -687,6 +698,20 @@ function TutorProfileWorkspaceBody({
     };
   }, [subjects.data, classLevels.data, curricula.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers, fieldConfig), [form, readoutResolvers, fieldConfig]);
+  // What a Guardian is shown, built by the same projection the server runs
+  // before it sends this profile to one, from the profile as last saved.
+  const guardianPreview = useMemo(() => {
+    if (!profile) return null;
+    const projected = projectTutorProfileForGuardian(profile as never, fieldConfig);
+    return {
+      header: projected,
+      sections: withoutMissingRows(getTutorProfileReadoutSections(
+        hydrateTeachingProfile(projected as never, null),
+        readoutResolvers,
+        indexResolvedFields(guardianReadableFields(fieldConfig)),
+      )),
+    };
+  }, [profile, fieldConfig, readoutResolvers]);
   const requiredLeft = useMemo(() => readoutSections.flatMap(section => section.groups.flatMap(group => group.rows)).filter(row => row.missing && !row.optional).length, [readoutSections]);
   const isDraftDirty = getProfileDraftFingerprint(form) !== savedDraftFingerprint;
   const firstErroredSection = (errors: TutorProfileSubmissionErrors): TutorProfileSectionId | null => {
@@ -810,6 +835,7 @@ function TutorProfileWorkspaceBody({
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
       setFeedback({ type: "success", message: `${editTargetTitle(target, resolveSlot)} saved. Continue with the next section when ready.` });
+      setJustSaved(target);
       return true;
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
@@ -1355,11 +1381,31 @@ function TutorProfileWorkspaceBody({
 
         {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-j-ok-border bg-j-ok-wash text-j-ok" : "border-j-err-border bg-j-err-wash text-tp-danger-ink"}`}>{feedback.message}</p> : null}
 
-        {previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
+        {previewMode ? <div role="radiogroup" aria-label="Preview as" className="nav-tab-outer inline-flex gap-1 rounded-xl border border-tp-border bg-j-surface-sunken/80 p-1">
+          {([["self", "Full profile"], ["guardian", "As a Guardian sees it"]] as const).map(([audience, label]) => <button
+            key={audience}
+            type="button"
+            role="radio"
+            aria-checked={previewAudience === audience}
+            onClick={() => setPreviewAudience(audience)}
+            className={`rounded-lg px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/40 max-sm:min-h-10 ${previewAudience === audience ? "bg-white font-semibold text-tp-heading shadow-sm" : "font-medium text-tp-value hover:text-tp-heading"}`}
+          >{label}</button>)}
+        </div> : null}
+
+        {previewMode && previewAudience === "guardian" ? <div className={tp.stack}>
+          <p className="rounded-xl border border-tp-border bg-j-surface-sunken px-4 py-3 text-xs leading-5 text-tp-value">
+            This is your profile as a Guardian reads it once you apply to their tuition, as last saved. Contact details, family, documents and notes for our team are never shown to a Guardian, and blank answers are left out.
+          </p>
+          {guardianPreview ? <>
+            <GuardianTutorProfileHeader profile={guardianPreview.header} />
+            <TutorProfileSummaryView sections={guardianPreview.sections} showProgress={false} />
+          </> : <p className="text-sm text-tp-label">Save your profile first to see how a Guardian reads it.</p>}
+        </div> : previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor
           sections={readoutSections}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onEditSection={openSectionEditor}
+          justSaved={justSaved}
         />}
 
         {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-tp-border pt-4">

@@ -801,3 +801,27 @@ describe("Permanent Address and the Availability choices", () => {
     expect(within(dialog).queryByRole("radiogroup", { name: /Tuition Type/ })).toBeNull();
   });
 });
+
+describe("TutorProfileWorkspace Guardian preview", () => {
+  afterEach(() => cleanup());
+
+  it("previews the profile as a Guardian reads it, without contact details", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "View Profile" }));
+    expect(screen.getByRole("radio", { name: "Full profile" }).getAttribute("aria-checked")).toBe("true");
+    const full = screen.getByRole("region", { name: "Profile preview" });
+    expect(within(full).getByText("tutor@example.test")).toBeTruthy();
+
+    await user.click(screen.getByRole("radio", { name: "As a Guardian sees it" }));
+    expect(screen.getByText(/as a Guardian reads it once you apply/)).toBeTruthy();
+    // The rail names the Tutor too; the second is the header a Guardian reads first.
+    expect(screen.getAllByRole("heading", { name: "Test Tutor" })).toHaveLength(2);
+    const guardian = screen.getByRole("region", { name: "Profile preview" });
+    expect(within(guardian).queryByText("tutor@example.test")).toBeNull();
+    expect(within(guardian).queryByText("+8801712345678")).toBeNull();
+    // A Guardian never sees the Tutor's own "still missing" markers.
+    expect(within(guardian).queryByText("Not given")).toBeNull();
+  });
+});

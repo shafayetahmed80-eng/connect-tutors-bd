@@ -84,3 +84,31 @@ describe("TutorProfileTabEditor", () => {
     expect(onEditSection).toHaveBeenCalledWith("c", "c-university");
   });
 });
+
+describe("TutorProfileTabEditor states", () => {
+  it("marks only the card just saved", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={vi.fn()} justSaved="a-family" />);
+    const saved = screen.getByRole("status");
+    expect(saved.textContent).toBe("Saved");
+    expect(saved.closest("section")?.textContent).toContain("Family and emergency contact");
+    // Outside the heading, so the heading still reads as its own name.
+    expect(screen.getByRole("heading", { name: "Family and emergency contact" })).toBeTruthy();
+  });
+
+  it("shows an empty card once, naming what it asks for, with Add opening its editor", () => {
+    const onEditSection = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={onEditSection} />);
+    const family = screen.getByRole("heading", { name: "Family and emergency contact" }).closest("section")!;
+    expect(within(family).getByText("Nothing added here yet")).toBeTruthy();
+    expect(within(family).getByText("Father's name")).toBeTruthy();
+    expect(within(family).queryByText("Not given")).toBeNull();
+
+    fireEvent.click(within(family).getByRole("button", { name: "Add Family and emergency contact" }));
+    expect(onEditSection).toHaveBeenCalledWith("a", "a-family");
+
+    // A card with something in it keeps its rows.
+    const identity = screen.getByRole("heading", { name: "Identity and contact" }).closest("section")!;
+    expect(within(identity).queryByText("Nothing added here yet")).toBeNull();
+    expect(within(identity).getByText("Sojib")).toBeTruthy();
+  });
+});

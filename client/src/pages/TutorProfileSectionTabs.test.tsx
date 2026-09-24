@@ -44,3 +44,22 @@ describe("the profile's section tabs", () => {
     expect(list.className).toContain("mask-image:linear-gradient(to_right,transparent,#000_1.5rem)]");
   });
 });
+
+describe("the section tabs from a keyboard", () => {
+  it("is one Tab stop, and the arrows, Home and End move between tabs", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={onTabChange} />);
+    const [personal, education, tuition] = screen.getAllByRole("tab");
+    expect(personal.tabIndex).toBe(0);
+    expect(education.tabIndex).toBe(-1);
+
+    personal.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(onTabChange).toHaveBeenLastCalledWith("c");
+    personal.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    expect(onTabChange).toHaveBeenLastCalledWith("d");
+    personal.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    expect(onTabChange).toHaveBeenLastCalledWith("d");
+    tuition.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+    expect(onTabChange).toHaveBeenLastCalledWith("a");
+  });
+});

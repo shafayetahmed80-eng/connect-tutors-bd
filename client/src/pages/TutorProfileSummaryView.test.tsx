@@ -62,7 +62,7 @@ describe("TutorProfileSummaryView", () => {
     const missing = screen.getAllByText("Not given");
     expect(missing).toHaveLength(4);
     expect(missing.filter(node => node.className.includes("text-tp-danger-ink"))).toHaveLength(2);
-    expect(missing.filter(node => node.className.includes("text-tp-label-faint"))).toHaveLength(2);
+    expect(missing.filter(node => node.className.includes("text-tp-label") && !node.className.includes("tp-danger"))).toHaveLength(2);
 
     expect(screen.getByText("Sojib").className).toContain("text-tp-value");
   });
