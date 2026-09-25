@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   requests: [] as Array<Record<string, unknown>>,
   request: vi.fn(),
   withdraw: vi.fn(),
+  sendCode: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/lib/trpc", () => ({
       changeRequests: { useQuery: () => ({ data: { offered: ["name", "mobile", "verification", "close_account"], isOwner: false, currentName: "Rina Akter", currentMobile: "+8801711111111", liveTuition: false, requests: state.requests }, isLoading: false }) },
       requestChange: { useMutation: () => ({ mutate: state.request, isPending: false }) },
       withdrawChange: { useMutation: () => ({ mutate: state.withdraw, isPending: false }) },
+      sendMobileChangeCode: { useMutation: () => ({ mutate: state.sendCode, isPending: false }) },
     },
   },
 }));
@@ -26,6 +28,10 @@ import { CloseAccountRequest, useAccountChanges, ValueChangeRequest, Verificatio
 function NameRequest() {
   const changes = useAccountChanges();
   return <ValueChangeRequest changes={changes} type="name" label="Name" current="Rina Akter" />;
+}
+function MobileRequest() {
+  const changes = useAccountChanges();
+  return <ValueChangeRequest changes={changes} type="mobile" label="Mobile number" current="+8801711111111" />;
 }
 function Verification({ nidReady = true, verified = false }: { nidReady?: boolean; verified?: boolean }) {
   const changes = useAccountChanges();
@@ -40,6 +46,38 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   state.requests = [];
+});
+
+describe("asking for a new mobile number", () => {
+  it("sends a code to the new number first, then the request with that code", () => {
+    state.sendCode.mockImplementation((_input, options) => options.onSuccess({ success: true, resendAfterSeconds: 60, expiresInSeconds: 300, sentTo: "+8801822222222" }));
+    render(<MobileRequest />);
+
+    fireEvent.change(screen.getByLabelText("New mobile number"), { target: { value: "01822222222" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
+    expect(state.sendCode).toHaveBeenCalledWith({ value: "01822222222" }, expect.anything());
+    expect(state.request).not.toHaveBeenCalled();
+    expect(screen.getByText("Sent to +8801822222222")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Send request/ }));
+    expect(screen.getByText("Enter the 4-digit code sent to the new number.")).toBeTruthy();
+    expect(state.request).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "4821" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send request/ }));
+    expect(state.request).toHaveBeenCalledWith({ type: "mobile", value: "01822222222", phoneCode: "4821" }, expect.anything());
+  });
+
+  it("drops the code when the number is edited", () => {
+    state.sendCode.mockImplementation((_input, options) => options.onSuccess({ success: true, resendAfterSeconds: 60, expiresInSeconds: 300, sentTo: "+8801822222222" }));
+    render(<MobileRequest />);
+    fireEvent.change(screen.getByLabelText("New mobile number"), { target: { value: "01822222222" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
+
+    fireEvent.change(screen.getByLabelText("New mobile number"), { target: { value: "01933333333" } });
+    expect(screen.queryByLabelText(/Verification code/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Send code/ })).toBeTruthy();
+  });
 });
 
 describe("asking for a new name", () => {

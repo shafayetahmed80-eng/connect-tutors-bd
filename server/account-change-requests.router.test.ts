@@ -17,6 +17,11 @@ const dbMocks = vi.hoisted(() => ({
   listGuardianProfilesForAdmin: vi.fn(),
   listGuardianRequestActions: vi.fn(),
   countGuardianRequestActions: vi.fn(),
+  checkPhoneVerificationCode: vi.fn(),
+  consumePhoneVerificationCode: vi.fn(),
+  getPhoneCodeSendState: vi.fn(),
+  createPhoneVerificationCode: vi.fn(),
+  recordAuthEvent: vi.fn(async () => ({ id: 0 })),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -25,7 +30,8 @@ vi.mock("./db", async importOriginal => {
 });
 
 import { ENV } from "./_core/env";
-import { appRouter } from "./routers";
+import { getZodFieldErrorsFromCause } from "./_core/trpc";
+import { __resetAuthRateLimitsForTests, appRouter } from "./routers";
 
 const base = {
   id: 7, openId: "user-7", email: "person@example.com", name: "Rina Akter",
@@ -67,16 +73,63 @@ describe("account.changeRequests", () => {
   });
 });
 
-describe("account.requestChange", () => {
-  it("stores a request with the value it replaces", async () => {
+describe("account.sendMobileChangeCode", () => {
+  it("texts a code to a new, free number and says where it went", async () => {
+    __resetAuthRateLimitsForTests();
+    vi.spyOn(console, "info").mockImplementation(() => {});
     dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
     dbMocks.isMobileTakenByAnotherAccount.mockResolvedValue(false);
+    dbMocks.getPhoneCodeSendState.mockResolvedValue({ lastSentAt: null, sentLastHour: 0 });
+    dbMocks.createPhoneVerificationCode.mockResolvedValue({ id: 5 });
+
+    await expect(createCaller(guardianUser).account.sendMobileChangeCode({ value: "01822 222222" })).resolves.toMatchObject({ success: true, sentTo: "+8801822222222", resendAfterSeconds: 60 });
+    expect(dbMocks.createPhoneVerificationCode).toHaveBeenCalledWith(expect.objectContaining({ phone: "+8801822222222", purpose: "mobile_change" }));
+  });
+
+  it("spends no SMS on the current number, a bad number or one another account has", async () => {
+    __resetAuthRateLimitsForTests();
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    await expect(createCaller(guardianUser).account.sendMobileChangeCode({ value: "01711111111" })).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(createCaller(guardianUser).account.sendMobileChangeCode({ value: "12345" })).rejects.toMatchObject({ code: "CONFLICT" });
+    dbMocks.isMobileTakenByAnotherAccount.mockResolvedValue(true);
+    await expect(createCaller(guardianUser).account.sendMobileChangeCode({ value: "01822222222" })).rejects.toMatchObject({ code: "CONFLICT", message: "This mobile number is already used by another account." });
+    expect(dbMocks.createPhoneVerificationCode).not.toHaveBeenCalled();
+  });
+});
+
+describe("account.requestChange", () => {
+  it("stores a request with the value it replaces, once the new number's SMS code checks out", async () => {
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    dbMocks.isMobileTakenByAnotherAccount.mockResolvedValue(false);
+    dbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 44 });
     dbMocks.createAccountChangeRequest.mockResolvedValue({ outcome: "requested", id: 9 });
 
-    await expect(createCaller(guardianUser).account.requestChange({ type: "mobile", value: "01822222222" })).resolves.toEqual({ requested: true, id: 9 });
+    await expect(createCaller(guardianUser).account.requestChange({ type: "mobile", value: "01822222222", phoneCode: "4821" })).resolves.toEqual({ requested: true, id: 9 });
+    expect(dbMocks.checkPhoneVerificationCode).toHaveBeenCalledWith(expect.objectContaining({ phone: "+8801822222222", purpose: "mobile_change", consume: false }));
     expect(dbMocks.createAccountChangeRequest).toHaveBeenCalledWith({
       userId: 7, role: "guardian", type: "mobile", currentValue: "+8801711111111", requestedValue: "+8801822222222", reason: null,
     });
+    expect(dbMocks.consumePhoneVerificationCode).toHaveBeenCalledWith(44);
+  });
+
+  it("will not ask for a new mobile without its code, or with a wrong one", async () => {
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    dbMocks.isMobileTakenByAnotherAccount.mockResolvedValue(false);
+
+    const missing = await createCaller(guardianUser).account.requestChange({ type: "mobile", value: "01822222222" }).catch((error: unknown) => error);
+    expect(getZodFieldErrorsFromCause((missing as { cause?: unknown }).cause)).toEqual({ phoneCode: ["Enter the 4-digit code sent to the new number."] });
+
+    dbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "wrong", attemptsLeft: 3 });
+    await expect(createCaller(guardianUser).account.requestChange({ type: "mobile", value: "01822222222", phoneCode: "0000" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "That code is not right. 3 tries left." });
+    expect(dbMocks.createAccountChangeRequest).not.toHaveBeenCalled();
+    expect(dbMocks.consumePhoneVerificationCode).not.toHaveBeenCalled();
+  });
+
+  it("asks nothing more of a name change", async () => {
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    dbMocks.createAccountChangeRequest.mockResolvedValue({ outcome: "requested", id: 10 });
+    await expect(createCaller(guardianUser).account.requestChange({ type: "name", value: "Rina Begum" })).resolves.toEqual({ requested: true, id: 10 });
+    expect(dbMocks.checkPhoneVerificationCode).not.toHaveBeenCalled();
   });
 
   it("refuses with the rule's own words, before anything is stored", async () => {

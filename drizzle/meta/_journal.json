@@ -680,6 +680,13 @@
       "when": 1792600000000,
       "tag": "0096_phone_code_password_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1792700000000,
+      "tag": "0097_phone_code_mobile_change",
+      "breakpoints": true
     }
   ]
 }
