@@ -2022,3 +2022,27 @@ export type University = typeof universities.$inferSelect;
 export type FacultyDepartment = typeof facultyDepartments.$inferSelect;
 export type DegreeMajor = typeof degreeMajors.$inferSelect;
 export type TutorAcademicProfile = typeof tutorAcademicProfiles.$inferSelect;
+
+/**
+ * A Guardian's rating of the Tutor on one of their Confirmed tuitions - one per
+ * tuition, which the Guardian may change later. The Tutor is copied from the
+ * tuition when the rating is saved, so a later Tutor change keeps the old one's.
+ */
+export const tutorReviews = mysqlTable(
+  "tutor_reviews",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorRequestId: int("tutorRequestId").notNull().references(() => tutorRequests.id),
+    tutorId: varchar("tutorId", { length: 32 }).notNull().references(() => tutors.id),
+    guardianUserId: int("guardianUserId").notNull().references(() => users.id),
+    rating: int("rating").notNull(),
+    comment: varchar("comment", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("tutor_reviews_request_unique").on(table.tutorRequestId),
+    index("tutor_reviews_tutor_idx").on(table.tutorId),
+  ]
+);
+export type TutorReview = typeof tutorReviews.$inferSelect;

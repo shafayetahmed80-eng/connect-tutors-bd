@@ -700,6 +700,8 @@ function TutorProfileWorkspaceBody({
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers, fieldConfig), [form, readoutResolvers, fieldConfig]);
   // What a Guardian is shown, built by the same projection the server runs
   // before it sends this profile to one, from the profile as last saved.
+  // The Guardians' star rating, beside the Tutor ID and in the Guardian-view preview.
+  const ratingSummary = trpc.tutorReviews.mySummary.useQuery(undefined, { retry: false });
   const guardianPreview = useMemo(() => {
     if (!profile) return null;
     const projected = projectTutorProfileForGuardian(profile as never, fieldConfig);
@@ -1340,6 +1342,7 @@ function TutorProfileWorkspaceBody({
     >{renderEditTargetFields(editingGroupId ?? editingSection)}</TutorProfileSectionModal> : null}
     <div className={tutorProfileResponsiveClasses.workspaceShell}>
       <TutorProfileIdentityRail
+        rating={ratingSummary.data}
         name={form.name}
         tutorNumber={profile?.tutorNumber}
         verified={Boolean(profile?.verified)}
@@ -1397,7 +1400,7 @@ function TutorProfileWorkspaceBody({
             This is your profile as a Guardian reads it once you apply to their tuition, as last saved. Contact details, family, documents and notes for our team are never shown to a Guardian, and blank answers are left out.
           </p>
           {guardianPreview ? <>
-            <GuardianTutorProfileHeader profile={guardianPreview.header} />
+            <GuardianTutorProfileHeader profile={{ ...guardianPreview.header, rating: ratingSummary.data }} />
             <TutorProfileSummaryView sections={guardianPreview.sections} showProgress={false} />
           </> : <p className="text-sm text-tp-label">Save your profile first to see how a Guardian reads it.</p>}
         </div> : previewMode ? <TutorProfileSummaryView sections={readoutSections} /> : <TutorProfileTabEditor

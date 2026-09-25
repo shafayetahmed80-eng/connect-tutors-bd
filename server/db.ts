@@ -48,6 +48,7 @@ import {
   passwordResetLinks,
   phoneVerificationCodes,
   type PhoneVerificationPurpose,
+  tutorReviews,
   classLevels,
   confirmationLetters,
   curricula,
@@ -172,6 +173,7 @@ import {
 } from "@shared/admin-matching-saved-views";
 import { guardianVerificationNotice } from "./guardian-verification-notice";
 import { phoneCodeHashesMatch } from "./phone-verification";
+import { summariseTutorRatings } from "@shared/tutor-reviews";
 import {
   canRequestTuitionChange,
   guardianTuitionRequestApplies,
@@ -612,6 +614,65 @@ export async function setPasswordAfterPhoneReset(input: { userId: number; passwo
     await tx.update(tutorPortalSessions).set({ revokedAt: now }).where(and(eq(tutorPortalSessions.userId, input.userId), isNull(tutorPortalSessions.revokedAt)));
     await tx.update(passwordResetLinks).set({ revokedAt: now }).where(and(eq(passwordResetLinks.userId, input.userId), isNull(passwordResetLinks.usedAt), isNull(passwordResetLinks.revokedAt)));
   });
+}
+
+/**
+ * Saves (or changes) a Guardian's rating of the Tutor on their tuition. Only a
+ * tuition the Guardian owns, with a Tutor and an Admin-confirmed appointment,
+ * can be rated; the rating follows the tuition's Tutor at the time it is saved.
+ */
+export async function saveTutorReview(input: { guardianUserId: number; requestId: number; rating: number; comment: string | null }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const request = (await database
+    .select({ id: tutorRequests.id, guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId, appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt })
+    .from(tutorRequests)
+    .where(eq(tutorRequests.id, input.requestId))
+    .limit(1))[0];
+  if (!request || request.guardianUserId !== input.guardianUserId) return { saved: false as const, reason: "not_found" as const };
+  if (!request.tutorId || !request.appointmentConfirmedAt) return { saved: false as const, reason: "not_confirmed" as const };
+  await database
+    .insert(tutorReviews)
+    .values({ tutorRequestId: request.id, tutorId: request.tutorId, guardianUserId: input.guardianUserId, rating: input.rating, comment: input.comment })
+    .onDuplicateKeyUpdate({ set: { tutorId: request.tutorId, rating: input.rating, comment: input.comment } });
+  return { saved: true as const };
+}
+
+/** The Guardian's own ratings, one per tuition. */
+export async function listGuardianTutorReviews(guardianUserId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({ requestId: tutorReviews.tutorRequestId, tutorId: tutorReviews.tutorId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt })
+    .from(tutorReviews)
+    .where(eq(tutorReviews.guardianUserId, guardianUserId));
+}
+
+/** Average and count of one Tutor's ratings. */
+export async function getTutorRatingSummary(tutorId: string) {
+  const database = await getDb();
+  if (!database) return summariseTutorRatings([]);
+  const rows = await database.select({ rating: tutorReviews.rating }).from(tutorReviews).where(eq(tutorReviews.tutorId, tutorId));
+  return summariseTutorRatings(rows.map(row => row.rating));
+}
+
+export async function getTutorRatingSummaryForUser(userId: number) {
+  const database = await getDb();
+  if (!database) return summariseTutorRatings([]);
+  const tutor = (await database.select({ id: tutors.id }).from(tutors).where(eq(tutors.userId, userId)).limit(1))[0];
+  return tutor ? getTutorRatingSummary(tutor.id) : summariseTutorRatings([]);
+}
+
+/** Every rating a Tutor has had, newest first, with the Guardian's name and Job ID - Admin only. */
+export async function listTutorReviewsForAdmin(tutorId: string) {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({ id: tutorReviews.id, requestId: tutorReviews.tutorRequestId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt, guardianName: users.name })
+    .from(tutorReviews)
+    .innerJoin(users, eq(tutorReviews.guardianUserId, users.id))
+    .where(eq(tutorReviews.tutorId, tutorId))
+    .orderBy(desc(tutorReviews.updatedAt));
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { CheckCircle2, ChevronDown, FilePenLine, MapPin, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, FilePenLine, MapPin, ShieldCheck, Star, XCircle } from "lucide-react";
+import { RateTutorDialog } from "@/components/TutorRating";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import SiteFooter from "@/components/SiteFooter";
@@ -130,6 +131,10 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
   // dialog: Applied Tutors, which carries the rest, only opens while Live or Appointed.
   const tuitionRequest = useGuardianTuitionRequest();
   const [asking, setAsking] = useState<{ type: GuardianTuitionRequestType; requestId: number; tutorId?: string } | null>(null);
+  // The Guardian's own ratings, and the tuition whose Tutor is being rated.
+  const myReviews = trpc.tutorReviews.mine.useQuery();
+  const [ratingRequestId, setRatingRequestId] = useState<number | null>(null);
+  const reviewFor = (requestId: number) => myReviews.data?.find(review => review.requestId === requestId) ?? null;
 
   return <div className={embedded ? "" : "site-page min-h-screen bg-j-surface-sunken"}>{embedded ? null : <SiteHeader />}<main className={embedded ? "w-full" : "shell py-10"}>
     {requestedDetail ? <section aria-label={`Private request #${requestedDetail.id}`} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><PrivateRequestDetails request={requestedDetail} embedded={false} /></section> : <>
@@ -224,6 +229,12 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
           {["live", "appointed"].includes(getGuardianRequestLifecycle(openRequest).key)
             ? <AppliedTutorsButton href={`/guardian/dashboard/applied-tutors/${openRequest.id}`} count={openRequest.appliedTutorCount ?? 0} size="md" />
             : null}
+          {getGuardianRequestLifecycle(openRequest).key === "confirmed" && openRequest.tutorId
+            ? <button type="button" onClick={() => { setRatingRequestId(openRequest.id); setExpandedId(null); }} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 text-xs font-bold text-amber-900 hover:bg-amber-100">
+                <Star size={13} className="fill-amber-400 text-amber-400" aria-hidden="true" />
+                {reviewFor(openRequest.id) ? `Your rating ${reviewFor(openRequest.id)!.rating} · Edit` : "Rate Tutor"}
+              </button>
+            : null}
           {openRequest.tuitionRequest
             ? <WaitingTuitionRequestMark type={openRequest.tuitionRequest.type} busy={tuitionRequest.busy} onWithdraw={() => tuitionRequest.withdraw.mutate({ requestId: openRequest.id })} />
             : <>
@@ -235,6 +246,13 @@ export function GuardianRequestTracking({ embedded = false, detailRequestId }: {
                   : null}
               </>}
         </>}
+      /> : null}
+
+      {ratingRequestId !== null ? <RateTutorDialog
+        requestId={ratingRequestId}
+        jobId={jobIdForRequest(ratingRequestId)}
+        existing={reviewFor(ratingRequestId)}
+        onClose={() => setRatingRequestId(null)}
       /> : null}
 
       {asking ? <GuardianTuitionRequestDialog

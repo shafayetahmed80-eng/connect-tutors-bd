@@ -18,6 +18,7 @@ vi.mock("@/lib/trpc", () => {
   const emptyQuery = () => ({ data: [] });
   return {
     trpc: {
+      tutorReviews: { mine: { useQuery: () => ({ data: [] }) }, mySummary: { useQuery: () => ({ data: undefined }) }, forTutor: { useQuery: () => ({ data: { summary: { average: null, count: 0 }, reviews: [] }, isLoading: false, isError: false }) }, save: { useMutation: () => ({ mutate: () => undefined, isPending: false }) } },
       useUtils: () => ({
         tutor: {
           getMyProfile: { invalidate: trpcMocks.invalidate },
