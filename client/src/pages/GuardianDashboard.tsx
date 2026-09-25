@@ -9,6 +9,7 @@ import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
 import { GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
 import { Bell, Clock3, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
+import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { Link, useLocation, useRoute } from "wouter";
 import { GuardianHireSheet } from "@/components/GuardianHireSheet";
 import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
@@ -233,6 +234,8 @@ export function GuardianDashboardContent({ section, requestId, tutorId }: { sect
 function useGuardianWorkspaceHeader() {
   const profileQuery = trpc.guardianProfile.me.useQuery();
   const photoQuery = trpc.guardianProfile.photo.useQuery();
+  // The header bell asks every minute, so a notice that lands while the Guardian is here rings it.
+  const unreadNotificationsQuery = trpc.guardianNotifications.unreadCount.useQuery(undefined, { refetchInterval: NOTIFICATION_CHECK_MS });
   const profile = profileQuery.data;
   return {
     portal: "Guardian Portal",
@@ -240,6 +243,7 @@ function useGuardianWorkspaceHeader() {
     profilePhotoUrl: photoQuery.data?.photoUrl ?? null,
     details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
     settingsPath: GUARDIAN_SETTINGS_PATH,
+    notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/guardian/dashboard/notifications" },
   };
 }
 
