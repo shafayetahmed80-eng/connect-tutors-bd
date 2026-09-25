@@ -8,7 +8,7 @@
 // those bytes directly. Nothing about the Forge path changes when the keys are
 // present, so staging and production are untouched.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./_core/env";
 
@@ -141,4 +141,20 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   const { url } = (await resp.json()) as { url: string };
   return url;
+}
+
+/**
+ * The stored bytes themselves, for a file the server hands over inside a
+ * response - a private document shown in the site's own viewer - rather than
+ * as a link the browser follows to another host.
+ */
+export async function storageRead(relKey: string): Promise<Buffer> {
+  if (isLocalStorageBackend()) {
+    return readFile(resolveLocalStoragePath(relKey));
+  }
+  const resp = await fetch(await storageGetSignedUrl(relKey));
+  if (!resp.ok) {
+    throw new Error(`Storage read failed (${resp.status})`);
+  }
+  return Buffer.from(await resp.arrayBuffer());
 }
