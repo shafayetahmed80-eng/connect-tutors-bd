@@ -1985,6 +1985,13 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    /** Sends one message to every Tutor the directory's active filters currently match. */
+    notifyTutorDirectory: adminProcedure
+      .input(adminTutorDirectoryInputSchema.omit({ page: true, pageSize: true }).extend({
+        title: z.string().trim().min(1).max(120),
+        message: z.string().trim().min(1).max(360),
+      }))
+      .mutation(({ input: { title, message, ...filters } }) => db.notifyTutorDirectory(filters, { title, message })),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
