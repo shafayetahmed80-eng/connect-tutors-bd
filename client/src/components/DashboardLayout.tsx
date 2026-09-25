@@ -37,6 +37,7 @@ import {
 import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useBellSwing } from "@/lib/bellSwing";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -158,6 +159,11 @@ export type WorkspaceHeaderIdentity = {
   details?: Array<{ label: string; value: string }>;
   /** The panel's Settings page, offered in the avatar menu too. */
   settingsPath?: string;
+  /**
+   * The header bell's unread count (`undefined` while it loads) and the
+   * panel's Notifications page. A panel with no inbox - Admin - leaves it out.
+   */
+  notifications?: { unreadCount: number | undefined; path: string };
 };
 
 export function getDashboardAvatarInitials(name: string, fallback = "?") {
@@ -729,6 +735,11 @@ function DashboardLayoutContent({
               const settingsItem = navigationItems.find(item => item.path === settingsPath) ?? { icon: Settings, label: "Settings", path: settingsPath };
               handleNavigation(settingsItem);
             } : undefined}
+            onOpenNotifications={workspaceHeader.notifications ? () => {
+              const notificationsPath = workspaceHeader.notifications!.path;
+              const notificationsItem = navigationItems.find(item => item.path === notificationsPath) ?? { icon: Bell, label: "Notifications", path: notificationsPath };
+              handleNavigation(notificationsItem);
+            } : undefined}
             // Tutor and Guardian take the sidebar's own colours across their header too; Admin's stays the plain light bar.
             themed={isCommunityPanel(sidebarPanel)}
             colours={sidebarColours}
@@ -781,6 +792,7 @@ function WorkspaceHeader({
   isSigningOut,
   onSignOut,
   onOpenSettings,
+  onOpenNotifications,
   themed,
   colours,
 }: {
@@ -789,11 +801,15 @@ function WorkspaceHeader({
   isSigningOut: boolean;
   onSignOut: () => void;
   onOpenSettings?: () => void;
+  onOpenNotifications?: () => void;
   /** Tutor and Guardian take the sidebar's own colours here too; Admin keeps the plain light bar. */
   themed: boolean;
   colours: CSSProperties;
 }) {
   const initials = getDashboardAvatarInitials(identity.name);
+  const unread = identity.notifications?.unreadCount;
+  const bell = useBellSwing(identity.portal, unread);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const iconButton = themed
     ? "text-[var(--sb-icon)] hover:bg-[var(--sb-hover-bg)] hover:text-[var(--sb-text)] focus-visible:ring-[var(--sb-text)]"
     : "text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent";
@@ -812,15 +828,33 @@ function WorkspaceHeader({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <Popover>
+        <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
           <PopoverTrigger asChild>
-            <button type="button" aria-label="Open notifications" className={`grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}>
-              <Bell className="size-[19px]" aria-hidden="true" />
+            <button
+              type="button"
+              aria-label={unread ? `Open notifications, ${unread} unread` : "Open notifications"}
+              className={`relative grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}
+            >
+              <span className="header-bell grid place-items-center" data-swinging={bell.swinging ? "" : undefined} onAnimationEnd={bell.stop}>
+                <Bell className="size-[19px]" aria-hidden="true" />
+              </span>
+              {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 rounded-xl p-3">
             <p className="text-sm font-semibold text-j-ink">Notifications</p>
-            <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>
+            {identity.notifications ? <>
+              <p className="mt-1 text-sm leading-6 text-[#587489]">
+                {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
+              </p>
+              {onOpenNotifications ? <button
+                type="button"
+                onClick={() => { setNotificationsOpen(false); onOpenNotifications(); }}
+                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-j-accent px-3 text-sm font-bold text-white transition hover:bg-j-accent-hover"
+              >
+                View all notifications
+              </button> : null}
+            </> : <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>}
           </PopoverContent>
         </Popover>
         <DropdownMenu>

@@ -2530,12 +2530,13 @@ export const appRouter = router({
   confirmationLetters: router({
     guardianMine: guardianProcedure.query(({ ctx }) => db.listConfirmationLettersForGuardian({ guardianUserId: ctx.user.id })),
     tutorMine: activeTutorProcedure.query(({ ctx }) => db.listConfirmationLettersForTutor({ tutorUserId: ctx.user.id })),
-    download: protectedProcedure
+    /** The letter itself, for the site's own viewer and the Download button. */
+    file: protectedProcedure
       .input(z.object({ letterId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         const role = ctx.user.role === "tutor" ? "tutor" : ctx.user.role === "guardian" || ctx.user.role === "user" ? "guardian" : null;
         if (!role) throw new TRPCError({ code: "FORBIDDEN", message: "Only the authorised Guardian or assigned Tutor can access this letter." });
-        const result = await db.getConfirmationLetterRecipientDownload({ letterId: input.letterId, recipient: { role, userId: ctx.user.id } });
+        const result = await db.getConfirmationLetterRecipientFile({ letterId: input.letterId, recipient: { role, userId: ctx.user.id } });
         if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmation letter is unavailable." });
         return result;
       }),

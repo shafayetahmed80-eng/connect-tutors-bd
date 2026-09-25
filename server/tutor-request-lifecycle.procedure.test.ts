@@ -8,7 +8,7 @@ const lifecycleDbMocks = vi.hoisted(() => ({
   clearAdminMatchingDefaultSavedView: vi.fn(),
   createConfirmationLetterDraft: vi.fn(),
   createGuardianRequestFollowUp: vi.fn(),
-  getConfirmationLetterRecipientDownload: vi.fn(),
+  getConfirmationLetterRecipientFile: vi.fn(),
   getTutorAccountStatusByUserId: vi.fn(),
   getTutorRequestLocation: vi.fn(),
   getGuardianNotificationUnreadCount: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock("./db", async importOriginal => {
     clearAdminMatchingDefaultSavedView: lifecycleDbMocks.clearAdminMatchingDefaultSavedView,
     createConfirmationLetterDraft: lifecycleDbMocks.createConfirmationLetterDraft,
     createGuardianRequestFollowUp: lifecycleDbMocks.createGuardianRequestFollowUp,
-    getConfirmationLetterRecipientDownload: lifecycleDbMocks.getConfirmationLetterRecipientDownload,
+    getConfirmationLetterRecipientFile: lifecycleDbMocks.getConfirmationLetterRecipientFile,
     getTutorAccountStatusByUserId: lifecycleDbMocks.getTutorAccountStatusByUserId,
     getTutorRequestLocation: lifecycleDbMocks.getTutorRequestLocation,
     getGuardianNotificationUnreadCount: lifecycleDbMocks.getGuardianNotificationUnreadCount,
@@ -301,7 +301,7 @@ describe("approved Guardian request lifecycle procedures", () => {
   it("keeps issued confirmation letters private to their Guardian or assigned Tutor", async () => {
     lifecycleDbMocks.listConfirmationLettersForGuardian.mockResolvedValueOnce([{ id: 31, status: "issued", letterNumber: "CTB-2026-001" }]);
     lifecycleDbMocks.listConfirmationLettersForTutor.mockResolvedValueOnce([{ id: 31, status: "issued", letterNumber: "CTB-2026-001" }]);
-    lifecycleDbMocks.getConfirmationLetterRecipientDownload.mockResolvedValueOnce({ letterId: 31, downloadUrl: "https://private.example/letter.pdf" });
+    lifecycleDbMocks.getConfirmationLetterRecipientFile.mockResolvedValueOnce({ letterId: 31, letterNumber: "CTB-2026-001", fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-001.pdf", pdfBase64: "JVBERi0=" });
 
     await expect((guardianCaller(77) as any).confirmationLetters.guardianMine())
       .resolves.toEqual([{ id: 31, status: "issued", letterNumber: "CTB-2026-001" }]);
@@ -309,12 +309,12 @@ describe("approved Guardian request lifecycle procedures", () => {
       .rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect((tutorCaller(88, "valid-tutor-tab-proof") as any).confirmationLetters.tutorMine())
       .resolves.toEqual([{ id: 31, status: "issued", letterNumber: "CTB-2026-001" }]);
-    await expect((guardianCaller(77) as any).confirmationLetters.download({ letterId: 31 }))
-      .resolves.toEqual({ letterId: 31, downloadUrl: "https://private.example/letter.pdf" });
+    await expect((guardianCaller(77) as any).confirmationLetters.file({ letterId: 31 }))
+      .resolves.toEqual({ letterId: 31, letterNumber: "CTB-2026-001", fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-001.pdf", pdfBase64: "JVBERi0=" });
 
     expect(lifecycleDbMocks.listConfirmationLettersForGuardian).toHaveBeenCalledWith({ guardianUserId: 77 });
     expect(lifecycleDbMocks.listConfirmationLettersForTutor).toHaveBeenCalledWith({ tutorUserId: 88 });
-    expect(lifecycleDbMocks.getConfirmationLetterRecipientDownload).toHaveBeenCalledWith({ letterId: 31, recipient: { role: "guardian", userId: 77 } });
+    expect(lifecycleDbMocks.getConfirmationLetterRecipientFile).toHaveBeenCalledWith({ letterId: 31, recipient: { role: "guardian", userId: 77 } });
     await expect((adminCaller() as any).confirmationLetters.guardianMine()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

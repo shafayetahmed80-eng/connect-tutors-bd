@@ -92,6 +92,8 @@ export const JOB_BOARD_LOCATION_LIMIT = 10;
 export const JOB_BOARD_SUBJECT_LIMIT = 12;
 
 const PAGE_SIZE = 20;
+/** Cards rise in one after another; past the ninth they all go together, so a full page never keeps anyone waiting. */
+const JOB_CARD_STAGGER_CAP = 8;
 
 function optionalTrimmed(value: string) {
   const trimmed = value.trim();
@@ -443,7 +445,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         {interestError ? <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-bold">Your Job Board application was not updated.</p><p className="mt-1">{interestError}</p></div> : null}
         {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? clearFilters : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
-      {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map(job => <JobCard key={job.id} job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} />)}</div> : null}
+      {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map((job, index) => <div key={job.id} className="job-board-card-enter" style={{ "--stagger": Math.min(index, JOB_CARD_STAGGER_CAP) } as React.CSSProperties}><JobCard job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} /></div>)}</div> : null}
       <div className="mt-7"><TutorListPager
         page={queryInput.page}
         totalPages={pagination.totalPages}
