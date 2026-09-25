@@ -240,6 +240,9 @@ const plugins = [
     },
     workbox: {
       globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      // pdf.js is fetched only when someone opens a Confirmation Letter; it
+      // should not ride along in every visitor's install.
+      globIgnores: ["**/assets/pdf-*.js", "**/assets/pdf.worker*"],
       navigateFallbackDenylist: [/^\/api\//, /^\/storage/, /^\/oauth/],
       cleanupOutdatedCaches: true,
       inlineWorkboxRuntime: true,
