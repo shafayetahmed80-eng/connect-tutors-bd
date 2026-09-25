@@ -7,8 +7,10 @@ import { validateGuardianRegistration } from "./GuardianRequestJourney";
 
 const mocks = vi.hoisted(() => ({
   capturePhone: vi.fn(),
+  verifyPhone: vi.fn(),
   register: vi.fn(),
-  intakeOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string }) => void },
+  intakeOptions: null as null | { onSuccess?: (result: { resendAfterSeconds: number }, variables: { phone: string }) => void; onError?: (error: { message: string }) => void },
+  verifyOptions: null as null | { onSuccess?: (result: unknown, variables: { phone: string }) => void; onError?: (error: { message: string; data?: unknown }) => void },
   registerOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string; data?: unknown }) => void },
   authMe: { data: null as unknown, isLoading: false, refetch: vi.fn() },
   invalidate: vi.fn(),
@@ -37,6 +39,12 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: (options: typeof mocks.intakeOptions) => {
           mocks.intakeOptions = options;
           return { mutate: mocks.capturePhone, isPending: false };
+        },
+      },
+      verifyPhone: {
+        useMutation: (options: typeof mocks.verifyOptions) => {
+          mocks.verifyOptions = options;
+          return { mutate: mocks.verifyPhone, isPending: false };
         },
       },
     },
@@ -68,6 +76,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.intakeOptions = null;
   mocks.registerOptions = null;
+  mocks.verifyOptions = null;
 });
 
 describe("validateGuardianRegistration", () => {
@@ -98,14 +107,27 @@ describe("validateGuardianRegistration", () => {
 });
 
 describe("GuardianRequestJourney account creation flow", () => {
-  it("captures the +880 mobile number, then shows the Tutor-style Guardian account panel", () => {
+  it("sends an SMS code for the +880 number, checks it, then shows the Tutor-style Guardian account panel", () => {
     render(<GuardianRequestJourney />);
 
     fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
     fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
     expect(mocks.capturePhone).toHaveBeenCalledWith({ phone: "+8801712345678" });
 
-    act(() => mocks.intakeOptions?.onSuccess?.());
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    expect(screen.getByText("Sent to +8801712345678")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue securely/i })).toBeNull();
+    expect((screen.getByRole("button", { name: /Send a new code/ }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
+    expect(screen.getByText("৪ অঙ্কের কোডটি লিখুন।")).toBeTruthy();
+    expect(mocks.verifyPhone).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "48a21" } });
+    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
+    expect(mocks.verifyPhone).toHaveBeenCalledWith({ phone: "+8801712345678", code: "4821" });
+
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
 
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to phone" })).toBeTruthy();
@@ -113,9 +135,53 @@ describe("GuardianRequestJourney account creation flow", () => {
     expect(phone.readOnly).toBe(true);
   });
 
+  it("does not ask again for a number this visit already proved", () => {
+    render(<GuardianRequestJourney />);
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
+    expect(mocks.capturePhone).toHaveBeenCalledTimes(1);
+
+    // A different number is a new proof.
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01812345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(mocks.capturePhone).toHaveBeenLastCalledWith({ phone: "+8801812345678" });
+  });
+
+  it("asks for a new code once the intake has lapsed", () => {
+    render(<GuardianRequestJourney />);
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+    act(() => mocks.registerOptions?.onError?.({ message: "আপনার নিবন্ধন সেশনটি আর সক্রিয় নেই। ফোন নম্বর দিয়ে আবার শুরু করুন।", data: { code: "UNAUTHORIZED" } }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    expect(mocks.capturePhone).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a wrong code's message under the code box", () => {
+    render(<GuardianRequestJourney />);
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+
+    act(() => mocks.verifyOptions?.onError?.({ message: "কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।", data: { zodFieldErrors: { phoneCode: ["কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।"] } } }));
+
+    expect(screen.getByRole("alert").textContent).toBe("কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।");
+    expect(screen.queryByRole("heading", { name: "Create your Guardian account" })).toBeNull();
+  });
+
   it("sends a completed Guardian straight to the dashboard Hire a tutor tab", () => {
     render(<GuardianRequestJourney />);
-    act(() => mocks.intakeOptions?.onSuccess?.());
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
 
     act(() => mocks.registerOptions?.onSuccess?.());
 

@@ -143,3 +143,19 @@ describe("ChipMultiSelect", () => {
     expect(within(list()).getByText("Nothing left to choose")).toBeTruthy();
   });
 });
+
+describe("ChipMultiSelect colours", () => {
+  it("paints the profile's dense picker in the profile colours, and leaves every other caller as it was", () => {
+    const options = [{ id: "a", label: "Apple" }];
+    const { unmount } = render(<ChipMultiSelect label="Fruit" options={options} selectedIds={["a"]} onChange={vi.fn()} dense />);
+    const denseChip = screen.getByRole("button", { name: "Remove Apple" }).parentElement!;
+    expect(denseChip.className).toContain("bg-tp-accent-wash");
+    expect(denseChip.className).not.toContain("#");
+    unmount();
+
+    render(<ChipMultiSelect label="Fruit" options={options} selectedIds={["a"]} onChange={vi.fn()} />);
+    const chip = screen.getByRole("button", { name: "Remove Apple" }).parentElement!;
+    expect(chip.className).toContain("bg-[#eaf4fd]");
+    expect(chip.className).not.toContain("tp-");
+  });
+});

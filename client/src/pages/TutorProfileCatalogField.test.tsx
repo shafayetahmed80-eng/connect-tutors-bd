@@ -16,6 +16,7 @@ vi.mock("@/lib/trpc", () => {
   const empty = () => ({ data: [], isLoading: false, isError: false });
   return {
     trpc: {
+      tutorReviews: { mine: { useQuery: () => ({ data: [] }) }, mySummary: { useQuery: () => ({ data: undefined }) }, forTutor: { useQuery: () => ({ data: { summary: { average: null, count: 0 }, reviews: [] }, isLoading: false, isError: false }) }, save: { useMutation: () => ({ mutate: () => undefined, isPending: false }) } },
       useUtils: () => ({ tutor: { getMyProfile: { invalidate: vi.fn() }, getDashboardStats: { invalidate: vi.fn() } } }),
       tutor: {
         saveProfileDraft: { useMutation: () => ({ mutateAsync: mocks.saveDraft, isPending: false }) },

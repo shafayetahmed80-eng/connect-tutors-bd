@@ -42,6 +42,23 @@ export function buildGuardianRequestTelegramMessage(input: GuardianRequestTelegr
   ].join("\n");
 }
 
+/** A plain one-line alert to the Admin chat - for operational trouble such as the SMS balance running out. */
+export async function sendTelegramAdminText(text: string) {
+  const token = ENV.telegramBotToken;
+  const chatId = ENV.telegramChatId;
+  if (!token || !chatId || !/^-?\d+$/.test(chatId)) return false;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function notifyTelegramAdmin(input: GuardianRequestTelegramInput) {
   const token = ENV.telegramBotToken;
   const chatId = ENV.telegramChatId;

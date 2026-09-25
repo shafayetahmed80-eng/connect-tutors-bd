@@ -46,6 +46,9 @@ import {
   adminTwoFactorSettings,
   authEvents,
   passwordResetLinks,
+  phoneVerificationCodes,
+  type PhoneVerificationPurpose,
+  tutorReviews,
   classLevels,
   confirmationLetters,
   curricula,
@@ -169,6 +172,8 @@ import {
   type AdminMatchingSavedViewFilters,
 } from "@shared/admin-matching-saved-views";
 import { guardianVerificationNotice } from "./guardian-verification-notice";
+import { phoneCodeHashesMatch } from "./phone-verification";
+import { summariseTutorRatings } from "@shared/tutor-reviews";
 import {
   canRequestTuitionChange,
   guardianTuitionRequestApplies,
@@ -502,6 +507,174 @@ export async function usePasswordResetLink(input: { tokenHash: string; passwordH
   });
 }
 
+/** When the newest code for a number was sent, and how many went out in the last hour. */
+export async function getPhoneCodeSendState(phone: string, purpose: PhoneVerificationPurpose, now: Date = new Date()) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const recent = await database
+    .select({ createdAt: phoneVerificationCodes.createdAt })
+    .from(phoneVerificationCodes)
+    .where(and(eq(phoneVerificationCodes.phone, phone), eq(phoneVerificationCodes.purpose, purpose), gte(phoneVerificationCodes.createdAt, hourAgo)))
+    .orderBy(desc(phoneVerificationCodes.createdAt));
+  return { lastSentAt: recent[0]?.createdAt ?? null, sentLastHour: recent.length };
+}
+
+export async function createPhoneVerificationCode(input: { phone: string; purpose: PhoneVerificationPurpose; codeHash: string; expiresAt: Date; ip?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.insert(phoneVerificationCodes).values({ phone: input.phone, purpose: input.purpose, codeHash: input.codeHash, expiresAt: input.expiresAt, ip: input.ip ?? null });
+  return { id: Number(result[0].insertId) };
+}
+
+/** A code the SMS provider refused to deliver should not hold up the next try. */
+export async function deletePhoneVerificationCode(id: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.delete(phoneVerificationCodes).where(eq(phoneVerificationCodes.id, id));
+}
+
+/**
+ * Checks a code against the newest open one for the number and purpose. A
+ * wrong guess counts an attempt; the fifth spends the code. `consume` spends a
+ * right one straight away - Tutor registration leaves it open until the
+ * account really exists, so a clashing email does not cost them a new SMS.
+ */
+export async function checkPhoneVerificationCode(input: {
+  phone: string;
+  purpose: PhoneVerificationPurpose;
+  codeHash: string;
+  consume: boolean;
+  maxAttempts: number;
+  now?: Date;
+}): Promise<{ status: "ok"; id: number } | { status: "missing" | "expired" | "locked" } | { status: "wrong"; attemptsLeft: number }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const now = input.now ?? new Date();
+  return database.transaction(async tx => {
+    const code = (await tx
+      .select()
+      .from(phoneVerificationCodes)
+      .where(and(eq(phoneVerificationCodes.phone, input.phone), eq(phoneVerificationCodes.purpose, input.purpose), isNull(phoneVerificationCodes.consumedAt)))
+      .orderBy(desc(phoneVerificationCodes.createdAt), desc(phoneVerificationCodes.id))
+      .limit(1)
+      .for("update"))[0];
+    if (!code) return { status: "missing" as const };
+    if (code.expiresAt.getTime() <= now.getTime()) return { status: "expired" as const };
+    if (code.attempts >= input.maxAttempts) return { status: "locked" as const };
+    if (!phoneCodeHashesMatch(code.codeHash, input.codeHash)) {
+      const attempts = code.attempts + 1;
+      await tx.update(phoneVerificationCodes).set({ attempts }).where(eq(phoneVerificationCodes.id, code.id));
+      return attempts >= input.maxAttempts ? { status: "locked" as const } : { status: "wrong" as const, attemptsLeft: input.maxAttempts - attempts };
+    }
+    if (input.consume) await tx.update(phoneVerificationCodes).set({ consumedAt: now }).where(eq(phoneVerificationCodes.id, code.id));
+    return { status: "ok" as const, id: code.id };
+  });
+}
+
+export async function consumePhoneVerificationCode(id: number, now: Date = new Date()) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(phoneVerificationCodes).set({ consumedAt: now }).where(and(eq(phoneVerificationCodes.id, id), isNull(phoneVerificationCodes.consumedAt)));
+}
+
+/** Whether a Tutor account already signs in with this number - checked before an SMS is spent on it. */
+export async function isTutorPhoneRegistered(phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const loginPhone = normalizeBangladeshMobile(phone);
+  const existing = await database.select({ id: users.id }).from(users).where(and(eq(users.role, "tutor"), eq(users.loginPhone, loginPhone))).limit(1);
+  return Boolean(existing[0]);
+}
+
+/** The active Guardian or Tutor account that signs in with this mobile, if any - for the SMS password reset. */
+export async function findActivePasswordAccountByPhone(role: "guardian" | "tutor", phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const loginPhone = normalizeBangladeshMobile(phone);
+  const account = (await database
+    .select({ id: users.id, accountStatus: users.accountStatus })
+    .from(users)
+    .where(and(eq(users.role, role), eq(users.loginPhone, loginPhone)))
+    .limit(1))[0];
+  return account && account.accountStatus === "active" ? { id: account.id } : null;
+}
+
+/**
+ * Sets a new password after an SMS-code reset: open Tutor portal tabs are
+ * signed out and any Admin-issued reset link still open for the account is
+ * revoked, so the old ways back in all close together.
+ */
+export async function setPasswordAfterPhoneReset(input: { userId: number; passwordHash: string; now?: Date }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const now = input.now ?? new Date();
+  await database.transaction(async tx => {
+    await tx.update(users).set({ passwordHash: input.passwordHash }).where(eq(users.id, input.userId));
+    await tx.update(tutorPortalSessions).set({ revokedAt: now }).where(and(eq(tutorPortalSessions.userId, input.userId), isNull(tutorPortalSessions.revokedAt)));
+    await tx.update(passwordResetLinks).set({ revokedAt: now }).where(and(eq(passwordResetLinks.userId, input.userId), isNull(passwordResetLinks.usedAt), isNull(passwordResetLinks.revokedAt)));
+  });
+}
+
+/**
+ * Saves (or changes) a Guardian's rating of the Tutor on their tuition. Only a
+ * tuition the Guardian owns, with a Tutor and an Admin-confirmed appointment,
+ * can be rated; the rating follows the tuition's Tutor at the time it is saved.
+ */
+export async function saveTutorReview(input: { guardianUserId: number; requestId: number; rating: number; comment: string | null }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const request = (await database
+    .select({ id: tutorRequests.id, guardianUserId: tutorRequests.guardianUserId, tutorId: tutorRequests.tutorId, appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt })
+    .from(tutorRequests)
+    .where(eq(tutorRequests.id, input.requestId))
+    .limit(1))[0];
+  if (!request || request.guardianUserId !== input.guardianUserId) return { saved: false as const, reason: "not_found" as const };
+  if (!request.tutorId || !request.appointmentConfirmedAt) return { saved: false as const, reason: "not_confirmed" as const };
+  await database
+    .insert(tutorReviews)
+    .values({ tutorRequestId: request.id, tutorId: request.tutorId, guardianUserId: input.guardianUserId, rating: input.rating, comment: input.comment })
+    .onDuplicateKeyUpdate({ set: { tutorId: request.tutorId, rating: input.rating, comment: input.comment } });
+  return { saved: true as const };
+}
+
+/** The Guardian's own ratings, one per tuition. */
+export async function listGuardianTutorReviews(guardianUserId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({ requestId: tutorReviews.tutorRequestId, tutorId: tutorReviews.tutorId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt })
+    .from(tutorReviews)
+    .where(eq(tutorReviews.guardianUserId, guardianUserId));
+}
+
+/** Average and count of one Tutor's ratings. */
+export async function getTutorRatingSummary(tutorId: string) {
+  const database = await getDb();
+  if (!database) return summariseTutorRatings([]);
+  const rows = await database.select({ rating: tutorReviews.rating }).from(tutorReviews).where(eq(tutorReviews.tutorId, tutorId));
+  return summariseTutorRatings(rows.map(row => row.rating));
+}
+
+export async function getTutorRatingSummaryForUser(userId: number) {
+  const database = await getDb();
+  if (!database) return summariseTutorRatings([]);
+  const tutor = (await database.select({ id: tutors.id }).from(tutors).where(eq(tutors.userId, userId)).limit(1))[0];
+  return tutor ? getTutorRatingSummary(tutor.id) : summariseTutorRatings([]);
+}
+
+/** Every rating a Tutor has had, newest first, with the Guardian's name and Job ID - Admin only. */
+export async function listTutorReviewsForAdmin(tutorId: string) {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({ id: tutorReviews.id, requestId: tutorReviews.tutorRequestId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt, guardianName: users.name })
+    .from(tutorReviews)
+    .innerJoin(users, eq(tutorReviews.guardianUserId, users.id))
+    .where(eq(tutorReviews.tutorId, tutorId))
+    .orderBy(desc(tutorReviews.updatedAt));
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
@@ -727,7 +900,7 @@ export async function registerGuardianFromIntake(input: GuardianRegistrationTran
 
   return withGuardianNumberAllocationRetry(() => withTutorNumberAllocationLock(() => database.transaction(async tx => {
     const intake = (await tx.select().from(guardianPhoneIntakes).where(eq(guardianPhoneIntakes.handoffTokenHash, input.handoffTokenHash)).limit(1))[0];
-    if (!intake || intake.status !== "pending" || intake.handoffExpiresAt.getTime() < Date.now()) {
+    if (!intake || intake.status !== "pending" || !intake.phoneVerifiedAt || intake.handoffExpiresAt.getTime() < Date.now()) {
       throw new GuardianRegistrationError("handoff-expired");
     }
     const city = (await tx.select().from(locations).where(eq(locations.id, input.cityLocationId)).limit(1))[0];
@@ -4409,6 +4582,8 @@ export async function createOrResumeGuardianPhoneIntake(input: {
   phone: string;
   handoffTokenHash: string;
   handoffExpiresAt: Date;
+  /** When the SMS code for this number was confirmed; registration requires it. */
+  phoneVerifiedAt: Date;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
@@ -4420,13 +4595,14 @@ export async function createOrResumeGuardianPhoneIntake(input: {
       status: "pending",
       handoffTokenHash: input.handoffTokenHash,
       handoffExpiresAt: input.handoffExpiresAt,
+      phoneVerifiedAt: input.phoneVerifiedAt,
     })
     .onDuplicateKeyUpdate({
       set: {
         status: "pending",
         handoffTokenHash: input.handoffTokenHash,
         handoffExpiresAt: input.handoffExpiresAt,
-        phoneVerifiedAt: null,
+        phoneVerifiedAt: input.phoneVerifiedAt,
         completedAt: null,
       },
     });

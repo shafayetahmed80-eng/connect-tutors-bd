@@ -666,6 +666,34 @@
       "when": 1792400000000,
       "tag": "0094_password_reset_links",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "5",
+      "when": 1792500000000,
+      "tag": "0095_phone_verification_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1792600000000,
+      "tag": "0096_phone_code_password_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1792700000000,
+      "tag": "0097_phone_code_mobile_change",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1792800000000,
+      "tag": "0098_tutor_reviews",
+      "breakpoints": true
     }
   ]
 }

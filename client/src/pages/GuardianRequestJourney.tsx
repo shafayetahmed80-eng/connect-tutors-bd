@@ -21,10 +21,12 @@ import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
-import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt } from "@/components/registrationFields";
+import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
+/** A little under the server's 20-minute intake handoff, so a reused number never outlives its cookie. */
+const VERIFIED_PHONE_REUSE_MS = 18 * 60 * 1000;
 export function getGuardianPendingEditId(search: string) {
   const value = new URLSearchParams(search).get("edit");
   const requestId = value ? Number(value) : Number.NaN;
@@ -634,10 +636,37 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const accountLocationsQuery = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: accountCityId, query: "", limit: 300 }, { enabled: Boolean(accountCityId) });
   const tuitionLocationsQuery = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: tuitionCityLocationId, query: "", limit: 300 }, { enabled: Boolean(tuitionCityLocationId) });
 
+  // The phone step is two presses: send the SMS code, then check it.
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneCodeError, setPhoneCodeError] = useState("");
+  const [resendAt, setResendAt] = useState(0);
+  const resendInSeconds = useSecondsUntil(resendAt);
   const intakeMutation = trpc.guardianIntake.capturePhone.useMutation({
-    onSuccess: () => { setJourneyError(""); setStage("register"); },
-    onError: (error) => { setJourneyError(error.message); toast.error(error.message); },
+    onSuccess: (result, variables) => {
+      setJourneyError("");
+      setPhoneCodeError("");
+      setCodeSentTo(variables.phone);
+      setResendAt(Date.now() + result.resendAfterSeconds * 1000);
+      window.requestAnimationFrame(() => document.getElementById("guardian-phone-code")?.focus());
+    },
+    onError: (error) => {
+      if (codeSentTo) { setPhoneCodeError(error.message); return; }
+      setJourneyError(error.message);
+      toast.error(error.message);
+    },
   });
+  // The number this visit already proved, so "Back to phone" and on again does
+  // not cost a second SMS while the server's intake cookie is still good.
+  const [verifiedPhone, setVerifiedPhone] = useState<{ phone: string; at: number } | null>(null);
+  const verifyPhoneMutation = trpc.guardianIntake.verifyPhone.useMutation({
+    onSuccess: (_result, variables) => { setJourneyError(""); setCodeSentTo(null); setPhoneCode(""); setVerifiedPhone({ phone: variables.phone, at: Date.now() }); setStage("register"); },
+    onError: (error) => {
+      const fieldMessage = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors?.phoneCode?.[0];
+      setPhoneCodeError(fieldMessage ?? error.message);
+    },
+  });
+  const forgetPhoneCode = () => { setCodeSentTo(null); setPhoneCode(""); setPhoneCodeError(""); };
   const registrationMutation = trpc.guardianAuth.register.useMutation({
     onSuccess: () => {
       setJourneyError("");
@@ -649,6 +678,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     },
     onError: (error) => {
       const data = error.data as { zodFieldErrors?: Record<string, string[]>; code?: string } | null | undefined;
+      // The intake cookie has lapsed; the number has to be proved again.
+      if (data?.code === "UNAUTHORIZED") setVerifiedPhone(null);
       const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
       if (Object.keys(mapped).length) {
         setAccountFieldErrors((current) => ({ ...current, ...mapped }));
@@ -889,11 +920,27 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
-        {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
+        {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); if (codeSentTo) forgetPhoneCode(); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
-          intakeMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
-        }} /> : null}
+          const fullPhone = `+880${localPhone.slice(1)}`;
+          if (verifiedPhone?.phone === fullPhone && Date.now() - verifiedPhone.at < VERIFIED_PHONE_REUSE_MS) { setStage("register"); return; }
+          intakeMutation.mutate({ phone: fullPhone });
+        }} code={codeSentTo ? {
+          sentTo: codeSentTo,
+          value: phoneCode,
+          error: phoneCodeError,
+          onChange: (value) => { setPhoneCode(value); setPhoneCodeError(""); },
+          verifying: verifyPhoneMutation.isPending,
+          onVerify: () => {
+            if (!/^\d{4}$/.test(phoneCode)) { setPhoneCodeError("৪ অঙ্কের কোডটি লিখুন।"); return; }
+            verifyPhoneMutation.mutate({ phone: codeSentTo, code: phoneCode });
+          },
+          resendInSeconds,
+          resending: intakeMutation.isPending,
+          onResend: () => { setPhoneCodeError(""); intakeMutation.mutate({ phone: codeSentTo }); },
+          onChangeNumber: () => { forgetPhoneCode(); window.requestAnimationFrame(() => document.getElementById("guardian-phone")?.focus()); },
+        } : null} /> : null}
         {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
         {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><Loader2 className="mx-auto mb-3 animate-spin text-j-accent" size={22} />Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
@@ -937,7 +984,13 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   </div>;
 }
 
-function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
+type PhoneStageCode = {
+  sentTo: string; value: string; error: string; onChange: (value: string) => void;
+  verifying: boolean; onVerify: () => void;
+  resendInSeconds: number; resending: boolean; onResend: () => void; onChangeNumber: () => void;
+};
+
+export function PhoneStage({ phone, onPhoneChange, pending, onContinue, code = null }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void; code?: PhoneStageCode | null }) {
   const valid = LOCAL_PHONE.test(phone);
   const resolveSlot = useSiteContentResolver();
   return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
@@ -951,8 +1004,26 @@ function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: stri
       </span>
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
     </label>
+    {code ? <div className="mt-6 max-w-md rounded-xl border border-j-border bg-j-surface-sunken p-4">
+      <PhoneCodeField
+        id="guardian-phone-code"
+        label={resolveSlot("request-tutor.field.phoneCode", "Verification code")}
+        sentTo={`Sent to ${code.sentTo}`}
+        value={code.value}
+        onChange={code.onChange}
+        error={code.error || undefined}
+        resendInSeconds={code.resendInSeconds}
+        resending={code.resending}
+        onResend={code.onResend}
+        resendLabel="Send a new code"
+        onChangeNumber={code.onChangeNumber}
+        changeNumberLabel="Change number"
+      />
+    </div> : null}
     <div className="mt-6 flex max-w-md flex-col gap-3">
-      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /></button>
+      {code
+        ? <button type="button" className={`${primaryButton} w-full`} disabled={code.verifying} onClick={code.onVerify}>{code.verifying && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneVerify" fallback="Verify code" /></button>
+        : <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /></button>}
       <div className="text-center"><SignInPrompt href="/auth?role=guardian" /></div>
     </div>
   </div>;

@@ -6,7 +6,7 @@
 // gaps. Both now render from here, so a change lands on both at once.
 
 import { Eye, EyeOff, Phone } from "lucide-react";
-import React, { type ReactNode, useState } from "react";
+import React, { type ReactNode, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { fieldLabel, filledField, requiredMark } from "@/components/journeyField";
 
@@ -113,6 +113,65 @@ export function PolicyConsent({ id, checked, onChange }: { id: string; checked: 
 
 export function SignInPrompt({ href }: { href: string }) {
   return <p className="text-sm text-j-ink-muted">Already registered? <Link href={href} className={inlineLink}>Sign in with email or mobile</Link></p>;
+}
+
+/** Seconds left until `until` (a Date.now() timestamp), ticking once a second; 0 when past. */
+export function useSecondsUntil(until: number) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (until <= Date.now()) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [until]);
+  return Math.max(0, Math.ceil((until - now) / 1000));
+}
+
+/**
+ * The 4-digit SMS code box. One plain input - `one-time-code` lets the phone
+ * offer the code straight from the SMS - with the send-again control beside it,
+ * which counts down until the server will accept another request.
+ */
+export function PhoneCodeField({ id, label, sentTo, value, onChange, error, resendInSeconds, resending, onResend, resendLabel, onChangeNumber, changeNumberLabel }: {
+  id: string;
+  label: string;
+  /** The number the code went to, shown so a typo is easy to spot. */
+  sentTo: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  resendInSeconds: number;
+  resending: boolean;
+  onResend: () => void;
+  resendLabel: string;
+  onChangeNumber: () => void;
+  changeNumberLabel: string;
+}) {
+  return <div>
+    <label className="block" htmlFor={id}>
+      <span className={fieldLabel}>{label}<RequiredMark /></span>
+      <span className="mt-1 block text-xs font-semibold text-j-ink-muted">{sentTo}</span>
+      <input
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="\d{4}"
+        maxLength={4}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        placeholder="••••"
+        className={`${filledField} mt-2 max-w-[12rem] text-center text-xl font-bold tracking-[0.6em] tabular-nums`}
+      />
+    </label>
+    {error ? <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-semibold text-j-err">{error}</p> : null}
+    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <button type="button" onClick={onResend} disabled={resending || resendInSeconds > 0} className="font-extrabold text-j-accent underline underline-offset-2 disabled:cursor-not-allowed disabled:text-j-ink-faint disabled:no-underline">
+        {resendInSeconds > 0 ? `${resendLabel} (${resendInSeconds}s)` : resendLabel}
+      </button>
+      <button type="button" onClick={onChangeNumber} className="font-semibold text-j-ink-muted underline underline-offset-2 hover:text-j-ink-soft">{changeNumberLabel}</button>
+    </div>
+  </div>;
 }
 
 /** The divider row under the form that holds the sign-in link and the actions. */

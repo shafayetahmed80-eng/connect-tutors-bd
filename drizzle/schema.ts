@@ -355,6 +355,9 @@ export const authEventTypeValues = [
   "phone_intake_blocked",
   "password_reset_link_created",
   "password_reset_completed",
+  "phone_code_sent",
+  "phone_code_rejected",
+  "phone_verified",
 ] as const;
 export type AuthEventType = (typeof authEventTypeValues)[number];
 
@@ -401,6 +404,31 @@ export const passwordResetLinks = mysqlTable(
   table => [index("password_reset_links_user_idx").on(table.userId)]
 );
 export type PasswordResetLink = typeof passwordResetLinks.$inferSelect;
+
+export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake", "password_reset", "mobile_change"] as const;
+export type PhoneVerificationPurpose = (typeof phoneVerificationPurposeValues)[number];
+
+/**
+ * One-time 4-digit SMS codes that prove a person holds a mobile number before
+ * a Tutor account or a Guardian intake is created on it. Only the HMAC of the
+ * code is stored; the newest open code for a number and purpose is the one
+ * that counts.
+ */
+export const phoneVerificationCodes = mysqlTable(
+  "phone_verification_codes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    purpose: mysqlEnum("purpose", phoneVerificationPurposeValues).notNull(),
+    codeHash: varchar("codeHash", { length: 128 }).notNull(),
+    attempts: int("attempts").default(0).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    consumedAt: timestamp("consumedAt"),
+    ip: varchar("ip", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("phone_verification_codes_phone_purpose_idx").on(table.phone, table.purpose, table.createdAt)]
+);
 
 /** Encrypted TOTP seed and enrollment metadata for one Admin account. */
 export const adminTwoFactorSettings = mysqlTable("admin_two_factor_settings", {
@@ -1994,3 +2022,27 @@ export type University = typeof universities.$inferSelect;
 export type FacultyDepartment = typeof facultyDepartments.$inferSelect;
 export type DegreeMajor = typeof degreeMajors.$inferSelect;
 export type TutorAcademicProfile = typeof tutorAcademicProfiles.$inferSelect;
+
+/**
+ * A Guardian's rating of the Tutor on one of their Confirmed tuitions - one per
+ * tuition, which the Guardian may change later. The Tutor is copied from the
+ * tuition when the rating is saved, so a later Tutor change keeps the old one's.
+ */
+export const tutorReviews = mysqlTable(
+  "tutor_reviews",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorRequestId: int("tutorRequestId").notNull().references(() => tutorRequests.id),
+    tutorId: varchar("tutorId", { length: 32 }).notNull().references(() => tutors.id),
+    guardianUserId: int("guardianUserId").notNull().references(() => users.id),
+    rating: int("rating").notNull(),
+    comment: varchar("comment", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("tutor_reviews_request_unique").on(table.tutorRequestId),
+    index("tutor_reviews_tutor_idx").on(table.tutorId),
+  ]
+);
+export type TutorReview = typeof tutorReviews.$inferSelect;

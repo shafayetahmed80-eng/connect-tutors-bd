@@ -87,7 +87,7 @@ describe("Public Guardian and Tutor account access", () => {
     expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
   });
 
-  it("shows email-or-mobile sign-in, password visibility, and safe WhatsApp recovery", async () => {
+  it("shows email-or-mobile sign-in, password visibility, and the SMS-code password reset", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);
 
@@ -97,8 +97,8 @@ describe("Public Guardian and Tutor account access", () => {
     await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(password.type).toBe("text");
 
-    const recoveryLink = screen.getByRole("link", { name: "Need help signing in?" });
-    expect(recoveryLink.getAttribute("href")).toContain("wa.me/8801516131411");
+    const recoveryLink = screen.getByRole("link", { name: "Forgot password?" });
+    expect(recoveryLink.getAttribute("href")).toBe("/forgot-password?role=guardian");
     expect(screen.queryByText(/For password recovery/)).toBeNull();
     expect(screen.queryByRole("link", { name: /reset password/i })).toBeNull();
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();
@@ -187,6 +187,80 @@ describe("Public Guardian and Tutor account access", () => {
     expect(guardian.textContent).toContain("Select and login as a Guardian/Student");
     expect(tutor.firstElementChild!.textContent).toBe("Tutor");
     expect(tutor.textContent).toContain("Select and login as a Tutor");
+  });
+
+  it("pops the selected role's icon to the accent colour and back to muted when the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+    const guardianIcon = guardian.querySelector("svg")!;
+    const tutorIcon = tutor.querySelector("svg")!;
+
+    // Guardian is the default choice: its icon is popped, Tutor's is idle.
+    expect(guardianIcon.getAttribute("class")).toContain("text-j-accent");
+    expect(guardianIcon.getAttribute("class")).toContain("scale-110");
+    expect(tutorIcon.getAttribute("class")).toContain("text-j-ink-muted");
+    expect(tutorIcon.getAttribute("class")).toContain("scale-100");
+
+    await user.click(tutor);
+
+    expect(tutorIcon.getAttribute("class")).toContain("text-j-accent");
+    expect(tutorIcon.getAttribute("class")).toContain("scale-110");
+    expect(guardianIcon.getAttribute("class")).toContain("text-j-ink-muted");
+    expect(guardianIcon.getAttribute("class")).toContain("scale-100");
+  });
+
+  it("carries hover-lift and press-down feedback classes on both cards", () => {
+    render(<AuthPage />);
+
+    for (const name of ["Select Guardian account", "Select Tutor account"]) {
+      const card = screen.getByRole("radio", { name });
+      expect(card.className).toContain("hover:-translate-y-0.5");
+      expect(card.className).toContain("active:scale-[0.98]");
+    }
+  });
+
+  it("pops a check badge into the selected card's corner and moves it when the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+    const guardianBadge = guardian.lastElementChild!;
+    const tutorBadge = tutor.lastElementChild!;
+
+    // Guardian is the default choice: its badge is popped in, Tutor's is hidden but present.
+    expect(guardianBadge.className).toContain("scale-100");
+    expect(guardianBadge.className).toContain("opacity-100");
+    expect(tutorBadge.className).toContain("scale-50");
+    expect(tutorBadge.className).toContain("opacity-0");
+
+    await user.click(tutor);
+
+    expect(tutorBadge.className).toContain("scale-100");
+    expect(tutorBadge.className).toContain("opacity-100");
+    expect(guardianBadge.className).toContain("scale-50");
+    expect(guardianBadge.className).toContain("opacity-0");
+  });
+
+  it("pulses a halo ring only on the selected card, fresh each time the choice changes", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+
+    const guardian = screen.getByRole("radio", { name: "Select Guardian account" });
+    const tutor = screen.getByRole("radio", { name: "Select Tutor account" });
+
+    // Guardian is the default choice: it gets the halo, Tutor gets none at all (not just hidden).
+    expect(guardian.querySelector(".sign-in-role-halo")).not.toBeNull();
+    expect(tutor.querySelector(".sign-in-role-halo")).toBeNull();
+
+    await user.click(tutor);
+
+    // A fresh element, not the same one made visible, so the pulse restarts from its first frame.
+    expect(tutor.querySelector(".sign-in-role-halo")).not.toBeNull();
+    expect(guardian.querySelector(".sign-in-role-halo")).toBeNull();
   });
 
   it("keeps the chosen role on the sign-in button", async () => {

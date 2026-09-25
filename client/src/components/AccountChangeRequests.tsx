@@ -10,6 +10,7 @@ import {
   type AccountChangeType,
 } from "@shared/account-change-requests";
 import { SettingValue, type AccountSettingsItem } from "@/components/AccountSettings";
+import { PhoneCodeField, useSecondsUntil } from "@/components/registrationFields";
 
 type OwnRequest = {
   id: number;
@@ -72,18 +73,23 @@ const inputClass = "h-11 w-full rounded-xl border border-j-field-border bg-white
 
 /** Asking for a new name or mobile number. */
 export function ValueChangeRequest({ changes, type, label, current }: { changes: AccountChanges; type: "name" | "mobile"; label: string; current: string | null }) {
+  if (type === "mobile") return <MobileChangeRequest changes={changes} label={label} current={current} />;
+  return <NameChangeRequest changes={changes} label={label} current={current} />;
+}
+
+function NameChangeRequest({ changes, label, current }: { changes: AccountChanges; label: string; current: string | null }) {
   const [value, setValue] = useState("");
-  const last = changes.latest(type);
+  const last = changes.latest("name");
   const ready = value.trim().length >= 2;
   return <div className="space-y-4">
     <SettingValue label={`Current ${label.toLowerCase()}`} value={current ?? ""} />
     {last?.status === "pending"
-      ? <WaitingRequest changes={changes} type={type} text={`Requested: ${last.requestedValue ?? ""}`} />
+      ? <WaitingRequest changes={changes} type="name" text={`Requested: ${last.requestedValue ?? ""}`} />
       : <>
           {last?.status === "declined" ? <DeclinedNote reason={last.declineReason} /> : null}
-          <form className="grid max-w-xl gap-3" onSubmit={event => { event.preventDefault(); changes.request.mutate({ type, value: value.trim() }, { onSuccess: () => setValue("") }); }}>
+          <form className="grid max-w-xl gap-3" onSubmit={event => { event.preventDefault(); changes.request.mutate({ type: "name", value: value.trim() }, { onSuccess: () => setValue("") }); }}>
             <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">New {label.toLowerCase()}
-              <input value={value} onChange={event => setValue(event.target.value)} maxLength={type === "mobile" ? 16 : ACCOUNT_CHANGE_NAME_MAX} inputMode={type === "mobile" ? "tel" : "text"} autoComplete={type === "mobile" ? "tel" : "name"} className={inputClass} />
+              <input value={value} onChange={event => setValue(event.target.value)} maxLength={ACCOUNT_CHANGE_NAME_MAX} inputMode="text" autoComplete="name" className={inputClass} />
             </label>
             <Button type="submit" disabled={changes.busy || !ready} className="w-fit rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">
               <Send size={15} aria-hidden={true} /> {changes.request.isPending ? "Sending…" : "Send request"}
@@ -93,6 +99,71 @@ export function ValueChangeRequest({ changes, type, label, current }: { changes:
   </div>;
 }
 
+/**
+ * A new mobile is proved before it is asked for: "Send code" texts a 4-digit
+ * code to it, and the request goes to the Admin only with that code.
+ */
+function MobileChangeRequest({ changes, label, current }: { changes: AccountChanges; label: string; current: string | null }) {
+  const [value, setValue] = useState("");
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [resendAt, setResendAt] = useState(0);
+  const resendInSeconds = useSecondsUntil(resendAt);
+  const sendCode = trpc.account.sendMobileChangeCode.useMutation();
+  const last = changes.latest("mobile");
+  const ready = value.trim().length >= 2;
+
+  const requestCode = () => {
+    setCodeError("");
+    sendCode.mutate({ value: value.trim() }, {
+      onSuccess: result => { setCodeSentTo(result.sentTo); setResendAt(Date.now() + result.resendAfterSeconds * 1000); },
+      onError: error => { if (codeSentTo) setCodeError(error.message); else toast.error(error.message); },
+    });
+  };
+  const forgetCode = () => { setCodeSentTo(null); setCode(""); setCodeError(""); };
+  const sendRequest = () => {
+    if (!/^\d{4}$/.test(code)) { setCodeError("Enter the 4-digit code sent to the new number."); return; }
+    changes.request.mutate({ type: "mobile", value: value.trim(), phoneCode: code }, {
+      onSuccess: () => { setValue(""); forgetCode(); },
+      onError: error => {
+        const field = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors?.phoneCode?.[0];
+        if (field) setCodeError(field);
+      },
+    });
+  };
+
+  return <div className="space-y-4">
+    <SettingValue label={`Current ${label.toLowerCase()}`} value={current ?? ""} />
+    {last?.status === "pending"
+      ? <WaitingRequest changes={changes} type="mobile" text={`Requested: ${last.requestedValue ?? ""}`} />
+      : <>
+          {last?.status === "declined" ? <DeclinedNote reason={last.declineReason} /> : null}
+          <form className="grid max-w-xl gap-3" onSubmit={event => { event.preventDefault(); if (codeSentTo) sendRequest(); else requestCode(); }}>
+            <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">New {label.toLowerCase()}
+              <input value={value} onChange={event => { setValue(event.target.value); if (codeSentTo) forgetCode(); }} maxLength={16} inputMode="tel" autoComplete="tel" className={inputClass} />
+            </label>
+            {codeSentTo ? <PhoneCodeField
+              id="mobile-change-code"
+              label="Verification code"
+              sentTo={`Sent to ${codeSentTo}`}
+              value={code}
+              onChange={next => { setCode(next); setCodeError(""); }}
+              error={codeError || undefined}
+              resendInSeconds={resendInSeconds}
+              resending={sendCode.isPending}
+              onResend={requestCode}
+              resendLabel="Send a new code"
+              onChangeNumber={forgetCode}
+              changeNumberLabel="Change number"
+            /> : null}
+            <Button type="submit" disabled={changes.busy || sendCode.isPending || !ready} className="w-fit rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">
+              <Send size={15} aria-hidden={true} /> {codeSentTo ? (changes.request.isPending ? "Sending…" : "Send request") : (sendCode.isPending ? "Sending code…" : "Send code")}
+            </Button>
+          </form>
+        </>}
+  </div>;
+}
 /** The Guardian's "verify me": sent once both NID sides are on the profile. */
 export function VerificationRequest({ changes, verified, nidReady }: { changes: AccountChanges; verified: boolean; nidReady: boolean }) {
   const last = changes.latest("verification");

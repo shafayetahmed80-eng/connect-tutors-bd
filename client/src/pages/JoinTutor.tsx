@@ -1,7 +1,7 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { fieldGrid, fieldLabel, filledField, primaryButton } from "@/components/journeyField";
-import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, RequiredMark, SignInPrompt } from "@/components/registrationFields";
+import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { rememberSignInRole } from "@/lib/signInRoleMemory";
@@ -30,7 +30,7 @@ const initialForm = {
 };
 
 type TutorRegistrationForm = typeof initialForm;
-type TutorRegistrationErrorKey = keyof TutorRegistrationForm | "agreed";
+type TutorRegistrationErrorKey = keyof TutorRegistrationForm | "agreed" | "phoneCode";
 type TutorRegistrationErrors = Partial<Record<TutorRegistrationErrorKey, string>>;
 
 export const TUTOR_SIGN_IN_HREF = "/auth?role=tutor";
@@ -71,6 +71,12 @@ export default function JoinTutor() {
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const registerTutor = trpc.auth.registerTutor.useMutation();
+  const sendPhoneCode = trpc.auth.sendTutorPhoneCode.useMutation();
+  // Set once a code has gone out: the number it went to, and when another may be asked for.
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [resendAt, setResendAt] = useState(0);
+  const resendInSeconds = useSecondsUntil(resendAt);
   const utils = trpc.useUtils();
   const [form, setForm] = useState(initialForm);
   const cityCatalog = trpc.catalog.searchGuardianLocations.useQuery({ query: "", limit: 50, types: ["city"] });
@@ -98,6 +104,39 @@ export default function JoinTutor() {
   const update = <Key extends keyof TutorRegistrationForm>(key: Key, value: TutorRegistrationForm[Key]) => {
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: undefined }));
+    // A code proves one number; changing the number means a new code.
+    if (key === "phone" && codeSentTo) forgetCode();
+  };
+
+  const forgetCode = () => {
+    setCodeSentTo(null);
+    setPhoneCode("");
+    setFieldErrors((current) => ({ ...current, phoneCode: undefined }));
+  };
+
+  /** Sends (or re-sends) the SMS code; false when it could not go out. */
+  const requestPhoneCode = async (phone: string) => {
+    setSubmitError("");
+    try {
+      const result = await sendPhoneCode.mutateAsync({ phone });
+      setCodeSentTo(phone);
+      setResendAt(Date.now() + result.resendAfterSeconds * 1000);
+      setFieldErrors((current) => ({ ...current, phoneCode: undefined }));
+      window.requestAnimationFrame(() => document.getElementById("phoneCode")?.focus());
+      return true;
+    } catch (cause) {
+      const trpcError = cause instanceof TRPCClientError ? cause : null;
+      const message = trpcError?.message?.trim() || "The code could not be sent right now. Please try again in a few minutes.";
+      if (trpcError?.data?.code === "CONFLICT" || trpcError?.data?.code === "BAD_REQUEST") {
+        setFieldErrors((current) => ({ ...current, phone: message }));
+        focusFirstError({ phone: message });
+      } else if (codeSentTo) {
+        setFieldErrors((current) => ({ ...current, phoneCode: message }));
+      } else {
+        setSubmitError(message);
+      }
+      return false;
+    }
   };
 
   const submitRegistration = async (event: FormEvent<HTMLFormElement>) => {
@@ -108,6 +147,19 @@ export default function JoinTutor() {
 
     if (Object.keys(errors).length) {
       focusFirstError(errors);
+      return;
+    }
+
+    // First press sends the SMS code; the account is only created with it.
+    const phone = formatBangladeshMobile(form.phone);
+    if (codeSentTo !== phone) {
+      await requestPhoneCode(phone);
+      return;
+    }
+    if (!/^\d{4}$/.test(phoneCode)) {
+      const message = "Enter the 4-digit code sent to your mobile.";
+      setFieldErrors((current) => ({ ...current, phoneCode: message }));
+      focusFirstError({ phoneCode: message });
       return;
     }
 
@@ -123,6 +175,7 @@ export default function JoinTutor() {
         cityId: form.cityId,
         locationId: form.locationId,
         termsAccepted: agreed,
+        phoneCode,
       });
       accountCreated = true;
       // Only persist the profile pre-fill once the account actually exists — a
@@ -166,7 +219,7 @@ export default function JoinTutor() {
       if (zodFieldErrors && Object.keys(zodFieldErrors).length) {
         const fieldByServerName: Partial<Record<string, TutorRegistrationErrorKey>> = {
           name: "name", email: "contactEmail", phone: "phone", password: "password",
-          confirmPassword: "confirmPassword", cityId: "cityId", locationId: "locationId",
+          confirmPassword: "confirmPassword", cityId: "cityId", locationId: "locationId", phoneCode: "phoneCode",
         };
         const mapped: TutorRegistrationErrors = {};
         for (const [serverField, messages] of Object.entries(zodFieldErrors)) {
@@ -234,11 +287,27 @@ export default function JoinTutor() {
               <RegistrationFieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" slotId="tutor-registration.field.city" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} /></RegistrationFieldError>
               <RegistrationFieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" slotId="tutor-registration.field.location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} /></RegistrationFieldError>
             </div>
+            {codeSentTo ? <div className="mt-6 rounded-xl border border-j-border bg-j-surface-sunken p-4">
+              <PhoneCodeField
+                id="phoneCode"
+                label={resolveSlot("tutor-registration.field.phoneCode", "Verification code")}
+                sentTo={`Sent to ${codeSentTo}`}
+                value={phoneCode}
+                onChange={(value) => { setPhoneCode(value); setFieldErrors((current) => ({ ...current, phoneCode: undefined })); }}
+                error={fieldErrors.phoneCode}
+                resendInSeconds={resendInSeconds}
+                resending={sendPhoneCode.isPending}
+                onResend={() => { void requestPhoneCode(codeSentTo); }}
+                resendLabel="Send a new code"
+                onChangeNumber={() => { forgetCode(); window.requestAnimationFrame(() => document.getElementById("phone")?.focus()); }}
+                changeNumberLabel="Change number"
+              />
+            </div> : null}
             <RegistrationFieldError id="agreed-error" message={fieldErrors.agreed}><PolicyConsent id="agreed" checked={agreed} onChange={(checked) => { setAgreed(checked); setFieldErrors((current) => ({ ...current, agreed: undefined })); }} /></RegistrationFieldError>
             {submitError ? <p role="alert" className="mt-4 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{submitError}</p> : null}
             <div className={registrationFooter}>
               <SignInPrompt href={TUTOR_SIGN_IN_HREF} />
-              <button type="submit" disabled={registerTutor.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : <><SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" /></>}</button>
+              <button type="submit" disabled={registerTutor.isPending || sendPhoneCode.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : sendPhoneCode.isPending && !codeSentTo ? <><LoaderCircle className="animate-spin" size={17} /> Sending code…</> : codeSentTo ? <SiteText slotId="button-section.tutorRegistration.verify" fallback="Verify and create account" /> : <SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" />}</button>
             </div>
           </section>
         </form>

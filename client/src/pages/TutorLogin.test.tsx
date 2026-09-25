@@ -181,11 +181,11 @@ describe("Tutor sign-in transition", () => {
     expect(loginAccount).toHaveBeenCalledWith({ role: "tutor", identifier: "01712345678", password: "correct-password" });
   });
 
-  it("offers WhatsApp password recovery instead of an email reset link", () => {
+  it("offers the SMS-code password reset instead of an email reset link", () => {
     render(<TutorLogin />);
 
-    const help = screen.getByRole("link", { name: "Need help signing in?" });
-    expect(help.getAttribute("href")).toContain("wa.me/8801516131411");
+    const help = screen.getByRole("link", { name: "Forgot password?" });
+    expect(help.getAttribute("href")).toBe("/forgot-password?role=tutor");
     expect(screen.queryByText(/For password recovery/)).toBeNull();
   });
 });
