@@ -8,6 +8,7 @@ import {
   type LocationType,
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
+import { findSiteContentSlot, normalizeSiteContactNumber } from "@shared/site-content";
 import type { AccountChangeRole, AccountChangeStatus, AccountChangeType } from "@shared/account-change-requests";
 import { accountChangeDecisionNotice, type AccountChangeContext, type AccountChangeDecisionRefusal } from "./account-change-requests";
 import { alias } from "drizzle-orm/mysql-core";
@@ -2995,6 +2996,46 @@ export async function createConfirmationLetterDraft(input: { requestId: number; 
   });
 }
 
+/** The support number the site shows, as last set on the Dynamic Section, for the letter's letterhead. */
+async function getSiteContactNumber() {
+  const slotId = "site.contact.whatsapp";
+  const stored = (await listSiteContentOverrides("site")).find(row => row.slotId === slotId)?.text?.trim();
+  return normalizeSiteContactNumber(stored || findSiteContentSlot(slotId)?.defaultText || "");
+}
+
+/**
+ * Draws every issued and superseded letter again in the current design, from
+ * the snapshot it was issued with: the same content, Letter ID and issue date.
+ * Only the drawing changes. Run once with
+ * `pnpm exec tsx scripts/rerender-confirmation-letters.ts`.
+ */
+export async function rerenderConfirmationLetters() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const letters = await database.select({
+    id: confirmationLetters.id,
+    tutorRequestId: confirmationLetters.tutorRequestId,
+    letterNumber: confirmationLetters.letterNumber,
+    version: confirmationLetters.version,
+    issuedAt: confirmationLetters.issuedAt,
+    contentSnapshot: confirmationLetters.contentSnapshot,
+  }).from(confirmationLetters).where(and(
+    inArray(confirmationLetters.status, ["issued", "superseded"]),
+    isNotNull(confirmationLetters.pdfStorageKey),
+  ));
+  const contactNumber = await getSiteContactNumber();
+  let redrawn = 0;
+  for (const letter of letters) {
+    if (!letter.issuedAt) continue;
+    const snapshot = parseConfirmationLetterSnapshot(letter.contentSnapshot);
+    const pdf = await renderConfirmationLetterPdf({ ...snapshot, letterNumber: letter.letterNumber, version: letter.version, issuedAt: letter.issuedAt }, { contactNumber });
+    const uploaded = await storagePut(`confirmation-letters/request-${letter.tutorRequestId}/${letter.letterNumber}.pdf`, pdf, "application/pdf");
+    await database.update(confirmationLetters).set({ pdfStorageKey: uploaded.key }).where(eq(confirmationLetters.id, letter.id));
+    redrawn += 1;
+  }
+  return { redrawn, total: letters.length };
+}
+
 /** Issues a reviewed draft as an immutable PDF and creates private Guardian/Tutor notifications. */
 export async function issueConfirmationLetter(input: {
   letterId: number;
@@ -3029,7 +3070,7 @@ export async function issueConfirmationLetter(input: {
     agreedFeeMinimum: input.agreedFeeMinimum,
     agreedFeeMaximum: input.agreedFeeMaximum,
   };
-  const pdf = await renderConfirmationLetterPdf(document);
+  const pdf = await renderConfirmationLetterPdf(document, { contactNumber: await getSiteContactNumber() });
   const uploaded = await storagePut(`confirmation-letters/request-${draft.tutorRequestId}/${draft.letterNumber}.pdf`, pdf, "application/pdf");
   const issuedSnapshot = JSON.stringify({ ...snapshot, agreedStartDate: input.agreedStartDate, agreedFeeMinimum: input.agreedFeeMinimum, agreedFeeMaximum: input.agreedFeeMaximum });
 
