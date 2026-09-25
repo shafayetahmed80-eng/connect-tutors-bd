@@ -1045,6 +1045,34 @@ export const appRouter = router({
       auditAuth("login_success", { role: input.role, ip, identifier: input.identifier });
       return { success: true, user: toClientAuthIdentity(user), tutorPortalToken } as const;
     }),
+    sendPasswordResetCode: publicProcedure.input(z.object({
+      role: z.enum(["guardian", "tutor"]),
+      phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number."),
+    })).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+      ipRegistrationRateLimiter.record(`reg:${ip}`);
+      // The same answer whether or not an account uses the number, so this
+      // cannot be used to find out who has one. Only a real account gets an SMS.
+      const account = await db.findActivePasswordAccountByPhone(input.role, input.phone);
+      if (!account) return { success: true as const, resendAfterSeconds: PHONE_CODE_RESEND_MS / 1000, expiresInSeconds: PHONE_CODE_TTL_MS / 1000 };
+      return sendPhoneVerificationCode({ ip, phone: input.phone, purpose: "password_reset", role: input.role, language: "en" });
+    }),
+    resetPasswordWithCode: publicProcedure.input(z.object({
+      role: z.enum(["guardian", "tutor"]),
+      phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number."),
+      code: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your mobile."),
+      password: z.string().min(8, "Password must be at least 8 characters.").max(128, "Password must be 128 characters or fewer."),
+      confirmPassword: z.string().max(128),
+    }).refine(value => value.password === value.confirmPassword, { path: ["confirmPassword"], message: "Passwords do not match." })).mutation(async ({ ctx, input }) => {
+      const ip = getRequestIp(ctx);
+      await checkPhoneVerification({ ip, phone: input.phone, code: input.code, purpose: "password_reset", role: input.role, language: "en", consume: true });
+      const account = await db.findActivePasswordAccountByPhone(input.role, input.phone);
+      if (!account) throw new TRPCError({ code: "BAD_REQUEST", message: "This account can no longer be reset. Contact Connect Tutors support on WhatsApp." });
+      await db.setPasswordAfterPhoneReset({ userId: account.id, passwordHash: await db.hashPassword(input.password) });
+      auditAuth("password_reset_completed", { role: input.role, ip, identifier: input.phone, reason: "sms-code" });
+      return { role: input.role };
+    }),
     checkPasswordResetLink: publicProcedure.input(z.object({ token: passwordResetTokenSchema })).query(async ({ input }) => {
       const state = await db.getPasswordResetLink(hashAdminInviteToken(input.token, ENV.cookieSecret));
       return state.status === "valid" ? { status: state.status, role: state.role, name: state.name } : { status: state.status };

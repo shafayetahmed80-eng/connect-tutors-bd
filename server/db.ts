@@ -585,6 +585,35 @@ export async function isTutorPhoneRegistered(phone: string) {
   return Boolean(existing[0]);
 }
 
+/** The active Guardian or Tutor account that signs in with this mobile, if any - for the SMS password reset. */
+export async function findActivePasswordAccountByPhone(role: "guardian" | "tutor", phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const loginPhone = normalizeBangladeshMobile(phone);
+  const account = (await database
+    .select({ id: users.id, accountStatus: users.accountStatus })
+    .from(users)
+    .where(and(eq(users.role, role), eq(users.loginPhone, loginPhone)))
+    .limit(1))[0];
+  return account && account.accountStatus === "active" ? { id: account.id } : null;
+}
+
+/**
+ * Sets a new password after an SMS-code reset: open Tutor portal tabs are
+ * signed out and any Admin-issued reset link still open for the account is
+ * revoked, so the old ways back in all close together.
+ */
+export async function setPasswordAfterPhoneReset(input: { userId: number; passwordHash: string; now?: Date }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const now = input.now ?? new Date();
+  await database.transaction(async tx => {
+    await tx.update(users).set({ passwordHash: input.passwordHash }).where(eq(users.id, input.userId));
+    await tx.update(tutorPortalSessions).set({ revokedAt: now }).where(and(eq(tutorPortalSessions.userId, input.userId), isNull(tutorPortalSessions.revokedAt)));
+    await tx.update(passwordResetLinks).set({ revokedAt: now }).where(and(eq(passwordResetLinks.userId, input.userId), isNull(passwordResetLinks.usedAt), isNull(passwordResetLinks.revokedAt)));
+  });
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();

@@ -79,7 +79,7 @@ export default function TutorLogin() {
     {needsTabReauth && !signedOutSuccessfully ? <p role="status" className="mt-6 rounded-xl border border-j-border bg-j-accent-wash px-4 py-3 text-sm font-semibold leading-6 text-j-ink-soft">For your security, each browser tab signs in separately. Please sign in again to open your Tutor Dashboard here.</p> : null}
     {isEnteringTutorWorkspace
       ? <div className="mt-8"><TutorWorkspaceTransition /></div>
-      : <SignInForm idPrefix="tutor-login" identifier={identifier} onIdentifier={setIdentifier} password={password} onPassword={setPassword} error={error} pending={loginAccount.isPending} submitLabel={<SiteText slotId="button-section.signIn.tutorDashboard" />} onSubmit={submit} />}
+      : <SignInForm forgotHref="/forgot-password?role=tutor" idPrefix="tutor-login" identifier={identifier} onIdentifier={setIdentifier} password={password} onPassword={setPassword} error={error} pending={loginAccount.isPending} submitLabel={<SiteText slotId="button-section.signIn.tutorDashboard" />} onSubmit={submit} />}
     <p className="mt-6 text-center text-sm text-j-ink-muted">New Tutor? <Link href="/become-tutor" className="font-extrabold text-j-accent underline underline-offset-2">Create an account</Link></p>
   </SignInShell>;
 }

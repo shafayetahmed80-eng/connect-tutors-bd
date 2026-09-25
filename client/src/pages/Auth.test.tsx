@@ -87,7 +87,7 @@ describe("Public Guardian and Tutor account access", () => {
     expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
   });
 
-  it("shows email-or-mobile sign-in, password visibility, and safe WhatsApp recovery", async () => {
+  it("shows email-or-mobile sign-in, password visibility, and the SMS-code password reset", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<AuthPage />);
 
@@ -97,8 +97,8 @@ describe("Public Guardian and Tutor account access", () => {
     await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(password.type).toBe("text");
 
-    const recoveryLink = screen.getByRole("link", { name: "Need help signing in?" });
-    expect(recoveryLink.getAttribute("href")).toContain("wa.me/8801516131411");
+    const recoveryLink = screen.getByRole("link", { name: "Forgot password?" });
+    expect(recoveryLink.getAttribute("href")).toBe("/forgot-password?role=guardian");
     expect(screen.queryByText(/For password recovery/)).toBeNull();
     expect(screen.queryByRole("link", { name: /reset password/i })).toBeNull();
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();

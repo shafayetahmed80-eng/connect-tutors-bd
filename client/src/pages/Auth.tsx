@@ -210,6 +210,7 @@ export default function AuthPage() {
       </div>
 
       <SignInForm
+        forgotHref={`/forgot-password?role=${role}`}
         idPrefix="account"
         identifier={identifier}
         onIdentifier={setIdentifier}
