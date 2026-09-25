@@ -6097,6 +6097,37 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
   };
 }
 
+/**
+ * One announcement, sent to every Tutor the directory's own filters currently
+ * match - the same conditions the list and its tab counts already use, so
+ * "everyone this screen shows" is exactly who gets notified. A fresh
+ * broadcast id keeps each Tutor's row unique per send: unlike a lifecycle
+ * notice, a second announcement is a new message, not an update to the last
+ * one.
+ */
+export async function notifyTutorDirectory(
+  filters: Omit<AdminTutorDirectoryFilters, "page" | "pageSize">,
+  notice: { title: string; message: string },
+) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const conditions = getAdminTutorDirectoryConditions({ ...filters, page: 1, pageSize: 1 });
+  const matchQuery = database.select({ id: tutors.id }).from(tutors).leftJoin(locations, eq(tutors.locationId, locations.id));
+  const matches = conditions.length ? await matchQuery.where(and(...conditions)) : await matchQuery;
+  if (matches.length === 0) return { sent: 0 };
+
+  const broadcastId = crypto.randomUUID();
+  await database.insert(tutorNotifications).values(matches.map(match => ({
+    tutorId: match.id,
+    type: "announcement" as const,
+    title: notice.title,
+    message: notice.message,
+    actionPath: "/tutor/dashboard/notifications",
+    deduplicationKey: `announcement:${broadcastId}:${match.id}`,
+  })));
+  return { sent: matches.length };
+}
+
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };
 
 /**
