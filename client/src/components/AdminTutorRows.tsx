@@ -135,10 +135,18 @@ function MatchNotesDisclosure({ reasons, cautions }: { reasons: TutorMatchNote[]
   </div>;
 }
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions }: {
+/** A checkbox per row, for picking specific Tutors to notify rather than the whole filtered directory. */
+export type AdminTutorRowSelection = {
+  isSelected: (tutorId: string) => boolean;
+  onToggle: (tutorId: string) => void;
+};
+
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions, selection }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
+  /** Picking rows by hand, shown as a leading checkbox column. */
+  selection?: AdminTutorRowSelection;
   /**
    * The number the first row carries, when the list is numbered. The
    * applied-Tutor list is: there the row number is application order, so it
@@ -159,6 +167,16 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
 }) {
   const numbered = serialFrom !== undefined;
   const columns: RecordColumn<AdminTutorRow>[] = [
+    ...(selection ? [{
+      key: "select", label: "Select", place: "head" as const, headingHidden: true,
+      cell: (tutor: AdminTutorRow) => <input
+        type="checkbox"
+        checked={selection.isSelected(tutor.id)}
+        onChange={() => selection.onToggle(tutor.id)}
+        aria-label={`Select ${tutor.name}`}
+        className="size-4 accent-j-accent"
+      />,
+    }] : []),
     ...(numbered ? [{ key: "serial", label: "#", place: "head" as const, cell: (_tutor: AdminTutorRow, index: number) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> }] : []),
     { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
     { key: "name", label: "Name", place: "head", cell: tutor => <span className="font-bold text-j-ink">{tutor.name}</span> },
