@@ -3,14 +3,15 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { save, invalidate, reviewsQuery } = vi.hoisted(() => ({ save: vi.fn(), invalidate: vi.fn(), reviewsQuery: vi.fn() }));
+const { save, invalidate, reviewsQuery, setHidden } = vi.hoisted(() => ({ save: vi.fn(), invalidate: vi.fn(), reviewsQuery: vi.fn(), setHidden: vi.fn() }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ tutorReviews: { mine: { invalidate } } }),
+    useUtils: () => ({ tutorReviews: { mine: { invalidate }, forTutor: { invalidate } } }),
     tutorReviews: {
       save: { useMutation: (options: { onSuccess: () => void }) => ({ mutate: (input: unknown) => { save(input); options.onSuccess(); }, isPending: false }) },
       forTutor: { useQuery: () => reviewsQuery() },
+      setHidden: { useMutation: (options: { onSuccess: () => void }) => ({ mutate: (input: unknown) => { setHidden(input); options.onSuccess(); }, isPending: false }) },
     },
   },
 }));
@@ -80,5 +81,25 @@ describe("AdminTutorRatings", () => {
     reviewsQuery.mockReturnValue({ isLoading: false, isError: false, data: { summary: { average: null, count: 0 }, reviews: [] } });
     render(<AdminTutorRatings tutorId="t-1" />);
     expect(screen.getByText("No Guardian has rated this Tutor yet.")).toBeTruthy();
+  });
+
+  it("hides and unhides a review", () => {
+    reviewsQuery.mockReturnValue({ isLoading: false, isError: false, data: { summary: { average: 5, count: 1 }, reviews: [
+      { id: 1, requestId: 7, rating: 5, comment: "Excellent", updatedAt: "2026-09-20T10:00:00Z", guardianName: "Rina Akter", hidden: false },
+    ] } });
+    render(<AdminTutorRatings tutorId="t-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+    expect(setHidden).toHaveBeenCalledWith({ reviewId: 1, hidden: true });
+  });
+
+  it("marks a hidden review", () => {
+    reviewsQuery.mockReturnValue({ isLoading: false, isError: false, data: { summary: { average: null, count: 0 }, reviews: [
+      { id: 1, requestId: 7, rating: 5, comment: "Excellent", updatedAt: "2026-09-20T10:00:00Z", guardianName: "Rina Akter", hidden: true },
+    ] } });
+    render(<AdminTutorRatings tutorId="t-1" />);
+
+    expect(screen.getByText("Hidden")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Unhide" })).toBeTruthy();
   });
 });

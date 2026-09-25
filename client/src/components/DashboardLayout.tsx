@@ -182,19 +182,30 @@ const MAX_WIDTH = 480;
 export const DASHBOARD_SIDEBAR_MOTION_CLASS = "duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none";
 
 /**
- * The brand at the top of every panel's sidebar. Not a link: leaving a panel
- * for the public site goes through the sidebar's own sign-out prompt, and a
- * logo link would skip it. It still swings when pointed at.
+ * The brand at the top of every panel's sidebar. Never a link out to the
+ * public site - leaving a panel goes through the sidebar's own sign-out
+ * prompt, and a logo link would skip it. With `onClick` (Tutor and Guardian
+ * take the panel back to its own dashboard; Admin, without one, keeps the
+ * plain unclickable lockup) it becomes a button instead, still within the
+ * panel. It swings when pointed at either way.
  */
-export function SidebarBrand() {
+export function SidebarBrand({ onClick }: { onClick?: () => void }) {
   const swing = useCradleSwing();
+  const mark = <>
+    <BrandMark onAnimationEnd={swing.onAnimationEnd} />
+    <span className="brand-wordmark">
+      <strong>{brandWordmark.primary}</strong>
+      <em>{brandWordmark.secondary}</em>
+    </span>
+  </>;
+  if (onClick) return (
+    <button type="button" onClick={onClick} aria-label={brandWordmark.homeLabel} className="sb-brand pl-1 group-data-[collapsible=icon]:pl-0" {...swing.host}>
+      {mark}
+    </button>
+  );
   return (
     <div className="sb-brand pl-1 group-data-[collapsible=icon]:pl-0" {...swing.host}>
-      <BrandMark onAnimationEnd={swing.onAnimationEnd} />
-      <span className="brand-wordmark">
-        <strong>{brandWordmark.primary}</strong>
-        <em>{brandWordmark.secondary}</em>
-      </span>
+      {mark}
     </div>
   );
 }
@@ -289,6 +300,7 @@ export default function DashboardLayout({
   workspaceHeader,
   onTutorSignOutSuccess,
   sidebarPanel,
+  homePath,
 }: {
   children: React.ReactNode;
   navigationItems?: DashboardNavigationItem[];
@@ -300,6 +312,8 @@ export default function DashboardLayout({
   workspaceHeader?: WorkspaceHeaderIdentity;
   onTutorSignOutSuccess?: () => void | Promise<void>;
   sidebarPanel?: SidebarPanelId;
+  /** Where the sidebar's own logo takes this panel back to. Left out, the logo stays a plain, unclickable lockup (Admin). */
+  homePath?: string;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -364,6 +378,7 @@ export default function DashboardLayout({
         workspaceHeader={workspaceHeader}
         onTutorSignOutSuccess={onTutorSignOutSuccess}
         sidebarPanel={sidebarPanel}
+        homePath={homePath}
       >
         {children}
       </DashboardLayoutContent>
@@ -386,6 +401,7 @@ type DashboardLayoutContentProps = {
   onTutorSignOutSuccess?: () => void | Promise<void>;
   /** Which sidebar this is, so its labels and sizes can be Admin-edited. */
   sidebarPanel?: SidebarPanelId;
+  homePath?: string;
 };
 
 function DashboardLayoutContent({
@@ -400,6 +416,7 @@ function DashboardLayoutContent({
   workspaceHeader,
   onTutorSignOutSuccess,
   sidebarPanel,
+  homePath,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const resolveSlot = useSiteContentResolver();
@@ -546,6 +563,10 @@ function DashboardLayoutContent({
     setLocation(item.path);
   };
 
+  const handleBrandClick = homePath
+    ? () => handleNavigation({ icon: LayoutDashboard, label: "Dashboard", path: homePath })
+    : undefined;
+
   return (
     <>
       <div className="relative" ref={sidebarRef}>
@@ -565,7 +586,7 @@ function DashboardLayoutContent({
                 alone above the toggle. The chevron rotates 180° between states
                 so a glance says which way the next click goes. */}
             <SidebarHeader className="shrink-0 flex-row items-center justify-between gap-2 px-2 pb-1 pt-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center">
-              <SidebarBrand />
+              <SidebarBrand onClick={handleBrandClick} />
               <button
                 onClick={toggleSidebar}
                 className="sb-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"

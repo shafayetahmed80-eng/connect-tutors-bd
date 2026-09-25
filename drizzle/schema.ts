@@ -1625,6 +1625,8 @@ export const tutorNotificationTypeValues = [
   "payment",
   /** An Admin broadcast to a filtered set of Tutors from the directory - not tied to any one decision. */
   "announcement",
+  /** A Guardian rated them on a Confirmed tuition. */
+  "rating",
 ] as const;
 export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
 
@@ -2068,6 +2070,9 @@ export const tutorReviews = mysqlTable(
     guardianUserId: int("guardianUserId").notNull().references(() => users.id),
     rating: int("rating").notNull(),
     comment: varchar("comment", { length: 500 }),
+    /** Set when an Admin hides this review from averages and public profiles. The Guardian still sees and can change their own. */
+    hiddenAt: timestamp("hiddenAt"),
+    hiddenByAdminUserId: int("hiddenByAdminUserId").references(() => users.id),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },

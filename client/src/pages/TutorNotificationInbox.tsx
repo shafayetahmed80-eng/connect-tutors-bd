@@ -1,7 +1,7 @@
 import { LabelIcon, RecordIcon } from "@/components/recordIcons";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, ClipboardList, FileCheck2, Megaphone, Settings, UserRoundCog } from "lucide-react";
+import { BadgeCheck, ClipboardList, FileCheck2, Megaphone, Settings, Star, UserRoundCog } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ const TYPE_ICON = {
   appointment: BadgeCheck,
   confirmation_letter: FileCheck2,
   account_change: Settings,
+  rating: Star,
   announcement: Megaphone,
 } as const;
 

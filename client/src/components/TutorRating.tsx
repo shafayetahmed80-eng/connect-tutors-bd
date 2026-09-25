@@ -96,8 +96,13 @@ function StarRow({ rating }: { rating: number }) {
 
 /** The Admin's view of what Guardians said about a Tutor: the average, then every rating newest first. */
 export function AdminTutorRatings({ tutorId }: { tutorId: string }) {
+  const utils = trpc.useUtils();
   const query = trpc.tutorReviews.forTutor.useQuery({ tutorId });
   const reviews = query.data?.reviews ?? [];
+  const setHidden = trpc.tutorReviews.setHidden.useMutation({
+    onSuccess: () => { void utils.tutorReviews.forTutor.invalidate({ tutorId }); },
+    onError: error => toast.error(error.message),
+  });
   return <section aria-labelledby="tutor-ratings-title" className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 id="tutor-ratings-title" className="font-bold tracking-[-0.02em] text-j-ink">Ratings</h3>
@@ -107,12 +112,19 @@ export function AdminTutorRatings({ tutorId }: { tutorId: string }) {
       : query.isError ? <p role="alert" className="mt-3 text-sm font-semibold text-j-err">The ratings could not be loaded.</p>
       : !reviews.length ? <p className="mt-3 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft">No Guardian has rated this Tutor yet.</p>
       : <ul className="mt-3 divide-y divide-j-border">
-        {reviews.map(review => <li key={review.id} className="py-3">
+        {reviews.map(review => <li key={review.id} className={`py-3 ${review.hidden ? "opacity-60" : ""}`}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-j-ink-muted">
             <StarRow rating={review.rating} />
             <span className="font-semibold text-j-ink-strong">{review.guardianName || "Guardian"}</span>
             <span>Job ID {jobIdForRequest(review.requestId)}</span>
             <span>{new Date(review.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+            {review.hidden ? <span className="rounded-full bg-j-err-wash px-2 py-0.5 font-semibold text-j-err">Hidden</span> : null}
+            <button
+              type="button"
+              disabled={setHidden.isPending}
+              onClick={() => setHidden.mutate({ reviewId: review.id, hidden: !review.hidden })}
+              className="ml-auto text-xs font-bold text-j-accent hover:underline disabled:opacity-50"
+            >{review.hidden ? "Unhide" : "Hide"}</button>
           </div>
           {review.comment ? <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-j-ink">{review.comment}</p> : null}
         </li>)}

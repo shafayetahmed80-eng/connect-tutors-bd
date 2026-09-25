@@ -137,6 +137,19 @@ describe("why this Tutor", () => {
     expect(capped.score).toBe(atCap.score);
   });
 
+  it("scales the rating bonus with the average, and gives none before any rating", () => {
+    const unrated = scoreTutorForRequest(tutor(), request);
+    expect(unrated.reasons.some(r => r.kind === "rating")).toBe(false);
+    expect(unrated.cautions.some(c => c.kind === "rating")).toBe(false);
+
+    const fiveStars = scoreTutorForRequest(tutor({ rating: { average: 5, count: 4 } }), request);
+    expect(fiveStars.reasons.find(r => r.kind === "rating")?.label).toBe("Rated 5.0 (4)");
+    expect(fiveStars.score).toBe(13 + defaultMatchingWeights.rating);
+
+    const threeStars = scoreTutorForRequest(tutor({ rating: { average: 3, count: 2 } }), request);
+    expect(threeStars.score).toBe(13 + (3 / 5) * defaultMatchingWeights.rating);
+  });
+
   it("lets an Owner's weights change what a point is worth without changing what it means", () => {
     const heavyInstitute = { ...defaultMatchingWeights, institute: 10, subject: 0 };
     const ranked = scoreTutorForRequest(tutor({ featuredInstitute: true }), request, heavyInstitute);

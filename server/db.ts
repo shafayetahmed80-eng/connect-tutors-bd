@@ -140,6 +140,7 @@ import {
 import type { JobPaymentStatus } from "@shared/job-payment-status";
 import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSummary, type CancellationReason, type ChargeTerms, type SettlementDisposition } from "@shared/platform-charge";
 import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
+import { tutorRatedNotification } from "./tutor-rating-notification";
 import {
   buildOnlineTuitionNationwideRefinement,
   buildTutorProfileSubmissionRefinement,
@@ -635,10 +636,20 @@ export async function saveTutorReview(input: { guardianUserId: number; requestId
     .limit(1))[0];
   if (!request || request.guardianUserId !== input.guardianUserId) return { saved: false as const, reason: "not_found" as const };
   if (!request.tutorId || !request.appointmentConfirmedAt) return { saved: false as const, reason: "not_confirmed" as const };
-  await database
-    .insert(tutorReviews)
-    .values({ tutorRequestId: request.id, tutorId: request.tutorId, guardianUserId: input.guardianUserId, rating: input.rating, comment: input.comment })
-    .onDuplicateKeyUpdate({ set: { tutorId: request.tutorId, rating: input.rating, comment: input.comment } });
+  const tutorId = request.tutorId;
+  await database.transaction(async tx => {
+    await tx
+      .insert(tutorReviews)
+      .values({ tutorRequestId: request.id, tutorId, guardianUserId: input.guardianUserId, rating: input.rating, comment: input.comment })
+      .onDuplicateKeyUpdate({ set: { tutorId, rating: input.rating, comment: input.comment } });
+    await createTutorNotification(tx, {
+      tutorId,
+      type: "rating",
+      ...tutorRatedNotification(jobIdForRequest(request.id), input.rating),
+      actionPath: "/tutor/dashboard/profile",
+      deduplicationKey: `rating:${request.id}:${tutorId}`,
+    });
+  });
   return { saved: true as const };
 }
 
@@ -652,12 +663,24 @@ export async function listGuardianTutorReviews(guardianUserId: number) {
     .where(eq(tutorReviews.guardianUserId, guardianUserId));
 }
 
-/** Average and count of one Tutor's ratings. */
+/** Average and count of one Tutor's ratings - an Admin-hidden review counts toward neither. */
 export async function getTutorRatingSummary(tutorId: string) {
   const database = await getDb();
   if (!database) return summariseTutorRatings([]);
-  const rows = await database.select({ rating: tutorReviews.rating }).from(tutorReviews).where(eq(tutorReviews.tutorId, tutorId));
+  const rows = await database.select({ rating: tutorReviews.rating }).from(tutorReviews).where(and(eq(tutorReviews.tutorId, tutorId), isNull(tutorReviews.hiddenAt)));
   return summariseTutorRatings(rows.map(row => row.rating));
+}
+
+/** The same average, batched for many Tutors at once - Tutor Matching's rating signal. */
+async function getTutorRatingSummaries(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorIds: string[]) {
+  if (tutorIds.length === 0) return new Map<string, ReturnType<typeof summariseTutorRatings>>();
+  const rows = await database
+    .select({ tutorId: tutorReviews.tutorId, rating: tutorReviews.rating })
+    .from(tutorReviews)
+    .where(and(inArray(tutorReviews.tutorId, tutorIds), isNull(tutorReviews.hiddenAt)));
+  const byTutor = new Map<string, number[]>();
+  for (const row of rows) byTutor.set(row.tutorId, [...(byTutor.get(row.tutorId) ?? []), row.rating]);
+  return new Map(tutorIds.map(id => [id, summariseTutorRatings(byTutor.get(id) ?? [])]));
 }
 
 export async function getTutorRatingSummaryForUser(userId: number) {
@@ -667,16 +690,28 @@ export async function getTutorRatingSummaryForUser(userId: number) {
   return tutor ? getTutorRatingSummary(tutor.id) : summariseTutorRatings([]);
 }
 
-/** Every rating a Tutor has had, newest first, with the Guardian's name and Job ID - Admin only. */
+/** Every rating a Tutor has had, newest first, with the Guardian's name and Job ID - Admin only. A hidden one is still listed, so the Admin can unhide it. */
 export async function listTutorReviewsForAdmin(tutorId: string) {
   const database = await getDb();
   if (!database) return [];
-  return database
-    .select({ id: tutorReviews.id, requestId: tutorReviews.tutorRequestId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt, guardianName: users.name })
+  const rows = await database
+    .select({ id: tutorReviews.id, requestId: tutorReviews.tutorRequestId, rating: tutorReviews.rating, comment: tutorReviews.comment, updatedAt: tutorReviews.updatedAt, guardianName: users.name, hiddenAt: tutorReviews.hiddenAt })
     .from(tutorReviews)
     .innerJoin(users, eq(tutorReviews.guardianUserId, users.id))
     .where(eq(tutorReviews.tutorId, tutorId))
     .orderBy(desc(tutorReviews.updatedAt));
+  return rows.map(row => ({ ...row, hidden: row.hiddenAt !== null }));
+}
+
+/** An Admin hides an inappropriate or mistaken review from averages and public profiles, or restores one. */
+export async function setTutorReviewHidden(input: { adminUserId: number; reviewId: number; hidden: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(tutorReviews)
+    .set({ hiddenAt: input.hidden ? new Date() : null, hiddenByAdminUserId: input.hidden ? input.adminUserId : null })
+    .where(eq(tutorReviews.id, input.reviewId));
+  return { updated: Boolean(result[0].affectedRows) };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -2791,7 +2826,7 @@ export async function markAllTutorNotificationsRead(input: { tutorId: string }) 
 /** One decision, one row. A repeat of the same decision refreshes it rather than piling up. */
 async function createTutorNotification(tx: any, input: {
   tutorId: string;
-  type: "profile_moderation" | "interest_decision" | "appointment" | "confirmation_letter" | "account_change" | "payment";
+  type: "profile_moderation" | "interest_decision" | "appointment" | "confirmation_letter" | "account_change" | "payment" | "rating";
   title: string;
   message: string;
   actionPath: string;
@@ -6495,6 +6530,7 @@ async function getMatchingWeights(): Promise<MatchingWeights> {
     verified: limits["matching.weight.verified"],
     trackRecordPerConfirmed: limits["matching.weight.trackRecord"],
     trackRecordCap: limits["matching.trackRecordCap"],
+    rating: limits["matching.weight.rating"],
   };
 }
 
@@ -6581,10 +6617,11 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
 
   const enriched = await enrichAdminTutorDirectoryRows(database, rows);
 
-  const [weights, confirmedCounts, featuredInstitutes] = await Promise.all([
+  const [weights, confirmedCounts, featuredInstitutes, ratings] = await Promise.all([
     getMatchingWeights(),
     getConfirmedTuitionCounts(database, enriched.map(row => row.id)),
     getFeaturedInstituteNormalizedNames(database),
+    getTutorRatingSummaries(database, enriched.map(row => row.id)),
   ]);
 
   const requestBrief: MatchingTutorRequestBrief = {
@@ -6613,6 +6650,7 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
     verified: Boolean(row.verified),
     confirmedTuitionCount: confirmedCounts.get(row.id) ?? 0,
     featuredInstitute: row.instituteName ? featuredInstitutes.has(normalizeCatalogName(row.instituteName)) : false,
+    rating: ratings.get(row.id),
   }));
   const ranked = rankTutorsForRequest(candidates, requestBrief, emptyTutorMatchFilters, weights);
   const byId = new Map(enriched.map(row => [row.id, row]));

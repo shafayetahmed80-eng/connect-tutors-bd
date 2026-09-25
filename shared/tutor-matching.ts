@@ -46,6 +46,8 @@ export type MatchingTutorOption = {
   confirmedTuitionCount?: number;
   /** Whether this Tutor's institute is on the Owner's featured list. */
   featuredInstitute?: boolean;
+  /** The Tutor's average Guardian rating, when at least one exists. */
+  rating?: { average: number | null; count: number };
 };
 
 /**
@@ -65,6 +67,8 @@ export type MatchingWeights = {
   trackRecordPerConfirmed: number;
   /** Confirmed tuitions beyond this add no further points - a proven Tutor still loses to a stronger subject match. */
   trackRecordCap: number;
+  /** Full points at a 5-star average; scales down with it. No ratings yet earns none, never a caution. */
+  rating: number;
 };
 
 export const defaultMatchingWeights: MatchingWeights = {
@@ -78,6 +82,7 @@ export const defaultMatchingWeights: MatchingWeights = {
   verified: 2,
   trackRecordPerConfirmed: 2,
   trackRecordCap: 5,
+  rating: 3,
 };
 
 /** Only the parts of a request this ranking reads. */
@@ -93,7 +98,7 @@ export type MatchingTutorRequestBrief = {
   locationText: string;
 };
 
-export type TutorMatchNote = { kind: "subject" | "level" | "area" | "fee" | "mode" | "gender" | "institute" | "verified" | "trackRecord"; label: string };
+export type TutorMatchNote = { kind: "subject" | "level" | "area" | "fee" | "mode" | "gender" | "institute" | "verified" | "trackRecord" | "rating"; label: string };
 
 export type RankedMatchingTutor = {
   tutor: MatchingTutorOption;
@@ -232,6 +237,12 @@ export function scoreTutorForRequest(
   if (confirmedCount > 0) {
     score += Math.min(confirmedCount, weights.trackRecordCap) * weights.trackRecordPerConfirmed;
     reasons.push({ kind: "trackRecord", label: `${confirmedCount} tuition${confirmedCount === 1 ? "" : "s"} Confirmed` });
+  }
+
+  if (tutor.rating?.count) {
+    const average = tutor.rating.average ?? 0;
+    score += (average / 5) * weights.rating;
+    reasons.push({ kind: "rating", label: `Rated ${average.toFixed(1)} (${tutor.rating.count})` });
   }
 
   return { tutor, score, reasons, cautions, matchedSubjects };
