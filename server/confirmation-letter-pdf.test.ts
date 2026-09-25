@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatLetterTutor, renderConfirmationLetterPdf } from "./confirmation-letter-pdf";
+import { formatLetterTutor, renderConfirmationLetterPdf, splitScriptRuns } from "./confirmation-letter-pdf";
 
 describe("the Tutor line on a confirmation letter", () => {
   it("names the Tutor with the Tutor ID people know", () => {
@@ -37,5 +37,32 @@ describe("bilingual confirmation-letter PDF", () => {
     expect(pdf.length).toBeGreaterThan(1_000);
     expect(pdf.toString("latin1")).not.toContain("Private landmark");
     expect(pdf.toString("latin1")).not.toContain("guardian@example.com");
+    // The letterhead wordmark is set in the site logo's own face.
+    expect(pdf.toString("latin1")).toMatch(/\/BaseFont \/[A-Z]{6}\+Manrope/);
+  });
+});
+
+describe("mixed Bengali and English lines", () => {
+  // Each Noto Sans Bengali file holds one script, and pdfkit has no fallback:
+  // written in one font, the other script printed as empty boxes.
+  it("splits a line into English and Bengali runs, each for its own font", () => {
+    expect(splitScriptRuns("Tutor / টিউটর")).toEqual([
+      { bengali: false, text: "Tutor / " },
+      { bengali: true, text: "টিউটর" },
+    ]);
+  });
+
+  it("keeps spaces with the run they follow, so words are not split needlessly", () => {
+    expect(splitScriptRuns("অনুমোদিত Guardian, নির্ধারিত Tutor")).toEqual([
+      { bengali: true, text: "অনুমোদিত " },
+      { bengali: false, text: "Guardian, " },
+      { bengali: true, text: "নির্ধারিত " },
+      { bengali: false, text: "Tutor" },
+    ]);
+  });
+
+  it("leaves a one-script line whole", () => {
+    expect(splitScriptRuns("Issued by Connect Tutors")).toEqual([{ bengali: false, text: "Issued by Connect Tutors" }]);
+    expect(splitScriptRuns("এই চিঠির মাধ্যমে।")).toEqual([{ bengali: true, text: "এই চিঠির মাধ্যমে।" }]);
   });
 });
