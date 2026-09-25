@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
+import { formatLetterVerificationCode } from "@shared/confirmation-letter";
 import { formatPostedDate, formatTuitionType } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { formatSalaryAmount } from "@shared/salary-amount";
@@ -132,6 +134,8 @@ export const letterCopy = {
   issuer: "Connect Tutors Admin Team",
   electronic: "Issued electronically. No signature is needed.",
   draftMark: "DRAFT · NOT ISSUED",
+  verifyAt: "Check this letter at",
+  verifyWith: "with code",
 } as const;
 
 const BENGALI_CHARACTER = /[॒॑।॥ঀ-৿‌‍◌]/;
@@ -231,18 +235,42 @@ function drawRows(document: PDFKit.PDFDocument, rows: readonly LetterRow[], left
   return y;
 }
 
+/**
+ * A QR code drawn as vector squares, so it prints sharp at any size. The
+ * white page around it is its quiet zone; medium error correction still reads
+ * through a crease or a smudge.
+ */
+function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number, y: number, size: number) {
+  const { modules } = QRCode.create(text, { errorCorrectionLevel: "M" });
+  const cell = size / modules.size;
+  document.save().fillColor(colour.ink);
+  for (let row = 0; row < modules.size; row += 1) {
+    for (let column = 0; column < modules.size; column += 1) {
+      // A hair of overlap so neighbouring squares print as one solid block.
+      if (modules.get(row, column)) document.rect(x + column * cell, y + row * cell, cell + 0.05, cell + 0.05);
+    }
+  }
+  document.fill().restore();
+}
+
 function sectionLabel(document: PDFKit.PDFDocument, text: string, left: number, top: number) {
   document.font("Heavy").fontSize(7.5).fillColor(colour.blue).text(text.toUpperCase(), left, top, { characterSpacing: 1.1, lineBreak: false });
   return top + 15;
 }
 
-/** Builds an in-memory PDF; never accepts address, contact, student, or internal-note fields. */
 /**
- * `draft` marks an Admin's preview of a letter not yet issued: the same page,
- * with "DRAFT · NOT ISSUED" across it so a preview can never pass for the
- * real letter.
+ * Builds an in-memory PDF; never accepts address, contact, student, or
+ * internal-note fields.
+ *
+ * `verification` puts the letter's QR code and printed code beside the seal,
+ * so anyone holding it can check it on the site. `draft` marks an Admin's
+ * preview of a letter not yet issued: the same page, with "DRAFT · NOT
+ * ISSUED" across it so a preview can never pass for the real letter.
  */
-export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocument, options: { contactNumber: string; draft?: boolean }): Promise<Buffer> {
+export async function renderConfirmationLetterPdf(
+  letter: ConfirmationLetterDocument,
+  options: { contactNumber: string; draft?: boolean; verification?: { url: string; code: string } },
+): Promise<Buffer> {
   const content = buildConfirmationLetterContent(letter);
   const document = new PDFDocument({
     size: "A4",
@@ -307,7 +335,8 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
     // between its rows instead of pushing the seal into the footer.
     const footerTop = pageHeight - 46;
     const sealRadius = 30;
-    const signHeight = sealRadius * 2;
+    const qrSize = 62;
+    const signHeight = Math.max(sealRadius * 2, qrSize);
     const feeHeight = 42;
     document.font("Regular").fontSize(8.5);
     const termsHeight = document.heightOfString(letterCopy.terms, { width, lineGap: 2.5 });
@@ -333,13 +362,23 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
 
     // Sign-off sits just above the footer, or right under the terms on a long letter.
     const signTop = Math.max(y + 20, footerTop - 14 - signHeight);
-    document.font("Regular").fontSize(8.5).fillColor(colour.muted).text(letterCopy.issuedBy, left, signTop + 10, { lineBreak: false });
-    document.font("Heavy").fontSize(11.5).fillColor(colour.ink).text(letterCopy.issuer, left, signTop + 23, { lineBreak: false });
-    document.font("Regular").fontSize(8.5).fillColor(colour.muted).text(letterCopy.electronic, left, signTop + 41, { lineBreak: false });
+    const lineTop = options.verification ? signTop + 2 : signTop + 10;
+    document.font("Regular").fontSize(8.5).fillColor(colour.muted).text(letterCopy.issuedBy, left, lineTop, { lineBreak: false });
+    document.font("Heavy").fontSize(11.5).fillColor(colour.ink).text(letterCopy.issuer, left, lineTop + 13, { lineBreak: false });
+    document.font("Regular").fontSize(8.5).fillColor(colour.muted).text(letterCopy.electronic, left, lineTop + 31, { lineBreak: false });
 
     // A seal in place of a signature: the cradle inside a double ring.
     const sealX = right - sealRadius;
-    const sealY = signTop + sealRadius;
+    const sealY = signTop + signHeight / 2;
+
+    if (options.verification) {
+      // The code to check the letter with, in words for anyone without a
+      // camera, and as a QR code beside the seal for everyone else.
+      const checkAt = `${new URL(options.verification.url).host}/verify`;
+      document.font("Regular").fontSize(8).fillColor(colour.muted).text(`${letterCopy.verifyAt} ${checkAt} ${letterCopy.verifyWith} `, left, lineTop + 47, { continued: true, lineBreak: false });
+      document.font("Bold").fillColor(colour.ink).text(formatLetterVerificationCode(options.verification.code), { lineBreak: false });
+      drawQrCode(document, options.verification.url, right - sealRadius * 2 - 14 - qrSize, signTop + (signHeight - qrSize) / 2, qrSize);
+    }
     document.save().lineWidth(1.6).strokeColor(colour.blue).circle(sealX, sealY, sealRadius).stroke().restore();
     document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor(colour.blue).circle(sealX, sealY, sealRadius - 4).stroke().undash().restore();
     const sealUnit = 36 / 48;

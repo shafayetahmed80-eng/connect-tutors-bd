@@ -130,9 +130,10 @@ import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotificatio
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
-import { renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
+import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
+import { letterVerificationCode, letterVerificationUrl, matchesLetterVerificationCode } from "./confirmation-letter-verification";
 import {
   buildCombinedCityLocationOptions,
   type RegistrationLocationRow,
@@ -3031,6 +3032,11 @@ export async function createConfirmationLetterDraft(input: { requestId: number; 
   });
 }
 
+/** The QR link and printed code that let anyone holding a letter check it on the site. */
+function letterVerification(letterNumber: string) {
+  return { url: letterVerificationUrl(letterNumber), code: letterVerificationCode(letterNumber) };
+}
+
 /** The support number the site shows, as last set on the Dynamic Section, for the letter's letterhead. */
 async function getSiteContactNumber() {
   const slotId = "site.contact.whatsapp";
@@ -3063,7 +3069,7 @@ export async function rerenderConfirmationLetters() {
   for (const letter of letters) {
     if (!letter.issuedAt) continue;
     const snapshot = parseConfirmationLetterSnapshot(letter.contentSnapshot);
-    const pdf = await renderConfirmationLetterPdf({ ...snapshot, letterNumber: letter.letterNumber, version: letter.version, issuedAt: letter.issuedAt }, { contactNumber });
+    const pdf = await renderConfirmationLetterPdf({ ...snapshot, letterNumber: letter.letterNumber, version: letter.version, issuedAt: letter.issuedAt }, { contactNumber, verification: letterVerification(letter.letterNumber) });
     const uploaded = await storagePut(`confirmation-letters/request-${letter.tutorRequestId}/${letter.letterNumber}.pdf`, pdf, "application/pdf");
     await database.update(confirmationLetters).set({ pdfStorageKey: uploaded.key }).where(eq(confirmationLetters.id, letter.id));
     redrawn += 1;
@@ -3100,7 +3106,7 @@ export async function previewConfirmationLetterDraft(input: {
     agreedStartDate: input.agreedStartDate,
     agreedFeeMinimum: input.agreedFeeMinimum,
     agreedFeeMaximum: input.agreedFeeMaximum,
-  }, { contactNumber: await getSiteContactNumber(), draft: true });
+  }, { contactNumber: await getSiteContactNumber(), draft: true, verification: letterVerification(draft.letterNumber) });
   return {
     letterId: draft.id,
     letterNumber: draft.letterNumber,
@@ -3143,7 +3149,7 @@ export async function issueConfirmationLetter(input: {
     agreedFeeMinimum: input.agreedFeeMinimum,
     agreedFeeMaximum: input.agreedFeeMaximum,
   };
-  const pdf = await renderConfirmationLetterPdf(document, { contactNumber: await getSiteContactNumber() });
+  const pdf = await renderConfirmationLetterPdf(document, { contactNumber: await getSiteContactNumber(), verification: letterVerification(draft.letterNumber) });
   const uploaded = await storagePut(`confirmation-letters/request-${draft.tutorRequestId}/${draft.letterNumber}.pdf`, pdf, "application/pdf");
   const issuedSnapshot = JSON.stringify({ ...snapshot, agreedStartDate: input.agreedStartDate, agreedFeeMinimum: input.agreedFeeMinimum, agreedFeeMaximum: input.agreedFeeMaximum });
 
@@ -3211,6 +3217,57 @@ export async function listConfirmationLettersForTutor(input: { tutorUserId: numb
     .innerJoin(tutors, eq(confirmationLetters.tutorId, tutors.id))
     .where(eq(tutors.userId, input.tutorUserId))
     .orderBy(desc(confirmationLetters.id));
+}
+
+/**
+ * What the public "check a letter" page may say about a Letter ID and code.
+ *
+ * The code is checked before the database is asked anything, so a wrong code
+ * reads exactly like a Letter ID that does not exist - guessing IDs learns
+ * nothing. With the right code, a current letter shows the details printed on
+ * it (so an altered fee or name stands out), and a replaced one names the
+ * version that replaced it. Drafts are never public.
+ */
+export async function verifyConfirmationLetter(input: { letterNumber: string; code: string }) {
+  const letterNumber = input.letterNumber.trim().toUpperCase();
+  if (!matchesLetterVerificationCode(letterNumber, input.code)) return { status: "unknown" as const };
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [letter] = await database.select({
+    tutorRequestId: confirmationLetters.tutorRequestId,
+    letterNumber: confirmationLetters.letterNumber,
+    version: confirmationLetters.version,
+    status: confirmationLetters.status,
+    issuedAt: confirmationLetters.issuedAt,
+    contentSnapshot: confirmationLetters.contentSnapshot,
+  }).from(confirmationLetters).where(and(
+    eq(confirmationLetters.letterNumber, letterNumber),
+    inArray(confirmationLetters.status, ["issued", "superseded"]),
+  )).limit(1);
+  if (!letter?.issuedAt) return { status: "unknown" as const };
+  const content = buildConfirmationLetterContent({
+    ...parseConfirmationLetterSnapshot(letter.contentSnapshot),
+    letterNumber: letter.letterNumber,
+    version: letter.version,
+    issuedAt: letter.issuedAt,
+  });
+  if (letter.status === "superseded") {
+    const [latest] = await database.select({ letterNumber: confirmationLetters.letterNumber })
+      .from(confirmationLetters)
+      .where(and(eq(confirmationLetters.tutorRequestId, letter.tutorRequestId), eq(confirmationLetters.status, "issued")))
+      .orderBy(desc(confirmationLetters.version))
+      .limit(1);
+    return { status: "replaced" as const, letterNumber: content.letterId, issued: content.issued, replacedBy: latest?.letterNumber ?? null };
+  }
+  return {
+    status: "valid" as const,
+    letterNumber: content.letterId,
+    issued: content.issued,
+    version: content.version,
+    tutorRows: content.tutorRows,
+    tuitionRows: content.tuitionRows,
+    fee: content.fee,
+  };
 }
 
 /**
