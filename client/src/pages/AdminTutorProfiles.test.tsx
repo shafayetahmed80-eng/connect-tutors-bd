@@ -214,27 +214,58 @@ describe("Notify Tutors", () => {
     expect((screen.getByRole("button", { name: "Notify" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("keeps Send disabled until both a title and a message are typed", () => {
+  it("keeps Review & send disabled until both a title and a message are typed", () => {
     render(<AdminTutorProfilesContent />);
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
 
-    const send = screen.getByRole("button", { name: /^Send to/ }) as HTMLButtonElement;
-    expect(send.disabled).toBe(true);
+    const review = screen.getByRole("button", { name: /^Review & send to/ }) as HTMLButtonElement;
+    expect(review.disabled).toBe(true);
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
-    expect(send.disabled).toBe(true);
+    expect(review.disabled).toBe(true);
 
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications for an hour tonight." } });
-    expect(send.disabled).toBe(false);
+    expect(review.disabled).toBe(false);
   });
 
-  it("sends the typed title and message to exactly the Tutors the active filters match, then confirms the count", () => {
+  it("shows exactly what will be sent on a review step before anything actually sends", () => {
     render(<AdminTutorProfilesContent />);
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "  Platform maintenance  " } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "  We are pausing new applications for an hour tonight.  " } });
-    fireEvent.click(screen.getByRole("button", { name: /^Send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+
+    // Nothing has sent yet - the review step is read-only, trimmed exactly as it will be sent.
+    expect(mocks.notifyInput).toBeNull();
+    const dialog = screen.getByRole("dialog", { name: "Send this to Tutors?" });
+    expect(dialog.textContent).toContain("Platform maintenance");
+    expect(dialog.textContent).toContain("We are pausing new applications for an hour tonight.");
+    expect(screen.queryByLabelText(/^Title/)).toBeNull();
+  });
+
+  it("Back returns to the editable form with what was typed still there", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Paused tonight." } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(mocks.notifyInput).toBeNull();
+    expect((screen.getByLabelText(/^Title/) as HTMLInputElement).value).toBe("Platform maintenance");
+    expect((screen.getByLabelText(/^Message/) as HTMLTextAreaElement).value).toBe("Paused tonight.");
+  });
+
+  it("sends the typed title and message only once the review step is confirmed", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "  Platform maintenance  " } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "  We are pausing new applications for an hour tonight.  " } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
 
     expect(mocks.notifyInput).toMatchObject({
       query: "", profileStatus: "all", jobStage: "all", verified: "all", location: "", subject: "", tuitionType: "all",
@@ -245,7 +276,7 @@ describe("Notify Tutors", () => {
     expect(mocks.notifyInput).not.toHaveProperty("page");
     expect(mocks.notifyInput).not.toHaveProperty("pageSize");
     expect(mocks.toasts).toEqual(["Sent to 2 Tutors."]);
-    expect(screen.queryByRole("dialog", { name: "Notify these Tutors" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("reports a failed send without closing the dialog", () => {
@@ -255,10 +286,11 @@ describe("Notify Tutors", () => {
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications tonight." } });
-    fireEvent.click(screen.getByRole("button", { name: /^Send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
 
     expect(mocks.toasts).toEqual(["Could not send."]);
-    expect(screen.getByRole("dialog", { name: "Notify these Tutors" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Send this to Tutors?" })).toBeTruthy();
   });
 });
 
@@ -277,7 +309,8 @@ describe("Notifying a hand-picked set of Tutors", () => {
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Interview slot" } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Please call the office tomorrow." } });
-    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
 
     expect(mocks.notifyInput).toMatchObject({ tutorIds: ["tutor-175"], title: "Interview slot", message: "Please call the office tomorrow." });
   });
@@ -289,7 +322,8 @@ describe("Notifying a hand-picked set of Tutors", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
 
     expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
   });
@@ -315,6 +349,6 @@ describe("Sent notifications history", () => {
     expect(within(dialog).getByText("Past notice")).toBeTruthy();
     expect(within(dialog).getByText("An earlier broadcast.")).toBeTruthy();
     expect(within(dialog).getByText("9 sent")).toBeTruthy();
-    expect(mocks.historyInput).toEqual({ audience: "tutor", page: 1, pageSize: 20 });
+    expect(mocks.historyInput).toEqual({ audience: "tutor", query: "", page: 1, pageSize: 20 });
   });
 });

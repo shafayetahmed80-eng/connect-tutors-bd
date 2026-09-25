@@ -190,6 +190,7 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
 }) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const usingSelection = selectedIds.length > 0;
   const recipientCount = usingSelection ? selectedIds.length : matchCount;
   const notify = trpc.admin.notifyTutorDirectory.useMutation({
@@ -202,14 +203,37 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
   });
   const ready = title.trim().length > 0 && message.trim().length > 0;
   const { page: _page, pageSize: _pageSize, ...directoryFilters } = filters;
+  const recipientLine = usingSelection
+    ? `${recipientCount} hand-picked Tutor${recipientCount === 1 ? "" : "s"}`
+    : `${recipientCount} Tutor${recipientCount === 1 ? "" : "s"} match the current filters`;
+  const send = () => notify.mutate(usingSelection
+    ? { ...defaultTutorFilters, tutorIds: selectedIds, title: title.trim(), message: message.trim() }
+    : { ...directoryFilters, title: title.trim(), message: message.trim() });
+
+  if (confirming) {
+    return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+      <ModalHeader title="Send this to Tutors?" meta={recipientLine} />
+      <ModalBody className="space-y-3">
+        <p className="text-sm leading-6 text-j-ink-soft">This is exactly what every recipient will see in their Notifications tab. It cannot be recalled once sent.</p>
+        <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3.5">
+          <p className="font-bold text-j-ink">{title.trim()}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-soft">{message.trim()}</p>
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button
+          type="button"
+          disabled={notify.isPending}
+          onClick={send}
+          className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        >{notify.isPending ? "Sending…" : `Confirm & send to ${recipientCount}`}</button>
+      </ModalFooter>
+    </Modal>;
+  }
 
   return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
-    <ModalHeader
-      title="Notify these Tutors"
-      meta={usingSelection
-        ? `${recipientCount} hand-picked Tutor${recipientCount === 1 ? "" : "s"}`
-        : `${recipientCount} Tutor${recipientCount === 1 ? "" : "s"} match the current filters`}
-    />
+    <ModalHeader title="Notify these Tutors" meta={recipientLine} />
     <ModalBody className="space-y-4">
       <div>
         <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
@@ -226,15 +250,13 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
       <button
         type="button"
-        disabled={!ready || notify.isPending}
-        onClick={() => notify.mutate(usingSelection
-          ? { ...defaultTutorFilters, tutorIds: selectedIds, title: title.trim(), message: message.trim() }
-          : { ...directoryFilters, title: title.trim(), message: message.trim() })}
+        disabled={!ready}
+        onClick={() => setConfirming(true)}
         className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
-      >{notify.isPending ? "Sending…" : `Send to ${recipientCount}`}</button>
+      >Review &amp; send to {recipientCount}</button>
     </ModalFooter>
   </Modal>;
 }

@@ -112,7 +112,11 @@ describe("Guardian directory Notify", () => {
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing sign-ins tonight." } });
-    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    // Nothing sent until the review step confirms it.
+    expect(state.notifyInput).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Send this to Guardians?" }).textContent).toContain("We are pausing sign-ins tonight.");
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
 
     expect(state.notifyInput).toEqual({ query: "", verification: "all", title: "Platform maintenance", message: "We are pausing sign-ins tonight." });
     expect(state.toasts).toEqual(["Sent to 3 Guardians."]);
@@ -129,7 +133,8 @@ describe("Guardian directory Notify", () => {
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
     fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
 
     expect(state.notifyInput).toMatchObject({ guardianUserIds: [21] });
   });
@@ -141,6 +146,6 @@ describe("Guardian directory Notify", () => {
     const dialog = screen.getByRole("dialog", { name: "Sent notifications" });
     expect(within(dialog).getByText("Past notice")).toBeTruthy();
     expect(within(dialog).getByText("6 sent")).toBeTruthy();
-    expect(state.historyInput).toEqual({ audience: "guardian", page: 1, pageSize: 20 });
+    expect(state.historyInput).toEqual({ audience: "guardian", query: "", page: 1, pageSize: 20 });
   });
 });

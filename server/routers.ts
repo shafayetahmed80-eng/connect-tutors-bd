@@ -2032,6 +2032,7 @@ export const appRouter = router({
     listNotificationBroadcasts: adminProcedure
       .input(z.object({
         audience: z.enum(["all", "tutor", "guardian"]).default("all"),
+        query: z.string().trim().max(120).default(""),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
       }))
