@@ -2,7 +2,8 @@
 // registration counts per Bangladesh day, and who the rate limiters are
 // holding back right now, with a way to let them in again.
 
-import { Loader2, LockOpen } from "lucide-react";
+import { LockOpen } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
@@ -65,7 +66,7 @@ export function AdminSignInReport() {
       </div>
     </div>
 
-    {report.isLoading ? <p className="mt-5 flex items-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the sign-in report…</p>
+    {report.isLoading ? <p className="mt-5 flex items-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading the sign-in report…</p>
       : report.isError || !report.data ? <p role="alert" className="mt-5 rounded-xl border border-j-err-border bg-j-err-wash p-3 text-sm font-semibold text-j-err">The sign-in report could not be loaded.</p>
       : <>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-9">
@@ -97,7 +98,7 @@ export function AdminSignInReport() {
       </>}
 
     <h3 className="mt-7 text-base font-bold text-j-ink">Blocked right now</h3>
-    {blocks.isLoading ? <p className="mt-3 flex items-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</p>
+    {blocks.isLoading ? <p className="mt-3 flex items-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading…</p>
       : blocks.isError ? <p role="alert" className="mt-3 rounded-xl border border-j-err-border bg-j-err-wash p-3 text-sm font-semibold text-j-err">The blocked list could not be loaded.</p>
       : !blocks.data?.length ? <p className="mt-3 rounded-xl bg-j-surface-sunken p-3 text-sm text-j-ink-soft">No one is blocked right now.</p>
       : <ul className="mt-3 space-y-2">

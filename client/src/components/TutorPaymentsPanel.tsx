@@ -18,7 +18,7 @@ import {
   tuitionPaymentStatusLabels,
 } from "@shared/platform-charge";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -110,7 +110,7 @@ export default function TutorPaymentsPanel() {
       <p className="mt-1 text-lg font-bold tabular-nums text-emerald-900">{formatSalaryAmount(credit)}</p>
     </section> : null}
 
-    {overview.isLoading ? <p className="rounded-xl border border-j-border bg-white px-4 py-8 text-center text-sm font-semibold text-j-ink-muted"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading your payments…</p> : null}
+    {overview.isLoading ? <p className="rounded-xl border border-j-border bg-white px-4 py-8 text-center text-sm font-semibold text-j-ink-muted"><LoadingCradle className="mr-2" />Loading your payments…</p> : null}
     {overview.isError ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-8 text-center text-sm font-semibold text-j-err">Your payments could not be loaded just now. Please try again.</p> : null}
 
     {!overview.isLoading && !overview.isError ? <RecordTable

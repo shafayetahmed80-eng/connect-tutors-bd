@@ -9,7 +9,8 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import TuitionStatusPill from "@/components/TuitionStatusPill";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, CircleX, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleX } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -89,7 +90,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
       )}
     /> : null}
 
-    {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading applied Tutors…</div> : null}
+    {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading applied Tutors…</div> : null}
     {applied.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{applied.error?.message ?? "The applied Tutors could not be loaded."}</div> : null}
 
     {!applied.isLoading && !applied.isError
@@ -126,7 +127,7 @@ export function GuardianAppliedTuitionsContent({ requests, isLoading, isError = 
     .filter(({ lifecycle }) => lifecycle.key === "live" || lifecycle.key === "appointed");
 
   if (isLoading) {
-    return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading your tuitions…</div>;
+    return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading your tuitions…</div>;
   }
   // A failed load is not an empty list: "No live or appointed tuition" would be untrue.
   if (isError) {

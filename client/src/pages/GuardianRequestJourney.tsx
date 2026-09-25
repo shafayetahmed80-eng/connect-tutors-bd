@@ -2,6 +2,7 @@ import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useS
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { Link as WouterLink, useLocation } from "wouter";
 import { Check, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
@@ -942,7 +943,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onChangeNumber: () => { forgetPhoneCode(); window.requestAnimationFrame(() => document.getElementById("guardian-phone")?.focus()); },
         } : null} /> : null}
         {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
-        {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><Loader2 className="mx-auto mb-3 animate-spin text-j-accent" size={22} />Loading your private Pending request securely…</div> : null}
+        {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><span className="mb-3 block"><LoadingCradle /></span>Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
           step={step}
           requestInput={requestInput}

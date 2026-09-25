@@ -5,7 +5,7 @@ import type { GuardianApplicantVisibility } from "@shared/admin-control";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK, isCommunityLink, type CommunityPanel } from "@shared/community";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels, type PaymentAccountMethod } from "@shared/platform-charge";
 import { MAX_SITE_CONTENT_TEXT_LENGTH } from "@shared/site-content";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -157,7 +157,7 @@ export default function AdminControlEditor() {
   });
 
   if (control.isLoading) {
-    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading Admin Control…</div>;
+    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Admin Control…</div>;
   }
   if (control.isError || !control.data) {
     return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Admin Control could not be loaded.</div>;

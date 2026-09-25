@@ -8,7 +8,8 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { GuardianActivityContent, GuardianVerificationModal } from "@/pages/AdminGuardianActivity";
 import { formatRequestSource } from "@shared/request-source";
-import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Search, ShieldCheck } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 
@@ -86,7 +87,7 @@ export function AdminGuardianProfilesContent() {
           className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
     </div>
-    {guardians.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Guardian profiles…</div> : null}
+    {guardians.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Guardian profiles…</div> : null}
     {guardians.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Guardian profiles could not be loaded.</div> : null}
     {!guardians.isLoading && !guardians.isError
       ? <RecordTable caption="Guardian profiles" columns={columns} rows={(guardians.data?.items ?? []) as GuardianRow[]} rowKey={row => row.userId} empty="No Guardian matches." tableClassName="min-w-[60rem]" />
@@ -119,7 +120,7 @@ export function AdminGuardianProfileDetailContent({ userId }: { userId: number }
 
   return <div className="mx-auto w-full max-w-5xl space-y-5 pb-10">
     <Link href="/admin/guardians" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline"><ArrowLeft size={15} /> Back to Guardian Profiles</Link>
-    {profileQuery.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading profile…</div> : null}
+    {profileQuery.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading profile…</div> : null}
     {profileQuery.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error.message}</div> : null}
     {profile ? <>
       <section className="rounded-xl border border-j-border bg-white p-5 shadow-sm">

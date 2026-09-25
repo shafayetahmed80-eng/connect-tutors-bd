@@ -10,7 +10,8 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Loader2, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
@@ -72,7 +73,7 @@ function ModerationHistory({ tutorId }: { tutorId: string }) {
       <History size={16} className="text-[#8fb4d0]" aria-hidden={true} />Moderation history
     </h3>
     {history.isLoading
-      ? <p className="flex items-center gap-2 text-sm text-j-ink-soft"><Loader2 size={14} className="animate-spin" /> Loading moderation history…</p>
+      ? <p className="flex items-center gap-2 text-sm text-j-ink-soft"><LoadingCradle /> Loading moderation history…</p>
       : history.isError
         ? <p className="text-sm text-red-700">Moderation history could not be loaded.</p>
         : events.length === 0
@@ -158,7 +159,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   }, [profile]);
 
   if (profileQuery.isLoading) {
-    return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profile…</div>;
+    return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Tutor profile…</div>;
   }
   if (profileQuery.isError || !profile) {
     return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error?.message ?? "This Tutor profile is unavailable."}</div>;

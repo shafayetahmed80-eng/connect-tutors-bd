@@ -8,7 +8,8 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
-import { Loader2, Megaphone, Search, SlidersHorizontal } from "lucide-react";
+import { Megaphone, Search, SlidersHorizontal } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -118,7 +119,7 @@ export function AdminTutorProfilesContent() {
     </div>
     {notifyOpen ? <NotifyTutorsModal filters={filters} matchCount={matchCount} onClose={() => setNotifyOpen(false)} /> : null}
 
-    {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profiles…</div> : null}
+    {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Tutor profiles…</div> : null}
     {tutors.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tutor profiles could not be loaded.</div> : null}
 
     {!tutors.isLoading && !tutors.isError

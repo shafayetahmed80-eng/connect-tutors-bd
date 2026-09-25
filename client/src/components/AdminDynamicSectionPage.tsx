@@ -1,7 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { trpc } from "@/lib/trpc";
-import { ExternalLink, Loader2, ShieldCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { findAdminDynamicGuide } from "@shared/admin-dynamic-guide";
 import { useLocation } from "wouter";
 import { type ReactNode } from "react";
@@ -27,7 +28,7 @@ export default function AdminDynamicSectionPage({
   const workspaceAccess = trpc.admin.getWorkspaceAccess.useQuery(undefined, { enabled: isAdmin, retry: false });
 
   if (loading || (isAdmin && workspaceAccess.isLoading)) {
-    return <div className="flex min-h-[58vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying Owner access…</div>;
+    return <div className="flex min-h-[58vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Verifying Owner access…</div>;
   }
 
   if (!isAdmin || !workspaceAccess.data?.isOwner) {

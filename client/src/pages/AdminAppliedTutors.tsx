@@ -16,7 +16,8 @@ import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, CircleX, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleX, Search, SlidersHorizontal } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
@@ -164,7 +165,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} />
     </section> : null}
 
-    {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading applied Tutors…</div> : null}
+    {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading applied Tutors…</div> : null}
     {applied.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{applied.error?.message ?? "The applied Tutors could not be loaded."}</div> : null}
 
     {!applied.isLoading && !applied.isError
@@ -329,7 +330,7 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
       />
     </label>
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading tuitions…</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading tuitions…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError ? <RecordTable

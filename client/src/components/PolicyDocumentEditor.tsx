@@ -1,7 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import { MAX_POLICY_BODY_LENGTH, policyPages, type PolicyPageKey } from "@shared/policy-pages";
 import { policyPlainText } from "@shared/policy-markdown";
-import { Eye, Loader2, RotateCcw } from "lucide-react";
+import { Eye, RotateCcw } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 import PolicyDocument from "./PolicyDocument";
 
@@ -100,7 +101,7 @@ export default function PolicyDocumentEditor() {
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
     {documents.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the documents…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading the documents…</div>
       : <div className="grid gap-3 lg:grid-cols-2">
         <section className="rounded-xl border border-j-border bg-white p-3 shadow-sm">
           <label htmlFor="policy-body" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">{meta.label}</label>

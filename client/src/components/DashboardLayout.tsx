@@ -37,6 +37,7 @@ import {
 import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import {
@@ -173,6 +174,24 @@ const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 export const DASHBOARD_SIDEBAR_MOTION_CLASS = "duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none";
+
+/**
+ * The brand at the top of every panel's sidebar. Not a link: leaving a panel
+ * for the public site goes through the sidebar's own sign-out prompt, and a
+ * logo link would skip it. It still swings when pointed at.
+ */
+export function SidebarBrand() {
+  const swing = useCradleSwing();
+  return (
+    <div className="sb-brand pl-1 group-data-[collapsible=icon]:pl-0" {...swing.host}>
+      <BrandMark onAnimationEnd={swing.onAnimationEnd} />
+      <span className="brand-wordmark">
+        <strong>{brandWordmark.primary}</strong>
+        <em>{brandWordmark.secondary}</em>
+      </span>
+    </div>
+  );
+}
 
 export function getDashboardSidebarToggleLabel(isCollapsed: boolean) {
   return isCollapsed ? "Expand navigation" : "Collapse navigation";
@@ -534,11 +553,13 @@ function DashboardLayoutContent({
               so the sidebar scrolls as a single block rather than pinning the
               header and account card above an independently-scrolling list. */}
           <SidebarContent className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain group-data-[collapsible=icon]:overflow-y-auto">
-            {/* A slim toggle row, not a full h-16 header — the portal name and
-                current tab live in the workspace header, so this only needs to
-                hold the collapse control. The chevron rotates 180° between
-                states so a glance says which way the next click goes. */}
-            <SidebarHeader className="shrink-0 flex-row items-center justify-end px-2 pb-1 pt-2 group-data-[collapsible=icon]:justify-center">
+            {/* A slim row, not a full h-16 header — the portal name and current
+                tab live in the workspace header, so this only holds the brand
+                and the collapse control. Collapsed to icons, the mark stands
+                alone above the toggle. The chevron rotates 180° between states
+                so a glance says which way the next click goes. */}
+            <SidebarHeader className="shrink-0 flex-row items-center justify-between gap-2 px-2 pb-1 pt-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center">
+              <SidebarBrand />
               <button
                 onClick={toggleSidebar}
                 className="sb-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"

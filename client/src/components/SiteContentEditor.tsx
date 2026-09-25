@@ -16,7 +16,8 @@ import {
   type SiteContentPageId,
   type SiteContentSpacing,
 } from "@shared/site-content";
-import { ExternalLink, Loader2, RotateCcw, Search } from "lucide-react";
+import { ExternalLink, RotateCcw, Search } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 
 const spacingLabels: Record<SiteContentSpacing, string> = {
@@ -270,7 +271,7 @@ export default function SiteContentEditor({ page }: { page: SiteContentPageId })
   };
 
   if (overrides.isLoading) {
-    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading page content…</div>;
+    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading page content…</div>;
   }
   if (overrides.isError) {
     return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Page content could not be loaded.</div>;

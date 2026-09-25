@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { siteLimits, type SiteLimitGroup, type SiteLimitId } from "@shared/site-limits";
-import { Loader2, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 
 const allGroups: SiteLimitGroup[] = ["Selection", "Job board", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation"];
@@ -58,7 +59,7 @@ export default function SiteLimitEditor({ groups = allGroups.filter(group => gro
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
 
     {overrides.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the limits…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading the limits…</div>
       : groups.map(group => {
         const rows = siteLimits.filter(limit => limit.group === group);
         if (rows.length === 0) return null;

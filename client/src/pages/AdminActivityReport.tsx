@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, CheckCircle2, ClipboardCheck, ContactRound, Loader2, ShieldCheck, UsersRound, XCircle } from "lucide-react";
+import { BarChart3, CheckCircle2, ClipboardCheck, ContactRound, ShieldCheck, UsersRound, XCircle } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 
 const windows = [
@@ -67,7 +68,7 @@ function OwnerReportContent() {
   });
 
   if (loading || (isAdmin && workspaceAccess.isLoading)) {
-    return <div className="flex min-h-[58vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying Owner access…</div>;
+    return <div className="flex min-h-[58vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Verifying Owner access…</div>;
   }
   if (!isAdmin || !workspaceAccess.data?.isOwner) {
     return <section className="mx-auto flex min-h-[58vh] max-w-xl flex-col items-center justify-center rounded-xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-amber-600" /><h1 className="text-2xl font-bold text-j-ink">Owner access required</h1><p className="mt-2 text-sm leading-6 text-j-ink-soft">Admin activity reports are restricted to the Project Owner. No activity data is loaded for other accounts.</p></section>;
@@ -79,7 +80,7 @@ function OwnerReportContent() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-100">Owner reporting</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.035em]">Admin activity summary</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100">Review aggregate sign-in security, Tutor moderation, and logged Guardian contact access. This report never displays Guardian contact details or credential material.</p></div><div className="flex flex-wrap gap-2">{windows.map(option => <button type="button" key={option.value} onClick={() => setWindowDays(option.value)} className={`rounded-xl px-3 py-2 text-sm font-bold ring-1 transition ${windowDays === option.value ? "bg-white text-[#0f4d7f] ring-white" : "bg-[#062946]/25 text-white ring-white/25 hover:bg-white/15"}`}>{option.label}</button>)}</div></div>
       </section>
 
-      {report.isLoading ? <div className="flex min-h-[34vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Preparing the activity report…</div> : report.isError || !report.data ? <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">The Owner activity report could not be loaded. Please refresh and try again.</section> : <ReportData data={report.data as OwnerActivityReport} />}
+      {report.isLoading ? <div className="flex min-h-[34vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Preparing the activity report…</div> : report.isError || !report.data ? <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">The Owner activity report could not be loaded. Please refresh and try again.</section> : <ReportData data={report.data as OwnerActivityReport} />}
     </main>
   </AdminWorkspaceLayout>;
 }

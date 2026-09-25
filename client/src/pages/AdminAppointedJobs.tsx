@@ -7,7 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -71,7 +72,7 @@ export function AdminAppointedJobsContent() {
       />
     </label>
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading appointed jobs…</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading appointed jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Appointed jobs could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError ? <RecordTable

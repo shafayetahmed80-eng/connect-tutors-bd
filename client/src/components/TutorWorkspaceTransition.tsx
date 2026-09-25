@@ -1,4 +1,5 @@
-import { LoaderCircle, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React from "react";
 
 export function TutorWorkspaceTransition() {
@@ -13,7 +14,7 @@ export function TutorWorkspaceTransition() {
       <div className="relative grid size-20 place-items-center" aria-hidden="true">
         <div className="absolute inset-0 rounded-full border border-[#a9d8f2] motion-safe:animate-ping motion-reduce:animate-none" />
         <div className="grid size-16 place-items-center rounded-full bg-white shadow-[0_12px_26px_rgba(36,132,200,0.16)]">
-          <LoaderCircle className="size-7 text-[#147fc0] motion-safe:animate-spin motion-reduce:animate-none" />
+          <LoadingCradle className="text-[18px]" />
         </div>
         <Sparkles className="absolute -right-1 -top-1 size-5 text-[#e7a528]" />
       </div>
