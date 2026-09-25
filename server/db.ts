@@ -130,7 +130,8 @@ import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
-import { storageGetSignedUrl, storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut, storageRead } from "./storage";
+import { confirmationLetterFileName } from "@shared/confirmation-letter";
 import {
   buildCombinedCityLocationOptions,
   type RegistrationLocationRow,
@@ -3098,11 +3099,17 @@ export async function listConfirmationLettersForTutor(input: { tutorUserId: numb
     .orderBy(desc(confirmationLetters.id));
 }
 
-export async function getConfirmationLetterRecipientDownload(input: { letterId: number; recipient: { role: "guardian" | "tutor"; userId: number } }) {
+/**
+ * An issued letter's PDF, handed over only to its own Guardian or assigned
+ * Tutor. The bytes travel in the response, so the site can show the letter in
+ * its own viewer on every device before anyone downloads it.
+ */
+export async function getConfirmationLetterRecipientFile(input: { letterId: number; recipient: { role: "guardian" | "tutor"; userId: number } }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const [letter] = await database.select({
     id: confirmationLetters.id,
+    letterNumber: confirmationLetters.letterNumber,
     guardianUserId: confirmationLetters.guardianUserId,
     tutorId: confirmationLetters.tutorId,
     tutorUserId: tutors.userId,
@@ -3118,7 +3125,13 @@ export async function getConfirmationLetterRecipientDownload(input: { letterId: 
       : letter.tutorUserId === input.recipient.userId
   );
   if (!allowed || !letter?.pdfStorageKey) return null;
-  return { letterId: letter.id, downloadUrl: await storageGetSignedUrl(letter.pdfStorageKey) };
+  const pdf = await storageRead(letter.pdfStorageKey);
+  return {
+    letterId: letter.id,
+    letterNumber: letter.letterNumber,
+    fileName: confirmationLetterFileName(letter.letterNumber),
+    pdfBase64: pdf.toString("base64"),
+  };
 }
 
 /** Updates a Guardian-owned request only while it remains in the initial Pending stage. */
