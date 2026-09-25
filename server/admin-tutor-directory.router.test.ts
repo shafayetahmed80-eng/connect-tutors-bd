@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn(), listTutorJobInterestsForTutor: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn(), listTutorJobInterestsForTutor: vi.fn(), notifyTutorDirectory: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -41,6 +41,37 @@ describe("admin.listTutorDirectory", () => {
   it("refuses a job stage the Status tab does not have", async () => {
     await expect(createCaller().admin.listTutorDirectory({ jobStage: "hired" as never })).rejects.toThrow();
     expect(dbMocks.listAdminTutorDirectoryPage).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin.notifyTutorDirectory", () => {
+  it("sends the trimmed title and message with the directory's own filters, not paging", async () => {
+    dbMocks.notifyTutorDirectory.mockResolvedValue({ sent: 7 });
+
+    const result = await createCaller().admin.notifyTutorDirectory({
+      profileStatus: "approved", jobStage: "confirmed", title: "  Platform maintenance  ", message: "  We are pausing new applications tonight.  ",
+    });
+
+    expect(result).toEqual({ sent: 7 });
+    expect(dbMocks.notifyTutorDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({ profileStatus: "approved", jobStage: "confirmed" }),
+      { title: "Platform maintenance", message: "We are pausing new applications tonight." },
+    );
+    const [filtersArg] = dbMocks.notifyTutorDirectory.mock.calls[0];
+    expect(filtersArg).not.toHaveProperty("page");
+    expect(filtersArg).not.toHaveProperty("pageSize");
+  });
+
+  it("refuses an empty title or message rather than broadcasting a blank notice", async () => {
+    await expect(createCaller().admin.notifyTutorDirectory({ title: "", message: "Something" })).rejects.toThrow();
+    await expect(createCaller().admin.notifyTutorDirectory({ title: "Something", message: "" })).rejects.toThrow();
+    expect(dbMocks.notifyTutorDirectory).not.toHaveBeenCalled();
+  });
+
+  it("is an Admin's to send", async () => {
+    const guardian = { ...adminUser, role: "guardian" as const };
+    await expect(createCaller(guardian).admin.notifyTutorDirectory({ title: "Hi", message: "Hi" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.notifyTutorDirectory).not.toHaveBeenCalled();
   });
 });
 

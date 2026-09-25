@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  notifyInput: null as unknown,
+  notifyResult: { sent: 2, isError: false },
+  toasts: [] as string[],
   data: {
     items: [
       {
@@ -72,13 +75,30 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
+      notifyTutorDirectory: {
+        useMutation: (options: { onSuccess?: (result: { sent: number }) => void; onError?: (error: { message: string }) => void }) => ({
+          mutate: (input: unknown) => {
+            mocks.notifyInput = input;
+            mocks.notifyResult.isError ? options.onError?.({ message: "Could not send." }) : options.onSuccess?.({ sent: mocks.notifyResult.sent });
+          },
+          isPending: false,
+        }),
+      },
     },
   },
 }));
 
+vi.mock("sonner", () => ({ toast: { success: (message: string) => { mocks.toasts.push(message); }, error: (message: string) => { mocks.toasts.push(message); } } }));
+
 import { AdminTutorProfilesContent } from "./AdminTutorProfiles";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  mocks.notifyInput = null;
+  mocks.notifyResult = { sent: 2, isError: false };
+  mocks.toasts = [];
+});
 
 describe("Admin Tutor Profiles list", () => {
   it("puts every Tutor on one row with the columns an Admin scans", () => {
@@ -174,5 +194,61 @@ describe("Admin Tutor Profiles list", () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Search Tutor name/i), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ query: "Tania", page: 1 });
+  });
+});
+
+describe("Notify Tutors", () => {
+  it("counts how many Tutors the current filters match, next to the button that sends to them", () => {
+    render(<AdminTutorProfilesContent />);
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect((screen.getByRole("button", { name: "Notify" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps Send disabled until both a title and a message are typed", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    const send = screen.getByRole("button", { name: /^Send to/ }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    expect(send.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications for an hour tonight." } });
+    expect(send.disabled).toBe(false);
+  });
+
+  it("sends the typed title and message to exactly the Tutors the active filters match, then confirms the count", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "  Platform maintenance  " } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "  We are pausing new applications for an hour tonight.  " } });
+    fireEvent.click(screen.getByRole("button", { name: /^Send to/ }));
+
+    expect(mocks.notifyInput).toMatchObject({
+      query: "", profileStatus: "all", jobStage: "all", verified: "all", location: "", subject: "", tuitionType: "all",
+      title: "Platform maintenance",
+      message: "We are pausing new applications for an hour tonight.",
+    });
+    // page/pageSize are pagination, not part of who gets notified.
+    expect(mocks.notifyInput).not.toHaveProperty("page");
+    expect(mocks.notifyInput).not.toHaveProperty("pageSize");
+    expect(mocks.toasts).toEqual(["Sent to 2 Tutors."]);
+    expect(screen.queryByRole("dialog", { name: "Notify these Tutors" })).toBeNull();
+  });
+
+  it("reports a failed send without closing the dialog", () => {
+    mocks.notifyResult = { sent: 0, isError: true };
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications tonight." } });
+    fireEvent.click(screen.getByRole("button", { name: /^Send to/ }));
+
+    expect(mocks.toasts).toEqual(["Could not send."]);
+    expect(screen.getByRole("dialog", { name: "Notify these Tutors" })).toBeTruthy();
   });
 });

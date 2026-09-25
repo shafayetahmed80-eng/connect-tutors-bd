@@ -1,13 +1,16 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminTutorRows from "@/components/AdminTutorRows";
+import CharacterRemaining from "@/components/CharacterRemaining";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import StatusTabRow from "@/components/StatusTabRow";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
-import { Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { Loader2, Megaphone, Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type ProfileStatus = "all" | "draft" | "pending" | "changes_requested" | "approved" | "suspended";
 export type TutorFilters = {
@@ -68,10 +71,12 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
  */
 export function AdminTutorProfilesContent() {
   const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   // The tab rows show their own choices, so the Filters badge counts the rest.
   const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize", "profileStatus", "jobStage"] });
   const tutors = trpc.admin.listTutorDirectory.useQuery(filters);
   const counts = tutors.data?.counts;
+  const matchCount = tutors.data?.total ?? 0;
   const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-5 pb-10">
@@ -96,6 +101,23 @@ export function AdminTutorProfilesContent() {
       <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} showProfileStatus={false} />
     </CollapsiblePanel>
 
+    {/* Sends to exactly who the two tab rows and the Filters panel above are
+        currently showing - never a separate hand-picked list. */}
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-4 py-3">
+      <p data-testid="notify-match-count" className="text-sm text-j-ink-soft">
+        <span className="font-bold text-j-ink">{matchCount}</span> Tutor{matchCount === 1 ? "" : "s"} match{matchCount === 1 ? "es" : ""} the current filters.
+      </p>
+      <button
+        type="button"
+        onClick={() => setNotifyOpen(true)}
+        disabled={matchCount === 0}
+        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
+      </button>
+    </div>
+    {notifyOpen ? <NotifyTutorsModal filters={filters} matchCount={matchCount} onClose={() => setNotifyOpen(false)} /> : null}
+
     {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profiles…</div> : null}
     {tutors.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tutor profiles could not be loaded.</div> : null}
 
@@ -114,6 +136,56 @@ export function AdminTutorProfilesContent() {
       totalItems={tutors.data?.total}
     />
   </div>;
+}
+
+const NOTIFY_TITLE_MAX = 120;
+const NOTIFY_MESSAGE_MAX = 360;
+
+/**
+ * One message, sent to every Tutor the directory's active filters currently
+ * match - not a hand-picked list, so the count above the button is exactly
+ * who this sends to. Lands in each Tutor's own Notifications tab.
+ */
+function NotifyTutorsModal({ filters, matchCount, onClose }: { filters: TutorFilters; matchCount: number; onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const notify = trpc.admin.notifyTutorDirectory.useMutation({
+    onSuccess: result => {
+      toast.success(`Sent to ${result.sent} Tutor${result.sent === 1 ? "" : "s"}.`);
+      onClose();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const ready = title.trim().length > 0 && message.trim().length > 0;
+  const { page: _page, pageSize: _pageSize, ...directoryFilters } = filters;
+
+  return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+    <ModalHeader title="Notify these Tutors" meta={`${matchCount} Tutor${matchCount === 1 ? "" : "s"} match the current filters`} />
+    <ModalBody className="space-y-4">
+      <div>
+        <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+        <input id="notify-tutors-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="notify-tutors-message" className="text-sm font-bold text-j-ink">Message <span className="text-red-600">*</span></label>
+          <CharacterRemaining value={message} maxLength={NOTIFY_MESSAGE_MAX} />
+        </div>
+        <textarea id="notify-tutors-message" value={message} maxLength={NOTIFY_MESSAGE_MAX} rows={4} onChange={event => setMessage(event.target.value)}
+          className="mt-1.5 w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <button type="button" onClick={onClose} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button
+        type="button"
+        disabled={!ready || notify.isPending}
+        onClick={() => notify.mutate({ ...directoryFilters, title: title.trim(), message: message.trim() })}
+        className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+      >{notify.isPending ? "Sending…" : `Send to ${matchCount}`}</button>
+    </ModalFooter>
+  </Modal>;
 }
 
 export default function AdminTutorProfiles() {

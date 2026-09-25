@@ -1621,6 +1621,8 @@ export const tutorNotificationTypeValues = [
   "account_change",
   /** A payment of theirs was recorded, verified or rejected. */
   "payment",
+  /** An Admin broadcast to a filtered set of Tutors from the directory - not tied to any one decision. */
+  "announcement",
 ] as const;
 export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
 
