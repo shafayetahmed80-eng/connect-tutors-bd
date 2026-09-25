@@ -68,14 +68,14 @@ describe("admin.notifyGuardianDirectory", () => {
 });
 
 describe("admin.listNotificationBroadcasts", () => {
-  it("defaults to every audience, first page", async () => {
+  it("defaults to every audience, no search, first page", async () => {
     dbMocks.listNotificationBroadcasts.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
 
     await createCaller().admin.listNotificationBroadcasts({});
-    expect(dbMocks.listNotificationBroadcasts).toHaveBeenCalledWith({ audience: "all", page: 1, pageSize: 20 });
+    expect(dbMocks.listNotificationBroadcasts).toHaveBeenCalledWith({ audience: "all", query: "", page: 1, pageSize: 20 });
 
-    await createCaller().admin.listNotificationBroadcasts({ audience: "guardian", page: 2 });
-    expect(dbMocks.listNotificationBroadcasts).toHaveBeenLastCalledWith({ audience: "guardian", page: 2, pageSize: 20 });
+    await createCaller().admin.listNotificationBroadcasts({ audience: "guardian", query: "maintenance", page: 2 });
+    expect(dbMocks.listNotificationBroadcasts).toHaveBeenLastCalledWith({ audience: "guardian", query: "maintenance", page: 2, pageSize: 20 });
   });
 
   it("is an Admin's to read", async () => {

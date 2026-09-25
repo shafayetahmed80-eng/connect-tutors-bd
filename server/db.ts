@@ -6205,10 +6205,14 @@ export async function notifyGuardianDirectory(input: {
 }
 
 /** The Admin's own history of what it has broadcast - not who it reached, just what was sent, to whom (by count), and by whom. */
-export async function listNotificationBroadcasts(input: { audience: "all" | AdminNotificationBroadcastAudience; page: number; pageSize: number }) {
+export async function listNotificationBroadcasts(input: { audience: "all" | AdminNotificationBroadcastAudience; query: string; page: number; pageSize: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const where = input.audience === "all" ? undefined : eq(adminNotificationBroadcasts.audience, input.audience);
+  const conditions = [
+    input.audience === "all" ? undefined : eq(adminNotificationBroadcasts.audience, input.audience),
+    input.query.trim() ? or(like(adminNotificationBroadcasts.title, `%${input.query.trim()}%`), like(adminNotificationBroadcasts.message, `%${input.query.trim()}%`)) : undefined,
+  ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
+  const where = conditions.length ? and(...conditions) : undefined;
   const itemQuery = database
     .select({
       id: adminNotificationBroadcasts.id,
