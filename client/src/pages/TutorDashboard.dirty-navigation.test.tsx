@@ -31,6 +31,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     tutorRequests: { assigned: { useQuery: () => ({ data: [], isLoading: false }) } },
     tutorNotifications: { unreadCount: { useQuery: () => ({ data: { unreadCount: 0 } }) } },
+    tutorAdminChat: { unreadCount: { useQuery: () => ({ data: { unreadCount: 0 } }) } },
     // The Dashboard's stage buttons count the Tutor's own applications.
     jobBoard: { myInterests: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     locations: { list: { useQuery: () => ({ data: [] }) } },

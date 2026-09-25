@@ -20,11 +20,12 @@ import { TutorApplicationStatus } from "./TutorApplicationStatus";
 import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
 import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
+import { TutorAdminChatPanel } from "./TutorAdminChat";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
-import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -37,6 +38,7 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: UserRound, label: "Profile", path: "/tutor/dashboard/profile", sectionLabel: "Active workspace" },
   { icon: BadgeCheck, label: "Status", path: "/tutor/dashboard/status", sectionLabel: "Active workspace" },
   { icon: Bell, label: "Notifications", path: "/tutor/dashboard/notifications", sectionLabel: "Active workspace" },
+  { icon: MessageCircle, label: "Chat with Admin", path: "/tutor/dashboard/chat", sectionLabel: "Active workspace" },
   { icon: BookOpenCheck, label: "Tuition preferences", path: "/tutor/dashboard/preferences", sectionLabel: "Active workspace" },
   { icon: ClipboardList, label: "Tutor requests", path: "/tutor/dashboard/requests", sectionLabel: "Active workspace" },
   { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Active workspace" },
@@ -67,6 +69,7 @@ export const tutorDashboardSections = [
   "profile",
   "status",
   "notifications",
+  "chat",
   "confirmation-letter",
   "payment",
   "certificate",
@@ -202,6 +205,10 @@ export default function TutorDashboard() {
   // The header bell asks every minute, so a notice that lands while the Tutor is here rings it.
   const unreadNotificationsQuery = trpc.tutorNotifications.unreadCount.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken, refetchInterval: NOTIFICATION_CHECK_MS });
   const { data: stats } = statsQuery;
+  const chatUnreadQuery = trpc.tutorAdminChat.unreadCount.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken });
+  const navigationItems = useMemo(() => tutorDashboardNavigation.map(item =>
+    item.path === "/tutor/dashboard/chat" ? { ...item, badge: chatUnreadQuery.data?.unreadCount } : item
+  ), [chatUnreadQuery.data?.unreadCount]);
   const assignedRequestsQuery = trpc.tutorRequests.assigned.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken && section === "requests" });
   const draftAtLoad = useMemo(() => readTutorOnboardingDraft(), []);
   const onboardingFallback = useMemo<TutorOnboardingDraft | null>(() => {
@@ -280,7 +287,7 @@ export default function TutorDashboard() {
 
   const identity = stats?.tutorRegistration;
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });
-  return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }], settingsPath: TUTOR_SETTINGS_PATH, notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" } }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard">
+  return <DashboardLayout navigationItems={navigationItems} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }], settingsPath: TUTOR_SETTINGS_PATH, notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" } }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard">
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
@@ -293,6 +300,7 @@ export default function TutorDashboard() {
       {section === "confirmation-letter" && <TutorConfirmationLetterPanel />}
       {section === "status" && <TutorApplicationStatus />}
       {section === "notifications" && <TutorNotificationInbox />}
+      {section === "chat" && <TutorAdminChatPanel />}
       {section === "payment" && <TutorPaymentsPanel />}
       {["certificate", "refer-earn", "exclusively-yours", "how-it-works", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>

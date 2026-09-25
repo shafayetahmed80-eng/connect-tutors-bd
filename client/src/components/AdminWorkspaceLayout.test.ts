@@ -19,6 +19,7 @@ describe("Admin workspace navigation", () => {
       "Admin Profile",
       "Tutor Profiles",
       "Guardian Profiles",
+      "Tutor Chats",
       "Change requests",
       "Posted jobs",
       "Appointed Jobs",
@@ -56,6 +57,11 @@ describe("Admin workspace navigation", () => {
   it("counts the change requests waiting beside their tab, and draws nothing for none", () => {
     expect(buildAdminWorkspaceNavigation(false, 4).find(item => item.path === "/admin/change-requests")).toMatchObject({ label: "Change requests", badge: 4 });
     expect(buildAdminWorkspaceNavigation(false).find(item => item.path === "/admin/change-requests")?.badge).toBe(0);
+  });
+
+  it("counts the Tutor threads with an unread reply waiting", () => {
+    expect(buildAdminWorkspaceNavigation(false, 0, undefined, 3).find(item => item.path === "/admin/tutor-chats")).toMatchObject({ label: "Tutor Chats", badge: 3 });
+    expect(buildAdminWorkspaceNavigation(false).find(item => item.path === "/admin/tutor-chats")?.badge).toBe(0);
   });
 
   it("gives the Owner a Dynamic Section for content control and the form option lists", () => {

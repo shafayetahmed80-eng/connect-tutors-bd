@@ -28,6 +28,8 @@ vi.mock("@/lib/trpc", () => ({
       },
       // The Guardian Requests rows in the sidebar.
       guardianRequestCounts: { useQuery: () => ({ data: { shortlist: 3, appoint: 2, confirm: 0, cancel: 1 } }) },
+      // The Tutor Chats row in the sidebar.
+      tutorChatUnreadThreadCount: { useQuery: () => ({ data: { unreadThreadCount: 0 } }) },
     },
     auth: { logout: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } },
     // The sidebar's account block.
