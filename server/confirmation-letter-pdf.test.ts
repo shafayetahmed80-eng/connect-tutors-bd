@@ -120,6 +120,16 @@ describe("the PDF", () => {
     expect(letterCopy.draftMark).toBe("DRAFT · NOT ISSUED");
   });
 
+  it("carries the QR code and the printed code only when given one, still on one page", async () => {
+    const verification = { url: "https://connecttutorsbd.com/verify/CTB-2026-000019-V1/ABCDEFGHJK", code: "ABCDEFGHJK" };
+    const plain = await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411" });
+    const withCode = await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411", verification });
+    // Hundreds of QR squares make the page noticeably heavier.
+    expect(withCode.length).toBeGreaterThan(plain.length + 400);
+    expect(withCode.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(letterCopy.verifyAt).toBe("Check this letter at");
+  });
+
   it("stays on one page, even with a long subject list and a package", async () => {
     const pdf = await renderConfirmationLetterPdf({
       ...letter,

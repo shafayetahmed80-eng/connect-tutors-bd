@@ -2542,6 +2542,10 @@ export const appRouter = router({
   confirmationLetters: router({
     guardianMine: guardianProcedure.query(({ ctx }) => db.listConfirmationLettersForGuardian({ guardianUserId: ctx.user.id })),
     tutorMine: activeTutorProcedure.query(({ ctx }) => db.listConfirmationLettersForTutor({ tutorUserId: ctx.user.id })),
+    /** Public: whether a Letter ID and the code printed on it belong to a real, current letter. */
+    verify: publicProcedure
+      .input(z.object({ letterNumber: z.string().trim().min(1).max(40), code: z.string().trim().min(1).max(20) }))
+      .query(({ input }) => db.verifyConfirmationLetter(input)),
     /** The letter itself, for the site's own viewer and the Download button. */
     file: protectedProcedure
       .input(z.object({ letterId: z.number().int().positive() }))
