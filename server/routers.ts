@@ -2049,6 +2049,24 @@ export const appRouter = router({
         pageSize: z.number().int().min(1).max(100).default(20),
       }))
       .query(({ input }) => db.listNotificationBroadcasts(input)),
+    /** Every Tutor who has written in, newest activity first - the Admin side of the support chat. */
+    listTutorChatThreads: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+      }))
+      .query(({ input }) => db.listTutorAdminChatThreadsForAdmin(input)),
+    tutorChatUnreadThreadCount: adminProcedure.query(() => db.getTutorAdminChatUnreadThreadCountForAdmin()),
+    getTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(({ input }) => db.getTutorAdminChatThreadForAdmin(input)),
+    sendTutorChatMessage: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32), body: z.string().trim().min(1, "Write something first.").max(2000) }))
+      .mutation(({ ctx, input }) => db.sendTutorAdminChatMessageFromAdmin({ tutorId: input.tutorId, body: input.body, adminUserId: ctx.user.id })),
+    markTutorChatRead: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ input }) => db.markTutorAdminChatReadByAdmin(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -2523,6 +2541,18 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => db.markTutorNotificationRead({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), ...input })),
     markAllRead: activeTutorProcedure
       .mutation(async ({ ctx }) => db.markAllTutorNotificationsRead({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+  }),
+  /** The Tutor's own side of the one Admin support thread. */
+  tutorAdminChat: router({
+    thread: activeTutorProcedure
+      .query(async ({ ctx }) => db.getTutorAdminChatThread({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    unreadCount: activeTutorProcedure
+      .query(async ({ ctx }) => db.getTutorAdminChatUnreadCount({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    send: activeTutorProcedure
+      .input(z.object({ body: z.string().trim().min(1, "Write something first.").max(2000) }))
+      .mutation(async ({ ctx, input }) => db.sendTutorAdminChatMessageFromTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), body: input.body })),
+    markRead: activeTutorProcedure
+      .mutation(async ({ ctx }) => db.markTutorAdminChatReadByTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
   }),
   guardianNotifications: router({
     mine: guardianProcedure
