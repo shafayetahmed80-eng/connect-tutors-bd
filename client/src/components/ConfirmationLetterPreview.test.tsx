@@ -6,16 +6,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const letterFile = vi.hoisted(() => ({
   state: {} as { data?: { letterId: number; letterNumber: string; fileName: string; pdfBase64: string }; isLoading: boolean; error: { message: string } | null },
   refetch: vi.fn(),
+  previewTerms: undefined as unknown,
 }));
 
 vi.mock("@/lib/trpc", () => ({
-  trpc: { confirmationLetters: { file: { useQuery: () => ({ ...letterFile.state, refetch: letterFile.refetch }) } } },
+  trpc: {
+    confirmationLetters: { file: { useQuery: () => ({ ...letterFile.state, refetch: letterFile.refetch }) } },
+    admin: { previewConfirmationLetter: { useQuery: (terms: unknown) => { letterFile.previewTerms = terms; return { ...letterFile.state, refetch: letterFile.refetch }; } } },
+  },
 }));
 
 const pdf = vi.hoisted(() => ({ renderPdfPages: vi.fn(), saveFile: vi.fn() }));
 vi.mock("@/lib/pdfPreview", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/pdfPreview")>()), ...pdf }));
 
-import { ConfirmationLetterViewButton } from "./ConfirmationLetterPreview";
+import { ConfirmationLetterDraftPreview, ConfirmationLetterViewButton } from "./ConfirmationLetterPreview";
 
 const issued = {
   letterId: 31,
@@ -90,5 +94,29 @@ describe("viewing a Confirmation Letter", () => {
     fireEvent.click(footerClose);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(pdf.saveFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("the Admin previewing a draft", () => {
+  const terms = { letterId: 31, agreedStartDate: "2026-09-01", agreedFeeMinimum: 5000, agreedFeeMaximum: 7000 };
+
+  it("draws the draft with the terms typed so far and issues it from under the letter", async () => {
+    const onIssue = vi.fn();
+    render(<ConfirmationLetterDraftPreview terms={terms} onClose={vi.fn()} onIssue={onIssue} issuing={false} />);
+    expect(letterFile.previewTerms).toEqual(terms);
+    expect(screen.getByRole("dialog", { name: "Confirmation Letter preview" }).textContent).toContain("Draft · not issued yet");
+    await waitFor(() => expect(pdf.renderPdfPages).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText("Preparing your letter…")).toBeNull());
+    expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Issue letter" }));
+    expect(onIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds the window open while issuing and shows why an issue failed", () => {
+    render(<ConfirmationLetterDraftPreview terms={terms} onClose={vi.fn()} onIssue={vi.fn()} issuing issueError="This confirmation-letter draft is no longer available for issue." />);
+    expect((screen.getByRole("button", { name: "Issuing letter…" }) as HTMLButtonElement).disabled).toBe(true);
+    const [, footerClose] = screen.getAllByRole("button", { name: "Close" });
+    expect((footerClose as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("no longer available for issue");
   });
 });

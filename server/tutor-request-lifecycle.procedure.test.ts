@@ -13,6 +13,7 @@ const lifecycleDbMocks = vi.hoisted(() => ({
   getTutorRequestLocation: vi.fn(),
   getGuardianNotificationUnreadCount: vi.fn(),
   issueConfirmationLetter: vi.fn(),
+  previewConfirmationLetterDraft: vi.fn(),
   listConfirmationLettersForGuardian: vi.fn(),
   listConfirmationLettersForTutor: vi.fn(),
   listAdminMatchingSavedViews: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock("./db", async importOriginal => {
     getTutorRequestLocation: lifecycleDbMocks.getTutorRequestLocation,
     getGuardianNotificationUnreadCount: lifecycleDbMocks.getGuardianNotificationUnreadCount,
     issueConfirmationLetter: lifecycleDbMocks.issueConfirmationLetter,
+    previewConfirmationLetterDraft: lifecycleDbMocks.previewConfirmationLetterDraft,
     listConfirmationLettersForGuardian: lifecycleDbMocks.listConfirmationLettersForGuardian,
     listConfirmationLettersForTutor: lifecycleDbMocks.listConfirmationLettersForTutor,
     listAdminMatchingSavedViews: lifecycleDbMocks.listAdminMatchingSavedViews,
@@ -296,6 +298,20 @@ describe("approved Guardian request lifecycle procedures", () => {
     }));
     await expect((guardianCaller() as any).admin.createConfirmationLetterDraft({ requestId: 19 }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+  it("lets only an Admin preview a draft with the terms typed so far, without storing anything", async () => {
+    const terms = { letterId: 31, agreedStartDate: "2026-09-01", agreedFeeMinimum: 5000, agreedFeeMaximum: 7000 };
+    const preview = { letterId: 31, letterNumber: "CTB-2026-000019-V1", fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-000019-V1-DRAFT.pdf", pdfBase64: "JVBERi0=" };
+    lifecycleDbMocks.previewConfirmationLetterDraft.mockResolvedValueOnce(preview);
+
+    await expect((adminCaller().admin as any).previewConfirmationLetter(terms)).resolves.toEqual(preview);
+    expect(lifecycleDbMocks.previewConfirmationLetterDraft).toHaveBeenCalledWith(terms);
+    expect(lifecycleDbMocks.issueConfirmationLetter).not.toHaveBeenCalled();
+
+    lifecycleDbMocks.previewConfirmationLetterDraft.mockResolvedValueOnce(null);
+    await expect((adminCaller().admin as any).previewConfirmationLetter(terms)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect((adminCaller().admin as any).previewConfirmationLetter({ ...terms, agreedFeeMaximum: 4000 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect((guardianCaller() as any).admin.previewConfirmationLetter(terms)).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps issued confirmation letters private to their Guardian or assigned Tutor", async () => {
