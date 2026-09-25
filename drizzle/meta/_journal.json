@@ -701,6 +701,13 @@
       "when": 1792900000000,
       "tag": "0099_tutor_notification_announcement_type",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1793000000000,
+      "tag": "0100_notification_broadcasts_and_guardian_announcement",
+      "breakpoints": true
     }
   ]
 }

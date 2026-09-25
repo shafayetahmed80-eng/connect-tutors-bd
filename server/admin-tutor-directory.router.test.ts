@@ -53,13 +53,27 @@ describe("admin.notifyTutorDirectory", () => {
     });
 
     expect(result).toEqual({ sent: 7 });
-    expect(dbMocks.notifyTutorDirectory).toHaveBeenCalledWith(
-      expect.objectContaining({ profileStatus: "approved", jobStage: "confirmed" }),
-      { title: "Platform maintenance", message: "We are pausing new applications tonight." },
-    );
-    const [filtersArg] = dbMocks.notifyTutorDirectory.mock.calls[0];
+    expect(dbMocks.notifyTutorDirectory).toHaveBeenCalledWith({
+      filters: expect.objectContaining({ profileStatus: "approved", jobStage: "confirmed" }),
+      tutorIds: undefined,
+      title: "Platform maintenance",
+      message: "We are pausing new applications tonight.",
+      adminUserId: 42,
+    });
+    const [{ filters: filtersArg }] = dbMocks.notifyTutorDirectory.mock.calls[0];
     expect(filtersArg).not.toHaveProperty("page");
     expect(filtersArg).not.toHaveProperty("pageSize");
+  });
+
+  it("sends to a hand-picked set of Tutors instead, when given", async () => {
+    dbMocks.notifyTutorDirectory.mockResolvedValue({ sent: 2 });
+
+    const result = await createCaller().admin.notifyTutorDirectory({
+      tutorIds: ["tutor-175", "tutor-182"], title: "Platform maintenance", message: "Paused tonight.",
+    });
+
+    expect(result).toEqual({ sent: 2 });
+    expect(dbMocks.notifyTutorDirectory).toHaveBeenCalledWith(expect.objectContaining({ tutorIds: ["tutor-175", "tutor-182"] }));
   });
 
   it("refuses an empty title or message rather than broadcasting a blank notice", async () => {

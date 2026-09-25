@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   notifyInput: null as unknown,
   notifyResult: { sent: 2, isError: false },
+  historyInput: null as unknown,
+  historyData: { items: [{ id: 1, audience: "tutor", title: "Past notice", message: "An earlier broadcast.", recipientCount: 9, sentByName: "Owner", sentByEmail: null, createdAt: "2026-09-20T00:00:00.000Z" }], total: 1, page: 1, pageSize: 20, totalPages: 1 },
   toasts: [] as string[],
   data: {
     items: [
@@ -84,6 +86,12 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      listNotificationBroadcasts: {
+        useQuery: (input: unknown) => {
+          mocks.historyInput = input;
+          return { data: mocks.historyData, isLoading: false, isError: false };
+        },
+      },
     },
   },
 }));
@@ -97,6 +105,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.notifyInput = null;
   mocks.notifyResult = { sent: 2, isError: false };
+  mocks.historyInput = null;
   mocks.toasts = [];
 });
 
@@ -250,5 +259,62 @@ describe("Notify Tutors", () => {
 
     expect(mocks.toasts).toEqual(["Could not send."]);
     expect(screen.getByRole("dialog", { name: "Notify these Tutors" })).toBeTruthy();
+  });
+});
+
+describe("Notifying a hand-picked set of Tutors", () => {
+  it("ticking a row switches the toolbar to a selection count, and Notify targets just that Tutor", () => {
+    render(<AdminTutorProfilesContent />);
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("1 Tutor selected.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    expect(screen.getByRole("dialog", { name: "Notify these Tutors" }).textContent).toContain("1 hand-picked Tutor");
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Interview slot" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Please call the office tomorrow." } });
+    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+
+    expect(mocks.notifyInput).toMatchObject({ tutorIds: ["tutor-175"], title: "Interview slot", message: "Please call the office tomorrow." });
+  });
+
+  it("clears the selection after a successful hand-picked send, but not after a filtered one", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send to 1" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+  });
+
+  it("clears the selection from the toolbar's own link, without opening the dialog", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("Sent notifications history", () => {
+  it("opens a read-only list of past broadcasts", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Sent notifications" });
+    expect(within(dialog).getByText("Past notice")).toBeTruthy();
+    expect(within(dialog).getByText("An earlier broadcast.")).toBeTruthy();
+    expect(within(dialog).getByText("9 sent")).toBeTruthy();
+    expect(mocks.historyInput).toEqual({ audience: "tutor", page: 1, pageSize: 20 });
   });
 });
