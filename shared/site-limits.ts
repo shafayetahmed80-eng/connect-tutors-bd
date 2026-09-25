@@ -101,6 +101,7 @@ export const siteLimitIds = [
   "matching.weight.verified",
   "matching.weight.trackRecord",
   "matching.trackRecordCap",
+  "matching.weight.rating",
   // Corner rounding for the pieces of the dashboard shell that are neither a
   // dialog (Modals) nor an input box (Input Field Text): the sidebar's own
   // nav rows, the two profile tab bars, and every section/group card.
@@ -783,6 +784,16 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 5,
     min: 1,
     max: 30,
+  },
+  {
+    id: "matching.weight.rating",
+    group: "Matching",
+    label: "Points for the Guardian rating",
+    help: "The most a Tutor Matching score can gain from Guardian ratings - full points at a 5-star average, scaled down with it. A Tutor with no ratings yet gains none.",
+    unit: "points",
+    value: 3,
+    min: 0,
+    max: 15,
   },
   {
     id: "nav.itemRadius",

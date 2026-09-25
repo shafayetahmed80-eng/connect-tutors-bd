@@ -70,3 +70,22 @@ describe("reading ratings", () => {
     await expect(caller(guardian).tutorRequests.appliedTutorProfile({ requestId: 7, tutorId: "t-1" })).resolves.toMatchObject({ name: "Karim", rating: { average: 4.7, count: 3 } });
   });
 });
+
+describe("tutorReviews.setHidden", () => {
+  it("lets an Admin hide or restore a review", async () => {
+    const setHidden = vi.spyOn(db, "setTutorReviewHidden").mockResolvedValue({ updated: true });
+
+    await expect(caller(admin).tutorReviews.setHidden({ reviewId: 1, hidden: true })).resolves.toEqual({ updated: true });
+    expect(setHidden).toHaveBeenCalledWith({ adminUserId: 2, reviewId: 1, hidden: true });
+  });
+
+  it("is not for a Guardian or Tutor", async () => {
+    await expect(caller(guardian).tutorReviews.setHidden({ reviewId: 1, hidden: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(tutor).tutorReviews.setHidden({ reviewId: 1, hidden: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("refuses a review that no longer exists", async () => {
+    vi.spyOn(db, "setTutorReviewHidden").mockResolvedValue({ updated: false });
+    await expect(caller(admin).tutorReviews.setHidden({ reviewId: 999, hidden: true })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});

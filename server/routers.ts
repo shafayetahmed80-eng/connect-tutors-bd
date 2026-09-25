@@ -2528,11 +2528,17 @@ export const appRouter = router({
     }),
     /** The signed-in Tutor's own average. */
     mySummary: tutorProcedure.query(({ ctx }) => db.getTutorRatingSummaryForUser(ctx.user.id)),
-    /** Average plus every rating, for the Admin's Tutor profile page. */
+    /** Average plus every rating, for the Admin's Tutor profile page. A hidden review is listed but excluded from the average. */
     forTutor: adminProcedure.input(z.object({ tutorId: z.string().trim().min(1).max(32) })).query(async ({ input }) => ({
       summary: await db.getTutorRatingSummary(input.tutorId),
       reviews: await db.listTutorReviewsForAdmin(input.tutorId),
     })),
+    /** An Admin hides an inappropriate or mistaken review, or restores one - never a delete, so the decision stays reviewable. */
+    setHidden: adminProcedure.input(z.object({ reviewId: z.number().int().positive(), hidden: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const result = await db.setTutorReviewHidden({ adminUserId: ctx.user.id, ...input });
+      if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "This review is unavailable." });
+      return result;
+    }),
   }),
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
