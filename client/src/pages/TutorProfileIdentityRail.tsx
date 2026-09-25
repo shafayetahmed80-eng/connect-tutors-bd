@@ -5,6 +5,8 @@ import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
 import { tutorProfileResponsiveClasses } from "./TutorProfileResponsive";
 import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
+import { TutorRatingLine } from "@/components/TutorRating";
+import type { TutorRatingSummary } from "@shared/tutor-reviews";
 
 /**
  * One contact or education line.
@@ -65,6 +67,7 @@ export function TutorProfileIdentityRail({
   onReturnToSelectedJob,
   previewMode,
   onTogglePreview,
+  rating,
 }: {
   name: string;
   tutorNumber: number | null | undefined;
@@ -92,6 +95,8 @@ export function TutorProfileIdentityRail({
   onReturnToSelectedJob?: () => void;
   previewMode: boolean;
   onTogglePreview: () => void;
+  /** The Guardians' star rating; shows only once someone has rated. */
+  rating?: TutorRatingSummary | null;
 }) {
   const hasPhoto = Boolean(photoUrl) && !photoPreviewFailed;
   // Phones only: from `lg` up the list is always on screen and this is unused.
@@ -160,6 +165,7 @@ export function TutorProfileIdentityRail({
         <IdCard size={15} className="shrink-0 text-tp-label-faint" aria-hidden={true} />
         Tutor ID: {tutorNumber ?? "Preparing"}
         {verified ? <TutorVerifiedBadge className="ml-0.5" /> : null}
+        <TutorRatingLine summary={rating} className="ml-1" />
       </p>
     </div>
 

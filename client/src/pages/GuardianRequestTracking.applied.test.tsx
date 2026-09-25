@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({ requests: [] as unknown[], send: vi.fn(), with
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    tutorReviews: { mine: { useQuery: () => ({ data: [] }) }, mySummary: { useQuery: () => ({ data: undefined }) }, forTutor: { useQuery: () => ({ data: { summary: { average: null, count: 0 }, reviews: [] }, isLoading: false, isError: false }) }, save: { useMutation: () => ({ mutate: () => undefined, isPending: false }) } },
     useUtils: () => ({ tutorRequests: { appliedTutors: { invalidate: vi.fn() }, mine: { invalidate: vi.fn() } } }),
     tutorRequests: {
       mine: { useQuery: () => ({ data: mocks.requests, isLoading: false, error: null, refetch: vi.fn() }) },
@@ -118,6 +119,22 @@ describe("asking an Admin to cancel or remove, from the Posted jobs dialog", () 
     await user.type(within(ask).getByRole("textbox"), "We stopped after the first month");
     await user.click(within(ask).getByRole("button", { name: "Send request" }));
     expect(mocks.send).toHaveBeenCalledWith({ requestId: 16, type: "remove_tutor", tutorId: "tutor-175", reason: "We stopped after the first month" }, expect.anything());
+  });
+
+  it("offers Rate Tutor once Confirmed, and not before", async () => {
+    mocks.requests = [confirmed, { ...base, id: 15, status: "matched", publicationState: "published", tutorId: "tutor-175", appliedTutorCount: 3, tuitionRequest: null }];
+    const user = userEvent.setup();
+    render(<GuardianRequestTracking embedded />);
+
+    await user.click(screen.getByRole("tab", { name: /Appointed/ }));
+    await user.click(screen.getByRole("button", { name: /Job ID 6814/ }));
+    expect(within(screen.getByRole("dialog")).queryByRole("button", { name: /Rate Tutor/ })).toBeNull();
+    await user.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Close" })[0]!);
+
+    await user.click(screen.getByRole("tab", { name: /Confirmed/ }));
+    await user.click(screen.getByRole("button", { name: /Job ID 6815/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Rate Tutor/ }));
+    expect(screen.getByRole("dialog", { name: "Rate the Tutor" })).toBeTruthy();
   });
 
   it("marks a waiting request on the card, and lets the dialog withdraw it", async () => {

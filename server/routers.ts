@@ -68,6 +68,7 @@ import {
 import { createAuthRateLimiter } from "./auth-rate-limit";
 import { describeSignInBlock, signInBlockId, summariseSignInEvents } from "./sign-in-report";
 import { getSmsBalance, sendSms } from "./sms";
+import { TUTOR_RATING_MAX, TUTOR_RATING_MIN, TUTOR_REVIEW_COMMENT_MAX } from "@shared/tutor-reviews";
 import { generatePhoneCode, hashPhoneCode, PHONE_CODE_MAX_ATTEMPTS, PHONE_CODE_PATTERN, PHONE_CODE_RESEND_MS, PHONE_CODE_TTL_MS, PHONE_CODES_PER_HOUR, PhoneCodeFieldError, phoneCodeCheckMessage, phoneCodeMessage, phoneCodeSendMessage, type PhoneCodeLanguage } from "./phone-verification";
 import type { PhoneVerificationPurpose } from "../drizzle/schema";
 import { PASSWORD_RESET_LINK_MESSAGES, PASSWORD_RESET_TOKEN_PATTERN } from "@shared/password-reset";
@@ -2509,6 +2510,30 @@ export const appRouter = router({
         return result;
       }),
   }),
+  tutorReviews: router({
+    /** The Guardian's own ratings, so each Confirmed tuition can show and edit its one. */
+    mine: guardianProcedure.query(({ ctx }) => db.listGuardianTutorReviews(ctx.user.id)),
+    save: guardianProcedure.input(z.object({
+      requestId: z.number().int().positive(),
+      rating: z.number().int().min(TUTOR_RATING_MIN, "Choose 1 to 5 stars.").max(TUTOR_RATING_MAX, "Choose 1 to 5 stars."),
+      comment: z.string().trim().max(TUTOR_REVIEW_COMMENT_MAX, `Keep the comment to ${TUTOR_REVIEW_COMMENT_MAX} characters.`).nullish(),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await db.saveTutorReview({ guardianUserId: ctx.user.id, requestId: input.requestId, rating: input.rating, comment: input.comment?.length ? input.comment : null });
+      if (!result.saved) {
+        throw result.reason === "not_found"
+          ? new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." })
+          : new TRPCError({ code: "BAD_REQUEST", message: "A Tutor can be rated once the tuition is Confirmed." });
+      }
+      return { saved: true as const };
+    }),
+    /** The signed-in Tutor's own average. */
+    mySummary: tutorProcedure.query(({ ctx }) => db.getTutorRatingSummaryForUser(ctx.user.id)),
+    /** Average plus every rating, for the Admin's Tutor profile page. */
+    forTutor: adminProcedure.input(z.object({ tutorId: z.string().trim().min(1).max(32) })).query(async ({ input }) => ({
+      summary: await db.getTutorRatingSummary(input.tutorId),
+      reviews: await db.listTutorReviewsForAdmin(input.tutorId),
+    })),
+  }),
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
     mine: guardianProcedure.query(({ ctx }) => db.listGuardianTutorRequests(ctx.user.id)),
@@ -2532,7 +2557,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const profile = await db.getTutorProfileForGuardian({ guardianUserId: ctx.user.id, ...input });
         if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor profile is unavailable." });
-        return profile;
+        return { ...profile, rating: await db.getTutorRatingSummary(input.tutorId) };
       }),
     shortlistApplicant: guardianProcedure
       .input(z.object({

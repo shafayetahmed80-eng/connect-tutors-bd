@@ -1,4 +1,5 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
+import { AdminTutorRatings } from "@/components/TutorRating";
 import { AdminPasswordResetLink } from "@/components/AdminPasswordResetLink";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -216,6 +217,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     </section>
 
     <ModerationHistory tutorId={tutorId} />
+
+    <AdminTutorRatings tutorId={tutorId} />
 
     {profile.userId ? <AccountChangeHistory userId={profile.userId} /> : null}
 
