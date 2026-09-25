@@ -15,9 +15,9 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
-import { SiteContentProvider, useSiteContact, useSiteContentText } from "@/lib/siteContent";
+import { Link } from "wouter";
+import { SiteContentProvider, useSiteContentText } from "@/lib/siteContent";
 
-const RECOVERY_MESSAGE = "Hello Connect Tutors, I need help recovering my account.";
 
 /**
  * One centred card under the site header - no side panel, at the Owner's
@@ -52,7 +52,7 @@ export function SignInHeading({ slotPrefix }: { slotPrefix: "sign-in" | "tutor-s
 }
 
 /** Email-or-mobile + password, the error box and the submit button. */
-export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPassword, error, errorAction, pending, submitLabel, onSubmit }: {
+export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPassword, error, errorAction, pending, submitLabel, onSubmit, forgotHref }: {
   idPrefix: string;
   identifier: string;
   onIdentifier: (value: string) => void;
@@ -64,8 +64,9 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
   pending: boolean;
   submitLabel: ReactNode;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** The SMS-code password reset, opened on the right account type. */
+  forgotHref: string;
 }) {
-  const contact = useSiteContact();
   const capsLock = useCapsLockWarning();
   const [showPassword, setShowPassword] = useState(false);
   const identifierId = `${idPrefix}-identifier`;
@@ -80,7 +81,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
     <div>
       <div className="flex items-center justify-between gap-4">
         <label htmlFor={passwordId} className={fieldLabel}>Password{star}</label>
-        <a className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={contact.whatsapp(RECOVERY_MESSAGE)}>Need help signing in?</a>
+        <Link className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={forgotHref}>Forgot password?</Link>
       </div>
       <span className="relative mt-2 block">
         <input id={passwordId} name="password" required type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => onPassword(event.target.value)} onKeyDown={capsLock.updateCapsLockState} onKeyUp={capsLock.updateCapsLockState} onBlur={capsLock.clearCapsLockWarning} placeholder="Your password" className={`${filledField} pr-12`} />

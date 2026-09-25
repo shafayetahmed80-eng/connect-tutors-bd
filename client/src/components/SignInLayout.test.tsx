@@ -17,6 +17,7 @@ function renderForm(pending: boolean) {
       pending={pending}
       submitLabel="Sign in"
       onSubmit={vi.fn()}
+      forgotHref="/forgot-password"
     />,
   );
 }

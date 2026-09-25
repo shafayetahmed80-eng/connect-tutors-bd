@@ -673,6 +673,13 @@
       "when": 1792500000000,
       "tag": "0095_phone_verification_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1792600000000,
+      "tag": "0096_phone_code_password_reset",
+      "breakpoints": true
     }
   ]
 }
