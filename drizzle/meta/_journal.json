@@ -694,6 +694,13 @@
       "when": 1792800000000,
       "tag": "0098_tutor_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "5",
+      "when": 1792900000000,
+      "tag": "0099_tutor_notification_announcement_type",
+      "breakpoints": true
     }
   ]
 }
