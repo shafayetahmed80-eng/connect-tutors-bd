@@ -26,6 +26,7 @@ import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard
 import { JobBoardContent } from "./JobBoard";
 import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
+import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { LoadingCradle } from "@/components/BrandMark";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -198,6 +199,8 @@ export default function TutorDashboard() {
   const profileQuery = trpc.tutor.getMyProfile.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken });
   const { data: profile } = profileQuery;
   const statsQuery = trpc.tutor.getDashboardStats.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken });
+  // The header bell asks every minute, so a notice that lands while the Tutor is here rings it.
+  const unreadNotificationsQuery = trpc.tutorNotifications.unreadCount.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken, refetchInterval: NOTIFICATION_CHECK_MS });
   const { data: stats } = statsQuery;
   const assignedRequestsQuery = trpc.tutorRequests.assigned.useQuery(undefined, { enabled: user?.role === "tutor" && hasTutorPortalToken && section === "requests" });
   const draftAtLoad = useMemo(() => readTutorOnboardingDraft(), []);
@@ -277,7 +280,7 @@ export default function TutorDashboard() {
 
   const identity = stats?.tutorRegistration;
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });
-  return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }], settingsPath: TUTOR_SETTINGS_PATH }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor">
+  return <DashboardLayout navigationItems={tutorDashboardNavigation} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }], settingsPath: TUTOR_SETTINGS_PATH, notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" } }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor">
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}

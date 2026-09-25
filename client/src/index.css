@@ -490,6 +490,41 @@
 .sb-root .sb-badge[data-pulse] { animation: sb-pulse 480ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes sb-rise { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @keyframes sb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.22); box-shadow: 0 0 0 4px rgb(254 243 199 / 0.45); } 100% { transform: scale(1); } }
+
+/* The header bell: the unread count in the sidebar's amber badge colours,
+   ringed in the header's own colour so it reads as cut out of the bell, and
+   one swing from the bell's hanger when a new notification arrives. */
+.header-bell-count {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--header-bell-ring, #ffffff);
+}
+.sb-header .header-bell-count { --header-bell-ring: var(--sb-panel-top, #0d5fae); }
+@keyframes header-bell-swing {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(16deg); }
+  30% { transform: rotate(-13deg); }
+  45% { transform: rotate(9deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+  100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .header-bell[data-swinging] { transform-origin: 50% 2px; animation: header-bell-swing 900ms ease-in-out; }
+}
 @media (prefers-reduced-motion: reduce) {
   .sb-root .sb-indicator,
   .sb-root .sb-sub,

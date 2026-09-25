@@ -30,6 +30,7 @@ vi.mock("@/lib/trpc", () => ({
       upsertProfile: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
     },
     tutorRequests: { assigned: { useQuery: () => ({ data: [], isLoading: false }) } },
+    tutorNotifications: { unreadCount: { useQuery: () => ({ data: { unreadCount: 0 } }) } },
     // The Dashboard's stage buttons count the Tutor's own applications.
     jobBoard: { myInterests: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
     locations: { list: { useQuery: () => ({ data: [] }) } },
@@ -140,7 +141,8 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
     expect(header.className).not.toContain("bg-white/95");
     expect(screen.getByRole("heading", { name: "Dashboard" })).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Open notifications" }));
-    expect(screen.getByText("No notifications yet.")).not.toBeNull();
+    expect(screen.getByText("No new notifications.")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "View all notifications" })).not.toBeNull();
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "Open Tutor Portal account menu" }));

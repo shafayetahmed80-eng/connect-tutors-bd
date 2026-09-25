@@ -49,6 +49,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     locations: { list: { useQuery: () => ({ data: [{ id: "dhaka", type: "city", label: "Dhaka" }, { id: "mirpur", type: "area", parentId: "dhaka", label: "Mirpur" }] }) } },
     tutorRequests: { mine: { useQuery: () => ({ data: mocks.requests, isLoading: false }) } },
+    guardianNotifications: { unreadCount: { useQuery: () => ({ data: { unreadCount: 2 } }) } },
     useUtils: () => ({ guardianProfile: { me: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() }, identityDocuments: { invalidate: vi.fn() } }, account: { changeRequests: { invalidate: vi.fn() } } }),
   },
 }));
@@ -72,6 +73,13 @@ describe("Guardian workspace header colours", () => {
     const header = screen.getByRole("banner", { name: "Guardian Portal workspace header" });
     expect(header.className).toContain("sb-header");
     expect(header.className).not.toContain("bg-white/95");
+  });
+
+  it("puts the Guardian's unread count on the header bell", () => {
+    render(<GuardianDashboard />);
+
+    const bell = screen.getByRole("button", { name: "Open notifications, 2 unread" });
+    expect(bell.querySelector(".header-bell-count")?.textContent).toBe("2");
   });
 });
 
