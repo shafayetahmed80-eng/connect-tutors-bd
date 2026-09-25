@@ -51,11 +51,20 @@ describe("SidebarBrand", () => {
     const brand = container.querySelector(".sb-brand")!;
     expect(brand.textContent).toBe("ConnectTutors");
     expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
 
     fireEvent.pointerEnter(brand);
     expect(brand.hasAttribute("data-swinging")).toBe(true);
     fireEvent.animationEnd(brand.querySelector("svg.brand-mark")!);
     expect(brand.hasAttribute("data-swinging")).toBe(false);
+  });
+
+  it("becomes a button back to the panel's own dashboard when given a click handler", () => {
+    const onClick = vi.fn();
+    render(<SidebarBrand onClick={onClick} />);
+    const button = screen.getByRole("button", { name: "Connect Tutors home" });
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalled();
   });
 });
 
