@@ -18,6 +18,7 @@
     "db:seed:locations": "tsx scripts/seed-locations.mjs"
   },
   "dependencies": {
+    "@fontsource/manrope": "^5.3.0",
     "@fontsource/noto-sans-bengali": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",

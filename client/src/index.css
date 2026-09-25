@@ -259,6 +259,26 @@
 
 /* The journey's current step breathes: a soft ring leaves the mark and fades,
    like a ripple, then rests before the next one. */
+/* Job Board: when a page of jobs arrives the cards rise in one after another,
+   60ms apart (JobBoard caps the step). The wrapper moves, not the card, so the
+   card's own hover lift is untouched; a grid wrapper keeps the card full
+   height in its row. Nothing moves for anyone who asks for less motion. */
+.job-board-card-enter {
+  display: grid;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .job-board-card-enter {
+    animation: job-card-enter 480ms cubic-bezier(.23, 1, .32, 1) backwards;
+    animation-delay: calc(var(--stagger, 0) * 60ms);
+  }
+}
+
+@keyframes job-card-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
 .journey-step-halo {
   animation: journey-step-halo 2.4s cubic-bezier(.22, .61, .36, 1) infinite;
 }
