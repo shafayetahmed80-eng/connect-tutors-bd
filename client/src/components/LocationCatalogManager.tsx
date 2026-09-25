@@ -14,12 +14,12 @@ import {
   Eye,
   EyeOff,
   Home,
-  Loader2,
   Move,
   Plus,
   Search,
   Trash2,
 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 
 const inputClass = "h-8 w-full min-w-0 rounded-lg border border-j-border bg-white px-2 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
@@ -334,7 +334,7 @@ export default function LocationCatalogManager() {
     </p> : null}
 
     {active.isLoading
-      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading places…</div>
+      ? <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading places…</div>
       : active.isError
       ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">This list could not be loaded.</div>
       : <section className="rounded-xl border border-j-border bg-white p-3 shadow-sm">

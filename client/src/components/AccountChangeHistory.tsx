@@ -1,7 +1,8 @@
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { trpc } from "@/lib/trpc";
 import { accountChangeTypeLabels, type AccountChangeStatus, type AccountChangeType } from "@shared/account-change-requests";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { Link } from "wouter";
 
 type HistoryRow = {
@@ -69,7 +70,7 @@ export default function AccountChangeHistory({ userId }: { userId: number }) {
       <h2 id={`change-history-${userId}`} className="text-base font-bold text-j-ink">Change requests</h2>
       {waiting ? <Link href="/admin/change-requests" className="text-sm font-bold text-j-accent hover:underline">Open Change requests</Link> : null}
     </div>
-    {history.isLoading ? <div className="flex min-h-24 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading requests…</div> : null}
+    {history.isLoading ? <div className="flex min-h-24 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading requests…</div> : null}
     {history.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{history.error.message}</div> : null}
     {history.data ? <RecordTable caption="Change requests" columns={columns} rows={rows} rowKey={row => row.id} empty="No change requests." tableClassName="min-w-[48rem]" /> : null}
   </section>;

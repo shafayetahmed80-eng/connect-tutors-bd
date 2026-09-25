@@ -3,6 +3,7 @@ import {
   ArrowLeft, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, IdCard, Loader2, Mail, MapPin,
   PencilLine, Phone, ShieldCheck, UserRound, Users, type LucideIcon,
 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -245,7 +246,7 @@ export function AdminProfileView({ profile, images, locations, own }: {
 }
 
 function Loading() {
-  return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading the profile…</div>;
+  return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading the profile…</div>;
 }
 
 /** The signed-in Admin's own profile, with its editors. */

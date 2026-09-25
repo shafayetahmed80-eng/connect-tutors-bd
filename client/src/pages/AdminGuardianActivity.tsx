@@ -10,7 +10,8 @@ import { RecordIcon } from "@/components/recordIcons";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
-import { BadgeCheck, ChevronRight, Eye, Loader2, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BadgeCheck, ChevronRight, Eye, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -104,7 +105,7 @@ export function GuardianVerificationModal({ guardianUserId, onClose }: { guardia
       <ModalHeader title="Guardian verification" eyebrow="Identity check" />
       <ModalBody className="space-y-4">
         {profileQuery.isLoading ? (
-          <div className="flex min-h-40 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading profile…</div>
+          <div className="flex min-h-40 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading profile…</div>
         ) : profileQuery.isError || !profile ? (
           <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{profileQuery.error?.message ?? "This Guardian profile is unavailable."}</p>
         ) : (
@@ -199,7 +200,7 @@ export function GuardianActivityContent() {
         <button type="button" onClick={() => setFilters(initialFilters)} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
       </div>
     </CollapsiblePanel>
-    {requests.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Guardian requests…</div> : null}
+    {requests.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Guardian requests…</div> : null}
     {requests.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Guardian activity could not be loaded.</div> : null}
     {!requests.isLoading && !requests.isError ? <section className="space-y-4">{(requests.data?.items ?? []).map(request => {
       const privateDetails = getAdminGuardianPrivateDetails(request);
@@ -222,7 +223,7 @@ export function GuardianActivityContent() {
           <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-j-accent" />
           <p className="text-sm leading-6 text-j-ink-soft">This access has been recorded for Admin accountability. Use it only for the related Guardian request.</p>
         </div>
-        {contact.isLoading ? <div className="flex min-h-36 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading contact…</div> : contact.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{contact.error.message}</p> : contact.data ? <dl className="space-y-3 rounded-xl bg-j-surface-sunken p-4 text-sm"><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="guardianId" size={12} className="text-j-ink-faint" />Name</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.name}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Phone</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.phone}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="email" size={12} className="text-j-ink-faint" />Email</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.email ?? "Not provided"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.locationLabel ?? "Not provided"}</dd></div></dl> : null}
+        {contact.isLoading ? <div className="flex min-h-36 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading contact…</div> : contact.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{contact.error.message}</p> : contact.data ? <dl className="space-y-3 rounded-xl bg-j-surface-sunken p-4 text-sm"><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="guardianId" size={12} className="text-j-ink-faint" />Name</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.name}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="phone" size={12} className="text-j-ink-faint" />Phone</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.phone}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="email" size={12} className="text-j-ink-faint" />Email</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.email ?? "Not provided"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 font-semibold text-j-ink">{contact.data.locationLabel ?? "Not provided"}</dd></div></dl> : null}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setContactRequestId(null)} className="h-11 w-full rounded-xl bg-j-accent px-4 text-sm font-bold text-white">Close contact view</button>

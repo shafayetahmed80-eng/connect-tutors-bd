@@ -3,6 +3,7 @@
 
 import { TRPCClientError } from "@trpc/client";
 import { LoaderCircle } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React, { FormEvent, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { primaryButton } from "@/components/journeyField";
@@ -63,7 +64,7 @@ export default function ResetPassword() {
   }
 
   if (wellFormed && link.isLoading) {
-    return <SignInShell><p className="flex items-center justify-center gap-2 py-10 text-sm font-semibold text-j-ink-soft"><LoaderCircle className="animate-spin" size={17} /> Checking your link…</p></SignInShell>;
+    return <SignInShell><p className="flex items-center justify-center gap-2 py-10 text-sm font-semibold text-j-ink-soft"><LoadingCradle /> Checking your link…</p></SignInShell>;
   }
 
   const problem = !wellFormed || link.isError ? "invalid" : link.data && link.data.status !== "valid" ? link.data.status : null;

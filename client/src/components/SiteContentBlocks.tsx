@@ -7,7 +7,8 @@ import {
   type SiteContentBlockTone,
   type SiteContentPageId,
 } from "@shared/site-content";
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 
 const inputClass = "w-full min-w-0 rounded-lg border border-j-border bg-white px-2 py-1 text-sm text-j-ink-strong outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
@@ -85,7 +86,7 @@ export default function SiteContentBlocks({ page }: { page: SiteContentPageId })
   };
 
   if (blocks.isLoading) {
-    return <div className="flex min-h-24 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading blocks…</div>;
+    return <div className="flex min-h-24 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading blocks…</div>;
   }
 
   return <div className="space-y-3">

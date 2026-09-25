@@ -11,7 +11,8 @@ import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
 import { AdminAppliedTuitionsContent, TuitionStatus } from "./AdminAppliedTutors";
-import { ArrowLeft, CircleX, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, CircleX, Search, SlidersHorizontal } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
@@ -220,7 +221,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
       <TutorMatchingFilterBar filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorMatchingFilters)} />
     </section> : null}
 
-    {matching.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading matching Tutors…</div> : null}
+    {matching.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading matching Tutors…</div> : null}
     {matching.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{matching.error?.message ?? "Matching Tutors could not be loaded."}</div> : null}
 
     {!matching.isLoading && !matching.isError

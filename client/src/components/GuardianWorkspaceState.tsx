@@ -1,5 +1,6 @@
 import React from "react";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 
 export type GuardianWorkspaceStateKind = "loading" | "empty" | "error" | "planned";
@@ -13,10 +14,12 @@ const content: Record<GuardianWorkspaceStateKind, { title: string; message?: str
 
 export function GuardianWorkspaceState({ kind, title, message, onRetry }: { kind: GuardianWorkspaceStateKind; title?: string; message?: string; onRetry?: () => void }) {
   const copy = content[kind];
-  const Icon = kind === "loading" ? Loader2 : kind === "error" ? AlertCircle : kind === "planned" ? CheckCircle2 : CheckCircle2;
+  const Icon = kind === "error" ? AlertCircle : CheckCircle2;
   return (
     <section role={kind === "loading" ? "status" : undefined} aria-busy={kind === "loading" || undefined} className="rounded-xl border border-j-border bg-white p-8 text-center shadow-sm">
-      <Icon aria-hidden="true" className={`mx-auto mb-4 size-8 text-[#1677c8] ${kind === "loading" ? "animate-spin" : ""}`} />
+      {kind === "loading"
+        ? <span className="mb-4 block"><LoadingCradle className="text-[18px]" /></span>
+        : <Icon aria-hidden="true" className="mx-auto mb-4 size-8 text-[#1677c8]" />}
       <h2 className="text-xl font-black text-j-ink">{title || copy.title}</h2>
       {message || copy.message ? <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-j-ink-soft">{message || copy.message}</p> : null}
       {kind === "error" && onRetry ? <Button type="button" variant="outline" onClick={onRetry} className="mt-5 border-[#9dcde7] text-[#0e4f85]">Try again</Button> : null}

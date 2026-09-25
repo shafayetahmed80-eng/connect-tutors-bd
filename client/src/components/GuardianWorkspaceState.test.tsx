@@ -11,6 +11,7 @@ describe("GuardianWorkspaceState", () => {
     const status = screen.getByRole("status");
     expect(status.getAttribute("aria-busy")).toBe("true");
     expect(screen.getByText("Loading your private workspace")).toBeTruthy();
+    expect(status.querySelector(".loading-cradle svg.brand-mark")).toBeTruthy();
   });
 
   it("renders a labeled shimmer skeleton as a busy status", () => {

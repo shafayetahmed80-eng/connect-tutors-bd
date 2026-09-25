@@ -67,9 +67,56 @@
   color: #93cdfc;
 }
 
+/* Dashboard sidebars: the same lockup a size down, in the panel's own text
+   colours so the Owner's sidebar colour dials repaint it too. */
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.42em;
+  min-width: 0;
+  font-size: 17px;
+}
+
+.sb-brand .brand-mark {
+  --brand-mark-ink: var(--sb-text);
+  --brand-mark-lift: #ffc24d;
+}
+
+.sb-brand .brand-wordmark {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sb-brand .brand-wordmark strong {
+  color: var(--sb-text);
+}
+
+.sb-brand .brand-wordmark em {
+  color: var(--sb-soft);
+}
+
+/* Collapsed to icons, the mark stands alone. */
+[data-collapsible="icon"] .sb-brand .brand-wordmark {
+  display: none;
+}
+
+/* The loading indicator: the cradle beside the "Loading…" text, sized from
+   that text, in place of a spinning circle. */
+.loading-cradle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.loading-cradle .brand-mark {
+  width: 2.25em;
+  height: 1.5em;
+}
+
 /* Pointing at the logo lets the lifted ball drop: it strikes the row, the
    far ball flies out and back, and the lifted one returns to rest. One swing
-   per visit, and none at all for anyone who asks for less motion. */
+   per visit; a loading cradle swings until the page arrives. None at all for
+   anyone who asks for less motion. */
 @keyframes brand-cradle-lifted {
   0% { transform: rotate(-22deg); animation-timing-function: ease-in; }
   25% { transform: rotate(0deg); }
@@ -87,16 +134,24 @@
    holds the last pose until the attribute is removed, so the lifted ball's
    own `transform` never meets this origin. */
 @media (prefers-reduced-motion: no-preference) {
-  .brand-logo[data-swinging] .brand-mark-lifted,
-  .brand-logo[data-swinging] .brand-mark-free {
+  [data-swinging] > .brand-mark .brand-mark-lifted,
+  [data-swinging] > .brand-mark .brand-mark-free,
+  .loading-cradle .brand-mark-lifted,
+  .loading-cradle .brand-mark-free {
     transform-box: fill-box;
     transform-origin: 50% 0;
     animation-duration: 1.8s;
     animation-fill-mode: both;
   }
 
-  .brand-logo[data-swinging] .brand-mark-lifted { animation-name: brand-cradle-lifted; }
-  .brand-logo[data-swinging] .brand-mark-free { animation-name: brand-cradle-free; }
+  [data-swinging] > .brand-mark .brand-mark-lifted,
+  .loading-cradle .brand-mark-lifted { animation-name: brand-cradle-lifted; }
+
+  [data-swinging] > .brand-mark .brand-mark-free,
+  .loading-cradle .brand-mark-free { animation-name: brand-cradle-free; }
+
+  .loading-cradle .brand-mark-lifted,
+  .loading-cradle .brand-mark-free { animation-iteration-count: infinite; }
 }
 
 .site-header {

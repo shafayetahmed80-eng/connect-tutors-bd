@@ -1,6 +1,7 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight, ClipboardList, ContactRound, Loader2, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { ArrowRight, ClipboardList, ContactRound, ShieldCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { Link } from "wouter";
 
 export const ADMIN_WORKSPACE_SECURITY_BADGE = "Role-restricted workspace";
@@ -28,7 +29,7 @@ export function buildAdminPriorityQueue(metrics: AdminPriorityQueueMetrics) {
 
 function OverviewContent() {
   const overview = trpc.admin.getMonitoringOverview.useQuery();
-  if (overview.isLoading) return <div className="flex min-h-[48vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading operational overview…</div>;
+  if (overview.isLoading) return <div className="flex min-h-[48vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading operational overview…</div>;
   if (overview.isError || !overview.data) return <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">The Admin overview could not be loaded. Please refresh and try again.</div>;
   const { metrics } = overview.data;
   const priorityQueue = buildAdminPriorityQueue(metrics);

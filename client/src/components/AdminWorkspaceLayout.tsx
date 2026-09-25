@@ -1,7 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, Loader2, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
@@ -169,7 +170,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   }, [mismatch, isFetching, refetch, utils]);
 
   if (displayState === "loading") {
-    return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening Admin workspace…</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Opening Admin workspace…</div>;
   }
   if (displayState === "denied") {
     return <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center rounded-xl border border-j-border bg-white p-8 text-center shadow-sm"><ShieldCheck className="mb-4 h-12 w-12 text-j-ink-faint" /><h1 className="text-2xl font-bold text-j-ink">Admin access required</h1><p className="mt-2 text-sm leading-6 text-j-ink-soft">This workspace is available only to authorized Connect Tutors administrators.</p></section>;

@@ -9,7 +9,8 @@ import {
   type TutorApplicationRecord,
   type TutorApplicationStage,
 } from "@shared/tutor-application-stages";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -52,7 +53,7 @@ export default function AdminTutorApplications({ tutorId }: { tutorId: string })
 
     {stage ? <div className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm">
       {applicationsQuery.isLoading
-        ? <p className="flex items-center justify-center px-4 py-6 text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading applications…</p>
+        ? <p className="flex items-center justify-center px-4 py-6 text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading applications…</p>
         : applicationsQuery.isError
           ? <p className="px-4 py-6 text-center text-sm text-red-800">This Tutor's applications could not be loaded.</p>
           : visible.length === 0

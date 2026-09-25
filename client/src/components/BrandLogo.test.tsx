@@ -2,6 +2,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LoadingCradle } from "./BrandMark";
+import { SidebarBrand } from "./DashboardLayout";
 import { BrandLogo } from "./SiteHeader";
 
 // jsdom has no AnimationEvent, so React would listen for the prefixed
@@ -40,5 +42,28 @@ describe("BrandLogo", () => {
 
     fireEvent.focus(link);
     expect(link.hasAttribute("data-swinging")).toBe(true);
+  });
+});
+
+describe("SidebarBrand", () => {
+  it("shows the lockup without linking out of the panel, and swings when pointed at", () => {
+    const { container } = render(<SidebarBrand />);
+    const brand = container.querySelector(".sb-brand")!;
+    expect(brand.textContent).toBe("ConnectTutors");
+    expect(screen.queryByRole("link")).toBeNull();
+
+    fireEvent.pointerEnter(brand);
+    expect(brand.hasAttribute("data-swinging")).toBe(true);
+    fireEvent.animationEnd(brand.querySelector("svg.brand-mark")!);
+    expect(brand.hasAttribute("data-swinging")).toBe(false);
+  });
+});
+
+describe("LoadingCradle", () => {
+  it("is a hidden-from-readers cradle that keeps the caller's spacing", () => {
+    const { container } = render(<LoadingCradle className="mr-2" />);
+    const cradle = container.querySelector(".loading-cradle")!;
+    expect(cradle.className).toBe("loading-cradle mr-2");
+    expect(cradle.querySelector("svg.brand-mark")?.getAttribute("aria-hidden")).toBe("true");
   });
 });
