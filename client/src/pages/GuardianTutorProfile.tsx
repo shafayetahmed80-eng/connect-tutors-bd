@@ -1,7 +1,8 @@
 import { SiteContentProvider } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { indexResolvedFields } from "@shared/tutor-profile-field-registry";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo } from "react";
 import { Link } from "wouter";
 import { hydrateTeachingProfile } from "./TutorProfileWorkspace";
@@ -49,7 +50,7 @@ export function GuardianTutorProfileContent({ requestId, tutorId }: { requestId:
       <ArrowLeft size={15} /> Back to Applied Tutors
     </Link>
 
-    {profileQuery.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profile…</div> : null}
+    {profileQuery.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Tutor profile…</div> : null}
     {profileQuery.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error?.message ?? "This Tutor profile is unavailable."}</div> : null}
 
     {profile ? <>

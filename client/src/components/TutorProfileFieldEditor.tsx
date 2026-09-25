@@ -6,7 +6,8 @@ import {
   tutorProfileFieldRegistry,
   type ResolvedTutorProfileField,
 } from "@shared/tutor-profile-field-registry";
-import { ArrowDown, ArrowUp, Loader2, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, Search } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 import { tutorProfileSectionDefinitions, type TutorProfileEditTarget } from "@/pages/TutorProfileSectionDraft";
 import {
@@ -119,7 +120,7 @@ export default function TutorProfileFieldEditor() {
   };
 
   if (overridesQuery.isLoading) {
-    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading field settings…</div>;
+    return <div className="flex min-h-32 items-center justify-center rounded-xl border border-j-border bg-white text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading field settings…</div>;
   }
   if (overridesQuery.isError) {
     return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Field settings could not be loaded.</div>;

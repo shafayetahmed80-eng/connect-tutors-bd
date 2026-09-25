@@ -1,13 +1,18 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminTutorRows from "@/components/AdminTutorRows";
+import CharacterRemaining from "@/components/CharacterRemaining";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
+import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
 import StatusTabRow from "@/components/StatusTabRow";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
-import { Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { History, Megaphone, Search, SlidersHorizontal } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type ProfileStatus = "all" | "draft" | "pending" | "changes_requested" | "approved" | "suspended";
 export type TutorFilters = {
@@ -68,11 +73,20 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
  */
 export function AdminTutorProfilesContent() {
   const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // The tab rows show their own choices, so the Filters badge counts the rest.
   const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize", "profileStatus", "jobStage"] });
   const tutors = trpc.admin.listTutorDirectory.useQuery(filters);
   const counts = tutors.data?.counts;
+  const matchCount = tutors.data?.total ?? 0;
   const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
+  const toggleSelected = (tutorId: string) => setSelectedIds(current => {
+    const next = new Set(current);
+    if (next.has(tutorId)) next.delete(tutorId); else next.add(tutorId);
+    return next;
+  });
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-5 pb-10">
     <div>
@@ -96,11 +110,52 @@ export function AdminTutorProfilesContent() {
       <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} showProfileStatus={false} />
     </CollapsiblePanel>
 
-    {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Tutor profiles…</div> : null}
+    {/* Sends to exactly who the two tab rows and the Filters panel above are
+        currently showing - or, when an Admin ticks specific rows below,
+        exactly those - never a separate hand-picked list built elsewhere. */}
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-4 py-3">
+      <p data-testid="notify-match-count" className="text-sm text-j-ink-soft">
+        {selectedIds.size > 0
+          ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> Tutor{selectedIds.size === 1 ? "" : "s"} selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
+          : <><span className="font-bold text-j-ink">{matchCount}</span> Tutor{matchCount === 1 ? "" : "s"} match{matchCount === 1 ? "es" : ""} the current filters.</>}
+      </p>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+        >
+          <History className="h-4 w-4" aria-hidden="true" /> History
+        </button>
+        <button
+          type="button"
+          onClick={() => setNotifyOpen(true)}
+          disabled={matchCount === 0 && selectedIds.size === 0}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
+        </button>
+      </div>
+    </div>
+    {notifyOpen ? <NotifyTutorsModal
+      filters={filters}
+      matchCount={matchCount}
+      selectedIds={Array.from(selectedIds)}
+      onSent={() => setSelectedIds(new Set())}
+      onClose={() => setNotifyOpen(false)}
+    /> : null}
+    {historyOpen ? <NotificationHistoryModal audience="tutor" onClose={() => setHistoryOpen(false)} /> : null}
+
+    {tutors.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Tutor profiles…</div> : null}
     {tutors.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tutor profiles could not be loaded.</div> : null}
 
     {!tutors.isLoading && !tutors.isError
-      ? <AdminTutorRows tutors={tutors.data?.items ?? []} caption="Every Tutor profile" emptyLabel="No Tutor profile matches the active filters." />
+      ? <AdminTutorRows
+          tutors={tutors.data?.items ?? []}
+          caption="Every Tutor profile"
+          emptyLabel="No Tutor profile matches the active filters."
+          selection={{ isSelected: id => selectedIds.has(id), onToggle: toggleSelected }}
+        />
       : null}
 
     <TutorListPager
@@ -114,6 +169,96 @@ export function AdminTutorProfilesContent() {
       totalItems={tutors.data?.total}
     />
   </div>;
+}
+
+const NOTIFY_TITLE_MAX = 120;
+const NOTIFY_MESSAGE_MAX = 360;
+
+/**
+ * One message, sent either to every Tutor the directory's active filters
+ * currently match, or - when the Admin ticked specific rows first - to
+ * exactly those. Lands in each Tutor's own Notifications tab.
+ */
+function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }: {
+  filters: TutorFilters;
+  matchCount: number;
+  /** Hand-picked Tutor ids; a non-empty list overrides the filters entirely. */
+  selectedIds: string[];
+  /** Called once the send succeeds, so the caller can clear the selection. */
+  onSent: () => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const usingSelection = selectedIds.length > 0;
+  const recipientCount = usingSelection ? selectedIds.length : matchCount;
+  const notify = trpc.admin.notifyTutorDirectory.useMutation({
+    onSuccess: result => {
+      toast.success(`Sent to ${result.sent} Tutor${result.sent === 1 ? "" : "s"}.`);
+      if (usingSelection) onSent();
+      onClose();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const ready = title.trim().length > 0 && message.trim().length > 0;
+  const { page: _page, pageSize: _pageSize, ...directoryFilters } = filters;
+  const recipientLine = usingSelection
+    ? `${recipientCount} hand-picked Tutor${recipientCount === 1 ? "" : "s"}`
+    : `${recipientCount} Tutor${recipientCount === 1 ? "" : "s"} match the current filters`;
+  const send = () => notify.mutate(usingSelection
+    ? { ...defaultTutorFilters, tutorIds: selectedIds, title: title.trim(), message: message.trim() }
+    : { ...directoryFilters, title: title.trim(), message: message.trim() });
+
+  if (confirming) {
+    return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+      <ModalHeader title="Send this to Tutors?" meta={recipientLine} />
+      <ModalBody className="space-y-3">
+        <p className="text-sm leading-6 text-j-ink-soft">This is exactly what every recipient will see in their Notifications tab. It cannot be recalled once sent.</p>
+        <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3.5">
+          <p className="font-bold text-j-ink">{title.trim()}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-soft">{message.trim()}</p>
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button
+          type="button"
+          disabled={notify.isPending}
+          onClick={send}
+          className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        >{notify.isPending ? "Sending…" : `Confirm & send to ${recipientCount}`}</button>
+      </ModalFooter>
+    </Modal>;
+  }
+
+  return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+    <ModalHeader title="Notify these Tutors" meta={recipientLine} />
+    <ModalBody className="space-y-4">
+      <div>
+        <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+        <input id="notify-tutors-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="notify-tutors-message" className="text-sm font-bold text-j-ink">Message <span className="text-red-600">*</span></label>
+          <CharacterRemaining value={message} maxLength={NOTIFY_MESSAGE_MAX} />
+        </div>
+        <textarea id="notify-tutors-message" value={message} maxLength={NOTIFY_MESSAGE_MAX} rows={4} onChange={event => setMessage(event.target.value)}
+          className="mt-1.5 w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button
+        type="button"
+        disabled={!ready}
+        onClick={() => setConfirming(true)}
+        className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+      >Review &amp; send to {recipientCount}</button>
+    </ModalFooter>
+  </Modal>;
 }
 
 export default function AdminTutorProfiles() {

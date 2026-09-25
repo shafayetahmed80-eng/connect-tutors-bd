@@ -4,6 +4,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { parseBulkSchoolColleges, SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, schoolCollegeDivisionLabels, schoolCollegeDivisionValues, type SchoolCollegeDivision } from "@shared/school-colleges";
 import { ChevronDown, ChevronUp, Loader2, Plus, Search, Upload } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -174,7 +175,7 @@ export function SchoolCollegeManager() {
     </form> : null}
     {view === "shared" ? <BulkImportForm onImported={refresh} /> : null}
 
-    {list.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div> : null}
+    {list.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading…</div> : null}
     {list.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{list.error.message}</p> : null}
     {list.data ? rows.length === 0
       ? <p className="rounded-xl bg-j-surface-sunken p-6 text-center text-sm text-j-ink-soft">{view === "shared" ? "No name matches." : "No Tutor has created a name."}</p>

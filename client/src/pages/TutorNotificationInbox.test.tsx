@@ -98,4 +98,13 @@ describe("the Tutor's notification inbox", () => {
     render(<TutorNotificationInbox />);
     expect(screen.getByRole("alert").textContent).toMatch(/could not be loaded/);
   });
+
+  it("shows an Admin's broadcast to the directory the same way as a lifecycle notice", () => {
+    state.items = [note({ type: "announcement", title: "Platform maintenance tonight", message: "New applications pause for an hour.", actionPath: "/tutor/dashboard/notifications" })];
+    state.unread = 1;
+    render(<TutorNotificationInbox />);
+
+    expect(screen.getByRole("heading", { name: "Platform maintenance tonight" })).toBeTruthy();
+    expect(screen.getByText("New applications pause for an hour.")).toBeTruthy();
+  });
 });

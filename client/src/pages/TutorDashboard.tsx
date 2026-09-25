@@ -25,6 +25,7 @@ import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
 import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -271,7 +272,7 @@ export default function TutorDashboard() {
     return () => window.clearInterval(renewalTimer);
   }, [hasUnsavedProfileChanges, navigate, statsQuery.refetch, tutorPortalToken, user?.role]);
 
-  if (authLoading || !user || user.role !== "tutor" || shouldRequireTutorPortalSignIn(user.role, tutorPortalToken)) return <main className="min-h-screen bg-[#f4f8fb] p-8 text-center text-sm text-[#5b7287]">Checking Tutor account access…</main>;
+  if (authLoading || !user || user.role !== "tutor" || shouldRequireTutorPortalSignIn(user.role, tutorPortalToken)) return <main className="min-h-screen bg-[#f4f8fb] p-8 text-center text-sm text-[#5b7287]"><span className="mb-3 block"><LoadingCradle /></span>Checking Tutor account access…</main>;
 
   const identity = stats?.tutorRegistration;
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });

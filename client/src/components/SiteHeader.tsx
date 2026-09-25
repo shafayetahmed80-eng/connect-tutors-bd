@@ -5,6 +5,7 @@ import { Menu, Phone, UserRound, X } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
 
 export const navItems = [
   { label: "Job Board", href: "/job-board" },
@@ -16,11 +17,7 @@ export const mobilePublicQuickLinks = [
   ...navItems,
 ] as const;
 
-export const brandWordmark = {
-  primary: "Connect",
-  secondary: "Tutors",
-  homeLabel: "Connect Tutors home",
-} as const;
+export { brandWordmark };
 
 export type JourneyAudience = "guardian" | "tutor";
 
@@ -49,18 +46,12 @@ export function getPublicAccountNavigation(user: { role?: string } | null | unde
   return { href: "/account", label: PUBLIC_ACCOUNT_LABEL };
 }
 
+/** Mark + wordmark. Pointing at it (or tabbing to it) swings the cradle once. */
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
+  const swing = useCradleSwing();
   return (
-    <Link href="/" className="brand-logo" aria-label={brandWordmark.homeLabel}>
-      <span className="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 40 40" role="img" focusable="false">
-          <path d="M10 30.5 20 9.5l10 21" />
-          <path d="M13.5 23h13" />
-          <circle cx="10" cy="30.5" r="3.25" />
-          <circle cx="20" cy="9.5" r="3.25" />
-          <circle cx="30" cy="30.5" r="3.25" />
-        </svg>
-      </span>
+    <Link href="/" className="brand-logo" aria-label={brandWordmark.homeLabel} {...swing.host}>
+      <BrandMark onAnimationEnd={swing.onAnimationEnd} />
       {!compact && (
         <span className="brand-wordmark">
           <strong>{brandWordmark.primary}</strong>

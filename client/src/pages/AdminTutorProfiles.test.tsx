@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  notifyInput: null as unknown,
+  notifyResult: { sent: 2, isError: false },
+  historyInput: null as unknown,
+  historyData: { items: [{ id: 1, audience: "tutor", title: "Past notice", message: "An earlier broadcast.", recipientCount: 9, sentByName: "Owner", sentByEmail: null, createdAt: "2026-09-20T00:00:00.000Z" }], total: 1, page: 1, pageSize: 20, totalPages: 1 },
+  toasts: [] as string[],
   data: {
     items: [
       {
@@ -72,13 +77,37 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
+      notifyTutorDirectory: {
+        useMutation: (options: { onSuccess?: (result: { sent: number }) => void; onError?: (error: { message: string }) => void }) => ({
+          mutate: (input: unknown) => {
+            mocks.notifyInput = input;
+            mocks.notifyResult.isError ? options.onError?.({ message: "Could not send." }) : options.onSuccess?.({ sent: mocks.notifyResult.sent });
+          },
+          isPending: false,
+        }),
+      },
+      listNotificationBroadcasts: {
+        useQuery: (input: unknown) => {
+          mocks.historyInput = input;
+          return { data: mocks.historyData, isLoading: false, isError: false };
+        },
+      },
     },
   },
 }));
 
+vi.mock("sonner", () => ({ toast: { success: (message: string) => { mocks.toasts.push(message); }, error: (message: string) => { mocks.toasts.push(message); } } }));
+
 import { AdminTutorProfilesContent } from "./AdminTutorProfiles";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  mocks.notifyInput = null;
+  mocks.notifyResult = { sent: 2, isError: false };
+  mocks.historyInput = null;
+  mocks.toasts = [];
+});
 
 describe("Admin Tutor Profiles list", () => {
   it("puts every Tutor on one row with the columns an Admin scans", () => {
@@ -174,5 +203,152 @@ describe("Admin Tutor Profiles list", () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Search Tutor name/i), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ query: "Tania", page: 1 });
+  });
+});
+
+describe("Notify Tutors", () => {
+  it("counts how many Tutors the current filters match, next to the button that sends to them", () => {
+    render(<AdminTutorProfilesContent />);
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect((screen.getByRole("button", { name: "Notify" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps Review & send disabled until both a title and a message are typed", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    const review = screen.getByRole("button", { name: /^Review & send to/ }) as HTMLButtonElement;
+    expect(review.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    expect(review.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications for an hour tonight." } });
+    expect(review.disabled).toBe(false);
+  });
+
+  it("shows exactly what will be sent on a review step before anything actually sends", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "  Platform maintenance  " } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "  We are pausing new applications for an hour tonight.  " } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+
+    // Nothing has sent yet - the review step is read-only, trimmed exactly as it will be sent.
+    expect(mocks.notifyInput).toBeNull();
+    const dialog = screen.getByRole("dialog", { name: "Send this to Tutors?" });
+    expect(dialog.textContent).toContain("Platform maintenance");
+    expect(dialog.textContent).toContain("We are pausing new applications for an hour tonight.");
+    expect(screen.queryByLabelText(/^Title/)).toBeNull();
+  });
+
+  it("Back returns to the editable form with what was typed still there", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Paused tonight." } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(mocks.notifyInput).toBeNull();
+    expect((screen.getByLabelText(/^Title/) as HTMLInputElement).value).toBe("Platform maintenance");
+    expect((screen.getByLabelText(/^Message/) as HTMLTextAreaElement).value).toBe("Paused tonight.");
+  });
+
+  it("sends the typed title and message only once the review step is confirmed", () => {
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "  Platform maintenance  " } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "  We are pausing new applications for an hour tonight.  " } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
+
+    expect(mocks.notifyInput).toMatchObject({
+      query: "", profileStatus: "all", jobStage: "all", verified: "all", location: "", subject: "", tuitionType: "all",
+      title: "Platform maintenance",
+      message: "We are pausing new applications for an hour tonight.",
+    });
+    // page/pageSize are pagination, not part of who gets notified.
+    expect(mocks.notifyInput).not.toHaveProperty("page");
+    expect(mocks.notifyInput).not.toHaveProperty("pageSize");
+    expect(mocks.toasts).toEqual(["Sent to 2 Tutors."]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("reports a failed send without closing the dialog", () => {
+    mocks.notifyResult = { sent: 0, isError: true };
+    render(<AdminTutorProfilesContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "We are pausing new applications tonight." } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
+
+    expect(mocks.toasts).toEqual(["Could not send."]);
+    expect(screen.getByRole("dialog", { name: "Send this to Tutors?" })).toBeTruthy();
+  });
+});
+
+describe("Notifying a hand-picked set of Tutors", () => {
+  it("ticking a row switches the toolbar to a selection count, and Notify targets just that Tutor", () => {
+    render(<AdminTutorProfilesContent />);
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("1 Tutor selected.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    expect(screen.getByRole("dialog", { name: "Notify these Tutors" }).textContent).toContain("1 hand-picked Tutor");
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Interview slot" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Please call the office tomorrow." } });
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
+
+    expect(mocks.notifyInput).toMatchObject({ tutorIds: ["tutor-175"], title: "Interview slot", message: "Please call the office tomorrow." });
+  });
+
+  it("clears the selection after a successful hand-picked send, but not after a filtered one", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+  });
+
+  it("clears the selection from the toolbar's own link, without opening the dialog", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+
+    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("Sent notifications history", () => {
+  it("opens a read-only list of past broadcasts", () => {
+    render(<AdminTutorProfilesContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Sent notifications" });
+    expect(within(dialog).getByText("Past notice")).toBeTruthy();
+    expect(within(dialog).getByText("An earlier broadcast.")).toBeTruthy();
+    expect(within(dialog).getByText("9 sent")).toBeTruthy();
+    expect(mocks.historyInput).toEqual({ audience: "tutor", query: "", page: 1, pageSize: 20 });
   });
 });

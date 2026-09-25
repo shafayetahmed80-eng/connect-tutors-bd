@@ -11,7 +11,7 @@ import {
   type TuitionPaymentStatus,
 } from "@shared/platform-charge";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -55,7 +55,7 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
   return <Modal size="lg" onClose={onClose} busy={record.isPending || decide.isPending || chooseKind.isPending}>
     <ModalHeader title={`Payments · Job ID ${jobIdForRequest(requestId)}`} />
     <ModalBody>
-      {ledger.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading payments…</div> : null}
+      {ledger.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading payments…</div> : null}
       {ledger.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Payments could not be loaded.</p> : null}
 
       {ledger.data ? <div className="space-y-5">

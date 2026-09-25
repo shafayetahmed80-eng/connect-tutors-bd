@@ -1,16 +1,21 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
 import { AdminPasswordResetLink } from "@/components/AdminPasswordResetLink";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import CharacterRemaining from "@/components/CharacterRemaining";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
+import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import StatusTabRow from "@/components/StatusTabRow";
 import { TutorListPager } from "@/components/TutorListPager";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { GuardianActivityContent, GuardianVerificationModal } from "@/pages/AdminGuardianActivity";
 import { formatRequestSource } from "@shared/request-source";
-import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, History, Megaphone, Search, ShieldCheck } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
+import { toast } from "sonner";
 
 type Verification = "all" | "unverified" | "verified" | "rejected";
 
@@ -43,7 +48,24 @@ function asVerification(value: string) {
   return (value === "verified" || value === "rejected" ? value : "unverified") as "unverified" | "verified" | "rejected";
 }
 
-const columns: RecordColumn<GuardianRow>[] = [
+/** A checkbox per row, for picking specific Guardians to notify rather than the whole filtered directory. */
+type GuardianRowSelection = {
+  isSelected: (userId: number) => boolean;
+  onToggle: (userId: number) => void;
+};
+
+function buildColumns(selection?: GuardianRowSelection): RecordColumn<GuardianRow>[] {
+  return [
+  ...(selection ? [{
+    key: "select", label: "Select", place: "head" as const, headingHidden: true,
+    cell: (row: GuardianRow) => <input
+      type="checkbox"
+      checked={selection.isSelected(row.userId)}
+      onChange={() => selection.onToggle(row.userId)}
+      aria-label={`Select ${row.name?.trim() || "Unnamed Guardian"}`}
+      className="size-4 accent-j-accent"
+    />,
+  }] : []),
   {
     key: "guardian", label: "Guardian", place: "head",
     cell: row => <div className="min-w-0">
@@ -65,7 +87,8 @@ const columns: RecordColumn<GuardianRow>[] = [
     key: "joined", label: "Joined",
     cell: row => <span className="whitespace-nowrap tabular-nums">{formatDate(row.joinedAt)}{row.accountStatus === "closed" ? <span className="ml-1.5 rounded-full bg-red-50 px-2 py-0.5 text-2xs font-bold text-red-700">Closed</span> : null}</span>,
   },
-];
+  ];
+}
 
 /** Every Guardian account, one row each, under counted verification tabs. */
 export function AdminGuardianProfilesContent() {
@@ -73,8 +96,17 @@ export function AdminGuardianProfilesContent() {
   const [verification, setVerification] = useState<Verification>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const guardians = trpc.admin.listGuardianProfiles.useQuery({ query, verification, page, pageSize });
   const counts = guardians.data?.counts;
+  const matchCount = guardians.data?.total ?? 0;
+  const toggleSelected = (userId: number) => setSelectedIds(current => {
+    const next = new Set(current);
+    if (next.has(userId)) next.delete(userId); else next.add(userId);
+    return next;
+  });
 
   return <div className="space-y-4">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:border-b sm:border-[#dce9f1]">
@@ -86,10 +118,51 @@ export function AdminGuardianProfilesContent() {
           className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
     </div>
-    {guardians.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Guardian profiles…</div> : null}
+
+    {/* Sends to exactly who the verification tabs and search above are
+        currently showing - or, when an Admin ticks specific rows below,
+        exactly those. */}
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-4 py-3">
+      <p data-testid="guardian-notify-match-count" className="text-sm text-j-ink-soft">
+        {selectedIds.size > 0
+          ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> Guardian{selectedIds.size === 1 ? "" : "s"} selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
+          : <><span className="font-bold text-j-ink">{matchCount}</span> Guardian{matchCount === 1 ? "" : "s"} match{matchCount === 1 ? "es" : ""} the current filters.</>}
+      </p>
+      <div className="flex shrink-0 items-center gap-2">
+        <button type="button" onClick={() => setHistoryOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+          <History className="h-4 w-4" aria-hidden="true" /> History
+        </button>
+        <button
+          type="button"
+          onClick={() => setNotifyOpen(true)}
+          disabled={matchCount === 0 && selectedIds.size === 0}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
+        </button>
+      </div>
+    </div>
+    {notifyOpen ? <NotifyGuardiansModal
+      query={query}
+      verification={verification}
+      matchCount={matchCount}
+      selectedIds={Array.from(selectedIds)}
+      onSent={() => setSelectedIds(new Set())}
+      onClose={() => setNotifyOpen(false)}
+    /> : null}
+    {historyOpen ? <NotificationHistoryModal audience="guardian" onClose={() => setHistoryOpen(false)} /> : null}
+
+    {guardians.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Guardian profiles…</div> : null}
     {guardians.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Guardian profiles could not be loaded.</div> : null}
     {!guardians.isLoading && !guardians.isError
-      ? <RecordTable caption="Guardian profiles" columns={columns} rows={(guardians.data?.items ?? []) as GuardianRow[]} rowKey={row => row.userId} empty="No Guardian matches." tableClassName="min-w-[60rem]" />
+      ? <RecordTable
+          caption="Guardian profiles"
+          columns={buildColumns({ isSelected: id => selectedIds.has(id), onToggle: toggleSelected })}
+          rows={(guardians.data?.items ?? []) as GuardianRow[]}
+          rowKey={row => row.userId}
+          empty="No Guardian matches."
+          tableClassName="min-w-[60rem]"
+        />
       : null}
     <TutorListPager
       page={page}
@@ -102,6 +175,95 @@ export function AdminGuardianProfilesContent() {
       totalItems={guardians.data?.total}
     />
   </div>;
+}
+
+const NOTIFY_TITLE_MAX = 120;
+const NOTIFY_MESSAGE_MAX = 360;
+
+/**
+ * One message, sent either to every Guardian the verification tab and search
+ * currently match, or - when the Admin ticked specific rows first - to
+ * exactly those. Lands in each Guardian's own Notifications tab.
+ */
+function NotifyGuardiansModal({ query, verification, matchCount, selectedIds, onSent, onClose }: {
+  query: string;
+  verification: Verification;
+  matchCount: number;
+  /** Hand-picked Guardian user ids; a non-empty list overrides the filters entirely. */
+  selectedIds: number[];
+  onSent: () => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const usingSelection = selectedIds.length > 0;
+  const recipientCount = usingSelection ? selectedIds.length : matchCount;
+  const notify = trpc.admin.notifyGuardianDirectory.useMutation({
+    onSuccess: result => {
+      toast.success(`Sent to ${result.sent} Guardian${result.sent === 1 ? "" : "s"}.`);
+      if (usingSelection) onSent();
+      onClose();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const ready = title.trim().length > 0 && message.trim().length > 0;
+  const recipientLine = usingSelection
+    ? `${recipientCount} hand-picked Guardian${recipientCount === 1 ? "" : "s"}`
+    : `${recipientCount} Guardian${recipientCount === 1 ? "" : "s"} match the current filters`;
+  const send = () => notify.mutate(usingSelection
+    ? { query: "", verification: "all", guardianUserIds: selectedIds, title: title.trim(), message: message.trim() }
+    : { query, verification, title: title.trim(), message: message.trim() });
+
+  if (confirming) {
+    return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+      <ModalHeader title="Send this to Guardians?" meta={recipientLine} />
+      <ModalBody className="space-y-3">
+        <p className="text-sm leading-6 text-j-ink-soft">This is exactly what every recipient will see in their Notifications tab. It cannot be recalled once sent.</p>
+        <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3.5">
+          <p className="font-bold text-j-ink">{title.trim()}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-soft">{message.trim()}</p>
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button
+          type="button"
+          disabled={notify.isPending}
+          onClick={send}
+          className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        >{notify.isPending ? "Sending…" : `Confirm & send to ${recipientCount}`}</button>
+      </ModalFooter>
+    </Modal>;
+  }
+
+  return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+    <ModalHeader title="Notify these Guardians" meta={recipientLine} />
+    <ModalBody className="space-y-4">
+      <div>
+        <label htmlFor="notify-guardians-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+        <input id="notify-guardians-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="notify-guardians-message" className="text-sm font-bold text-j-ink">Message <span className="text-red-600">*</span></label>
+          <CharacterRemaining value={message} maxLength={NOTIFY_MESSAGE_MAX} />
+        </div>
+        <textarea id="notify-guardians-message" value={message} maxLength={NOTIFY_MESSAGE_MAX} rows={4} onChange={event => setMessage(event.target.value)}
+          className="mt-1.5 w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button
+        type="button"
+        disabled={!ready}
+        onClick={() => setConfirming(true)}
+        className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+      >Review &amp; send to {recipientCount}</button>
+    </ModalFooter>
+  </Modal>;
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -119,7 +281,7 @@ export function AdminGuardianProfileDetailContent({ userId }: { userId: number }
 
   return <div className="mx-auto w-full max-w-5xl space-y-5 pb-10">
     <Link href="/admin/guardians" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline"><ArrowLeft size={15} /> Back to Guardian Profiles</Link>
-    {profileQuery.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading profile…</div> : null}
+    {profileQuery.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading profile…</div> : null}
     {profileQuery.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error.message}</div> : null}
     {profile ? <>
       <section className="rounded-xl border border-j-border bg-white p-5 shadow-sm">

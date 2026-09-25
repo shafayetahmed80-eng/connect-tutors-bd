@@ -8,62 +8,150 @@
   --shadow-soft: 0 16px 36px rgba(21, 74, 117, 0.1);
 }
 
-/* Full-site public identity: a connected learning path, rendered in vector form. */
+/* Full-site public identity: a Newton's cradle beside a one-line wordmark.
+   Everything is sized from the wordmark's font size so the pair scales as one. */
 .brand-logo {
-  gap: 10px;
+  gap: 0.42em;
+  font-size: 22px;
   isolation: isolate;
 }
 
 .brand-mark {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
+  --brand-mark-ink: var(--sky-deep);
+  --brand-mark-lift: var(--saffron);
+  width: 1.75em;
+  height: 1.1667em;
   flex: 0 0 auto;
-  border-radius: 14px 14px 14px 6px;
-  background: linear-gradient(145deg, #1788e9 0%, #0d66b4 100%);
-  box-shadow: 0 8px 18px rgba(13, 102, 180, 0.24);
-}
-
-.brand-mark svg {
-  width: 30px;
-  height: 30px;
   overflow: visible;
+  color: var(--brand-mark-ink);
 }
 
-.brand-mark path {
-  fill: none;
-  stroke: #ffffff;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.35;
-}
-
-.brand-mark circle {
-  fill: var(--saffron);
-  stroke: #ffffff;
-  stroke-width: 1.8;
+.brand-mark .brand-mark-lifted {
+  color: var(--brand-mark-lift);
 }
 
 .brand-wordmark {
-  gap: 2px;
-  line-height: 0.92;
-  letter-spacing: -0.055em;
-  font-size: 22px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.24em;
+  font-family: "Manrope", "Noto Sans Bengali", sans-serif;
+  font-size: 1em;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
+/* index.css gives every <strong> the heading face; the wordmark keeps its own. */
 .brand-wordmark strong {
   color: var(--ink-strong);
-  font-weight: 820;
+  font-family: inherit;
+  font-weight: 800;
 }
 
 .brand-wordmark em {
   margin-top: 0;
   color: var(--sky-deep);
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.115em;
-  text-transform: uppercase;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.site-footer .brand-mark {
+  --brand-mark-ink: #ffffff;
+  --brand-mark-lift: #ffc24d;
+}
+
+.site-footer .brand-wordmark em {
+  color: #93cdfc;
+}
+
+/* Dashboard sidebars: the same lockup a size down, in the panel's own text
+   colours so the Owner's sidebar colour dials repaint it too. */
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.42em;
+  min-width: 0;
+  font-size: 17px;
+}
+
+.sb-brand .brand-mark {
+  --brand-mark-ink: var(--sb-text);
+  --brand-mark-lift: #ffc24d;
+}
+
+.sb-brand .brand-wordmark {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sb-brand .brand-wordmark strong {
+  color: var(--sb-text);
+}
+
+.sb-brand .brand-wordmark em {
+  color: var(--sb-soft);
+}
+
+/* Collapsed to icons, the mark stands alone. */
+[data-collapsible="icon"] .sb-brand .brand-wordmark {
+  display: none;
+}
+
+/* The loading indicator: the cradle beside the "Loading…" text, sized from
+   that text, in place of a spinning circle. */
+.loading-cradle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.loading-cradle .brand-mark {
+  width: 2.25em;
+  height: 1.5em;
+}
+
+/* Pointing at the logo lets the lifted ball drop: it strikes the row, the
+   far ball flies out and back, and the lifted one returns to rest. One swing
+   per visit; a loading cradle swings until the page arrives. None at all for
+   anyone who asks for less motion. */
+@keyframes brand-cradle-lifted {
+  0% { transform: rotate(-22deg); animation-timing-function: ease-in; }
+  25% { transform: rotate(0deg); }
+  75% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  100% { transform: rotate(-22deg); }
+}
+
+@keyframes brand-cradle-free {
+  0%, 75%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  50% { transform: rotate(22deg); animation-timing-function: ease-in; }
+}
+
+/* Each string pivots on the bar: the top-centre of its own box. The fill mode
+   holds the last pose until the attribute is removed, so the lifted ball's
+   own `transform` never meets this origin. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-swinging] > .brand-mark .brand-mark-lifted,
+  [data-swinging] > .brand-mark .brand-mark-free,
+  .loading-cradle .brand-mark-lifted,
+  .loading-cradle .brand-mark-free {
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+    animation-duration: 1.8s;
+    animation-fill-mode: both;
+  }
+
+  [data-swinging] > .brand-mark .brand-mark-lifted,
+  .loading-cradle .brand-mark-lifted { animation-name: brand-cradle-lifted; }
+
+  [data-swinging] > .brand-mark .brand-mark-free,
+  .loading-cradle .brand-mark-free { animation-name: brand-cradle-free; }
+
+  .loading-cradle .brand-mark-lifted,
+  .loading-cradle .brand-mark-free { animation-iteration-count: infinite; }
 }
 
 .site-header {
@@ -290,18 +378,7 @@
 }
 
 @media (max-width: 600px) {
-  .brand-mark {
-    width: 35px;
-    height: 35px;
-    border-radius: 12px 12px 12px 5px;
-  }
-
-  .brand-mark svg {
-    width: 27px;
-    height: 27px;
-  }
-
-  .brand-wordmark {
+  .brand-logo {
     font-size: 20px;
   }
 

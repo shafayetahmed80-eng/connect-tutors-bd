@@ -8,7 +8,7 @@ import {
   type SettlementDisposition,
 } from "@shared/platform-charge";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -63,7 +63,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
     <ModalHeader title={`Settle · Job ID ${jobIdForRequest(requestId)}`} />
     <ModalBody>
       {preview.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{preview.error.message}</p> : null}
-      {preview.isLoading ? <div className="flex min-h-24 items-center justify-center text-sm text-j-ink-soft"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working out the settlement…</div> : null}
+      {preview.isLoading ? <div className="flex min-h-24 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Working out the settlement…</div> : null}
 
       {data ? <div className="space-y-5">
         <p className="text-sm font-semibold text-j-ink">{phaseLabels[data.phase]}</p>

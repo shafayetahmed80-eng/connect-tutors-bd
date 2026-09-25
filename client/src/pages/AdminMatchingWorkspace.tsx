@@ -21,7 +21,6 @@ import {
   FilePenLine,
   FileText,
   History,
-  Loader2,
   PhoneCall,
   RotateCcw,
   Save,
@@ -35,6 +34,7 @@ import {
   Trash2,
   UserCheck,
 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   sanitizeAdminMatchingSavedViewFilters,
@@ -484,7 +484,7 @@ export function TutorMatchPicker({ request, tutors, isLoading, disabled, selecte
     { key: "withinBudgetOnly" as const, label: "Fits budget" },
   ];
 
-  if (isLoading) return <p className="flex items-center gap-2 rounded-xl bg-j-surface-sunken p-3 text-xs text-j-ink-soft"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading approved Tutors…</p>;
+  if (isLoading) return <p className="flex items-center gap-2 rounded-xl bg-j-surface-sunken p-3 text-xs text-j-ink-soft"><LoadingCradle /> Loading approved Tutors…</p>;
 
   return <div className="space-y-2">
     <label className="relative block"><span className="sr-only">{`Search Tutors for request ${request.id}`}</span>
@@ -650,7 +650,7 @@ export function AdminMatchingSavedViews({
         <button type="submit" disabled={isSaving || !name.trim()} className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 text-sm font-semibold text-white transition hover:bg-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"><Save className="h-4 w-4" /> {isSaving ? "Saving…" : "Save filters"}</button>
       </form>
     </div>
-    {isLoading ? <p className="mt-4 flex items-center gap-2 rounded-xl bg-white/80 p-3 text-sm text-j-ink-soft"><Loader2 className="h-4 w-4 animate-spin" /> Loading your Saved Views…</p> : null}
+    {isLoading ? <p className="mt-4 flex items-center gap-2 rounded-xl bg-white/80 p-3 text-sm text-j-ink-soft"><LoadingCradle /> Loading your Saved Views…</p> : null}
     {isError ? <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">Your Saved Views could not be loaded. Refresh before applying or deleting a filter setup.</p> : null}
     {errorMessage ? <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{errorMessage}</p> : null}
     {!isLoading && !isError && views.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-cyan-200 bg-white/80 p-3 text-sm text-j-ink-soft">No Saved Views yet.</p> : null}
@@ -812,7 +812,7 @@ function MatchingWorkspaceContent() {
     <AdminMatchingQueueSummary total={total} counts={matchingQueue.data?.publicationStateCounts} />
     <BulkPublicationBar requests={requests} selectedIds={selectedRequestIds} busy={publishAction.isPending} onClear={() => setSelectedRequestIds([])} onRun={(action, ids) => void runBulkAction(action, ids)} />
     {publishAction.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message}</p> : null}
-    {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
+    {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
       const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
       const expiry = getAdminPublicationExpiryDisplay(request); const age = getAdminRequestAgeDisplay(request);
       const groupCapacity = getAdminGroupCapacityDisplay(request); const packageDuration = getAdminPackageDurationDisplay(request); const studentCount = getAdminStudentCountDisplay(request);

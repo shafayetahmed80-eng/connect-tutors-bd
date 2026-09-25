@@ -42,6 +42,8 @@ import {
   adminLoginAuditLogs,
   adminMatchingDefaultSavedViews,
   adminMatchingSavedViews,
+  adminNotificationBroadcasts,
+  type AdminNotificationBroadcastAudience,
   adminTwoFactorRecoveryCodes,
   adminTwoFactorSettings,
   authEvents,
@@ -5124,26 +5126,40 @@ export async function getUserRoleById(userId: number) {
   return row?.role;
 }
 
-/**
- * The Guardian Profiles list: one row per Guardian account, with how many
- * tuitions they posted and how many change requests wait, under counted
- * verification tabs. A Guardian with no profile row yet reads as unverified.
- */
-export async function listGuardianProfilesForAdmin(input: {
+export type AdminGuardianDirectoryFilters = {
   query: string;
   verification: "all" | "unverified" | "verified" | "rejected";
-  page: number;
-  pageSize: number;
-}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
+};
+
+/**
+ * The Guardian Profiles list's own WHERE clause, shared with `notifyGuardianDirectory`
+ * so "everyone this screen shows" is exactly who a broadcast reaches - the same
+ * rule the Tutor directory's own `getAdminTutorDirectoryConditions` follows.
+ */
+function getAdminGuardianDirectoryConditions(input: AdminGuardianDirectoryFilters) {
   const verification = sql<string>`coalesce(${guardianProfiles.verificationStatus}, 'unverified')`;
   const term = input.query.trim();
   const search = term
     ? or(like(users.name, `%${term}%`), like(users.email, `%${term}%`), like(users.loginPhone, `%${term}%`), like(guardianProfiles.phone, `%${term}%`), like(guardianProfiles.guardianId, `%${term}%`))
     : undefined;
   const base = and(eq(users.role, "guardian"), search);
-  const where = input.verification === "all" ? base : and(base, sql`${verification} = ${input.verification}`);
+  return input.verification === "all" ? base : and(base, sql`${verification} = ${input.verification}`);
+}
+
+/**
+ * The Guardian Profiles list: one row per Guardian account, with how many
+ * tuitions they posted and how many change requests wait, under counted
+ * verification tabs. A Guardian with no profile row yet reads as unverified.
+ */
+export async function listGuardianProfilesForAdmin(input: AdminGuardianDirectoryFilters & {
+  page: number;
+  pageSize: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const verification = sql<string>`coalesce(${guardianProfiles.verificationStatus}, 'unverified')`;
+  const base = getAdminGuardianDirectoryConditions({ ...input, verification: "all" });
+  const where = getAdminGuardianDirectoryConditions(input);
 
   const grouped = await database
     .select({ status: verification, total: count() })
@@ -6130,6 +6146,129 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
     totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
     counts: { profileStatus, jobStage },
   };
+}
+
+/** One row logged per "Notify" send, for the Admin's own history of what went out. */
+async function recordAdminNotificationBroadcast(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  input: { audience: AdminNotificationBroadcastAudience; title: string; message: string; recipientCount: number; adminUserId: number },
+) {
+  await database.insert(adminNotificationBroadcasts).values({
+    audience: input.audience,
+    title: input.title,
+    message: input.message,
+    recipientCount: input.recipientCount,
+    sentByAdminId: input.adminUserId,
+  });
+}
+
+/**
+ * One announcement, sent either to every Tutor the directory's own filters
+ * currently match - the same conditions the list and its tab counts already
+ * use, so "everyone this screen shows" is exactly who gets notified - or, when
+ * an Admin hand-picked rows instead, to exactly those Tutors. A fresh
+ * broadcast id keeps each Tutor's row unique per send: unlike a lifecycle
+ * notice, a second announcement is a new message, not an update to the last
+ * one. Logged once to `admin_notification_broadcasts` regardless of which mode
+ * sent it.
+ */
+export async function notifyTutorDirectory(input: {
+  filters: Omit<AdminTutorDirectoryFilters, "page" | "pageSize">;
+  /** A hand-picked set of Tutors; when given (and non-empty) the filters above are not consulted. */
+  tutorIds?: string[];
+  title: string;
+  message: string;
+  adminUserId: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const matches = input.tutorIds && input.tutorIds.length > 0
+    ? await database.select({ id: tutors.id }).from(tutors).where(inArray(tutors.id, input.tutorIds))
+    : await (async () => {
+      const conditions = getAdminTutorDirectoryConditions({ ...input.filters, page: 1, pageSize: 1 });
+      const matchQuery = database.select({ id: tutors.id }).from(tutors).leftJoin(locations, eq(tutors.locationId, locations.id));
+      return conditions.length ? await matchQuery.where(and(...conditions)) : await matchQuery;
+    })();
+  if (matches.length === 0) return { sent: 0 };
+
+  const broadcastId = crypto.randomUUID();
+  await database.insert(tutorNotifications).values(matches.map(match => ({
+    tutorId: match.id,
+    type: "announcement" as const,
+    title: input.title,
+    message: input.message,
+    actionPath: "/tutor/dashboard/notifications",
+    deduplicationKey: `announcement:${broadcastId}:${match.id}`,
+  })));
+  await recordAdminNotificationBroadcast(database, { audience: "tutor", title: input.title, message: input.message, recipientCount: matches.length, adminUserId: input.adminUserId });
+  return { sent: matches.length };
+}
+
+/** The Guardian directory's twin of `notifyTutorDirectory` - same filtered-or-hand-picked rule, same broadcast log. */
+export async function notifyGuardianDirectory(input: {
+  filters: AdminGuardianDirectoryFilters;
+  guardianUserIds?: number[];
+  title: string;
+  message: string;
+  adminUserId: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const matches = input.guardianUserIds && input.guardianUserIds.length > 0
+    ? await database.select({ userId: users.id }).from(users).where(and(eq(users.role, "guardian"), inArray(users.id, input.guardianUserIds)))
+    : await (async () => {
+      const condition = getAdminGuardianDirectoryConditions(input.filters);
+      const matchQuery = database.select({ userId: users.id }).from(users).leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id));
+      return condition ? await matchQuery.where(condition) : await matchQuery;
+    })();
+  if (matches.length === 0) return { sent: 0 };
+
+  const broadcastId = crypto.randomUUID();
+  await database.insert(guardianRequestNotifications).values(matches.map(match => ({
+    guardianUserId: match.userId,
+    tutorRequestId: null,
+    type: "announcement" as const,
+    title: input.title,
+    message: input.message,
+    actionPath: "/guardian/dashboard/notifications",
+    deduplicationKey: `announcement:${broadcastId}:${match.userId}`,
+  })));
+  await recordAdminNotificationBroadcast(database, { audience: "guardian", title: input.title, message: input.message, recipientCount: matches.length, adminUserId: input.adminUserId });
+  return { sent: matches.length };
+}
+
+/** The Admin's own history of what it has broadcast - not who it reached, just what was sent, to whom (by count), and by whom. */
+export async function listNotificationBroadcasts(input: { audience: "all" | AdminNotificationBroadcastAudience; query: string; page: number; pageSize: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const conditions = [
+    input.audience === "all" ? undefined : eq(adminNotificationBroadcasts.audience, input.audience),
+    input.query.trim() ? or(like(adminNotificationBroadcasts.title, `%${input.query.trim()}%`), like(adminNotificationBroadcasts.message, `%${input.query.trim()}%`)) : undefined,
+  ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
+  const where = conditions.length ? and(...conditions) : undefined;
+  const itemQuery = database
+    .select({
+      id: adminNotificationBroadcasts.id,
+      audience: adminNotificationBroadcasts.audience,
+      title: adminNotificationBroadcasts.title,
+      message: adminNotificationBroadcasts.message,
+      recipientCount: adminNotificationBroadcasts.recipientCount,
+      sentByName: users.name,
+      sentByEmail: users.email,
+      createdAt: adminNotificationBroadcasts.createdAt,
+    })
+    .from(adminNotificationBroadcasts)
+    .leftJoin(users, eq(users.id, adminNotificationBroadcasts.sentByAdminId))
+    .orderBy(desc(adminNotificationBroadcasts.id))
+    .limit(input.pageSize)
+    .offset((input.page - 1) * input.pageSize);
+  const items = where ? await itemQuery.where(where) : await itemQuery;
+  const totalQuery = database.select({ value: count() }).from(adminNotificationBroadcasts);
+  const [totalRow] = where ? await totalQuery.where(where) : await totalQuery;
+  const total = Number(totalRow?.value ?? 0);
+  return { items, total, page: input.page, pageSize: input.pageSize, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
 }
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };

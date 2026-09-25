@@ -11,7 +11,8 @@ import {
   type AccountChangeRole,
   type AccountChangeType,
 } from "@shared/account-change-requests";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -208,7 +209,7 @@ export function AdminChangeRequestsContent() {
       </div>
     </div>
 
-    {requests.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading change requests…</div> : null}
+    {requests.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading change requests…</div> : null}
     {requests.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Change requests could not be loaded.</div> : null}
     {!requests.isLoading && !requests.isError
       ? <RecordTable caption="Change requests" columns={columns} rows={rows} rowKey={row => row.id} empty={`No ${status} change requests.`} tableClassName="min-w-[56rem]" />

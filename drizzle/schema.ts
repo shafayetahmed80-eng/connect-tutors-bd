@@ -92,6 +92,8 @@ export const guardianRequestNotificationTypeValues = [
   "verification",
   /** An Admin decided a name, mobile or account change the Guardian asked for from Settings. */
   "account_change",
+  /** An Admin broadcast to a filtered set of Guardians from the directory - not tied to any one tuition. */
+  "announcement",
 ] as const;
 export type GuardianRequestNotificationType = (typeof guardianRequestNotificationTypeValues)[number];
 
@@ -1621,6 +1623,8 @@ export const tutorNotificationTypeValues = [
   "account_change",
   /** A payment of theirs was recorded, verified or rejected. */
   "payment",
+  /** An Admin broadcast to a filtered set of Tutors from the directory - not tied to any one decision. */
+  "announcement",
   /** A Guardian rated them on a Confirmed tuition. */
   "rating",
 ] as const;
@@ -1682,6 +1686,33 @@ export const guardianRequestNotifications = mysqlTable(
     uniqueIndex("guardian_request_notifications_dedup_unique").on(table.deduplicationKey),
     index("guardian_request_notifications_guardian_created_idx").on(table.guardianUserId, table.createdAt),
     index("guardian_request_notifications_guardian_read_idx").on(table.guardianUserId, table.readAt),
+  ]
+);
+
+export const adminNotificationBroadcastAudienceValues = ["tutor", "guardian"] as const;
+export type AdminNotificationBroadcastAudience = (typeof adminNotificationBroadcastAudienceValues)[number];
+
+/**
+ * One row per "Notify" send from the Tutor or Guardian directory - the
+ * summary an Admin's own history reads, not the per-recipient rows (those
+ * live in `tutor_notifications` / `guardian_request_notifications` and carry
+ * no link back here; a broadcast's own recipients are identified by its
+ * dedup-key prefix if ever needed, not a foreign key).
+ */
+export const adminNotificationBroadcasts = mysqlTable(
+  "admin_notification_broadcasts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    audience: mysqlEnum("audience", adminNotificationBroadcastAudienceValues).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    message: varchar("message", { length: 360 }).notNull(),
+    recipientCount: int("recipientCount").notNull(),
+    sentByAdminId: int("sentByAdminId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.sentByAdminId], foreignColumns: [users.id], name: "anb_admin_fk" }),
+    index("admin_notification_broadcasts_audience_created_idx").on(table.audience, table.createdAt),
   ]
 );
 

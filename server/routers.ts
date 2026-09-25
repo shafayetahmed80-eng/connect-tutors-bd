@@ -432,6 +432,11 @@ const adminTutorDirectoryInputSchema = z.object({
   pageSize: z.number().int().min(1).max(100).default(20),
 });
 
+const adminGuardianDirectoryInputSchema = z.object({
+  query: z.string().trim().max(120).default(""),
+  verification: z.enum(["all", "unverified", "verified", "rejected"]).default("all"),
+});
+
 /** Tutor Matching's own page sizes: a ranked list is worth scanning further than the 50-row directory ceiling. */
 const adminMatchingCandidateInputSchema = z.object({
   requestId: z.number().int().positive(),
@@ -2014,6 +2019,24 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    /** Sends one message to every Tutor the directory's active filters currently match, or a hand-picked set of them. */
+    notifyTutorDirectory: adminProcedure
+      .input(adminTutorDirectoryInputSchema.omit({ page: true, pageSize: true }).extend({
+        tutorIds: z.array(z.string().trim().min(1).max(32)).max(200).optional(),
+        title: z.string().trim().min(1).max(120),
+        message: z.string().trim().min(1).max(360),
+      }))
+      .mutation(({ ctx, input: { title, message, tutorIds, ...filters } }) =>
+        db.notifyTutorDirectory({ filters, tutorIds, title, message, adminUserId: ctx.user.id })),
+    /** The Admin's own history of what it has broadcast to the Tutor and Guardian directories. */
+    listNotificationBroadcasts: adminProcedure
+      .input(z.object({
+        audience: z.enum(["all", "tutor", "guardian"]).default("all"),
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+      }))
+      .query(({ input }) => db.listNotificationBroadcasts(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -2210,12 +2233,19 @@ export const appRouter = router({
         if (result.outcome === "decided") return result;
         throw tuitionPaymentError(result);
       }),
-    listGuardianProfiles: adminProcedure.input(z.object({
-      query: z.string().trim().max(120).default(""),
-      verification: z.enum(["all", "unverified", "verified", "rejected"]).default("all"),
+    listGuardianProfiles: adminProcedure.input(adminGuardianDirectoryInputSchema.extend({
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(20),
     })).query(({ input }) => db.listGuardianProfilesForAdmin(input)),
+    /** Sends one message to every Guardian the directory's active filters currently match, or a hand-picked set of them. */
+    notifyGuardianDirectory: adminProcedure
+      .input(adminGuardianDirectoryInputSchema.extend({
+        guardianUserIds: z.array(z.number().int().positive()).max(200).optional(),
+        title: z.string().trim().min(1).max(120),
+        message: z.string().trim().min(1).max(360),
+      }))
+      .mutation(({ ctx, input: { title, message, guardianUserIds, ...filters } }) =>
+        db.notifyGuardianDirectory({ filters, guardianUserIds, title, message, adminUserId: ctx.user.id })),
     getGuardianProfile: adminProcedure
       .input(z.object({ guardianUserId: z.number().int().positive() }))
       .query(async ({ input }) => {

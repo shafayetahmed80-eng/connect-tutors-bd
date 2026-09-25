@@ -1,7 +1,7 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { trpc } from "@/lib/trpc";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { Link } from "wouter";
 
 type AdminRow = {
@@ -48,7 +48,7 @@ export function AdminAdminProfilesContent() {
   ];
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    {admins.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading Admin profiles…</div> : null}
+    {admins.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Admin profiles…</div> : null}
     {admins.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{admins.error.message}</div> : null}
     {admins.data ? <RecordTable caption="Admin profiles" columns={columns} rows={admins.data as AdminRow[]} rowKey={row => row.id} empty="No Admin accounts." tableClassName="min-w-[52rem]" /> : null}
   </div>;

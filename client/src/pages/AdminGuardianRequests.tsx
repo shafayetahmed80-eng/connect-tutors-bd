@@ -6,7 +6,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
-import { Loader2 } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, Redirect, useRoute } from "wouter";
@@ -143,7 +143,7 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
       ? <StatusTabRow label="Request status" items={statusTabs.map(tab => ({ ...tab, count: list.data?.counts[tab.key] }))} selected={status} onSelect={key => { setStatus(key ?? "pending"); setPage(1); }} />
       : null}
 
-    {list.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…</div> : null}
+    {list.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading…</div> : null}
     {list.isError ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{copy.title} could not be loaded.</div> : null}
     {!list.isLoading && !list.isError
       ? <RecordTable caption={copy.caption} columns={columns} rows={rows} rowKey={row => row.key} empty={copy.empty} tableClassName="min-w-[56rem]" />

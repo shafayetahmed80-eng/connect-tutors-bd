@@ -6,7 +6,8 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { ChevronRight, Loader2, Scale, Search, Wallet } from "lucide-react";
+import { ChevronRight, Scale, Search, Wallet } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -99,7 +100,7 @@ export default function AdminCancelledChargesContent() {
       />
     </label>
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading cancelled jobs…</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading cancelled jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Cancelled jobs could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError ? <RecordTable

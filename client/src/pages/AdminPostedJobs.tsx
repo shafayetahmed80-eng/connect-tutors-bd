@@ -14,7 +14,8 @@ import { buildJobTitle } from "@shared/job-title";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
-import { AlignLeft, FilePenLine, Loader2, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
+import { AlignLeft, FilePenLine, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
+import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -108,7 +109,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       </div>
     </div>
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading posted jobs…</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading posted jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Posted jobs could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError && items.length === 0
