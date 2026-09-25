@@ -131,6 +131,7 @@ export const letterCopy = {
   issuedBy: "Issued by",
   issuer: "Connect Tutors Admin Team",
   electronic: "Issued electronically. No signature is needed.",
+  draftMark: "DRAFT · NOT ISSUED",
 } as const;
 
 const BENGALI_CHARACTER = /[॒॑।॥ঀ-৿‌‍◌]/;
@@ -236,7 +237,12 @@ function sectionLabel(document: PDFKit.PDFDocument, text: string, left: number, 
 }
 
 /** Builds an in-memory PDF; never accepts address, contact, student, or internal-note fields. */
-export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocument, options: { contactNumber: string }): Promise<Buffer> {
+/**
+ * `draft` marks an Admin's preview of a letter not yet issued: the same page,
+ * with "DRAFT · NOT ISSUED" across it so a preview can never pass for the
+ * real letter.
+ */
+export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocument, options: { contactNumber: string; draft?: boolean }): Promise<Buffer> {
   const content = buildConfirmationLetterContent(letter);
   const document = new PDFDocument({
     size: "A4",
@@ -343,6 +349,15 @@ export async function renderConfirmationLetterPdf(letter: ConfirmationLetterDocu
     document.font("Bold").fontSize(7.5).fillColor(colour.faint);
     document.text(`Connect Tutors · ${SITE_ADDRESS}`, left, footerTop + 9, { lineBreak: false });
     document.text(`${content.letterId} · Page 1 of 1`, left, footerTop + 9, { width, align: "right", lineBreak: false });
+
+    if (options.draft) {
+      // Across the middle, faint enough to read through, impossible to miss.
+      const bandWidth = 900;
+      document.save().rotate(-32, { origin: [document.page.width / 2, pageHeight / 2] });
+      document.font("Heavy").fontSize(54).fillColor(colour.blue).fillOpacity(0.09);
+      document.text(letterCopy.draftMark, (document.page.width - bandWidth) / 2, pageHeight / 2 - 30, { width: bandWidth, align: "center", characterSpacing: 3, lineBreak: false });
+      document.restore();
+    }
     document.end();
   });
 }

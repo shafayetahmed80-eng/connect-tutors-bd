@@ -796,6 +796,18 @@ async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionI
     },
   };
 }
+
+/** The terms an Admin settles before a Confirmation Letter is issued - or previewed. */
+const confirmationLetterTermsInput = z.object({
+  letterId: z.number().int().positive(),
+  agreedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for the agreed start date."),
+  agreedFeeMinimum: z.number().int().min(0).max(10_000_000),
+  agreedFeeMaximum: z.number().int().min(0).max(10_000_000),
+}).refine(value => value.agreedFeeMaximum >= value.agreedFeeMinimum, {
+  path: ["agreedFeeMaximum"],
+  message: "The maximum agreed fee must be at least the minimum fee.",
+});
+
 export const appRouter = router({
   system: router({}),
   guardianIntake: router({
@@ -2370,16 +2382,16 @@ export const appRouter = router({
         }
         return result;
       }),
+    /** The draft as it would be issued with these terms, marked as a draft and never stored. */
+    previewConfirmationLetter: adminProcedure
+      .input(confirmationLetterTermsInput)
+      .query(async ({ input }) => {
+        const result = await db.previewConfirmationLetterDraft(input);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmation-letter draft is no longer available." });
+        return result;
+      }),
     issueConfirmationLetter: adminProcedure
-      .input(z.object({
-        letterId: z.number().int().positive(),
-        agreedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for the agreed start date."),
-        agreedFeeMinimum: z.number().int().min(0).max(10_000_000),
-        agreedFeeMaximum: z.number().int().min(0).max(10_000_000),
-      }).refine(value => value.agreedFeeMaximum >= value.agreedFeeMinimum, {
-        path: ["agreedFeeMaximum"],
-        message: "The maximum agreed fee must be at least the minimum fee.",
-      }))
+      .input(confirmationLetterTermsInput)
       .mutation(async ({ ctx, input }) => {
         const result = await db.issueConfirmationLetter({ ...input, adminUserId: ctx.user.id });
         if (!result.issued) throw new TRPCError({ code: "CONFLICT", message: "This confirmation-letter draft is no longer available for issue." });

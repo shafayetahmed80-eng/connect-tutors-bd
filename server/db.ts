@@ -3036,6 +3036,44 @@ export async function rerenderConfirmationLetters() {
   return { redrawn, total: letters.length };
 }
 
+/**
+ * The letter a draft would become if issued now, with the terms the Admin has
+ * typed so far - drawn but never stored, and marked as a draft across the
+ * page. Nothing changes until the Admin issues it.
+ */
+export async function previewConfirmationLetterDraft(input: {
+  letterId: number;
+  agreedStartDate: string;
+  agreedFeeMinimum: number;
+  agreedFeeMaximum: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [draft] = await database.select({
+    id: confirmationLetters.id,
+    letterNumber: confirmationLetters.letterNumber,
+    version: confirmationLetters.version,
+    contentSnapshot: confirmationLetters.contentSnapshot,
+  }).from(confirmationLetters).where(and(eq(confirmationLetters.id, input.letterId), eq(confirmationLetters.status, "draft"))).limit(1);
+  if (!draft) return null;
+  const snapshot = parseConfirmationLetterSnapshot(draft.contentSnapshot);
+  const pdf = await renderConfirmationLetterPdf({
+    ...snapshot,
+    letterNumber: draft.letterNumber,
+    version: draft.version,
+    issuedAt: new Date(),
+    agreedStartDate: input.agreedStartDate,
+    agreedFeeMinimum: input.agreedFeeMinimum,
+    agreedFeeMaximum: input.agreedFeeMaximum,
+  }, { contactNumber: await getSiteContactNumber(), draft: true });
+  return {
+    letterId: draft.id,
+    letterNumber: draft.letterNumber,
+    fileName: confirmationLetterFileName(`${draft.letterNumber}-DRAFT`),
+    pdfBase64: pdf.toString("base64"),
+  };
+}
+
 /** Issues a reviewed draft as an immutable PDF and creates private Guardian/Tutor notifications. */
 export async function issueConfirmationLetter(input: {
   letterId: number;

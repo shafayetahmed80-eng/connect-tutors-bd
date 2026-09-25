@@ -5,6 +5,7 @@ import {
   type TutorMatchFilters,
 } from "@shared/tutor-matching";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { ConfirmationLetterDraftPreview } from "@/components/ConfirmationLetterPreview";
 import { TutorListPager } from "@/components/TutorListPager";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
@@ -33,6 +34,7 @@ import {
   Star,
   Trash2,
   UserCheck,
+  Eye,
 } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -361,6 +363,7 @@ function ConfirmationLetterControls({ request, busy }: { request: MatchingReques
   const [agreedStartDate, setAgreedStartDate] = useState("");
   const [agreedFeeMinimum, setAgreedFeeMinimum] = useState("");
   const [agreedFeeMaximum, setAgreedFeeMaximum] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const utils = trpc.useUtils();
   const createDraft = trpc.admin.createConfirmationLetterDraft.useMutation({
     onSuccess: result => {
@@ -370,6 +373,7 @@ function ConfirmationLetterControls({ request, busy }: { request: MatchingReques
   });
   const issueLetter = trpc.admin.issueConfirmationLetter.useMutation({
     onSuccess: () => {
+      setPreviewOpen(false);
       setLetterId(null);
       setAgreedStartDate("");
       setAgreedFeeMinimum("");
@@ -391,8 +395,16 @@ function ConfirmationLetterControls({ request, busy }: { request: MatchingReques
       <label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-start-date-${request.id}`}>Agreed start date<input id={`letter-start-date-${request.id}`} type="date" required value={agreedStartDate} onChange={event => setAgreedStartDate(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label>
       <div className="grid grid-cols-2 gap-2"><label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-fee-minimum-${request.id}`}>Agreed fee from<input id={`letter-fee-minimum-${request.id}`} type="number" min="0" required value={agreedFeeMinimum} onChange={event => setAgreedFeeMinimum(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label><label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-fee-maximum-${request.id}`}>Agreed fee to<input id={`letter-fee-maximum-${request.id}`} type="number" min="0" required value={agreedFeeMaximum} onChange={event => setAgreedFeeMaximum(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label></div>
       <p className="text-xs leading-5 text-j-ink-muted">The issued letter excludes address details, Guardian notes, direct contacts, and student identity. It cannot be edited after issue.</p>
+      <button type="button" disabled={!canIssue || busyState} onClick={() => setPreviewOpen(true)} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"><Eye className="h-4 w-4" /> Preview letter</button>
       <button type="submit" disabled={!canIssue || busyState} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><ShieldCheck className="h-4 w-4" /> {issueLetter.isPending ? "Issuing letter…" : "Review and issue private letter"}</button>
     </form>}
+    {previewOpen && letterId ? <ConfirmationLetterDraftPreview
+      terms={{ letterId, agreedStartDate, agreedFeeMinimum: feeMinimum, agreedFeeMaximum: feeMaximum }}
+      onClose={() => setPreviewOpen(false)}
+      onIssue={() => issueLetter.mutate({ letterId, agreedStartDate, agreedFeeMinimum: feeMinimum, agreedFeeMaximum: feeMaximum })}
+      issuing={issueLetter.isPending}
+      issueError={issueLetter.error?.message}
+    /> : null}
   </section>;
 }
 
