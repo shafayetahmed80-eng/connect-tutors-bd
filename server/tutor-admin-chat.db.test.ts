@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { tutorAdminChatMessages, tutorAdminChatThreads } from "../drizzle/schema";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { tutorAdminChatMessages, tutorAdminChatThreads, users } from "../drizzle/schema";
 
 const chatWsMocks = vi.hoisted(() => ({ notifyAdminsOfChatMessage: vi.fn(), notifyTutorOfChatMessage: vi.fn() }));
 vi.mock("./chat-ws", () => chatWsMocks);
@@ -16,6 +16,28 @@ import {
 
 // Seeded by scripts/seed-dev-discovery-fixtures.mjs; every row this test makes on it is removed afterwards.
 const tutorId = "dev-tutor-amina";
+
+// `senderAdminId` is a real foreign key into `users`, so a message "from" one
+// needs a row that actually exists - a seeded Admin's id is not guaranteed
+// (CI's fresh database seeds no Admin at all), so this test brings its own.
+let adminUserId: number;
+
+beforeAll(async () => {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [result] = await database.insert(users).values({
+    openId: `test-admin-chat-${Date.now()}`,
+    name: "Test Admin",
+    role: "admin",
+  });
+  adminUserId = result.insertId as number;
+});
+
+afterAll(async () => {
+  const database = await getDb();
+  if (!database) return;
+  await database.delete(users).where(eq(users.id, adminUserId));
+});
 
 afterEach(async () => {
   vi.clearAllMocks();
@@ -34,13 +56,13 @@ describe("the Tutor-Admin chat, against the real database", () => {
     expect(chatWsMocks.notifyAdminsOfChatMessage).toHaveBeenCalledWith(tutorId);
     expect(chatWsMocks.notifyTutorOfChatMessage).not.toHaveBeenCalled();
 
-    await sendTutorAdminChatMessageFromAdmin({ tutorId, body: "How can we help?", adminUserId: 1 });
+    await sendTutorAdminChatMessageFromAdmin({ tutorId, body: "How can we help?", adminUserId });
     expect(chatWsMocks.notifyTutorOfChatMessage).toHaveBeenCalledWith(tutorId);
   });
 
   it("counts an Admin reply as unread for the Tutor until the Tutor reads it", async () => {
     await sendTutorAdminChatMessageFromTutor({ tutorId, body: "I have a question" });
-    await sendTutorAdminChatMessageFromAdmin({ tutorId, body: "Sure, go ahead", adminUserId: 1 });
+    await sendTutorAdminChatMessageFromAdmin({ tutorId, body: "Sure, go ahead", adminUserId });
 
     await expect(getTutorAdminChatUnreadCount({ tutorId })).resolves.toEqual({ unreadCount: 1 });
 
