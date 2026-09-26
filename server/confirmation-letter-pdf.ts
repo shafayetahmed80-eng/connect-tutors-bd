@@ -27,20 +27,28 @@ type LatinFont = "Regular" | "Bold" | "Heavy";
 const MANROPE_CAP_HEIGHT = 0.72;
 const SITE_ADDRESS = "connecttutorsbd.com";
 
-/** The site's own palette: navy ink, brand blue, saffron, and the soft blues of its cards. */
+/**
+ * The letter reads as a keepsake certificate: warm parchment, a maroon-and-
+ * gold frame, ink like print on aged paper. `brand` is the site's own fixed
+ * palette, kept apart so the logo and seal always read as the real Connect
+ * Tutors mark no matter how the letter's own colours move around them.
+ */
 const colour = {
-  ink: "#102849",
-  body: "#1D3654",
-  muted: "#4D6A82",
-  faint: "#6A8499",
-  blue: "#0B5FA8",
-  saffron: "#D99624",
-  line: "#D5E3EE",
-  hairline: "#E6EEF5",
-  wash: "#F4F9FC",
-  feeWash: "#FFF4DB",
-  feeInk: "#7A5412",
+  ink: "#2B1B10",
+  body: "#3B2A1C",
+  muted: "#6E5A44",
+  faint: "#9C8768",
+  accent: "#8C1F2E",
+  saffron: "#B4791A",
+  line: "#E1CBA0",
+  hairline: "#EFE4C8",
+  wash: "#F8F1DE",
+  feeWash: "#FBE7BC",
+  feeInk: "#6E3A12",
+  parchment: "#F4E9CC",
+  parchmentEdge: "#E7D3A2",
 };
+const brand = { blue: "#0B5FA8", saffron: "#D99624" };
 
 export type ConfirmationLetterDocument = {
   letterNumber: string;
@@ -173,15 +181,15 @@ function writeValue(document: PDFKit.PDFDocument, text: string, font: LatinFont,
  */
 function drawCradle(document: PDFKit.PDFDocument, originX: number, originY: number, unit: number, stringWidth = 1.3) {
   document.save().translate(originX, originY).scale(unit);
-  document.lineWidth(stringWidth).strokeColor(colour.blue).fillColor(colour.blue);
+  document.lineWidth(stringWidth).strokeColor(brand.blue).fillColor(brand.blue);
   for (const x of [5.6, 12.8, 20, 27.2]) document.moveTo(x, 11).lineTo(x, 35).stroke();
   for (const x of [5.6, 12.8, 20, 27.2]) document.circle(x, 35, 3.6).fill();
   document.save().rotate(-22, { origin: [34.4, 11] });
-  document.strokeColor(colour.saffron).fillColor(colour.saffron);
+  document.strokeColor(brand.saffron).fillColor(brand.saffron);
   document.moveTo(34.4, 11).lineTo(34.4, 35).stroke();
   document.circle(34.4, 35, 3.6).fill();
   document.restore();
-  document.lineWidth(3).lineCap("round").strokeColor(colour.blue).moveTo(3, 11).lineTo(37, 11).stroke();
+  document.lineWidth(3).lineCap("round").strokeColor(brand.blue).moveTo(3, 11).lineTo(37, 11).stroke();
   document.restore();
 }
 
@@ -205,7 +213,7 @@ function drawLogo(document: PDFKit.PDFDocument, left: number, top: number) {
   const textLeft = left + markWidth + 0.42 * size;
   const textOptions = { characterSpacing, lineBreak: false, baseline: "alphabetic" } as const;
   document.fillColor(colour.ink).text("Connect", textLeft, baseline, textOptions);
-  document.fillColor(colour.blue).text("Tutors", textLeft + connectWidth + 0.24 * size, baseline, textOptions);
+  document.fillColor(brand.blue).text("Tutors", textLeft + connectWidth + 0.24 * size, baseline, textOptions);
   return markHeight;
 }
 
@@ -254,8 +262,65 @@ function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number, y: nu
 }
 
 function sectionLabel(document: PDFKit.PDFDocument, text: string, left: number, top: number) {
-  document.font("Heavy").fontSize(7.5).fillColor(colour.blue).text(text.toUpperCase(), left, top, { characterSpacing: 1.1, lineBreak: false });
+  document.font("Heavy").fontSize(7.5).fillColor(colour.accent).text(text.toUpperCase(), left, top, { characterSpacing: 1.1, lineBreak: false });
   return top + 15;
+}
+
+/** How far the certificate frame sits inside the page edge, and its corner radius. */
+const FRAME_INSET = 16;
+const FRAME_RADIUS = 12;
+
+/** A warm parchment page, its tone deepening very slightly toward the edges like aged paper. */
+function drawPageBackground(document: PDFKit.PDFDocument) {
+  const { width, height } = document.page;
+  document.save();
+  document.rect(0, 0, width, height).fill(colour.parchment);
+  const vignette = document.radialGradient(width / 2, height / 2, height * 0.2, width / 2, height / 2, height * 0.72);
+  vignette.stop(0, colour.parchment, 0).stop(1, colour.parchmentEdge, 0.55);
+  document.rect(0, 0, width, height).fill(vignette);
+  document.restore();
+}
+
+/** One petal of the corner flourish: a leaf lying along +x from the origin, rotated into place. */
+function drawPetal(document: PDFKit.PDFDocument, length: number, width: number, angle: number, fill: string, opacity: number) {
+  document.save().rotate(angle).fillColor(fill).fillOpacity(opacity);
+  document.path(`M0,0 C${length * 0.22},${-width} ${length * 0.68},${-width} ${length},0 C${length * 0.68},${width} ${length * 0.22},${width} 0,0 Z`).fill();
+  document.restore();
+}
+
+/**
+ * A small vine-and-petal flourish fanning from a frame corner into the page:
+ * one maroon petal on the diagonal, two gold petals either side of it, and a
+ * short petal following each edge. Drawn once and mirrored into all four
+ * corners with `scale`.
+ */
+function drawCornerFlourish(document: PDFKit.PDFDocument, cornerX: number, cornerY: number, flipX: 1 | -1, flipY: 1 | -1) {
+  document.save().translate(cornerX, cornerY).scale(flipX, flipY);
+  drawPetal(document, 25, 6, 45, colour.accent, 0.88);
+  drawPetal(document, 19, 5, 18, colour.saffron, 0.9);
+  drawPetal(document, 19, 5, 72, colour.saffron, 0.9);
+  drawPetal(document, 11, 3, 0, colour.accent, 0.5);
+  drawPetal(document, 11, 3, 90, colour.accent, 0.5);
+  document.fillOpacity(1).fillColor(colour.accent).circle(0, 0, 2.8).fill();
+  document.fillColor(colour.saffron).circle(0, 0, 1.1).fill();
+  document.restore();
+}
+
+/** The certificate frame: a maroon rule, a fine gold rule just inside it, and a flourish in each corner. */
+function drawOrnamentalFrame(document: PDFKit.PDFDocument) {
+  const { width, height } = document.page;
+  const outer = FRAME_INSET;
+  const inner = FRAME_INSET + 5;
+  document.save().lineWidth(1.4).strokeColor(colour.accent);
+  document.roundedRect(outer, outer, width - outer * 2, height - outer * 2, FRAME_RADIUS).stroke();
+  document.restore();
+  document.save().lineWidth(0.6).strokeColor(colour.saffron);
+  document.roundedRect(inner, inner, width - inner * 2, height - inner * 2, FRAME_RADIUS - 4).stroke();
+  document.restore();
+  drawCornerFlourish(document, outer, outer, 1, 1);
+  drawCornerFlourish(document, width - outer, outer, -1, 1);
+  drawCornerFlourish(document, outer, height - outer, 1, -1);
+  drawCornerFlourish(document, width - outer, height - outer, -1, -1);
 }
 
 /**
@@ -274,7 +339,7 @@ export async function renderConfirmationLetterPdf(
   const content = buildConfirmationLetterContent(letter);
   const document = new PDFDocument({
     size: "A4",
-    margins: { top: 48, bottom: 20, left: 56, right: 56 },
+    margins: { top: 60, bottom: 30, left: 62, right: 62 },
     info: { Title: `Confirmation Letter ${letter.letterNumber}`, Author: "Connect Tutors" },
   });
   const chunks: Buffer[] = [];
@@ -284,6 +349,8 @@ export async function renderConfirmationLetterPdf(
     document.on("end", () => resolve(Buffer.concat(chunks)));
     document.on("error", reject);
 
+    drawPageBackground(document);
+    drawOrnamentalFrame(document);
     for (const [name, file] of Object.entries(fontFiles)) document.registerFont(name, readFileSync(file));
     const left = document.page.margins.left;
     const width = document.page.width - left - document.page.margins.right;
@@ -291,8 +358,8 @@ export async function renderConfirmationLetterPdf(
     const pageHeight = document.page.height;
 
     // Letterhead: logo on the left, how to reach us on the right, then a rule
-    // that opens in saffron the way the site's section labels do.
-    let y = 48;
+    // that opens in gold the way the site's section labels once opened in saffron.
+    let y = 60;
     const logoHeight = drawLogo(document, left, y);
     document.font("Regular").fontSize(8.5).fillColor(colour.muted);
     const contactTop = y + (logoHeight - 22) / 2;
@@ -305,7 +372,7 @@ export async function renderConfirmationLetterPdf(
     document.restore();
 
     y += 24;
-    document.font("Heavy").fontSize(7.5).fillColor(colour.blue).text(letterCopy.kicker, left, y, { characterSpacing: 1.3, lineBreak: false });
+    document.font("Heavy").fontSize(7.5).fillColor(colour.accent).text(letterCopy.kicker, left, y, { characterSpacing: 1.3, lineBreak: false });
     y += 13;
     document.font("Heavy").fontSize(24).fillColor(colour.ink).text(letterCopy.title, left, y, { characterSpacing: -0.7, lineBreak: false });
     y += 44;
@@ -333,7 +400,7 @@ export async function renderConfirmationLetterPdf(
     // Everything must fit one page above the sign-off. Only the rows vary in
     // height (a long subject list wraps), so a long letter spends less air
     // between its rows instead of pushing the seal into the footer.
-    const footerTop = pageHeight - 46;
+    const footerTop = pageHeight - 54;
     const sealRadius = 30;
     const qrSize = 62;
     const signHeight = Math.max(sealRadius * 2, qrSize);
@@ -379,8 +446,8 @@ export async function renderConfirmationLetterPdf(
       document.font("Bold").fillColor(colour.ink).text(formatLetterVerificationCode(options.verification.code), { lineBreak: false });
       drawQrCode(document, options.verification.url, right - sealRadius * 2 - 14 - qrSize, signTop + (signHeight - qrSize) / 2, qrSize);
     }
-    document.save().lineWidth(1.6).strokeColor(colour.blue).circle(sealX, sealY, sealRadius).stroke().restore();
-    document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor(colour.blue).circle(sealX, sealY, sealRadius - 4).stroke().undash().restore();
+    document.save().lineWidth(1.6).strokeColor(brand.blue).circle(sealX, sealY, sealRadius).stroke().restore();
+    document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor(brand.blue).circle(sealX, sealY, sealRadius - 4).stroke().undash().restore();
     const sealUnit = 36 / 48;
     drawCradle(document, sealX - 24.25 * sealUnit, sealY - 24.05 * sealUnit, sealUnit, 1.6);
 
@@ -393,7 +460,7 @@ export async function renderConfirmationLetterPdf(
       // Across the middle, faint enough to read through, impossible to miss.
       const bandWidth = 900;
       document.save().rotate(-32, { origin: [document.page.width / 2, pageHeight / 2] });
-      document.font("Heavy").fontSize(54).fillColor(colour.blue).fillOpacity(0.09);
+      document.font("Heavy").fontSize(54).fillColor(colour.accent).fillOpacity(0.09);
       document.text(letterCopy.draftMark, (document.page.width - bandWidth) / 2, pageHeight / 2 - 30, { width: bandWidth, align: "center", characterSpacing: 3, lineBreak: false });
       document.restore();
     }
