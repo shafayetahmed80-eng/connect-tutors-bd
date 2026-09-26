@@ -116,6 +116,7 @@ import {
   type UserRole,
   type TutorRequestPublicationState,
 } from "../drizzle/schema";
+import { notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
@@ -6477,7 +6478,10 @@ export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
   const [thread] = await database.select({ id: tutorAdminChatThreads.id, tutorLastReadAt: tutorAdminChatThreads.tutorLastReadAt }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
   if (!thread) return { unreadCount: 0 };
   const conditions = [eq(tutorAdminChatMessages.threadId, thread.id), eq(tutorAdminChatMessages.senderRole, "admin" as const)];
-  if (thread.tutorLastReadAt) conditions.push(gt(tutorAdminChatMessages.createdAt, thread.tutorLastReadAt));
+  // `>=`, not `>`: these `timestamp` columns carry whole-second precision, so a
+  // reply sent the same second a Tutor's own message set this cursor would
+  // otherwise be silently swallowed rather than counted unread.
+  if (thread.tutorLastReadAt) conditions.push(gte(tutorAdminChatMessages.createdAt, thread.tutorLastReadAt));
   const [row] = await database.select({ value: count() }).from(tutorAdminChatMessages).where(and(...conditions));
   return { unreadCount: Number(row?.value ?? 0) };
 }
@@ -6489,6 +6493,7 @@ export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: strin
   const now = new Date();
   await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "tutor", body: input.body, createdAt: now });
   await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: input.body.slice(0, 200), tutorLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  notifyAdminsOfChatMessage(input.tutorId);
   return { sent: true as const };
 }
 
@@ -6515,11 +6520,14 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
       tutorNumber: tutorRegistrations.tutorNumber,
       lastMessageAt: tutorAdminChatThreads.lastMessageAt,
       lastMessagePreview: tutorAdminChatThreads.lastMessagePreview,
+      // `>=`, not `>`: whole-second `timestamp` precision means a Tutor
+      // message landing the same second an Admin's cursor moved must still
+      // count, not vanish into a tie.
       unreadCount: sql<number>`(
         select count(*) from ${tutorAdminChatMessages}
         where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
           and ${tutorAdminChatMessages.senderRole} = 'tutor'
-          and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} > ${tutorAdminChatThreads.adminLastReadAt})
+          and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
       )`,
     })
     .from(tutorAdminChatThreads)
@@ -6545,7 +6553,7 @@ export async function getTutorAdminChatUnreadThreadCountForAdmin() {
       select 1 from ${tutorAdminChatMessages}
       where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
         and ${tutorAdminChatMessages.senderRole} = 'tutor'
-        and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} > ${tutorAdminChatThreads.adminLastReadAt})
+        and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
     )`);
   return { unreadThreadCount: Number(row?.value ?? 0) };
 }
@@ -6571,6 +6579,7 @@ export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: strin
   const now = new Date();
   await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, createdAt: now });
   await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: input.body.slice(0, 200), adminLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  notifyTutorOfChatMessage(input.tutorId);
   return { sent: true as const };
 }
 

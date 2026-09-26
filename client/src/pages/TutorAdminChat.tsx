@@ -2,13 +2,16 @@ import { LabelIcon } from "@/components/recordIcons";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import CharacterRemaining from "@/components/CharacterRemaining";
+import { useTutorChatSocket } from "@/hooks/useChatSocket";
 import { trpc } from "@/lib/trpc";
+import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const CHAT_MESSAGE_MAX = 2000;
-const CHAT_POLL_MS = 3000;
+// A slow fallback only - the WebSocket carries the real "something arrived" signal.
+const CHAT_POLL_MS = 20000;
 
 type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; createdAt: string | Date };
 
@@ -33,6 +36,8 @@ export function TutorAdminChatPanel() {
     onError: error => toast.error(error.message),
   });
   const markRead = trpc.tutorAdminChat.markRead.useMutation({ onSuccess: () => utils.tutorAdminChat.unreadCount.invalidate() });
+
+  useTutorChatSocket(getCurrentTutorPortalToken(), () => { void utils.tutorAdminChat.thread.invalidate(); });
 
   const messages = (threadQuery.data?.messages ?? []) as ChatMessage[];
 

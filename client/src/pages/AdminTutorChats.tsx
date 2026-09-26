@@ -3,13 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useAdminChatSocket } from "@/hooks/useChatSocket";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Search, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useSearch } from "wouter";
 import { toast } from "sonner";
 
 const CHAT_MESSAGE_MAX = 2000;
-const CHAT_POLL_MS = 3000;
+// A slow fallback only - the WebSocket carries the real "something arrived" signal.
+const CHAT_POLL_MS = 20000;
 
 type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; createdAt: string | Date };
 type ChatThreadRow = { tutorId: string; tutorName: string; tutorNumber: number | null; lastMessageAt: string | Date | null; lastMessagePreview: string | null; unreadCount: number };
@@ -133,8 +136,16 @@ function ThreadPanel({ tutorId, onBack }: { tutorId: string; onBack?: () => void
 
 export function AdminTutorChatsContent() {
   const isMobile = useIsMobile();
-  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
+  const search = useSearch();
+  const utils = trpc.useUtils();
+  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(() => new URLSearchParams(search).get("tutorId"));
   const frameClassName = "h-[calc(100vh-200px)] min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]";
+
+  useAdminChatSocket(tutorId => {
+    void utils.admin.listTutorChatThreads.invalidate();
+    void utils.admin.tutorChatUnreadThreadCount.invalidate();
+    if (tutorId && tutorId === selectedTutorId) void utils.admin.getTutorChatThread.invalidate({ tutorId });
+  });
 
   if (isMobile) {
     return <div className={frameClassName}>

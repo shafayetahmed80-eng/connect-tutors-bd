@@ -10,7 +10,7 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
@@ -171,9 +171,14 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-10">
     <AdminTutorApplications tutorId={tutorId} />
 
-    <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Tutor Profiles
-    </Link>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
+        <ArrowLeft size={15} /> Back to Tutor Profiles
+      </Link>
+      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+        <MessageCircle size={15} /> Message
+      </Link>
+    </div>
 
     {/*
       Identity strip - the Admin's own header above the Tutor's own view.
