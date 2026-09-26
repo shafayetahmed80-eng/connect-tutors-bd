@@ -279,6 +279,17 @@
   to { opacity: 1; transform: none; }
 }
 
+/* The same rise, applied straight to a table row or a phone card rather than
+   a wrapper - a `<tr>` cannot take a `display: grid` wrapper without breaking
+   the table, and a card list item needs none. Tutor Matching's ranked list
+   opts into it; other RecordTable screens are unaffected. */
+@media (prefers-reduced-motion: no-preference) {
+  .stagger-row-enter {
+    animation: job-card-enter 480ms cubic-bezier(.23, 1, .32, 1) backwards;
+    animation-delay: calc(var(--stagger, 0) * 60ms);
+  }
+}
+
 .journey-step-halo {
   animation: journey-step-halo 2.4s cubic-bezier(.22, .61, .36, 1) infinite;
 }
