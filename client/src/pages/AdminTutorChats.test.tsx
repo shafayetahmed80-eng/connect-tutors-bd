@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   isMobile: false,
+  search: "",
   threads: [] as any[],
   threadsLoading: false,
   threadInput: null as unknown,
@@ -13,16 +14,22 @@ const state = vi.hoisted(() => ({
   threadLoading: false,
   send: vi.fn(),
   markRead: vi.fn(),
+  adminSocketOnMessage: null as ((tutorId?: string) => void) | null,
+  invalidateListThreads: vi.fn(),
+  invalidateUnreadThreadCount: vi.fn(),
+  invalidateThread: vi.fn(),
 }));
 
 vi.mock("@/hooks/useMobile", () => ({ useIsMobile: () => state.isMobile }));
+vi.mock("@/hooks/useChatSocket", () => ({ useAdminChatSocket: (onMessage: (tutorId?: string) => void) => { state.adminSocketOnMessage = onMessage; } }));
+vi.mock("wouter", () => ({ useSearch: () => state.search }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       admin: {
-        listTutorChatThreads: { invalidate: vi.fn() },
-        tutorChatUnreadThreadCount: { invalidate: vi.fn() },
-        getTutorChatThread: { invalidate: vi.fn() },
+        listTutorChatThreads: { invalidate: state.invalidateListThreads },
+        tutorChatUnreadThreadCount: { invalidate: state.invalidateUnreadThreadCount },
+        getTutorChatThread: { invalidate: state.invalidateThread },
       },
     }),
     admin: {
@@ -46,6 +53,7 @@ const thread = (over: Record<string, unknown> = {}) => ({ tutorId: "tutor-1", tu
 afterEach(() => {
   cleanup();
   state.isMobile = false;
+  state.search = "";
   state.threads = [];
   state.threadsLoading = false;
   state.threadInput = null;
@@ -54,6 +62,10 @@ afterEach(() => {
   state.threadLoading = false;
   state.send.mockReset();
   state.markRead.mockReset();
+  state.adminSocketOnMessage = null;
+  state.invalidateListThreads.mockReset();
+  state.invalidateUnreadThreadCount.mockReset();
+  state.invalidateThread.mockReset();
 });
 
 describe("the Admin's Tutor chat list", () => {
@@ -123,5 +135,27 @@ describe("the Admin's Tutor chat list", () => {
     expect(back).toBeTruthy();
     fireEvent.click(back);
     expect(screen.getByPlaceholderText("Search Tutor name or ID")).toBeTruthy();
+  });
+
+  it("opens straight to a Tutor named in the URL, even before that Tutor has a thread", () => {
+    state.search = "tutorId=tutor-2";
+    state.threadTutor = { tutorId: "tutor-2", tutorName: "Karim Sheikh", tutorNumber: 44 };
+    render(<AdminTutorChatsContent />);
+
+    expect(state.threadInput).toEqual({ tutorId: "tutor-2" });
+    expect(screen.getByText("Karim Sheikh")).toBeTruthy();
+  });
+
+  it("refreshes the open thread and the list when the socket says something arrived", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    state.adminSocketOnMessage?.("tutor-1");
+
+    expect(state.invalidateListThreads).toHaveBeenCalled();
+    expect(state.invalidateUnreadThreadCount).toHaveBeenCalled();
+    expect(state.invalidateThread).toHaveBeenCalledWith({ tutorId: "tutor-1" });
   });
 });
