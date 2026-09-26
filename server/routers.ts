@@ -2415,6 +2415,14 @@ export const appRouter = router({
         if (!result.issued) throw new TRPCError({ code: "CONFLICT", message: "This confirmation-letter draft is no longer available for issue." });
         return result;
       }),
+    /** An issued letter, for the Admin's own "View letter" - no recipient check, unlike `confirmationLetters.file`. */
+    confirmationLetterFile: adminProcedure
+      .input(z.object({ letterId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const result = await db.getConfirmationLetterFileForAdmin(input);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmation letter is unavailable." });
+        return result;
+      }),
     cancelTutorRequest: adminProcedure
       .input(z.object({ requestId: z.number().int().positive(), reason: z.string().trim().min(3).max(280) }))
       .mutation(async ({ ctx, input }) => {

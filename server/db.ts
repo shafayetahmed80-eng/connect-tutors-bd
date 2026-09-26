@@ -3307,6 +3307,30 @@ export async function getConfirmationLetterRecipientFile(input: { letterId: numb
   };
 }
 
+/**
+ * An issued letter's PDF for the Admin who manages it - the same bytes the
+ * Guardian and Tutor see, with no recipient check: an Admin may open any
+ * letter, the way they can already see everything else about the tuition.
+ */
+export async function getConfirmationLetterFileForAdmin(input: { letterId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [letter] = await database.select({
+    id: confirmationLetters.id,
+    letterNumber: confirmationLetters.letterNumber,
+    status: confirmationLetters.status,
+    pdfStorageKey: confirmationLetters.pdfStorageKey,
+  }).from(confirmationLetters).where(eq(confirmationLetters.id, input.letterId)).limit(1);
+  if (!letter || letter.status !== "issued" || !letter.pdfStorageKey) return null;
+  const pdf = await storageRead(letter.pdfStorageKey);
+  return {
+    letterId: letter.id,
+    letterNumber: letter.letterNumber,
+    fileName: confirmationLetterFileName(letter.letterNumber),
+    pdfBase64: pdf.toString("base64"),
+  };
+}
+
 /** Updates a Guardian-owned request only while it remains in the initial Pending stage. */
 export async function updateGuardianTutorRequest(input: {
   guardianUserId: number;
@@ -8117,10 +8141,13 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
   const guardianRequests = await getWaitingGuardianTuitionRequests(items.map(item => ({ ...item, appointmentConfirmedAt: item.confirmedAt })));
 
   const charges = stage === "confirmed" ? await getChargeSummaries(items) : new Map<number, ReturnType<typeof chargeSummary>>();
+  // Only a Confirmed tuition can carry a Confirmation Letter - Appointed jobs
+  // never reach `createConfirmationLetterDraft`'s eligibility check.
+  const letters = stage === "confirmed" ? await getConfirmationLetterSummaries(items) : new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
 
   return {
     // The terms stay on the server: the row carries what they work out to.
-    items: items.map(({ chargeTerms: _terms, ...item }) => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null, charge: charges.get(item.id) ?? null })),
+    items: items.map(({ chargeTerms: _terms, ...item }) => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null, charge: charges.get(item.id) ?? null, confirmationLetter: letters.get(item.id) ?? null })),
     total,
     page: filters.page,
     pageSize: filters.pageSize,
@@ -8151,6 +8178,32 @@ async function getChargeSummaries(items: Array<{ id: number; tutorId: string; co
     if (!terms) continue;
     const own = payments.filter(payment => payment.requestId === item.id && payment.tutorId === item.tutorId);
     summaries.set(item.id, chargeSummary(terms, item.confirmedAt, own.map(payment => ({ amount: payment.amount, paidAt: payment.paidAt }))));
+  }
+  return summaries;
+}
+
+/**
+ * Each tuition's current Confirmation Letter, if it has one: the issued one
+ * when there is one, else an unissued draft waiting on the Admin. A stray
+ * draft never outranks an issued letter, whichever has the higher id.
+ */
+async function getConfirmationLetterSummaries(items: Array<{ id: number }>) {
+  const summaries = new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
+  const database = await getDb();
+  if (!database || items.length === 0) return summaries;
+  const rows = await database.select({
+    id: confirmationLetters.id,
+    tutorRequestId: confirmationLetters.tutorRequestId,
+    letterNumber: confirmationLetters.letterNumber,
+    status: confirmationLetters.status,
+  }).from(confirmationLetters)
+    .where(and(inArray(confirmationLetters.tutorRequestId, items.map(item => item.id)), inArray(confirmationLetters.status, ["draft", "issued"])))
+    .orderBy(desc(confirmationLetters.id));
+  for (const row of rows) {
+    const current = summaries.get(row.tutorRequestId);
+    if (!current || (current.status !== "issued" && row.status === "issued")) {
+      summaries.set(row.tutorRequestId, { id: row.id, letterNumber: row.letterNumber, status: row.status as "draft" | "issued" });
+    }
   }
   return summaries;
 }

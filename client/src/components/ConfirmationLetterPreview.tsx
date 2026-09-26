@@ -76,6 +76,25 @@ function LetterPdfModal({ title, meta, label, file, onClose, busy, notice, actio
   </Modal>;
 }
 
+/** The letter window's own chrome: draw it, then Download. Only the file query differs by caller. */
+function LetterViewer({ letterNumber, fileQuery, onClose }: { letterNumber: string; fileQuery: LetterFileQuery; onClose: () => void }) {
+  return <LetterPdfModal
+    title="Confirmation Letter"
+    meta={letterNumber}
+    label={`Confirmation Letter ${letterNumber}`}
+    file={fileQuery}
+    onClose={onClose}
+    actions={ready => <button
+      type="button"
+      onClick={() => { if (ready) saveFile(ready.bytes, ready.fileName); }}
+      disabled={!ready}
+      className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <Download className="size-4" aria-hidden="true" /> Download PDF
+    </button>}
+  />;
+}
+
 /**
  * "View letter": the Confirmation Letter opens in a window inside the site,
  * and "Download PDF" saves it under a name that says what it is. Shared by
@@ -93,21 +112,28 @@ export function ConfirmationLetterViewButton({ letterId, letterNumber, className
 
 export function ConfirmationLetterPreview({ letterId, letterNumber, onClose }: { letterId: number; letterNumber: string; onClose: () => void }) {
   const fileQuery = trpc.confirmationLetters.file.useQuery({ letterId }, { retry: false, staleTime: 5 * 60_000 });
-  return <LetterPdfModal
-    title="Confirmation Letter"
-    meta={letterNumber}
-    label={`Confirmation Letter ${letterNumber}`}
-    file={fileQuery}
-    onClose={onClose}
-    actions={ready => <button
-      type="button"
-      onClick={() => { if (ready) saveFile(ready.bytes, ready.fileName); }}
-      disabled={!ready}
-      className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <Download className="size-4" aria-hidden="true" /> Download PDF
-    </button>}
-  />;
+  return <LetterViewer letterNumber={letterNumber} fileQuery={fileQuery} onClose={onClose} />;
+}
+
+/**
+ * The same "View letter" / Download window, for an Admin looking at a letter
+ * they issued - the Confirmed Jobs tab, not the Tutor or Guardian dashboard.
+ * An Admin may open any issued letter, so this skips the recipient check
+ * `confirmationLetters.file` makes and reads through `admin.confirmationLetterFile` instead.
+ */
+export function AdminConfirmationLetterViewButton({ letterId, letterNumber, className }: { letterId: number; letterNumber: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button type="button" variant="outline" className={className} onClick={() => setOpen(true)}>
+      <FileText className="size-4" aria-hidden="true" /> View letter
+    </Button>
+    {open ? <AdminConfirmationLetterPreview letterId={letterId} letterNumber={letterNumber} onClose={() => setOpen(false)} /> : null}
+  </>;
+}
+
+function AdminConfirmationLetterPreview({ letterId, letterNumber, onClose }: { letterId: number; letterNumber: string; onClose: () => void }) {
+  const fileQuery = trpc.admin.confirmationLetterFile.useQuery({ letterId }, { retry: false, staleTime: 5 * 60_000 });
+  return <LetterViewer letterNumber={letterNumber} fileQuery={fileQuery} onClose={onClose} />;
 }
 
 export type ConfirmationLetterTerms = { letterId: number; agreedStartDate: string; agreedFeeMinimum: number; agreedFeeMaximum: number };

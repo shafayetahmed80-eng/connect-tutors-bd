@@ -1,6 +1,7 @@
 import AdminCancelledChargesContent from "@/components/AdminCancelledCharges";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
+import { AdminConfirmationLetterViewButton, ConfirmationLetterDraftPreview } from "@/components/ConfirmationLetterPreview";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -10,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { formatDaysPerWeek, formatSubjects } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { ChevronRight, Search, Wallet } from "lucide-react";
+import { ChevronRight, FileText, Search, Wallet } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -18,7 +19,73 @@ import { Link } from "wouter";
 const onDate = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
 
+/** "YYYY-MM-DD" for the calendar day a date shows locally - the same day the "Confirmed" column reads. */
+const dateInputValue = (value: Date | string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 const notSet = <span className="italic text-j-ink-faint">Not set</span>;
+
+/**
+ * The Confirmation Letter for one Confirmed tuition: "View letter" once it is
+ * issued, otherwise "Issue letter" - which opens the letter exactly as it
+ * would be issued, marked as a draft, for the Admin to check before issuing.
+ *
+ * The fee and the start date never need typing: a Confirmed tuition already
+ * has a fixed salary and the date it was confirmed, so the letter is drawn
+ * straight from those.
+ */
+function ConfirmationLetterCell({ requestId, confirmedAt, budgetAmount, letter }: {
+  requestId: number;
+  confirmedAt: Date | string | null;
+  budgetAmount: number | null;
+  letter: { id: number; letterNumber: string; status: "draft" | "issued" } | null;
+}) {
+  const utils = trpc.useUtils();
+  const [previewLetterId, setPreviewLetterId] = useState<number | null>(null);
+  const createDraft = trpc.admin.createConfirmationLetterDraft.useMutation({
+    onSuccess: result => {
+      if (result.letterId) setPreviewLetterId(result.letterId);
+      void utils.admin.listConfirmedJobs.invalidate();
+    },
+  });
+  const issueLetter = trpc.admin.issueConfirmationLetter.useMutation({
+    onSuccess: () => {
+      setPreviewLetterId(null);
+      void utils.admin.listConfirmedJobs.invalidate();
+    },
+  });
+
+  if (letter?.status === "issued") {
+    return <AdminConfirmationLetterViewButton letterId={letter.id} letterNumber={letter.letterNumber} className="h-9 px-3 text-xs" />;
+  }
+
+  const agreedStartDate = dateInputValue(confirmedAt);
+  const canIssue = Boolean(agreedStartDate) && budgetAmount != null;
+  if (!canIssue) return notSet;
+  const terms = { agreedStartDate, agreedFeeMinimum: budgetAmount, agreedFeeMaximum: budgetAmount };
+
+  return <>
+    <button
+      type="button"
+      disabled={createDraft.isPending}
+      onClick={() => { if (letter?.id) setPreviewLetterId(letter.id); else createDraft.mutate({ requestId }); }}
+      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+    >
+      <FileText className="size-3.5" aria-hidden="true" /> {createDraft.isPending ? "Preparing…" : "Issue letter"}
+    </button>
+    {createDraft.isError ? <p role="alert" className="mt-1 max-w-[12rem] text-2xs leading-4 text-red-800">{createDraft.error.message}</p> : null}
+    {previewLetterId ? <ConfirmationLetterDraftPreview
+      terms={{ letterId: previewLetterId, ...terms }}
+      onClose={() => setPreviewLetterId(null)}
+      onIssue={() => issueLetter.mutate({ letterId: previewLetterId, ...terms })}
+      issuing={issueLetter.isPending}
+      issueError={issueLetter.error?.message}
+    /> : null}
+  </>;
+}
 
 /**
  * Every Confirmed tuition - the Guardian kept the Tutor after the demo class -
@@ -72,6 +139,10 @@ export function AdminConfirmedJobsContent() {
     { key: "location", label: "Location", cell: job => <span className="text-j-ink-strong">{job.tuitionLocationLabel ?? job.locationText ?? "Online"}</span> },
     { key: "salary", label: "Salary", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
     { key: "days", label: "Days", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
+    {
+      key: "confirmationLetter", label: "Confirmation Letter", place: "action", cellClassName: "whitespace-nowrap",
+      cell: job => <ConfirmationLetterCell requestId={job.id} confirmedAt={job.confirmedAt} budgetAmount={job.budgetAmount} letter={job.confirmationLetter} />,
+    },
     {
       key: "payments", label: "Payments", place: "action", headingHidden: true, cellClassName: "text-right",
       cell: job => <button

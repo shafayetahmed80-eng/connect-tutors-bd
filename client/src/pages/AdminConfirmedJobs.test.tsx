@@ -5,23 +5,36 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  invalidate: vi.fn(),
+  createDraftInput: null as unknown,
+  createDraftResult: { created: true, letterId: 99, status: "draft" } as unknown,
+  previewTerms: null as unknown,
+  previewData: { fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-000021-V1-DRAFT.pdf", pdfBase64: btoa("%PDF-1.7") },
+  issueInput: null as unknown,
+  issueResult: { issued: true, letterId: 99, status: "issued" } as unknown,
+  adminFileInput: null as unknown,
+  adminFileData: { fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-000005-V1.pdf", pdfBase64: btoa("%PDF-1.7") },
   data: {
     items: [
       {
         id: 21, postedByAdmin: 1, classCourse: "Class 10", subjects: JSON.stringify(["Biology"]),
-        tuitionLocationLabel: "Mohakhali, Dhaka", locationText: "Mohakhali", budgetAmount: 7000, daysPerWeek: 4,
+        tuitionLocationLabel: "Mohakhali, Dhaka", locationText: "Mohakhali", budgetAmount: 7000 as number | null, daysPerWeek: 4,
         appointedAt: new Date("2026-09-10T08:00:00.000Z"), confirmedAt: new Date("2026-09-13T08:30:00.000Z"),
         paymentStatus: "full_due",
         charge: { owed: 4200, paid: 2100, balance: 2100, status: "partial_paid" } as { owed: number; paid: number; balance: number; status: string } | null,
         tutorId: "tutor-175", tutorNumber: 777 as number | null, tutorName: "Tania Sultana", tutorPhone: "+8801711111111" as string | null,
+        // Not issued yet: the row offers to issue one straight from these terms.
+        confirmationLetter: null as { id: number; letterNumber: string; status: "draft" | "issued" } | null,
       },
       {
         id: 5, postedByAdmin: 0, classCourse: "Class 9", subjects: JSON.stringify(["Physics"]),
-        tuitionLocationLabel: "Shyamoli, Dhaka", locationText: "Shyamoli", budgetAmount: 6000, daysPerWeek: 3,
+        tuitionLocationLabel: "Shyamoli, Dhaka", locationText: "Shyamoli", budgetAmount: 6000 as number | null, daysPerWeek: 3,
         appointedAt: null as Date | null, confirmedAt: new Date("2026-09-12T08:30:00.000Z"),
         paymentStatus: "half_paid",
         charge: { owed: 3600, paid: 3600, balance: 0, status: "full_paid" } as { owed: number; paid: number; balance: number; status: string } | null,
         tutorId: "tutor-404", tutorNumber: null, tutorName: "Tanvir Ahmed", tutorPhone: null,
+        // Already issued: the row opens it instead of offering to issue again.
+        confirmationLetter: { id: 88, letterNumber: "CTB-2026-000005-V1", status: "issued" } as { id: number; letterNumber: string; status: "draft" | "issued" } | null,
       },
     ],
     total: 2, page: 1, pageSize: 20, totalPages: 1,
@@ -30,7 +43,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ admin: { listConfirmedJobs: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ admin: { listConfirmedJobs: { invalidate: mocks.invalidate } } }),
     admin: {
       listConfirmedJobs: {
         useQuery: (input: unknown) => {
@@ -38,9 +51,29 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
+      createConfirmationLetterDraft: {
+        useMutation: (options: { onSuccess?: (result: unknown) => void }) => ({
+          isPending: false, isError: false, error: null,
+          mutate: (input: unknown) => { mocks.createDraftInput = input; options.onSuccess?.(mocks.createDraftResult); },
+        }),
+      },
+      previewConfirmationLetter: {
+        useQuery: (terms: unknown) => { mocks.previewTerms = terms; return { data: mocks.previewData, isLoading: false, error: null, refetch: vi.fn() }; },
+      },
+      issueConfirmationLetter: {
+        useMutation: (options: { onSuccess?: (result: unknown) => void }) => ({
+          isPending: false, isError: false, error: null,
+          mutate: (input: unknown) => { mocks.issueInput = input; options.onSuccess?.(mocks.issueResult); },
+        }),
+      },
+      confirmationLetterFile: {
+        useQuery: (input: unknown) => { mocks.adminFileInput = input; return { data: mocks.adminFileData, isLoading: false, error: null, refetch: vi.fn() }; },
+      },
     },
   },
 }));
+// The letter window draws real PDF bytes with pdf.js; the column only has to open it and hand it the right file.
+vi.mock("@/lib/pdfPreview", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/pdfPreview")>()), renderPdfPages: vi.fn().mockResolvedValue(undefined), saveFile: vi.fn() }));
 // The payments dialog has its own tests; here it only has to open for the right tuition.
 vi.mock("@/components/TuitionPaymentsModal", () => ({
   default: ({ requestId, onClose }: { requestId: number; onClose: () => void }) =>
@@ -63,7 +96,7 @@ describe("Admin Confirmed Jobs", () => {
     expect(mocks.lastInput).toMatchObject({ query: "", page: 1 });
     expect(screen.getAllByRole("columnheader").map(cell => cell.textContent)).toEqual([
       "Job ID", "Posted By", "Tutor ID", "Name", "Mobile", "Appointed", "Confirmed", "Payment Status",
-      "Charge", "Paid", "Balance", "Class", "Subjects", "Location", "Salary", "Days", "Payments", "Tutor profile",
+      "Charge", "Paid", "Balance", "Class", "Subjects", "Location", "Salary", "Days", "Confirmation Letter", "Payments", "Tutor profile",
     ]);
   });
 
@@ -162,6 +195,65 @@ describe("Admin Confirmed Jobs", () => {
     render(<AdminConfirmedJobsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location or Tutor/), { target: { value: "777" } });
     expect(mocks.lastInput).toMatchObject({ query: "777", page: 1 });
+  });
+});
+
+describe("issuing a Confirmation Letter from its own tuition row", () => {
+  afterEach(() => { mocks.createDraftInput = null; mocks.previewTerms = null; mocks.issueInput = null; mocks.adminFileInput = null; });
+
+  it("offers to issue a letter where none exists yet, and to view the one already issued", () => {
+    render(<AdminConfirmedJobsContent />);
+
+    const noLetterYet = within(screen.getAllByRole("row")[1]);
+    expect(noLetterYet.getByRole("button", { name: "Issue letter" })).toBeTruthy();
+    expect(noLetterYet.queryByRole("button", { name: "View letter" })).toBeNull();
+
+    const alreadyIssued = within(screen.getAllByRole("row")[2]);
+    expect(alreadyIssued.getByRole("button", { name: "View letter" })).toBeTruthy();
+    expect(alreadyIssued.queryByRole("button", { name: "Issue letter" })).toBeNull();
+  });
+
+  it("issues straight from the fixed salary and the Confirmed date already on record, nothing typed in", () => {
+    render(<AdminConfirmedJobsContent />);
+    // The same local day the "Confirmed" column itself reads, whatever timezone the test runs in.
+    const confirmedAt = mocks.data.items[0].confirmedAt;
+    const expectedDate = `${confirmedAt.getFullYear()}-${String(confirmedAt.getMonth() + 1).padStart(2, "0")}-${String(confirmedAt.getDate()).padStart(2, "0")}`;
+
+    fireEvent.click(within(screen.getAllByRole("row")[1]).getByRole("button", { name: "Issue letter" }));
+    expect(mocks.createDraftInput).toEqual({ requestId: 21 });
+
+    const dialog = screen.getByRole("dialog", { name: "Confirmation Letter preview" });
+    expect(dialog.textContent).toContain("Draft · not issued yet");
+    const terms = { letterId: 99, agreedStartDate: expectedDate, agreedFeeMinimum: 7000, agreedFeeMaximum: 7000 };
+    expect(mocks.previewTerms).toEqual(terms);
+
+    // The row keeps its own trigger under the open dialog, so scope to the dialog's own button.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Issue letter" }));
+    expect(mocks.issueInput).toEqual(terms);
+    // The mocked mutation resolves at once, so the preview is already gone and the list is refetched.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
+  it("opens an already-issued letter through the Admin's own endpoint, not the recipient one", () => {
+    render(<AdminConfirmedJobsContent />);
+
+    fireEvent.click(within(screen.getAllByRole("row")[2]).getByRole("button", { name: "View letter" }));
+    expect(mocks.adminFileInput).toEqual({ letterId: 88 });
+    expect(screen.getByRole("dialog", { name: "Confirmation Letter" }).textContent).toContain("CTB-2026-000005-V1");
+  });
+
+  it("says Not set, with no button, for a tuition with no fixed salary to draw a letter from", () => {
+    const original = mocks.data.items[0];
+    mocks.data.items[0] = { ...original, budgetAmount: null };
+    try {
+      render(<AdminConfirmedJobsContent />);
+      const row = within(screen.getAllByRole("row")[1]);
+      expect(row.queryByRole("button", { name: "Issue letter" })).toBeNull();
+      expect(row.getAllByText("Not set").length).toBeGreaterThan(0);
+    } finally {
+      mocks.data.items[0] = original;
+    }
   });
 });
 
