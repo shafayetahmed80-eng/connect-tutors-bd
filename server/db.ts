@@ -6457,19 +6457,63 @@ async function getOrCreateTutorAdminChatThreadId(database: NonNullable<Awaited<R
 
 const TUTOR_ADMIN_CHAT_MESSAGE_PAGE = 200;
 
+/**
+ * Whether this Tutor may open the chat: once a tuition has reached Appointed
+ * (or gone on to Confirmed - the same `status='matched'` row, just later),
+ * not before. A cancelled or unpublished tuition does not count.
+ */
+async function tutorHasAppointedOrLaterTuition(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [row] = await database
+    .select({ id: tutorJobInterests.id })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutorRequests, eq(tutorRequests.id, tutorJobs.tutorRequestId))
+    .where(and(
+      eq(tutorJobInterests.tutorId, tutorId),
+      eq(tutorJobInterests.status, "matched"),
+      ne(tutorRequests.status, "closed"),
+      ne(tutorRequests.publicationState, "closed"),
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function getTutorAdminChatEligibility(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return { eligible: await tutorHasAppointedOrLaterTuition(database, input.tutorId) };
+}
+
+async function resolveChatAttachmentUrl(attachmentKey: string | null) {
+  if (!attachmentKey) return null;
+  return storageGetSignedUrl(attachmentKey);
+}
+
 /** The Tutor's one support thread. No row exists yet for a Tutor who has never written in - that reads as an empty thread, not an error. */
 export async function getTutorAdminChatThread(input: { tutorId: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
+  const eligible = await tutorHasAppointedOrLaterTuition(database, input.tutorId);
   const [thread] = await database.select().from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
-  if (!thread) return { messages: [], tutorLastReadAt: null };
-  const messages = await database
-    .select({ id: tutorAdminChatMessages.id, senderRole: tutorAdminChatMessages.senderRole, body: tutorAdminChatMessages.body, createdAt: tutorAdminChatMessages.createdAt })
+  if (!thread) return { messages: [], tutorLastReadAt: null, adminLastReadAt: null, eligible };
+  const rows = await database
+    .select({
+      id: tutorAdminChatMessages.id,
+      senderRole: tutorAdminChatMessages.senderRole,
+      body: tutorAdminChatMessages.body,
+      attachmentKey: tutorAdminChatMessages.attachmentKey,
+      attachmentContentType: tutorAdminChatMessages.attachmentContentType,
+      createdAt: tutorAdminChatMessages.createdAt,
+    })
     .from(tutorAdminChatMessages)
     .where(eq(tutorAdminChatMessages.threadId, thread.id))
     .orderBy(desc(tutorAdminChatMessages.id))
     .limit(TUTOR_ADMIN_CHAT_MESSAGE_PAGE);
-  return { messages: messages.reverse(), tutorLastReadAt: thread.tutorLastReadAt };
+  const messages = await Promise.all(rows.reverse().map(async row => {
+    const { attachmentKey, ...rest } = row;
+    return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey) };
+  }));
+  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible };
 }
 
 export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
@@ -6486,13 +6530,15 @@ export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
   return { unreadCount: Number(row?.value ?? 0) };
 }
 
-export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: string; body: string }) {
+export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: string; body: string; attachmentKey?: string; attachmentContentType?: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
+  if (!(await tutorHasAppointedOrLaterTuition(database, input.tutorId))) return { sent: false as const, reason: "not_eligible" as const };
   const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
   const now = new Date();
-  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "tutor", body: input.body, createdAt: now });
-  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: input.body.slice(0, 200), tutorLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
+  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "tutor", body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), tutorLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyAdminsOfChatMessage(input.tutorId);
   return { sent: true as const };
 }
@@ -6513,6 +6559,7 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
   const searchCondition = trimmedQuery
     ? or(like(tutors.name, `%${trimmedQuery}%`), queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined)
     : undefined;
+  const claimedByAdmin = alias(users, "chat_list_claimed_by_admin");
   const baseQuery = database
     .select({
       tutorId: tutorAdminChatThreads.tutorId,
@@ -6520,6 +6567,8 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
       tutorNumber: tutorRegistrations.tutorNumber,
       lastMessageAt: tutorAdminChatThreads.lastMessageAt,
       lastMessagePreview: tutorAdminChatThreads.lastMessagePreview,
+      claimedByAdminId: tutorAdminChatThreads.claimedByAdminId,
+      claimedByAdminName: claimedByAdmin.name,
       // `>=`, not `>`: whole-second `timestamp` precision means a Tutor
       // message landing the same second an Admin's cursor moved must still
       // count, not vanish into a tie.
@@ -6532,7 +6581,8 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
     })
     .from(tutorAdminChatThreads)
     .innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId))
-    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId));
   const items = await (searchCondition ? baseQuery.where(searchCondition) : baseQuery)
     .orderBy(desc(tutorAdminChatThreads.lastMessageAt))
     .limit(input.pageSize)
@@ -6568,17 +6618,31 @@ export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(eq(tutors.id, input.tutorId));
   if (!tutor) throw new Error("Tutor was not found");
-  const { messages } = await getTutorAdminChatThread({ tutorId: input.tutorId });
-  return { tutor, messages };
+  const { messages, tutorLastReadAt, adminLastReadAt } = await getTutorAdminChatThread({ tutorId: input.tutorId });
+  const claimedByAdmin = alias(users, "chat_claimed_by_admin");
+  const [claim] = await database
+    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name })
+    .from(tutorAdminChatThreads)
+    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId))
+    .where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return {
+    tutor,
+    messages,
+    tutorLastReadAt,
+    adminLastReadAt,
+    claimedByAdminId: claim?.claimedByAdminId ?? null,
+    claimedByAdminName: claim?.claimedByAdminName ?? null,
+  };
 }
 
-export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: string; body: string; adminUserId: number }) {
+export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: string; body: string; adminUserId: number; attachmentKey?: string; attachmentContentType?: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
   const now = new Date();
-  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, createdAt: now });
-  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: input.body.slice(0, 200), adminLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
+  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), adminLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyTutorOfChatMessage(input.tutorId);
   return { sent: true as const };
 }
@@ -6588,6 +6652,22 @@ export async function markTutorAdminChatReadByAdmin(input: { tutorId: string }) 
   if (!database) throw new Error("Database is not available");
   await database.update(tutorAdminChatThreads).set({ adminLastReadAt: new Date() }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
   return { updated: true as const };
+}
+
+/** A coordination hint only - claiming a thread never stops another Admin from replying to it. */
+export async function claimTutorAdminChatThread(input: { tutorId: string; adminUserId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
+  await database.update(tutorAdminChatThreads).set({ claimedByAdminId: input.adminUserId }).where(eq(tutorAdminChatThreads.id, threadId));
+  return { claimed: true as const };
+}
+
+export async function releaseTutorAdminChatThread(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(tutorAdminChatThreads).set({ claimedByAdminId: null }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return { released: true as const };
 }
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };

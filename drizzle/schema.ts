@@ -1736,10 +1736,13 @@ export const tutorAdminChatThreads = mysqlTable(
     lastMessagePreview: varchar("lastMessagePreview", { length: 200 }),
     tutorLastReadAt: timestamp("tutorLastReadAt"),
     adminLastReadAt: timestamp("adminLastReadAt"),
+    /** Which Admin has this thread open right now - a coordination hint only; any Admin may still reply. */
+    claimedByAdminId: int("claimedByAdminId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
     foreignKey({ columns: [table.tutorId], foreignColumns: [tutors.id], name: "tact_tutor_fk" }),
+    foreignKey({ columns: [table.claimedByAdminId], foreignColumns: [users.id], name: "tact_claimed_by_fk" }),
     uniqueIndex("tutor_admin_chat_threads_tutor_unique").on(table.tutorId),
     index("tutor_admin_chat_threads_last_message_idx").on(table.lastMessageAt),
   ]
@@ -1756,7 +1759,11 @@ export const tutorAdminChatMessages = mysqlTable(
     threadId: int("threadId").notNull(),
     senderRole: mysqlEnum("senderRole", tutorAdminChatSenderRoleValues).notNull(),
     senderAdminId: int("senderAdminId"),
+    /** Empty only when the message is an attachment with no caption. */
     body: varchar("body", { length: 2000 }).notNull(),
+    /** Storage key of an attached file/image, if any. */
+    attachmentKey: varchar("attachmentKey", { length: 512 }),
+    attachmentContentType: varchar("attachmentContentType", { length: 100 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
