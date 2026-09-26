@@ -106,4 +106,25 @@ describe("RecordTable", () => {
     renderTable();
     expect(screen.getByRole("list", { name: "Your tuitions" })).toBeTruthy();
   });
+
+  it("carries no rise-in class or step by default, and stamps each row's step when asked", () => {
+    const { rerender } = render(<RecordTable caption="Your tuitions" columns={columns} rows={rows} rowKey={row => row.id} empty="No tuition yet." />);
+    const plainRows = screen.getAllByRole("row").slice(1);
+    expect(plainRows[0].className).not.toContain("stagger-row-enter");
+    expect(plainRows[0].style.getPropertyValue("--stagger")).toBe("");
+
+    rerender(<RecordTable caption="Your tuitions" columns={columns} rows={rows} rowKey={row => row.id} empty="No tuition yet." animateEntrance />);
+    const animatedRows = screen.getAllByRole("row").slice(1);
+    expect(animatedRows[0].className).toContain("stagger-row-enter");
+    expect(animatedRows[0].style.getPropertyValue("--stagger")).toBe("0");
+    expect(animatedRows[1].style.getPropertyValue("--stagger")).toBe("1");
+  });
+
+  it("caps the step on a phone card too, so a long list does not make the last rows wait", () => {
+    onAPhone();
+    const longList = Array.from({ length: 10 }, (_, index) => ({ id: index, jobId: String(6800 + index), subjects: "Physics", salary: "BDT 5,000" }));
+    render(<RecordTable caption="Your tuitions" columns={columns} rows={longList} rowKey={row => row.id} empty="No tuition yet." animateEntrance />);
+    const cards = screen.getAllByRole("listitem");
+    expect(cards[9].style.getPropertyValue("--stagger")).toBe("8");
+  });
 });
