@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { CircleCheckBig, CircleX, Inbox, IdCard, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
 
@@ -46,7 +46,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
 /** How many of each Guardian request wait for an answer - the counts beside the Guardian Requests rows. */
 export type GuardianRequestCounts = { shortlist: number; appoint: number; confirm: number; cancel: number };
 
-export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0, guardianRequests?: GuardianRequestCounts): DashboardNavigationItem[] {
+export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0, guardianRequests?: GuardianRequestCounts, tutorChatUnreadThreads = 0): DashboardNavigationItem[] {
   const requests = { label: "Guardian Requests", icon: Inbox };
   // Order matters twice over: it is the visible order, and DashboardLayout
   // starts a new section heading wherever `sectionLabel` changes.
@@ -55,6 +55,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: CircleUserRound, label: "Admin Profile", path: "/admin/profile", sectionLabel: "Operations" },
     { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
     { icon: ContactRound, label: "Guardian Profiles", path: "/admin/guardians", sectionLabel: "Operations" },
+    { icon: MessageCircle, label: "Tutor Chats", path: "/admin/tutor-chats", sectionLabel: "Operations", badge: tutorChatUnreadThreads },
     { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Operations", badge: pendingChangeRequests },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
     { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations" },
@@ -147,6 +148,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   const photoUrl = trpc.adminProfile.photo.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.photoUrl ?? null;
   const pendingChangeRequests = trpc.accountChanges.pendingCount.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data ?? 0;
   const guardianRequestCounts = trpc.admin.guardianRequestCounts.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data;
+  const tutorChatUnreadThreads = trpc.admin.tutorChatUnreadThreadCount.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.unreadThreadCount ?? 0;
   const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
@@ -177,7 +179,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   }
   const access = workspaceAccess.data;
   return <DashboardLayout
-    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner), pendingChangeRequests, guardianRequestCounts)}
+    navigationItems={buildAdminWorkspaceNavigation(Boolean(access?.isOwner), pendingChangeRequests, guardianRequestCounts, tutorChatUnreadThreads)}
     title={title}
     loginPath="/admin/login"
     sidebarPanel="admin"

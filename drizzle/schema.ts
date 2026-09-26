@@ -1716,6 +1716,63 @@ export const adminNotificationBroadcasts = mysqlTable(
   ]
 );
 
+export const tutorAdminChatSenderRoleValues = ["tutor", "admin"] as const;
+export type TutorAdminChatSenderRole = (typeof tutorAdminChatSenderRoleValues)[number];
+
+/**
+ * One support thread per Tutor, open to any Admin rather than tied to a
+ * specific one - the same "any Admin, not a named person" shape as
+ * `notifyTutorDirectory`. `tutorLastReadAt`/`adminLastReadAt` are cursors
+ * rather than a per-message flag, so each side's unread state is one
+ * comparison against `lastMessageAt` instead of a scan of every message.
+ */
+export const tutorAdminChatThreads = mysqlTable(
+  "tutor_admin_chat_threads",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorId: varchar("tutorId", { length: 32 }).notNull(),
+    lastMessageAt: timestamp("lastMessageAt"),
+    /** For the Admin thread list, so it need not join into messages to render a preview. */
+    lastMessagePreview: varchar("lastMessagePreview", { length: 200 }),
+    tutorLastReadAt: timestamp("tutorLastReadAt"),
+    adminLastReadAt: timestamp("adminLastReadAt"),
+    /** Which Admin has this thread open right now - a coordination hint only; any Admin may still reply. */
+    claimedByAdminId: int("claimedByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.tutorId], foreignColumns: [tutors.id], name: "tact_tutor_fk" }),
+    foreignKey({ columns: [table.claimedByAdminId], foreignColumns: [users.id], name: "tact_claimed_by_fk" }),
+    uniqueIndex("tutor_admin_chat_threads_tutor_unique").on(table.tutorId),
+    index("tutor_admin_chat_threads_last_message_idx").on(table.lastMessageAt),
+  ]
+);
+
+/**
+ * `senderAdminId` is kept for accountability only - the Tutor's own chat UI
+ * never shows which Admin replied, since any Admin can pick up the thread.
+ */
+export const tutorAdminChatMessages = mysqlTable(
+  "tutor_admin_chat_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    threadId: int("threadId").notNull(),
+    senderRole: mysqlEnum("senderRole", tutorAdminChatSenderRoleValues).notNull(),
+    senderAdminId: int("senderAdminId"),
+    /** Empty only when the message is an attachment with no caption. */
+    body: varchar("body", { length: 2000 }).notNull(),
+    /** Storage key of an attached file/image, if any. */
+    attachmentKey: varchar("attachmentKey", { length: 512 }),
+    attachmentContentType: varchar("attachmentContentType", { length: 100 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.threadId], foreignColumns: [tutorAdminChatThreads.id], name: "tacm_thread_fk" }),
+    foreignKey({ columns: [table.senderAdminId], foreignColumns: [users.id], name: "tacm_admin_fk" }),
+    index("tutor_admin_chat_messages_thread_created_idx").on(table.threadId, table.createdAt),
+  ]
+);
+
 /**
  * A Guardian asking an Admin to confirm, remove the Tutor from, or cancel one
  * of their tuitions. The Guardian never does these themselves: an Admin

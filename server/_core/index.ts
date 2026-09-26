@@ -13,7 +13,10 @@ import { registerAdminProfileImageRoute } from "../admin-profile-image-route";
 import { registerTutorProfilePhotoRoute } from "../tutor-profile-photo-route";
 import { registerTutorUniversityIdDocumentRoute } from "../tutor-university-id-document-route";
 import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-document-route";
+import { registerTutorAdminChatAttachmentRoute } from "../tutor-admin-chat-attachment-route";
 import { serveStatic, setupVite } from "./vite";
+import { attachChatWebSocketServer } from "../chat-ws";
+import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +40,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  attachChatWebSocketServer(server, { renewTutorPortalSession, getTutorAccountStatusByUserId, getTutorProfileByUserId });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -48,6 +52,7 @@ async function startServer() {
   registerTutorProfilePhotoRoute(app);
   registerTutorUniversityIdDocumentRoute(app);
   registerTutorSupportingDocumentRoute(app);
+  registerTutorAdminChatAttachmentRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

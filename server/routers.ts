@@ -796,6 +796,18 @@ async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionI
     },
   };
 }
+
+/** The terms an Admin settles before a Confirmation Letter is issued - or previewed. */
+const confirmationLetterTermsInput = z.object({
+  letterId: z.number().int().positive(),
+  agreedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for the agreed start date."),
+  agreedFeeMinimum: z.number().int().min(0).max(10_000_000),
+  agreedFeeMaximum: z.number().int().min(0).max(10_000_000),
+}).refine(value => value.agreedFeeMaximum >= value.agreedFeeMinimum, {
+  path: ["agreedFeeMaximum"],
+  message: "The maximum agreed fee must be at least the minimum fee.",
+});
+
 export const appRouter = router({
   system: router({}),
   guardianIntake: router({
@@ -2037,6 +2049,35 @@ export const appRouter = router({
         pageSize: z.number().int().min(1).max(100).default(20),
       }))
       .query(({ input }) => db.listNotificationBroadcasts(input)),
+    /** Every Tutor who has written in, newest activity first - the Admin side of the support chat. */
+    listTutorChatThreads: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+      }))
+      .query(({ input }) => db.listTutorAdminChatThreadsForAdmin(input)),
+    tutorChatUnreadThreadCount: adminProcedure.query(() => db.getTutorAdminChatUnreadThreadCountForAdmin()),
+    getTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(({ input }) => db.getTutorAdminChatThreadForAdmin(input)),
+    sendTutorChatMessage: adminProcedure
+      .input(z.object({
+        tutorId: z.string().trim().min(1).max(32),
+        body: z.string().trim().max(2000),
+        attachmentKey: z.string().trim().min(1).max(512).optional(),
+        attachmentContentType: z.string().trim().min(1).max(100).optional(),
+      }).refine(value => value.body.length > 0 || Boolean(value.attachmentKey), { path: ["body"], message: "Write something first." }))
+      .mutation(({ ctx, input }) => db.sendTutorAdminChatMessageFromAdmin({ tutorId: input.tutorId, body: input.body, adminUserId: ctx.user.id, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType })),
+    markTutorChatRead: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ input }) => db.markTutorAdminChatReadByAdmin(input)),
+    claimTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ ctx, input }) => db.claimTutorAdminChatThread({ tutorId: input.tutorId, adminUserId: ctx.user.id })),
+    releaseTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ input }) => db.releaseTutorAdminChatThread(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -2370,19 +2411,27 @@ export const appRouter = router({
         }
         return result;
       }),
+    /** The draft as it would be issued with these terms, marked as a draft and never stored. */
+    previewConfirmationLetter: adminProcedure
+      .input(confirmationLetterTermsInput)
+      .query(async ({ input }) => {
+        const result = await db.previewConfirmationLetterDraft(input);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmation-letter draft is no longer available." });
+        return result;
+      }),
     issueConfirmationLetter: adminProcedure
-      .input(z.object({
-        letterId: z.number().int().positive(),
-        agreedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD for the agreed start date."),
-        agreedFeeMinimum: z.number().int().min(0).max(10_000_000),
-        agreedFeeMaximum: z.number().int().min(0).max(10_000_000),
-      }).refine(value => value.agreedFeeMaximum >= value.agreedFeeMinimum, {
-        path: ["agreedFeeMaximum"],
-        message: "The maximum agreed fee must be at least the minimum fee.",
-      }))
+      .input(confirmationLetterTermsInput)
       .mutation(async ({ ctx, input }) => {
         const result = await db.issueConfirmationLetter({ ...input, adminUserId: ctx.user.id });
         if (!result.issued) throw new TRPCError({ code: "CONFLICT", message: "This confirmation-letter draft is no longer available for issue." });
+        return result;
+      }),
+    /** An issued letter, for the Admin's own "View letter" - no recipient check, unlike `confirmationLetters.file`. */
+    confirmationLetterFile: adminProcedure
+      .input(z.object({ letterId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const result = await db.getConfirmationLetterFileForAdmin(input);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmation letter is unavailable." });
         return result;
       }),
     cancelTutorRequest: adminProcedure
@@ -2512,6 +2561,26 @@ export const appRouter = router({
     markAllRead: activeTutorProcedure
       .mutation(async ({ ctx }) => db.markAllTutorNotificationsRead({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
   }),
+  /** The Tutor's own side of the one Admin support thread. */
+  tutorAdminChat: router({
+    thread: activeTutorProcedure
+      .query(async ({ ctx }) => db.getTutorAdminChatThread({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    unreadCount: activeTutorProcedure
+      .query(async ({ ctx }) => db.getTutorAdminChatUnreadCount({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    send: activeTutorProcedure
+      .input(z.object({
+        body: z.string().trim().max(2000),
+        attachmentKey: z.string().trim().min(1).max(512).optional(),
+        attachmentContentType: z.string().trim().min(1).max(100).optional(),
+      }).refine(value => value.body.length > 0 || Boolean(value.attachmentKey), { path: ["body"], message: "Write something first." }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.sendTutorAdminChatMessageFromTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType });
+        if (!result.sent) throw new TRPCError({ code: "FORBIDDEN", message: "You can message the Admin team once at least one of your tuitions has been appointed." });
+        return result;
+      }),
+    markRead: activeTutorProcedure
+      .mutation(async ({ ctx }) => db.markTutorAdminChatReadByTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+  }),
   guardianNotifications: router({
     mine: guardianProcedure
       .input(z.object({
@@ -2530,6 +2599,10 @@ export const appRouter = router({
   confirmationLetters: router({
     guardianMine: guardianProcedure.query(({ ctx }) => db.listConfirmationLettersForGuardian({ guardianUserId: ctx.user.id })),
     tutorMine: activeTutorProcedure.query(({ ctx }) => db.listConfirmationLettersForTutor({ tutorUserId: ctx.user.id })),
+    /** Public: whether a Letter ID and the code printed on it belong to a real, current letter. */
+    verify: publicProcedure
+      .input(z.object({ letterNumber: z.string().trim().min(1).max(40), code: z.string().trim().min(1).max(20) }))
+      .query(({ input }) => db.verifyConfirmationLetter(input)),
     /** The letter itself, for the site's own viewer and the Download button. */
     file: protectedProcedure
       .input(z.object({ letterId: z.number().int().positive() }))

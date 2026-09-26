@@ -715,6 +715,20 @@
       "when": 1793100000000,
       "tag": "0101_tutor_review_hide_and_rating_notification",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1793200000000,
+      "tag": "0102_tutor_admin_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1793300000000,
+      "tag": "0103_tutor_admin_chat_claim_and_attachments",
+      "breakpoints": true
     }
   ]
 }

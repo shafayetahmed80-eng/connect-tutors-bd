@@ -112,6 +112,11 @@ describe("Admin Tutor profile detail", () => {
     expect(screen.getByRole("link", { name: /Back to Tutor Profiles/i }).getAttribute("href")).toBe("/admin/tutor-profiles");
   });
 
+  it("offers a way to message this Tutor, opening their thread directly", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+    expect(screen.getByRole("link", { name: /Message/i }).getAttribute("href")).toBe("/admin/tutor-chats?tutorId=tutor-175");
+  });
+
   it("leads with the Tutor's job-status row, and a stage lists those applications", () => {
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 

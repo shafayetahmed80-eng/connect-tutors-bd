@@ -52,6 +52,8 @@ import {
   phoneVerificationCodes,
   type PhoneVerificationPurpose,
   tutorReviews,
+  tutorAdminChatThreads,
+  tutorAdminChatMessages,
   classLevels,
   confirmationLetters,
   curricula,
@@ -114,6 +116,7 @@ import {
   type UserRole,
   type TutorRequestPublicationState,
 } from "../drizzle/schema";
+import { notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
@@ -130,9 +133,10 @@ import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotificatio
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
-import { renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
+import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
+import { letterVerificationCode, letterVerificationUrl, matchesLetterVerificationCode } from "./confirmation-letter-verification";
 import {
   buildCombinedCityLocationOptions,
   type RegistrationLocationRow,
@@ -3031,6 +3035,11 @@ export async function createConfirmationLetterDraft(input: { requestId: number; 
   });
 }
 
+/** The QR link and printed code that let anyone holding a letter check it on the site. */
+function letterVerification(letterNumber: string) {
+  return { url: letterVerificationUrl(letterNumber), code: letterVerificationCode(letterNumber) };
+}
+
 /** The support number the site shows, as last set on the Dynamic Section, for the letter's letterhead. */
 async function getSiteContactNumber() {
   const slotId = "site.contact.whatsapp";
@@ -3063,12 +3072,50 @@ export async function rerenderConfirmationLetters() {
   for (const letter of letters) {
     if (!letter.issuedAt) continue;
     const snapshot = parseConfirmationLetterSnapshot(letter.contentSnapshot);
-    const pdf = await renderConfirmationLetterPdf({ ...snapshot, letterNumber: letter.letterNumber, version: letter.version, issuedAt: letter.issuedAt }, { contactNumber });
+    const pdf = await renderConfirmationLetterPdf({ ...snapshot, letterNumber: letter.letterNumber, version: letter.version, issuedAt: letter.issuedAt }, { contactNumber, verification: letterVerification(letter.letterNumber) });
     const uploaded = await storagePut(`confirmation-letters/request-${letter.tutorRequestId}/${letter.letterNumber}.pdf`, pdf, "application/pdf");
     await database.update(confirmationLetters).set({ pdfStorageKey: uploaded.key }).where(eq(confirmationLetters.id, letter.id));
     redrawn += 1;
   }
   return { redrawn, total: letters.length };
+}
+
+/**
+ * The letter a draft would become if issued now, with the terms the Admin has
+ * typed so far - drawn but never stored, and marked as a draft across the
+ * page. Nothing changes until the Admin issues it.
+ */
+export async function previewConfirmationLetterDraft(input: {
+  letterId: number;
+  agreedStartDate: string;
+  agreedFeeMinimum: number;
+  agreedFeeMaximum: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [draft] = await database.select({
+    id: confirmationLetters.id,
+    letterNumber: confirmationLetters.letterNumber,
+    version: confirmationLetters.version,
+    contentSnapshot: confirmationLetters.contentSnapshot,
+  }).from(confirmationLetters).where(and(eq(confirmationLetters.id, input.letterId), eq(confirmationLetters.status, "draft"))).limit(1);
+  if (!draft) return null;
+  const snapshot = parseConfirmationLetterSnapshot(draft.contentSnapshot);
+  const pdf = await renderConfirmationLetterPdf({
+    ...snapshot,
+    letterNumber: draft.letterNumber,
+    version: draft.version,
+    issuedAt: new Date(),
+    agreedStartDate: input.agreedStartDate,
+    agreedFeeMinimum: input.agreedFeeMinimum,
+    agreedFeeMaximum: input.agreedFeeMaximum,
+  }, { contactNumber: await getSiteContactNumber(), draft: true, verification: letterVerification(draft.letterNumber) });
+  return {
+    letterId: draft.id,
+    letterNumber: draft.letterNumber,
+    fileName: confirmationLetterFileName(`${draft.letterNumber}-DRAFT`),
+    pdfBase64: pdf.toString("base64"),
+  };
 }
 
 /** Issues a reviewed draft as an immutable PDF and creates private Guardian/Tutor notifications. */
@@ -3105,7 +3152,7 @@ export async function issueConfirmationLetter(input: {
     agreedFeeMinimum: input.agreedFeeMinimum,
     agreedFeeMaximum: input.agreedFeeMaximum,
   };
-  const pdf = await renderConfirmationLetterPdf(document, { contactNumber: await getSiteContactNumber() });
+  const pdf = await renderConfirmationLetterPdf(document, { contactNumber: await getSiteContactNumber(), verification: letterVerification(draft.letterNumber) });
   const uploaded = await storagePut(`confirmation-letters/request-${draft.tutorRequestId}/${draft.letterNumber}.pdf`, pdf, "application/pdf");
   const issuedSnapshot = JSON.stringify({ ...snapshot, agreedStartDate: input.agreedStartDate, agreedFeeMinimum: input.agreedFeeMinimum, agreedFeeMaximum: input.agreedFeeMaximum });
 
@@ -3176,6 +3223,57 @@ export async function listConfirmationLettersForTutor(input: { tutorUserId: numb
 }
 
 /**
+ * What the public "check a letter" page may say about a Letter ID and code.
+ *
+ * The code is checked before the database is asked anything, so a wrong code
+ * reads exactly like a Letter ID that does not exist - guessing IDs learns
+ * nothing. With the right code, a current letter shows the details printed on
+ * it (so an altered fee or name stands out), and a replaced one names the
+ * version that replaced it. Drafts are never public.
+ */
+export async function verifyConfirmationLetter(input: { letterNumber: string; code: string }) {
+  const letterNumber = input.letterNumber.trim().toUpperCase();
+  if (!matchesLetterVerificationCode(letterNumber, input.code)) return { status: "unknown" as const };
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [letter] = await database.select({
+    tutorRequestId: confirmationLetters.tutorRequestId,
+    letterNumber: confirmationLetters.letterNumber,
+    version: confirmationLetters.version,
+    status: confirmationLetters.status,
+    issuedAt: confirmationLetters.issuedAt,
+    contentSnapshot: confirmationLetters.contentSnapshot,
+  }).from(confirmationLetters).where(and(
+    eq(confirmationLetters.letterNumber, letterNumber),
+    inArray(confirmationLetters.status, ["issued", "superseded"]),
+  )).limit(1);
+  if (!letter?.issuedAt) return { status: "unknown" as const };
+  const content = buildConfirmationLetterContent({
+    ...parseConfirmationLetterSnapshot(letter.contentSnapshot),
+    letterNumber: letter.letterNumber,
+    version: letter.version,
+    issuedAt: letter.issuedAt,
+  });
+  if (letter.status === "superseded") {
+    const [latest] = await database.select({ letterNumber: confirmationLetters.letterNumber })
+      .from(confirmationLetters)
+      .where(and(eq(confirmationLetters.tutorRequestId, letter.tutorRequestId), eq(confirmationLetters.status, "issued")))
+      .orderBy(desc(confirmationLetters.version))
+      .limit(1);
+    return { status: "replaced" as const, letterNumber: content.letterId, issued: content.issued, replacedBy: latest?.letterNumber ?? null };
+  }
+  return {
+    status: "valid" as const,
+    letterNumber: content.letterId,
+    issued: content.issued,
+    version: content.version,
+    tutorRows: content.tutorRows,
+    tuitionRows: content.tuitionRows,
+    fee: content.fee,
+  };
+}
+
+/**
  * An issued letter's PDF, handed over only to its own Guardian or assigned
  * Tutor. The bytes travel in the response, so the site can show the letter in
  * its own viewer on every device before anyone downloads it.
@@ -3201,6 +3299,30 @@ export async function getConfirmationLetterRecipientFile(input: { letterId: numb
       : letter.tutorUserId === input.recipient.userId
   );
   if (!allowed || !letter?.pdfStorageKey) return null;
+  const pdf = await storageRead(letter.pdfStorageKey);
+  return {
+    letterId: letter.id,
+    letterNumber: letter.letterNumber,
+    fileName: confirmationLetterFileName(letter.letterNumber),
+    pdfBase64: pdf.toString("base64"),
+  };
+}
+
+/**
+ * An issued letter's PDF for the Admin who manages it - the same bytes the
+ * Guardian and Tutor see, with no recipient check: an Admin may open any
+ * letter, the way they can already see everything else about the tuition.
+ */
+export async function getConfirmationLetterFileForAdmin(input: { letterId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [letter] = await database.select({
+    id: confirmationLetters.id,
+    letterNumber: confirmationLetters.letterNumber,
+    status: confirmationLetters.status,
+    pdfStorageKey: confirmationLetters.pdfStorageKey,
+  }).from(confirmationLetters).where(eq(confirmationLetters.id, input.letterId)).limit(1);
+  if (!letter || letter.status !== "issued" || !letter.pdfStorageKey) return null;
   const pdf = await storageRead(letter.pdfStorageKey);
   return {
     letterId: letter.id,
@@ -6325,6 +6447,229 @@ export async function listNotificationBroadcasts(input: { audience: "all" | Admi
   return { items, total, page: input.page, pageSize: input.pageSize, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
 }
 
+/** A thread is created on its first message, not when the Tutor merely opens the chat page. */
+async function getOrCreateTutorAdminChatThreadId(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [existing] = await database.select({ id: tutorAdminChatThreads.id }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, tutorId));
+  if (existing) return existing.id;
+  const result = await database.insert(tutorAdminChatThreads).values({ tutorId });
+  return Number(result[0].insertId);
+}
+
+const TUTOR_ADMIN_CHAT_MESSAGE_PAGE = 200;
+
+/**
+ * Whether this Tutor may open the chat: once a tuition has reached Appointed
+ * (or gone on to Confirmed - the same `status='matched'` row, just later),
+ * not before. A cancelled or unpublished tuition does not count.
+ */
+async function tutorHasAppointedOrLaterTuition(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [row] = await database
+    .select({ id: tutorJobInterests.id })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .innerJoin(tutorRequests, eq(tutorRequests.id, tutorJobs.tutorRequestId))
+    .where(and(
+      eq(tutorJobInterests.tutorId, tutorId),
+      eq(tutorJobInterests.status, "matched"),
+      ne(tutorRequests.status, "closed"),
+      ne(tutorRequests.publicationState, "closed"),
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function getTutorAdminChatEligibility(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return { eligible: await tutorHasAppointedOrLaterTuition(database, input.tutorId) };
+}
+
+async function resolveChatAttachmentUrl(attachmentKey: string | null) {
+  if (!attachmentKey) return null;
+  return storageGetSignedUrl(attachmentKey);
+}
+
+/** The Tutor's one support thread. No row exists yet for a Tutor who has never written in - that reads as an empty thread, not an error. */
+export async function getTutorAdminChatThread(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const eligible = await tutorHasAppointedOrLaterTuition(database, input.tutorId);
+  const [thread] = await database.select().from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  if (!thread) return { messages: [], tutorLastReadAt: null, adminLastReadAt: null, eligible };
+  const rows = await database
+    .select({
+      id: tutorAdminChatMessages.id,
+      senderRole: tutorAdminChatMessages.senderRole,
+      body: tutorAdminChatMessages.body,
+      attachmentKey: tutorAdminChatMessages.attachmentKey,
+      attachmentContentType: tutorAdminChatMessages.attachmentContentType,
+      createdAt: tutorAdminChatMessages.createdAt,
+    })
+    .from(tutorAdminChatMessages)
+    .where(eq(tutorAdminChatMessages.threadId, thread.id))
+    .orderBy(desc(tutorAdminChatMessages.id))
+    .limit(TUTOR_ADMIN_CHAT_MESSAGE_PAGE);
+  const messages = await Promise.all(rows.reverse().map(async row => {
+    const { attachmentKey, ...rest } = row;
+    return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey) };
+  }));
+  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible };
+}
+
+export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [thread] = await database.select({ id: tutorAdminChatThreads.id, tutorLastReadAt: tutorAdminChatThreads.tutorLastReadAt }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  if (!thread) return { unreadCount: 0 };
+  const conditions = [eq(tutorAdminChatMessages.threadId, thread.id), eq(tutorAdminChatMessages.senderRole, "admin" as const)];
+  // `>=`, not `>`: these `timestamp` columns carry whole-second precision, so a
+  // reply sent the same second a Tutor's own message set this cursor would
+  // otherwise be silently swallowed rather than counted unread.
+  if (thread.tutorLastReadAt) conditions.push(gte(tutorAdminChatMessages.createdAt, thread.tutorLastReadAt));
+  const [row] = await database.select({ value: count() }).from(tutorAdminChatMessages).where(and(...conditions));
+  return { unreadCount: Number(row?.value ?? 0) };
+}
+
+export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: string; body: string; attachmentKey?: string; attachmentContentType?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  if (!(await tutorHasAppointedOrLaterTuition(database, input.tutorId))) return { sent: false as const, reason: "not_eligible" as const };
+  const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
+  const now = new Date();
+  const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
+  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "tutor", body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), tutorLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  notifyAdminsOfChatMessage(input.tutorId);
+  return { sent: true as const };
+}
+
+export async function markTutorAdminChatReadByTutor(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(tutorAdminChatThreads).set({ tutorLastReadAt: new Date() }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return { updated: true as const };
+}
+
+/** The Admin's list of every Tutor who has written in, newest activity first, with the visible Tutor ID (`tutorNumber`) alongside the name. */
+export async function listTutorAdminChatThreadsForAdmin(input: { query: string; page: number; pageSize: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const trimmedQuery = input.query.trim();
+  const queryAsNumber = trimmedQuery && /^\d+$/.test(trimmedQuery) ? Number(trimmedQuery) : null;
+  const searchCondition = trimmedQuery
+    ? or(like(tutors.name, `%${trimmedQuery}%`), queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined)
+    : undefined;
+  const claimedByAdmin = alias(users, "chat_list_claimed_by_admin");
+  const baseQuery = database
+    .select({
+      tutorId: tutorAdminChatThreads.tutorId,
+      tutorName: tutors.name,
+      tutorNumber: tutorRegistrations.tutorNumber,
+      lastMessageAt: tutorAdminChatThreads.lastMessageAt,
+      lastMessagePreview: tutorAdminChatThreads.lastMessagePreview,
+      claimedByAdminId: tutorAdminChatThreads.claimedByAdminId,
+      claimedByAdminName: claimedByAdmin.name,
+      // `>=`, not `>`: whole-second `timestamp` precision means a Tutor
+      // message landing the same second an Admin's cursor moved must still
+      // count, not vanish into a tie.
+      unreadCount: sql<number>`(
+        select count(*) from ${tutorAdminChatMessages}
+        where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
+          and ${tutorAdminChatMessages.senderRole} = 'tutor'
+          and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
+      )`,
+    })
+    .from(tutorAdminChatThreads)
+    .innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId));
+  const items = await (searchCondition ? baseQuery.where(searchCondition) : baseQuery)
+    .orderBy(desc(tutorAdminChatThreads.lastMessageAt))
+    .limit(input.pageSize)
+    .offset((input.page - 1) * input.pageSize);
+  const totalQuery = database.select({ value: count() }).from(tutorAdminChatThreads).innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId)).leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
+  const [totalRow] = await (searchCondition ? totalQuery.where(searchCondition) : totalQuery);
+  const total = Number(totalRow?.value ?? 0);
+  return { items: items.map(item => ({ ...item, unreadCount: Number(item.unreadCount) })), total, page: input.page, pageSize: input.pageSize, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
+}
+
+export async function getTutorAdminChatUnreadThreadCountForAdmin() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatThreads)
+    .where(sql`exists (
+      select 1 from ${tutorAdminChatMessages}
+      where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
+        and ${tutorAdminChatMessages.senderRole} = 'tutor'
+        and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
+    )`);
+  return { unreadThreadCount: Number(row?.value ?? 0) };
+}
+
+/** For the Admin's open thread - the Tutor's identity alongside the same messages the Tutor sees, none of it re-derived differently. */
+export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [tutor] = await database
+    .select({ tutorId: tutors.id, tutorName: tutors.name, tutorNumber: tutorRegistrations.tutorNumber })
+    .from(tutors)
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(eq(tutors.id, input.tutorId));
+  if (!tutor) throw new Error("Tutor was not found");
+  const { messages, tutorLastReadAt, adminLastReadAt } = await getTutorAdminChatThread({ tutorId: input.tutorId });
+  const claimedByAdmin = alias(users, "chat_claimed_by_admin");
+  const [claim] = await database
+    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name })
+    .from(tutorAdminChatThreads)
+    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId))
+    .where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return {
+    tutor,
+    messages,
+    tutorLastReadAt,
+    adminLastReadAt,
+    claimedByAdminId: claim?.claimedByAdminId ?? null,
+    claimedByAdminName: claim?.claimedByAdminName ?? null,
+  };
+}
+
+export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: string; body: string; adminUserId: number; attachmentKey?: string; attachmentContentType?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
+  const now = new Date();
+  const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
+  await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), adminLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  notifyTutorOfChatMessage(input.tutorId);
+  return { sent: true as const };
+}
+
+export async function markTutorAdminChatReadByAdmin(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(tutorAdminChatThreads).set({ adminLastReadAt: new Date() }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return { updated: true as const };
+}
+
+/** A coordination hint only - claiming a thread never stops another Admin from replying to it. */
+export async function claimTutorAdminChatThread(input: { tutorId: string; adminUserId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
+  await database.update(tutorAdminChatThreads).set({ claimedByAdminId: input.adminUserId }).where(eq(tutorAdminChatThreads.id, threadId));
+  return { claimed: true as const };
+}
+
+export async function releaseTutorAdminChatThread(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(tutorAdminChatThreads).set({ claimedByAdminId: null }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return { released: true as const };
+}
+
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };
 
 /**
@@ -7885,10 +8230,13 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
   const guardianRequests = await getWaitingGuardianTuitionRequests(items.map(item => ({ ...item, appointmentConfirmedAt: item.confirmedAt })));
 
   const charges = stage === "confirmed" ? await getChargeSummaries(items) : new Map<number, ReturnType<typeof chargeSummary>>();
+  // Only a Confirmed tuition can carry a Confirmation Letter - Appointed jobs
+  // never reach `createConfirmationLetterDraft`'s eligibility check.
+  const letters = stage === "confirmed" ? await getConfirmationLetterSummaries(items) : new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
 
   return {
     // The terms stay on the server: the row carries what they work out to.
-    items: items.map(({ chargeTerms: _terms, ...item }) => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null, charge: charges.get(item.id) ?? null })),
+    items: items.map(({ chargeTerms: _terms, ...item }) => ({ ...item, guardianRequest: guardianRequests.get(item.id) ?? null, charge: charges.get(item.id) ?? null, confirmationLetter: letters.get(item.id) ?? null })),
     total,
     page: filters.page,
     pageSize: filters.pageSize,
@@ -7919,6 +8267,32 @@ async function getChargeSummaries(items: Array<{ id: number; tutorId: string; co
     if (!terms) continue;
     const own = payments.filter(payment => payment.requestId === item.id && payment.tutorId === item.tutorId);
     summaries.set(item.id, chargeSummary(terms, item.confirmedAt, own.map(payment => ({ amount: payment.amount, paidAt: payment.paidAt }))));
+  }
+  return summaries;
+}
+
+/**
+ * Each tuition's current Confirmation Letter, if it has one: the issued one
+ * when there is one, else an unissued draft waiting on the Admin. A stray
+ * draft never outranks an issued letter, whichever has the higher id.
+ */
+async function getConfirmationLetterSummaries(items: Array<{ id: number }>) {
+  const summaries = new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
+  const database = await getDb();
+  if (!database || items.length === 0) return summaries;
+  const rows = await database.select({
+    id: confirmationLetters.id,
+    tutorRequestId: confirmationLetters.tutorRequestId,
+    letterNumber: confirmationLetters.letterNumber,
+    status: confirmationLetters.status,
+  }).from(confirmationLetters)
+    .where(and(inArray(confirmationLetters.tutorRequestId, items.map(item => item.id)), inArray(confirmationLetters.status, ["draft", "issued"])))
+    .orderBy(desc(confirmationLetters.id));
+  for (const row of rows) {
+    const current = summaries.get(row.tutorRequestId);
+    if (!current || (current.status !== "issued" && row.status === "issued")) {
+      summaries.set(row.tutorRequestId, { id: row.id, letterNumber: row.letterNumber, status: row.status as "draft" | "issued" });
+    }
   }
   return summaries;
 }

@@ -13,6 +13,8 @@ const lifecycleDbMocks = vi.hoisted(() => ({
   getTutorRequestLocation: vi.fn(),
   getGuardianNotificationUnreadCount: vi.fn(),
   issueConfirmationLetter: vi.fn(),
+  previewConfirmationLetterDraft: vi.fn(),
+  verifyConfirmationLetter: vi.fn(),
   listConfirmationLettersForGuardian: vi.fn(),
   listConfirmationLettersForTutor: vi.fn(),
   listAdminMatchingSavedViews: vi.fn(),
@@ -43,6 +45,8 @@ vi.mock("./db", async importOriginal => {
     getTutorRequestLocation: lifecycleDbMocks.getTutorRequestLocation,
     getGuardianNotificationUnreadCount: lifecycleDbMocks.getGuardianNotificationUnreadCount,
     issueConfirmationLetter: lifecycleDbMocks.issueConfirmationLetter,
+    previewConfirmationLetterDraft: lifecycleDbMocks.previewConfirmationLetterDraft,
+    verifyConfirmationLetter: lifecycleDbMocks.verifyConfirmationLetter,
     listConfirmationLettersForGuardian: lifecycleDbMocks.listConfirmationLettersForGuardian,
     listConfirmationLettersForTutor: lifecycleDbMocks.listConfirmationLettersForTutor,
     listAdminMatchingSavedViews: lifecycleDbMocks.listAdminMatchingSavedViews,
@@ -71,6 +75,11 @@ function adminCaller() {
     ...baseContext,
     user: { id: 901, openId: "admin-901", role: "admin" } as any,
   });
+}
+
+/** Someone who is not signed in - a visitor scanning a letter's QR code. */
+function publicCaller() {
+  return appRouter.createCaller({ ...baseContext, user: null } as any);
 }
 
 function guardianCaller(userId = 77) {
@@ -296,6 +305,28 @@ describe("approved Guardian request lifecycle procedures", () => {
     }));
     await expect((guardianCaller() as any).admin.createConfirmationLetterDraft({ requestId: 19 }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+  it("lets anyone check a letter by its ID and code, signed in or not", async () => {
+    lifecycleDbMocks.verifyConfirmationLetter.mockResolvedValueOnce({ status: "unknown" });
+    await expect((publicCaller() as any).confirmationLetters.verify({ letterNumber: "CTB-2026-000019-V1", code: "ABCDE-FGHJK" }))
+      .resolves.toEqual({ status: "unknown" });
+    expect(lifecycleDbMocks.verifyConfirmationLetter).toHaveBeenCalledWith({ letterNumber: "CTB-2026-000019-V1", code: "ABCDE-FGHJK" });
+    await expect((publicCaller() as any).confirmationLetters.verify({ letterNumber: "", code: "ABCDE-FGHJK" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("lets only an Admin preview a draft with the terms typed so far, without storing anything", async () => {
+    const terms = { letterId: 31, agreedStartDate: "2026-09-01", agreedFeeMinimum: 5000, agreedFeeMaximum: 7000 };
+    const preview = { letterId: 31, letterNumber: "CTB-2026-000019-V1", fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-000019-V1-DRAFT.pdf", pdfBase64: "JVBERi0=" };
+    lifecycleDbMocks.previewConfirmationLetterDraft.mockResolvedValueOnce(preview);
+
+    await expect((adminCaller().admin as any).previewConfirmationLetter(terms)).resolves.toEqual(preview);
+    expect(lifecycleDbMocks.previewConfirmationLetterDraft).toHaveBeenCalledWith(terms);
+    expect(lifecycleDbMocks.issueConfirmationLetter).not.toHaveBeenCalled();
+
+    lifecycleDbMocks.previewConfirmationLetterDraft.mockResolvedValueOnce(null);
+    await expect((adminCaller().admin as any).previewConfirmationLetter(terms)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect((adminCaller().admin as any).previewConfirmationLetter({ ...terms, agreedFeeMaximum: 4000 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect((guardianCaller() as any).admin.previewConfirmationLetter(terms)).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("keeps issued confirmation letters private to their Guardian or assigned Tutor", async () => {

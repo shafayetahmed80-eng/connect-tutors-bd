@@ -110,6 +110,26 @@ describe("the PDF", () => {
     expect(pdf.toString("latin1")).toMatch(/\/BaseFont \/[A-Z]{6}\+Manrope/);
   });
 
+  it("marks an Admin's preview as a draft, faintly across the page, and only then", async () => {
+    const draft = (await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411", draft: true })).toString("latin1");
+    const issued = (await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411" })).toString("latin1");
+    // The mark is the only see-through thing on the letter.
+    expect(draft).toMatch(/\/ca 0\.09/);
+    expect(issued).not.toMatch(/\/ca 0\.09/);
+    expect(draft.match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(letterCopy.draftMark).toBe("DRAFT · NOT ISSUED");
+  });
+
+  it("carries the QR code and the printed code only when given one, still on one page", async () => {
+    const verification = { url: "https://connecttutorsbd.com/verify/CTB-2026-000019-V1/ABCDEFGHJK", code: "ABCDEFGHJK" };
+    const plain = await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411" });
+    const withCode = await renderConfirmationLetterPdf(letter, { contactNumber: "8801516131411", verification });
+    // Hundreds of QR squares make the page noticeably heavier.
+    expect(withCode.length).toBeGreaterThan(plain.length + 400);
+    expect(withCode.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(letterCopy.verifyAt).toBe("Check this letter at");
+  });
+
   it("stays on one page, even with a long subject list and a package", async () => {
     const pdf = await renderConfirmationLetterPdf({
       ...letter,
