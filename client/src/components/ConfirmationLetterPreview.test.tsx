@@ -12,14 +12,18 @@ const letterFile = vi.hoisted(() => ({
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     confirmationLetters: { file: { useQuery: () => ({ ...letterFile.state, refetch: letterFile.refetch }) } },
-    admin: { previewConfirmationLetter: { useQuery: (terms: unknown) => { letterFile.previewTerms = terms; return { ...letterFile.state, refetch: letterFile.refetch }; } } },
+    admin: {
+      previewConfirmationLetter: { useQuery: (terms: unknown) => { letterFile.previewTerms = terms; return { ...letterFile.state, refetch: letterFile.refetch }; } },
+      // The Admin's own viewer, for a letter opened from Confirmed Jobs rather than a Tutor or Guardian dashboard.
+      confirmationLetterFile: { useQuery: () => ({ ...letterFile.state, refetch: letterFile.refetch }) },
+    },
   },
 }));
 
 const pdf = vi.hoisted(() => ({ renderPdfPages: vi.fn(), saveFile: vi.fn() }));
 vi.mock("@/lib/pdfPreview", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/pdfPreview")>()), ...pdf }));
 
-import { ConfirmationLetterDraftPreview, ConfirmationLetterViewButton } from "./ConfirmationLetterPreview";
+import { AdminConfirmationLetterViewButton, ConfirmationLetterDraftPreview, ConfirmationLetterViewButton } from "./ConfirmationLetterPreview";
 
 const issued = {
   letterId: 31,
@@ -94,6 +98,18 @@ describe("viewing a Confirmation Letter", () => {
     fireEvent.click(footerClose);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(pdf.saveFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("the Admin viewing a letter already issued", () => {
+  it("opens the same window through the Admin's own endpoint, and can download it", async () => {
+    render(<AdminConfirmationLetterViewButton letterId={31} letterNumber="CTB-2026-000019-V1" />);
+    fireEvent.click(screen.getByRole("button", { name: "View letter" }));
+    const dialog = screen.getByRole("dialog", { name: "Confirmation Letter" });
+    expect(dialog.textContent).toContain("CTB-2026-000019-V1");
+    await waitFor(() => expect(screen.queryByText("Preparing your letter…")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+    expect(pdf.saveFile).toHaveBeenCalledWith(expect.any(Uint8Array), issued.fileName);
   });
 });
 

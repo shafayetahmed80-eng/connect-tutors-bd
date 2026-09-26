@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   getTuitionPaymentLedger: vi.fn(),
   recordTuitionPayment: vi.fn(),
   decideTuitionPayment: vi.fn(),
+  getConfirmationLetterFileForAdmin: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -47,6 +48,30 @@ describe("admin.listConfirmedJobs", () => {
     await expect(createCaller({ ...adminUser, role: "guardian" as const }).admin.listConfirmedJobs({}))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.listAdminConfirmedJobsPage).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin.confirmationLetterFile", () => {
+  // Confirmed Jobs opens an issued letter this way rather than through
+  // `confirmationLetters.file`, which is scoped to the letter's own Guardian
+  // or assigned Tutor and would refuse an Admin.
+  it("hands over the file an Admin asks for by its Letter ID", async () => {
+    const file = { letterId: 31, letterNumber: "CTB-2026-000019-V1", fileName: "Connect-Tutors-Confirmation-Letter-CTB-2026-000019-V1.pdf", pdfBase64: "JVBERi0=" };
+    dbMocks.getConfirmationLetterFileForAdmin.mockResolvedValueOnce(file);
+
+    await expect(createCaller().admin.confirmationLetterFile({ letterId: 31 })).resolves.toEqual(file);
+    expect(dbMocks.getConfirmationLetterFileForAdmin).toHaveBeenCalledWith({ letterId: 31 });
+  });
+
+  it("is a 404 for a draft, a superseded letter, or one that does not exist", async () => {
+    dbMocks.getConfirmationLetterFileForAdmin.mockResolvedValueOnce(null);
+    await expect(createCaller().admin.confirmationLetterFile({ letterId: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("is an Admin's to read", async () => {
+    await expect(createCaller({ ...adminUser, role: "tutor" as const }).admin.confirmationLetterFile({ letterId: 31 }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.getConfirmationLetterFileForAdmin).not.toHaveBeenCalled();
   });
 });
 

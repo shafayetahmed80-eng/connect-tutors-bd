@@ -5,7 +5,6 @@ import {
   type TutorMatchFilters,
 } from "@shared/tutor-matching";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
-import { ConfirmationLetterDraftPreview } from "@/components/ConfirmationLetterPreview";
 import { TutorListPager } from "@/components/TutorListPager";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
@@ -20,21 +19,18 @@ import {
   CheckCircle2,
   ClipboardList,
   FilePenLine,
-  FileText,
   History,
   PhoneCall,
   RotateCcw,
   Save,
   Search,
   Send,
-  ShieldCheck,
   Bookmark,
   SlidersHorizontal,
   TriangleAlert,
   Star,
   Trash2,
   UserCheck,
-  Eye,
 } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -358,56 +354,6 @@ function RequestLifecycleControls({ request }: { request: MatchingRequest }) {
   </section>;
 }
 
-function ConfirmationLetterControls({ request, busy }: { request: MatchingRequest; busy: boolean }) {
-  const [letterId, setLetterId] = useState<number | null>(null);
-  const [agreedStartDate, setAgreedStartDate] = useState("");
-  const [agreedFeeMinimum, setAgreedFeeMinimum] = useState("");
-  const [agreedFeeMaximum, setAgreedFeeMaximum] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const utils = trpc.useUtils();
-  const createDraft = trpc.admin.createConfirmationLetterDraft.useMutation({
-    onSuccess: result => {
-      if (result.letterId) setLetterId(result.letterId);
-      void utils.admin.listMatchingRequests.invalidate();
-    },
-  });
-  const issueLetter = trpc.admin.issueConfirmationLetter.useMutation({
-    onSuccess: () => {
-      setPreviewOpen(false);
-      setLetterId(null);
-      setAgreedStartDate("");
-      setAgreedFeeMinimum("");
-      setAgreedFeeMaximum("");
-      void utils.admin.listMatchingRequests.invalidate();
-    },
-  });
-  const eligible = request.status === "matched" && Boolean(request.tutorId) && Boolean(request.appointmentConfirmedAt) && !request.cancellationReason;
-  const busyState = busy || createDraft.isPending || issueLetter.isPending;
-  const feeMinimum = Number(agreedFeeMinimum);
-  const feeMaximum = Number(agreedFeeMaximum);
-  const canIssue = Boolean(letterId && agreedStartDate && agreedFeeMinimum && agreedFeeMaximum && Number.isFinite(feeMinimum) && Number.isFinite(feeMaximum) && feeMaximum >= feeMinimum);
-  if (!eligible) return null;
-  return <section aria-label={`Confirmation letter for request ${request.id}`} className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-    <div><p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">Confirmation Letter</p><p className="mt-1 text-xs leading-5 text-j-ink-soft">Create a draft only after the Guardian and assigned Tutor agreement is recorded. Issuance is final and creates private dashboard copies.</p></div>
-    {createDraft.isError || issueLetter.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs leading-5 text-red-800">{createDraft.error?.message ?? issueLetter.error?.message}</p> : null}
-    {!letterId ? <button type="button" disabled={busyState} onClick={() => createDraft.mutate({ requestId: request.id })} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"><FileText className="h-4 w-4" /> {createDraft.isPending ? "Creating draft…" : "Create letter draft"}</button> : <form className="space-y-2 rounded-xl border border-emerald-100 bg-white p-3" onSubmit={event => { event.preventDefault(); if (canIssue && letterId) issueLetter.mutate({ letterId, agreedStartDate, agreedFeeMinimum: feeMinimum, agreedFeeMaximum: feeMaximum }); }}>
-      <p className="text-xs font-semibold text-emerald-800">Draft ready for Admin review</p>
-      <label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-start-date-${request.id}`}>Agreed start date<input id={`letter-start-date-${request.id}`} type="date" required value={agreedStartDate} onChange={event => setAgreedStartDate(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label>
-      <div className="grid grid-cols-2 gap-2"><label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-fee-minimum-${request.id}`}>Agreed fee from<input id={`letter-fee-minimum-${request.id}`} type="number" min="0" required value={agreedFeeMinimum} onChange={event => setAgreedFeeMinimum(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label><label className="block text-xs font-medium text-j-ink-soft" htmlFor={`letter-fee-maximum-${request.id}`}>Agreed fee to<input id={`letter-fee-maximum-${request.id}`} type="number" min="0" required value={agreedFeeMaximum} onChange={event => setAgreedFeeMaximum(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm text-j-ink" /></label></div>
-      <p className="text-xs leading-5 text-j-ink-muted">The issued letter excludes address details, Guardian notes, direct contacts, and student identity. It cannot be edited after issue.</p>
-      <button type="button" disabled={!canIssue || busyState} onClick={() => setPreviewOpen(true)} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"><Eye className="h-4 w-4" /> Preview letter</button>
-      <button type="submit" disabled={!canIssue || busyState} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><ShieldCheck className="h-4 w-4" /> {issueLetter.isPending ? "Issuing letter…" : "Review and issue private letter"}</button>
-    </form>}
-    {previewOpen && letterId ? <ConfirmationLetterDraftPreview
-      terms={{ letterId, agreedStartDate, agreedFeeMinimum: feeMinimum, agreedFeeMaximum: feeMaximum }}
-      onClose={() => setPreviewOpen(false)}
-      onIssue={() => issueLetter.mutate({ letterId, agreedStartDate, agreedFeeMinimum: feeMinimum, agreedFeeMaximum: feeMaximum })}
-      issuing={issueLetter.isPending}
-      issueError={issueLetter.error?.message}
-    /> : null}
-  </section>;
-}
-
 export function PublicationControls({ request, busy, onAction, onEdit }: {
   request: MatchingRequest;
   busy: boolean;
@@ -432,7 +378,6 @@ export function PublicationControls({ request, busy, onAction, onEdit }: {
     {request.publicationState === "reviewing" ? <details className="rounded-xl border border-sky-100 bg-white p-3"><summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-j-ink-soft"><FilePenLine className="h-4 w-4 text-j-accent" /> Edit job-facing details</summary><p className="mt-2 text-xs leading-5 text-j-ink-muted">Changes clear the recorded Guardian confirmation. City and area are intentionally Guardian-controlled and cannot be altered here.</p><form className="mt-3 grid gap-2" onSubmit={onEdit}><label className="text-xs font-medium text-j-ink-soft">Category<input name="category" required defaultValue={request.category} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Class / course<input name="classCourse" required defaultValue={request.classCourse} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Subjects, separated by commas<input name="subjects" required defaultValue={subjectsForEdit(request.subjects)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs font-medium text-j-ink-soft">Days / week<input name="daysPerWeek" type="number" min="1" max="7" required defaultValue={request.daysPerWeek} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Tutor preference<select name="preferredGender" defaultValue={request.preferredGender} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm"><option value="any">Any</option><option value="female">Female</option><option value="male">Male</option></select></label></div><label className="text-xs font-medium text-j-ink-soft"><span className="inline-flex items-center gap-1.5"><RecordIcon name="notes" size={13} className="text-j-accent" />Job Board note</span><textarea name="notes" rows={3} maxLength={2000} defaultValue={request.notes ?? ""} placeholder="Leave empty to publish no note" className="mt-1 w-full rounded-lg border border-j-border px-2 py-1.5 text-sm leading-6 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><button type="submit" disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:opacity-50"><FilePenLine className="h-4 w-4" /> Save approved edit</button></form></details> : null}
     <AssignmentNotes requestId={request.id} />
     <RequestLifecycleControls request={request} />
-    <ConfirmationLetterControls request={request} busy={busy} />
   </section>;
 }
 
