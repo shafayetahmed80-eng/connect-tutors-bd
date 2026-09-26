@@ -722,6 +722,13 @@
       "when": 1793200000000,
       "tag": "0102_tutor_admin_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1793300000000,
+      "tag": "0103_tutor_admin_chat_claim_and_attachments",
+      "breakpoints": true
     }
   ]
 }

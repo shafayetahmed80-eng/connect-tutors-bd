@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,16 +12,27 @@ const state = vi.hoisted(() => ({
   threadTutor: null as any,
   threadMessages: [] as any[],
   threadLoading: false,
+  tutorLastReadAt: null as string | null,
+  claimedByAdminId: null as number | null,
+  claimedByAdminName: null as string | null,
   send: vi.fn(),
   markRead: vi.fn(),
-  adminSocketOnMessage: null as ((tutorId?: string) => void) | null,
+  claim: vi.fn(),
+  release: vi.fn(),
+  onSocketFrame: null as ((frame: { type: string; tutorId?: string }) => void) | null,
+  sendFrame: vi.fn(),
   invalidateListThreads: vi.fn(),
   invalidateUnreadThreadCount: vi.fn(),
   invalidateThread: vi.fn(),
 }));
 
 vi.mock("@/hooks/useMobile", () => ({ useIsMobile: () => state.isMobile }));
-vi.mock("@/hooks/useChatSocket", () => ({ useAdminChatSocket: (onMessage: (tutorId?: string) => void) => { state.adminSocketOnMessage = onMessage; } }));
+vi.mock("@/hooks/useChatSocket", () => ({
+  useAdminChatSocket: (onFrame: (frame: { type: string; tutorId?: string }) => void) => {
+    state.onSocketFrame = onFrame;
+    return state.sendFrame;
+  },
+}));
 vi.mock("wouter", () => ({ useSearch: () => state.search }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -37,18 +48,21 @@ vi.mock("@/lib/trpc", () => ({
       getTutorChatThread: {
         useQuery: (input: unknown) => {
           state.threadInput = input;
-          return { data: { tutor: state.threadTutor, messages: state.threadMessages }, isLoading: state.threadLoading };
+          return { data: { tutor: state.threadTutor, messages: state.threadMessages, tutorLastReadAt: state.tutorLastReadAt, claimedByAdminId: state.claimedByAdminId, claimedByAdminName: state.claimedByAdminName }, isLoading: state.threadLoading };
         },
       },
       sendTutorChatMessage: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markTutorChatRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
+      claimTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.claim(input); options.onSuccess?.(); }, isPending: false }) },
+      releaseTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.release(input); options.onSuccess?.(); }, isPending: false }) },
     },
   },
 }));
 
 import { AdminTutorChatsContent } from "./AdminTutorChats";
 
-const thread = (over: Record<string, unknown> = {}) => ({ tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91, lastMessageAt: "2026-09-25T10:00:00.000Z", lastMessagePreview: "Need help with my profile", unreadCount: 0, ...over });
+const thread = (over: Record<string, unknown> = {}) => ({ tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91, lastMessageAt: "2026-09-25T10:00:00.000Z", lastMessagePreview: "Need help with my profile", unreadCount: 0, claimedByAdminId: null, claimedByAdminName: null, ...over });
+const message = (over: Record<string, unknown> = {}) => ({ id: 1, senderRole: "tutor", body: "Hi", attachmentUrl: null, attachmentContentType: null, createdAt: "2026-09-25T09:00:00.000Z", ...over });
 
 afterEach(() => {
   cleanup();
@@ -60,9 +74,15 @@ afterEach(() => {
   state.threadTutor = null;
   state.threadMessages = [];
   state.threadLoading = false;
+  state.tutorLastReadAt = null;
+  state.claimedByAdminId = null;
+  state.claimedByAdminName = null;
   state.send.mockReset();
   state.markRead.mockReset();
-  state.adminSocketOnMessage = null;
+  state.claim.mockReset();
+  state.release.mockReset();
+  state.onSocketFrame = null;
+  state.sendFrame.mockReset();
   state.invalidateListThreads.mockReset();
   state.invalidateUnreadThreadCount.mockReset();
   state.invalidateThread.mockReset();
@@ -81,6 +101,12 @@ describe("the Admin's Tutor chat list", () => {
     expect(screen.getByText("Tutor ID 91")).toBeTruthy();
     expect(screen.getByText("Need help with my profile")).toBeTruthy();
     expect(screen.getByText("2")).toBeTruthy();
+  });
+
+  it("shows which Admin has claimed a thread, in the list", () => {
+    state.threads = [thread({ claimedByAdminId: 7, claimedByAdminName: "Rahim Admin" })];
+    render(<AdminTutorChatsContent />);
+    expect(screen.getByText("Claimed by Rahim Admin")).toBeTruthy();
   });
 
   it("opens a Tutor's thread on click and marks it read", () => {
@@ -111,8 +137,8 @@ describe("the Admin's Tutor chat list", () => {
     state.threads = [thread()];
     state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
     state.threadMessages = [
-      { id: 1, senderRole: "tutor", body: "I need help", createdAt: "2026-09-25T09:00:00.000Z" },
-      { id: 2, senderRole: "admin", body: "Sure, what is wrong?", createdAt: "2026-09-25T09:05:00.000Z" },
+      message({ id: 1, senderRole: "tutor", body: "I need help", createdAt: "2026-09-25T09:00:00.000Z" }),
+      message({ id: 2, senderRole: "admin", body: "Sure, what is wrong?", createdAt: "2026-09-25T09:05:00.000Z" }),
     ];
     render(<AdminTutorChatsContent />);
     fireEvent.click(screen.getByText("Amina Rahman"));
@@ -146,16 +172,73 @@ describe("the Admin's Tutor chat list", () => {
     expect(screen.getByText("Karim Sheikh")).toBeTruthy();
   });
 
-  it("refreshes the open thread and the list when the socket says something arrived", () => {
+  it("refreshes the open thread and the list when the socket says a message arrived", () => {
     state.threads = [thread()];
     state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
     render(<AdminTutorChatsContent />);
     fireEvent.click(screen.getByText("Amina Rahman"));
 
-    state.adminSocketOnMessage?.("tutor-1");
+    act(() => { state.onSocketFrame?.({ type: "message", tutorId: "tutor-1" }); });
 
     expect(state.invalidateListThreads).toHaveBeenCalled();
     expect(state.invalidateUnreadThreadCount).toHaveBeenCalled();
     expect(state.invalidateThread).toHaveBeenCalledWith({ tutorId: "tutor-1" });
+  });
+
+  it("shows Tutor is typing… only while that Tutor's own thread is open", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    act(() => { state.onSocketFrame?.({ type: "typing", tutorId: "tutor-2" }); });
+    expect(screen.queryByText("Tutor is typing…")).toBeNull();
+
+    act(() => { state.onSocketFrame?.({ type: "typing", tutorId: "tutor-1" }); });
+    expect(screen.getByText("Tutor is typing…")).toBeTruthy();
+  });
+
+  it("lets an Admin claim an unclaimed thread, then release it", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Claim/ }));
+    expect(state.claim).toHaveBeenCalledWith({ tutorId: "tutor-1" });
+  });
+
+  it("shows who claimed the open thread, with a way to release it", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.claimedByAdminId = 7;
+    state.claimedByAdminName = "Rahim Admin";
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    const releaseButton = screen.getByRole("button", { name: /Claimed by Rahim Admin/ });
+    fireEvent.click(releaseButton);
+    expect(state.release).toHaveBeenCalledWith({ tutorId: "tutor-1" });
+  });
+
+  it("shows an image attachment inline", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [message({ body: "", attachmentUrl: "https://example.test/photo.png", attachmentContentType: "image/png" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+    expect(screen.getByRole("img", { name: "Attachment" })).toBeTruthy();
+  });
+
+  it("searches the open conversation locally", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [message({ id: 1, body: "About my profile" }), message({ id: 2, body: "About payment" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "payment" } });
+    expect(screen.queryByText("About my profile")).toBeNull();
+    expect(screen.getByText("About payment")).toBeTruthy();
   });
 });

@@ -29,11 +29,28 @@ function registerTutorSocket(tutorId: string, socket: ChatSocket) {
     set?.delete(socket);
     if (set && set.size === 0) tutorSockets.delete(tutorId);
   });
+  // The only client-to-server frame this channel understands: a typing ping,
+  // relayed straight to the Admin side with no state kept about it here.
+  socket.on("message", raw => {
+    if (parseClientFrame(raw)?.type === "typing") notifyAdminsOfTyping(tutorId);
+  });
 }
 
 function registerAdminSocket(socket: ChatSocket) {
   adminSockets.add(socket);
   socket.on("close", () => adminSockets.delete(socket));
+  socket.on("message", raw => {
+    const frame = parseClientFrame(raw);
+    if (frame?.type === "typing" && frame.tutorId) notifyTutorOfTyping(frame.tutorId);
+  });
+}
+
+function parseClientFrame(raw: unknown): { type?: string; tutorId?: string } | null {
+  try {
+    return JSON.parse(String(raw));
+  } catch {
+    return null;
+  }
 }
 
 function send(socket: ChatSocket, payload: unknown) {
@@ -49,6 +66,14 @@ export function notifyAdminsOfChatMessage(tutorId: string) {
 export function notifyTutorOfChatMessage(tutorId: string) {
   for (const socket of Array.from(tutorSockets.get(tutorId) ?? [])) send(socket, { type: "message" });
   notifyAdminsOfChatMessage(tutorId);
+}
+
+function notifyAdminsOfTyping(tutorId: string) {
+  for (const socket of Array.from(adminSockets)) send(socket, { type: "typing", tutorId });
+}
+
+function notifyTutorOfTyping(tutorId: string) {
+  for (const socket of Array.from(tutorSockets.get(tutorId) ?? [])) send(socket, { type: "typing" });
 }
 
 /**

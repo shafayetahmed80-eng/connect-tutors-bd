@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-type ChatSocketMessage = { type: "message"; tutorId?: string };
+type ChatSocketFrame = { type: "message" | "typing"; tutorId?: string };
 
 /** `wss://` on an https page, `ws://` otherwise - same origin the app itself is served from. */
 function buildChatSocketUrl(query: string) {
@@ -13,11 +13,13 @@ function buildChatSocketUrl(query: string) {
  * A push channel for the Admin-Tutor chat, reconnecting on drop. Polling
  * stays underneath as a slow fallback (see the callers), so a socket that
  * never connects - a proxy that blocks upgrades, a stretch offline - degrades
- * to the old behaviour rather than going silent.
+ * to the old behaviour rather than going silent. Returns a `send` function
+ * for the one frame this channel accepts from the client: a typing ping.
  */
-function useRawChatSocket(url: string | null, onMessage: (message: ChatSocketMessage) => void) {
-  const onMessageRef = useRef(onMessage);
-  onMessageRef.current = onMessage;
+function useRawChatSocket(url: string | null, onFrame: (frame: ChatSocketFrame) => void) {
+  const onFrameRef = useRef(onFrame);
+  onFrameRef.current = onFrame;
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!url) return;
@@ -28,9 +30,10 @@ function useRawChatSocket(url: string | null, onMessage: (message: ChatSocketMes
     const connect = () => {
       if (stopped) return;
       socket = new WebSocket(url);
+      socketRef.current = socket;
       socket.onmessage = event => {
         try {
-          onMessageRef.current(JSON.parse(event.data));
+          onFrameRef.current(JSON.parse(event.data));
         } catch {
           // A malformed frame is ignored - the slow poll still covers it.
         }
@@ -46,19 +49,24 @@ function useRawChatSocket(url: string | null, onMessage: (message: ChatSocketMes
     return () => {
       stopped = true;
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      socketRef.current = null;
       socket?.close();
     };
   }, [url]);
+
+  return useCallback((frame: ChatSocketFrame) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(frame));
+  }, []);
 }
 
 /** The Tutor's own thread - `token` is the Tutor Portal proof, carried as a query param since a browser `WebSocket` cannot set a custom header. */
-export function useTutorChatSocket(token: string | null, onMessage: () => void) {
+export function useTutorChatSocket(token: string | null, onFrame: (frame: ChatSocketFrame) => void) {
   const url = useMemo(() => token ? buildChatSocketUrl(`?token=${encodeURIComponent(token)}`) : null, [token]);
-  useRawChatSocket(url, onMessage);
+  return useRawChatSocket(url, onFrame);
 }
 
 /** Any Admin's session cookie authenticates the handshake, so no token is carried here. */
-export function useAdminChatSocket(onMessage: (tutorId?: string) => void) {
+export function useAdminChatSocket(onFrame: (frame: ChatSocketFrame) => void) {
   const url = useMemo(() => buildChatSocketUrl(""), []);
-  useRawChatSocket(url, message => onMessage(message.tutorId));
+  return useRawChatSocket(url, onFrame);
 }

@@ -14,6 +14,8 @@ const dbMocks = vi.hoisted(() => ({
   getTutorAdminChatThreadForAdmin: vi.fn(),
   sendTutorAdminChatMessageFromAdmin: vi.fn(),
   markTutorAdminChatReadByAdmin: vi.fn(),
+  claimTutorAdminChatThread: vi.fn(),
+  releaseTutorAdminChatThread: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -60,13 +62,24 @@ describe("a Tutor's own side of the Admin chat", () => {
   it("sends a trimmed message as the signed-in Tutor", async () => {
     dbMocks.sendTutorAdminChatMessageFromTutor.mockResolvedValue({ sent: true });
     await expect(createCaller().tutorAdminChat.send({ body: "  Hello Admin  " })).resolves.toEqual({ sent: true });
-    expect(dbMocks.sendTutorAdminChatMessageFromTutor).toHaveBeenCalledWith({ tutorId: "tutor-1503", body: "Hello Admin" });
+    expect(dbMocks.sendTutorAdminChatMessageFromTutor).toHaveBeenCalledWith({ tutorId: "tutor-1503", body: "Hello Admin", attachmentKey: undefined, attachmentContentType: undefined });
   });
 
-  it("refuses an empty message or one over the limit", async () => {
+  it("sends an attachment with no caption", async () => {
+    dbMocks.sendTutorAdminChatMessageFromTutor.mockResolvedValue({ sent: true });
+    await expect(createCaller().tutorAdminChat.send({ body: "", attachmentKey: "chat/tutor-1503/1.png", attachmentContentType: "image/png" })).resolves.toEqual({ sent: true });
+    expect(dbMocks.sendTutorAdminChatMessageFromTutor).toHaveBeenCalledWith({ tutorId: "tutor-1503", body: "", attachmentKey: "chat/tutor-1503/1.png", attachmentContentType: "image/png" });
+  });
+
+  it("refuses an empty message with no attachment, or one over the limit", async () => {
     await expect(createCaller().tutorAdminChat.send({ body: "   " })).rejects.toThrow();
     await expect(createCaller().tutorAdminChat.send({ body: "a".repeat(2001) })).rejects.toThrow();
     expect(dbMocks.sendTutorAdminChatMessageFromTutor).not.toHaveBeenCalled();
+  });
+
+  it("turns a not-yet-eligible Tutor's send into a clear refusal", async () => {
+    dbMocks.sendTutorAdminChatMessageFromTutor.mockResolvedValue({ sent: false, reason: "not_eligible" });
+    await expect(createCaller().tutorAdminChat.send({ body: "Hi" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("marks the Tutor's own thread read", async () => {
@@ -105,13 +118,23 @@ describe("the Admin side of the Tutor chat", () => {
   it("sends a reply as the signed-in Admin, without any Admin naming itself in the input", async () => {
     dbMocks.sendTutorAdminChatMessageFromAdmin.mockResolvedValue({ sent: true });
     await createCaller(admin).admin.sendTutorChatMessage({ tutorId: "tutor-1503", body: "  We will check this.  " });
-    expect(dbMocks.sendTutorAdminChatMessageFromAdmin).toHaveBeenCalledWith({ tutorId: "tutor-1503", body: "We will check this.", adminUserId: 42 });
+    expect(dbMocks.sendTutorAdminChatMessageFromAdmin).toHaveBeenCalledWith({ tutorId: "tutor-1503", body: "We will check this.", adminUserId: 42, attachmentKey: undefined, attachmentContentType: undefined });
   });
 
   it("marks one Tutor's thread read on the Admin side", async () => {
     dbMocks.markTutorAdminChatReadByAdmin.mockResolvedValue({ updated: true });
     await createCaller(admin).admin.markTutorChatRead({ tutorId: "tutor-1503" });
     expect(dbMocks.markTutorAdminChatReadByAdmin).toHaveBeenCalledWith({ tutorId: "tutor-1503" });
+  });
+
+  it("lets an Admin claim a thread, and release it again", async () => {
+    dbMocks.claimTutorAdminChatThread.mockResolvedValue({ claimed: true });
+    await expect(createCaller(admin).admin.claimTutorChatThread({ tutorId: "tutor-1503" })).resolves.toEqual({ claimed: true });
+    expect(dbMocks.claimTutorAdminChatThread).toHaveBeenCalledWith({ tutorId: "tutor-1503", adminUserId: 42 });
+
+    dbMocks.releaseTutorAdminChatThread.mockResolvedValue({ released: true });
+    await expect(createCaller(admin).admin.releaseTutorChatThread({ tutorId: "tutor-1503" })).resolves.toEqual({ released: true });
+    expect(dbMocks.releaseTutorAdminChatThread).toHaveBeenCalledWith({ tutorId: "tutor-1503" });
   });
 
   it("is an Admin's to use", async () => {

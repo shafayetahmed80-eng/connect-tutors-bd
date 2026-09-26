@@ -2062,11 +2062,22 @@ export const appRouter = router({
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.getTutorAdminChatThreadForAdmin(input)),
     sendTutorChatMessage: adminProcedure
-      .input(z.object({ tutorId: z.string().trim().min(1).max(32), body: z.string().trim().min(1, "Write something first.").max(2000) }))
-      .mutation(({ ctx, input }) => db.sendTutorAdminChatMessageFromAdmin({ tutorId: input.tutorId, body: input.body, adminUserId: ctx.user.id })),
+      .input(z.object({
+        tutorId: z.string().trim().min(1).max(32),
+        body: z.string().trim().max(2000),
+        attachmentKey: z.string().trim().min(1).max(512).optional(),
+        attachmentContentType: z.string().trim().min(1).max(100).optional(),
+      }).refine(value => value.body.length > 0 || Boolean(value.attachmentKey), { path: ["body"], message: "Write something first." }))
+      .mutation(({ ctx, input }) => db.sendTutorAdminChatMessageFromAdmin({ tutorId: input.tutorId, body: input.body, adminUserId: ctx.user.id, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType })),
     markTutorChatRead: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .mutation(({ input }) => db.markTutorAdminChatReadByAdmin(input)),
+    claimTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ ctx, input }) => db.claimTutorAdminChatThread({ tutorId: input.tutorId, adminUserId: ctx.user.id })),
+    releaseTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ input }) => db.releaseTutorAdminChatThread(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -2557,8 +2568,16 @@ export const appRouter = router({
     unreadCount: activeTutorProcedure
       .query(async ({ ctx }) => db.getTutorAdminChatUnreadCount({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
     send: activeTutorProcedure
-      .input(z.object({ body: z.string().trim().min(1, "Write something first.").max(2000) }))
-      .mutation(async ({ ctx, input }) => db.sendTutorAdminChatMessageFromTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), body: input.body })),
+      .input(z.object({
+        body: z.string().trim().max(2000),
+        attachmentKey: z.string().trim().min(1).max(512).optional(),
+        attachmentContentType: z.string().trim().min(1).max(100).optional(),
+      }).refine(value => value.body.length > 0 || Boolean(value.attachmentKey), { path: ["body"], message: "Write something first." }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.sendTutorAdminChatMessageFromTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType });
+        if (!result.sent) throw new TRPCError({ code: "FORBIDDEN", message: "You can message the Admin team once at least one of your tuitions has been appointed." });
+        return result;
+      }),
     markRead: activeTutorProcedure
       .mutation(async ({ ctx }) => db.markTutorAdminChatReadByTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
   }),

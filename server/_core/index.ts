@@ -13,6 +13,7 @@ import { registerAdminProfileImageRoute } from "../admin-profile-image-route";
 import { registerTutorProfilePhotoRoute } from "../tutor-profile-photo-route";
 import { registerTutorUniversityIdDocumentRoute } from "../tutor-university-id-document-route";
 import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-document-route";
+import { registerTutorAdminChatAttachmentRoute } from "../tutor-admin-chat-attachment-route";
 import { serveStatic, setupVite } from "./vite";
 import { attachChatWebSocketServer } from "../chat-ws";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
@@ -51,6 +52,7 @@ async function startServer() {
   registerTutorProfilePhotoRoute(app);
   registerTutorUniversityIdDocumentRoute(app);
   registerTutorSupportingDocumentRoute(app);
+  registerTutorAdminChatAttachmentRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",
