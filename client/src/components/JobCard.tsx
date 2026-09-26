@@ -42,7 +42,7 @@ const statusToneClass: Record<JobCardData["statusTone"], string> = {
  * is always beside it - the icon supports the label rather than replacing it.
  */
 export function TutorPreferenceIcon({ preference, className }: { preference: string; className?: string }) {
-  const shared = { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, className, "aria-hidden": true } as const;
+  const shared = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, className, "aria-hidden": true } as const;
   if (preference === "male") {
     return <svg {...shared}><circle cx="12" cy="7.5" r="3.4" /><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6" /></svg>;
   }
@@ -83,18 +83,18 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
       <h3 className="text-sm font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs tabular-nums text-j-ink-muted">
-        <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
+        <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
-        <span className="inline-flex items-center gap-1"><RecordIcon name="posted" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
+        <span className="inline-flex items-center gap-1"><RecordIcon name="posted" size={12} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
         <span className={`font-bold ${statusToneClass[job.statusTone]}`}>{job.statusLabel}</span>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-        <Fact icon={<House size={12} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} />
-        <Fact icon={<Wallet size={12} />} label="Salary" value={salary} muted={job.budgetAmount === null} />
-        <Fact icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} />
-        <Fact icon={<MapPin size={12} />} label="Location" value={place} wide />
+        <Fact icon={<House size={13} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} />
+        <Fact icon={<Wallet size={13} />} label="Salary" value={salary} muted={job.budgetAmount === null} />
+        <Fact icon={<BookOpen size={13} />} label="Subjects" value={formatSubjects(job.subjects)} />
+        <Fact icon={<MapPin size={13} />} label="Location" value={place} wide />
       </div>
 
       <p className="mt-2.5 flex items-center gap-1.5 text-xs text-j-ink-muted">
@@ -114,7 +114,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
                     rel="noreferrer"
                     onClick={event => event.stopPropagation()}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
-                  ><MapPin size={12} /> View on map</a>
+                  ><MapPin size={13} /> View on map</a>
                 : null}
             </span>
           : <span />}
@@ -126,5 +126,5 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
 
 /** The Guardian's action; the Job Board passes its own. */
 export function DetailsAction() {
-  return <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1267c8]"><AlignLeft size={12} /> Details</span>;
+  return <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1267c8]"><AlignLeft size={13} /> Details</span>;
 }
