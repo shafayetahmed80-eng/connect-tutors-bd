@@ -112,9 +112,9 @@ export const guardianTuitionRequestRefusalMessages: Record<GuardianTuitionReques
 
 /** The Guardian, when an Admin declines a request. No reason is recorded, so none is given. */
 export function guardianTuitionRequestDeclinedNotice(type: GuardianTuitionRequestType, jobId: string) {
-  const what = type === "confirm" ? "confirm the Tutor" : type === "remove_tutor" ? "remove the Tutor" : "cancel the tuition";
+  const what = type === "confirm" ? "টিউটরকে কনফার্ম করার" : type === "remove_tutor" ? "টিউটরকে সরিয়ে দেওয়ার" : "টিউশনটি বাতিল করার";
   return {
-    title: "Your request was not approved",
-    message: `The request to ${what} on Job ID ${jobId} was declined.`,
+    title: "আপনার অনুরোধ অনুমোদিত হয়নি",
+    message: `Job ID ${jobId}-এ ${what} অনুরোধটি প্রত্যাখ্যাত হয়েছে।`,
   };
 }

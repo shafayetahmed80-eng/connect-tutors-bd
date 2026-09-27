@@ -8,10 +8,10 @@
  */
 export function guardianVerificationNotice(status: "unverified" | "verified" | "rejected") {
   if (status === "verified") {
-    return { title: "Your profile is verified", message: "An Admin has verified your profile." };
+    return { title: "আপনার প্রোফাইল ভেরিফাই হয়েছে", message: "একজন অ্যাডমিন আপনার প্রোফাইল ভেরিফাই করেছেন।" };
   }
   if (status === "rejected") {
-    return { title: "Your profile verification was not approved", message: "Open your profile to see what to change." };
+    return { title: "আপনার প্রোফাইল ভেরিফিকেশন অনুমোদিত হয়নি", message: "কী পরিবর্তন করতে হবে দেখতে আপনার প্রোফাইল খুলুন।" };
   }
   return null;
 }

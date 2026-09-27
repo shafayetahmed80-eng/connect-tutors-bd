@@ -139,10 +139,10 @@ export function accountChangeDecisionNotice(input: {
 }): { title: string; message: string } | null {
   if (input.type === "verification") return null;
   if (input.decision === "decline") {
-    const title = { name: "Name change declined", mobile: "Mobile number change declined", close_account: "Account delete declined" }[input.type];
+    const title = { name: "নাম পরিবর্তনের অনুরোধ প্রত্যাখ্যাত হয়েছে", mobile: "মোবাইল নম্বর পরিবর্তনের অনুরোধ প্রত্যাখ্যাত হয়েছে", close_account: "অ্যাকাউন্ট মুছে ফেলার অনুরোধ প্রত্যাখ্যাত হয়েছে" }[input.type];
     return { title, message: (input.declineReason ?? "").slice(0, 360) };
   }
-  if (input.type === "name") return { title: "Name changed", message: `Your name is now ${input.requestedValue}.`.slice(0, 360) };
-  if (input.type === "mobile") return { title: "Mobile number changed", message: `Your mobile number is now ${input.requestedValue}. Sign in with this number from now on.` };
+  if (input.type === "name") return { title: "নাম পরিবর্তন হয়েছে", message: `আপনার নাম এখন ${input.requestedValue}।`.slice(0, 360) };
+  if (input.type === "mobile") return { title: "মোবাইল নম্বর পরিবর্তন হয়েছে", message: `আপনার মোবাইল নম্বর এখন ${input.requestedValue}। এখন থেকে এই নম্বর দিয়েই সাইন ইন করুন।` };
   return null;
 }

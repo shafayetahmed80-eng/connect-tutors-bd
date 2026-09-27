@@ -2,29 +2,29 @@
  * What a Tutor is told about a payment of theirs. The amount is theirs to see;
  * the Admin's own note is not repeated.
  */
-const taka = (amount: number) => `${amount.toLocaleString("en-US")} Taka`;
+const taka = (amount: number) => `${amount.toLocaleString("en-US")} টাকা`;
 
 /** An Admin recorded a payment on the Tutor's behalf, so it counts at once. */
 export function paymentRecordedTutorNotification(jobId: string, amount: number) {
   return {
-    title: `Payment recorded for ${jobId}`,
-    message: `${taka(amount)} was recorded against your platform charge.`,
+    title: `${jobId}-এর জন্য পেমেন্ট রেকর্ড হয়েছে`,
+    message: `আপনার প্ল্যাটফর্ম চার্জের বিপরীতে ${taka(amount)} রেকর্ড করা হয়েছে।`,
   };
 }
 
 /** The Admin confirmed the money a Tutor reported. */
 export function paymentVerifiedTutorNotification(jobId: string, amount: number) {
   return {
-    title: `Your payment for ${jobId} was verified`,
-    message: `${taka(amount)} now counts towards your platform charge.`,
+    title: `${jobId}-এর জন্য আপনার পেমেন্ট যাচাই হয়েছে`,
+    message: `${taka(amount)} এখন আপনার প্ল্যাটফর্ম চার্জে যোগ হয়েছে।`,
   };
 }
 
 /** The Admin could not confirm the money a Tutor reported. */
 export function paymentRejectedTutorNotification(jobId: string, amount: number) {
   return {
-    title: `Your payment for ${jobId} was not accepted`,
-    message: `We could not confirm ${taka(amount)}. Check the transaction ID and report it again.`,
+    title: `${jobId}-এর জন্য আপনার পেমেন্ট গ্রহণ করা হয়নি`,
+    message: `${taka(amount)} নিশ্চিত করা যায়নি। ট্রানজেকশন আইডি যাচাই করে আবার জানান।`,
   };
 }
 
@@ -33,9 +33,9 @@ export function paymentRejectedTutorNotification(jobId: string, amount: number) 
  * due, or that nothing more is. The Admin's grounds are theirs and stay out.
  */
 export function tuitionSettledTutorNotification(jobId: string, settlement: { refund: number; due: number; disposition: "none" | "refunded" | "credited" }) {
-  let message = "Nothing more is due for this tuition.";
-  if (settlement.refund > 0 && settlement.disposition === "credited") message = `${taka(settlement.refund)} was added to your credit, to use on your other tuitions.`;
-  else if (settlement.refund > 0) message = `${taka(settlement.refund)} of what you paid is being returned to you.`;
-  else if (settlement.due > 0) message = `${taka(settlement.due)} is still due for this tuition.`;
-  return { title: `Tuition ${jobId} has been settled`, message };
+  let message = "এই টিউশনের জন্য আর কিছু বাকি নেই।";
+  if (settlement.refund > 0 && settlement.disposition === "credited") message = `${taka(settlement.refund)} আপনার ক্রেডিটে যোগ করা হয়েছে, অন্য টিউশনে ব্যবহার করতে পারবেন।`;
+  else if (settlement.refund > 0) message = `আপনার দেওয়া ${taka(settlement.refund)} ফেরত দেওয়া হচ্ছে।`;
+  else if (settlement.due > 0) message = `এই টিউশনের জন্য এখনো ${taka(settlement.due)} বাকি আছে।`;
+  return { title: `${jobId} টিউশনের হিসাব মিটমাট হয়েছে`, message };
 }

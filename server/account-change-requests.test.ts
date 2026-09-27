@@ -64,11 +64,11 @@ describe("closing the account", () => {
 describe("what the account hears about a decision", () => {
   it("names the new value when approved, and carries the Admin's reason when declined", () => {
     expect(accountChangeDecisionNotice({ type: "name", decision: "approve", requestedValue: "Rina Begum" }))
-      .toEqual({ title: "Name changed", message: "Your name is now Rina Begum." });
+      .toEqual({ title: "নাম পরিবর্তন হয়েছে", message: "আপনার নাম এখন Rina Begum।" });
     expect(accountChangeDecisionNotice({ type: "mobile", decision: "approve", requestedValue: "+8801822222222" })?.message)
-      .toContain("Sign in with this number");
+      .toContain("এই নম্বর দিয়েই সাইন ইন করুন");
     expect(accountChangeDecisionNotice({ type: "close_account", decision: "decline", requestedValue: null, declineReason: "A payment is still due." }))
-      .toEqual({ title: "Account delete declined", message: "A payment is still due." });
+      .toEqual({ title: "অ্যাকাউন্ট মুছে ফেলার অনুরোধ প্রত্যাখ্যাত হয়েছে", message: "A payment is still due." });
   });
 
   it("says nothing for a verification, which has its own notice, or for a closed account, which cannot read it", () => {

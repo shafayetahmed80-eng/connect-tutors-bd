@@ -74,8 +74,8 @@ describe("an Admin's shortlist on Applied Tutors", () => {
   });
 
   it("tells the Tutor when they are shortlisted or declined, and says nothing when they come off a shortlist", () => {
-    expect(adminInterestDecisionNotice("shortlisted", "6812")?.title).toBe("You were shortlisted for 6812");
-    expect(adminInterestDecisionNotice("declined", "6812")?.title).toBe("Your application for 6812 was not taken forward");
+    expect(adminInterestDecisionNotice("shortlisted", "6812")?.title).toBe("6812-এর জন্য আপনাকে শর্টলিস্ট করা হয়েছে");
+    expect(adminInterestDecisionNotice("declined", "6812")?.title).toBe("6812-এর জন্য আপনার আবেদন এগিয়ে নেওয়া হয়নি");
     expect(adminInterestDecisionNotice("interested", "6812")).toBeNull();
   });
 });

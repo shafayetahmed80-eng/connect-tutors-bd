@@ -26,11 +26,11 @@ describe("sending a tuition back to Live", () => {
 describe("what the Tutor is told after the demo class", () => {
   it("names the job either way, and gives no reason that was never recorded", () => {
     expect(appointmentConfirmedTutorNotification("6812")).toEqual({
-      title: "Your appointment to 6812 is confirmed",
-      message: "The Guardian is continuing with you after the demo class.",
+      title: "6812-এ আপনার নিয়োগ নিশ্চিত হয়েছে",
+      message: "ডেমো ক্লাসের পর গার্ডিয়ান আপনার সাথেই চালিয়ে যাচ্ছেন।",
     });
     const ended = appointmentEndedTutorNotification("6812");
-    expect(ended.title).toBe("Your appointment to 6812 has ended");
+    expect(ended.title).toBe("6812-এ আপনার নিয়োগ শেষ হয়েছে");
     expect(ended.message).not.toMatch(/because|decided/i);
   });
 });
@@ -38,7 +38,7 @@ describe("what the Tutor is told after the demo class", () => {
 describe("when an Admin cancels a tuition", () => {
   it("tells its Tutor which job ended, and keeps the Admin's reason out of it", () => {
     const note = tuitionCancelledTutorNotification("6812");
-    expect(note.title).toBe("Your tuition 6812 has been cancelled");
+    expect(note.title).toBe("আপনার 6812 টিউশনটি বাতিল হয়েছে");
     expect(note.message).not.toMatch(/because|reason|decided/i);
   });
 });
