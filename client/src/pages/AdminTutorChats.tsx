@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { trpc } from "@/lib/trpc";
+import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ArchiveRestore, ArrowLeft, BellRing, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
@@ -258,7 +259,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const threadQuery = trpc.admin.getTutorChatThread.useQuery({ tutorId }, { refetchInterval: CHAT_POLL_MS });
   const [body, setBody] = useState("");
   const [query, setQuery] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -325,19 +326,17 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   };
 
   const uploadAndSend = async (file: File) => {
-    setUploading(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("tutorId", tutorId);
-      const response = await fetch("/api/chat/attachment", { method: "POST", credentials: "include", body: formData });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Upload failed.");
+      const result = await uploadFileWithProgress("/api/chat/attachment", formData, setUploadProgress);
       send.mutate({ tutorId, body: body.trim(), attachmentKey: result.key, attachmentContentType: result.contentType });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to upload the attachment.");
     } finally {
-      setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -442,43 +441,50 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
       <div ref={bottomRef} />
     </div>
 
-    <form onSubmit={handleSubmit} className="flex items-end gap-1.5 border-t border-[#dce9f1] p-3 sm:gap-2">
-      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
-      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || voiceRecorder.recording} aria-label="Attach a file" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
-        <Paperclip className="size-4" />
-      </button>
-      {voiceRecorder.supported
-        ? <>
-            {voiceRecorder.recording
-              ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
-                  <X className="size-4" />
-                </button>
-              : null}
-            <button
-              type="button"
-              onClick={handleMic}
-              disabled={uploading}
-              aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
-            >
-              {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
-            </button>
-          </>
+    <div className="border-t border-[#dce9f1]">
+      {uploadProgress !== null
+        ? <div className="h-0.5 w-full bg-j-surface-muted">
+            <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
+          </div>
         : null}
-      <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} />
-      <Textarea
-        value={body}
-        onChange={event => { setBody(event.target.value); onTyping(); }}
-        onKeyDown={handleKeyDown}
-        maxLength={CHAT_MESSAGE_MAX}
-        rows={2}
-        placeholder="Reply as Admin…"
-        className="min-h-9 flex-1 resize-none"
-      />
-      <Button type="submit" size="icon" aria-label="Send reply" disabled={!body.trim() || send.isPending || uploading} className="h-10 w-10 shrink-0 rounded-xl">
-        <Send className="size-4" />
-      </Button>
-    </form>
+      <form onSubmit={handleSubmit} className="flex items-end gap-1.5 p-3 sm:gap-2">
+        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+          <Paperclip className="size-4" />
+        </button>
+        {voiceRecorder.supported
+          ? <>
+              {voiceRecorder.recording
+                ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
+                    <X className="size-4" />
+                  </button>
+                : null}
+              <button
+                type="button"
+                onClick={handleMic}
+                disabled={uploadProgress !== null}
+                aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
+              >
+                {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+              </button>
+            </>
+          : null}
+        <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} />
+        <Textarea
+          value={body}
+          onChange={event => { setBody(event.target.value); onTyping(); }}
+          onKeyDown={handleKeyDown}
+          maxLength={CHAT_MESSAGE_MAX}
+          rows={2}
+          placeholder="Reply as Admin…"
+          className="min-h-9 flex-1 resize-none"
+        />
+        <Button type="submit" size="icon" aria-label="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-10 w-10 shrink-0 rounded-xl">
+          <Send className="size-4" />
+        </Button>
+      </form>
+    </div>
 
     {notesOpen ? <ChatNotesModal tutorId={tutorId} onClose={() => setNotesOpen(false)} /> : null}
   </div>;
