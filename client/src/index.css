@@ -533,8 +533,17 @@
   75% { transform: rotate(3deg); }
   100% { transform: rotate(0deg); }
 }
+/* A lighter pulse for a push notification landing in real time, apart from
+   the swing a poll's rising unread count gets - skipped if a swing is
+   already playing so the two never fight over the same transform. */
+@keyframes header-bell-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
 @media (prefers-reduced-motion: no-preference) {
   .header-bell[data-swinging] { transform-origin: 50% 2px; animation: header-bell-swing 900ms ease-in-out; }
+  .header-bell[data-bouncing]:not([data-swinging]) { animation: header-bell-pulse 480ms cubic-bezier(0.23, 1, 0.32, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sb-root .sb-indicator,

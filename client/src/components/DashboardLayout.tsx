@@ -37,7 +37,7 @@ import {
 import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useBellSwing } from "@/lib/bellSwing";
+import { useBellSwing, usePushBellBounce } from "@/lib/bellSwing";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -809,6 +809,7 @@ function WorkspaceHeader({
   const initials = getDashboardAvatarInitials(identity.name);
   const unread = identity.notifications?.unreadCount;
   const bell = useBellSwing(identity.portal, unread);
+  const pushBounce = usePushBellBounce();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const iconButton = themed
     ? "text-[var(--sb-icon)] hover:bg-[var(--sb-hover-bg)] hover:text-[var(--sb-text)] focus-visible:ring-[var(--sb-text)]"
@@ -835,7 +836,12 @@ function WorkspaceHeader({
               aria-label={unread ? `Open notifications, ${unread} unread` : "Open notifications"}
               className={`relative grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}
             >
-              <span className="header-bell grid place-items-center" data-swinging={bell.swinging ? "" : undefined} onAnimationEnd={bell.stop}>
+              <span
+                className="header-bell grid place-items-center"
+                data-swinging={bell.swinging ? "" : undefined}
+                data-bouncing={pushBounce.bouncing ? "" : undefined}
+                onAnimationEnd={() => { bell.stop(); pushBounce.stop(); }}
+              >
                 <Bell className="size-[19px]" aria-hidden="true" />
               </span>
               {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}

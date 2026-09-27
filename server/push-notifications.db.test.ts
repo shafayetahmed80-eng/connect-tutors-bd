@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { pushSubscriptions, tutors, users } from "../drizzle/schema";
+import { adminNotificationBroadcasts, guardianRequestNotifications, pushSubscriptions, tutorNotifications, tutors, users } from "../drizzle/schema";
 
 const chatPushMocks = vi.hoisted(() => ({ sendWebPushNotification: vi.fn(), getWebPushPublicKey: vi.fn(() => "test-public-key") }));
 vi.mock("./chat-push", () => chatPushMocks);
@@ -8,6 +8,8 @@ vi.mock("./chat-push", () => chatPushMocks);
 import {
   getDb,
   getPushNotificationPublicKey,
+  notifyGuardianDirectory,
+  notifyTutorDirectory,
   sendPushToTutor,
   sendPushToUser,
   subscribeToPushNotifications,
@@ -137,5 +139,54 @@ describe("sending a push", () => {
       expect.objectContaining({ endpoint: "https://fcm.googleapis.com/test/tutor" }),
       { title: "Appointed", body: "A Guardian appointed you.", url: "/tutor/dashboard/status" },
     );
+  });
+});
+
+describe("the Admin's bulk-notify broadcast", () => {
+  afterEach(async () => {
+    const database = await getDb();
+    if (!database) return;
+    await database.delete(tutorNotifications).where(and(eq(tutorNotifications.tutorId, seededTutorId), eq(tutorNotifications.title, "Push broadcast test")));
+    await database.delete(guardianRequestNotifications).where(and(eq(guardianRequestNotifications.guardianUserId, guardianUserId), eq(guardianRequestNotifications.title, "Push broadcast test")));
+    await database.delete(adminNotificationBroadcasts).where(eq(adminNotificationBroadcasts.title, "Push broadcast test"));
+  });
+
+  it("also pushes to each hand-picked Tutor's own subscription, not just their inbox", async () => {
+    await subscribeToPushNotifications({ userId: seededTutorUserId, endpoint: "https://fcm.googleapis.com/test/broadcast-tutor", p256dh: "p1", auth: "a1" });
+    chatPushMocks.sendWebPushNotification.mockResolvedValue({ ok: true, gone: false });
+
+    const result = await notifyTutorDirectory({
+      filters: { profileStatus: "all", jobStage: "all", query: "" } as never,
+      tutorIds: [seededTutorId],
+      title: "Push broadcast test",
+      message: "A test announcement.",
+      adminUserId: guardianUserId,
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    // The push, like every other site, is fired without waiting on it.
+    await vi.waitFor(() => expect(chatPushMocks.sendWebPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: "https://fcm.googleapis.com/test/broadcast-tutor" }),
+      { title: "Push broadcast test", body: "A test announcement.", url: "/tutor/dashboard/notifications" },
+    ));
+  });
+
+  it("also pushes to each hand-picked Guardian's own subscription, not just their inbox", async () => {
+    await subscribeToPushNotifications({ userId: guardianUserId, endpoint: "https://fcm.googleapis.com/test/broadcast-guardian", p256dh: "p1", auth: "a1" });
+    chatPushMocks.sendWebPushNotification.mockResolvedValue({ ok: true, gone: false });
+
+    const result = await notifyGuardianDirectory({
+      filters: { verificationStatus: "all", query: "" } as never,
+      guardianUserIds: [guardianUserId],
+      title: "Push broadcast test",
+      message: "A test announcement.",
+      adminUserId: seededTutorUserId,
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    await vi.waitFor(() => expect(chatPushMocks.sendWebPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: "https://fcm.googleapis.com/test/broadcast-guardian" }),
+      { title: "Push broadcast test", body: "A test announcement.", url: "/guardian/dashboard/notifications" },
+    ));
   });
 });

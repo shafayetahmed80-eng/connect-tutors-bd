@@ -14,12 +14,19 @@ self.addEventListener("push", event => {
   }
   const title = data.title || "Connect Tutors";
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "New notification",
-      icon: "/pwa-192x192.png",
-      badge: "/pwa-64x64.png",
-      data: { url: data.url || null },
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body: data.body || "New notification",
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-64x64.png",
+        data: { url: data.url || null },
+      }),
+      // Lets an already-open tab bounce its header bell right away instead of
+      // waiting for its next unread-count poll.
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clients => {
+        for (const client of clients) client.postMessage({ type: "push-received" });
+      }),
+    ])
   );
 });
 
