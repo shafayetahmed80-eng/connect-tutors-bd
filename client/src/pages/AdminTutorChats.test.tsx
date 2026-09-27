@@ -45,6 +45,7 @@ vi.mock("@/hooks/useChatSocket", () => ({
   },
 }));
 vi.mock("@/hooks/useVoiceRecorder", () => ({ useVoiceRecorder: () => ({ recording: false, start: vi.fn(), stop: vi.fn(), cancel: vi.fn(), supported: false }) }));
+vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: 42, name: "Test Admin", role: "admin" as const } }) }));
 vi.mock("wouter", () => ({ useSearch: () => state.search }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -417,5 +418,36 @@ describe("the Admin's Tutor chat list", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Private notes" }));
     expect(screen.queryByLabelText("New note")).toBeNull();
+  });
+
+  it("sorts unread threads first, keeping recency order within each group", () => {
+    state.threads = [
+      thread({ tutorId: "t1", tutorName: "Amina Rahman", unreadCount: 0 }),
+      thread({ tutorId: "t2", tutorName: "Karim Sheikh", unreadCount: 3 }),
+      thread({ tutorId: "t3", tutorName: "Nasrin Akter", unreadCount: 0 }),
+    ];
+    render(<AdminTutorChatsContent />);
+    fireEvent.change(screen.getByLabelText("Sort conversations"), { target: { value: "unread" } });
+
+    const names = screen.getAllByRole("button")
+      .map(button => button.textContent ?? "")
+      .filter(text => /Rahman|Sheikh|Akter/.test(text));
+    expect(names[0]).toContain("Karim Sheikh");
+    expect(names[1]).toContain("Amina Rahman");
+    expect(names[2]).toContain("Nasrin Akter");
+  });
+
+  it("sorts the signed-in Admin's own claimed threads first", () => {
+    state.threads = [
+      thread({ tutorId: "t1", tutorName: "Amina Rahman", claimedByAdminId: null }),
+      thread({ tutorId: "t2", tutorName: "Karim Sheikh", claimedByAdminId: 42, claimedByAdminName: "Test Admin" }),
+    ];
+    render(<AdminTutorChatsContent />);
+    fireEvent.change(screen.getByLabelText("Sort conversations"), { target: { value: "mine" } });
+
+    const names = screen.getAllByRole("button")
+      .map(button => button.textContent ?? "")
+      .filter(text => /Rahman|Sheikh/.test(text));
+    expect(names[0]).toContain("Karim Sheikh");
   });
 });

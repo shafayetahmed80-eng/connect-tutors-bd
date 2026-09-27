@@ -2,6 +2,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
@@ -202,27 +203,53 @@ function ChatNotesModal({ tutorId, onClose }: { tutorId: string; onClose: () => 
   </Modal>;
 }
 
+type ThreadSortMode = "recent" | "unread" | "mine";
+
 /** The Admin's list of every Tutor who has written in - newest activity first, unread ones easy to spot. */
 function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange }: { selectedTutorId: string | null; onSelect: (tutorId: string) => void; archived: boolean; onArchivedChange: (value: boolean) => void }) {
   const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState<ThreadSortMode>("recent");
+  const { user } = useAuth();
   const threadsQuery = trpc.admin.listTutorChatThreads.useQuery({ query, page: 1, pageSize: 50, archived });
-  const items = (threadsQuery.data?.items ?? []) as ChatThreadRow[];
+  const rawItems = (threadsQuery.data?.items ?? []) as ChatThreadRow[];
+  // The server's own order (newest activity first) is always the tiebreaker -
+  // `Array.prototype.sort` is stable, so this only ever regroups it, never
+  // reshuffles within a group.
+  const items = useMemo(() => {
+    if (sortMode === "unread") return [...rawItems].sort((a, b) => Number(b.unreadCount > 0) - Number(a.unreadCount > 0));
+    if (sortMode === "mine" && user) return [...rawItems].sort((a, b) => Number(b.claimedByAdminId === user.id) - Number(a.claimedByAdminId === user.id));
+    return rawItems;
+  }, [rawItems, sortMode, user]);
 
   return <div className="flex h-full flex-col">
     <div className="flex shrink-0 border-b border-[#dce9f1]">
       <button type="button" onClick={() => onArchivedChange(false)} aria-current={!archived ? "true" : undefined} className={`flex-1 border-b-2 py-2 text-xs font-bold ${!archived ? "border-j-accent text-j-accent" : "border-transparent text-j-ink-soft"}`}>Active</button>
       <button type="button" onClick={() => onArchivedChange(true)} aria-current={archived ? "true" : undefined} className={`flex-1 border-b-2 py-2 text-xs font-bold ${archived ? "border-j-accent text-j-accent" : "border-transparent text-j-ink-soft"}`}>Archived</button>
     </div>
-    <label className="relative block border-b border-[#dce9f1] p-3">
-      <span className="sr-only">Search Tutor chats</span>
-      <Search className="pointer-events-none absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input
-        value={query}
-        onChange={event => setQuery(event.target.value)}
-        placeholder="Search Tutor name or ID"
-        className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-      />
-    </label>
+    <div className="flex items-center gap-2 border-b border-[#dce9f1] p-3">
+      <label className="relative block min-w-0 flex-1">
+        <span className="sr-only">Search Tutor chats</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+        <input
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          placeholder="Search Tutor name or ID"
+          className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+        />
+      </label>
+      <label className="relative shrink-0">
+        <span className="sr-only">Sort conversations</span>
+        <select
+          value={sortMode}
+          onChange={event => setSortMode(event.target.value as ThreadSortMode)}
+          className="h-9 rounded-lg border border-j-border bg-white pl-2 pr-6 text-xs font-semibold text-j-ink-soft outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+        >
+          <option value="recent">Recent</option>
+          <option value="unread">Unread first</option>
+          <option value="mine">Mine first</option>
+        </select>
+      </label>
+    </div>
     <div className="min-h-0 flex-1 overflow-y-auto">
       {threadsQuery.isLoading ? <p className="p-4 text-center text-sm font-semibold text-j-ink-muted">Loading conversations…</p> : null}
       {!threadsQuery.isLoading && items.length === 0
