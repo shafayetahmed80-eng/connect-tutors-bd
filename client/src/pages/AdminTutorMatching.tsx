@@ -244,6 +244,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
           showApplicationStage
           showGuardianMarks
           showMatchNotes
+          animateEntrance
           appointmentActions={appointmentActions}
           guardianTuitionRequest={guardianRequest ? {
             request: guardianRequest,

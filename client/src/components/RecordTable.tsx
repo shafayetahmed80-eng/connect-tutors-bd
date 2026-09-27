@@ -1,5 +1,5 @@
 import { useIsMobile } from "@/hooks/useMobile";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /**
  * One set of rows in two shapes: the table everyone knows on a laptop, and one
@@ -46,13 +46,23 @@ export type RecordTableProps<Row> = {
    * a second border would box a box. Cards are unaffected: each carries its own.
    */
   plain?: boolean;
+  /** Rows rise in, one after another, the first time this list of rows appears. */
+  animateEntrance?: boolean;
 };
+
+/** Steps beyond this many rows would make the last ones wait too long to arrive. */
+const ROW_STAGGER_CAP = 8;
+
+function rowEntranceProps(animateEntrance: boolean | undefined, index: number): { className: string; style?: CSSProperties } {
+  if (!animateEntrance) return { className: "" };
+  return { className: "stagger-row-enter", style: { "--stagger": Math.min(index, ROW_STAGGER_CAP) } as CSSProperties };
+}
 
 function cardContent<Row>(column: RecordColumn<Row>, row: Row, index: number) {
   return (column.cardCell ?? column.cell)(row, index);
 }
 
-function RecordCards<Row>({ caption, columns, rows, rowKey, empty }: RecordTableProps<Row>) {
+function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance }: RecordTableProps<Row>) {
   if (rows.length === 0) {
     return <div className="rounded-xl border border-j-border bg-white p-8 text-center text-sm text-j-ink-soft shadow-sm">{empty}</div>;
   }
@@ -62,7 +72,9 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty }: RecordTable
   const actions = columns.filter(column => column.place === "action");
 
   return <ul aria-label={caption} className="space-y-2.5">
-    {rows.map((row, index) => <li key={rowKey(row, index)} className="rounded-xl border border-j-border bg-white p-3.5 shadow-sm">
+    {rows.map((row, index) => {
+      const entrance = rowEntranceProps(animateEntrance, index);
+      return <li key={rowKey(row, index)} className={`rounded-xl border border-j-border bg-white p-3.5 shadow-sm ${entrance.className}`} style={entrance.style}>
       {head.length > 0 ? <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
         {head.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}
       </div> : null}
@@ -78,12 +90,13 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty }: RecordTable
       {actions.length > 0 ? <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#eef4f9] pt-3 [&_a]:min-h-10 [&_a]:min-w-10 [&_button]:min-h-10 [&_button]:min-w-10">
         {actions.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}
       </div> : null}
-    </li>)}
+    </li>;
+    })}
   </ul>;
 }
 
 export default function RecordTable<Row>(props: RecordTableProps<Row>) {
-  const { caption, columns, rows, rowKey, empty, tableClassName = "", plain = false } = props;
+  const { caption, columns, rows, rowKey, empty, tableClassName = "", plain = false, animateEntrance } = props;
   const isMobile = useIsMobile();
 
   if (isMobile) return <RecordCards {...props} />;
@@ -99,9 +112,12 @@ export default function RecordTable<Row>(props: RecordTableProps<Row>) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, index) => <tr key={rowKey(row, index)} className="border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60">
-          {columns.map(column => <td key={column.key} className={`px-3 py-2.5 align-top ${column.cellClassName ?? ""}`}>{column.cell(row, index)}</td>)}
-        </tr>)}
+        {rows.map((row, index) => {
+          const entrance = rowEntranceProps(animateEntrance, index);
+          return <tr key={rowKey(row, index)} className={`border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60 ${entrance.className}`} style={entrance.style}>
+            {columns.map(column => <td key={column.key} className={`px-3 py-2.5 align-top ${column.cellClassName ?? ""}`}>{column.cell(row, index)}</td>)}
+          </tr>;
+        })}
         {rows.length === 0 ? <tr><td colSpan={columns.length} className="px-3 py-10 text-center text-sm text-j-ink-soft">{empty}</td></tr> : null}
       </tbody>
     </table>

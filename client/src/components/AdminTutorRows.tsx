@@ -141,12 +141,14 @@ export type AdminTutorRowSelection = {
   onToggle: (tutorId: string) => void;
 };
 
-export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions, selection }: {
+export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom, showApplicationStage = false, showGuardianMarks = false, showMatchNotes = false, appointmentActions, guardianTuitionRequest, applicantRowActions, selection, animateEntrance }: {
   tutors: AdminTutorRow[];
   caption: string;
   emptyLabel: string;
   /** Picking rows by hand, shown as a leading checkbox column. */
   selection?: AdminTutorRowSelection;
+  /** Rows rise in, one after another - Tutor Matching's ranked list only. */
+  animateEntrance?: boolean;
   /**
    * The number the first row carries, when the list is numbered. The
    * applied-Tutor list is: there the row number is application order, so it
@@ -244,5 +246,6 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     rowKey={tutor => tutor.id}
     empty={emptyLabel}
     tableClassName="min-w-[72rem]"
+    animateEntrance={animateEntrance}
   />;
 }
