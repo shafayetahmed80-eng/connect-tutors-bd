@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   search: "",
   threads: [] as any[],
   threadsLoading: false,
+  threadsQueryInput: null as unknown,
   threadInput: null as unknown,
   threadTutor: null as any,
   threadMessages: [] as any[],
@@ -15,10 +16,19 @@ const state = vi.hoisted(() => ({
   tutorLastReadAt: null as string | null,
   claimedByAdminId: null as number | null,
   claimedByAdminName: null as string | null,
+  archivedAt: null as string | null,
+  stats: { awaitingReplyCount: 0, avgResponseMinutes: null as number | null },
+  pushPublicKey: null as string | null,
+  quickReplies: [] as any[],
+  notes: [] as any[],
   send: vi.fn(),
   markRead: vi.fn(),
   claim: vi.fn(),
   release: vi.fn(),
+  reopen: vi.fn(),
+  addNote: vi.fn(),
+  createQuickReply: vi.fn(),
+  deleteQuickReply: vi.fn(),
   onSocketFrame: null as ((frame: { type: string; tutorId?: string }) => void) | null,
   sendFrame: vi.fn(),
   invalidateListThreads: vi.fn(),
@@ -33,6 +43,7 @@ vi.mock("@/hooks/useChatSocket", () => ({
     return state.sendFrame;
   },
 }));
+vi.mock("@/hooks/useVoiceRecorder", () => ({ useVoiceRecorder: () => ({ recording: false, start: vi.fn(), stop: vi.fn(), cancel: vi.fn(), supported: false }) }));
 vi.mock("wouter", () => ({ useSearch: () => state.search }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -41,20 +52,39 @@ vi.mock("@/lib/trpc", () => ({
         listTutorChatThreads: { invalidate: state.invalidateListThreads },
         tutorChatUnreadThreadCount: { invalidate: state.invalidateUnreadThreadCount },
         getTutorChatThread: { invalidate: state.invalidateThread },
+        getTutorChatStats: { invalidate: vi.fn() },
+        listChatQuickReplies: { invalidate: vi.fn() },
+        listTutorChatNotes: { invalidate: vi.fn() },
       },
     }),
     admin: {
-      listTutorChatThreads: { useQuery: () => ({ data: { items: state.threads, total: state.threads.length, page: 1, pageSize: 50, totalPages: 1 }, isLoading: state.threadsLoading }) },
+      listTutorChatThreads: {
+        useQuery: (input: unknown) => {
+          state.threadsQueryInput = input;
+          return { data: { items: state.threads, total: state.threads.length, page: 1, pageSize: 50, totalPages: 1 }, isLoading: state.threadsLoading };
+        },
+      },
       getTutorChatThread: {
         useQuery: (input: unknown) => {
           state.threadInput = input;
-          return { data: { tutor: state.threadTutor, messages: state.threadMessages, tutorLastReadAt: state.tutorLastReadAt, claimedByAdminId: state.claimedByAdminId, claimedByAdminName: state.claimedByAdminName }, isLoading: state.threadLoading };
+          return { data: { tutor: state.threadTutor, messages: state.threadMessages, tutorLastReadAt: state.tutorLastReadAt, claimedByAdminId: state.claimedByAdminId, claimedByAdminName: state.claimedByAdminName, archivedAt: state.archivedAt }, isLoading: state.threadLoading };
         },
       },
       sendTutorChatMessage: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markTutorChatRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
       claimTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.claim(input); options.onSuccess?.(); }, isPending: false }) },
       releaseTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.release(input); options.onSuccess?.(); }, isPending: false }) },
+      reopenTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.reopen(input); options.onSuccess?.(); }, isPending: false }) },
+      getTutorChatStats: { useQuery: () => ({ data: state.stats }) },
+      getChatPushPublicKey: { useQuery: () => ({ data: { publicKey: state.pushPublicKey } }) },
+      subscribeChatPush: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      unsubscribeChatPush: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      listChatQuickReplies: { useQuery: (_input: unknown, options?: { enabled?: boolean }) => ({ data: options?.enabled === false ? undefined : { items: state.quickReplies } }) },
+      createChatQuickReply: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.createQuickReply(input); options.onSuccess?.(); }, isPending: false }) },
+      updateChatQuickReply: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      deleteChatQuickReply: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.deleteQuickReply(input); options.onSuccess?.(); }, isPending: false }) },
+      listTutorChatNotes: { useQuery: () => ({ data: { notes: state.notes }, isLoading: false }) },
+      addTutorChatNote: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.addNote(input); options.onSuccess?.(); }, isPending: false }) },
     },
   },
 }));
@@ -70,6 +100,7 @@ afterEach(() => {
   state.search = "";
   state.threads = [];
   state.threadsLoading = false;
+  state.threadsQueryInput = null;
   state.threadInput = null;
   state.threadTutor = null;
   state.threadMessages = [];
@@ -77,10 +108,19 @@ afterEach(() => {
   state.tutorLastReadAt = null;
   state.claimedByAdminId = null;
   state.claimedByAdminName = null;
+  state.archivedAt = null;
+  state.stats = { awaitingReplyCount: 0, avgResponseMinutes: null };
+  state.pushPublicKey = null;
+  state.quickReplies = [];
+  state.notes = [];
   state.send.mockReset();
   state.markRead.mockReset();
   state.claim.mockReset();
   state.release.mockReset();
+  state.reopen.mockReset();
+  state.addNote.mockReset();
+  state.createQuickReply.mockReset();
+  state.deleteQuickReply.mockReset();
   state.onSocketFrame = null;
   state.sendFrame.mockReset();
   state.invalidateListThreads.mockReset();
@@ -131,6 +171,40 @@ describe("the Admin's Tutor chat list", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send reply" }));
 
     expect(state.send).toHaveBeenCalledWith({ tutorId: "tutor-1", body: "We are checking." });
+  });
+
+  it("sends on Enter, and allows a newline with Shift+Enter", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    const box = screen.getByPlaceholderText("Reply as Admin…");
+    fireEvent.change(box, { target: { value: "We are checking." } });
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    expect(state.send).not.toHaveBeenCalled();
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(state.send).toHaveBeenCalledWith({ tutorId: "tutor-1", body: "We are checking." });
+  });
+
+  it("shows the Tutor's photo, mobile number, institute and department in the thread header, not a character count", () => {
+    state.threads = [thread()];
+    state.threadTutor = {
+      tutorId: "tutor-1",
+      tutorName: "Amina Rahman",
+      tutorNumber: 91,
+      phone: "01711000000",
+      profilePhotoUrl: null,
+      instituteName: "Dhaka University",
+      departmentName: "Physics",
+    };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    expect(screen.getByText("01711000000")).toBeTruthy();
+    expect(screen.getByText("Dhaka University")).toBeTruthy();
+    expect(screen.getByText("Physics")).toBeTruthy();
+    expect(screen.queryByText(/remaining/)).toBeNull();
   });
 
   it("shows a Tutor message labelled Tutor, distinct from an Admin reply", () => {
@@ -240,5 +314,79 @@ describe("the Admin's Tutor chat list", () => {
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "payment" } });
     expect(screen.queryByText("About my profile")).toBeNull();
     expect(screen.getByText("About payment")).toBeTruthy();
+  });
+
+  it("shows how many threads are awaiting a reply, and the average response time", () => {
+    state.stats = { awaitingReplyCount: 3, avgResponseMinutes: 12 };
+    render(<AdminTutorChatsContent />);
+    expect(screen.getByText("3 awaiting reply")).toBeTruthy();
+    expect(screen.getByText("~12 min avg. reply (30d)")).toBeTruthy();
+  });
+
+  it("says there is not enough data yet when no reply pair qualifies", () => {
+    state.stats = { awaitingReplyCount: 0, avgResponseMinutes: null };
+    render(<AdminTutorChatsContent />);
+    expect(screen.getByText("Not enough replies yet for an average")).toBeTruthy();
+  });
+
+  it("switches between Active and Archived tabs", () => {
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    expect(state.threadsQueryInput).toMatchObject({ archived: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    expect(state.threadsQueryInput).toMatchObject({ archived: true });
+  });
+
+  it("shows a Reopen banner for an archived thread and reopens it", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.archivedAt = "2026-08-01T00:00:00.000Z";
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    expect(screen.getByText(/Archived after 30 days idle/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Reopen/ }));
+    expect(state.reopen).toHaveBeenCalledWith({ tutorId: "tutor-1" });
+  });
+
+  it("pre-fills a starter message for a Tutor with no messages yet", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+    expect(box.value).toContain("Connect Tutors Admin team");
+  });
+
+  it("opens the private notes and adds one, never visible to the Tutor's own thread", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.notes = [{ id: 1, body: "Called about a late payment.", createdAt: "2026-09-25T09:00:00.000Z", authorAdminName: "Rahim Admin" }];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Private notes" }));
+    expect(screen.getByText("Called about a late payment.")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText("Add a note for other Admins…"), { target: { value: "Following up tomorrow." } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(state.addNote).toHaveBeenCalledWith({ tutorId: "tutor-1", body: "Following up tomorrow." });
+  });
+
+  it("inserts a quick reply into the composer", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.quickReplies = [{ id: 1, label: "Payment help", body: "Please share your payment reference number." }];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick replies" }));
+    fireEvent.click(screen.getByText("Payment help"));
+
+    const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+    expect(box.value).toContain("Please share your payment reference number.");
   });
 });

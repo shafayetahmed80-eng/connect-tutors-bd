@@ -1738,6 +1738,8 @@ export const tutorAdminChatThreads = mysqlTable(
     adminLastReadAt: timestamp("adminLastReadAt"),
     /** Which Admin has this thread open right now - a coordination hint only; any Admin may still reply. */
     claimedByAdminId: int("claimedByAdminId"),
+    /** Set once the thread has sat idle for 30 days; cleared the moment either side writes again, or an Admin reopens it by hand. */
+    archivedAt: timestamp("archivedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -1770,6 +1772,66 @@ export const tutorAdminChatMessages = mysqlTable(
     foreignKey({ columns: [table.threadId], foreignColumns: [tutorAdminChatThreads.id], name: "tacm_thread_fk" }),
     foreignKey({ columns: [table.senderAdminId], foreignColumns: [users.id], name: "tacm_admin_fk" }),
     index("tutor_admin_chat_messages_thread_created_idx").on(table.threadId, table.createdAt),
+  ]
+);
+
+/**
+ * Admin-only remarks on a Tutor's chat - coordination between Admins, never
+ * shown in the Tutor's own thread. One shared list per Tutor, same "any
+ * Admin" shape as the thread itself; `authorAdminId` is kept for
+ * accountability only.
+ */
+export const tutorAdminChatNotes = mysqlTable(
+  "tutor_admin_chat_notes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorId: varchar("tutorId", { length: 32 }).notNull(),
+    authorAdminId: int("authorAdminId").notNull(),
+    body: varchar("body", { length: 2000 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.tutorId], foreignColumns: [tutors.id], name: "tacn_tutor_fk" }),
+    foreignKey({ columns: [table.authorAdminId], foreignColumns: [users.id], name: "tacn_author_fk" }),
+    index("tutor_admin_chat_notes_tutor_created_idx").on(table.tutorId, table.createdAt),
+  ]
+);
+
+/** A reusable canned reply any Admin can insert into the composer - shared across all Admins, like the thread itself. */
+export const chatQuickReplies = mysqlTable(
+  "chat_quick_replies",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    label: varchar("label", { length: 60 }).notNull(),
+    body: varchar("body", { length: 2000 }).notNull(),
+    createdByAdminId: int("createdByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.createdByAdminId], foreignColumns: [users.id], name: "cqr_created_by_fk" }),
+  ]
+);
+
+/**
+ * One row per browser the Admin allowed push notifications on. `endpoint` is
+ * the push service URL the browser vendor assigns; `p256dh`/`auth` are the
+ * keys `web-push` needs to encrypt a message to it. Removed the moment the
+ * browser reports the subscription gone.
+ */
+export const adminPushSubscriptions = mysqlTable(
+  "admin_push_subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    adminId: int("adminId").notNull(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: varchar("p256dh", { length: 255 }).notNull(),
+    auth: varchar("auth", { length: 255 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.adminId], foreignColumns: [users.id], name: "aps_admin_fk" }),
+    index("admin_push_subscriptions_admin_idx").on(table.adminId),
   ]
 );
 

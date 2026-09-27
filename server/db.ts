@@ -54,6 +54,9 @@ import {
   tutorReviews,
   tutorAdminChatThreads,
   tutorAdminChatMessages,
+  tutorAdminChatNotes,
+  chatQuickReplies,
+  adminPushSubscriptions,
   classLevels,
   confirmationLetters,
   curricula,
@@ -117,6 +120,7 @@ import {
   type TutorRequestPublicationState,
 } from "../drizzle/schema";
 import { notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
+import { getChatPushVapidPublicKey, sendChatPushNotification } from "./chat-push";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
@@ -6538,9 +6542,25 @@ export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: strin
   const now = new Date();
   const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
   await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "tutor", body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
-  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), tutorLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  // A Tutor writing back is exactly what should pull a thread out of Archived, without an Admin having to do it by hand.
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), tutorLastReadAt: now, archivedAt: null }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyAdminsOfChatMessage(input.tutorId);
+  void pushChatMessageToAdmins(database, input.tutorId, preview).catch(() => {});
   return { sent: true as const };
+}
+
+async function pushChatMessageToAdmins(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string, preview: string) {
+  const subscriptions = await database.select().from(adminPushSubscriptions);
+  if (subscriptions.length === 0) return;
+  const [tutorRow] = await database.select({ name: tutors.name }).from(tutors).where(eq(tutors.id, tutorId));
+  const title = tutorRow?.name ? `${tutorRow.name} sent a message` : "New Tutor message";
+  const body = preview || "Sent an attachment";
+  const results = await Promise.all(subscriptions.map(async subscription => ({
+    id: subscription.id,
+    result: await sendChatPushNotification(subscription, { title, body, tutorId }),
+  })));
+  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
+  if (goneIds.length > 0) await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
 }
 
 export async function markTutorAdminChatReadByTutor(input: { tutorId: string }) {
@@ -6550,17 +6570,31 @@ export async function markTutorAdminChatReadByTutor(input: { tutorId: string }) 
   return { updated: true as const };
 }
 
+const TUTOR_ADMIN_CHAT_ARCHIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Threads sit idle a long time before this matters, so a lazy sweep on read is enough - no cron needed. */
+async function sweepStaleTutorAdminChatThreads(database: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  const cutoff = new Date(Date.now() - TUTOR_ADMIN_CHAT_ARCHIVE_AFTER_MS);
+  await database
+    .update(tutorAdminChatThreads)
+    .set({ archivedAt: new Date() })
+    .where(and(isNull(tutorAdminChatThreads.archivedAt), lte(tutorAdminChatThreads.lastMessageAt, cutoff)));
+}
+
 /** The Admin's list of every Tutor who has written in, newest activity first, with the visible Tutor ID (`tutorNumber`) alongside the name. */
-export async function listTutorAdminChatThreadsForAdmin(input: { query: string; page: number; pageSize: number }) {
+export async function listTutorAdminChatThreadsForAdmin(input: { query: string; page: number; pageSize: number; archived?: boolean }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
+  await sweepStaleTutorAdminChatThreads(database);
   const trimmedQuery = input.query.trim();
   const queryAsNumber = trimmedQuery && /^\d+$/.test(trimmedQuery) ? Number(trimmedQuery) : null;
   const searchCondition = trimmedQuery
     ? or(like(tutors.name, `%${trimmedQuery}%`), queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined)
     : undefined;
+  const archivedCondition = input.archived ? isNotNull(tutorAdminChatThreads.archivedAt) : isNull(tutorAdminChatThreads.archivedAt);
+  const condition = searchCondition ? and(searchCondition, archivedCondition) : archivedCondition;
   const claimedByAdmin = alias(users, "chat_list_claimed_by_admin");
-  const baseQuery = database
+  const items = await database
     .select({
       tutorId: tutorAdminChatThreads.tutorId,
       tutorName: tutors.name,
@@ -6582,15 +6616,27 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
     .from(tutorAdminChatThreads)
     .innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
-    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId));
-  const items = await (searchCondition ? baseQuery.where(searchCondition) : baseQuery)
+    .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId))
+    .where(condition)
     .orderBy(desc(tutorAdminChatThreads.lastMessageAt))
     .limit(input.pageSize)
     .offset((input.page - 1) * input.pageSize);
-  const totalQuery = database.select({ value: count() }).from(tutorAdminChatThreads).innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId)).leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
-  const [totalRow] = await (searchCondition ? totalQuery.where(searchCondition) : totalQuery);
+  const [totalRow] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatThreads)
+    .innerJoin(tutors, eq(tutors.id, tutorAdminChatThreads.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(condition);
   const total = Number(totalRow?.value ?? 0);
   return { items: items.map(item => ({ ...item, unreadCount: Number(item.unreadCount) })), total, page: input.page, pageSize: input.pageSize, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
+}
+
+/** A manual override for a thread the 30-day sweep archived early, or that an Admin simply wants back in the active list. */
+export async function reopenTutorAdminChatThread(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(tutorAdminChatThreads).set({ archivedAt: null }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
+  return { reopened: true as const };
 }
 
 export async function getTutorAdminChatUnreadThreadCountForAdmin() {
@@ -6612,16 +6658,37 @@ export async function getTutorAdminChatUnreadThreadCountForAdmin() {
 export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const [tutor] = await database
-    .select({ tutorId: tutors.id, tutorName: tutors.name, tutorNumber: tutorRegistrations.tutorNumber })
+  const [row] = await database
+    .select({
+      tutorId: tutors.id,
+      tutorName: tutors.name,
+      tutorNumber: tutorRegistrations.tutorNumber,
+      phone: tutors.phone,
+      profilePhotoKey: tutors.profilePhotoKey,
+      institution: tutors.institution,
+      departmentName: facultyDepartments.name,
+    })
     .from(tutors)
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(tutorAcademicProfiles, eq(tutorAcademicProfiles.tutorId, tutors.id))
+    .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
     .where(eq(tutors.id, input.tutorId));
-  if (!tutor) throw new Error("Tutor was not found");
+  if (!row) throw new Error("Tutor was not found");
+  const educationRows = await database
+    .select({ qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
+    .from(tutorEducationRecords)
+    .where(eq(tutorEducationRecords.tutorId, input.tutorId));
+  const { profilePhotoKey, institution, departmentName, ...tutorFields } = row;
+  const tutor = {
+    ...tutorFields,
+    profilePhotoUrl: profilePhotoKey ? await storageGetSignedUrl(profilePhotoKey) : null,
+    instituteName: pickDirectoryInstitute(educationRows) ?? institution,
+    departmentName,
+  };
   const { messages, tutorLastReadAt, adminLastReadAt } = await getTutorAdminChatThread({ tutorId: input.tutorId });
   const claimedByAdmin = alias(users, "chat_claimed_by_admin");
   const [claim] = await database
-    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name })
+    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name, archivedAt: tutorAdminChatThreads.archivedAt })
     .from(tutorAdminChatThreads)
     .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId))
     .where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
@@ -6632,6 +6699,7 @@ export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }
     adminLastReadAt,
     claimedByAdminId: claim?.claimedByAdminId ?? null,
     claimedByAdminName: claim?.claimedByAdminName ?? null,
+    archivedAt: claim?.archivedAt ?? null,
   };
 }
 
@@ -6642,7 +6710,7 @@ export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: strin
   const now = new Date();
   const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
   await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
-  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), adminLastReadAt: now }).where(eq(tutorAdminChatThreads.id, threadId));
+  await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), adminLastReadAt: now, archivedAt: null }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyTutorOfChatMessage(input.tutorId);
   return { sent: true as const };
 }
@@ -6668,6 +6736,109 @@ export async function releaseTutorAdminChatThread(input: { tutorId: string }) {
   if (!database) throw new Error("Database is not available");
   await database.update(tutorAdminChatThreads).set({ claimedByAdminId: null }).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
   return { released: true as const };
+}
+
+/** Admin-only remarks on a Tutor's chat - never sent to the Tutor, shared across every Admin like the thread itself. */
+export async function listTutorAdminChatNotes(input: { tutorId: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const author = alias(users, "chat_note_author");
+  const rows = await database
+    .select({ id: tutorAdminChatNotes.id, body: tutorAdminChatNotes.body, createdAt: tutorAdminChatNotes.createdAt, authorAdminName: author.name })
+    .from(tutorAdminChatNotes)
+    .leftJoin(author, eq(author.id, tutorAdminChatNotes.authorAdminId))
+    .where(eq(tutorAdminChatNotes.tutorId, input.tutorId))
+    .orderBy(asc(tutorAdminChatNotes.createdAt));
+  return { notes: rows };
+}
+
+export async function addTutorAdminChatNote(input: { tutorId: string; authorAdminId: number; body: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.insert(tutorAdminChatNotes).values({ tutorId: input.tutorId, authorAdminId: input.authorAdminId, body: input.body });
+  return { added: true as const };
+}
+
+/** Canned replies any Admin can drop into the composer - one shared library, not per-Admin. */
+export async function listChatQuickReplies() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const rows = await database.select({ id: chatQuickReplies.id, label: chatQuickReplies.label, body: chatQuickReplies.body }).from(chatQuickReplies).orderBy(asc(chatQuickReplies.label));
+  return { items: rows };
+}
+
+export async function createChatQuickReply(input: { label: string; body: string; createdByAdminId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.insert(chatQuickReplies).values(input);
+  return { created: true as const };
+}
+
+export async function updateChatQuickReply(input: { id: number; label: string; body: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.update(chatQuickReplies).set({ label: input.label, body: input.body }).where(eq(chatQuickReplies.id, input.id));
+  return { updated: true as const };
+}
+
+export async function deleteChatQuickReply(input: { id: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(chatQuickReplies).where(eq(chatQuickReplies.id, input.id));
+  return { deleted: true as const };
+}
+
+/**
+ * How busy the inbox is: how many threads are waiting on an Admin reply right
+ * now (the same count the header badge uses), and how quickly Admins have
+ * actually been answering over the last 30 days. `avgResponseMinutes` is
+ * `null` rather than `0` when nothing qualifies, so the card can say "not
+ * enough data yet" instead of a misleading zero.
+ */
+export async function getTutorAdminChatStats() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const { unreadThreadCount } = await getTutorAdminChatUnreadThreadCountForAdmin();
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const rows = await database
+    .select({ threadId: tutorAdminChatMessages.threadId, senderRole: tutorAdminChatMessages.senderRole, createdAt: tutorAdminChatMessages.createdAt })
+    .from(tutorAdminChatMessages)
+    .where(gte(tutorAdminChatMessages.createdAt, since))
+    .orderBy(asc(tutorAdminChatMessages.threadId), asc(tutorAdminChatMessages.createdAt));
+  let totalMs = 0;
+  let pairs = 0;
+  let previous: { threadId: number; senderRole: string; createdAt: Date } | null = null;
+  for (const row of rows) {
+    if (previous && previous.threadId === row.threadId && previous.senderRole === "tutor" && row.senderRole === "admin") {
+      totalMs += row.createdAt.getTime() - previous.createdAt.getTime();
+      pairs += 1;
+    }
+    previous = row;
+  }
+  return { awaitingReplyCount: unreadThreadCount, avgResponseMinutes: pairs > 0 ? Math.round(totalMs / pairs / 60000) : null };
+}
+
+export async function getChatPushPublicKey() {
+  return { publicKey: getChatPushVapidPublicKey() };
+}
+
+export async function subscribeAdminToChatPush(input: { adminId: number; endpoint: string; p256dh: string; auth: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [existing] = await database.select({ id: adminPushSubscriptions.id }).from(adminPushSubscriptions).where(eq(adminPushSubscriptions.endpoint, input.endpoint));
+  if (existing) {
+    await database.update(adminPushSubscriptions).set({ adminId: input.adminId, p256dh: input.p256dh, auth: input.auth }).where(eq(adminPushSubscriptions.id, existing.id));
+  } else {
+    await database.insert(adminPushSubscriptions).values(input);
+  }
+  return { subscribed: true as const };
+}
+
+export async function unsubscribeAdminFromChatPush(input: { endpoint: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(adminPushSubscriptions).where(eq(adminPushSubscriptions.endpoint, input.endpoint));
+  return { unsubscribed: true as const };
 }
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };

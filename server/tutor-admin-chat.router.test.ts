@@ -16,6 +16,17 @@ const dbMocks = vi.hoisted(() => ({
   markTutorAdminChatReadByAdmin: vi.fn(),
   claimTutorAdminChatThread: vi.fn(),
   releaseTutorAdminChatThread: vi.fn(),
+  reopenTutorAdminChatThread: vi.fn(),
+  listTutorAdminChatNotes: vi.fn(),
+  addTutorAdminChatNote: vi.fn(),
+  listChatQuickReplies: vi.fn(),
+  createChatQuickReply: vi.fn(),
+  updateChatQuickReply: vi.fn(),
+  deleteChatQuickReply: vi.fn(),
+  getTutorAdminChatStats: vi.fn(),
+  getChatPushPublicKey: vi.fn(),
+  subscribeAdminToChatPush: vi.fn(),
+  unsubscribeAdminFromChatPush: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -101,7 +112,64 @@ describe("the Admin side of the Tutor chat", () => {
   it("lists every Tutor thread, newest activity first", async () => {
     dbMocks.listTutorAdminChatThreadsForAdmin.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
     await createCaller(admin).admin.listTutorChatThreads({});
-    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20 });
+    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: false });
+  });
+
+  it("lists the Archived tab on request", async () => {
+    dbMocks.listTutorAdminChatThreadsForAdmin.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    await createCaller(admin).admin.listTutorChatThreads({ archived: true });
+    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: true });
+  });
+
+  it("reopens an archived thread", async () => {
+    dbMocks.reopenTutorAdminChatThread.mockResolvedValue({ reopened: true });
+    await expect(createCaller(admin).admin.reopenTutorChatThread({ tutorId: "tutor-1503" })).resolves.toEqual({ reopened: true });
+    expect(dbMocks.reopenTutorAdminChatThread).toHaveBeenCalledWith({ tutorId: "tutor-1503" });
+  });
+
+  it("reports the inbox's stats", async () => {
+    dbMocks.getTutorAdminChatStats.mockResolvedValue({ awaitingReplyCount: 4, avgResponseMinutes: 9 });
+    await expect(createCaller(admin).admin.getTutorChatStats()).resolves.toEqual({ awaitingReplyCount: 4, avgResponseMinutes: 9 });
+  });
+
+  it("lists and adds a private note, signed by the Admin who wrote it", async () => {
+    dbMocks.listTutorAdminChatNotes.mockResolvedValue({ notes: [] });
+    await createCaller(admin).admin.listTutorChatNotes({ tutorId: "tutor-1503" });
+    expect(dbMocks.listTutorAdminChatNotes).toHaveBeenCalledWith({ tutorId: "tutor-1503" });
+
+    dbMocks.addTutorAdminChatNote.mockResolvedValue({ added: true });
+    await createCaller(admin).admin.addTutorChatNote({ tutorId: "tutor-1503", body: "Called about a late payment." });
+    expect(dbMocks.addTutorAdminChatNote).toHaveBeenCalledWith({ tutorId: "tutor-1503", authorAdminId: 42, body: "Called about a late payment." });
+  });
+
+  it("manages the shared quick-reply library, signed by the Admin who created it", async () => {
+    dbMocks.listChatQuickReplies.mockResolvedValue({ items: [] });
+    await createCaller(admin).admin.listChatQuickReplies();
+
+    dbMocks.createChatQuickReply.mockResolvedValue({ created: true });
+    await createCaller(admin).admin.createChatQuickReply({ label: "Payment help", body: "Please share your payment reference." });
+    expect(dbMocks.createChatQuickReply).toHaveBeenCalledWith({ label: "Payment help", body: "Please share your payment reference.", createdByAdminId: 42 });
+
+    dbMocks.updateChatQuickReply.mockResolvedValue({ updated: true });
+    await createCaller(admin).admin.updateChatQuickReply({ id: 5, label: "Payment help", body: "Please share your bKash reference." });
+    expect(dbMocks.updateChatQuickReply).toHaveBeenCalledWith({ id: 5, label: "Payment help", body: "Please share your bKash reference." });
+
+    dbMocks.deleteChatQuickReply.mockResolvedValue({ deleted: true });
+    await createCaller(admin).admin.deleteChatQuickReply({ id: 5 });
+    expect(dbMocks.deleteChatQuickReply).toHaveBeenCalledWith({ id: 5 });
+  });
+
+  it("shares the push public key, and lets an Admin subscribe or unsubscribe", async () => {
+    dbMocks.getChatPushPublicKey.mockResolvedValue({ publicKey: "test-key" });
+    await expect(createCaller(admin).admin.getChatPushPublicKey()).resolves.toEqual({ publicKey: "test-key" });
+
+    dbMocks.subscribeAdminToChatPush.mockResolvedValue({ subscribed: true });
+    await createCaller(admin).admin.subscribeChatPush({ endpoint: "https://fcm.example/1", p256dh: "key", auth: "secret" });
+    expect(dbMocks.subscribeAdminToChatPush).toHaveBeenCalledWith({ adminId: 42, endpoint: "https://fcm.example/1", p256dh: "key", auth: "secret" });
+
+    dbMocks.unsubscribeAdminFromChatPush.mockResolvedValue({ unsubscribed: true });
+    await createCaller(admin).admin.unsubscribeChatPush({ endpoint: "https://fcm.example/1" });
+    expect(dbMocks.unsubscribeAdminFromChatPush).toHaveBeenCalledWith({ endpoint: "https://fcm.example/1" });
   });
 
   it("reports how many Tutor threads have an unread reply waiting", async () => {
