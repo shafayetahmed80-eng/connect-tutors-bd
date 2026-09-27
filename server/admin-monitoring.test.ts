@@ -38,9 +38,9 @@ describe("Tutor moderation rules", () => {
   });
 
   it("tells a reinstated Tutor they are back, not newly approved", () => {
-    expect(describeTutorModerationNotice({ from: "suspended", to: "approved" }).title).toBe("Your profile has been reinstated");
-    expect(describeTutorModerationNotice({ from: "pending", to: "approved" }).title).toBe("Your profile has been approved");
-    expect(describeTutorModerationNotice({ from: "suspended", to: "changes_requested" }).title).toBe("Changes were requested on your profile");
-    expect(describeTutorModerationNotice({ from: "approved", to: "suspended" }).title).toBe("Your profile has been suspended");
+    expect(describeTutorModerationNotice({ from: "suspended", to: "approved" }).title).toBe("আপনার প্রোফাইল পুনর্বহাল হয়েছে");
+    expect(describeTutorModerationNotice({ from: "pending", to: "approved" }).title).toBe("আপনার প্রোফাইল অনুমোদিত হয়েছে");
+    expect(describeTutorModerationNotice({ from: "suspended", to: "changes_requested" }).title).toBe("আপনার প্রোফাইলে পরিবর্তন চাওয়া হয়েছে");
+    expect(describeTutorModerationNotice({ from: "approved", to: "suspended" }).title).toBe("আপনার প্রোফাইল সাসপেন্ড করা হয়েছে");
   });
 });

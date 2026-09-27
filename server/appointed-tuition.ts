@@ -23,8 +23,8 @@ export function canReopenConfirmedTuition(lifecycle: GuardianRequestLifecycle): 
 /** The Tutor, when the Guardian keeps them. */
 export function appointmentConfirmedTutorNotification(jobId: string) {
   return {
-    title: `Your appointment to ${jobId} is confirmed`,
-    message: "The Guardian is continuing with you after the demo class.",
+    title: `${jobId}-এ আপনার নিয়োগ নিশ্চিত হয়েছে`,
+    message: "ডেমো ক্লাসের পর গার্ডিয়ান আপনার সাথেই চালিয়ে যাচ্ছেন।",
   };
 }
 
@@ -34,15 +34,15 @@ export function appointmentConfirmedTutorNotification(jobId: string) {
  */
 export function tuitionCancelledTutorNotification(jobId: string) {
   return {
-    title: `Your tuition ${jobId} has been cancelled`,
-    message: "The tuition will not go ahead. Other tuitions on the Job Board are still open to you.",
+    title: `আপনার ${jobId} টিউশনটি বাতিল হয়েছে`,
+    message: "এই টিউশনটি আর হবে না। Job Board-এ অন্য টিউশন এখনো আপনার জন্য খোলা আছে।",
   };
 }
 
 /** The Tutor, when the tuition goes back to Live without them. No reason is recorded, so none is given. */
 export function appointmentEndedTutorNotification(jobId: string) {
   return {
-    title: `Your appointment to ${jobId} has ended`,
-    message: "The tuition is open to other Tutors again. Other tuitions on the Job Board are still open to you.",
+    title: `${jobId}-এ আপনার নিয়োগ শেষ হয়েছে`,
+    message: "এই টিউশনটি আবার অন্য টিউটরদের জন্য খুলে দেওয়া হয়েছে। Job Board-এ অন্য টিউশন এখনো আপনার জন্য খোলা আছে।",
   };
 }

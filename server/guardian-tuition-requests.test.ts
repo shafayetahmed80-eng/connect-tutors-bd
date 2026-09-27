@@ -113,10 +113,10 @@ describe("settling a waiting request when an Admin moves the tuition on", () => 
 describe("the Guardian's notice when an Admin declines", () => {
   it("says what was declined and on which tuition, without a reason", () => {
     expect(guardianTuitionRequestDeclinedNotice("cancel_tuition", "6812")).toEqual({
-      title: "Your request was not approved",
-      message: "The request to cancel the tuition on Job ID 6812 was declined.",
+      title: "আপনার অনুরোধ অনুমোদিত হয়নি",
+      message: "Job ID 6812-এ টিউশনটি বাতিল করার অনুরোধটি প্রত্যাখ্যাত হয়েছে।",
     });
-    expect(guardianTuitionRequestDeclinedNotice("confirm", "6812").message).toContain("confirm the Tutor");
-    expect(guardianTuitionRequestDeclinedNotice("remove_tutor", "6812").message).toContain("remove the Tutor");
+    expect(guardianTuitionRequestDeclinedNotice("confirm", "6812").message).toContain("টিউটরকে কনফার্ম করার");
+    expect(guardianTuitionRequestDeclinedNotice("remove_tutor", "6812").message).toContain("টিউটরকে সরিয়ে দেওয়ার");
   });
 });

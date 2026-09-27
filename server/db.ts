@@ -2893,7 +2893,7 @@ export async function createGuardianRequestFollowUp(input: {
     requestId: input.requestId,
     type: "follow_up",
     followUpKind: input.kind,
-    title: "Action needed for your tutor request",
+    title: "আপনার টিউটর রিকোয়েস্টের জন্য পদক্ষেপ প্রয়োজন",
     message: input.message,
     actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
     deduplicationKey: `follow-up:${input.requestId}:${input.kind}:${input.message.trim().toLowerCase()}`,
@@ -3182,21 +3182,21 @@ export async function issueConfirmationLetter(input: {
       guardianUserId: draft.guardianUserId,
       tutorRequestId: draft.tutorRequestId,
       type: "confirmation_letter_issued",
-      title: "Your confirmation letter is ready",
-      message: "Your approved tutor-match confirmation letter is available in your dashboard.",
+      title: "আপনার কনফার্মেশন লেটার প্রস্তুত",
+      message: "আপনার অনুমোদিত টিউটর-ম্যাচ কনফার্মেশন লেটার এখন আপনার ড্যাশবোর্ডে পাওয়া যাচ্ছে।",
       actionPath: "/guardian/dashboard/confirmation-letter",
       deduplicationKey: `confirmation-letter:${draft.id}:guardian-issued`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `confirmation-letter:${draft.id}:guardian-issued` } });
-    void sendPushToUser(draft.guardianUserId, { title: "Your confirmation letter is ready", body: "Your approved tutor-match confirmation letter is available in your dashboard.", url: "/guardian/dashboard/confirmation-letter" }).catch(() => {});
+    void sendPushToUser(draft.guardianUserId, { title: "আপনার কনফার্মেশন লেটার প্রস্তুত", body: "আপনার অনুমোদিত টিউটর-ম্যাচ কনফার্মেশন লেটার এখন আপনার ড্যাশবোর্ডে পাওয়া যাচ্ছে।", url: "/guardian/dashboard/confirmation-letter" }).catch(() => {});
     await tx.insert(tutorConfirmationLetterNotifications).values({
       tutorId: draft.tutorId,
       confirmationLetterId: draft.id,
-      title: "Your confirmation letter is ready",
-      message: "An approved tutor-match confirmation letter is available in your dashboard.",
+      title: "আপনার কনফার্মেশন লেটার প্রস্তুত",
+      message: "অনুমোদিত টিউটর-ম্যাচ কনফার্মেশন লেটার এখন আপনার ড্যাশবোর্ডে পাওয়া যাচ্ছে।",
       actionPath: "/tutor/dashboard/confirmation-letter",
       deduplicationKey: `confirmation-letter:${draft.id}:tutor-issued`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `confirmation-letter:${draft.id}:tutor-issued` } });
-    void sendPushToTutor(draft.tutorId, { title: "Your confirmation letter is ready", body: "An approved tutor-match confirmation letter is available in your dashboard.", url: "/tutor/dashboard/confirmation-letter" }).catch(() => {});
+    void sendPushToTutor(draft.tutorId, { title: "আপনার কনফার্মেশন লেটার প্রস্তুত", body: "অনুমোদিত টিউটর-ম্যাচ কনফার্মেশন লেটার এখন আপনার ড্যাশবোর্ডে পাওয়া যাচ্ছে।", url: "/tutor/dashboard/confirmation-letter" }).catch(() => {});
     await tx.update(tutorRequests).set({ lastActivityAt: issuedAt }).where(eq(tutorRequests.id, draft.tutorRequestId));
     return { issued: true as const, letterId: draft.id, status: "issued" as const };
   });
@@ -3510,8 +3510,8 @@ export async function confirmTutorRequestAppointment(input: {
     // A tuition can be confirmed again after its Tutor is removed, so a notice
     // left from the first time comes back unread rather than staying silent.
     const guardianNote = {
-      title: "Your tutor match is confirmed",
-      message: "An Admin has confirmed the selected Tutor for your request.",
+      title: "আপনার টিউটর ম্যাচ কনফার্ম হয়েছে",
+      message: "একজন অ্যাডমিন আপনার রিকোয়েস্টের জন্য নির্বাচিত টিউটরকে কনফার্ম করেছেন।",
       actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
     };
     await tx.insert(guardianRequestNotifications).values({
@@ -3573,12 +3573,12 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
       guardianUserId: request.guardianUserId,
       tutorRequestId: input.requestId,
       type: "lifecycle",
-      title: "Your tutor request has been cancelled",
-      message: "An Admin has closed this request.",
+      title: "আপনার টিউটর রিকোয়েস্ট বাতিল হয়েছে",
+      message: "একজন অ্যাডমিন এই রিকোয়েস্টটি বন্ধ করে দিয়েছেন।",
       actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
       deduplicationKey: `lifecycle:${input.requestId}:cancelled`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${input.requestId}:cancelled` } });
-    void sendPushToUser(request.guardianUserId, { title: "Your tutor request has been cancelled", body: "An Admin has closed this request.", url: `/guardian/dashboard/posted-jobs/${input.requestId}` }).catch(() => {});
+    void sendPushToUser(request.guardianUserId, { title: "আপনার টিউটর রিকোয়েস্ট বাতিল হয়েছে", body: "একজন অ্যাডমিন এই রিকোয়েস্টটি বন্ধ করে দিয়েছেন।", url: `/guardian/dashboard/posted-jobs/${input.requestId}` }).catch(() => {});
     return { updated: true as const, lifecycle: "cancelled" as const };
   });
 }
@@ -4652,12 +4652,12 @@ export async function moderateTutorRequestPublication(input: {
         guardianUserId: request.guardianUserId,
         tutorRequestId: request.id,
         type: "lifecycle",
-        title: "Your tutor request is now live",
-        message: "Your request is published and available for the matching process.",
+        title: "আপনার টিউটর রিকোয়েস্ট এখন লাইভ",
+        message: "আপনার রিকোয়েস্ট প্রকাশিত হয়েছে এবং ম্যাচিং প্রক্রিয়ার জন্য উন্মুক্ত।",
         actionPath: `/guardian/dashboard/posted-jobs/${request.id}`,
         deduplicationKey: `lifecycle:${request.id}:live`,
       }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${request.id}:live` } });
-      void sendPushToUser(request.guardianUserId, { title: "Your tutor request is now live", body: "Your request is published and available for the matching process.", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
+      void sendPushToUser(request.guardianUserId, { title: "আপনার টিউটর রিকোয়েস্ট এখন লাইভ", body: "আপনার রিকোয়েস্ট প্রকাশিত হয়েছে এবং ম্যাচিং প্রক্রিয়ার জন্য উন্মুক্ত।", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
     }
     return {
       updated: true as const,
@@ -4763,8 +4763,8 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
     });
     void sendPushToTutor(input.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
-      title: "A Tutor has been appointed to your request",
-      message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
+      title: "আপনার রিকোয়েস্টে একজন টিউটর নিয়োগ পেয়েছেন",
+      message: "নিয়োগপ্রাপ্ত টিউটরের মোবাইল নম্বর এখন আপনার Applied Tutors তালিকায় আছে।",
       actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
     };
     await tx.insert(guardianRequestNotifications).values({
@@ -7837,8 +7837,8 @@ export async function setGuardianApplicantShortlist(input: GuardianApplicantActi
       .set({ guardianShortlistedAt: input.shortlisted ? new Date() : null })
       .where(eq(tutorJobInterests.id, found.interest.id));
     if (input.shortlisted) {
-      const shortlistTitle = `A Guardian shortlisted you for ${found.interest.publicJobId}`;
-      const shortlistMessage = "Open your Status tab to see where this application now sits.";
+      const shortlistTitle = `${found.interest.publicJobId}-এর জন্য একজন গার্ডিয়ান আপনাকে শর্টলিস্ট করেছেন`;
+      const shortlistMessage = "আপনার আবেদন এখন কোথায় আছে দেখতে Status ট্যাবে যান।";
       await createTutorNotification(tx, {
         tutorId: found.interest.tutorId,
         type: "interest_decision",
@@ -8222,8 +8222,8 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
     });
     void sendPushToTutor(target.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
-      title: "A Tutor has been appointed to your request",
-      message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
+      title: "আপনার রিকোয়েস্টে একজন টিউটর নিয়োগ পেয়েছেন",
+      message: "নিয়োগপ্রাপ্ত টিউটরের মোবাইল নম্বর এখন আপনার Applied Tutors তালিকায় আছে।",
       actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
     };
     await tx.insert(guardianRequestNotifications).values({
@@ -8293,10 +8293,10 @@ export async function declineAppointmentRequestByAdmin(input: { adminUserId: num
       changedFields: JSON.stringify(["appointment_request_declined"]),
     });
     const guardianNote = {
-      title: "Your appointment request was not approved",
+      title: "আপনার নিয়োগের অনুরোধ অনুমোদিত হয়নি",
       message: registration?.tutorNumber != null
-        ? `The request to appoint Tutor ID ${registration.tutorNumber} was declined. You can ask to appoint another applicant.`
-        : "The appointment request was declined. You can ask to appoint another applicant.",
+        ? `Tutor ID ${registration.tutorNumber}-কে নিয়োগ দেওয়ার অনুরোধটি প্রত্যাখ্যাত হয়েছে। আপনি অন্য আবেদনকারীকে নিয়োগ দেওয়ার অনুরোধ করতে পারেন।`
+        : "নিয়োগের অনুরোধটি প্রত্যাখ্যাত হয়েছে। আপনি অন্য আবেদনকারীকে নিয়োগ দেওয়ার অনুরোধ করতে পারেন।",
       actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
     };
     await tx.insert(guardianRequestNotifications).values({
@@ -8418,8 +8418,8 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
     });
     void sendPushToTutor(removedTutorId, { title: tutorNote.title, body: tutorNote.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
-      title: "Your tuition is Live again",
-      message: "You can ask to appoint another applicant.",
+      title: "আপনার টিউশনটি আবার লাইভ হয়েছে",
+      message: "আপনি অন্য আবেদনকারীকে নিয়োগ দেওয়ার অনুরোধ করতে পারেন।",
       actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
     };
     await tx.insert(guardianRequestNotifications).values({

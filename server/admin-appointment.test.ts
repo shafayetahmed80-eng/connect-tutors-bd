@@ -39,15 +39,15 @@ describe("declining a request", () => {
 describe("what the appointed Tutor is told", () => {
   it("carries the Guardian's name and mobile number", () => {
     expect(appointedTutorNotification({ jobId: "6812", guardianName: "Sojib", guardianPhone: "+8801674936203" })).toEqual({
-      title: "You were appointed to 6812",
-      message: "Arrange the demo class with the Guardian: Sojib, +8801674936203.",
+      title: "6812-এ আপনাকে নিয়োগ দেওয়া হয়েছে",
+      message: "গার্ডিয়ানের সাথে ডেমো ক্লাসের সময় ঠিক করুন: Sojib, +8801674936203।",
     });
   });
 
   it("still reads when the Guardian left a name or number out", () => {
     expect(appointedTutorNotification({ jobId: "6812", guardianName: null, guardianPhone: "+8801674936203" }).message)
-      .toBe("Arrange the demo class with the Guardian: +8801674936203.");
+      .toBe("গার্ডিয়ানের সাথে ডেমো ক্লাসের সময় ঠিক করুন: +8801674936203।");
     expect(appointedTutorNotification({ jobId: "6812", guardianName: "  ", guardianPhone: null }).message)
-      .toBe("Arrange the demo class with the Guardian.");
+      .toBe("গার্ডিয়ানের সাথে ডেমো ক্লাসের সময় ঠিক করুন।");
   });
 });

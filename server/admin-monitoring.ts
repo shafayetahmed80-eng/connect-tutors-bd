@@ -47,11 +47,11 @@ export function validateTutorModerationAction(input: TutorModerationAction): Tut
 export function describeTutorModerationNotice(input: Pick<TutorModerationAction, "from" | "to">) {
   if (input.to === "approved") {
     return input.from === "suspended"
-      ? { title: "Your profile has been reinstated", message: "You can be matched with tuition requests again." }
-      : { title: "Your profile has been approved", message: "You can now be matched with tuition requests." };
+      ? { title: "আপনার প্রোফাইল পুনর্বহাল হয়েছে", message: "আপনি আবার টিউশন রিকোয়েস্টের সাথে ম্যাচ হতে পারবেন।" }
+      : { title: "আপনার প্রোফাইল অনুমোদিত হয়েছে", message: "আপনি এখন টিউশন রিকোয়েস্টের সাথে ম্যাচ হতে পারবেন।" };
   }
   if (input.to === "changes_requested") {
-    return { title: "Changes were requested on your profile", message: "Open your profile to read what to change, then submit it again." };
+    return { title: "আপনার প্রোফাইলে পরিবর্তন চাওয়া হয়েছে", message: "কী পরিবর্তন করতে হবে দেখতে আপনার প্রোফাইল খুলুন, তারপর আবার জমা দিন।" };
   }
-  return { title: "Your profile has been suspended", message: "Your coordinator can explain the next step." };
+  return { title: "আপনার প্রোফাইল সাসপেন্ড করা হয়েছে", message: "পরবর্তী ধাপ সম্পর্কে আপনার কোঅর্ডিনেটর জানাতে পারবেন।" };
 }

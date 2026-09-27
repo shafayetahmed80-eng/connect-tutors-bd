@@ -41,8 +41,8 @@ export function canDeclineAppointmentRequest(input: { lifecycle: GuardianRequest
 export function appointedTutorNotification(input: { jobId: string; guardianName: string | null; guardianPhone: string | null }) {
   const contact = [input.guardianName?.trim(), input.guardianPhone?.trim()].filter(Boolean).join(", ");
   return {
-    title: `You were appointed to ${input.jobId}`.slice(0, 120),
-    message: (contact ? `Arrange the demo class with the Guardian: ${contact}.` : "Arrange the demo class with the Guardian.").slice(0, 360),
+    title: `${input.jobId}-এ আপনাকে নিয়োগ দেওয়া হয়েছে`.slice(0, 120),
+    message: (contact ? `গার্ডিয়ানের সাথে ডেমো ক্লাসের সময় ঠিক করুন: ${contact}।` : "গার্ডিয়ানের সাথে ডেমো ক্লাসের সময় ঠিক করুন।").slice(0, 360),
   };
 }
 

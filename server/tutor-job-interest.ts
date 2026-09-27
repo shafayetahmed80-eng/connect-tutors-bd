@@ -63,7 +63,7 @@ export function canShortlistOnTuition(lifecycle: GuardianRequestLifecycle | null
 
 /** What the Tutor is told about an Admin's decision on their application. Coming off a shortlist says nothing. */
 export function adminInterestDecisionNotice(status: TutorJobInterestStatus, jobId: string) {
-  if (status === "shortlisted") return { title: `You were shortlisted for ${jobId}`, message: "Open your Status tab to see where this application now sits." };
-  if (status === "declined") return { title: `Your application for ${jobId} was not taken forward`, message: "Other tuitions on the Job Board are still open to you." };
+  if (status === "shortlisted") return { title: `${jobId}-এর জন্য আপনাকে শর্টলিস্ট করা হয়েছে`, message: "আপনার আবেদন এখন কোথায় আছে দেখতে Status ট্যাবে যান।" };
+  if (status === "declined") return { title: `${jobId}-এর জন্য আপনার আবেদন এগিয়ে নেওয়া হয়নি`, message: "Job Board-এ অন্য টিউশন এখনো আপনার জন্য খোলা আছে।" };
   return null;
 }
