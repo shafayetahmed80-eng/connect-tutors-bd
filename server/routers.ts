@@ -17,7 +17,7 @@ import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guar
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
 import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions, guardianVerificationStatusValues } from "@shared/guardian-profile";
-import { adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
+import { adminIdentityProcedure, adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
@@ -58,7 +58,19 @@ import { notifyTelegramAdmin } from "./telegram-notification";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema } from "./tutor-profile.validation";
-import { generateAdminInviteToken, hashAdminInviteToken } from "./admin-security";
+import {
+  createAdminTotp,
+  encryptAdminSecret,
+  decryptAdminSecret,
+  generateAdminInviteToken,
+  generateAdminTotpSecret,
+  generateRecoveryCodes,
+  hashAdminInviteToken,
+  hashRecoveryCode,
+  validateAdminTotpCode,
+} from "./admin-security";
+import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, setAdminTwoFactorProofCookie } from "./admin-two-factor";
+import QRCode from "qrcode";
 import {
   createTutorPortalExpiry,
   createTutorPortalToken,
@@ -484,12 +496,22 @@ const pairLoginRateLimiter = createAuthRateLimiter({ windowMs: AUTH_WINDOW_MS, m
 const ipRegistrationRateLimiter = createAuthRateLimiter({ windowMs: REGISTRATION_WINDOW_MS, maxAttempts: 15, blockMs: REGISTRATION_WINDOW_MS });
 const LOGIN_RATE_LIMITED_MESSAGE = "Too many sign-in attempts from this connection. Please wait a few minutes and try again.";
 const REGISTRATION_RATE_LIMITED_MESSAGE = "Too many attempts from this connection. Please wait a while and try again.";
+/** Keyed by Admin id, not IP: the threat this guards is a stolen session cookie trying every code, not one address spraying many accounts. */
+const twoFactorChallengeRateLimiter = createAuthRateLimiter({ windowMs: AUTH_WINDOW_MS, maxAttempts: 8, blockMs: AUTH_WINDOW_MS });
+const TWO_FACTOR_RATE_LIMITED_MESSAGE = "Too many attempts. Please wait a few minutes and try again.";
+const ADMIN_TOTP_ISSUER = "Connect Tutors Admin";
+
+/** What an authenticator app shows beside the issuer: the Admin's own User ID where one is set. */
+async function adminTwoFactorAccountLabel(user: { id: number; email: string | null }) {
+  return (await db.getAdminLoginId(user.id)) ?? user.email ?? `admin-${user.id}`;
+}
 
 /** Clears every public-auth limiter. Test hook only. */
 export function __resetAuthRateLimitsForTests() {
   ipLoginRateLimiter.clear();
   pairLoginRateLimiter.clear();
   ipRegistrationRateLimiter.clear();
+  twoFactorChallengeRateLimiter.clear();
 }
 
 function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string) {
@@ -972,6 +994,9 @@ export const appRouter = router({
       const isTutor = ctx.user?.role === "tutor";
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      // A deliberate Admin sign-out drops this browser's second-factor trust too,
+      // so a password learned after the fact cannot ride the old proof back in.
+      if (ctx.user?.role === "admin") clearAdminTwoFactorProofCookie(ctx.req, ctx.res);
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
     sendTutorPhoneCode: publicProcedure
@@ -1901,9 +1926,15 @@ export const appRouter = router({
       }),
   }),
   admin: router({
-    getWorkspaceAccess: adminProcedure.query(async ({ ctx }) => {
+    // Uses `adminIdentityProcedure`, not `adminProcedure`: a password-verified
+    // Admin who has not cleared their second factor yet must still be able to
+    // ask this what their two-factor state is, so the workspace can send them
+    // to set it up or to the challenge instead of showing "Admin access
+    // required" for an account that is, in fact, an Admin's.
+    getWorkspaceAccess: adminIdentityProcedure.query(async ({ ctx }) => {
       ctx.res.setHeader("Cache-Control", "private, no-store, max-age=0");
       ctx.res.setHeader("Vary", "Cookie");
+      const twoFactorSettings = await db.getAdminTwoFactorSettings(ctx.user.id);
       // The login id rides along with the Owner check rather than getting a
       // query of its own: the workspace header needs both, and this one is
       // already fetched on every Admin page.
@@ -1914,7 +1945,104 @@ export const appRouter = router({
         isOwner: ctx.user.openId === ENV.ownerOpenId,
         name: ctx.user.name ?? "Admin",
         loginId: await db.getAdminLoginId(ctx.user.id),
+        twoFactor: {
+          enrolled: Boolean(twoFactorSettings),
+          verified: Boolean(twoFactorSettings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id),
+        },
       };
+    }),
+    twoFactorStatus: adminIdentityProcedure.query(async ({ ctx }) => {
+      const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
+      return {
+        enrolled: Boolean(settings),
+        verified: Boolean(settings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id),
+      };
+    }),
+    startTwoFactorSetup: adminIdentityProcedure.mutation(async ({ ctx }) => {
+      if (await db.getAdminTwoFactorSettings(ctx.user.id)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Two-factor authentication is already set up for this account." });
+      }
+      const accountLabel = await adminTwoFactorAccountLabel(ctx.user);
+      const secret = generateAdminTotpSecret();
+      const otpauthUrl = createAdminTotp(secret, ADMIN_TOTP_ISSUER, accountLabel).toString();
+      const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 220 });
+      return { secret, otpauthUrl, qrDataUrl, accountLabel };
+    }),
+    confirmTwoFactorSetup: adminIdentityProcedure.input(z.object({
+      secret: z.string().trim().min(16).max(64),
+      code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from your authenticator app."),
+    })).mutation(async ({ ctx, input }) => {
+      if (await db.getAdminTwoFactorSettings(ctx.user.id)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Two-factor authentication is already set up for this account." });
+      }
+      const accountLabel = await adminTwoFactorAccountLabel(ctx.user);
+      let matches: boolean;
+      try {
+        matches = validateAdminTotpCode(input.secret, input.code, ADMIN_TOTP_ISSUER, accountLabel);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This setup could not be read. Start over from the QR code." });
+      }
+      if (!matches) throw new TRPCError({ code: "BAD_REQUEST", message: "That code did not match. Check the time on your device and try again." });
+
+      await db.saveAdminTwoFactorSettings(ctx.user.id, encryptAdminSecret(input.secret, ENV.cookieSecret));
+      const recoveryCodes = generateRecoveryCodes();
+      await db.replaceAdminRecoveryCodes(ctx.user.id, recoveryCodes.map(code => hashRecoveryCode(code, ENV.cookieSecret)));
+      setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_success", metadata: { ipAddress: getRequestIp(ctx), reason: "enrolled" } });
+      return { recoveryCodes };
+    }),
+    verifyTwoFactorChallenge: adminIdentityProcedure.input(z.object({
+      code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from your authenticator app."),
+    })).mutation(async ({ ctx, input }) => {
+      const key = `admin:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      }
+      const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
+      if (!settings) throw new TRPCError({ code: "BAD_REQUEST", message: "Two-factor authentication is not set up for this account." });
+      const accountLabel = await adminTwoFactorAccountLabel(ctx.user);
+      const secret = decryptAdminSecret(settings.secretCiphertext, ENV.cookieSecret);
+      if (!validateAdminTotpCode(secret, input.code, ADMIN_TOTP_ISSUER, accountLabel)) {
+        twoFactorChallengeRateLimiter.record(key);
+        await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_failure", metadata: { ipAddress: getRequestIp(ctx) } });
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "That code did not match. Check the time on your device and try again." });
+      }
+      twoFactorChallengeRateLimiter.reset(key);
+      await db.recordAdminTwoFactorVerification(ctx.user.id);
+      setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_success", metadata: { ipAddress: getRequestIp(ctx), reason: "challenge" } });
+      return { success: true } as const;
+    }),
+    verifyTwoFactorRecoveryCode: adminIdentityProcedure.input(z.object({
+      code: z.string().trim().min(4).max(40),
+    })).mutation(async ({ ctx, input }) => {
+      const key = `admin:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      }
+      if (!(await db.getAdminTwoFactorSettings(ctx.user.id))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Two-factor authentication is not set up for this account." });
+      }
+      const { consumed } = await db.consumeAdminRecoveryCode(ctx.user.id, hashRecoveryCode(input.code, ENV.cookieSecret));
+      if (!consumed) {
+        twoFactorChallengeRateLimiter.record(key);
+        await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_failure", metadata: { ipAddress: getRequestIp(ctx), reason: "recovery-code" } });
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "That recovery code is not valid or was already used." });
+      }
+      twoFactorChallengeRateLimiter.reset(key);
+      setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "recovery_code_used", metadata: { ipAddress: getRequestIp(ctx) } });
+      return { success: true } as const;
+    }),
+    // Owner-only: clears a locked-out Admin's enrollment so they can set it up
+    // again from a fresh QR code. Cannot reach into that Admin's own browser to
+    // clear their proof cookie, but an unenrolled account is never gated on one.
+    resetTwoFactorForAdmin: ownerAdminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const { reset } = await db.resetAdminTwoFactor(input.userId);
+      if (reset) {
+        await db.logAdminAuditEvent({ userId: input.userId, event: "two_factor_reset", metadata: { ipAddress: getRequestIp(ctx), reason: `by admin ${ctx.user.id}` } });
+      }
+      return { reset } as const;
     }),
     createPasswordResetLink: adminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const token = generateAdminInviteToken();

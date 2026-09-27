@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 const securityDbMocks = vi.hoisted(() => ({
   acceptAdminInvitation: vi.fn(),
   getActiveAdminInvitationByTokenHash: vi.fn(),
+  getAdminTwoFactorSettings: vi.fn(),
   getGuardianContactForAdmin: vi.fn(),
   getOwnerAdminActivityReport: vi.fn(),
   listAuthEventsPage: vi.fn(),
@@ -66,6 +67,17 @@ describe("Admin role and Owner authorization", () => {
 
     await expect(caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+  });
+
+  it("refuses an enrolled Admin who has not cleared this browser's two-factor challenge", async () => {
+    securityDbMocks.getAdminTwoFactorSettings.mockResolvedValue({ userId: adminUser.id, secretCiphertext: "x", enabledAt: new Date(), lastVerifiedAt: new Date() });
+    const { caller } = createCaller();
+
+    await expect(caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+    // The two-factor lifecycle itself stays reachable so the Admin can clear the challenge.
+    securityDbMocks.getAdminTwoFactorSettings.mockResolvedValue({ userId: adminUser.id, secretCiphertext: "x", enabledAt: new Date(), lastVerifiedAt: new Date() });
+    await expect(caller.admin.twoFactorStatus()).resolves.toMatchObject({ enrolled: true, verified: false });
   });
 
   it("lets an Admin moderate Tutor profiles without an interactive two-factor challenge", async () => {

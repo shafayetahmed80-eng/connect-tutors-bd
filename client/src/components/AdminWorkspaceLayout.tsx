@@ -1,9 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
 import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 
 export const ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS = {
   retry: false,
@@ -100,15 +102,19 @@ export function getAdminWorkspaceDisplayState({
   isAdmin,
   ownerAccessLoading,
   ownerAccessFromOtherSession,
+  twoFactorRequired,
 }: {
   authLoading: boolean;
   isAdmin: boolean;
   ownerAccessLoading: boolean;
   /** The Owner check on hand was answered for a different Admin than the one signed in. */
   ownerAccessFromOtherSession: boolean;
+  /** This session has not cleared its second factor - not enrolled, or enrolled but not verified. */
+  twoFactorRequired: boolean;
 }) {
   if (authLoading || (isAdmin && (ownerAccessLoading || ownerAccessFromOtherSession))) return "loading" as const;
   if (!isAdmin) return "denied" as const;
+  if (twoFactorRequired) return "twoFactorRequired" as const;
   return "ready" as const;
 }
 
@@ -139,6 +145,7 @@ function AdminSidebarIdentity({ photoUrl }: { photoUrl: string | null }) {
 
 export default function AdminWorkspaceLayout({ children, title = "Admin workspace" }: { children: ReactNode; title?: string }) {
   const { user, loading } = useAuth();
+  const [, navigate] = useLocation();
   const isAdmin = user?.role === "admin";
   const workspaceAccess = trpc.admin.getWorkspaceAccess.useQuery(undefined, {
     ...ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS,
@@ -150,11 +157,14 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   const guardianRequestCounts = trpc.admin.guardianRequestCounts.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data;
   const tutorChatUnreadThreads = trpc.admin.tutorChatUnreadThreadCount.useQuery(undefined, { enabled: Boolean(isAdmin), retry: false }).data?.unreadThreadCount ?? 0;
   const ownerAccessFromOtherSession = Boolean(workspaceAccess.data && user && workspaceAccess.data.userId !== user.id);
+  const twoFactor: AdminTwoFactorStatus | undefined = workspaceAccess.data?.twoFactor;
+  const twoFactorRequired = Boolean(twoFactor && !(twoFactor.enrolled && twoFactor.verified));
   const displayState = getAdminWorkspaceDisplayState({
     authLoading: loading,
     isAdmin: Boolean(isAdmin),
     ownerAccessLoading: workspaceAccess.isLoading,
     ownerAccessFromOtherSession,
+    twoFactorRequired,
   });
 
   // The two answers disagree when the session changed somewhere this page did
@@ -171,7 +181,14 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     void utils.auth.me.invalidate();
   }, [mismatch, isFetching, refetch, utils]);
 
-  if (displayState === "loading") {
+  // A signed-in Admin who has not cleared their second factor never sees this
+  // workspace - sent straight to set it up or to the challenge instead.
+  useEffect(() => {
+    if (displayState !== "twoFactorRequired" || !twoFactor) return;
+    navigate(getAdminTwoFactorDestination(twoFactor));
+  }, [displayState, twoFactor, navigate]);
+
+  if (displayState === "loading" || displayState === "twoFactorRequired") {
     return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Opening Admin workspace…</div>;
   }
   if (displayState === "denied") {

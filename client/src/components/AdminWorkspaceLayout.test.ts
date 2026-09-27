@@ -126,10 +126,16 @@ describe("Admin workspace navigation", () => {
   });
 
   it("waits for a fresh Owner check rather than briefly using another Admin session's navigation", () => {
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: true })).toBe("loading");
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: true, ownerAccessFromOtherSession: false })).toBe("loading");
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: false })).toBe("ready");
-    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFromOtherSession: false })).toBe("denied");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: true, twoFactorRequired: false })).toBe("loading");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: true, ownerAccessFromOtherSession: false, twoFactorRequired: false })).toBe("loading");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: false, twoFactorRequired: false })).toBe("ready");
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFromOtherSession: false, twoFactorRequired: false })).toBe("denied");
+  });
+
+  it("sends a signed-in Admin who has not cleared their second factor away from the workspace, never 'denied'", () => {
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: false, twoFactorRequired: true })).toBe("twoFactorRequired");
+    // Not an Admin at all still reads as denied, even if the field were somehow true.
+    expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFromOtherSession: false, twoFactorRequired: true })).toBe("denied");
   });
 
   it("does not retain an Owner result or a non-Owner result across an Admin session change", () => {

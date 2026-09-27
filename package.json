@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "format": "prettier --write .",
     "db:seed:tutor-profile-catalog": "tsx scripts/seed-tutor-profile-catalog.mjs",
-    "db:seed:locations": "tsx scripts/seed-locations.mjs"
+    "db:seed:locations": "tsx scripts/seed-locations.mjs",
+    "db:seed:owner-admin": "node scripts/seed-owner-admin.mjs"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",
