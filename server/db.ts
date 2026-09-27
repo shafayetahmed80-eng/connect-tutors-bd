@@ -57,6 +57,7 @@ import {
   tutorAdminChatNotes,
   chatQuickReplies,
   adminPushSubscriptions,
+  pushSubscriptions,
   classLevels,
   confirmationLetters,
   curricula,
@@ -120,7 +121,7 @@ import {
   type TutorRequestPublicationState,
 } from "../drizzle/schema";
 import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
-import { getChatPushVapidPublicKey, sendChatPushNotification } from "./chat-push";
+import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
@@ -645,6 +646,7 @@ export async function saveTutorReview(input: { guardianUserId: number; requestId
   if (!request || request.guardianUserId !== input.guardianUserId) return { saved: false as const, reason: "not_found" as const };
   if (!request.tutorId || !request.appointmentConfirmedAt) return { saved: false as const, reason: "not_confirmed" as const };
   const tutorId = request.tutorId;
+  const ratingNotice = tutorRatedNotification(jobIdForRequest(request.id), input.rating);
   await database.transaction(async tx => {
     await tx
       .insert(tutorReviews)
@@ -653,11 +655,12 @@ export async function saveTutorReview(input: { guardianUserId: number; requestId
     await createTutorNotification(tx, {
       tutorId,
       type: "rating",
-      ...tutorRatedNotification(jobIdForRequest(request.id), input.rating),
+      ...ratingNotice,
       actionPath: "/tutor/dashboard/profile",
       deduplicationKey: `rating:${request.id}:${tutorId}`,
     });
   });
+  void sendPushToTutor(tutorId, { title: ratingNotice.title, body: ratingNotice.message, url: "/tutor/dashboard/profile" }).catch(() => {});
   return { saved: true as const };
 }
 
@@ -1194,6 +1197,7 @@ async function setGuardianVerificationInTx(tx: any, input: {
       ...values,
       deduplicationKey: `verification:${input.guardianUserId}`,
     }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
+    void sendPushToUser(input.guardianUserId, { title: values.title, body: values.message, url: values.actionPath }).catch(() => {});
   }
   return { updated };
 }
@@ -2866,6 +2870,7 @@ async function createGuardianNotification(input: {
     actionPath: input.actionPath,
     deduplicationKey: input.deduplicationKey,
   }).onDuplicateKeyUpdate({ set: { deduplicationKey: input.deduplicationKey } });
+  void sendPushToUser(input.guardianUserId, { title: input.title, body: input.message, url: input.actionPath }).catch(() => {});
   return { created: Boolean(result[0].insertId), notificationId: Number(result[0].insertId ?? 0) };
 }
 
@@ -3182,6 +3187,7 @@ export async function issueConfirmationLetter(input: {
       actionPath: "/guardian/dashboard/confirmation-letter",
       deduplicationKey: `confirmation-letter:${draft.id}:guardian-issued`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `confirmation-letter:${draft.id}:guardian-issued` } });
+    void sendPushToUser(draft.guardianUserId, { title: "Your confirmation letter is ready", body: "Your approved tutor-match confirmation letter is available in your dashboard.", url: "/guardian/dashboard/confirmation-letter" }).catch(() => {});
     await tx.insert(tutorConfirmationLetterNotifications).values({
       tutorId: draft.tutorId,
       confirmationLetterId: draft.id,
@@ -3190,6 +3196,7 @@ export async function issueConfirmationLetter(input: {
       actionPath: "/tutor/dashboard/confirmation-letter",
       deduplicationKey: `confirmation-letter:${draft.id}:tutor-issued`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `confirmation-letter:${draft.id}:tutor-issued` } });
+    void sendPushToTutor(draft.tutorId, { title: "Your confirmation letter is ready", body: "An approved tutor-match confirmation letter is available in your dashboard.", url: "/tutor/dashboard/confirmation-letter" }).catch(() => {});
     await tx.update(tutorRequests).set({ lastActivityAt: issuedAt }).where(eq(tutorRequests.id, draft.tutorRequestId));
     return { issued: true as const, letterId: draft.id, status: "issued" as const };
   });
@@ -3498,6 +3505,7 @@ export async function confirmTutorRequestAppointment(input: {
         actionPath: "/tutor/dashboard/status",
         deduplicationKey: `appointment:${input.requestId}:confirmed:${request.tutorId}`,
       });
+      void sendPushToTutor(request.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
     }
     // A tuition can be confirmed again after its Tutor is removed, so a notice
     // left from the first time comes back unread rather than staying silent.
@@ -3513,6 +3521,7 @@ export async function confirmTutorRequestAppointment(input: {
       ...guardianNote,
       deduplicationKey: `lifecycle:${input.requestId}:confirmed`,
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: new Date() } });
+    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
     return { updated: true as const, lifecycle: "confirmed" as const };
   });
 }
@@ -3532,13 +3541,15 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
     if (request.tutorId) await refreshTutorVerification(tx, request.tutorId);
     // The Tutor holding it is told too. The reason is the Admin's own note, so it stays out of the message.
     if (request.tutorId) {
+      const cancelNote = tuitionCancelledTutorNotification(jobIdForRequest(input.requestId));
       await createTutorNotification(tx, {
         tutorId: request.tutorId,
         type: "appointment",
-        ...tuitionCancelledTutorNotification(jobIdForRequest(input.requestId)),
+        ...cancelNote,
         actionPath: "/tutor/dashboard/status",
         deduplicationKey: `appointment:${input.requestId}:cancelled:${request.tutorId}`,
       });
+      void sendPushToTutor(request.tutorId, { title: cancelNote.title, body: cancelNote.message, url: "/tutor/dashboard/status" }).catch(() => {});
     }
     const supersededLetters = await tx.update(confirmationLetters)
       .set({ status: "superseded", supersededAt: cancelledAt, revisionReason: "Request cancelled by Admin" })
@@ -3567,6 +3578,7 @@ export async function cancelTutorRequest(input: { requestId: number; adminUserId
       actionPath: `/guardian/dashboard/posted-jobs/${input.requestId}`,
       deduplicationKey: `lifecycle:${input.requestId}:cancelled`,
     }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${input.requestId}:cancelled` } });
+    void sendPushToUser(request.guardianUserId, { title: "Your tutor request has been cancelled", body: "An Admin has closed this request.", url: `/guardian/dashboard/posted-jobs/${input.requestId}` }).catch(() => {});
     return { updated: true as const, lifecycle: "cancelled" as const };
   });
 }
@@ -4378,6 +4390,7 @@ export async function reviewTutorJobInterestByAdmin(input: {
         actionPath: "/tutor/dashboard/status",
         deduplicationKey: `interest:${interest.id}:${input.status}`,
       });
+      void sendPushToTutor(interest.tutorId, { title: notice.title, body: notice.message, url: "/tutor/dashboard/status" }).catch(() => {});
     }
     return { interestId: interest.id, status: input.status };
   });
@@ -4644,6 +4657,7 @@ export async function moderateTutorRequestPublication(input: {
         actionPath: `/guardian/dashboard/posted-jobs/${request.id}`,
         deduplicationKey: `lifecycle:${request.id}:live`,
       }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${request.id}:live` } });
+      void sendPushToUser(request.guardianUserId, { title: "Your tutor request is now live", body: "Your request is published and available for the matching process.", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
     }
     return {
       updated: true as const,
@@ -4747,6 +4761,7 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
       actionPath: "/tutor/dashboard/status",
       deduplicationKey: `appointment:${request.id}:assigned:${input.tutorId}`,
     });
+    void sendPushToTutor(input.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
       title: "A Tutor has been appointed to your request",
       message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
@@ -4759,6 +4774,7 @@ export async function assignTutorToRequest(input: { requestId: number; tutorId: 
       ...guardianNote,
       deduplicationKey: `lifecycle:${request.id}:appointed`,
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
     return { assigned: true as const, contactConsent: "approved" as const };
   });
 }
@@ -5468,10 +5484,12 @@ export async function decideAccountChangeRequest(input: {
       await tx.insert(guardianRequestNotifications).values({
         guardianUserId: userId, tutorRequestId: null, type: "account_change", ...values, deduplicationKey: "account-change:" + request.id,
       }).onDuplicateKeyUpdate({ set: { ...values, readAt: null, createdAt: now } });
+      void sendPushToUser(userId, { title: notice.title, body: notice.message, url: "/guardian/dashboard/settings" }).catch(() => {});
     }
     if (notice && request.role === "tutor") {
       const [tutor] = await tx.select({ id: tutors.id }).from(tutors).where(eq(tutors.userId, userId)).limit(1);
       if (tutor) await createTutorNotification(tx, { tutorId: tutor.id, type: "account_change", ...notice, actionPath: "/tutor/dashboard/settings", deduplicationKey: "account-change:" + request.id });
+      void sendPushToUser(userId, { title: notice.title, body: notice.message, url: "/tutor/dashboard/settings" }).catch(() => {});
     }
     return { outcome: "decided" as const, status };
   });
@@ -6060,13 +6078,15 @@ export async function moderateTutorProfile(input: {
     // The Tutor is told their profile moved. The reason itself is only handed
     // back for "changes requested" - see the owner DTO - so the message points
     // at the profile rather than repeating it here.
+    const moderationNote = describeTutorModerationNotice({ from: tutor.profileStatus, to: input.nextStatus });
     await createTutorNotification(tx, {
       tutorId: tutor.id,
       type: "profile_moderation",
-      ...describeTutorModerationNotice({ from: tutor.profileStatus, to: input.nextStatus }),
+      ...moderationNote,
       actionPath: "/tutor/dashboard/profile",
       deduplicationKey: `moderation:${tutor.id}:${Number(result[0].insertId)}`,
     });
+    void sendPushToTutor(tutor.id, { title: moderationNote.title, body: moderationNote.message, url: "/tutor/dashboard/profile" }).catch(() => {});
     return { updated: true as const, eventId: Number(result[0].insertId), previousStatus: tutor.profileStatus, nextStatus: input.nextStatus };
   });
 }
@@ -6579,7 +6599,7 @@ async function pushChatMessageToAdmins(database: NonNullable<Awaited<ReturnType<
   const body = preview || "Sent an attachment";
   const results = await Promise.all(subscriptions.map(async subscription => ({
     id: subscription.id,
-    result: await sendChatPushNotification(subscription, { title, body, tutorId }),
+    result: await sendWebPushNotification(subscription, { title, body, url: `/admin/tutor-chats?tutorId=${tutorId}` }),
   })));
   const goneIds = results.filter(row => row.result.gone).map(row => row.id);
   if (goneIds.length > 0) await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
@@ -6842,7 +6862,7 @@ export async function getTutorAdminChatStats() {
 }
 
 export async function getChatPushPublicKey() {
-  return { publicKey: getChatPushVapidPublicKey() };
+  return { publicKey: getWebPushPublicKey() };
 }
 
 export async function subscribeAdminToChatPush(input: { adminId: number; endpoint: string; p256dh: string; auth: string }) {
@@ -6862,6 +6882,60 @@ export async function unsubscribeAdminFromChatPush(input: { endpoint: string }) 
   if (!database) throw new Error("Database is not available");
   await database.delete(adminPushSubscriptions).where(eq(adminPushSubscriptions.endpoint, input.endpoint));
   return { unsubscribed: true as const };
+}
+
+export async function getPushNotificationPublicKey() {
+  return { publicKey: getWebPushPublicKey() };
+}
+
+export async function subscribeToPushNotifications(input: { userId: number; endpoint: string; p256dh: string; auth: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [existing] = await database.select({ id: pushSubscriptions.id }).from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, input.endpoint));
+  if (existing) {
+    await database.update(pushSubscriptions).set({ userId: input.userId, p256dh: input.p256dh, auth: input.auth }).where(eq(pushSubscriptions.id, existing.id));
+  } else {
+    await database.insert(pushSubscriptions).values(input);
+  }
+  return { subscribed: true as const };
+}
+
+/** Only removes a row the signed-in user actually owns - never a client-supplied id for someone else's. */
+export async function unsubscribeFromPushNotifications(input: { userId: number; endpoint: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, input.endpoint), eq(pushSubscriptions.userId, input.userId)));
+  return { unsubscribed: true as const };
+}
+
+/**
+ * Pushes to every browser a user (Tutor or Guardian) allowed notifications
+ * on. `userId` is nullable because a Tutor row can predate a real account
+ * (seed/demo data) - silently does nothing rather than push to no one.
+ * Fire-and-forget, same as `pushChatMessageToAdmins`: never awaited by a
+ * caller still inside its own `database.transaction(...)`, and a failed
+ * send never surfaces as an error to whoever created the notification.
+ */
+export async function sendPushToUser(userId: number | null, payload: { title: string; body: string; url: string }) {
+  if (userId === null) return;
+  const database = await getDb();
+  if (!database) return;
+  const subscriptions = await database.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  if (subscriptions.length === 0) return;
+  const results = await Promise.all(subscriptions.map(async subscription => ({
+    id: subscription.id,
+    result: await sendWebPushNotification(subscription, payload),
+  })));
+  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
+  if (goneIds.length > 0) await database.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, goneIds));
+}
+
+/** `tutor_notifications` is keyed by `tutorId`, not `users.id` - this resolves that join once so every call site can just name the Tutor. */
+export async function sendPushToTutor(tutorId: string, payload: { title: string; body: string; url: string }) {
+  const database = await getDb();
+  if (!database) return;
+  const [tutorRow] = await database.select({ userId: tutors.userId }).from(tutors).where(eq(tutors.id, tutorId));
+  await sendPushToUser(tutorRow?.userId ?? null, payload);
 }
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };
@@ -7763,14 +7837,17 @@ export async function setGuardianApplicantShortlist(input: GuardianApplicantActi
       .set({ guardianShortlistedAt: input.shortlisted ? new Date() : null })
       .where(eq(tutorJobInterests.id, found.interest.id));
     if (input.shortlisted) {
+      const shortlistTitle = `A Guardian shortlisted you for ${found.interest.publicJobId}`;
+      const shortlistMessage = "Open your Status tab to see where this application now sits.";
       await createTutorNotification(tx, {
         tutorId: found.interest.tutorId,
         type: "interest_decision",
-        title: `A Guardian shortlisted you for ${found.interest.publicJobId}`,
-        message: "Open your Status tab to see where this application now sits.",
+        title: shortlistTitle,
+        message: shortlistMessage,
         actionPath: "/tutor/dashboard/status",
         deduplicationKey: `interest:${found.interest.id}:guardian_shortlisted`,
       });
+      void sendPushToTutor(found.interest.tutorId, { title: shortlistTitle, body: shortlistMessage, url: "/tutor/dashboard/status" }).catch(() => {});
     }
     return { shortlisted: input.shortlisted };
   });
@@ -8013,6 +8090,7 @@ export async function declineGuardianTuitionRequestByAdmin(input: { adminUserId:
       ...notice,
       deduplicationKey: `tuition-request:${row.id}:declined`,
     }).onDuplicateKeyUpdate({ set: { ...notice, readAt: null, createdAt: now } });
+    void sendPushToUser(row.guardianUserId, { title: notice.title, body: notice.message, url: notice.actionPath }).catch(() => {});
     return { outcome: "declined" as const };
   });
 }
@@ -8142,6 +8220,7 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
       actionPath: "/tutor/dashboard/status",
       deduplicationKey: `interest:${target.interestId}:matched`,
     });
+    void sendPushToTutor(target.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
       title: "A Tutor has been appointed to your request",
       message: "The appointed Tutor's mobile number is now on your Applied Tutors list.",
@@ -8154,6 +8233,7 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
       ...guardianNote,
       deduplicationKey: `lifecycle:${request.id}:appointed`,
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
 
     return { outcome: "appointed" as const, requestId: request.id, tutorId: target.tutorId };
   });
@@ -8226,6 +8306,7 @@ export async function declineAppointmentRequestByAdmin(input: { adminUserId: num
       ...guardianNote,
       deduplicationKey: `appointment-request:${target.interestId}:declined`,
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
 
     return { outcome: "declined" as const };
   });
@@ -8335,6 +8416,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
       actionPath: "/tutor/dashboard/status",
       deduplicationKey: `appointment:${request.id}:ended:${removedTutorId}`,
     });
+    void sendPushToTutor(removedTutorId, { title: tutorNote.title, body: tutorNote.message, url: "/tutor/dashboard/status" }).catch(() => {});
     const guardianNote = {
       title: "Your tuition is Live again",
       message: "You can ask to appoint another applicant.",
@@ -8347,6 +8429,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
       ...guardianNote,
       deduplicationKey: `lifecycle:${request.id}:reopened`,
     }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
+    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
 
     return { outcome: "reopened" as const, removedTutorId };
   });
@@ -8742,13 +8825,15 @@ export async function recordTuitionPayment(input: {
       decidedByUserId: input.adminUserId,
       decidedAt: new Date(),
     });
+    const recordedNote = paymentRecordedTutorNotification(jobIdForRequest(request.id), input.amount);
     await createTutorNotification(tx, {
       tutorId: request.tutorId,
       type: "payment",
-      ...paymentRecordedTutorNotification(jobIdForRequest(request.id), input.amount),
+      ...recordedNote,
       actionPath: "/tutor/dashboard/payment",
       deduplicationKey: `payment:${inserted.insertId}:recorded`,
     });
+    void sendPushToTutor(request.tutorId, { title: recordedNote.title, body: recordedNote.message, url: "/tutor/dashboard/payment" }).catch(() => {});
     const charge = (await syncChargeStatus(tx, request, input.adminUserId))!;
     return { outcome: "recorded" as const, charge };
   });
@@ -8783,13 +8868,15 @@ export async function decideTuitionPayment(input: { adminUserId: number; payment
       .set({ status: input.decision, decidedByUserId: input.adminUserId, decidedAt: new Date() })
       .where(eq(tuitionPayments.id, payment.id));
     if (request && input.decision === "verified") await syncChargeStatus(tx, request, input.adminUserId);
+    const decidedNote = (input.decision === "verified" ? paymentVerifiedTutorNotification : paymentRejectedTutorNotification)(jobIdForRequest(payment.tutorRequestId), payment.amount);
     await createTutorNotification(tx, {
       tutorId: payment.tutorId,
       type: "payment",
-      ...(input.decision === "verified" ? paymentVerifiedTutorNotification : paymentRejectedTutorNotification)(jobIdForRequest(payment.tutorRequestId), payment.amount),
+      ...decidedNote,
       actionPath: "/tutor/dashboard/payment",
       deduplicationKey: `payment:${payment.id}:${input.decision}`,
     });
+    void sendPushToTutor(payment.tutorId, { title: decidedNote.title, body: decidedNote.message, url: "/tutor/dashboard/payment" }).catch(() => {});
     return { outcome: "decided" as const, status: input.decision };
   });
 }
@@ -9063,13 +9150,15 @@ export async function saveTuitionSettlement(input: {
     await tx.insert(tuitionSettlements).values(values).onDuplicateKeyUpdate({ set: { ...values, tutorRequestId: request.id } });
 
     await syncChargeStatus(tx, { ...asRow, settledOwed: retained }, input.adminUserId);
+    const settledNote = tuitionSettledTutorNotification(jobIdForRequest(request.id), { refund, due, disposition });
     await createTutorNotification(tx, {
       tutorId: request.tutorId,
       type: "payment",
-      ...tuitionSettledTutorNotification(jobIdForRequest(request.id), { refund, due, disposition }),
+      ...settledNote,
       actionPath: "/tutor/dashboard/payment",
       deduplicationKey: `settlement:${request.id}:${retained}:${disposition}`,
     });
+    void sendPushToTutor(request.tutorId, { title: settledNote.title, body: settledNote.message, url: "/tutor/dashboard/payment" }).catch(() => {});
     return { outcome: "saved" as const, refund, due };
   });
 }
