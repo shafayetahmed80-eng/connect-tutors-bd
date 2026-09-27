@@ -1766,6 +1766,9 @@ export const tutorAdminChatMessages = mysqlTable(
     /** Storage key of an attached file/image, if any. */
     attachmentKey: varchar("attachmentKey", { length: 512 }),
     attachmentContentType: varchar("attachmentContentType", { length: 100 }),
+    /** A quick 👍 from that side - set the moment they toggle it, cleared (not deleted) if they un-react. */
+    tutorReactedAt: timestamp("tutorReactedAt"),
+    adminReactedAt: timestamp("adminReactedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [

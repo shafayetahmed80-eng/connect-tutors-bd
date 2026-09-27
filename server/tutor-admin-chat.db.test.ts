@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { adminPushSubscriptions, chatQuickReplies, tutorAdminChatMessages, tutorAdminChatNotes, tutorAdminChatThreads, tutorJobInterests, tutorJobs, tutorRequests, users } from "../drizzle/schema";
 
-const chatWsMocks = vi.hoisted(() => ({ notifyAdminsOfChatMessage: vi.fn(), notifyTutorOfChatMessage: vi.fn() }));
+const chatWsMocks = vi.hoisted(() => ({ notifyAdminsOfChatMessage: vi.fn(), notifyTutorOfChatMessage: vi.fn(), notifyAdminsOfNewNote: vi.fn() }));
 vi.mock("./chat-ws", () => chatWsMocks);
 
 import {
@@ -22,6 +22,7 @@ import {
   sendTutorAdminChatMessageFromAdmin,
   sendTutorAdminChatMessageFromTutor,
   subscribeAdminToChatPush,
+  toggleTutorAdminChatMessageReaction,
   unsubscribeAdminFromChatPush,
   updateChatQuickReply,
 } from "./db";
@@ -195,14 +196,53 @@ describe("the Tutor-Admin chat, against the real database", () => {
     expect(row?.archivedAt).toBeNull();
   });
 
-  it("keeps private notes only Admins ever read", async () => {
+  it("keeps private notes only Admins ever read, and tells every other Admin one landed", async () => {
     await addTutorAdminChatNote({ tutorId, authorAdminId: adminUserId, body: "Called about a late payment." });
     const { notes } = await listTutorAdminChatNotes({ tutorId });
     expect(notes.map(note => note.body)).toContain("Called about a late payment.");
     expect(notes[0]?.authorAdminName).toBe("Test Admin");
+    expect(chatWsMocks.notifyAdminsOfNewNote).toHaveBeenCalledWith(tutorId);
 
     const database = await getDb();
     if (database) await database.delete(tutorAdminChatNotes).where(eq(tutorAdminChatNotes.tutorId, tutorId));
+  });
+
+  it("toggles a 👍 reaction independently for each side, on any message", async () => {
+    await sendTutorAdminChatMessageFromTutor({ tutorId, body: "Thanks!" });
+    const thread = await getTutorAdminChatThread({ tutorId });
+    const messageId = thread.messages[0]!.id;
+
+    const tutorReact = await toggleTutorAdminChatMessageReaction({ tutorId, messageId, role: "tutor" });
+    expect(tutorReact).toEqual({ reacted: true });
+    let after = await getTutorAdminChatThread({ tutorId });
+    expect(after.messages[0]).toMatchObject({ tutorReacted: true, adminReacted: false });
+
+    const adminReact = await toggleTutorAdminChatMessageReaction({ tutorId, messageId, role: "admin" });
+    expect(adminReact).toEqual({ reacted: true });
+    after = await getTutorAdminChatThread({ tutorId });
+    expect(after.messages[0]).toMatchObject({ tutorReacted: true, adminReacted: true });
+
+    const tutorUnreact = await toggleTutorAdminChatMessageReaction({ tutorId, messageId, role: "tutor" });
+    expect(tutorUnreact).toEqual({ reacted: false });
+    after = await getTutorAdminChatThread({ tutorId });
+    expect(after.messages[0]).toMatchObject({ tutorReacted: false, adminReacted: true });
+  });
+
+  it("refuses to react to a message outside the given Tutor's own thread", async () => {
+    await sendTutorAdminChatMessageFromAdmin({ tutorId: ineligibleTutorId, body: "Not this thread", adminUserId });
+    const otherThread = await getTutorAdminChatThread({ tutorId: ineligibleTutorId });
+    const otherMessageId = otherThread.messages[0]!.id;
+
+    await expect(toggleTutorAdminChatMessageReaction({ tutorId, messageId: otherMessageId, role: "admin" })).rejects.toThrow();
+
+    const database = await getDb();
+    if (database) {
+      const [otherThreadRow] = await database.select({ id: tutorAdminChatThreads.id }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, ineligibleTutorId));
+      if (otherThreadRow) {
+        await database.delete(tutorAdminChatMessages).where(eq(tutorAdminChatMessages.threadId, otherThreadRow.id));
+        await database.delete(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.id, otherThreadRow.id));
+      }
+    }
   });
 
   it("manages a shared library of quick replies", async () => {

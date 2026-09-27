@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-type ChatSocketFrame = { type: "message" | "typing"; tutorId?: string };
+type ChatSocketFrame = { type: "message" | "typing" | "note"; tutorId?: string };
 
 /** `wss://` on an https page, `ws://` otherwise - same origin the app itself is served from. */
 function buildChatSocketUrl(query: string) {

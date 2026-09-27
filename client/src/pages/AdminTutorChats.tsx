@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { trpc } from "@/lib/trpc";
-import { ArchiveRestore, ArrowLeft, BellRing, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BellRing, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ const CHAT_POLL_MS = 20000;
 const TYPING_EXPIRES_MS = 3000;
 const STARTER_MESSAGE = "Hi, this is the Connect Tutors Admin team. Let us know if you have any questions about your profile, tuitions, or account.";
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; createdAt: string | Date };
+type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
 type ChatThreadRow = { tutorId: string; tutorName: string; tutorNumber: number | null; lastMessageAt: string | Date | null; lastMessagePreview: string | null; unreadCount: number; claimedByAdminId: number | null; claimedByAdminName: string | null };
 
 function formatChatTime(value: string | Date) {
@@ -253,7 +253,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange }: {
 }
 
 /** One Tutor's conversation. Any Admin may reply, so a reply never signs itself with the Admin's name. */
-function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping }: { tutorId: string; onBack?: () => void; tutorIsTyping: boolean; onTyping: () => void }) {
+function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, onNotesViewed }: { tutorId: string; onBack?: () => void; tutorIsTyping: boolean; onTyping: () => void; hasNoteAlert: boolean; onNotesViewed: () => void }) {
   const utils = trpc.useUtils();
   const threadQuery = trpc.admin.getTutorChatThread.useQuery({ tutorId }, { refetchInterval: CHAT_POLL_MS });
   const [body, setBody] = useState("");
@@ -281,6 +281,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping }: { tutorId: st
   const reopen = trpc.admin.reopenTutorChatThread.useMutation({
     onSuccess: async () => { await Promise.all([utils.admin.getTutorChatThread.invalidate({ tutorId }), utils.admin.listTutorChatThreads.invalidate()]); },
   });
+  const react = trpc.admin.reactToChatMessage.useMutation({ onSuccess: () => utils.admin.getTutorChatThread.invalidate({ tutorId }) });
 
   const allMessages = (threadQuery.data?.messages ?? []) as ChatMessage[];
   const messages = useMemo(() => {
@@ -383,8 +384,9 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping }: { tutorId: st
           : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <button type="button" onClick={() => setNotesOpen(true)} aria-label="Private notes" className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+        <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
           <StickyNote size={13} /> Notes
+          {hasNoteAlert ? <span aria-label="New note" className="absolute -right-1 -top-1 size-2 rounded-full bg-j-accent" /> : null}
         </button>
         {claimedByAdminName
           ? <button type="button" onClick={() => release.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
@@ -414,14 +416,26 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping }: { tutorId: st
       {messages.map(message => {
         const own = message.senderRole === "admin";
         const seen = own && message.id === lastOwnMessageId && tutorLastReadAt !== null && new Date(message.createdAt).getTime() <= tutorLastReadAt;
-        return <div key={message.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
+        return <div key={message.id} className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
           <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${own ? "bg-j-accent text-white" : "border border-j-border bg-j-surface-muted text-j-ink"}`}>
             {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor</p> : null}
             {message.body ? <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p> : null}
             {message.attachmentUrl ? <AttachmentView url={message.attachmentUrl} contentType={message.attachmentContentType} /> : null}
             <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
           </div>
-          {seen ? <p className="mt-0.5 pr-1 text-2xs font-semibold text-j-ink-faint">Seen</p> : null}
+          <div className="mt-0.5 flex items-center gap-1.5 px-1">
+            <button
+              type="button"
+              onClick={() => react.mutate({ tutorId, messageId: message.id })}
+              aria-pressed={message.adminReacted}
+              aria-label={message.adminReacted ? "Remove your 👍" : "React with 👍"}
+              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.adminReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
+            >
+              <ThumbsUp className="size-3" fill={message.adminReacted ? "currentColor" : "none"} />
+            </button>
+            {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
+            {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
+          </div>
         </div>;
       })}
       {tutorIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Tutor is typing…</p> : null}
@@ -476,6 +490,7 @@ export function AdminTutorChatsContent() {
   const utils = trpc.useUtils();
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(() => new URLSearchParams(search).get("tutorId"));
   const [archived, setArchived] = useState(false);
+  const [noteAlertTutorIds, setNoteAlertTutorIds] = useState<ReadonlySet<string>>(new Set());
   const [typingTutorId, setTypingTutorId] = useState<string | null>(null);
   const [typingUntil, setTypingUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -495,11 +510,23 @@ export function AdminTutorChatsContent() {
     } else if (frame.type === "typing" && frame.tutorId) {
       setTypingTutorId(frame.tutorId);
       setTypingUntil(Date.now() + TYPING_EXPIRES_MS);
+    } else if (frame.type === "note" && frame.tutorId) {
+      const tutorId = frame.tutorId;
+      setNoteAlertTutorIds(prev => new Set(prev).add(tutorId));
     }
   });
 
   const tutorIsTyping = typingTutorId !== null && typingTutorId === selectedTutorId && typingUntil > now;
   const onTyping = () => { if (selectedTutorId) sendFrame({ type: "typing", tutorId: selectedTutorId }); };
+  const onNotesViewed = () => {
+    if (!selectedTutorId) return;
+    setNoteAlertTutorIds(prev => {
+      if (!prev.has(selectedTutorId)) return prev;
+      const next = new Set(prev);
+      next.delete(selectedTutorId);
+      return next;
+    });
+  };
 
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -509,14 +536,14 @@ export function AdminTutorChatsContent() {
     {isMobile
       ? <div className={frameClassName}>
           {selectedTutorId
-            ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} />
+            ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
             : <ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} />}
         </div>
       : <div className={`grid min-h-0 grid-cols-[320px_1fr] ${frameClassName}`}>
           <div className="min-h-0 border-r border-[#dce9f1]"><ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} /></div>
           <div className="min-h-0">
             {selectedTutorId
-              ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} />
+              ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
               : <p className="grid h-full place-items-center px-6 text-center text-sm text-j-ink-muted">Select a Tutor to view the conversation.</p>}
           </div>
         </div>}

@@ -29,6 +29,7 @@ const state = vi.hoisted(() => ({
   addNote: vi.fn(),
   createQuickReply: vi.fn(),
   deleteQuickReply: vi.fn(),
+  react: vi.fn(),
   onSocketFrame: null as ((frame: { type: string; tutorId?: string }) => void) | null,
   sendFrame: vi.fn(),
   invalidateListThreads: vi.fn(),
@@ -85,6 +86,7 @@ vi.mock("@/lib/trpc", () => ({
       deleteChatQuickReply: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.deleteQuickReply(input); options.onSuccess?.(); }, isPending: false }) },
       listTutorChatNotes: { useQuery: () => ({ data: { notes: state.notes }, isLoading: false }) },
       addTutorChatNote: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.addNote(input); options.onSuccess?.(); }, isPending: false }) },
+      reactToChatMessage: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
     },
   },
 }));
@@ -92,7 +94,7 @@ vi.mock("@/lib/trpc", () => ({
 import { AdminTutorChatsContent } from "./AdminTutorChats";
 
 const thread = (over: Record<string, unknown> = {}) => ({ tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91, lastMessageAt: "2026-09-25T10:00:00.000Z", lastMessagePreview: "Need help with my profile", unreadCount: 0, claimedByAdminId: null, claimedByAdminName: null, ...over });
-const message = (over: Record<string, unknown> = {}) => ({ id: 1, senderRole: "tutor", body: "Hi", attachmentUrl: null, attachmentContentType: null, createdAt: "2026-09-25T09:00:00.000Z", ...over });
+const message = (over: Record<string, unknown> = {}) => ({ id: 1, senderRole: "tutor", body: "Hi", attachmentUrl: null, attachmentContentType: null, tutorReacted: false, adminReacted: false, createdAt: "2026-09-25T09:00:00.000Z", ...over });
 
 afterEach(() => {
   cleanup();
@@ -121,6 +123,7 @@ afterEach(() => {
   state.addNote.mockReset();
   state.createQuickReply.mockReset();
   state.deleteQuickReply.mockReset();
+  state.react.mockReset();
   state.onSocketFrame = null;
   state.sendFrame.mockReset();
   state.invalidateListThreads.mockReset();
@@ -388,5 +391,31 @@ describe("the Admin's Tutor chat list", () => {
 
     const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
     expect(box.value).toContain("Please share your payment reference number.");
+  });
+
+  it("lets an Admin react to a message, and shows the Tutor's own reaction", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [message({ id: 7, tutorReacted: true })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    expect(screen.getByText("👍 Tutor")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "React with 👍" }));
+    expect(state.react).toHaveBeenCalledWith({ tutorId: "tutor-1", messageId: 7 });
+  });
+
+  it("shows a dot on Notes when another Admin adds one, and clears it on open", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    expect(screen.queryByLabelText("New note")).toBeNull();
+    act(() => { state.onSocketFrame?.({ type: "note", tutorId: "tutor-1" }); });
+    expect(screen.getByLabelText("New note")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Private notes" }));
+    expect(screen.queryByLabelText("New note")).toBeNull();
   });
 });

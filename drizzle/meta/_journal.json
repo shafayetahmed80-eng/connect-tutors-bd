@@ -736,6 +736,13 @@
       "when": 1793400000000,
       "tag": "0104_chat_notes_quick_replies_push_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "5",
+      "when": 1793500000000,
+      "tag": "0105_chat_message_reactions",
+      "breakpoints": true
     }
   ]
 }

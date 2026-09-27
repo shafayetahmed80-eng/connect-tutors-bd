@@ -2101,6 +2101,9 @@ export const appRouter = router({
         attachmentContentType: z.string().trim().min(1).max(100).optional(),
       }).refine(value => value.body.length > 0 || Boolean(value.attachmentKey), { path: ["body"], message: "Write something first." }))
       .mutation(({ ctx, input }) => db.sendTutorAdminChatMessageFromAdmin({ tutorId: input.tutorId, body: input.body, adminUserId: ctx.user.id, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType })),
+    reactToChatMessage: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32), messageId: z.number().int().positive() }))
+      .mutation(({ input }) => db.toggleTutorAdminChatMessageReaction({ tutorId: input.tutorId, messageId: input.messageId, role: "admin" })),
     markTutorChatRead: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .mutation(({ input }) => db.markTutorAdminChatReadByAdmin(input)),
@@ -2612,6 +2615,9 @@ export const appRouter = router({
       }),
     markRead: activeTutorProcedure
       .mutation(async ({ ctx }) => db.markTutorAdminChatReadByTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id) })),
+    react: activeTutorProcedure
+      .input(z.object({ messageId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => db.toggleTutorAdminChatMessageReaction({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), messageId: input.messageId, role: "tutor" })),
   }),
   guardianNotifications: router({
     mine: guardianProcedure

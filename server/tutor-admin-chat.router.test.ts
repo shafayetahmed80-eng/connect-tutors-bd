@@ -27,6 +27,7 @@ const dbMocks = vi.hoisted(() => ({
   getChatPushPublicKey: vi.fn(),
   subscribeAdminToChatPush: vi.fn(),
   unsubscribeAdminFromChatPush: vi.fn(),
+  toggleTutorAdminChatMessageReaction: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -97,6 +98,12 @@ describe("a Tutor's own side of the Admin chat", () => {
     dbMocks.markTutorAdminChatReadByTutor.mockResolvedValue({ updated: true });
     await createCaller().tutorAdminChat.markRead();
     expect(dbMocks.markTutorAdminChatReadByTutor).toHaveBeenCalledWith({ tutorId: "tutor-1503" });
+  });
+
+  it("reacts to a message as the signed-in Tutor's own side", async () => {
+    dbMocks.toggleTutorAdminChatMessageReaction.mockResolvedValue({ reacted: true });
+    await expect(createCaller().tutorAdminChat.react({ messageId: 9 })).resolves.toEqual({ reacted: true });
+    expect(dbMocks.toggleTutorAdminChatMessageReaction).toHaveBeenCalledWith({ tutorId: "tutor-1503", messageId: 9, role: "tutor" });
   });
 
   it("is an active Tutor's to use", async () => {
@@ -170,6 +177,12 @@ describe("the Admin side of the Tutor chat", () => {
     dbMocks.unsubscribeAdminFromChatPush.mockResolvedValue({ unsubscribed: true });
     await createCaller(admin).admin.unsubscribeChatPush({ endpoint: "https://fcm.example/1" });
     expect(dbMocks.unsubscribeAdminFromChatPush).toHaveBeenCalledWith({ endpoint: "https://fcm.example/1" });
+  });
+
+  it("reacts to a message as the signed-in Admin's own side", async () => {
+    dbMocks.toggleTutorAdminChatMessageReaction.mockResolvedValue({ reacted: true });
+    await expect(createCaller(admin).admin.reactToChatMessage({ tutorId: "tutor-1503", messageId: 9 })).resolves.toEqual({ reacted: true });
+    expect(dbMocks.toggleTutorAdminChatMessageReaction).toHaveBeenCalledWith({ tutorId: "tutor-1503", messageId: 9, role: "admin" });
   });
 
   it("reports how many Tutor threads have an unread reply waiting", async () => {
