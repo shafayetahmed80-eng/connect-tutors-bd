@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { forgetBellCountsForTests, useBellSwing } from "./bellSwing";
+import { forgetBellCountsForTests, useBellSwing, usePushBellBounce } from "./bellSwing";
 
 beforeEach(() => forgetBellCountsForTests());
 
@@ -41,5 +41,34 @@ describe("the header bell", () => {
     const guardian = renderHook(({ count }) => useBellSwing("Guardian Portal", count), { initialProps: { count: 1 as number | undefined } });
     guardian.rerender({ count: 2 });
     expect(guardian.result.current.swinging).toBe(true);
+  });
+});
+
+describe("the bell's push bounce", () => {
+  function stubServiceWorker() {
+    const listeners = new Set<(event: MessageEvent) => void>();
+    const serviceWorker = {
+      addEventListener: (_type: string, listener: (event: MessageEvent) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MessageEvent) => void) => listeners.delete(listener),
+    };
+    Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: serviceWorker });
+    return { emit: (data: unknown) => listeners.forEach(listener => listener({ data } as MessageEvent)) };
+  }
+
+  it("bounces on a push message, and stops when the animation ends", () => {
+    const sw = stubServiceWorker();
+    const { result } = renderHook(() => usePushBellBounce());
+    expect(result.current.bouncing).toBe(false);
+    act(() => sw.emit({ type: "push-received" }));
+    expect(result.current.bouncing).toBe(true);
+    act(() => result.current.stop());
+    expect(result.current.bouncing).toBe(false);
+  });
+
+  it("ignores a service-worker message meant for something else", () => {
+    const sw = stubServiceWorker();
+    const { result } = renderHook(() => usePushBellBounce());
+    act(() => sw.emit({ type: "something-else" }));
+    expect(result.current.bouncing).toBe(false);
   });
 });

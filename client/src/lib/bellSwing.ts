@@ -30,3 +30,22 @@ export function useBellSwing(panel: string, unreadCount: number | undefined) {
 export function forgetBellCountsForTests() {
   lastSeen.clear();
 }
+
+/**
+ * Bounces the bell the moment a push notification lands in this browser,
+ * rather than waiting for the next `NOTIFICATION_CHECK_MS` poll to notice the
+ * unread count rose. `push-sw.js` tells every open tab as soon as one
+ * arrives; this is the tab side of that message.
+ */
+export function usePushBellBounce() {
+  const [bouncing, setBouncing] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "push-received") setBouncing(true);
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, []);
+  return { bouncing, stop: () => setBouncing(false) };
+}
