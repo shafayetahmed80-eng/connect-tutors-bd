@@ -119,7 +119,7 @@ import {
   type UserRole,
   type TutorRequestPublicationState,
 } from "../drizzle/schema";
-import { notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
+import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
 import { getChatPushVapidPublicKey, sendChatPushNotification } from "./chat-push";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
@@ -6507,6 +6507,8 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
       body: tutorAdminChatMessages.body,
       attachmentKey: tutorAdminChatMessages.attachmentKey,
       attachmentContentType: tutorAdminChatMessages.attachmentContentType,
+      tutorReactedAt: tutorAdminChatMessages.tutorReactedAt,
+      adminReactedAt: tutorAdminChatMessages.adminReactedAt,
       createdAt: tutorAdminChatMessages.createdAt,
     })
     .from(tutorAdminChatMessages)
@@ -6514,10 +6516,30 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
     .orderBy(desc(tutorAdminChatMessages.id))
     .limit(TUTOR_ADMIN_CHAT_MESSAGE_PAGE);
   const messages = await Promise.all(rows.reverse().map(async row => {
-    const { attachmentKey, ...rest } = row;
-    return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey) };
+    const { attachmentKey, tutorReactedAt, adminReactedAt, ...rest } = row;
+    return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey), tutorReacted: Boolean(tutorReactedAt), adminReacted: Boolean(adminReactedAt) };
   }));
   return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible };
+}
+
+/** Toggles one side's 👍 on a message - either side may react to any message in their own thread, own or the other's. */
+export async function toggleTutorAdminChatMessageReaction(input: { tutorId: string; messageId: number; role: "tutor" | "admin" }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ id: tutorAdminChatMessages.id, tutorReactedAt: tutorAdminChatMessages.tutorReactedAt, adminReactedAt: tutorAdminChatMessages.adminReactedAt })
+    .from(tutorAdminChatMessages)
+    .innerJoin(tutorAdminChatThreads, eq(tutorAdminChatThreads.id, tutorAdminChatMessages.threadId))
+    .where(and(eq(tutorAdminChatMessages.id, input.messageId), eq(tutorAdminChatThreads.tutorId, input.tutorId)));
+  if (!row) throw new Error("Message was not found");
+  const currentlyReacted = input.role === "tutor" ? Boolean(row.tutorReactedAt) : Boolean(row.adminReactedAt);
+  const nextValue = currentlyReacted ? null : new Date();
+  if (input.role === "tutor") {
+    await database.update(tutorAdminChatMessages).set({ tutorReactedAt: nextValue }).where(eq(tutorAdminChatMessages.id, input.messageId));
+  } else {
+    await database.update(tutorAdminChatMessages).set({ adminReactedAt: nextValue }).where(eq(tutorAdminChatMessages.id, input.messageId));
+  }
+  return { reacted: !currentlyReacted };
 }
 
 export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
@@ -6756,6 +6778,7 @@ export async function addTutorAdminChatNote(input: { tutorId: string; authorAdmi
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   await database.insert(tutorAdminChatNotes).values({ tutorId: input.tutorId, authorAdminId: input.authorAdminId, body: input.body });
+  notifyAdminsOfNewNote(input.tutorId);
   return { added: true as const };
 }
 

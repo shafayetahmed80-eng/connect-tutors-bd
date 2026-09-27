@@ -6,7 +6,7 @@ import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useSiteContact } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
-import { Mic, Paperclip, Phone, Search, Send, Square, X } from "lucide-react";
+import { Mic, Paperclip, Phone, Search, Send, Square, ThumbsUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,7 +16,7 @@ const CHAT_POLL_MS = 20000;
 const TYPING_PING_MS = 2000;
 const TYPING_EXPIRES_MS = 3000;
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; createdAt: string | Date };
+type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
 
 function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -55,6 +55,7 @@ export function TutorAdminChatPanel() {
     onError: error => toast.error(error.message),
   });
   const markRead = trpc.tutorAdminChat.markRead.useMutation({ onSuccess: () => utils.tutorAdminChat.unreadCount.invalidate() });
+  const react = trpc.tutorAdminChat.react.useMutation({ onSuccess: () => utils.tutorAdminChat.thread.invalidate() });
   const contact = useSiteContact();
 
   const portalToken = getCurrentTutorPortalToken();
@@ -173,14 +174,26 @@ export function TutorAdminChatPanel() {
       {messages.map(message => {
         const own = message.senderRole === "tutor";
         const seen = own && message.id === lastOwnMessageId && adminLastReadAt !== null && new Date(message.createdAt).getTime() <= adminLastReadAt;
-        return <div key={message.id} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
+        return <div key={message.id} className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
           <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${own ? "bg-j-accent text-white" : "border border-j-border bg-j-surface-muted text-j-ink"}`}>
             {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p> : null}
             {message.body ? <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p> : null}
             {message.attachmentUrl ? <AttachmentView url={message.attachmentUrl} contentType={message.attachmentContentType} /> : null}
             <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
           </div>
-          {seen ? <p className="mt-0.5 pr-1 text-2xs font-semibold text-j-ink-faint">Seen</p> : null}
+          <div className="mt-0.5 flex items-center gap-1.5 px-1">
+            <button
+              type="button"
+              onClick={() => react.mutate({ messageId: message.id })}
+              aria-pressed={message.tutorReacted}
+              aria-label={message.tutorReacted ? "Remove your 👍" : "React with 👍"}
+              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.tutorReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
+            >
+              <ThumbsUp className="size-3" fill={message.tutorReacted ? "currentColor" : "none"} />
+            </button>
+            {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
+            {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
+          </div>
         </div>;
       })}
       {adminIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Admin is typing…</p> : null}
