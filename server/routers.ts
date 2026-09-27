@@ -2055,9 +2055,41 @@ export const appRouter = router({
         query: z.string().trim().max(120).default(""),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
+        archived: z.boolean().default(false),
       }))
       .query(({ input }) => db.listTutorAdminChatThreadsForAdmin(input)),
     tutorChatUnreadThreadCount: adminProcedure.query(() => db.getTutorAdminChatUnreadThreadCountForAdmin()),
+    /** How busy the inbox is: threads awaiting a reply, and the 30-day average response time. */
+    getTutorChatStats: adminProcedure.query(() => db.getTutorAdminChatStats()),
+    reopenTutorChatThread: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .mutation(({ input }) => db.reopenTutorAdminChatThread(input)),
+    /** Admin-only remarks on a Tutor's chat - coordination between Admins, never shown to the Tutor. */
+    listTutorChatNotes: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(({ input }) => db.listTutorAdminChatNotes(input)),
+    addTutorChatNote: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32), body: z.string().trim().min(1).max(2000) }))
+      .mutation(({ ctx, input }) => db.addTutorAdminChatNote({ tutorId: input.tutorId, authorAdminId: ctx.user.id, body: input.body })),
+    /** A shared library of canned replies any Admin can drop straight into the composer. */
+    listChatQuickReplies: adminProcedure.query(() => db.listChatQuickReplies()),
+    createChatQuickReply: adminProcedure
+      .input(z.object({ label: z.string().trim().min(1).max(60), body: z.string().trim().min(1).max(2000) }))
+      .mutation(({ ctx, input }) => db.createChatQuickReply({ label: input.label, body: input.body, createdByAdminId: ctx.user.id })),
+    updateChatQuickReply: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), label: z.string().trim().min(1).max(60), body: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => db.updateChatQuickReply(input)),
+    deleteChatQuickReply: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => db.deleteChatQuickReply(input)),
+    /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
+    getChatPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
+    subscribeChatPush: adminProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1), p256dh: z.string().trim().min(1), auth: z.string().trim().min(1) }))
+      .mutation(({ ctx, input }) => db.subscribeAdminToChatPush({ adminId: ctx.user.id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth })),
+    unsubscribeChatPush: adminProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1) }))
+      .mutation(({ input }) => db.unsubscribeAdminFromChatPush(input)),
     getTutorChatThread: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.getTutorAdminChatThreadForAdmin(input)),

@@ -70,6 +70,22 @@ describe("the Tutor's Admin chat panel", () => {
     expect(state.send).toHaveBeenCalledWith({ body: "Please help" });
   });
 
+  it("sends on Enter, and allows a newline with Shift+Enter", () => {
+    render(<TutorAdminChatPanel />);
+    const box = screen.getByPlaceholderText("Write a message…");
+    fireEvent.change(box, { target: { value: "Please help" } });
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    expect(state.send).not.toHaveBeenCalled();
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(state.send).toHaveBeenCalledWith({ body: "Please help" });
+  });
+
+  it("shows the brand logo and the helpline number in the header, not a character count", () => {
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("+8801516131411")).toBeTruthy();
+    expect(screen.queryByText(/remaining/)).toBeNull();
+  });
+
   it("keeps Send disabled for an empty draft", () => {
     render(<TutorAdminChatPanel />);
     expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty("disabled", true);
