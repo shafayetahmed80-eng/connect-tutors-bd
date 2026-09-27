@@ -110,8 +110,8 @@ export const infoPageCopy = [
   { path: "/blogs", key: "blogs", eyebrow: "Learning notes", title: "Small, practical ideas for better learning.", copy: "Helpful habits, preparation tips, and routines for guardians, students, and tutors will be available here soon." },
   { path: "/events", key: "events", eyebrow: "Events", title: "Plans to bring learning communities together.", copy: "Workshop, information session, and education-focused event updates will be published here." },
   { path: "/contact", key: "contact", eyebrow: "Contact", title: "Start a conversation with your question.", copy: "Send us a message if you want to talk about tutor matching, profiles, or the platform." },
-  { path: "/privacy-policy", key: "privacy-policy", eyebrow: "Privacy", title: "Our responsibility toward your information.", copy: "We believe request information should be used only for relevant communication and matching." },
-  { path: "/terms-conditions", key: "terms-conditions", eyebrow: "Terms", title: "Clear expectations, better experiences.", copy: "Detailed terms for using the platform will be added here before the service launches." },
+  { path: "/privacy-policy", key: "privacy-policy", eyebrow: "Privacy", title: "Our responsibility toward your information.", copy: "What we collect, how we use it, and what we never make public." },
+  { path: "/terms-conditions", key: "terms-conditions", eyebrow: "Terms", title: "Clear expectations, better experiences.", copy: "The terms every Guardian and Tutor agrees to when they join Connect Tutors." },
 ] as const;
 
 /** The two calls to action an informational page can end with. */
