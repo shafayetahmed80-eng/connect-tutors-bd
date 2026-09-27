@@ -122,3 +122,4 @@ dev-dist/
 # vite-plugin-pwa dev artifacts
 dev-dist/
 **/dev-dist/
+.env.bak 
