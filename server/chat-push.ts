@@ -3,8 +3,9 @@ import webpush from "web-push";
 /**
  * Kept separate from `db.ts` the same way `chat-ws.ts` is: a thin, dependency-free
  * layer around one delivery mechanism, so `db.ts` can call into it without a
- * circular import. Nothing here knows about threads, Tutors, or Admins - it only
- * knows how to reach one already-saved browser subscription.
+ * circular import. Nothing here knows about threads, Tutors, Guardians, or
+ * Admins - it only knows how to reach one already-saved browser subscription,
+ * for the Admin chat-push alert and the Tutor/Guardian push feature alike.
  */
 
 function vapidConfigured() {
@@ -20,14 +21,14 @@ if (vapidConfigured()) {
 }
 
 /** `null` until the server has VAPID keys configured - the client then knows to leave push notifications off entirely rather than fail against a placeholder key. */
-export function getChatPushVapidPublicKey() {
+export function getWebPushPublicKey() {
   return vapidConfigured() ? (process.env.VAPID_PUBLIC_KEY as string) : null;
 }
 
-export type AdminPushSubscriptionKeys = { endpoint: string; p256dh: string; auth: string };
+export type WebPushSubscriptionKeys = { endpoint: string; p256dh: string; auth: string };
 
 /** Sends one push message; `gone: true` means the browser has dropped this subscription, so the caller should delete its row. */
-export async function sendChatPushNotification(subscription: AdminPushSubscriptionKeys, payload: { title: string; body: string; tutorId?: string }) {
+export async function sendWebPushNotification(subscription: WebPushSubscriptionKeys, payload: { title: string; body: string; url?: string }) {
   if (!vapidConfigured()) return { ok: false as const, gone: false };
   try {
     await webpush.sendNotification(

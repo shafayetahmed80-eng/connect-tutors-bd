@@ -2682,6 +2682,17 @@ export const appRouter = router({
       return result;
     }),
   }),
+  /** A Tutor or Guardian's own push subscriptions - the Admin chat-push alert has its own, separate flow under `admin`. */
+  pushNotifications: router({
+    /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
+    getPublicKey: protectedProcedure.query(() => db.getPushNotificationPublicKey()),
+    subscribe: protectedProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1), p256dh: z.string().trim().min(1), auth: z.string().trim().min(1) }))
+      .mutation(({ ctx, input }) => db.subscribeToPushNotifications({ userId: ctx.user.id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth })),
+    unsubscribe: protectedProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1) }))
+      .mutation(({ ctx, input }) => db.unsubscribeFromPushNotifications({ userId: ctx.user.id, endpoint: input.endpoint })),
+  }),
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
     mine: guardianProcedure.query(({ ctx }) => db.listGuardianTutorRequests(ctx.user.id)),

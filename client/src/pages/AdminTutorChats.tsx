@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { trpc } from "@/lib/trpc";
+import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { ArchiveRestore, ArrowLeft, BellRing, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
@@ -46,13 +47,6 @@ function ChatStatsStrip() {
   </p>;
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  return Uint8Array.from(raw, char => char.charCodeAt(0));
-}
-
 /** Lets an Admin turn on desktop push alerts for a new Tutor message - useful exactly when this tab is not the one they are looking at. Renders nothing on a deployment with no VAPID keys configured, or a browser that cannot do push. */
 function ChatPushToggle() {
   const keyQuery = trpc.admin.getChatPushPublicKey.useQuery();
@@ -60,7 +54,7 @@ function ChatPushToggle() {
   const unsubscribeMutation = trpc.admin.unsubscribeChatPush.useMutation();
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const supported = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const supported = supportsWebPush();
 
   useEffect(() => {
     if (!supported) return;

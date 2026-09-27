@@ -1839,6 +1839,28 @@ export const adminPushSubscriptions = mysqlTable(
 );
 
 /**
+ * One row per browser a Tutor or Guardian allowed push notifications on - the
+ * same shape as `adminPushSubscriptions`, keyed by `userId` instead of
+ * `adminId` since either role can hold one. Removed the moment the browser
+ * reports the subscription gone.
+ */
+export const pushSubscriptions = mysqlTable(
+  "push_subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: varchar("p256dh", { length: 255 }).notNull(),
+    auth: varchar("auth", { length: 255 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.userId], foreignColumns: [users.id], name: "ps_user_fk" }),
+    index("push_subscriptions_user_idx").on(table.userId),
+  ]
+);
+
+/**
  * A Guardian asking an Admin to confirm, remove the Tutor from, or cancel one
  * of their tuitions. The Guardian never does these themselves: an Admin
  * approves - which runs the Admin's own action - or declines. Rows are kept

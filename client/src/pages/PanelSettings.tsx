@@ -1,4 +1,4 @@
-import { BadgeCheck, KeyRound, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { BadgeCheck, Bell, KeyRound, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { Link } from "wouter";
 import {
   CloseAccountRequest,
@@ -12,6 +12,7 @@ import {
 import { AccountSettings, ChangePasswordForm, SettingValue, type AccountSettingsItem } from "@/components/AccountSettings";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { trpc } from "@/lib/trpc";
 
 /*
@@ -50,6 +51,19 @@ function requestedValueItems(changes: AccountChanges): AccountSettingsItem[] {
     { key: "name", label: "Name", icon: UserRound, iconTone: "violet", value: name, status: requestStatus(changes, "name"), content: <ValueChangeRequest changes={changes} type="name" label="Name" current={name} /> },
     { key: "mobile", label: "Mobile Number", shortLabel: "Mobile", icon: Phone, iconTone: "rose", value: mobile, status: requestStatus(changes, "mobile"), content: <ValueChangeRequest changes={changes} type="mobile" label="Mobile Number" current={mobile} /> },
   ];
+}
+
+/** Guardian and Tutor Settings only - Admin has its own chat-alert toggle, on the chat page itself. */
+function notificationsItem(): AccountSettingsItem {
+  return {
+    key: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    iconTone: "sky",
+    alwaysOpen: true,
+    value: "This device",
+    content: <PushNotificationToggle />,
+  };
 }
 
 function closeAccountItem(changes: AccountChanges): AccountSettingsItem {
@@ -120,6 +134,7 @@ export function GuardianSettingsContent() {
         <VerificationRequest changes={changes} verified={verification === "verified"} nidReady={Boolean(profile?.nidFrontUploaded && profile?.nidBackUploaded)} />
       </div>,
     },
+    notificationsItem(),
     closeAccountItem(changes),
   ];
   return <AccountSettings items={items} basePath={GUARDIAN_SETTINGS_PATH} />;
@@ -162,6 +177,7 @@ export function TutorSettingsContent({ profile }: { profile: TutorSettingsProfil
         <Link href="/tutor/dashboard/profile" className="inline-flex text-sm font-bold text-[#1267c8] hover:underline">Open Profile</Link>
       </div>,
     },
+    notificationsItem(),
     closeAccountItem(changes),
   ];
   return <AccountSettings items={items} basePath={TUTOR_SETTINGS_PATH} />;
