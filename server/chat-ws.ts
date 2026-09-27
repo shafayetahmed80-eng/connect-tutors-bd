@@ -72,6 +72,11 @@ function notifyAdminsOfTyping(tutorId: string) {
   for (const socket of Array.from(adminSockets)) send(socket, { type: "typing", tutorId });
 }
 
+/** After any Admin adds a private note - every OTHER Admin's open list/thread should notice, since none of them saw it land. */
+export function notifyAdminsOfNewNote(tutorId: string) {
+  for (const socket of Array.from(adminSockets)) send(socket, { type: "note", tutorId });
+}
+
 function notifyTutorOfTyping(tutorId: string) {
   for (const socket of Array.from(tutorSockets.get(tutorId) ?? [])) send(socket, { type: "typing" });
 }

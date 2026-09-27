@@ -247,6 +247,10 @@ const plugins = [
       cleanupOutdatedCaches: true,
       inlineWorkboxRuntime: true,
       maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      // Adds the Admin chat push-notification listeners to the generated
+      // service worker; see the file itself for why this rides along here
+      // rather than as its own registration.
+      importScripts: ["chat-push-sw.js"],
     },
   }),
 ];

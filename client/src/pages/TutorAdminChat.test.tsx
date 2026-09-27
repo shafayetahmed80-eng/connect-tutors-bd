@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   adminLastReadAt: null as string | null,
   send: vi.fn(),
   markRead: vi.fn(),
+  react: vi.fn(),
   onSocketFrame: null as ((frame: { type: string; tutorId?: string }) => void) | null,
   sendFrame: vi.fn(),
 }));
@@ -28,13 +29,14 @@ vi.mock("@/lib/trpc", () => ({
       thread: { useQuery: () => ({ data: { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible }, isLoading: state.isLoading }) },
       send: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
+      react: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
     },
   },
 }));
 
 import { TutorAdminChatPanel } from "./TutorAdminChat";
 
-const message = (over: Record<string, unknown> = {}) => ({ id: 1, senderRole: "admin", body: "Hello", attachmentUrl: null, attachmentContentType: null, createdAt: "2026-09-25T10:00:00.000Z", ...over });
+const message = (over: Record<string, unknown> = {}) => ({ id: 1, senderRole: "admin", body: "Hello", attachmentUrl: null, attachmentContentType: null, tutorReacted: false, adminReacted: false, createdAt: "2026-09-25T10:00:00.000Z", ...over });
 
 afterEach(() => {
   cleanup();
@@ -44,6 +46,7 @@ afterEach(() => {
   state.adminLastReadAt = null;
   state.send.mockReset();
   state.markRead.mockReset();
+  state.react.mockReset();
   state.onSocketFrame = null;
   state.sendFrame.mockReset();
 });
@@ -68,6 +71,22 @@ describe("the Tutor's Admin chat panel", () => {
     fireEvent.change(box, { target: { value: "  Please help  " } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
     expect(state.send).toHaveBeenCalledWith({ body: "Please help" });
+  });
+
+  it("sends on Enter, and allows a newline with Shift+Enter", () => {
+    render(<TutorAdminChatPanel />);
+    const box = screen.getByPlaceholderText("Write a message…");
+    fireEvent.change(box, { target: { value: "Please help" } });
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    expect(state.send).not.toHaveBeenCalled();
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(state.send).toHaveBeenCalledWith({ body: "Please help" });
+  });
+
+  it("shows the brand logo and the helpline number in the header, not a character count", () => {
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("+8801516131411")).toBeTruthy();
+    expect(screen.queryByText(/remaining/)).toBeNull();
   });
 
   it("keeps Send disabled for an empty draft", () => {
@@ -106,6 +125,15 @@ describe("the Tutor's Admin chat panel", () => {
     state.adminLastReadAt = "2026-09-25T10:05:00.000Z";
     render(<TutorAdminChatPanel />);
     expect(screen.getByText("Seen")).toBeTruthy();
+  });
+
+  it("lets the Tutor react to a message, and shows the Admin's own reaction", () => {
+    state.messages = [message({ id: 1, adminReacted: true })];
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("👍 Admin")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "React with 👍" }));
+    expect(state.react).toHaveBeenCalledWith({ messageId: 1 });
   });
 
   it("shows Admin is typing… when a typing frame arrives over the socket", () => {
