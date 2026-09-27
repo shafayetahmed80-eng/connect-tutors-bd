@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
@@ -17,6 +18,7 @@ export function PushNotificationToggle() {
   const unsubscribeMutation = trpc.pushNotifications.unsubscribe.useMutation();
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showExplainer, setShowExplainer] = useState(false);
   const supported = supportsWebPush();
 
   useEffect(() => {
@@ -65,11 +67,40 @@ export function PushNotificationToggle() {
     }
   };
 
-  return <div className="flex items-center justify-between gap-3">
-    <div>
-      <p className="text-sm font-bold text-j-ink-strong">{subscribed ? "On for this browser" : "Off for this browser"}</p>
-      <p className="mt-0.5 text-xs text-j-ink-soft">Get notified here when something new happens - a new message, a decision, a payment.</p>
+  const onToggle = () => {
+    if (subscribed) { void disable(); return; }
+    // First time this browser is asked, explain why before the browser's own
+    // permission prompt appears - a bare native dialog with no context is
+    // often just reflexively dismissed. Already decided (granted or denied)
+    // means asking again shows no prompt anyway, so there is nothing to explain.
+    if (Notification.permission === "default") { setShowExplainer(true); return; }
+    void enable();
+  };
+
+  return <>
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-bold text-j-ink-strong">{subscribed ? "On for this browser" : "Off for this browser"}</p>
+        <p className="mt-0.5 text-xs text-j-ink-soft">Get notified here when something new happens - a new message, a decision, a payment.</p>
+      </div>
+      <Switch checked={subscribed} disabled={busy} onCheckedChange={onToggle} aria-label="Push notifications for this browser" />
     </div>
-    <Switch checked={subscribed} disabled={busy} onCheckedChange={() => void (subscribed ? disable() : enable())} aria-label="Push notifications for this browser" />
-  </div>;
+    {showExplainer ? <Modal size="sm" onClose={() => setShowExplainer(false)}>
+      <ModalHeader title="নোটিফিকেশন চালু করবেন?" />
+      <ModalBody>
+        <p className="text-sm text-j-ink-soft">
+          এটা অন করলে পেমেন্ট, অ্যাপয়েন্টমেন্ট বা কোনো সিদ্ধান্তের মতো গুরুত্বপূর্ণ আপডেট সাইট খোলা না থাকলেও সরাসরি এই ব্রাউজারে নোটিফিকেশন হিসেবে আসবে।
+          এরপর ব্রাউজার নিজে থেকে একটা অনুমতি চাইবে - সেখানে Allow করুন।
+        </p>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setShowExplainer(false)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">বাতিল</button>
+        <button
+          type="button"
+          onClick={() => { setShowExplainer(false); void enable(); }}
+          className="h-10 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a]"
+        >চালিয়ে যান</button>
+      </ModalFooter>
+    </Modal> : null}
+  </>;
 }
