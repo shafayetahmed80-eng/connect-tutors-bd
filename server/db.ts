@@ -6401,6 +6401,9 @@ export async function notifyTutorDirectory(input: {
     actionPath: "/tutor/dashboard/notifications",
     deduplicationKey: `announcement:${broadcastId}:${match.id}`,
   })));
+  for (const match of matches) {
+    void sendPushToTutor(match.id, { title: input.title, body: input.message, url: "/tutor/dashboard/notifications" }).catch(() => {});
+  }
   await recordAdminNotificationBroadcast(database, { audience: "tutor", title: input.title, message: input.message, recipientCount: matches.length, adminUserId: input.adminUserId });
   return { sent: matches.length };
 }
@@ -6435,6 +6438,9 @@ export async function notifyGuardianDirectory(input: {
     actionPath: "/guardian/dashboard/notifications",
     deduplicationKey: `announcement:${broadcastId}:${match.userId}`,
   })));
+  for (const match of matches) {
+    void sendPushToUser(match.userId, { title: input.title, body: input.message, url: "/guardian/dashboard/notifications" }).catch(() => {});
+  }
   await recordAdminNotificationBroadcast(database, { audience: "guardian", title: input.title, message: input.message, recipientCount: matches.length, adminUserId: input.adminUserId });
   return { sent: matches.length };
 }
