@@ -1,6 +1,8 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
+import { ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { hasAdminTwoFactorProof } from "../admin-two-factor";
+import * as db from "../db";
 import { getSafeTutorProfileFieldIssues } from "../tutor-profile-error-contract";
 import type { TrpcContext } from "./context";
 
@@ -87,6 +89,25 @@ const requireRole = (roles: string[]) => t.middleware(async ({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(requireUser);
 export const guardianProcedure = t.procedure.use(requireRole(["guardian", "user"]));
 export const tutorProcedure = t.procedure.use(requireRole(["tutor"]));
-export const adminProcedure = t.procedure.use(requireRole(["admin"]));
+
+/**
+ * An Admin whose password was right - nothing about their second factor.
+ * Only the two-factor lifecycle itself (status, setup, the challenge, a
+ * recovery code) may use this: everywhere else in the Admin surface uses
+ * `adminProcedure`, which also refuses an enrolled Admin who has not cleared
+ * this browser's challenge in the last 12 hours.
+ */
+export const adminIdentityProcedure = t.procedure.use(requireRole(["admin"]));
+
+const requireAdminTwoFactor = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
+  if (settings && !hasAdminTwoFactorProof(ctx.req, ctx.user.id)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const adminProcedure = adminIdentityProcedure.use(requireAdminTwoFactor);
 
 export const notAdminError = () => new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });

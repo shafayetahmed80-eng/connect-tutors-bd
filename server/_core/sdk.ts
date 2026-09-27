@@ -29,14 +29,12 @@ const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
 class OAuthService {
-  constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
-    }
-  }
+  // Only the "Sign in with Manus" callback and the pre-existing-session sync in
+  // `authenticateRequest` reach this client - a password account never does, so
+  // a self-hosted deployment with no OAUTH_SERVER_URL is unaffected. Logging
+  // that omission at boot, on every request, printed a false alarm into every
+  // such deployment's logs for a feature it was never going to use.
+  constructor(private client: ReturnType<typeof axios.create>) {}
 
   private decodeState(state: string): string {
     return decodeOAuthState(state).redirectUri;

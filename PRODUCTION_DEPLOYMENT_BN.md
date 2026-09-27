@@ -1,20 +1,24 @@
 # Connect Tutors BD — connecttutorsbd.com Production Deployment Guide
 
-এই গাইড ধরে নিচ্ছে আপনি `connecttutorsbd.com`-এ থাকা পুরনো static HTML সাইট সরিয়ে এই React/Node অ্যাপ্লিকেশন বসাচ্ছেন, এবং আপনার cPanel-এ **Node.js App setup ও SSH/Terminal access** দুটোই আছে।
+এই গাইড ধরে নিচ্ছে আপনি `connecttutorsbd.com`-এ থাকা পুরনো PHP সাইট সরিয়ে এই React/Node অ্যাপ্লিকেশন বসাচ্ছেন, এবং আপনার cPanel-এ **Node.js App setup ও SSH/Terminal access** দুটোই আছে।
+
+## হোস্টিং প্ল্যানে Node.js/SSH "আছে" আর অ্যাপ চালানো এক জিনিস না
+
+হোস্টিং প্ল্যানে Node.js সাপোর্ট থাকা মানে শুধু এটুকু যে cPanel-এ **Setup Node.js App** নামের অপশনটা আছে (সাধারণত cPanel-এর "Software" সেকশনে) — এটা PHP হোস্টিংয়ের থেকে আলাদা একটা ফিচার, আলাদা করে "চালু" (enable) করার কিছু নেই, কিন্তু **নতুন একটা Node.js অ্যাপ্লিকেশন এন্ট্রি বানাতে হয়** (নিচের ধাপ ২), তারপরই সেটা connecttutorsbd.com-এর জন্য রিকোয়েস্ট সার্ভ করা শুরু করবে। পুরনো PHP সাইট সরানোর (ধাপ ১) সাথে এই কাজটার কোনো নির্ভরতা নেই — দুটো আলাদা কাজ, যেকোনো ক্রমে করা যায়। SSH দিয়ে লগইন করে `node -v` চালিয়ে দেখুন Node.js পাওয়া যাচ্ছে কিনা — পেলে বুঝবেন হোস্টিং প্ল্যানে সাপোর্ট আছে, তারপর cPanel-এর **Setup Node.js App** পেজে গিয়ে ধাপ ২ অনুসরণ করুন।
 
 ## ০. এই ভার্সনে কী স্বাধীন (independent) হয়েছে
 
 আগের ভার্সনে Admin login ও ছবি আপলোড (storage) Manus.im-এর নিজস্ব সার্ভিসের উপর নির্ভরশীল ছিল। এখন:
 
-- **Admin login** — নিজস্ব email/password + বাধ্যতামূলক 2FA (authenticator app), সম্পূর্ণ স্বাধীন। কোনো external OAuth লাগবে না।
+- **Admin login** — নিজস্ব email/password + বাধ্যতামূলক 2FA (authenticator app, TOTP), সম্পূর্ণ স্বাধীন। কোনো external OAuth লাগবে না। প্রতিটা Admin অ্যাকাউন্ট প্রথমবার সাইন-ইন করার পরই একটা authenticator app (Google Authenticator, Authy ইত্যাদি) দিয়ে 2FA সেটআপ করতে বাধ্য হবে — এটা এড়ানোর কোনো উপায় নেই, ওয়ার্কস্পেসে ঢোকার আগে করতেই হবে।
 - **Guardian/Tutor login** — আগে থেকেই স্বাধীন ছিল, অপরিবর্তিত।
 - **ছবি আপলোড (Guardian/Tutor profile photo)** — এখন আপনার নিজের সার্ভারের ডিস্কে সংরক্ষিত হয় (`private-uploads/` ফোল্ডার), কোনো external storage লাগবে না।
 - **Google Maps, image-generation, voice-transcription** এর মতো কিছু optional feature এখনো Manus Forge API-এর উপর নির্ভরশীল, কিন্তু এগুলো মূল Guardian/Tutor/Admin workflow-এর জন্য জরুরি না — env var সেট না থাকলে শুধু সেই নির্দিষ্ট feature কাজ করবে না, বাকি সাইট স্বাভাবিকভাবে চলবে।
 - **হোমপেজের ৩টা মার্কেটিং ছবি** (hero, home-learning, online-learning) এখন প্রজেক্টের ভেতরেই আছে (`client/public/images/*.webp`), build-এর সাথে চলে যায় — কোনো external storage লাগবে না।
 
-## ১. পুরনো static সাইট রিমুভ
+## ১. পুরনো PHP সাইট রিমুভ
 
-cPanel File Manager বা SSH দিয়ে `public_html` (বা connecttutorsbd.com-এর document root) থেকে পুরনো static HTML ফাইলগুলো মুছে ফেলুন। আপনি জানিয়েছেন এর ব্যাকআপ দরকার নেই।
+cPanel File Manager বা SSH দিয়ে `public_html` (বা connecttutorsbd.com-এর document root) থেকে পুরনো PHP সাইটের ফাইলগুলো মুছে ফেলুন। আপনি জানিয়েছেন এর ব্যাকআপ দরকার নেই। এই ধাপটা ধাপ ২-এর আগে-পরে যেকোনো সময় করা যায় — একটা আরেকটার উপর নির্ভর করে না।
 
 ## ২. cPanel-এ Node.js App তৈরি
 
@@ -59,7 +63,10 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `TELEGRAM_BOT_TOKEN` | ঐচ্ছিক | নতুন request notification পেতে চাইলে |
 | `TELEGRAM_CHAT_ID` | ঐচ্ছিক | উপরেরটার সাথে জোড়ায় লাগে |
 | `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
-| `OAUTH_SERVER_URL`, `VITE_APP_ID`, `OWNER_OPEN_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
+| `OWNER_OPEN_ID` | **আবশ্যক** | ধাপ ৭-এর owner-admin স্ক্রিপ্ট এটা প্রিন্ট করে দেয়; না দিলে কেউ Owner-only পেজ (Admin Security, Dynamic Section) দেখতে পাবে না |
+| `SMS_API_URL` / `SMS_API_KEY` / `SMS_SENDER_ID` | ঐচ্ছিক | Tutor OTP, Guardian ফোন-ভেরিফিকেশন, "Forgot password?" এসএমএস — না দিলে কোড শুধু সার্ভার লগে প্রিন্ট হয় |
+| `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক; না দিলে ডিফল্ট `https://connecttutorsbd.com` |
+| `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
 
 `JWT_SECRET` তৈরি করতে (SSH-এ):
 
@@ -84,7 +91,7 @@ cd ~/connecttutorsbd_app
 DATABASE_URL="আপনার-DATABASE_URL" pnpm run db:seed:owner-admin
 ```
 
-স্ক্রিপ্টটা আপনার নাম, ইমেইল, আর পাসওয়ার্ড জিজ্ঞেস করবে (অথবা `--name`, `--email`, `--password` flag দিয়েও দিতে পারেন)। এরপর `https://connecttutorsbd.com/admin/login`-এ গিয়ে সাইন-ইন করে বাধ্যতামূলক 2FA (authenticator app) সেটআপ করবেন।
+স্ক্রিপ্টটা একটা **User ID** (৩-৬৪ অক্ষর, অক্ষর দিয়ে শুরু) আর পাসওয়ার্ড জিজ্ঞেস করবে, নাম-ইমেইল ঐচ্ছিক (অথবা সব `--user-id`, `--password`, `--name`, `--email` flag দিয়েও দেওয়া যায়)। সাইন-ইন হয় এই User ID দিয়ে, ইমেইল দিয়ে না। স্ক্রিপ্ট শেষে একটা `OWNER_OPEN_ID=...` লাইন দেখাবে — সেটা `.env`-এ যোগ করে অ্যাপ রিস্টার্ট করলে তবেই এই অ্যাকাউন্ট Owner-only পেজগুলো (Admin Security, Dynamic Section ইত্যাদি) দেখতে পাবে। এরপর `https://connecttutorsbd.com/admin/login`-এ গিয়ে সাইন-ইন করে বাধ্যতামূলক 2FA (authenticator app) সেটআপ করবেন — সেটআপ শেষ না করলে ওয়ার্কস্পেসে ঢোকা যাবে না।
 
 ## ৮. Node App চালু করা
 
@@ -99,13 +106,15 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 1. `https://connecttutorsbd.com` HTTPS warning ছাড়া খোলে
 2. Public Home, Job Board, location filters কাজ করে
 3. Guardian/Tutor registration ও sign-in flow কাজ করে
-4. `/admin/login`-এ ইমেইল/পাসওয়ার্ড দিয়ে সাইন-ইন করে 2FA সেটআপ ও ভেরিফাই করা যায়
-5. Guardian request submission database-এ persist হয়
-6. Guardian/Tutor profile photo আপলোড করে দেখুন — `private-uploads/` ফোল্ডারে ফাইল তৈরি হচ্ছে কিনা যাচাই করুন
-7. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
+4. `/admin/login`-এ User ID/পাসওয়ার্ড দিয়ে সাইন-ইন করলে সরাসরি `/admin/2fa-setup`-এ যায়; QR কোড স্ক্যান করে ৬-অঙ্কের কোড দিলে ১০টা recovery code দেখায় এবং workspace-এ ঢুকতে দেয়
+5. সাইন আউট করে আবার সাইন-ইন করলে এবার `/admin/2fa-challenge`-এ যায় (নতুন করে QR কোড না দেখিয়ে), এবং authenticator app-এর কোড দিলে workspace খোলে
+6. Guardian request submission database-এ persist হয়
+7. Guardian/Tutor profile photo আপলোড করে দেখুন — `private-uploads/` ফোল্ডারে ফাইল তৈরি হচ্ছে কিনা যাচাই করুন
+8. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
 
 ## ১১. গুরুত্বপূর্ণ নিরাপত্তা নোট
 
 - `private-uploads/` ফোল্ডার application root-এর বাইরে বা অন্তত `public_html`-এর বাইরে রাখুন, যাতে কেউ ফাইল ম্যানেজার URL দিয়ে সরাসরি ব্রাউজ করতে না পারে।
 - `.env` বা environment variable-এর মান কখনো ZIP, screenshot, বা public repository-তে শেয়ার করবেন না।
-- `DATABASE_URL`, `JWT_SECRET` — এই দুটো leak হলে সাথে সাথে rotate করুন।
+- `DATABASE_URL`, `JWT_SECRET` — এই দুটো leak হলে সাথে সাথে rotate করুন। `JWT_SECRET` বদলালে প্রতিটা Admin-কে নতুন করে 2FA সেটআপ করতে হবে (পুরনো QR কোড আর কাজ করবে না) — তাই এটা যতটা সম্ভব একবারই ঠিক করে ফেলুন।
+- **2FA-তে লক আউট হলে:** প্রথমে setup-এর সময় দেখানো ১০টা recovery code দিয়ে সাইন-ইন করুন (প্রতিটা একবার কাজ করে)। একাধিক Admin থাকলে Owner অন্য কারো 2FA "Admin security" পেজ থেকে রিসেট করে দিতে পারবেন। Owner নিজেই ফোন আর recovery code দুটোই হারালে, শেষ উপায় `admin_two_factor_settings` টেবিল থেকে সরাসরি database-এ ওই userId-র row-টা মুছে ফেলা — এরপর `/admin/login`-এ সাইন-ইন করলে আবার নতুন QR কোড থেকে সেটআপ শুরু হবে।

@@ -5,6 +5,7 @@ export const ADMIN_TWO_FACTOR_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 export const AXIOS_TIMEOUT_MS = 30_000;
 export const UNAUTHED_ERR_MSG = "Please login (10001)";
 export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
+export const ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG = "Two-factor verification is required (10003)";
 
 export const OAUTH_STATE_COOKIE = "__Host-oauth_state";
 export const PENDING_ROLE_COOKIE = "connect-role";
