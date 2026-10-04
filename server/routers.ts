@@ -506,6 +506,11 @@ async function adminTwoFactorAccountLabel(user: { id: number; email: string | nu
   return (await db.getAdminLoginId(user.id)) ?? user.email ?? `admin-${user.id}`;
 }
 
+/** "+8801712••••678" - enough for an Admin to recognise their own number, not enough to read it off someone's screen. */
+function maskAdminSmsPhone(phone: string) {
+  return phone.length <= 7 ? phone : `${phone.slice(0, -7)}••••${phone.slice(-3)}`;
+}
+
 /** Clears every public-auth limiter. Test hook only. */
 export function __resetAuthRateLimitsForTests() {
   ipLoginRateLimiter.clear();
@@ -1956,6 +1961,7 @@ export const appRouter = router({
       return {
         enrolled: Boolean(settings),
         verified: Boolean(settings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id),
+        smsBackup: settings?.smsPhone ? { maskedPhone: maskAdminSmsPhone(settings.smsPhone) } : null,
       };
     }),
     startTwoFactorSetup: adminIdentityProcedure.mutation(async ({ ctx }) => {
@@ -2032,6 +2038,67 @@ export const appRouter = router({
       twoFactorChallengeRateLimiter.reset(key);
       setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
       await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "recovery_code_used", metadata: { ipAddress: getRequestIp(ctx) } });
+      return { success: true } as const;
+    }),
+    // Adding, changing or removing the backup phone all require a session that
+    // has already cleared the authenticator challenge (adminProcedure, not
+    // adminIdentityProcedure) - otherwise a stolen password alone could plant a
+    // phone number of the attacker's own choosing and use it to walk straight
+    // past the second factor it is supposed to be a backup *for*.
+    startTwoFactorSmsSetup: adminProcedure.input(z.object({
+      phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number."),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await sendPhoneVerificationCode({ ip: getRequestIp(ctx), phone: input.phone, purpose: "admin_two_factor", role: "admin", language: "en" });
+      return result;
+    }),
+    confirmTwoFactorSmsSetup: adminProcedure.input(z.object({
+      phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number."),
+      code: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to that number."),
+    })).mutation(async ({ ctx, input }) => {
+      await checkPhoneVerification({ ip: getRequestIp(ctx), phone: input.phone, code: input.code, purpose: "admin_two_factor", role: "admin", language: "en", consume: true });
+      await db.setAdminTwoFactorSmsPhone(ctx.user.id, input.phone);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_success", metadata: { ipAddress: getRequestIp(ctx), reason: "sms-backup-added" } });
+      return { maskedPhone: maskAdminSmsPhone(input.phone) };
+    }),
+    removeTwoFactorSmsBackup: adminProcedure.mutation(async ({ ctx }) => {
+      await db.clearAdminTwoFactorSmsPhone(ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_reset", metadata: { ipAddress: getRequestIp(ctx), reason: "sms-backup-removed" } });
+      return { success: true } as const;
+    }),
+    // The challenge-time pair below runs on adminIdentityProcedure, same as the
+    // authenticator challenge and the recovery code: the whole point is to help
+    // an Admin who cannot pass the authenticator check right now. The security
+    // rests on the phone already having proved itself under adminProcedure above.
+    sendTwoFactorChallengeSms: adminIdentityProcedure.mutation(async ({ ctx }) => {
+      const key = `admin-sms:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      }
+      const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
+      if (!settings?.smsPhone) throw new TRPCError({ code: "BAD_REQUEST", message: "No backup phone number is set up for this account." });
+      const result = await sendPhoneVerificationCode({ ip: getRequestIp(ctx), phone: settings.smsPhone, purpose: "admin_two_factor", role: "admin", language: "en" });
+      return { ...result, maskedPhone: maskAdminSmsPhone(settings.smsPhone) };
+    }),
+    verifyTwoFactorChallengeSms: adminIdentityProcedure.input(z.object({
+      code: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your phone."),
+    })).mutation(async ({ ctx, input }) => {
+      const key = `admin-sms:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      }
+      const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
+      if (!settings?.smsPhone) throw new TRPCError({ code: "BAD_REQUEST", message: "No backup phone number is set up for this account." });
+      try {
+        await checkPhoneVerification({ ip: getRequestIp(ctx), phone: settings.smsPhone, code: input.code, purpose: "admin_two_factor", role: "admin", language: "en", consume: true });
+      } catch (error) {
+        twoFactorChallengeRateLimiter.record(key);
+        await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_failure", metadata: { ipAddress: getRequestIp(ctx), reason: "sms" } });
+        throw error;
+      }
+      twoFactorChallengeRateLimiter.reset(key);
+      await db.recordAdminTwoFactorVerification(ctx.user.id);
+      setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "two_factor_success", metadata: { ipAddress: getRequestIp(ctx), reason: "sms-challenge" } });
       return { success: true } as const;
     }),
     // Owner-only: clears a locked-out Admin's enrollment so they can set it up

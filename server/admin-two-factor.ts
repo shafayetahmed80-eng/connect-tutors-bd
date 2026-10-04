@@ -7,7 +7,7 @@ import { ENV } from "./_core/env";
 
 /**
  * Proves, without a database round trip, that this browser passed an Admin's
- * second factor within the last `ADMIN_TWO_FACTOR_SESSION_TTL_MS` (12h) - the
+ * second factor within the last `ADMIN_TWO_FACTOR_SESSION_TTL_MS` (30 days) - the
  * same window `admin-security.ts`'s HMAC proof is built to carry. Sits beside
  * the ordinary `app_session_id` cookie rather than inside it, so a signed-in
  * Admin who has not cleared this second factor still reads as signed in (the

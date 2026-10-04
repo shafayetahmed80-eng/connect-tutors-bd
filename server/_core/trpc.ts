@@ -95,7 +95,7 @@ export const tutorProcedure = t.procedure.use(requireRole(["tutor"]));
  * Only the two-factor lifecycle itself (status, setup, the challenge, a
  * recovery code) may use this: everywhere else in the Admin surface uses
  * `adminProcedure`, which also refuses an enrolled Admin who has not cleared
- * this browser's challenge in the last 12 hours.
+ * this browser's challenge in the last 30 days.
  */
 export const adminIdentityProcedure = t.procedure.use(requireRole(["admin"]));
 

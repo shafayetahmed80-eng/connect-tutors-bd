@@ -407,7 +407,7 @@ export const passwordResetLinks = mysqlTable(
 );
 export type PasswordResetLink = typeof passwordResetLinks.$inferSelect;
 
-export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake", "password_reset", "mobile_change"] as const;
+export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake", "password_reset", "mobile_change", "admin_two_factor"] as const;
 export type PhoneVerificationPurpose = (typeof phoneVerificationPurposeValues)[number];
 
 /**
@@ -438,6 +438,10 @@ export const adminTwoFactorSettings = mysqlTable("admin_two_factor_settings", {
   secretCiphertext: varchar("secretCiphertext", { length: 512 }).notNull(),
   enabledAt: timestamp("enabledAt").notNull(),
   lastVerifiedAt: timestamp("lastVerifiedAt"),
+  // A backup challenge for an Admin without their authenticator app to hand.
+  // Set only once this exact number has answered a code sent to it.
+  smsPhone: varchar("smsPhone", { length: 16 }),
+  smsPhoneVerifiedAt: timestamp("smsPhoneVerifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -1,10 +1,10 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
 import {
   ArrowLeft, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, IdCard, Loader2, Mail, MapPin,
-  PencilLine, Phone, ShieldCheck, UserRound, Users, type LucideIcon,
+  MessageSquareText, PencilLine, Phone, ShieldCheck, UserRound, Users, type LucideIcon,
 } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
@@ -249,6 +249,95 @@ function Loading() {
   return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading the profile…</div>;
 }
 
+/**
+ * A second way into a stalled two-factor challenge, for when the authenticator
+ * app is not to hand. Self-managed only - never shown on the Owner's read-only
+ * look at another Admin - and adding or changing the number itself needs a
+ * session that already cleared the authenticator challenge, per the same
+ * reasoning as `adminProcedure` on the server side.
+ */
+function TwoFactorSmsBackupCard() {
+  const utils = trpc.useUtils();
+  const status = trpc.admin.twoFactorStatus.useQuery();
+  const startSetup = trpc.admin.startTwoFactorSmsSetup.useMutation();
+  const confirmSetup = trpc.admin.confirmTwoFactorSmsSetup.useMutation();
+  const removeBackup = trpc.admin.removeTwoFactorSmsBackup.useMutation({
+    onSuccess: async () => { await utils.admin.twoFactorStatus.invalidate(); toast.success("Backup SMS number removed."); },
+  });
+  const [editing, setEditing] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [sentPhone, setSentPhone] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const smsBackup = status.data?.smsBackup ?? null;
+  const reset = () => { setEditing(false); setPhone(""); setSentPhone(null); setCode(""); setError(null); };
+
+  const send = async () => {
+    setError(null);
+    try {
+      await startSetup.mutateAsync({ phone });
+      setSentPhone(phone);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The code could not be sent.");
+    }
+  };
+
+  const confirm = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!sentPhone) return;
+    setError(null);
+    try {
+      await confirmSetup.mutateAsync({ phone: sentPhone, code });
+      await utils.admin.twoFactorStatus.invalidate();
+      toast.success("Backup SMS number added.");
+      reset();
+    } catch (cause) {
+      setCode("");
+      setError(cause instanceof Error ? cause.message : "That code did not match.");
+    }
+  };
+
+  return (
+    <section className="nav-section-card mt-5 rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+      <h3 className="flex items-center gap-1.5 font-bold tracking-[-0.02em] text-j-ink"><MessageSquareText size={16} className="text-[#8fb4d0]" aria-hidden={true} /> Backup SMS code</h3>
+      <p className="mt-1 text-xs text-j-ink-muted">Get a sign-in code by SMS when your authenticator app is not to hand.</p>
+
+      {!editing && smsBackup ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-j-surface-sunken px-4 py-3">
+          <span className="font-mono text-sm font-bold text-j-ink">{smsBackup.maskedPhone}</span>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs font-bold text-[#1677c8] hover:underline">Change</button>
+            <button type="button" disabled={removeBackup.isPending} onClick={() => { if (window.confirm("Remove the backup SMS number?")) removeBackup.mutate(); }} className="text-xs font-bold text-[#bf3b3b] hover:underline disabled:opacity-60">{removeBackup.isPending ? "Removing…" : "Remove"}</button>
+          </div>
+        </div>
+      ) : null}
+
+      {!editing && !smsBackup ? (
+        <button type="button" onClick={() => setEditing(true)} className="mt-3 inline-flex items-center rounded-lg border border-[#c9ddeb] px-3 py-2 text-xs font-bold text-[#42657d] hover:bg-white">Add a backup number</button>
+      ) : null}
+
+      {editing && !sentPhone ? (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Field label="Mobile number"><input value={phone} onChange={event => setPhone(event.target.value)} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
+          <Button type="button" disabled={startSetup.isPending || !/^\+8801[3-9]\d{8}$/.test(phone)} onClick={() => void send()} className="h-[42px] rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{startSetup.isPending ? "Sending…" : "Send code"}</Button>
+          <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
+        </div>
+      ) : null}
+
+      {editing && sentPhone ? (
+        <form onSubmit={event => void confirm(event)} className="mt-3 flex flex-wrap items-end gap-2">
+          <Field label={`Code sent to ${sentPhone}`}><input value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} autoFocus className={`${inputClass} w-28 text-center font-mono tracking-[0.4em]`} /></Field>
+          <Button type="submit" disabled={confirmSetup.isPending || code.length !== 4} className="h-[42px] rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{confirmSetup.isPending ? "Confirming…" : "Confirm"}</Button>
+          <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
+        </form>
+      ) : null}
+
+      {error ? <p role="alert" className="mt-2 text-xs font-semibold text-j-err">{error}</p> : null}
+    </section>
+  );
+}
+
 /** The signed-in Admin's own profile, with its editors. */
 export function AdminProfileContent() {
   const utils = trpc.useUtils();
@@ -343,6 +432,7 @@ export function AdminProfileContent() {
       locations={locations}
       own={{ onEdit: openEditor, onPhoto: file => void changePhoto(file), photoBusy, photoSuccessAt }}
     />
+    <TwoFactorSmsBackupCard />
 
     {editingTab === "personal" && form ? (
       <Modal size="md" onClose={closeEditor} busy={updateMutation.isPending}>
