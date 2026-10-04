@@ -3,6 +3,8 @@ import multer, { MulterError } from "multer";
 import { getSiteLimits, getTutorAccountStatusByUserId } from "./db";
 import { documentByteLimit, siteLimitCeiling } from "@shared/site-limits";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import { TutorSupportingDocumentError, uploadTutorSupportingDocument } from "./tutor-supporting-document";
 
 /**
@@ -35,6 +37,7 @@ export function registerTutorSupportingDocumentRoute(app: Express) {
       if (!user || user.role !== "tutor" || await getTutorAccountStatusByUserId(user.id) !== "active") {
         return response.status(user ? 403 : 401).json({ error: "Only active Tutor accounts can upload a verification document." });
       }
+      if (!(await loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
       response.locals.tutorSupportingDocumentUser = { id: user.id, role: "tutor", accountStatus: "active" };
       return next();
     } catch {

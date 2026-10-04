@@ -17,6 +17,7 @@ const currentUser = vi.hoisted(
   () => ({ value: { id: 501, role: "guardian", name: "Rahima", openId: "guardian-501" } as any }),
 );
 const endpointMocks = vi.hoisted(() => ({
+  loginTwoFactorCleared: vi.fn(),
   authenticateRequest: vi.fn(),
   getGuardianAccountStatusByUserId: vi.fn(),
   uploadGuardianProfilePhoto: vi.fn(),
@@ -34,6 +35,7 @@ describe("Guardian profile photo multipart endpoint", () => {
     vi.clearAllMocks();
     endpointMocks.authenticateRequest.mockResolvedValue(currentUser.value);
     endpointMocks.getGuardianAccountStatusByUserId.mockResolvedValue("active");
+    endpointMocks.loginTwoFactorCleared.mockResolvedValue(true);
     endpointMocks.uploadGuardianProfilePhoto.mockResolvedValue({
       photoStatus: "photo",
       width: 300,
@@ -57,6 +59,16 @@ describe("Guardian profile photo multipart endpoint", () => {
         file: expect.objectContaining({ mimetype: "image/png", originalname: "portrait.png" }),
       }),
     );
+  });
+
+  it("refuses an upload or a removal from a browser that still owes the sign-in code", async () => {
+    endpointMocks.loginTwoFactorCleared.mockResolvedValue(false);
+    const refused = await request(createApp()).post("/api/guardian/profile-photo").attach("photo", pngFixture(), { filename: "portrait.png", contentType: "image/png" }).expect(403);
+    expect(refused.body.error).toContain("10004");
+    await request(createApp()).delete("/api/guardian/profile-photo").expect(403);
+    expect(endpointMocks.loginTwoFactorCleared).toHaveBeenCalledWith(expect.anything(), currentUser.value.id);
+    expect(endpointMocks.uploadGuardianProfilePhoto).not.toHaveBeenCalled();
+    expect(endpointMocks.removeGuardianProfilePhoto).not.toHaveBeenCalled();
   });
 
   it("rejects unauthenticated, non-Guardian, and inactive callers before multipart parsing or storage", async () => {

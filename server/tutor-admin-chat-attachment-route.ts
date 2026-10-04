@@ -2,6 +2,8 @@ import type { Express, NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId } from "./db";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import { ChatAttachmentError, uploadTutorAdminChatAttachment } from "./tutor-admin-chat-attachment";
 
 const MAX_UPLOAD_CEILING_BYTES = 20 * 1024 * 1024;
@@ -33,6 +35,7 @@ export function registerTutorAdminChatAttachmentRoute(app: Express) {
         let tutorId: string | null = null;
         if (user.role === "tutor") {
           if (await getTutorAccountStatusByUserId(user.id) !== "active") return response.status(403).json({ error: "Only active Tutor accounts can send an attachment." });
+          if (!(await loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
           const profile = await getTutorProfileByUserId(user.id);
           tutorId = profile?.tutorId ?? null;
         } else if (user.role === "admin") {

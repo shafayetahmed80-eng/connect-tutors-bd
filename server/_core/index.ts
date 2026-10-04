@@ -16,8 +16,8 @@ import { registerTutorSupportingDocumentRoute } from "../tutor-supporting-docume
 import { registerTutorAdminChatAttachmentRoute } from "../tutor-admin-chat-attachment-route";
 import { serveStatic, setupVite } from "./vite";
 import { attachChatWebSocketServer } from "../chat-ws";
-import { getTutorAccountStatusByUserId, getTutorGuardianLoginOtpSettings, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
-import { hasLoginTwoFactorProof } from "../login-two-factor";
+import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
+import { loginTwoFactorCleared } from "../login-two-factor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -45,7 +45,7 @@ async function startServer() {
     renewTutorPortalSession,
     getTutorAccountStatusByUserId,
     getTutorProfileByUserId,
-    loginTwoFactorCleared: async (request, userId) => !(await getTutorGuardianLoginOtpSettings()).enabled || hasLoginTwoFactorProof(request as never, userId),
+    loginTwoFactorCleared,
   });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

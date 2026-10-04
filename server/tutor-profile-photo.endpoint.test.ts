@@ -15,6 +15,7 @@ function pngFixture(width = 300, height = 300) {
 
 const currentUser = vi.hoisted(() => ({ value: { id: 101, role: "tutor", name: "Amina", openId: "tutor-101" } as any }));
 const endpointMocks = vi.hoisted(() => ({
+  loginTwoFactorCleared: vi.fn(),
   authenticateRequest: vi.fn(),
   getTutorAccountStatusByUserId: vi.fn(),
   uploadTutorProfilePhoto: vi.fn(),
@@ -32,12 +33,23 @@ describe("TP-06 profile photo multipart endpoint", () => {
     vi.clearAllMocks();
     endpointMocks.authenticateRequest.mockResolvedValue(currentUser.value);
     endpointMocks.getTutorAccountStatusByUserId.mockResolvedValue("active");
+    endpointMocks.loginTwoFactorCleared.mockResolvedValue(true);
     endpointMocks.uploadTutorProfilePhoto.mockResolvedValue({
       profilePhotoUrl: "/manus-storage/tutors/101/profile-photo_9fd18ca2.png",
       width: 300,
       height: 300,
     });
     endpointMocks.removeTutorProfilePhoto.mockResolvedValue({ profilePhotoUrl: null });
+  });
+
+  it("refuses an upload or a removal from a browser that still owes the sign-in code", async () => {
+    endpointMocks.loginTwoFactorCleared.mockResolvedValue(false);
+    const refused = await request(createApp()).post("/api/tutor/profile-photo").attach("photo", pngFixture(), { filename: "portrait.png", contentType: "image/png" }).expect(403);
+    expect(refused.body.error).toContain("10004");
+    await request(createApp()).delete("/api/tutor/profile-photo").expect(403);
+    expect(endpointMocks.loginTwoFactorCleared).toHaveBeenCalledWith(expect.anything(), currentUser.value.id);
+    expect(endpointMocks.uploadTutorProfilePhoto).not.toHaveBeenCalled();
+    expect(endpointMocks.removeTutorProfilePhoto).not.toHaveBeenCalled();
   });
 
   it("accepts exactly one multipart photo from an active Tutor and returns no storage key", async () => {
