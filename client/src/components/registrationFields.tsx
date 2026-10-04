@@ -38,10 +38,7 @@ export function GenderField({ id, name, label, value, onSelect }: { id?: string;
   </fieldset>;
 }
 
-/**
- * The +880 field. Editable on the Tutor form; read-only on the Guardian
- * account step, where the number was already confirmed on the phone step.
- */
+/** The +880 field, editable unless a prior step already confirmed the number. */
 export function PhoneField({ id, label, value, onChange, invalid, describedBy, placeholder, readOnly }: { id: string; label: string; value: string; onChange?: (value: string) => void; invalid?: boolean; describedBy?: string; placeholder?: string; readOnly?: boolean }) {
   return <label className="block" htmlFor={id}>
     <span className={fieldLabel}>{label}<RequiredMark /></span>

@@ -22,7 +22,7 @@ import { defaultSiteLimits } from "@shared/site-limits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
-import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
+import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
 import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
@@ -558,7 +558,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const editRequestId = getGuardianPendingEditId(window.location.search);
   const isEditMode = editRequestId !== null;
   const presentation = getGuardianRequestJourneyPresentation({ embedded });
-  const [stage, setStage] = useState<"phone" | "register" | "request">(() => embedded ? "request" : "phone");
+  const [stage, setStage] = useState<"phone" | "register" | "request">(() => embedded ? "request" : "register");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [journeyError, setJourneyError] = useState("");
   const [phone, setPhone] = useState("");
@@ -661,7 +661,13 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   // not cost a second SMS while the server's intake cookie is still good.
   const [verifiedPhone, setVerifiedPhone] = useState<{ phone: string; at: number } | null>(null);
   const verifyPhoneMutation = trpc.guardianIntake.verifyPhone.useMutation({
-    onSuccess: (_result, variables) => { setJourneyError(""); setCodeSentTo(null); setPhoneCode(""); setVerifiedPhone({ phone: variables.phone, at: Date.now() }); setStage("register"); },
+    onSuccess: (_result, variables) => {
+      setJourneyError("");
+      setCodeSentTo(null);
+      setPhoneCode("");
+      setVerifiedPhone({ phone: variables.phone, at: Date.now() });
+      submitRegistration(variables.phone);
+    },
     onError: (error) => {
       const fieldMessage = (error.data as { zodFieldErrors?: Record<string, string[]> } | null | undefined)?.zodFieldErrors?.phoneCode?.[0];
       setPhoneCodeError(fieldMessage ?? error.message);
@@ -683,12 +689,15 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       if (data?.code === "UNAUTHORIZED") setVerifiedPhone(null);
       const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
       if (Object.keys(mapped).length) {
+        // The fields that need fixing are on the account form, not here.
+        setStage("register");
         setAccountFieldErrors((current) => ({ ...current, ...mapped }));
         setJourneyError("Please fix the highlighted field and try again.");
         focusFirstGuardianAccountError(mapped);
         return;
       }
       if (data?.code === "BAD_REQUEST" && error.message) {
+        setStage("register");
         setAccountFieldErrors((current) => ({ ...current, cityLocationId: error.message }));
       }
       const message = guardianAuthErrorMessage(error);
@@ -696,6 +705,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       toast.error(message);
     },
   });
+  const submitRegistration = (phoneValue: string) => {
+    registrationMutation.mutate({ name: name.trim(), gender: gender as "male" | "female", email: email.trim(), password, confirmPassword, phone: phoneValue, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+  };
 
   const draftOwnerId = authQuery.data?.role === "guardian" ? authQuery.data.id : null;
   const requestMutation = trpc.tutorRequests.create.useMutation({
@@ -901,7 +913,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     else if (tuitionType === "home") submit({ ...common, tuitionType: "home", studentCount: Number(studentCount), tuitionCityLocationId, tuitionLocationId });
     else submit({ ...common, tuitionType: "both", tuitionCityLocationId, tuitionLocationId });
   };
-  const register = () => {
+  // The account form comes first; only once it is valid does the journey move
+  // on to proving the phone number, the last step before the account is made.
+  const continueToPhone = () => {
     const errors = validateGuardianRegistration(
       { name, gender, email, password, confirmPassword, accountCityId, accountLocationId },
       termsAccepted,
@@ -913,7 +927,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       return;
     }
     clearJourneyError();
-    registrationMutation.mutate({ name: name.trim(), gender: gender as "male" | "female", email: email.trim(), password, confirmPassword, phone: `+880${localPhone.slice(1)}`, cityLocationId: accountCityId, locationId: accountLocationId, termsAccepted });
+    setStage("phone");
   };
 
   return <div className={presentation.rootClassName}>
@@ -921,18 +935,18 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
-        {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); if (codeSentTo) forgetPhoneCode(); }} onContinue={() => {
+        {stage === "phone" ? <PhoneStage phone={localPhone} pending={intakeMutation.isPending || registrationMutation.isPending} onBack={() => { clearJourneyError(); forgetPhoneCode(); setStage("register"); }} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); if (codeSentTo) forgetPhoneCode(); }} onContinue={() => {
           if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
           clearJourneyError();
           const fullPhone = `+880${localPhone.slice(1)}`;
-          if (verifiedPhone?.phone === fullPhone && Date.now() - verifiedPhone.at < VERIFIED_PHONE_REUSE_MS) { setStage("register"); return; }
+          if (verifiedPhone?.phone === fullPhone && Date.now() - verifiedPhone.at < VERIFIED_PHONE_REUSE_MS) { submitRegistration(fullPhone); return; }
           intakeMutation.mutate({ phone: fullPhone });
         }} code={codeSentTo ? {
           sentTo: codeSentTo,
           value: phoneCode,
           error: phoneCodeError,
           onChange: (value) => { setPhoneCode(value); setPhoneCodeError(""); },
-          verifying: verifyPhoneMutation.isPending,
+          verifying: verifyPhoneMutation.isPending || registrationMutation.isPending,
           onVerify: () => {
             if (!/^\d{4}$/.test(phoneCode)) { setPhoneCodeError("৪ অঙ্কের কোডটি লিখুন।"); return; }
             verifyPhoneMutation.mutate({ phone: codeSentTo, code: phoneCode });
@@ -942,7 +956,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onResend: () => { setPhoneCodeError(""); intakeMutation.mutate({ phone: codeSentTo }); },
           onChangeNumber: () => { forgetPhoneCode(); window.requestAnimationFrame(() => document.getElementById("guardian-phone")?.focus()); },
         } : null} /> : null}
-        {stage === "register" ? <AccountStage name={name} email={email} phone={localPhone} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={registrationMutation.isPending} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onBack={() => { clearJourneyError(); setAccountFieldErrors({}); setStage("phone"); }} onCreate={register} /> : null}
+        {stage === "register" ? <AccountStage name={name} email={email} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} pending={false} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onCreate={continueToPhone} /> : null}
         {stage === "request" && isEditMode && (authQuery.isLoading || guardianRequestsQuery.isLoading || loadedEditRequestId !== editRequestId) ? <div className="mt-8 rounded-xl border border-j-border bg-j-surface-sunken p-6 text-center text-sm font-semibold text-j-ink-soft"><span className="mb-3 block"><LoadingCradle /></span>Loading your private Pending request securely…</div> : null}
         {stage === "request" && (!isEditMode || loadedEditRequestId === editRequestId) ? <RequestStage
           step={step}
@@ -991,7 +1005,7 @@ type PhoneStageCode = {
   resendInSeconds: number; resending: boolean; onResend: () => void; onChangeNumber: () => void;
 };
 
-export function PhoneStage({ phone, onPhoneChange, pending, onContinue, code = null }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void; code?: PhoneStageCode | null }) {
+export function PhoneStage({ phone, onPhoneChange, pending, onContinue, onBack, code = null }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void; onBack?: () => void; code?: PhoneStageCode | null }) {
   const valid = LOCAL_PHONE.test(phone);
   const resolveSlot = useSiteContentResolver();
   return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
@@ -1025,19 +1039,20 @@ export function PhoneStage({ phone, onPhoneChange, pending, onContinue, code = n
       {code
         ? <button type="button" className={`${primaryButton} w-full`} disabled={code.verifying} onClick={code.onVerify}>{code.verifying && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneVerify" fallback="Verify code" /></button>
         : <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue securely" /></button>}
+      {onBack ? <button type="button" className={ghostButton} onClick={onBack}><SiteText slotId="button-section.journey.phoneBack" fallback="Back to your details" /></button> : null}
       <div className="text-center"><SignInPrompt href="/auth?role=guardian" /></div>
     </div>
   </div>;
 }
 
 export type GuardianAccountStageProps = {
-  name: string; email: string; phone: string; gender: "" | "male" | "female"; password: string; confirmPassword: string;
+  name: string; email: string; gender: "" | "male" | "female"; password: string; confirmPassword: string;
   cities: Array<{ id: string; label: string }>; accountCityId: string; accountLocations: Array<{ id: string; label: string }>;
   accountLocationId: string; accountCityLabel: string; termsAccepted: boolean; pending: boolean;
   fieldErrors?: GuardianAccountFieldErrors;
   onName: (value: string) => void; onEmail: (value: string) => void; onGender: (value: "male" | "female") => void;
   onPassword: (value: string) => void; onConfirmPassword: (value: string) => void;
-  onCity: (value: string) => void; onLocation: (value: string) => void; onTerms: (value: boolean) => void; onBack: () => void; onCreate: () => void;
+  onCity: (value: string) => void; onLocation: (value: string) => void; onTerms: (value: boolean) => void; onCreate: () => void;
 };
 
 export function getGuardianLocationSelectionState(cityId: string, locationId: string, cityLabel: string, locationLabel: string) {
@@ -1049,7 +1064,6 @@ export function AccountStage(props: GuardianAccountStageProps) {
   const errors = props.fieldErrors ?? {};
   const resolveSlot = useSiteContentResolver();
   const passwordMatch = getPasswordMatch(props.password, props.confirmPassword);
-  const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
@@ -1061,8 +1075,6 @@ export function AccountStage(props: GuardianAccountStageProps) {
       <RegistrationFieldError id="guardian-gender-error" message={errors.gender}>
         <GenderField id="guardian-gender" name="guardian-gender" label={resolveSlot("request-tutor.field.gender", "Gender")} value={props.gender} onSelect={props.onGender} />
       </RegistrationFieldError>
-
-      <PhoneField id="guardian-phone" label={resolveSlot("request-tutor.field.accountPhone", "Phone number")} value={displayPhone} readOnly />
 
       <RegistrationFieldError id="guardian-email-error" message={errors.email}>
         <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>{resolveSlot("request-tutor.field.email", "Email")}<RequiredMark /></span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
@@ -1093,11 +1105,8 @@ export function AccountStage(props: GuardianAccountStageProps) {
     </RegistrationFieldError>
 
     <div className={registrationFooter}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-        <button type="button" className={ghostButton} onClick={props.onBack}><SiteText slotId="button-section.journey.accountBack" fallback="Back to phone" /></button>
-        <SignInPrompt href="/auth?role=guardian" />
-      </div>
-      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Create Guardian account" /></button>
+      <SignInPrompt href="/auth?role=guardian" />
+      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Continue" /></button>
     </div>
   </section>;
 }

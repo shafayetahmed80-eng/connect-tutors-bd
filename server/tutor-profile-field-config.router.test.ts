@@ -13,6 +13,8 @@ vi.mock("./db", async importOriginal => {
   return { ...actual, ...fieldConfigDbMocks };
 });
 
+import { ADMIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
+import { createAdminTwoFactorSessionProof } from "./admin-security";
 import { ENV } from "./_core/env";
 import { appRouter } from "./routers";
 import { defaultTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
@@ -29,9 +31,12 @@ function createTutorCaller(userId = 101) {
 }
 
 function createAdminCaller(user: typeof ownerUser | typeof nonOwnerAdminUser | null) {
+  const cookie = user
+    ? `${ADMIN_TWO_FACTOR_COOKIE_NAME}=${createAdminTwoFactorSessionProof(user.id, ENV.cookieSecret, Date.now() + 60_000)}`
+    : "";
   return appRouter.createCaller({
     user,
-    req: { protocol: "https", headers: { host: "connecttutor.example" } },
+    req: { protocol: "https", headers: { host: "connecttutor.example", cookie } },
     res: { cookie() {}, clearCookie() {} },
   } as any);
 }

@@ -29,6 +29,8 @@ vi.mock("./db", async importOriginal => {
   return { ...actual, ...dbMocks };
 });
 
+import { ADMIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
+import { createAdminTwoFactorSessionProof } from "./admin-security";
 import { ENV } from "./_core/env";
 import { getZodFieldErrorsFromCause } from "./_core/trpc";
 import { __resetAuthRateLimitsForTests, appRouter } from "./routers";
@@ -43,9 +45,12 @@ const owner = { ...base, id: 1, role: "admin" as const, openId: ENV.ownerOpenId 
 const otherAdmin = { ...base, id: 2, role: "admin" as const, openId: "admin-2" };
 
 function createCaller(user: TrpcContext["user"]) {
+  const cookie = user?.role === "admin"
+    ? `${ADMIN_TWO_FACTOR_COOKIE_NAME}=${createAdminTwoFactorSessionProof(user.id, ENV.cookieSecret, Date.now() + 60_000)}`
+    : "";
   return appRouter.createCaller({
     user,
-    req: { protocol: "https", headers: { host: "x.example" } },
+    req: { protocol: "https", headers: { host: "x.example", cookie } },
     res: { cookie() {}, clearCookie() {} },
   } as unknown as TrpcContext);
 }
