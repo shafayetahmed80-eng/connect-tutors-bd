@@ -41,18 +41,29 @@ export default function AdminTwoFactorSetup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, status.data]);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!startSetup.data) return;
+  const runConfirm = async (candidate: string) => {
+    if (!startSetup.data || confirmSetup.isPending) return;
     setFormError(null);
     try {
-      const result = await confirmSetup.mutateAsync({ secret: startSetup.data.secret, code });
+      const result = await confirmSetup.mutateAsync({ secret: startSetup.data.secret, code: candidate });
       setRecoveryCodes(result.recoveryCodes);
       setCode("");
     } catch (cause) {
       setCode("");
       setFormError(getErrorMessage(cause));
     }
+  };
+
+  // Six digits is a complete code, so there is nothing to wait for a button click to do.
+  const handleCodeChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    setCode(digits);
+    if (digits.length === 6) void runConfirm(digits);
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void runConfirm(code);
   };
 
   const copy = async (text: string, mark: (value: boolean) => void) => {
@@ -94,7 +105,7 @@ export default function AdminTwoFactorSetup() {
             </div>
             <form className="grid gap-3" onSubmit={event => void submit(event)} noValidate>
               <label htmlFor="admin-2fa-setup-code" className="text-sm font-bold text-j-ink-soft">Enter the 6-digit code your app shows</label>
-              <input id="admin-2fa-setup-code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ""))} disabled={confirmSetup.isPending} required className="h-12 rounded-lg border border-j-field-border bg-j-surface-sunken px-4 text-center font-mono text-lg tracking-[0.3em] transition-colors focus-visible:border-j-accent focus-visible:outline-none focus-visible:ring-0" />
+              <input id="admin-2fa-setup-code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} value={code} onChange={event => handleCodeChange(event.target.value)} disabled={confirmSetup.isPending} required className="h-12 rounded-lg border border-j-field-border bg-j-surface-sunken px-4 text-center font-mono text-lg tracking-[0.3em] transition-colors focus-visible:border-j-accent focus-visible:outline-none focus-visible:ring-0" />
               {formError ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold text-j-err">{formError}</p> : null}
               <button type="submit" disabled={code.length !== 6 || confirmSetup.isPending} className="flex w-full items-center justify-center gap-2 rounded-lg bg-j-accent px-5 py-3.5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(23,59,96,0.24)] transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-60">{confirmSetup.isPending ? "Confirming…" : "Confirm and turn on"}</button>
             </form>

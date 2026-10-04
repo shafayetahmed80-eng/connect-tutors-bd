@@ -11,6 +11,13 @@ const dbMocks = vi.hoisted(() => ({
   resetAdminTwoFactor: vi.fn(),
   logAdminAuditEvent: vi.fn(),
   listTutorRequestMatchingPage: vi.fn(),
+  setAdminTwoFactorSmsPhone: vi.fn(),
+  clearAdminTwoFactorSmsPhone: vi.fn(),
+  getPhoneCodeSendState: vi.fn(),
+  createPhoneVerificationCode: vi.fn(),
+  checkPhoneVerificationCode: vi.fn(),
+  deletePhoneVerificationCode: vi.fn(),
+  recordAuthEvent: vi.fn(async () => ({ id: 0 })),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -52,6 +59,14 @@ function encryptedSettings(userId: number) {
   return { userId, secretCiphertext: encryptAdminSecret(SECRET, ENV.cookieSecret), enabledAt: new Date(), lastVerifiedAt: null };
 }
 
+/** An Admin who has already cleared the authenticator challenge, the way the backup-phone endpoints require. */
+async function verifiedCaller() {
+  dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettings(ownerUser.id));
+  const { caller, setCookies } = createCaller();
+  await caller.admin.verifyTwoFactorChallenge({ code: createAdminTotp(SECRET, ADMIN_TOTP_ISSUER, "owner").generate() });
+  return createCaller(ownerUser, cookieHeaderFor(setCookies)).caller;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   __resetAuthRateLimitsForTests();
@@ -61,6 +76,8 @@ beforeEach(() => {
   dbMocks.getAdminTwoFactorSettings.mockResolvedValue(undefined);
   dbMocks.getAdminLoginId.mockResolvedValue("owner");
   dbMocks.logAdminAuditEvent.mockResolvedValue({ id: 1 });
+  dbMocks.getPhoneCodeSendState.mockResolvedValue({ lastSentAt: null, sentLastHour: 0 });
+  dbMocks.createPhoneVerificationCode.mockResolvedValue({ id: 501 });
 });
 
 describe("setting up two-factor authentication", () => {
@@ -181,6 +198,87 @@ describe("signing out", () => {
 
     const { caller: afterLogout } = createCaller(ownerUser, cookieHeaderFor(setCookies));
     await expect(afterLogout.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("adding a backup SMS number", () => {
+  it("needs an already-cleared authenticator challenge, not just the password", async () => {
+    dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettings(ownerUser.id));
+    const { caller } = createCaller(); // no proof cookie on this one
+
+    await expect(caller.admin.startTwoFactorSmsSetup({ phone: "+8801711111111" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.createPhoneVerificationCode).not.toHaveBeenCalled();
+  });
+
+  it("texts a code to the number and stores it only once that exact number answers", async () => {
+    const caller = await verifiedCaller();
+
+    await expect(caller.admin.startTwoFactorSmsSetup({ phone: "+8801711111111" })).resolves.toMatchObject({ success: true });
+    expect(dbMocks.createPhoneVerificationCode).toHaveBeenCalledWith(expect.objectContaining({ phone: "+8801711111111", purpose: "admin_two_factor" }));
+
+    dbMocks.checkPhoneVerificationCode.mockResolvedValueOnce({ status: "ok", id: 501 });
+    await expect(caller.admin.confirmTwoFactorSmsSetup({ phone: "+8801711111111", code: "4821" })).resolves.toMatchObject({ maskedPhone: "+880171••••111" });
+    expect(dbMocks.setAdminTwoFactorSmsPhone).toHaveBeenCalledWith(ownerUser.id, "+8801711111111");
+    expect(dbMocks.logAdminAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "two_factor_success", metadata: expect.objectContaining({ reason: "sms-backup-added" }) }));
+  });
+
+  it("will not store a number that answered with the wrong code", async () => {
+    const caller = await verifiedCaller();
+    dbMocks.checkPhoneVerificationCode.mockResolvedValueOnce({ status: "wrong", attemptsLeft: 2 });
+
+    await expect(caller.admin.confirmTwoFactorSmsSetup({ phone: "+8801711111111", code: "0000" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.setAdminTwoFactorSmsPhone).not.toHaveBeenCalled();
+  });
+
+  it("can be removed", async () => {
+    dbMocks.clearAdminTwoFactorSmsPhone.mockResolvedValue({ updated: true });
+    const caller = await verifiedCaller();
+
+    await expect(caller.admin.removeTwoFactorSmsBackup()).resolves.toEqual({ success: true });
+    expect(dbMocks.clearAdminTwoFactorSmsPhone).toHaveBeenCalledWith(ownerUser.id);
+  });
+});
+
+describe("the SMS backup as a sign-in challenge", () => {
+  function encryptedSettingsWithSms(userId: number) {
+    return { ...encryptedSettings(userId), smsPhone: "+8801711111111", smsPhoneVerifiedAt: new Date() };
+  }
+
+  it("tells the status check about the backup number, masked", async () => {
+    dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettingsWithSms(ownerUser.id));
+    const { caller } = createCaller();
+
+    await expect(caller.admin.twoFactorStatus()).resolves.toMatchObject({ smsBackup: { maskedPhone: "+880171••••111" } });
+  });
+
+  it("refuses to text a code to an account with no backup number on file", async () => {
+    dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettings(ownerUser.id));
+    const { caller } = createCaller();
+
+    await expect(caller.admin.sendTwoFactorChallengeSms()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("texts the stored number and, on the right code, clears the challenge", async () => {
+    dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettingsWithSms(ownerUser.id));
+    const { caller, setCookies } = createCaller();
+
+    await expect(caller.admin.sendTwoFactorChallengeSms()).resolves.toMatchObject({ success: true, maskedPhone: "+880171••••111" });
+    expect(dbMocks.createPhoneVerificationCode).toHaveBeenCalledWith(expect.objectContaining({ phone: "+8801711111111", purpose: "admin_two_factor" }));
+
+    dbMocks.checkPhoneVerificationCode.mockResolvedValueOnce({ status: "ok", id: 501 });
+    await expect(caller.admin.verifyTwoFactorChallengeSms({ code: "4821" })).resolves.toEqual({ success: true });
+    expect(dbMocks.recordAdminTwoFactorVerification).toHaveBeenCalledWith(ownerUser.id);
+    expect(setCookies["connect-admin-2fa"]).toBeTruthy();
+  });
+
+  it("rejects a wrong code without clearing the challenge", async () => {
+    dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettingsWithSms(ownerUser.id));
+    const { caller } = createCaller();
+    dbMocks.checkPhoneVerificationCode.mockResolvedValueOnce({ status: "wrong", attemptsLeft: 2 });
+
+    await expect(caller.admin.verifyTwoFactorChallengeSms({ code: "0000" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.recordAdminTwoFactorVerification).not.toHaveBeenCalled();
+    expect(dbMocks.logAdminAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ event: "two_factor_failure", metadata: expect.objectContaining({ reason: "sms" }) }));
   });
 });
 

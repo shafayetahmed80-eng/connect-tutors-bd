@@ -14,14 +14,24 @@ const baseProfile = {
 const state = vi.hoisted(() => ({
   profile: null as unknown,
   update: vi.fn(),
+  smsBackup: null as null | { maskedPhone: string },
+  startSms: vi.fn(async () => ({ success: true, resendAfterSeconds: 60, expiresInSeconds: 300 })),
+  confirmSms: vi.fn(async () => ({ maskedPhone: "+880171••••678" })),
+  removeSms: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       adminProfile: { me: { invalidate: vi.fn() }, images: { invalidate: vi.fn() }, photo: { invalidate: vi.fn() } },
-      admin: { getWorkspaceAccess: { invalidate: vi.fn() } },
+      admin: { getWorkspaceAccess: { invalidate: vi.fn() }, twoFactorStatus: { invalidate: vi.fn() } },
     }),
+    admin: {
+      twoFactorStatus: { useQuery: () => ({ data: { enrolled: true, verified: true, smsBackup: state.smsBackup }, isLoading: false }) },
+      startTwoFactorSmsSetup: { useMutation: () => ({ mutateAsync: state.startSms, isPending: false }) },
+      confirmTwoFactorSmsSetup: { useMutation: () => ({ mutateAsync: state.confirmSms, isPending: false }) },
+      removeTwoFactorSmsBackup: { useMutation: () => ({ mutate: state.removeSms, isPending: false }) },
+    },
     adminProfile: {
       me: { useQuery: () => ({ data: state.profile, isLoading: false, error: null }) },
       images: { useQuery: () => ({ data: { photo: null, nidFront: "https://signed/nid-front", nidBack: null } }) },
@@ -48,6 +58,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   state.profile = baseProfile;
+  state.smsBackup = null;
 });
 state.profile = baseProfile;
 
@@ -111,6 +122,57 @@ describe("an Admin's own profile", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Emergency Contact" }));
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
     expect(within(screen.getByRole("dialog")).getByLabelText("Contact name")).toBeTruthy();
+  });
+});
+
+describe("the backup SMS code on an Admin's own profile", () => {
+  it("offers to add a number when none is set yet", () => {
+    render(<AdminProfileContent />);
+    expect(screen.getByRole("button", { name: "Add a backup number" })).toBeTruthy();
+  });
+
+  it("sends a code to the typed number, then confirms it to store the number", async () => {
+    render(<AdminProfileContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a backup number" }));
+    fireEvent.change(screen.getByPlaceholderText("+8801XXXXXXXXX"), { target: { value: "+8801812345678" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
+    await screen.findByText("Code sent to +8801812345678");
+    expect(state.startSms).toHaveBeenCalledWith({ phone: "+8801812345678" });
+
+    const codeBox = screen.getByLabelText("Code sent to +8801812345678");
+    fireEvent.change(codeBox, { target: { value: "4821" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await screen.findByRole("button", { name: "Add a backup number" }); // the form closes once confirmed
+    expect(state.confirmSms).toHaveBeenCalledWith({ phone: "+8801812345678", code: "4821" });
+  });
+
+  it("will not call for a code until the number looks like a real Bangladesh mobile", () => {
+    render(<AdminProfileContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Add a backup number" }));
+    fireEvent.change(screen.getByPlaceholderText("+8801XXXXXXXXX"), { target: { value: "not a number" } });
+    expect((screen.getByRole("button", { name: "Send code" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("shows the masked number already on file, with Change and Remove", () => {
+    state.smsBackup = { maskedPhone: "+880171••••678" };
+    render(<AdminProfileContent />);
+
+    expect(screen.getByText("+880171••••678")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add a backup number" })).toBeNull();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(state.removeSms).toHaveBeenCalled();
+  });
+
+  it("leaves the number in place when the Admin backs out of removing it", () => {
+    state.smsBackup = { maskedPhone: "+880171••••678" };
+    render(<AdminProfileContent />);
+
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(state.removeSms).not.toHaveBeenCalled();
   });
 });
 

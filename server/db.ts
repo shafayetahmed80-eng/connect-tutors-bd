@@ -5989,11 +5989,39 @@ export async function getAdminTwoFactorSettings(userId: number) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const [settings] = await database
-    .select({ userId: adminTwoFactorSettings.userId, secretCiphertext: adminTwoFactorSettings.secretCiphertext, enabledAt: adminTwoFactorSettings.enabledAt, lastVerifiedAt: adminTwoFactorSettings.lastVerifiedAt })
+    .select({
+      userId: adminTwoFactorSettings.userId,
+      secretCiphertext: adminTwoFactorSettings.secretCiphertext,
+      enabledAt: adminTwoFactorSettings.enabledAt,
+      lastVerifiedAt: adminTwoFactorSettings.lastVerifiedAt,
+      smsPhone: adminTwoFactorSettings.smsPhone,
+      smsPhoneVerifiedAt: adminTwoFactorSettings.smsPhoneVerifiedAt,
+    })
     .from(adminTwoFactorSettings)
     .where(eq(adminTwoFactorSettings.userId, userId))
     .limit(1);
   return settings;
+}
+
+/** A backup phone an Admin without their authenticator app can be sent a challenge code on, set only once it has answered one. */
+export async function setAdminTwoFactorSmsPhone(userId: number, phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(adminTwoFactorSettings)
+    .set({ smsPhone: phone, smsPhoneVerifiedAt: new Date() })
+    .where(eq(adminTwoFactorSettings.userId, userId));
+  return { updated: Boolean(result[0].affectedRows) } as const;
+}
+
+export async function clearAdminTwoFactorSmsPhone(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database
+    .update(adminTwoFactorSettings)
+    .set({ smsPhone: null, smsPhoneVerifiedAt: null })
+    .where(eq(adminTwoFactorSettings.userId, userId));
+  return { updated: Boolean(result[0].affectedRows) } as const;
 }
 
 export async function recordAdminTwoFactorVerification(userId: number) {
