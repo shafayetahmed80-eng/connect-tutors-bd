@@ -1,7 +1,8 @@
-import { ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
+import { ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG, LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { hasAdminTwoFactorProof } from "../admin-two-factor";
+import { hasLoginTwoFactorProof } from "../login-two-factor";
 import * as db from "../db";
 import { getSafeTutorProfileFieldIssues } from "../tutor-profile-error-contract";
 import type { TrpcContext } from "./context";
@@ -87,8 +88,20 @@ const requireRole = (roles: string[]) => t.middleware(async ({ ctx, next }) => {
 });
 
 export const protectedProcedure = t.procedure.use(requireUser);
-export const guardianProcedure = t.procedure.use(requireRole(["guardian", "user"]));
-export const tutorProcedure = t.procedure.use(requireRole(["tutor"]));
+/** A signed-in Tutor or Guardian, whether or not this browser has cleared the sign-in SMS code. */
+export const loginIdentityProcedure = t.procedure.use(requireRole(["tutor", "guardian", "user"]));
+
+const requireLoginTwoFactor = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  const { enabled } = await db.getTutorGuardianLoginOtpSettings();
+  if (enabled && !hasLoginTwoFactorProof(ctx.req, ctx.user.id)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const guardianProcedure = t.procedure.use(requireRole(["guardian", "user"])).use(requireLoginTwoFactor);
+export const tutorProcedure = t.procedure.use(requireRole(["tutor"])).use(requireLoginTwoFactor);
 
 /**
  * An Admin whose password was right - nothing about their second factor.

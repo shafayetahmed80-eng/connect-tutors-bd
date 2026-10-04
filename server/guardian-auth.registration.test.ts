@@ -5,6 +5,7 @@ const guardianAuthDbMocks = vi.hoisted(() => ({
   registerGuardianFromIntake: vi.fn(),
   getGuardianProfileByUserId: vi.fn(),
   verifyGuardianPassword: vi.fn(),
+  getTutorGuardianLoginOtpSettings: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -14,6 +15,7 @@ vi.mock("./db", async importOriginal => {
     registerGuardianFromIntake: guardianAuthDbMocks.registerGuardianFromIntake,
     getGuardianProfileByUserId: guardianAuthDbMocks.getGuardianProfileByUserId,
     verifyGuardianPassword: guardianAuthDbMocks.verifyGuardianPassword,
+    getTutorGuardianLoginOtpSettings: guardianAuthDbMocks.getTutorGuardianLoginOtpSettings,
     recordAuthEvent: vi.fn(async () => ({ id: 0 })),
   };
 });
@@ -81,7 +83,10 @@ function createValidHandoffCookie() {
   }).cookieValue;
 }
 
-beforeEach(() => __resetAuthRateLimitsForTests());
+beforeEach(() => {
+  __resetAuthRateLimitsForTests();
+  guardianAuthDbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: false, rememberDays: 30 });
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe("guardianAuth.register", () => {
@@ -120,6 +125,28 @@ describe("guardianAuth.register", () => {
     // still drop it on exit and every panel would ask for a password again.
     expect(cookies[0]?.options).toMatchObject({ maxAge: ONE_YEAR_MS });
     expect(clearedCookies[0]).toMatchObject({ name: "guardian-intake-handoff", options: { httpOnly: true, path: "/" } });
+  });
+
+  it("counts the number just proved as the sign-in code, once the Owner has switched that on", async () => {
+    guardianAuthDbMocks.registerGuardianFromIntake.mockResolvedValue({ created: true, user: guardianUser });
+    guardianAuthDbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: true, rememberDays: 14 });
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("guardian-session-token");
+    const { caller, cookies } = createPublicCaller({ handoffCookie: createValidHandoffCookie() });
+
+    await caller.guardianAuth.register(registrationInput);
+
+    expect(cookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME, "connect-login-2fa"]);
+    expect(cookies[1]?.options).toMatchObject({ httpOnly: true, maxAge: 14 * 24 * 60 * 60 * 1000 });
+  });
+
+  it("sets no sign-in code proof while that is switched off", async () => {
+    guardianAuthDbMocks.registerGuardianFromIntake.mockResolvedValue({ created: true, user: guardianUser });
+    vi.spyOn(sdk, "createSessionToken").mockResolvedValue("guardian-session-token");
+    const { caller, cookies } = createPublicCaller({ handoffCookie: createValidHandoffCookie() });
+
+    await caller.guardianAuth.register(registrationInput);
+
+    expect(cookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME]);
   });
 
   it("rejects absent or invalid handoffs before any private persistence or session write", async () => {

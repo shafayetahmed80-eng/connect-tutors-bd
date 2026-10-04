@@ -66,6 +66,27 @@ describe("the chat WebSocket handshake", () => {
     socket.close();
   });
 
+  it("refuses a Tutor who has not cleared the sign-in SMS code, and accepts one who has", async () => {
+    sdkMocks.authenticateRequest.mockResolvedValue({ id: 101, role: "tutor" });
+    deps.renewTutorPortalSession.mockResolvedValue(true);
+    deps.getTutorAccountStatusByUserId.mockResolvedValue("active");
+    deps.getTutorProfileByUserId.mockResolvedValue({ tutorId: "tutor-1503" });
+    const loginTwoFactorCleared = vi.fn().mockResolvedValue(false);
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    server = createServer();
+    attachChatWebSocketServer(server, { ...deps, loginTwoFactorCleared });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    port = (server.address() as { port: number }).port;
+
+    await waitForRefusal(new WebSocket(socketUrl("?token=proof")));
+    expect(loginTwoFactorCleared).toHaveBeenCalledWith(expect.anything(), 101);
+
+    loginTwoFactorCleared.mockResolvedValue(true);
+    const socket = new WebSocket(socketUrl("?token=proof"));
+    await expect(waitFor(socket, "open")).resolves.toBeUndefined();
+    socket.close();
+  });
+
   it("refuses a Tutor whose account is no longer active", async () => {
     sdkMocks.authenticateRequest.mockResolvedValue({ id: 101, role: "tutor" });
     deps.renewTutorPortalSession.mockResolvedValue(true);

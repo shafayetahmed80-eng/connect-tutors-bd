@@ -17,14 +17,14 @@ import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guar
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
 import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions, guardianVerificationStatusValues } from "@shared/guardian-profile";
-import { adminIdentityProcedure, adminProcedure, guardianProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
+import { adminIdentityProcedure, adminProcedure, guardianProcedure, loginIdentityProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
-import { guardianApplicantVisibilityValues } from "@shared/admin-control";
+import { guardianApplicantVisibilityValues, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN } from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
 import { SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, SCHOOL_NAME_MIN, schoolCollegeDivisionValues } from "@shared/school-colleges";
@@ -70,6 +70,7 @@ import {
   validateAdminTotpCode,
 } from "./admin-security";
 import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, setAdminTwoFactorProofCookie } from "./admin-two-factor";
+import { clearLoginTwoFactorProofCookie, hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
 import QRCode from "qrcode";
 import {
   createTutorPortalExpiry,
@@ -602,6 +603,15 @@ const ownerAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
+/**
+ * A number just proved by SMS counts as the sign-in code, so a brand-new
+ * account is not asked for a second one a moment after it registered.
+ */
+async function trustBrowserAfterPhoneProof(ctx: { req: Parameters<typeof setLoginTwoFactorProofCookie>[0]; res: Parameters<typeof setLoginTwoFactorProofCookie>[1] }, userId: number) {
+  const { enabled, rememberDays } = await db.getTutorGuardianLoginOtpSettings();
+  if (enabled) setLoginTwoFactorProofCookie(ctx.req, ctx.res, userId, rememberDays);
+}
+
 async function setPasswordSession(ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: Record<string, unknown>) => void } }, user: { openId: string; name: string | null }) {
   const sessionToken = await sdk.createSessionToken(user.openId, {
     name: user.name ?? "",
@@ -927,6 +937,7 @@ export const appRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "নিবন্ধন সম্পন্ন করা যাচ্ছে না। অনুগ্রহ করে আবার চেষ্টা করুন।" });
       }
       await setPasswordSession(ctx, result.user);
+      await trustBrowserAfterPhoneProof(ctx, result.user.id);
       ctx.res.clearCookie("guardian-intake-handoff", { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       auditAuth("registration_success", { role: "guardian", ip, identifier: input.email });
       return { success: true, next: "request-details" as const, user: { id: result.user.id, name: result.user.name, email: result.user.email, role: result.user.role, accountStatus: "active" as const } };
@@ -1002,7 +1013,46 @@ export const appRouter = router({
       // A deliberate Admin sign-out drops this browser's second-factor trust too,
       // so a password learned after the fact cannot ride the old proof back in.
       if (ctx.user?.role === "admin") clearAdminTwoFactorProofCookie(ctx.req, ctx.res);
+      if (ctx.user && ctx.user.role !== "admin") clearLoginTwoFactorProofCookie(ctx.req, ctx.res);
       return { success: true, globalTutorPortalLogout: isTutor } as const;
+    }),
+    loginTwoFactorStatus: loginIdentityProcedure.query(async ({ ctx }) => {
+      const { enabled, rememberDays } = await db.getTutorGuardianLoginOtpSettings();
+      if (!enabled) return { required: false, cleared: true, maskedPhone: null, rememberDays } as const;
+      const context = await db.getAccountChangeContextByUserId(ctx.user.id);
+      return {
+        required: true,
+        cleared: hasLoginTwoFactorProof(ctx.req, ctx.user.id),
+        maskedPhone: context?.currentMobile ? maskAdminSmsPhone(context.currentMobile) : null,
+        rememberDays,
+      } as const;
+    }),
+    sendLoginTwoFactorCode: loginIdentityProcedure.mutation(async ({ ctx }) => {
+      const key = `login-sms:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      const context = await db.getAccountChangeContextByUserId(ctx.user.id);
+      if (!context?.currentMobile) throw new TRPCError({ code: "BAD_REQUEST", message: "No mobile number is on this account." });
+      const result = await sendPhoneVerificationCode({ ip: getRequestIp(ctx), phone: context.currentMobile, purpose: "login_two_factor", role: ctx.user.role === "tutor" ? "tutor" : "guardian", language: "en" });
+      return { ...result, maskedPhone: maskAdminSmsPhone(context.currentMobile) };
+    }),
+    verifyLoginTwoFactorCode: loginIdentityProcedure.input(z.object({
+      code: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your phone."),
+    })).mutation(async ({ ctx, input }) => {
+      const key = `login-sms:${ctx.user.id}`;
+      if (twoFactorChallengeRateLimiter.check(key).blocked) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: TWO_FACTOR_RATE_LIMITED_MESSAGE });
+      const context = await db.getAccountChangeContextByUserId(ctx.user.id);
+      if (!context?.currentMobile) throw new TRPCError({ code: "BAD_REQUEST", message: "No mobile number is on this account." });
+      const role = ctx.user.role === "tutor" ? "tutor" : "guardian";
+      try {
+        await checkPhoneVerification({ ip: getRequestIp(ctx), phone: context.currentMobile, code: input.code, purpose: "login_two_factor", role, language: "en", consume: true });
+      } catch (error) {
+        twoFactorChallengeRateLimiter.record(key);
+        throw error;
+      }
+      twoFactorChallengeRateLimiter.reset(key);
+      const { rememberDays } = await db.getTutorGuardianLoginOtpSettings({ fresh: true });
+      setLoginTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id, rememberDays);
+      return { success: true, rememberDays } as const;
     }),
     sendTutorPhoneCode: publicProcedure
       .input(z.object({ phone: z.string().trim().regex(/^\+8801[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number.") }))
@@ -1049,6 +1099,7 @@ export const appRouter = router({
       }
       await db.consumePhoneVerificationCode(phoneCodeId);
       await setPasswordSession(ctx, result.user);
+      await trustBrowserAfterPhoneProof(ctx, result.user.id);
       const tutorPortalToken = await issueTutorPortalSession(result.user.id);
       auditAuth("registration_success", { role: "tutor", ip, identifier: input.email });
       return {
@@ -1783,6 +1834,12 @@ export const appRouter = router({
     setGuardianApplicantVisibility: ownerAdminProcedure
       .input(z.object({ visibility: z.enum(guardianApplicantVisibilityValues) }))
       .mutation(({ input }) => db.setGuardianApplicantVisibility(input)),
+    setTutorGuardianLoginOtpEnabled: ownerAdminProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(({ input }) => db.setTutorGuardianLoginOtpEnabled(input.enabled)),
+    setTutorGuardianLoginOtpDays: ownerAdminProcedure
+      .input(z.object({ days: z.number().int().min(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN).max(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX) }))
+      .mutation(({ input }) => db.setTutorGuardianLoginOtpDays(input.days)),
   }),
   /**
    * Owner overrides for the Tutor Profile's field section/order/enabled/
