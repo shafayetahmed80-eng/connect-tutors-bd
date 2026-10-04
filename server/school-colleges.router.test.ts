@@ -1,6 +1,8 @@
 import type { TrpcContext } from "./_core/context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeSchoolName } from "@shared/school-colleges";
+import { ADMIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
+import { createAdminTwoFactorSessionProof } from "./admin-security";
 import { ENV } from "./_core/env";
 
 const dbMocks = vi.hoisted(() => ({
@@ -21,9 +23,12 @@ import { appRouter } from "./routers";
 const tutor = { id: 101, role: "tutor" as const, name: "Amina Rahman", openId: "tutor:101" };
 
 function createCaller(user: TrpcContext["user"] = tutor as TrpcContext["user"]) {
+  const cookie = user?.role === "admin"
+    ? `${ADMIN_TWO_FACTOR_COOKIE_NAME}=${createAdminTwoFactorSessionProof(user.id, ENV.cookieSecret, Date.now() + 60_000)}`
+    : "";
   return appRouter.createCaller({
     user,
-    req: { protocol: "https", headers: { host: "x.example", "x-connect-tutor-portal-session": "proof" } },
+    req: { protocol: "https", headers: { host: "x.example", "x-connect-tutor-portal-session": "proof", cookie } },
     res: { cookie() {}, clearCookie() {} },
   } as unknown as TrpcContext);
 }

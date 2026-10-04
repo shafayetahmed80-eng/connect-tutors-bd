@@ -10,7 +10,6 @@ afterEach(() => cleanup());
 const accountStageProps = {
   name: "",
   email: "",
-  phone: "01712345678",
   gender: "female" as const,
   password: "",
   confirmPassword: "",
@@ -29,7 +28,6 @@ const accountStageProps = {
   onCity: vi.fn(),
   onLocation: vi.fn(),
   onTerms: vi.fn(),
-  onBack: vi.fn(),
   onCreate: vi.fn(),
 };
 
@@ -62,14 +60,11 @@ describe("Guardian private-account presentation", () => {
 
     expect(screen.queryByText("Step 2 of 3")).toBeNull();
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).not.toBeNull();
-    const phoneField = screen.getByDisplayValue("1712345678") as HTMLInputElement;
-    expect(phoneField.readOnly).toBe(true);
     expect((screen.getByRole("radio", { name: "Female" }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole("radio", { name: "Male" })).not.toBeNull();
     expect(screen.getAllByRole("button", { name: "Show password" })).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
     expect(screen.getByRole("link", { name: "Sign in with email or mobile" }).getAttribute("href")).toBe("/auth?role=guardian");
-    expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Continue" })).not.toBeNull();
   });
 
   it("surfaces per-field server-side account errors inline like the Tutor panel", () => {
@@ -115,7 +110,7 @@ describe("Guardian private-account presentation", () => {
     expect(confirmInput.type).toBe("password");
   });
 
-  it("carries no helper text under the phone or password fields", () => {
+  it("carries no helper text under the password fields", () => {
     render(<PasswordStrengthHarness />);
 
     expect(screen.queryByRole("note", { name: /password manager/i })).toBeNull();
@@ -139,8 +134,7 @@ describe("Guardian private-account presentation", () => {
     render(<AccountStage {...accountStageProps} />);
 
     expect(document.querySelectorAll(".lucide-arrow-right, .lucide-arrow-left")).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Create Guardian account" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Back to phone" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Continue" })).not.toBeNull();
   });
 
   it("recognises only a current City and Area pair as a complete location selection", () => {
