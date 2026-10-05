@@ -65,7 +65,7 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
 | `OWNER_OPEN_ID` | **আবশ্যক** | ধাপ ৭-এর owner-admin স্ক্রিপ্ট এটা প্রিন্ট করে দেয়; না দিলে কেউ Owner-only পেজ (Admin Security, Dynamic Section) দেখতে পাবে না |
 | `SMS_API_URL` / `SMS_API_KEY` / `SMS_SENDER_ID` | ঐচ্ছিক | Tutor OTP, Guardian ফোন-ভেরিফিকেশন, "Forgot password?" এসএমএস — না দিলে কোড শুধু সার্ভার লগে প্রিন্ট হয় |
-| `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক; না দিলে ডিফল্ট `https://connecttutorsbd.com` |
+| `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক, আর `robots.txt`/`sitemap.xml`-এর ঠিকানা; না দিলে ডিফল্ট `https://connecttutorsbd.com`। শুধু এই ঠিকানার ডোমেইনে সার্চ ইঞ্জিনকে ঢুকতে দেওয়া হয়, অন্য কোনো হোস্টে (staging, লোকাল) সব বন্ধ |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
 
 `JWT_SECRET` তৈরি করতে (SSH-এ):
@@ -110,7 +110,10 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 5. সাইন আউট করে আবার সাইন-ইন করলে এবার `/admin/2fa-challenge`-এ যায় (নতুন করে QR কোড না দেখিয়ে), এবং authenticator app-এর কোড দিলে workspace খোলে
 6. Guardian request submission database-এ persist হয়
 7. Guardian/Tutor profile photo আপলোড করে দেখুন — `private-uploads/` ফোল্ডারে ফাইল তৈরি হচ্ছে কিনা যাচাই করুন
-8. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
+8. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
+9. `https://connecttutorsbd.com/healthz` খুললে `{"status":"ok"}` আসে (ডেটাবেস না পেলে `503`)। এই ঠিকানা UptimeRobot-এর মতো কোনো মনিটরে দিলে সাইট বন্ধ হলে আপনাকে জানাবে
+10. `https://connecttutorsbd.com/robots.txt` খুললে `Disallow:`-এর একটা তালিকা আর `Sitemap:` লাইন থাকবে। যদি শুধু `Disallow: /` দেখায়, সার্ভার আসল ডোমেইনটা চিনতে পারছে না — তাহলে সার্চ ইঞ্জিন সাইটটা সূচিতে তুলবে না, `PUBLIC_SITE_URL` ঠিক করুন
+11. `https://connecttutorsbd.com/sitemap.xml` খুললে পাবলিক পেজগুলোর তালিকা আসে
 
 ## ১১. গুরুত্বপূর্ণ নিরাপত্তা নোট
 

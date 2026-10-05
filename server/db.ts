@@ -357,6 +357,18 @@ export async function getDb() {
   return _db;
 }
 
+/** Whether the database answers a query right now; what `/healthz` reports. */
+export async function pingDatabase() {
+  const database = await getDb();
+  if (!database) return false;
+  try {
+    await database.execute(sql`select 1`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function createTutorPortalSession(input: {
   userId: number;
   tokenHash: string;

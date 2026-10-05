@@ -18,6 +18,7 @@ import { serveStatic, setupVite } from "./vite";
 import { attachChatWebSocketServer } from "../chat-ws";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
 import { loginTwoFactorCleared } from "../login-two-factor";
+import { registerSiteDiscoveryRoutes } from "../site-discovery-routes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -50,6 +51,7 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  registerSiteDiscoveryRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerGuardianProfilePhotoRoute(app);
