@@ -129,7 +129,7 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/admin-control",
     label: "Admin Control",
-    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)।",
+    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে।",
     seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT],
   },
 ];

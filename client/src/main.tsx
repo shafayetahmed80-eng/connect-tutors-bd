@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { sendToLoginCodeIfOwed } from "./lib/loginCodeRedirect";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { createRoot } from "react-dom/client";
@@ -9,6 +10,8 @@ import "./index.css";
 import "./styles/brand-foundation.css";
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: error => sendToLoginCodeIfOwed(error) }),
+  mutationCache: new MutationCache({ onError: error => sendToLoginCodeIfOwed(error) }),
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 

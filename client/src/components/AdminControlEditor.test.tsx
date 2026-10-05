@@ -4,8 +4,10 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  data: { guardianApplicantVisibility: "all" as "all" | "shortlisted", appointmentRequestsOutsideShortlist: 0 },
+  data: { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 } } as { guardianApplicantVisibility: "all" | "shortlisted"; appointmentRequestsOutsideShortlist: number; tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number } },
   mutate: vi.fn(),
+  setOtpEnabled: vi.fn(),
+  setOtpDays: vi.fn(),
   invalidate: vi.fn(),
   overrides: [] as Array<{ slotId: string; text: string | null }>,
   saveLink: vi.fn(),
@@ -21,6 +23,8 @@ vi.mock("@/lib/trpc", () => ({
     adminControl: {
       get: { useQuery: () => ({ data: state.data, isLoading: false, isError: false }) },
       setGuardianApplicantVisibility: { useMutation: () => ({ mutate: state.mutate, isPending: false }) },
+      setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
+      setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
     },
     siteContent: {
       list: { useQuery: () => ({ data: state.overrides, isLoading: false, isError: false }) },
@@ -39,8 +43,53 @@ import AdminControlEditor from "./AdminControlEditor";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0 };
+  state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 } };
   state.overrides = [];
+});
+
+describe("the sign-in code switch", () => {
+  it("marks the switch in force and shows the days a browser is remembered", () => {
+    render(<AdminControlEditor />);
+
+    const group = screen.getByRole("radiogroup", { name: "Tutor and Guardian sign-in code" });
+    expect(within(group).getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe("true");
+    expect(within(group).getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("false");
+    expect((screen.getByLabelText("Remember for") as HTMLInputElement).value).toBe("30");
+  });
+
+  it("turns the code on or off the moment it is picked", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Off" }));
+    expect(state.setOtpEnabled).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("radio", { name: "On" }));
+    expect(state.setOtpEnabled).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it("saves the days only once they have changed and sit between 1 and 90", () => {
+    render(<AdminControlEditor />);
+    const days = screen.getByLabelText("Remember for") as HTMLInputElement;
+    const save = () => within(days.closest("section") as HTMLElement).getByRole("button", { name: "Save" }) as HTMLButtonElement;
+
+    expect(save().disabled).toBe(true);
+    fireEvent.change(days, { target: { value: "14" } });
+    expect(save().disabled).toBe(false);
+    fireEvent.click(save());
+    expect(state.setOtpDays).toHaveBeenCalledWith({ days: 14 });
+
+    fireEvent.change(days, { target: { value: "0" } });
+    expect(save().disabled).toBe(true);
+    expect(days.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.change(days, { target: { value: "95" } });
+    expect(days.value).toBe("95");
+    expect(save().disabled).toBe(true);
+  });
+
+  it("falls back to the shipped defaults while the Owner has never set it", () => {
+    state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0 };
+    render(<AdminControlEditor />);
+    expect((screen.getByLabelText("Remember for") as HTMLInputElement).value).toBe("30");
+  });
 });
 
 describe("Admin Control", () => {
@@ -112,7 +161,7 @@ describe("the community link of each panel", () => {
     render(<AdminControlEditor />);
 
     fireEvent.change(screen.getByLabelText("Tutor panel"), { target: { value: "https://www.facebook.com/groups/ctbd-tutors" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
+    fireEvent.click(within(screen.getByLabelText("Tutor panel").closest("section") as HTMLElement).getAllByRole("button", { name: "Save" })[0]);
 
     expect(state.saveLink).toHaveBeenCalledTimes(1);
     expect(state.saveLink).toHaveBeenCalledWith({ slotId: communityLinkSlotId("tutor"), text: "https://www.facebook.com/groups/ctbd-tutors" });
@@ -125,7 +174,7 @@ describe("the community link of each panel", () => {
     fireEvent.change(box, { target: { value: "facebook groups connecttutors" } });
 
     expect(box.getAttribute("aria-invalid")).toBe("true");
-    expect((screen.getAllByRole("button", { name: "Save" })[0] as HTMLButtonElement).disabled).toBe(true);
+    expect((within(box.closest("section") as HTMLElement).getAllByRole("button", { name: "Save" })[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("resets a changed panel back to the shipped address", () => {
@@ -153,9 +202,7 @@ describe("where Tutors send their payments", () => {
 
     expect((screen.getByLabelText("Nagad") as HTMLInputElement).value).toBe("01812345678");
     fireEvent.change(screen.getByLabelText("bKash"), { target: { value: "  01712345678 (Personal) " } });
-    // The bKash row is the first payment-account Save; the community rows come before it.
-    const saves = screen.getAllByRole("button", { name: "Save" });
-    fireEvent.click(saves[2]);
+    fireEvent.click(within(screen.getByLabelText("bKash").closest("section") as HTMLElement).getAllByRole("button", { name: "Save" })[0]);
 
     expect(state.saveLink).toHaveBeenCalledTimes(1);
     expect(state.saveLink).toHaveBeenCalledWith({ slotId: paymentAccountSlotId("bkash"), text: "01712345678 (Personal)" });

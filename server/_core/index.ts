@@ -17,6 +17,7 @@ import { registerTutorAdminChatAttachmentRoute } from "../tutor-admin-chat-attac
 import { serveStatic, setupVite } from "./vite";
 import { attachChatWebSocketServer } from "../chat-ws";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
+import { loginTwoFactorCleared } from "../login-two-factor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,7 +41,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  attachChatWebSocketServer(server, { renewTutorPortalSession, getTutorAccountStatusByUserId, getTutorProfileByUserId });
+  attachChatWebSocketServer(server, {
+    renewTutorPortalSession,
+    getTutorAccountStatusByUserId,
+    getTutorProfileByUserId,
+    loginTwoFactorCleared,
+  });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

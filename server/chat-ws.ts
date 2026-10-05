@@ -90,12 +90,15 @@ export type ChatSocketAuthDeps = {
   renewTutorPortalSession: (input: { userId: number; tokenHash: string; now: Date; nextExpiry: Date }) => Promise<boolean>;
   getTutorAccountStatusByUserId: (userId: number) => Promise<string | null | undefined>;
   getTutorProfileByUserId: (userId: number) => Promise<{ tutorId?: string | null } | null | undefined>;
+  /** Whether this request has cleared the Owner's sign-in SMS code, when that is switched on. Left out, nothing is gated. */
+  loginTwoFactorCleared?: (request: IncomingMessage, userId: number) => Promise<boolean>;
 };
 
 async function authenticateTutorSocket(request: IncomingMessage, token: string | null, deps: ChatSocketAuthDeps) {
   if (!token) return null;
   const user = await sdk.authenticateRequest(request as never).catch(() => null);
   if (!user || user.role !== "tutor") return null;
+  if (deps.loginTwoFactorCleared && !(await deps.loginTwoFactorCleared(request, user.id))) return null;
   const now = new Date();
   const isActive = await deps.renewTutorPortalSession({
     userId: user.id,

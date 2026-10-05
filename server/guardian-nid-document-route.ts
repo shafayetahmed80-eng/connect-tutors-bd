@@ -3,6 +3,8 @@ import multer, { MulterError } from "multer";
 import { isGuardianNidSide } from "@shared/guardian-profile";
 import { getGuardianAccountStatusByUserId } from "./db";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import { MAX_GUARDIAN_PROFILE_PHOTO_BYTES } from "./guardian-profile-photo";
 import {
   GuardianNidDocumentError,
@@ -41,6 +43,7 @@ export function registerGuardianNidDocumentRoute(app: Express) {
       if (!user || user.role !== "guardian" || await getGuardianAccountStatusByUserId(user.id) !== "active") {
         return response.status(user ? 403 : 401).json({ error: "Only active Guardian accounts can upload a NID card image." });
       }
+      if (!(await loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
       response.locals.guardianNidUser = { id: user.id, role: "guardian", accountStatus: "active" } satisfies EndpointUser;
       return next();
     } catch {

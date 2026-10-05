@@ -2,6 +2,8 @@ import type { Express, NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
 import { getTutorAccountStatusByUserId } from "./db";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import { TutorUniversityIdDocumentError, uploadTutorUniversityIdDocument } from "./tutor-university-id-document";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0 } });
@@ -25,6 +27,7 @@ export function registerTutorUniversityIdDocumentRoute(app: Express) {
       if (!user || user.role !== "tutor" || await getTutorAccountStatusByUserId(user.id) !== "active") {
         return response.status(user ? 403 : 401).json({ error: "Only active Tutor accounts can upload a University ID image." });
       }
+      if (!(await loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
       response.locals.tutorUniversityIdUser = { id: user.id, role: "tutor", accountStatus: "active" };
       return next();
     } catch {

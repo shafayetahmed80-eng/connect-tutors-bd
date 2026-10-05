@@ -6,6 +6,7 @@ const currentUser = vi.hoisted(() => ({ value: { id: 501, role: "guardian", name
 const mocks = vi.hoisted(() => ({
   authenticateRequest: vi.fn(),
   getGuardianAccountStatusByUserId: vi.fn(),
+  getTutorGuardianLoginOtpSettings: vi.fn(),
   saveGuardianNidDocumentKey: vi.fn(),
   clearGuardianNidDocumentKey: vi.fn(),
   storagePut: vi.fn(),
@@ -14,12 +15,16 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./_core/sdk", () => ({ sdk: { authenticateRequest: mocks.authenticateRequest } }));
 vi.mock("./db", () => ({
   getGuardianAccountStatusByUserId: mocks.getGuardianAccountStatusByUserId,
+  getTutorGuardianLoginOtpSettings: mocks.getTutorGuardianLoginOtpSettings,
   saveGuardianNidDocumentKey: mocks.saveGuardianNidDocumentKey,
   clearGuardianNidDocumentKey: mocks.clearGuardianNidDocumentKey,
   getGuardianNidDocumentKeys: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storagePut: mocks.storagePut, storageGetSignedUrl: vi.fn() }));
 
+import { LOGIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
+import { createAdminTwoFactorSessionProof } from "./admin-security";
+import { ENV } from "./_core/env";
 import { registerGuardianNidDocumentRoute } from "./guardian-nid-document-route";
 
 function pngFixture() {
@@ -43,9 +48,30 @@ describe("Guardian NID document multipart endpoint", () => {
     vi.clearAllMocks();
     mocks.authenticateRequest.mockResolvedValue(currentUser.value);
     mocks.getGuardianAccountStatusByUserId.mockResolvedValue("active");
+    mocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: false, rememberDays: 30 });
     mocks.saveGuardianNidDocumentKey.mockResolvedValue(undefined);
     mocks.clearGuardianNidDocumentKey.mockResolvedValue(undefined);
     mocks.storagePut.mockResolvedValue({ key: "guardians/501/nid-front_x.png", url: "/manus-storage/guardians/501/nid-front_x.png" });
+  });
+
+  it("refuses an upload from a browser that has not cleared the sign-in code, and accepts one that has", async () => {
+    mocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: true, rememberDays: 30 });
+
+    const refused = await request(createApp())
+      .post("/api/guardian/nid-document/front")
+      .attach("document", pngFixture(), { filename: "nid.png", contentType: "image/png" })
+      .expect(403);
+    expect(refused.body.error).toContain("10004");
+    expect(mocks.saveGuardianNidDocumentKey).not.toHaveBeenCalled();
+    await request(createApp()).delete("/api/guardian/nid-document/front").expect(403);
+    expect(mocks.clearGuardianNidDocumentKey).not.toHaveBeenCalled();
+
+    const proof = createAdminTwoFactorSessionProof(currentUser.value.id, ENV.cookieSecret, Date.now() + 60_000);
+    await request(createApp())
+      .post("/api/guardian/nid-document/front")
+      .set("Cookie", `${LOGIN_TWO_FACTOR_COOKIE_NAME}=${proof}`)
+      .attach("document", pngFixture(), { filename: "nid.png", contentType: "image/png" })
+      .expect(201);
   });
 
   it("accepts one image for a valid side from an active Guardian", async () => {

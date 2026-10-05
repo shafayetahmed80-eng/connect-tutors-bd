@@ -2,6 +2,8 @@ import type { Express, NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
 import { getGuardianAccountStatusByUserId } from "./db";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import {
   GuardianProfilePhotoError,
   MAX_GUARDIAN_PROFILE_PHOTO_BYTES,
@@ -22,6 +24,7 @@ type EndpointUser = { id: number; role: string; name: string | null; openId: str
 
 type GuardianProfilePhotoRouteDependencies = {
   authenticateRequest: typeof sdk.authenticateRequest;
+  loginTwoFactorCleared: typeof loginTwoFactorCleared;
   getGuardianAccountStatusByUserId: typeof getGuardianAccountStatusByUserId;
   uploadGuardianProfilePhoto: typeof uploadGuardianProfilePhoto;
   removeGuardianProfilePhoto: typeof removeGuardianProfilePhoto;
@@ -51,6 +54,7 @@ export function registerGuardianProfilePhotoRoute(
 ) {
   const dependencies: GuardianProfilePhotoRouteDependencies = {
     authenticateRequest: sdk.authenticateRequest.bind(sdk),
+    loginTwoFactorCleared,
     getGuardianAccountStatusByUserId,
     uploadGuardianProfilePhoto,
     removeGuardianProfilePhoto,
@@ -68,6 +72,7 @@ export function registerGuardianProfilePhotoRoute(
       if (accountStatus !== "active") {
         return response.status(403).json({ error: "Only active Guardian accounts can upload a profile photo." });
       }
+      if (!(await dependencies.loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
       response.locals.guardianPhotoUser = { id: user.id, role: "guardian", accountStatus: "active" };
       return next();
     } catch {

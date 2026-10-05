@@ -407,7 +407,7 @@ export const passwordResetLinks = mysqlTable(
 );
 export type PasswordResetLink = typeof passwordResetLinks.$inferSelect;
 
-export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake", "password_reset", "mobile_change", "admin_two_factor"] as const;
+export const phoneVerificationPurposeValues = ["tutor_registration", "guardian_intake", "password_reset", "mobile_change", "admin_two_factor", "login_two_factor"] as const;
 export type PhoneVerificationPurpose = (typeof phoneVerificationPurposeValues)[number];
 
 /**

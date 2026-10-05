@@ -1,6 +1,8 @@
 export const COOKIE_NAME = "app_session_id";
 export const ONE_YEAR_MS = 1000 * 60 * 60 * 24 * 365;
 export const ADMIN_TWO_FACTOR_COOKIE_NAME = "connect-admin-2fa";
+export const LOGIN_TWO_FACTOR_COOKIE_NAME = "connect-login-2fa";
+export const LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG = "Two-factor verification is required (10004)";
 /** How long a browser that cleared the challenge is trusted before it is asked again. */
 export const ADMIN_TWO_FACTOR_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 export const AXIOS_TIMEOUT_MS = 30_000;

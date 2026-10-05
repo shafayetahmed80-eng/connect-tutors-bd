@@ -32,3 +32,23 @@ export function guardianApplicantVisibilityFromStored(value: number | null | und
 export function storedGuardianApplicantVisibility(mode: GuardianApplicantVisibility): number {
   return mode === "all" ? 0 : 1;
 }
+
+export const TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID = "control.tutorGuardianLoginOtp";
+export const TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID = "control.tutorGuardianLoginOtpDays";
+
+/** Off until the Owner turns it on from Admin Control. */
+export const DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED = false;
+export const DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS = 30;
+export const TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN = 1;
+export const TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX = 90;
+
+export function tutorGuardianLoginOtpEnabledFromStored(value: number | null | undefined): boolean {
+  if (value === 1) return true;
+  if (value === 0) return false;
+  return DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED;
+}
+
+export function tutorGuardianLoginOtpDaysFromStored(value: number | null | undefined): number {
+  if (value === null || value === undefined) return DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS;
+  return Math.min(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX, Math.max(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN, Math.round(value)));
+}

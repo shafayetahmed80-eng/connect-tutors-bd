@@ -1,7 +1,13 @@
 import SiteLimitEditor from "@/components/SiteLimitEditor";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
-import type { GuardianApplicantVisibility } from "@shared/admin-control";
+import {
+  DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
+  DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
+  TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX,
+  TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN,
+  type GuardianApplicantVisibility,
+} from "@shared/admin-control";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK, isCommunityLink, type CommunityPanel } from "@shared/community";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels, type PaymentAccountMethod } from "@shared/platform-charge";
 import { MAX_SITE_CONTENT_TEXT_LENGTH } from "@shared/site-content";
@@ -75,6 +81,62 @@ function CommunityLinks() {
           >Reset</button>
         </div>;
       })}
+    </div>
+  </section>;
+}
+
+/**
+ * Whether a Tutor or Guardian must give an SMS code after their password, and
+ * for how many days a browser that did stays trusted. The switch saves as soon
+ * as it is picked; the days save on their own button.
+ */
+function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememberDays: number } }) {
+  const utils = trpc.useUtils();
+  const enabled = settings?.enabled ?? DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED;
+  const savedDays = settings?.rememberDays ?? DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS;
+  const [typedDays, setTypedDays] = useState<string | null>(null);
+  const done = () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); };
+  const setEnabled = trpc.adminControl.setTutorGuardianLoginOtpEnabled.useMutation({ onSuccess: done, onError: error => { toast.error(error.message); } });
+  const setDays = trpc.adminControl.setTutorGuardianLoginOtpDays.useMutation({
+    onSuccess: () => { setTypedDays(null); done(); },
+    onError: error => { toast.error(error.message); },
+  });
+
+  const shown = typedDays ?? String(savedDays);
+  const parsed = Number(shown);
+  const valid = Number.isInteger(parsed) && parsed >= TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN && parsed <= TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX;
+  const dirty = valid && parsed !== savedDays;
+
+  return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+    <h2 id="login-code-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor and Guardian sign-in code</h2>
+    <div role="radiogroup" aria-labelledby="login-code-heading" className="mt-2 inline-flex gap-1 rounded-xl border border-j-border bg-j-surface-sunken p-1">
+      {([[true, "On"], [false, "Off"]] as const).map(([value, label]) => <button
+        key={label}
+        type="button"
+        role="radio"
+        aria-checked={enabled === value}
+        disabled={setEnabled.isPending}
+        onClick={() => { if (enabled !== value) setEnabled.mutate({ enabled: value }); }}
+        className={`h-9 rounded-lg px-3.5 text-sm font-bold disabled:opacity-60 ${enabled === value ? "bg-white text-j-accent shadow-sm" : "text-j-ink-soft hover:text-j-ink-strong"}`}
+      >{label}</button>)}
+    </div>
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <label htmlFor="login-code-days" className="w-28 shrink-0 text-sm font-bold text-j-ink">Remember for</label>
+      <input
+        id="login-code-days"
+        value={shown}
+        inputMode="numeric"
+        aria-invalid={!valid}
+        onChange={event => setTypedDays(event.target.value.replace(/D/g, "").slice(0, 2))}
+        className={`h-10 w-20 rounded-xl border bg-j-surface-sunken px-3 text-center text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
+      />
+      <span className="text-sm font-bold text-j-ink-soft">days</span>
+      <button
+        type="button"
+        disabled={!dirty || setDays.isPending}
+        onClick={() => setDays.mutate({ days: parsed })}
+        className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+      >{setDays.isPending ? "Saving…" : "Save"}</button>
     </div>
   </section>;
 }
@@ -192,6 +254,8 @@ export default function AdminControlEditor() {
         })}
       </div>
     </section>
+
+    <LoginCodeSettings settings={control.data.tutorGuardianLoginOtp} />
 
     <CommunityLinks />
 

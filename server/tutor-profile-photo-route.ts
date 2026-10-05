@@ -2,6 +2,8 @@ import type { Express, NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
 import { getTutorAccountStatusByUserId } from "./db";
 import { sdk } from "./_core/sdk";
+import { LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG } from "@shared/const";
+import { loginTwoFactorCleared } from "./login-two-factor";
 import {
   MAX_TUTOR_PROFILE_PHOTO_BYTES,
   removeTutorProfilePhoto,
@@ -22,6 +24,7 @@ type EndpointUser = { id: number; role: string; name: string | null; openId: str
 
 type TutorProfilePhotoRouteDependencies = {
   authenticateRequest: typeof sdk.authenticateRequest;
+  loginTwoFactorCleared: typeof loginTwoFactorCleared;
   getTutorAccountStatusByUserId: typeof getTutorAccountStatusByUserId;
   uploadTutorProfilePhoto: typeof uploadTutorProfilePhoto;
   removeTutorProfilePhoto: typeof removeTutorProfilePhoto;
@@ -43,6 +46,7 @@ function sendUploadError(response: Response, error: unknown) {
 export function registerTutorProfilePhotoRoute(app: Express, overrides: Partial<TutorProfilePhotoRouteDependencies> = {}) {
   const dependencies: TutorProfilePhotoRouteDependencies = {
     authenticateRequest: sdk.authenticateRequest.bind(sdk),
+    loginTwoFactorCleared,
     getTutorAccountStatusByUserId,
     uploadTutorProfilePhoto,
     removeTutorProfilePhoto,
@@ -56,6 +60,7 @@ export function registerTutorProfilePhotoRoute(app: Express, overrides: Partial<
       if (user.role !== "tutor") return response.status(403).json({ error: "Only active Tutor accounts can upload a profile photo." });
       const accountStatus = await dependencies.getTutorAccountStatusByUserId(user.id);
       if (accountStatus !== "active") return response.status(403).json({ error: "Only active Tutor accounts can upload a profile photo." });
+      if (!(await dependencies.loginTwoFactorCleared(request, user.id))) return response.status(403).json({ error: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
       response.locals.tutorPhotoUser = { id: user.id, role: "tutor", accountStatus: "active" };
       return next();
     } catch {

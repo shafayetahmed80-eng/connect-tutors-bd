@@ -15,9 +15,15 @@ import { alias } from "drizzle-orm/mysql-core";
 import { normalizeSchoolName, SCHOOL_CREATE_LIMIT_PER_TUTOR, SCHOOL_SEARCH_LIMIT, tidySchoolName } from "@shared/school-colleges";
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
+  DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
+  DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
+  TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID,
+  TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID,
   guardianApplicantVisibilityFromStored,
   storedGuardianApplicantVisibility,
+  tutorGuardianLoginOtpDaysFromStored,
+  tutorGuardianLoginOtpEnabledFromStored,
   type GuardianApplicantVisibility,
 } from "@shared/admin-control";
 import {
@@ -7549,7 +7555,54 @@ export async function getAdminControl() {
     .select({ value: count() })
     .from(tutorJobInterests)
     .where(and(...appointmentRequestOutsideShortlistConditions()));
-  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0) };
+  const tutorGuardianLoginOtp = await getTutorGuardianLoginOtpSettings({ fresh: true });
+  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp };
+}
+
+let tutorGuardianLoginOtpCache: { enabled: boolean; rememberDays: number; readAt: number } | null = null;
+
+/**
+ * Whether a Tutor or Guardian must clear an SMS code at sign-in, and for how
+ * many days a browser stays trusted after it does. Both default to off/30 when
+ * the Owner has never set them, so a database without these rows gates nothing.
+ */
+export async function getTutorGuardianLoginOtpSettings(options: { fresh?: boolean } = {}): Promise<{ enabled: boolean; rememberDays: number }> {
+  if (!options.fresh && tutorGuardianLoginOtpCache && Date.now() - tutorGuardianLoginOtpCache.readAt < SITE_LIMIT_CACHE_MS) {
+    return { enabled: tutorGuardianLoginOtpCache.enabled, rememberDays: tutorGuardianLoginOtpCache.rememberDays };
+  }
+  const database = await getDb();
+  if (!database) return { enabled: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED, rememberDays: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS };
+  const rows = await database
+    .select({ limitId: siteLimitsTable.limitId, value: siteLimitsTable.value })
+    .from(siteLimitsTable)
+    .where(inArray(siteLimitsTable.limitId, [TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID]));
+  const stored = new Map(rows.map(row => [row.limitId, Number(row.value)] as const));
+  const settings = {
+    enabled: tutorGuardianLoginOtpEnabledFromStored(stored.get(TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID)),
+    rememberDays: tutorGuardianLoginOtpDaysFromStored(stored.get(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID)),
+  };
+  tutorGuardianLoginOtpCache = { ...settings, readAt: Date.now() };
+  return settings;
+}
+
+async function upsertSiteLimit(limitId: string, value: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.insert(siteLimitsTable)
+    .values({ limitId, value })
+    .onDuplicateKeyUpdate({ set: { value } });
+  tutorGuardianLoginOtpCache = null;
+}
+
+export async function setTutorGuardianLoginOtpEnabled(enabled: boolean) {
+  await upsertSiteLimit(TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID, enabled ? 1 : 0);
+  return { enabled };
+}
+
+export async function setTutorGuardianLoginOtpDays(days: number) {
+  const stored = tutorGuardianLoginOtpDaysFromStored(days);
+  await upsertSiteLimit(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID, stored);
+  return { rememberDays: stored };
 }
 
 /**
