@@ -88,15 +88,21 @@ function CommunityLinks() {
 /**
  * Whether a Tutor or Guardian must give an SMS code after their password, and
  * for how many days a browser that did stays trusted. The switch saves as soon
- * as it is picked; the days save on their own button.
+ * as it is picked; the days save on their own button. Resetting ends the trust
+ * of every browser at once, after a confirmation.
  */
 function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememberDays: number } }) {
   const utils = trpc.useUtils();
   const enabled = settings?.enabled ?? DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED;
   const savedDays = settings?.rememberDays ?? DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS;
   const [typedDays, setTypedDays] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const done = () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); };
   const setEnabled = trpc.adminControl.setTutorGuardianLoginOtpEnabled.useMutation({ onSuccess: done, onError: error => { toast.error(error.message); } });
+  const resetTrust = trpc.adminControl.resetTutorGuardianLoginTrust.useMutation({
+    onSuccess: () => { setConfirmingReset(false); toast.success("Reset."); },
+    onError: error => { toast.error(error.message); },
+  });
   const setDays = trpc.adminControl.setTutorGuardianLoginOtpDays.useMutation({
     onSuccess: () => { setTypedDays(null); done(); },
     onError: error => { toast.error(error.message); },
@@ -138,6 +144,28 @@ function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememb
         className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
       >{setDays.isPending ? "Saving…" : "Save"}</button>
     </div>
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setConfirmingReset(true)}
+        className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:text-j-ink-strong"
+      >Reset trusted browsers</button>
+    </div>
+    {confirmingReset ? <Modal size="sm" onClose={() => setConfirmingReset(false)} busy={resetTrust.isPending}>
+      <ModalHeader title="Reset trusted browsers?" />
+      <ModalBody>
+        <p className="text-sm leading-6 text-j-ink-soft">Every Tutor and Guardian will be asked for a sign-in code again the next time they open their panel.</p>
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={() => setConfirmingReset(false)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button
+          type="button"
+          disabled={resetTrust.isPending}
+          onClick={() => resetTrust.mutate()}
+          className="h-10 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+        >{resetTrust.isPending ? "Resetting…" : "Reset"}</button>
+      </ModalFooter>
+    </Modal> : null}
   </section>;
 }
 

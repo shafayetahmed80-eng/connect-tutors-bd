@@ -34,8 +34,7 @@ vi.mock("./tutor-admin-chat-attachment", async importOriginal => ({
 }));
 
 import { LOGIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
-import { createAdminTwoFactorSessionProof } from "./admin-security";
-import { ENV } from "./_core/env";
+import { createLoginTwoFactorProof } from "./login-two-factor";
 import { registerTutorAdminChatAttachmentRoute } from "./tutor-admin-chat-attachment-route";
 import { registerTutorSupportingDocumentRoute } from "./tutor-supporting-document-route";
 import { registerTutorUniversityIdDocumentRoute } from "./tutor-university-id-document-route";
@@ -52,7 +51,7 @@ function app() {
 }
 
 function proofCookie(userId = tutor.id) {
-  return `${LOGIN_TWO_FACTOR_COOKIE_NAME}=${createAdminTwoFactorSessionProof(userId, ENV.cookieSecret, Date.now() + 60_000)}`;
+  return `${LOGIN_TWO_FACTOR_COOKIE_NAME}=${createLoginTwoFactorProof(userId, Date.now() + 60_000)}`;
 }
 
 const routes = [

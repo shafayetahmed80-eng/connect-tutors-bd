@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   mutate: vi.fn(),
   setOtpEnabled: vi.fn(),
   setOtpDays: vi.fn(),
+  resetTrust: vi.fn(),
   invalidate: vi.fn(),
   overrides: [] as Array<{ slotId: string; text: string | null }>,
   saveLink: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("@/lib/trpc", () => ({
       setGuardianApplicantVisibility: { useMutation: () => ({ mutate: state.mutate, isPending: false }) },
       setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
       setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
+      resetTutorGuardianLoginTrust: { useMutation: () => ({ mutate: state.resetTrust, isPending: false }) },
     },
     siteContent: {
       list: { useQuery: () => ({ data: state.overrides, isLoading: false, isError: false }) },
@@ -83,6 +85,23 @@ describe("the sign-in code switch", () => {
     fireEvent.change(days, { target: { value: "95" } });
     expect(days.value).toBe("95");
     expect(save().disabled).toBe(true);
+  });
+
+  it("resets every trusted browser only after a confirmation, and not when backed out of", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset trusted browsers" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/asked for a sign-in code again/)).toBeTruthy();
+    expect(state.resetTrust).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Back" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(state.resetTrust).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset trusted browsers" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Reset" }));
+    expect(state.resetTrust).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to the shipped defaults while the Owner has never set it", () => {

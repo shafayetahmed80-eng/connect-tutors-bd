@@ -608,8 +608,8 @@ const ownerAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
  * account is not asked for a second one a moment after it registered.
  */
 async function trustBrowserAfterPhoneProof(ctx: { req: Parameters<typeof setLoginTwoFactorProofCookie>[0]; res: Parameters<typeof setLoginTwoFactorProofCookie>[1] }, userId: number) {
-  const { enabled, rememberDays } = await db.getTutorGuardianLoginOtpSettings();
-  if (enabled) setLoginTwoFactorProofCookie(ctx.req, ctx.res, userId, rememberDays);
+  const { enabled, rememberDays, epoch } = await db.getTutorGuardianLoginOtpSettings();
+  if (enabled) setLoginTwoFactorProofCookie(ctx.req, ctx.res, userId, rememberDays, epoch);
 }
 
 async function setPasswordSession(ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: Record<string, unknown>) => void } }, user: { openId: string; name: string | null }) {
@@ -1017,12 +1017,12 @@ export const appRouter = router({
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
     loginTwoFactorStatus: loginIdentityProcedure.query(async ({ ctx }) => {
-      const { enabled, rememberDays } = await db.getTutorGuardianLoginOtpSettings();
+      const { enabled, rememberDays, epoch } = await db.getTutorGuardianLoginOtpSettings();
       if (!enabled) return { required: false, cleared: true, maskedPhone: null, rememberDays } as const;
       const context = await db.getAccountChangeContextByUserId(ctx.user.id);
       return {
         required: true,
-        cleared: hasLoginTwoFactorProof(ctx.req, ctx.user.id),
+        cleared: hasLoginTwoFactorProof(ctx.req, ctx.user.id, epoch),
         maskedPhone: context?.currentMobile ? maskAdminSmsPhone(context.currentMobile) : null,
         rememberDays,
       } as const;
@@ -1050,8 +1050,8 @@ export const appRouter = router({
         throw error;
       }
       twoFactorChallengeRateLimiter.reset(key);
-      const { rememberDays } = await db.getTutorGuardianLoginOtpSettings({ fresh: true });
-      setLoginTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id, rememberDays);
+      const { rememberDays, epoch } = await db.getTutorGuardianLoginOtpSettings({ fresh: true });
+      setLoginTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id, rememberDays, epoch);
       return { success: true, rememberDays } as const;
     }),
     sendTutorPhoneCode: publicProcedure
@@ -1837,6 +1837,7 @@ export const appRouter = router({
     setTutorGuardianLoginOtpEnabled: ownerAdminProcedure
       .input(z.object({ enabled: z.boolean() }))
       .mutation(({ input }) => db.setTutorGuardianLoginOtpEnabled(input.enabled)),
+    resetTutorGuardianLoginTrust: ownerAdminProcedure.mutation(() => db.resetTutorGuardianLoginTrust()),
     setTutorGuardianLoginOtpDays: ownerAdminProcedure
       .input(z.object({ days: z.number().int().min(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN).max(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX) }))
       .mutation(({ input }) => db.setTutorGuardianLoginOtpDays(input.days)),
