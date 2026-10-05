@@ -20,10 +20,12 @@ import {
   GUARDIAN_APPLICANT_VISIBILITY_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID,
+  TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID,
   guardianApplicantVisibilityFromStored,
   storedGuardianApplicantVisibility,
   tutorGuardianLoginOtpDaysFromStored,
   tutorGuardianLoginOtpEnabledFromStored,
+  tutorGuardianLoginOtpEpochFromStored,
   type GuardianApplicantVisibility,
 } from "@shared/admin-control";
 import {
@@ -7559,30 +7561,44 @@ export async function getAdminControl() {
   return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp };
 }
 
-let tutorGuardianLoginOtpCache: { enabled: boolean; rememberDays: number; readAt: number } | null = null;
+let tutorGuardianLoginOtpCache: { enabled: boolean; rememberDays: number; epoch: number; readAt: number } | null = null;
 
 /**
  * Whether a Tutor or Guardian must clear an SMS code at sign-in, and for how
  * many days a browser stays trusted after it does. Both default to off/30 when
  * the Owner has never set them, so a database without these rows gates nothing.
  */
-export async function getTutorGuardianLoginOtpSettings(options: { fresh?: boolean } = {}): Promise<{ enabled: boolean; rememberDays: number }> {
+export async function getTutorGuardianLoginOtpSettings(options: { fresh?: boolean } = {}): Promise<{ enabled: boolean; rememberDays: number; epoch: number }> {
   if (!options.fresh && tutorGuardianLoginOtpCache && Date.now() - tutorGuardianLoginOtpCache.readAt < SITE_LIMIT_CACHE_MS) {
-    return { enabled: tutorGuardianLoginOtpCache.enabled, rememberDays: tutorGuardianLoginOtpCache.rememberDays };
+    const { enabled, rememberDays, epoch } = tutorGuardianLoginOtpCache;
+    return { enabled, rememberDays, epoch };
   }
   const database = await getDb();
-  if (!database) return { enabled: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED, rememberDays: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS };
+  if (!database) return { enabled: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED, rememberDays: DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS, epoch: 0 };
   const rows = await database
     .select({ limitId: siteLimitsTable.limitId, value: siteLimitsTable.value })
     .from(siteLimitsTable)
-    .where(inArray(siteLimitsTable.limitId, [TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID]));
+    .where(inArray(siteLimitsTable.limitId, [TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID, TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID]));
   const stored = new Map(rows.map(row => [row.limitId, Number(row.value)] as const));
   const settings = {
     enabled: tutorGuardianLoginOtpEnabledFromStored(stored.get(TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID)),
     rememberDays: tutorGuardianLoginOtpDaysFromStored(stored.get(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID)),
+    epoch: tutorGuardianLoginOtpEpochFromStored(stored.get(TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID)),
   };
   tutorGuardianLoginOtpCache = { ...settings, readAt: Date.now() };
   return settings;
+}
+
+/** Ends every trusted browser at once: each must give a code again the next time its owner opens a panel. */
+export async function resetTutorGuardianLoginTrust() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.insert(siteLimitsTable)
+    .values({ limitId: TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID, value: 1 })
+    .onDuplicateKeyUpdate({ set: { value: sql`${siteLimitsTable.value} + 1` } });
+  tutorGuardianLoginOtpCache = null;
+  const { epoch } = await getTutorGuardianLoginOtpSettings({ fresh: true });
+  return { epoch };
 }
 
 async function upsertSiteLimit(limitId: string, value: number) {

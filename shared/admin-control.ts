@@ -35,6 +35,11 @@ export function storedGuardianApplicantVisibility(mode: GuardianApplicantVisibil
 
 export const TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID = "control.tutorGuardianLoginOtp";
 export const TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID = "control.tutorGuardianLoginOtpDays";
+/**
+ * Counts how many times the Owner has reset every trusted browser. A proof is
+ * signed with the count current when it was given, so raising it ends them all.
+ */
+export const TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID = "control.tutorGuardianLoginOtpEpoch";
 
 /** Off until the Owner turns it on from Admin Control. */
 export const DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED = false;
@@ -46,6 +51,10 @@ export function tutorGuardianLoginOtpEnabledFromStored(value: number | null | un
   if (value === 1) return true;
   if (value === 0) return false;
   return DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED;
+}
+
+export function tutorGuardianLoginOtpEpochFromStored(value: number | null | undefined): number {
+  return Number.isInteger(value) && (value as number) > 0 ? (value as number) : 0;
 }
 
 export function tutorGuardianLoginOtpDaysFromStored(value: number | null | undefined): number {

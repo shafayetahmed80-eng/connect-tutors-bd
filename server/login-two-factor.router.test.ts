@@ -5,6 +5,7 @@ const dbMocks = vi.hoisted(() => ({
   getTutorGuardianLoginOtpSettings: vi.fn(),
   setTutorGuardianLoginOtpEnabled: vi.fn(),
   setTutorGuardianLoginOtpDays: vi.fn(),
+  resetTutorGuardianLoginTrust: vi.fn(),
   getAdminControl: vi.fn(),
   getAdminTwoFactorSettings: vi.fn(),
   getAccountChangeContextByUserId: vi.fn(),
@@ -46,8 +47,8 @@ function cookieHeaderFor(setCookies: Record<string, { value: string }>) {
   return Object.entries(setCookies).map(([name, { value }]) => `${name}=${value}`).join("; ");
 }
 
-function switchedOn(rememberDays = 30) {
-  dbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: true, rememberDays });
+function switchedOn(rememberDays = 30, epoch = 0) {
+  dbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: true, rememberDays, epoch });
 }
 
 beforeEach(() => {
@@ -148,6 +149,49 @@ describe("clearing the sign-in SMS code", () => {
     const { caller, res } = createCaller();
     await caller.auth.logout();
     expect(res.clearCookie).toHaveBeenCalledWith("connect-login-2fa", expect.anything());
+  });
+});
+
+describe("the Owner resetting every trusted browser", () => {
+  it("ends the proof every browser already holds, and a code given afterwards is trusted again", async () => {
+    switchedOn(30, 0);
+    dbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 601 });
+    const first = createCaller();
+    await first.caller.auth.verifyLoginTwoFactorCode({ code: "4821" });
+    const trusted = createCaller(guardian, cookieHeaderFor(first.setCookies)).caller;
+    await expect(trusted.guardianProfile.me()).resolves.toMatchObject({ userId: 7 });
+
+    switchedOn(30, 1);
+    await expect(trusted.guardianProfile.me()).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("10004") });
+    await expect(trusted.auth.loginTwoFactorStatus()).resolves.toMatchObject({ required: true, cleared: false });
+
+    const again = createCaller();
+    await again.caller.auth.verifyLoginTwoFactorCode({ code: "4821" });
+    const retrusted = createCaller(guardian, cookieHeaderFor(again.setCookies)).caller;
+    await expect(retrusted.guardianProfile.me()).resolves.toMatchObject({ userId: 7 });
+  });
+
+  it("also ends the proof the upload routes would have accepted", async () => {
+    switchedOn(30, 0);
+    dbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 601 });
+    const first = createCaller();
+    await first.caller.auth.verifyLoginTwoFactorCode({ code: "4821" });
+    const { loginTwoFactorCleared } = await import("./login-two-factor");
+    const req = { headers: { cookie: cookieHeaderFor(first.setCookies) } };
+
+    await expect(loginTwoFactorCleared(req, guardian.id)).resolves.toBe(true);
+    switchedOn(30, 1);
+    await expect(loginTwoFactorCleared(req, guardian.id)).resolves.toBe(false);
+  });
+
+  it("is the Project Owner's alone", async () => {
+    dbMocks.resetTutorGuardianLoginTrust.mockResolvedValue({ epoch: 1 });
+    await expect(createCaller(owner).caller.adminControl.resetTutorGuardianLoginTrust()).resolves.toEqual({ epoch: 1 });
+
+    const otherAdmin = createCaller({ ...owner, id: 2, openId: "password:admin:other" }).caller;
+    await expect(otherAdmin.adminControl.resetTutorGuardianLoginTrust()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller().caller.adminControl.resetTutorGuardianLoginTrust()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.resetTutorGuardianLoginTrust).toHaveBeenCalledTimes(1);
   });
 });
 

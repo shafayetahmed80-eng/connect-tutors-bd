@@ -93,8 +93,8 @@ export const loginIdentityProcedure = t.procedure.use(requireRole(["tutor", "gua
 
 const requireLoginTwoFactor = t.middleware(async ({ ctx, next }) => {
   if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
-  const { enabled } = await db.getTutorGuardianLoginOtpSettings();
-  if (enabled && !hasLoginTwoFactorProof(ctx.req, ctx.user.id)) {
+  const { enabled, epoch } = await db.getTutorGuardianLoginOtpSettings();
+  if (enabled && !hasLoginTwoFactorProof(ctx.req, ctx.user.id, epoch)) {
     throw new TRPCError({ code: "FORBIDDEN", message: LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG });
   }
   return next({ ctx: { ...ctx, user: ctx.user } });

@@ -8,9 +8,16 @@ import { ENV } from "./_core/env";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function setLoginTwoFactorProofCookie(req: Request, res: Response, userId: number, rememberDays: number) {
+/** A proof is signed with the Owner's reset count, so raising the count ends every proof given before it. */
+const proofKey = (epoch: number) => `${ENV.cookieSecret}:login-trust:${epoch}`;
+
+export function createLoginTwoFactorProof(userId: number, expiresAtMs: number, epoch = 0) {
+  return createAdminTwoFactorSessionProof(userId, proofKey(epoch), expiresAtMs);
+}
+
+export function setLoginTwoFactorProofCookie(req: Request, res: Response, userId: number, rememberDays: number, epoch = 0) {
   const maxAgeMs = rememberDays * DAY_MS;
-  const proof = createAdminTwoFactorSessionProof(userId, ENV.cookieSecret, Date.now() + maxAgeMs);
+  const proof = createLoginTwoFactorProof(userId, Date.now() + maxAgeMs, epoch);
   const { path, sameSite, secure } = getSessionCookieOptions(req);
   res.cookie(LOGIN_TWO_FACTOR_COOKIE_NAME, proof, { httpOnly: true, path, sameSite, secure, maxAge: maxAgeMs });
 }
@@ -20,9 +27,9 @@ export function clearLoginTwoFactorProofCookie(req: Request, res: Response) {
   res.clearCookie(LOGIN_TWO_FACTOR_COOKIE_NAME, { path, sameSite, secure });
 }
 
-export function hasLoginTwoFactorProof(req: Request, userId: number) {
+export function hasLoginTwoFactorProof(req: Request, userId: number, epoch = 0) {
   const cookies = parseCookieHeader(req.headers.cookie ?? "");
-  return verifyAdminTwoFactorSessionProof(cookies[LOGIN_TWO_FACTOR_COOKIE_NAME], userId, ENV.cookieSecret);
+  return verifyAdminTwoFactorSessionProof(cookies[LOGIN_TWO_FACTOR_COOKIE_NAME], userId, proofKey(epoch));
 }
 
 /**
@@ -30,6 +37,6 @@ export function hasLoginTwoFactorProof(req: Request, userId: number) {
  * Owner's sign-in code is switched off, or this browser has already cleared it.
  */
 export async function loginTwoFactorCleared(req: Pick<Request, "headers">, userId: number) {
-  const { enabled } = await getTutorGuardianLoginOtpSettings();
-  return !enabled || hasLoginTwoFactorProof(req as Request, userId);
+  const { enabled, epoch } = await getTutorGuardianLoginOtpSettings();
+  return !enabled || hasLoginTwoFactorProof(req as Request, userId, epoch);
 }

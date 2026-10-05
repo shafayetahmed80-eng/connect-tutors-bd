@@ -23,8 +23,7 @@ vi.mock("./db", () => ({
 vi.mock("./storage", () => ({ storagePut: mocks.storagePut, storageGetSignedUrl: vi.fn() }));
 
 import { LOGIN_TWO_FACTOR_COOKIE_NAME } from "@shared/const";
-import { createAdminTwoFactorSessionProof } from "./admin-security";
-import { ENV } from "./_core/env";
+import { createLoginTwoFactorProof } from "./login-two-factor";
 import { registerGuardianNidDocumentRoute } from "./guardian-nid-document-route";
 
 function pngFixture() {
@@ -66,7 +65,7 @@ describe("Guardian NID document multipart endpoint", () => {
     await request(createApp()).delete("/api/guardian/nid-document/front").expect(403);
     expect(mocks.clearGuardianNidDocumentKey).not.toHaveBeenCalled();
 
-    const proof = createAdminTwoFactorSessionProof(currentUser.value.id, ENV.cookieSecret, Date.now() + 60_000);
+    const proof = createLoginTwoFactorProof(currentUser.value.id, Date.now() + 60_000);
     await request(createApp())
       .post("/api/guardian/nid-document/front")
       .set("Cookie", `${LOGIN_TWO_FACTOR_COOKIE_NAME}=${proof}`)
