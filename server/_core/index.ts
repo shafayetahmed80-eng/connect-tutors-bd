@@ -19,6 +19,8 @@ import { attachChatWebSocketServer } from "../chat-ws";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
 import { loginTwoFactorCleared } from "../login-two-factor";
 import { registerSiteDiscoveryRoutes } from "../site-discovery-routes";
+import { ENV } from "./env";
+import { productionSettingsProblems } from "./production-check";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +42,14 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  if (ENV.isProduction) {
+    const { fatal, warnings } = productionSettingsProblems(ENV);
+    for (const warning of warnings) console.warn(`[startup] ${warning}`);
+    if (fatal.length > 0) {
+      for (const problem of fatal) console.error(`[startup] ${problem}`);
+      process.exit(1);
+    }
+  }
   const app = express();
   const server = createServer(app);
   attachChatWebSocketServer(server, {
@@ -78,7 +88,9 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // In production the host decides the port (Passenger hands it over), so a busy
+  // port is an error to report, and probing it first would only get in the way.
+  const port = ENV.isProduction ? preferredPort : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
