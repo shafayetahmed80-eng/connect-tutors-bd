@@ -18,6 +18,16 @@ export function safeNextPath(raw: string | null, fallback: string) {
   return raw;
 }
 
+/** How long the finished tick stays on screen before the page moves on. */
+const VERIFIED_HOLD_MS = 900;
+
+function VerifiedMark() {
+  return <svg aria-hidden="true" viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle className="login-verified-ring" cx="14" cy="14" r="11.5" pathLength={1} />
+    <path className="login-verified-tick" d="M8.5 14.5l3.8 3.8 7.2-7.6" pathLength={1} />
+  </svg>;
+}
+
 export default function LoginTwoFactorChallenge() {
   const [, navigate] = useLocation();
   const { user, loading: authLoading, logout } = useAuth();
@@ -32,6 +42,7 @@ export default function LoginTwoFactorChallenge() {
   const [code, setCode] = useState("");
   const [sentAt, setSentAt] = useState(0);
   const [formError, setFormError] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
   const resendInSeconds = useSecondsUntil(sentAt);
   const askedOnce = useRef(false);
 
@@ -43,8 +54,9 @@ export default function LoginTwoFactorChallenge() {
   const owed = Boolean(status.data?.required && !status.data.cleared);
 
   useEffect(() => {
-    if (status.data && !owed) navigate(next);
-  }, [status.data, owed, next, navigate]);
+    // Once the code is accepted the status refetches as "nothing owed"; the tick, not that, decides when to leave.
+    if (status.data && !owed && !verified) navigate(next);
+  }, [status.data, owed, verified, next, navigate]);
 
   const requestCode = async () => {
     setFormError(null);
@@ -69,7 +81,9 @@ export default function LoginTwoFactorChallenge() {
     setFormError(null);
     try {
       await verifyCode.mutateAsync({ code: candidate });
-      await utils.invalidate();
+      setVerified(true);
+      const reduceMotion = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      await Promise.all([utils.invalidate(), new Promise(resolve => setTimeout(resolve, reduceMotion ? 0 : VERIFIED_HOLD_MS))]);
       navigate(next);
     } catch (cause) {
       setCode("");
@@ -98,14 +112,14 @@ export default function LoginTwoFactorChallenge() {
       <section className="relative mx-auto w-full max-w-md overflow-hidden rounded-xl border border-j-border bg-white px-6 py-9 shadow-[0_1px_2px_rgba(16,49,77,.05),0_20px_54px_-14px_rgba(16,49,77,.20)] ring-1 ring-[rgba(16,49,77,.035)] sm:px-10 sm:py-11">
         <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,transparent,var(--j-accent),transparent)]" />
         <div className="flex flex-col items-center text-center">
-          <span className="inline-flex rounded-xl bg-j-accent-wash p-3.5 text-j-accent shadow-[0_8px_20px_-8px_rgba(22,125,221,.55)]"><ShieldCheck size={28} /></span>
-          <h1 className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-[#2782c7]">Verify it is you</h1>
-          <p className="mt-2 text-sm leading-6 text-j-ink-soft">{sentAt ? `Enter the 4-digit code sent to ${maskedPhone}.` : "Sending a code to your phone…"}</p>
+          <span className={`inline-flex rounded-xl bg-j-accent-wash p-3.5 text-j-accent shadow-[0_8px_20px_-8px_rgba(22,125,221,.55)]${verified ? " login-verified-badge" : ""}`}>{verified ? <VerifiedMark /> : <ShieldCheck size={28} />}</span>
+          <h1 className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-[#2782c7]">{verified ? "Verified" : "Verify it is you"}</h1>
+          <p role="status" className="mt-2 text-sm leading-6 text-j-ink-soft">{verified ? "Taking you in…" : sentAt ? `Enter the 4-digit code sent to ${maskedPhone}.` : "Sending a code to your phone…"}</p>
         </div>
 
         {busy ? <div className="mt-8 flex items-center gap-3 rounded-xl bg-j-surface-sunken px-4 py-4 text-sm font-semibold text-[#56738d]"><LoadingCradle /> Checking your account…</div> : null}
 
-        {owed ? <form className="mt-8 grid gap-3" onSubmit={submit} noValidate>
+        {owed && !verified ? <form className="mt-8 grid gap-3" onSubmit={submit} noValidate>
           <label htmlFor="login-2fa-code" className="text-sm font-bold text-j-ink-soft">4-digit code</label>
           <input id="login-2fa-code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{4}" maxLength={4} autoFocus value={code} onChange={event => handleCodeChange(event.target.value)} disabled={verifyCode.isPending || sendCode.isPending} required className="h-12 rounded-lg border border-j-field-border bg-j-surface-sunken px-4 text-center font-mono text-lg tracking-[0.3em] transition-colors focus-visible:border-j-accent focus-visible:outline-none focus-visible:ring-0" />
           {formError ? <p role="alert" className="rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold text-j-err">{formError}</p> : null}

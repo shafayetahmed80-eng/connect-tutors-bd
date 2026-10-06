@@ -29,6 +29,10 @@ vi.mock("@/lib/trpc", () => ({
 
 import LoginTwoFactorChallenge, { safeNextPath } from "./LoginTwoFactorChallenge";
 
+function prefersReducedMotion(reduce: boolean) {
+  window.matchMedia = ((query: string) => ({ matches: reduce && query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia;
+}
+
 const owedStatus = { required: true, cleared: false, maskedPhone: "+880171••••111", rememberDays: 30 };
 
 beforeEach(() => {
@@ -39,6 +43,7 @@ beforeEach(() => {
   mocks.verify.mockResolvedValue({ success: true, rememberDays: 30 });
   mocks.invalidate.mockResolvedValue(undefined);
   window.history.pushState({}, "", "/login-verify?next=%2Ftutor%2Fdashboard%2Fprofile");
+  prefersReducedMotion(true);
 });
 
 afterEach(() => {
@@ -72,6 +77,28 @@ describe("the sign-in code page", () => {
     await waitFor(() => expect(mocks.verify).toHaveBeenCalledWith({ code: "4821" }));
     await waitFor(() => expect(window.location.pathname).toBe("/tutor/dashboard/profile"));
     expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
+  it("holds on a drawn tick for a moment before moving on", async () => {
+    prefersReducedMotion(false);
+    const { container } = render(<LoginTwoFactorChallenge />);
+    await waitFor(() => expect(mocks.send).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText("4-digit code"), { target: { value: "4821" } });
+    await waitFor(() => expect(screen.getByText("Verified")).toBeTruthy());
+    expect(container.querySelector(".login-verified-tick")).not.toBeNull();
+    expect(screen.queryByLabelText("4-digit code")).toBeNull();
+    expect(window.location.pathname).toBe("/login-verify");
+
+    await waitFor(() => expect(window.location.pathname).toBe("/tutor/dashboard/profile"), { timeout: 3000 });
+  });
+
+  it("does not make anyone wait for the tick when they ask for less motion", async () => {
+    render(<LoginTwoFactorChallenge />);
+    await waitFor(() => expect(mocks.send).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText("4-digit code"), { target: { value: "4821" } });
+    await waitFor(() => expect(window.location.pathname).toBe("/tutor/dashboard/profile"), { timeout: 400 });
   });
 
   it("shows a wrong code's message and empties the box", async () => {
