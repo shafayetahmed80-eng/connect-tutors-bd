@@ -77,11 +77,13 @@ export function CredentialPasswordFields({
   confirmPassword,
   onPasswordChange,
   onConfirmPasswordChange,
+  idPrefix = "admin",
 }: {
   password: string;
   confirmPassword: string;
   onPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
+  idPrefix?: string;
 }) {
   const newPasswordCapsLockWarning = useCapsLockWarning();
   const confirmationCapsLockWarning = useCapsLockWarning();
@@ -90,20 +92,20 @@ export function CredentialPasswordFields({
 
   return <>
     <div>
-      <label htmlFor="admin-new-password" className="text-xs font-bold text-j-ink-soft">New password</label>
+      <label htmlFor={`${idPrefix}-new-password`} className="text-xs font-bold text-j-ink-soft">New password</label>
       <div className="relative mt-1">
-        <input id="admin-new-password" type={isNewPasswordVisible ? "text" : "password"} value={password} onChange={e => onPasswordChange(e.target.value)} onKeyDown={newPasswordCapsLockWarning.updateCapsLockState} onKeyUp={newPasswordCapsLockWarning.updateCapsLockState} onBlur={newPasswordCapsLockWarning.clearCapsLockWarning} minLength={8} maxLength={128} required autoComplete="new-password" className="h-10 w-full rounded-lg border border-j-field-border bg-white px-3 pr-11 text-sm font-normal" />
-        <button type="button" aria-controls="admin-new-password" aria-label={isNewPasswordVisible ? "Hide new password" : "Show new password"} aria-pressed={isNewPasswordVisible} onClick={() => setIsNewPasswordVisible(visible => !visible)} className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1">
+        <input id={`${idPrefix}-new-password`} type={isNewPasswordVisible ? "text" : "password"} value={password} onChange={e => onPasswordChange(e.target.value)} onKeyDown={newPasswordCapsLockWarning.updateCapsLockState} onKeyUp={newPasswordCapsLockWarning.updateCapsLockState} onBlur={newPasswordCapsLockWarning.clearCapsLockWarning} minLength={8} maxLength={128} required autoComplete="new-password" className="h-10 w-full rounded-lg border border-j-field-border bg-white px-3 pr-11 text-sm font-normal" />
+        <button type="button" aria-controls={`${idPrefix}-new-password`} aria-label={isNewPasswordVisible ? "Hide new password" : "Show new password"} aria-pressed={isNewPasswordVisible} onClick={() => setIsNewPasswordVisible(visible => !visible)} className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1">
           {isNewPasswordVisible ? <EyeOff aria-hidden="true" size={17} /> : <Eye aria-hidden="true" size={17} />}
         </button>
       </div>
       <CapsLockWarning isCapsLockOn={newPasswordCapsLockWarning.isCapsLockOn} />
     </div>
     <div>
-      <label htmlFor="admin-confirm-new-password" className="text-xs font-bold text-j-ink-soft">Confirm new password</label>
+      <label htmlFor={`${idPrefix}-confirm-new-password`} className="text-xs font-bold text-j-ink-soft">Confirm new password</label>
       <div className="relative mt-1">
-        <input id="admin-confirm-new-password" type={isConfirmationVisible ? "text" : "password"} value={confirmPassword} onChange={e => onConfirmPasswordChange(e.target.value)} onKeyDown={confirmationCapsLockWarning.updateCapsLockState} onKeyUp={confirmationCapsLockWarning.updateCapsLockState} onBlur={confirmationCapsLockWarning.clearCapsLockWarning} minLength={8} maxLength={128} required autoComplete="new-password" className="h-10 w-full rounded-lg border border-j-field-border bg-white px-3 pr-11 text-sm font-normal" />
-        <button type="button" aria-controls="admin-confirm-new-password" aria-label={isConfirmationVisible ? "Hide confirm new password" : "Show confirm new password"} aria-pressed={isConfirmationVisible} onClick={() => setIsConfirmationVisible(visible => !visible)} className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1">
+        <input id={`${idPrefix}-confirm-new-password`} type={isConfirmationVisible ? "text" : "password"} value={confirmPassword} onChange={e => onConfirmPasswordChange(e.target.value)} onKeyDown={confirmationCapsLockWarning.updateCapsLockState} onKeyUp={confirmationCapsLockWarning.updateCapsLockState} onBlur={confirmationCapsLockWarning.clearCapsLockWarning} minLength={8} maxLength={128} required autoComplete="new-password" className="h-10 w-full rounded-lg border border-j-field-border bg-white px-3 pr-11 text-sm font-normal" />
+        <button type="button" aria-controls={`${idPrefix}-confirm-new-password`} aria-label={isConfirmationVisible ? "Hide confirm new password" : "Show confirm new password"} aria-pressed={isConfirmationVisible} onClick={() => setIsConfirmationVisible(visible => !visible)} className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1">
           {isConfirmationVisible ? <EyeOff aria-hidden="true" size={17} /> : <Eye aria-hidden="true" size={17} />}
         </button>
       </div>
@@ -117,8 +119,12 @@ function SecurityWorkspaceContent() {
   const { user, loading } = useAuth();
   const utils = trpc.useUtils();
   const workspaceAccess = trpc.admin.getWorkspaceAccess.useQuery(undefined, { enabled: user?.role === "admin", retry: false });
-  const [email, setEmail] = useState("");
-  const [hours, setHours] = useState(168);
+  const [newLoginId, setNewLoginId] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newConfirmPassword, setNewConfirmPassword] = useState("");
+  const [createdLoginId, setCreatedLoginId] = useState("");
   const [event, setEvent] = useState<(typeof events)[number]>("all");
   const [auditEmail, setAuditEmail] = useState("");
   const [page, setPage] = useState(1);
@@ -128,7 +134,6 @@ function SecurityWorkspaceContent() {
   const [authIp, setAuthIp] = useState("");
   const [authPage, setAuthPage] = useState(1);
   const [authPageSize, setAuthPageSize] = useState(20);
-  const [invitationLink, setInvitationLink] = useState("");
   const [credentialTarget, setCredentialTarget] = useState<{ id: number; name: string; existingLoginId: string | null } | null>(null);
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -157,7 +162,18 @@ function SecurityWorkspaceContent() {
     { key: "reason", label: "Reason", wide: true, cell: entry => <span className="text-xs text-j-ink-muted">{entry.reason ?? "—"}</span> },
   ];
 
-  const createInvitation = trpc.admin.createInvitation.useMutation({ onSuccess: result => { setInvitationLink(result.invitationLink); setEmail(""); void utils.admin.getAuditLog.invalidate(); } });
+  const createAdmin = trpc.admin.createAdmin.useMutation({
+    onSuccess: result => {
+      setCreatedLoginId(result.loginId);
+      setNewLoginId("");
+      setNewName("");
+      setNewEmail("");
+      setNewPassword("");
+      setNewConfirmPassword("");
+      void utils.admin.listAdmins.invalidate();
+      void utils.admin.getAuditLog.invalidate();
+    },
+  });
   const revoke = trpc.admin.revokeAdmin.useMutation({ onSuccess: () => { void utils.admin.listAdmins.invalidate(); void utils.admin.getAuditLog.invalidate(); } });
   const resetTwoFactor = trpc.admin.resetTwoFactorForAdmin.useMutation({ onSuccess: () => void utils.admin.getAuditLog.invalidate() });
   const provision = trpc.admin.provisionPasswordCredential.useMutation({
@@ -185,7 +201,18 @@ function SecurityWorkspaceContent() {
     
 
     <section className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-      <article className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-j-ink">Invite an Admin</h2><p className="mt-1 text-sm leading-6 text-j-ink-soft">The link works once, binds to this email, and expires after the chosen time. After acceptance, assign credentials below.</p><label className="mt-5 block text-sm font-semibold text-j-ink-strong">Invitee email<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" className="mt-2 h-11 w-full rounded-xl border border-j-field-border px-3 font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><label className="mt-4 block text-sm font-semibold text-j-ink-strong">Link expiry<select value={hours} onChange={e => setHours(Number(e.target.value))} className="mt-2 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"><option value={24}>24 hours</option><option value={72}>3 days</option><option value={168}>7 days</option><option value={720}>30 days</option></select></label>{createInvitation.isError ? <InlineError message={createInvitation.error.message || "The invitation link could not be created."} /> : null}<button type="button" disabled={!/^\S+@\S+\.\S+$/.test(email) || createInvitation.isPending} onClick={() => createInvitation.mutate({ email, expiresInHours: hours })} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl bg-j-ink px-4 text-sm font-bold text-white transition hover:bg-[#102f4c] disabled:opacity-50">{createInvitation.isPending ? "Creating…" : "Create secure invitation link"}</button>{invitationLink ? <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Share this link privately</p><p className="mt-2 break-all text-xs leading-5 text-emerald-950">{invitationLink}</p><button type="button" onClick={() => void navigator.clipboard.writeText(invitationLink)} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-900"><ClipboardCopy size={14} /> Copy invitation link</button></div> : null}</article>
+      <article className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-bold text-j-ink">Create an Admin</h2>
+        <form className="mt-4 grid gap-3" onSubmit={event => { event.preventDefault(); setCreatedLoginId(""); createAdmin.mutate({ loginId: newLoginId, name: newName, email: newEmail, password: newPassword, confirmPassword: newConfirmPassword }); }}>
+          <label className="text-xs font-bold text-j-ink-soft">User ID<input value={newLoginId} onChange={event => setNewLoginId(event.target.value)} autoComplete="off" required className="mt-1 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label>
+          <label className="text-xs font-bold text-j-ink-soft">Name<input value={newName} onChange={event => setNewName(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label>
+          <label className="text-xs font-bold text-j-ink-soft">Email<input type="email" value={newEmail} onChange={event => setNewEmail(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label>
+          <CredentialPasswordFields idPrefix="create-admin" password={newPassword} confirmPassword={newConfirmPassword} onPasswordChange={setNewPassword} onConfirmPasswordChange={setNewConfirmPassword} />
+          {createAdmin.isError ? <InlineError message={createAdmin.error.message || "The Admin could not be created."} /> : null}
+          {createdLoginId ? <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">Admin "{createdLoginId}" created.</p> : null}
+          <button type="submit" disabled={!newLoginId.trim() || newPassword.length < 8 || newPassword !== newConfirmPassword || createAdmin.isPending} className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-j-ink px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">{createAdmin.isPending ? "Creating…" : "Create Admin"}</button>
+        </form>
+      </article>
 
       <article className="rounded-xl border border-j-border bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-j-ink">Active Admin accounts</h2><p className="mt-1 text-sm leading-6 text-j-ink-soft">Passwords are hashed; they are never shown again after submission.</p>{admins.isLoading ? <div className="mt-5 flex items-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Admin accounts…</div> : <div className="mt-5 space-y-3">{(admins.data ?? []).map(admin => <div key={admin.id} className="rounded-xl border border-j-border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate font-bold text-j-ink">{admin.name ?? admin.email ?? "Admin account"}</p><p className="truncate text-sm text-j-ink-soft">{admin.email ?? "Email unavailable"}</p><p className="mt-1 text-xs font-semibold text-j-ink-muted">User ID: {admin.loginId ?? "Not provisioned"}</p><Link href={`/admin/profile/${admin.id}`} className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-j-accent hover:underline"><CircleUserRound size={13} /> View profile</Link></div>{admin.id === user?.id ? <span className="w-fit rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">Project Owner</span> : <button type="button" onClick={() => revoke.mutate({ userId: admin.id })} disabled={revoke.isPending} className="inline-flex w-fit items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100"><UserMinus size={13} /> Revoke role</button>}</div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => beginCredentialProvisioning(admin)} className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100"><KeyRound size={14} /> {admin.loginId ? "Reset credentials" : "Set credentials"}</button>{admin.id !== user?.id ? <button type="button" onClick={() => { if (window.confirm(`Reset two-factor authentication for ${admin.name ?? admin.email ?? "this Admin"}? They will need to set it up again from a new QR code.`)) resetTwoFactor.mutate({ userId: admin.id }); }} disabled={resetTwoFactor.isPending} className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100"><ShieldCheck size={14} /> Reset 2FA</button> : null}</div>{credentialTarget?.id === admin.id ?<form className="mt-4 grid gap-3 rounded-xl border border-sky-100 bg-sky-50 p-4" onSubmit={event => { event.preventDefault(); provision.mutate({ userId: admin.id, loginId, password, confirmPassword }); }}><p className="text-sm font-bold text-sky-950">Credentials for {credentialTarget.name}</p><label className="text-xs font-bold text-j-ink-soft">User ID<input value={loginId} onChange={e => setLoginId(e.target.value)} maxLength={64} required className="mt-1 h-10 w-full rounded-lg border border-j-field-border bg-white px-3 text-sm font-normal" /></label><CredentialPasswordFields password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} />{provision.isError ? <InlineError message={provision.error.message || "Credentials could not be saved."} /> : null}<div className="flex flex-wrap gap-2"><button type="submit" disabled={provision.isPending} className="rounded-lg bg-j-ink px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{provision.isPending ? "Saving…" : "Save credentials"}</button><button type="button" onClick={() => { setCredentialTarget(null); setPassword(""); setConfirmPassword(""); }} className="rounded-lg border border-j-field-border bg-white px-3 py-2 text-xs font-bold text-j-ink-soft">Cancel</button></div></form> : null}</div>)}{admins.data?.length === 0 ? <p className="rounded-xl bg-j-surface-sunken p-4 text-sm text-j-ink-soft">No Admin accounts are available.</p> : null}</div>}</article>
     </section>

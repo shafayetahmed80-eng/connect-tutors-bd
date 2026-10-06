@@ -103,6 +103,7 @@ export function getAdminWorkspaceDisplayState({
   ownerAccessLoading,
   ownerAccessFromOtherSession,
   twoFactorRequired,
+  passwordChangeRequired = false,
 }: {
   authLoading: boolean;
   isAdmin: boolean;
@@ -111,9 +112,12 @@ export function getAdminWorkspaceDisplayState({
   ownerAccessFromOtherSession: boolean;
   /** This session has not cleared its second factor - not enrolled, or enrolled but not verified. */
   twoFactorRequired: boolean;
+  /** The Owner chose this Admin's password; it has to be changed before anything else opens. */
+  passwordChangeRequired?: boolean;
 }) {
   if (authLoading || (isAdmin && (ownerAccessLoading || ownerAccessFromOtherSession))) return "loading" as const;
   if (!isAdmin) return "denied" as const;
+  if (passwordChangeRequired) return "passwordChangeRequired" as const;
   if (twoFactorRequired) return "twoFactorRequired" as const;
   return "ready" as const;
 }
@@ -165,6 +169,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     ownerAccessLoading: workspaceAccess.isLoading,
     ownerAccessFromOtherSession,
     twoFactorRequired,
+    passwordChangeRequired: Boolean(workspaceAccess.data?.passwordChangeRequired),
   });
 
   // The two answers disagree when the session changed somewhere this page did
@@ -184,11 +189,15 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   // A signed-in Admin who has not cleared their second factor never sees this
   // workspace - sent straight to set it up or to the challenge instead.
   useEffect(() => {
+    if (displayState === "passwordChangeRequired") navigate("/admin/change-password");
+  }, [displayState, navigate]);
+
+  useEffect(() => {
     if (displayState !== "twoFactorRequired" || !twoFactor) return;
     navigate(getAdminTwoFactorDestination(twoFactor));
   }, [displayState, twoFactor, navigate]);
 
-  if (displayState === "loading" || displayState === "twoFactorRequired") {
+  if (displayState === "loading" || displayState === "twoFactorRequired" || displayState === "passwordChangeRequired") {
     return <div className="flex min-h-[60vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Opening Admin workspace…</div>;
   }
   if (displayState === "denied") {

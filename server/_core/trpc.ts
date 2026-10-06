@@ -1,4 +1,4 @@
-import { ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG, LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
+import { ADMIN_PASSWORD_CHANGE_REQUIRED_ERR_MSG, ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG, LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { hasAdminTwoFactorProof } from "../admin-two-factor";
@@ -121,6 +121,15 @@ const requireAdminTwoFactor = t.middleware(async ({ ctx, next }) => {
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
 
-export const adminProcedure = adminIdentityProcedure.use(requireAdminTwoFactor);
+/** An Admin still on the password the Owner chose for them does nothing in the workspace until they have changed it. */
+const requireAdminPasswordChanged = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  if (await db.getAdminPasswordChangeRequired(ctx.user.id)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ADMIN_PASSWORD_CHANGE_REQUIRED_ERR_MSG });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const adminProcedure = adminIdentityProcedure.use(requireAdminPasswordChanged).use(requireAdminTwoFactor);
 
 export const notAdminError = () => new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
