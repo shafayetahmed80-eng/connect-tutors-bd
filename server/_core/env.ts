@@ -1,5 +1,7 @@
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
+  // The session verifier rejects a token whose appId is empty, so an unset VITE_APP_ID
+  // would sign every Admin in and then fail to recognise them. Any non-empty value works.
+  appId: process.env.VITE_APP_ID?.trim() || "connect-tutors-bd",
   cookieSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
