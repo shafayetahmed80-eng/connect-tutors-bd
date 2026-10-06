@@ -58,13 +58,15 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 |---|---|---|
 | `NODE_ENV` | আবশ্যক | `production` |
 | `DATABASE_URL` | আবশ্যক | আপনার production MySQL connection string |
-| `JWT_SECRET` | আবশ্যক | একটা লম্বা, র‍্যান্ডম, গোপন string (session cookie ও Admin 2FA সাইনিং-এর জন্য) |
+| `JWT_SECRET` | আবশ্যক | একটা লম্বা, র‍্যান্ডম, গোপন string — কমপক্ষে ৩২ অক্ষর (session cookie ও Admin 2FA সাইনিং-এর জন্য)। না দিলে বা ছোট হলে সার্ভার চালুই হবে না, লগে কারণ লেখা থাকবে |
 | `LOCAL_STORAGE_DIR` | ঐচ্ছিক | ছবি রাখার path, না দিলে ডিফল্ট `<app-root>/private-uploads` ব্যবহার হবে |
 | `TELEGRAM_BOT_TOKEN` | ঐচ্ছিক | নতুন request notification পেতে চাইলে |
 | `TELEGRAM_CHAT_ID` | ঐচ্ছিক | উপরেরটার সাথে জোড়ায় লাগে |
 | `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
 | `OWNER_OPEN_ID` | **আবশ্যক** | ধাপ ৭-এর owner-admin স্ক্রিপ্ট এটা প্রিন্ট করে দেয়; না দিলে কেউ Owner-only পেজ (Admin Security, Dynamic Section) দেখতে পাবে না |
-| `SMS_API_URL` / `SMS_API_KEY` / `SMS_SENDER_ID` | ঐচ্ছিক | Tutor OTP, Guardian ফোন-ভেরিফিকেশন, "Forgot password?" এসএমএস — না দিলে কোড শুধু সার্ভার লগে প্রিন্ট হয় |
+| `SMS_API_KEY` / `SMS_SENDER_ID` | **আবশ্যক (লাইভে)** | BulkSMSBD-র কী ও Sender ID। Guardian/Tutor রেজিস্ট্রেশনের কোড, লগইন কোড আর পাসওয়ার্ড রিসেটের এসএমএস এদের উপর নির্ভর করে। লাইভে (`NODE_ENV=production`) এগুলো না থাকলে কোড আর যায় না, রেজিস্ট্রেশনই আটকে যায় — শুধু সার্ভার চালু হওয়ার সময় লগে সতর্কবার্তা আসে |
+| `SMS_API_URL` | ঐচ্ছিক | না দিলে ডিফল্ট `https://bulksmsbd.net/api/smsapi` |
+| `OTP_DEV_LOG` | **লাইভে দেবেন না** | `true` দিলে কোড এসএমএসে না গিয়ে শুধু লগে প্রিন্ট হয় — ডেভেলপমেন্টের জন্য |
 | `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক, আর `robots.txt`/`sitemap.xml`-এর ঠিকানা; না দিলে ডিফল্ট `https://connecttutorsbd.com`। শুধু এই ঠিকানার ডোমেইনে সার্চ ইঞ্জিনকে ঢুকতে দেওয়া হয়, অন্য কোনো হোস্টে (staging, লোকাল) সব বন্ধ |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
 
@@ -74,11 +76,20 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-## ৬. Database migration
+## ৬. Database migration ও ক্যাটালগ ডেটা
+
+লাইভের জন্য একটা **নতুন, খালি** MySQL database ব্যবহার করুন (পুরনো ডেমো ডেটা সহ লোকাল database লাইভে তুলবেন না)।
 
 ```bash
 pnpm run db:migrate
+pnpm run db:seed:locations
+pnpm run db:seed:tutor-profile-catalog
 ```
+
+প্রথম কমান্ড ১০৯টা migration চালিয়ে সব টেবিল বানায় (স্কুল-কলেজের তালিকাও এর সাথেই আসে)। পরের দুটো এলাকার তালিকা (বিভাগ → জেলা → এলাকা) আর টিউটর প্রোফাইলের ক্যাটালগ (বিশ্ববিদ্যালয়, বিভাগ/বিষয়, ক্লাস, কারিকুলাম) ভরে — এগুলো না চালালে রেজিস্ট্রেশন ফর্মে এলাকা বা বিশ্ববিদ্যালয় বাছাই করার তালিকা ফাঁকা থাকবে। দুটোই বারবার চালালেও কিছু দ্বিগুণ হয় না।
+
+> `seed` কমান্ডগুলো `tsx` দিয়ে চলে, যেটা dev-dependency। `pnpm install` যদি `NODE_ENV=production` সেট থাকা অবস্থায় চালান, তাহলে dev-dependency নামবে না — তখন `pnpm install --frozen-lockfile --prod=false` ব্যবহার করুন।
+
 
 **প্রথমবার হলে** পুরো schema তৈরি হবে; আগে থেকে migration চালানো database-এ শুধু নতুন পরিবর্তনগুলো (যেমন `isOwner` কলাম) যোগ হবে। Migration চালানোর আগে database backup নিন।
 
@@ -115,7 +126,14 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 10. `https://connecttutorsbd.com/robots.txt` খুললে `Disallow:`-এর একটা তালিকা আর `Sitemap:` লাইন থাকবে। যদি শুধু `Disallow: /` দেখায়, সার্ভার আসল ডোমেইনটা চিনতে পারছে না — তাহলে সার্চ ইঞ্জিন সাইটটা সূচিতে তুলবে না, `PUBLIC_SITE_URL` ঠিক করুন
 11. `https://connecttutorsbd.com/sitemap.xml` খুললে পাবলিক পেজগুলোর তালিকা আসে
 
-## ১১. গুরুত্বপূর্ণ নিরাপত্তা নোট
+## ১১. লাইভের পরে ধাপে ধাপে (এই ক্রমে)
+
+1. **মনিটর:** `/healthz` UptimeRobot-এ দিন।
+2. **টেস্ট এসএমএস:** BulkSMSBD-র প্যানেলে লাইভ সার্ভারের IP whitelist করুন (লোকাল কম্পিউটারের IP-তে কাজ করলেও লাইভ সার্ভারে আলাদা করে করতে হয়), তারপর নিজের নম্বরে একটা Guardian রেজিস্ট্রেশন চালিয়ে কোড আসে কিনা দেখুন।
+3. **লগইন OTP সুইচ:** ধাপ ২ সফল হলে তবেই Admin Panel > Dynamic Section > Admin Control থেকে "Tutor and Guardian sign-in code" **On** করুন। আগে On করলে এসএমএস না গেলে সব Tutor/Guardian আটকে যাবে।
+4. **Owner অ্যাকাউন্ট:** `/admin/login` দিয়ে ঢুকে 2FA সেটআপ করুন, ১০টা recovery code নিরাপদ জায়গায় রাখুন।
+
+## ১২. গুরুত্বপূর্ণ নিরাপত্তা নোট
 
 - `private-uploads/` ফোল্ডার application root-এর বাইরে বা অন্তত `public_html`-এর বাইরে রাখুন, যাতে কেউ ফাইল ম্যানেজার URL দিয়ে সরাসরি ব্রাউজ করতে না পারে।
 - `.env` বা environment variable-এর মান কখনো ZIP, screenshot, বা public repository-তে শেয়ার করবেন না।
