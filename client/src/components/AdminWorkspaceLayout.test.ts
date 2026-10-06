@@ -138,6 +138,12 @@ describe("Admin workspace navigation", () => {
     expect(getAdminWorkspaceDisplayState({ authLoading: false, isAdmin: false, ownerAccessLoading: false, ownerAccessFromOtherSession: false, twoFactorRequired: true })).toBe("denied");
   });
 
+  it("holds an Admin on the Owner's temporary password at the password change, ahead of the second factor", () => {
+    const base = { authLoading: false, isAdmin: true, ownerAccessLoading: false, ownerAccessFromOtherSession: false };
+    expect(getAdminWorkspaceDisplayState({ ...base, twoFactorRequired: true, passwordChangeRequired: true })).toBe("passwordChangeRequired");
+    expect(getAdminWorkspaceDisplayState({ ...base, twoFactorRequired: false, passwordChangeRequired: false })).toBe("ready");
+  });
+
   it("does not retain an Owner result or a non-Owner result across an Admin session change", () => {
     expect(ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS).toMatchObject({
       retry: false,

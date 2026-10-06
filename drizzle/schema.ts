@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   foreignKey,
   index,
@@ -177,6 +178,8 @@ export const adminCredentials = mysqlTable(
       .primaryKey()
       .references(() => users.id),
     loginId: varchar("loginId", { length: 64 }).notNull().unique(),
+    /** An Admin made or reset by the Owner starts on a password the Owner chose; this holds them to changing it before anything else. */
+    passwordChangeRequired: boolean("passwordChangeRequired").default(false).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   }
@@ -263,44 +266,6 @@ export const tutorPortalSessions = mysqlTable(
   table => [
     uniqueIndex("tutor_portal_sessions_token_hash_unique").on(table.tokenHash),
     index("tutor_portal_sessions_user_state_idx").on(table.userId, table.revokedAt, table.expiresAt),
-  ]
-);
-
-export const adminInvitationStatusValues = [
-  "pending",
-  "accepted",
-  "revoked",
-  "expired",
-] as const;
-export type AdminInvitationStatus = (typeof adminInvitationStatusValues)[number];
-
-/**
- * Owner-created, email-bound Admin invitations. Only the SHA-256 token digest
- * is persisted; the one-time invitation link token is returned once to the Owner.
- */
-export const adminInvitations = mysqlTable(
-  "admin_invitations",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    email: varchar("email", { length: 320 }).notNull(),
-    tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
-    status: mysqlEnum("status", adminInvitationStatusValues)
-      .default("pending")
-      .notNull(),
-    createdByUserId: int("createdByUserId")
-      .notNull()
-      .references(() => users.id),
-    acceptedByUserId: int("acceptedByUserId").references(() => users.id),
-    expiresAt: timestamp("expiresAt").notNull(),
-    acceptedAt: timestamp("acceptedAt"),
-    revokedAt: timestamp("revokedAt"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [
-    uniqueIndex("admin_invitations_token_hash_unique").on(table.tokenHash),
-    index("admin_invitations_email_status_idx").on(table.email, table.status),
-    index("admin_invitations_status_expiry_idx").on(table.status, table.expiresAt),
   ]
 );
 

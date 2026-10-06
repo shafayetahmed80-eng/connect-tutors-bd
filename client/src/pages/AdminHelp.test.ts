@@ -10,7 +10,7 @@ describe("Admin Help public navigation contract", () => {
   it("keeps public guidance focused on safe sign-in and two-factor setup", () => {
     expect(adminHelpSafetyPoints).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("invitation"),
+        expect.stringContaining("temporary password"),
         expect.stringContaining("Authenticator"),
         expect.stringContaining("recovery"),
       ]),

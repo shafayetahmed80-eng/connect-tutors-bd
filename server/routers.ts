@@ -2005,6 +2005,7 @@ export const appRouter = router({
         // Whose answer this is, so the workspace can tell a routine re-check of
         // the same session from one that belongs to a different Admin.
         userId: ctx.user.id,
+        passwordChangeRequired: await db.getAdminPasswordChangeRequired(ctx.user.id),
         isOwner: ctx.user.openId === ENV.ownerOpenId,
         name: ctx.user.name ?? "Admin",
         loginId: await db.getAdminLoginId(ctx.user.id),
@@ -2181,26 +2182,33 @@ export const appRouter = router({
       auditAuth("password_reset_link_created", { role: result.role, ip: getRequestIp(ctx), identifier: result.identifier, reason: `by admin ${ctx.user.id}` });
       return { link: `${requestOrigin(ctx)}/reset-password/${token}`, expiresAt, role: result.role };
     }),
-    createInvitation: ownerAdminProcedure.input(z.object({ email: z.string().trim().email().max(320), expiresInHours: z.number().int().min(1).max(24 * 30).default(24 * 7) })).mutation(async ({ ctx, input }) => {
-      const token = generateAdminInviteToken();
-      const expiresAt = new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000);
-      const invitation = await db.createAdminInvitation({ ownerUserId: ctx.user.id, email: input.email, tokenHash: hashAdminInviteToken(token, ENV.cookieSecret), expiresAt });
-      const forwardedProtocol = ctx.req.headers["x-forwarded-proto"];
-      const protocol = (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() || ctx.req.protocol || "https";
-      const host = ctx.req.headers.host;
-      const invitationLink = host ? `${protocol}://${host}/admin/invitation/${token}` : `/admin/invitation/${token}`;
-      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "invitation_created", metadata: { invitationId: invitation.id, expiresAt: expiresAt.toISOString() } });
-      return { invitationId: invitation.id, invitationLink, expiresAt };
-    }),
-    acceptInvitation: protectedProcedure.input(z.object({ token: z.string().trim().regex(/^[a-f0-9]{64}$/i) })).mutation(async ({ ctx, input }) => {
-      const invitation = await db.getActiveAdminInvitationByTokenHash(hashAdminInviteToken(input.token, ENV.cookieSecret));
-      if (!invitation || !ctx.user.email || invitation.email !== db.normalizeEmail(ctx.user.email)) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "This Admin invitation is invalid, expired, or not assigned to this account." });
+    /** The Owner makes a new Admin straight from the Admin security page; they must change this first password at their first sign-in. */
+    createAdmin: ownerAdminProcedure.input(z.object({
+      loginId: z.string().trim().min(3, "User ID must be at least 3 characters.").max(64),
+      name: z.string().trim().max(120).optional(),
+      email: z.string().trim().email("Enter a valid email address.").max(320).optional().or(z.literal("")),
+      password: z.string().min(8, "Password must be at least 8 characters.").max(128),
+      confirmPassword: z.string().min(8).max(128),
+    }).refine(value => value.password === value.confirmPassword, {
+      message: "Passwords do not match.",
+      path: ["confirmPassword"],
+    })).mutation(async ({ ctx, input }) => {
+      const result = await db.createAdminAccount({ loginId: input.loginId, password: input.password, name: input.name, email: input.email });
+      if (!result.created) {
+        const errors = {
+          INVALID_LOGIN_ID: new TRPCError({ code: "BAD_REQUEST", message: "Use 3–64 letters, numbers, hyphens, or underscores; start with a letter." }),
+          LOGIN_ID_IN_USE: new TRPCError({ code: "CONFLICT", message: "This User ID is already assigned to another Admin." }),
+          EMAIL_IN_USE: new TRPCError({ code: "CONFLICT", message: "An account with this email already exists." }),
+        } as const;
+        throw errors[result.reason];
       }
-      const result = await db.acceptAdminInvitation({ invitationId: invitation.id, userId: ctx.user.id, email: ctx.user.email });
-      if (!result.accepted) throw new TRPCError({ code: "CONFLICT", message: "This Admin invitation is no longer available." });
-      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email, event: "invitation_accepted", metadata: { invitationId: invitation.id } });
-      return { accepted: true } as const;
+      await db.logAdminAuditEvent({
+        userId: result.userId,
+        email: input.email || undefined,
+        event: "credential_provisioned",
+        metadata: { provisionedByUserId: ctx.user.id, reason: "admin created by the Owner" },
+      });
+      return { userId: result.userId, loginId: result.loginId } as const;
     }),
     listAdmins: ownerAdminProcedure.query(() => db.listAdminUsers()),
     revokeAdmin: ownerAdminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
@@ -2220,7 +2228,7 @@ export const appRouter = router({
       message: "Passwords do not match.",
       path: ["confirmPassword"],
     })).mutation(async ({ ctx, input }) => {
-      const result = await db.provisionAdminPasswordCredential({ userId: input.userId, loginId: input.loginId, password: input.password });
+      const result = await db.provisionAdminPasswordCredential({ userId: input.userId, loginId: input.loginId, password: input.password, requirePasswordChange: input.userId !== ctx.user.id });
       if (!result.updated) {
         const errors: Record<string, TRPCError> = {
           INVALID_LOGIN_ID: new TRPCError({ code: "BAD_REQUEST", message: "Use 3–64 letters, numbers, hyphens, or underscores; start with a letter." }),

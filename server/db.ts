@@ -47,7 +47,6 @@ import {
   adminProfiles,
   accountChangeRequests,
   schoolColleges,
-  adminInvitations,
   adminLoginAuditLogs,
   adminMatchingDefaultSavedViews,
   adminMatchingSavedViews,
@@ -1252,6 +1251,9 @@ export async function changeOwnPasswordByUserId(input: {
     return "invalid-current-password";
   }
   await database.update(users).set({ passwordHash: await hashPassword(input.newPassword) }).where(eq(users.id, input.userId));
+  if (input.role === "admin") {
+    await database.update(adminCredentials).set({ passwordChangeRequired: false }).where(eq(adminCredentials.userId, input.userId));
+  }
   return "changed";
 }
 
@@ -1405,7 +1407,7 @@ export async function verifyAdminPassword(input: { userId: string; password: str
 }
 
 /** Owner-controlled bootstrap/reset for an assigned Admin User ID and password. */
-export async function provisionAdminPasswordCredential(input: { userId: number; loginId: string; password: string }) {
+export async function provisionAdminPasswordCredential(input: { userId: number; loginId: string; password: string; requirePasswordChange?: boolean }) {
   const loginId = normalizeAdminLoginId(input.loginId);
   if (!loginId) return { updated: false, reason: "INVALID_LOGIN_ID" as const };
   const database = await getDb();
@@ -1418,9 +1420,9 @@ export async function provisionAdminPasswordCredential(input: { userId: number; 
 
   const passwordHash = await hashPassword(input.password);
   if (assigned) {
-    await database.update(adminCredentials).set({ loginId }).where(eq(adminCredentials.userId, input.userId));
+    await database.update(adminCredentials).set({ loginId, passwordChangeRequired: Boolean(input.requirePasswordChange) }).where(eq(adminCredentials.userId, input.userId));
   } else {
-    await database.insert(adminCredentials).values({ userId: input.userId, loginId });
+    await database.insert(adminCredentials).values({ userId: input.userId, loginId, passwordChangeRequired: Boolean(input.requirePasswordChange) });
   }
   await database.update(users).set({ passwordHash, loginMethod: "password" }).where(eq(users.id, input.userId));
   return { updated: true, action: assigned ? "reset" as const : "provisioned" as const };
@@ -4876,79 +4878,46 @@ export async function getUserById(id: number) {
   return result[0];
 }
 
-export async function createAdminInvitation(input: {
-  ownerUserId: number;
-  email: string;
-  tokenHash: string;
-  expiresAt: Date;
-}) {
+/** Whether this Admin is still on the password the Owner chose for them. */
+export async function getAdminPasswordChangeRequired(userId: number) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const result = await database.insert(adminInvitations).values({
-    createdByUserId: input.ownerUserId,
-    email: normalizeEmail(input.email),
-    tokenHash: input.tokenHash,
-    expiresAt: input.expiresAt,
-    status: "pending",
-  });
-  return { id: Number(result[0].insertId) } as const;
+  const [row] = await database.select({ required: adminCredentials.passwordChangeRequired }).from(adminCredentials).where(eq(adminCredentials.userId, userId)).limit(1);
+  return Boolean(row?.required);
 }
 
-/** Returns only a pending, unexpired invitation. The token digest itself is never returned. */
-export async function getActiveAdminInvitationByTokenHash(tokenHash: string) {
+/**
+ * The Owner makes a new Admin directly: a User ID and a first password the Admin
+ * must change at their first sign-in. Nobody becomes an Admin any other way
+ * except the one-off bootstrap script that makes the Owner's own account.
+ */
+export async function createAdminAccount(input: { loginId: string; password: string; name?: string | null; email?: string | null }) {
+  const loginId = normalizeAdminLoginId(input.loginId);
+  if (!loginId) return { created: false as const, reason: "INVALID_LOGIN_ID" as const };
+  const email = input.email ? normalizeEmail(input.email) : null;
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const [invitation] = await database
-    .select({
-      id: adminInvitations.id,
-      email: adminInvitations.email,
-      status: adminInvitations.status,
-      expiresAt: adminInvitations.expiresAt,
-      createdByUserId: adminInvitations.createdByUserId,
-    })
-    .from(adminInvitations)
-    .where(and(
-      eq(adminInvitations.tokenHash, tokenHash),
-      eq(adminInvitations.status, "pending"),
-      gte(adminInvitations.expiresAt, new Date()),
-    ))
-    .limit(1);
-  return invitation;
-}
-
-/** Atomically accepts a pending, unexpired invitation bound to the supplied email. */
-export async function acceptAdminInvitation(input: {
-  invitationId: number;
-  userId: number;
-  email: string;
-}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
+  if ((await database.select({ userId: adminCredentials.userId }).from(adminCredentials).where(eq(adminCredentials.loginId, loginId)).limit(1))[0]) {
+    return { created: false as const, reason: "LOGIN_ID_IN_USE" as const };
+  }
+  if (email && (await database.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1))[0]) {
+    return { created: false as const, reason: "EMAIL_IN_USE" as const };
+  }
+  const passwordHash = await hashPassword(input.password);
   return database.transaction(async tx => {
-    const [invitation] = await tx
-      .select({ id: adminInvitations.id, status: adminInvitations.status, expiresAt: adminInvitations.expiresAt, email: adminInvitations.email })
-      .from(adminInvitations)
-      .where(eq(adminInvitations.id, input.invitationId))
-      .limit(1)
-      .for("update");
-    if (!invitation || invitation.status !== "pending" || invitation.expiresAt.getTime() < Date.now() || invitation.email !== normalizeEmail(input.email)) {
-      return { accepted: false as const };
-    }
-    const acceptedAt = new Date();
-    await tx.update(adminInvitations).set({ status: "accepted", acceptedByUserId: input.userId, acceptedAt }).where(eq(adminInvitations.id, invitation.id));
-    await tx.update(users).set({ role: "admin" }).where(eq(users.id, input.userId));
-    return { accepted: true as const, acceptedAt };
+    const [insert] = await tx.insert(users).values({
+      openId: randomBytes(16).toString("hex"),
+      name: input.name?.trim() || null,
+      email,
+      passwordHash,
+      loginMethod: "password",
+      role: "admin",
+      accountStatus: "active",
+    });
+    const userId = Number(insert.insertId);
+    await tx.insert(adminCredentials).values({ userId, loginId, passwordChangeRequired: true });
+    return { created: true as const, userId, loginId };
   });
-}
-
-export async function revokeAdminInvitation(invitationId: number) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const result = await database
-    .update(adminInvitations)
-    .set({ status: "revoked", revokedAt: new Date() })
-    .where(and(eq(adminInvitations.id, invitationId), eq(adminInvitations.status, "pending")));
-  return { revoked: Boolean(result[0].affectedRows) } as const;
 }
 
 export async function listAdminUsers() {

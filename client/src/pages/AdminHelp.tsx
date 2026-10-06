@@ -8,7 +8,7 @@ export const adminHelpQuickLinks = [
 ] as const;
 
 export const adminHelpSafetyPoints = [
-  "Use an Owner-issued invitation before expecting an account to receive Admin access.",
+  "Sign in with the User ID and temporary password the Project Owner gave you, then choose your own password straight away.",
   "Set up an Authenticator app by scanning the QR code shown during your first Admin access.",
   "Store each recovery code privately and use it only when your Authenticator is unavailable.",
   "If both your Authenticator and recovery codes are unavailable, contact the Project Owner for a 2FA reset.",
@@ -17,13 +17,13 @@ export const adminHelpSafetyPoints = [
 const setupSteps = [
   {
     number: "01",
-    title: "Accept your invitation",
-    description: "The Project Owner sends an invitation link for a specific account. Admin access is granted only after that invitation is accepted.",
+    title: "Get your User ID from the Owner",
+    description: "The Project Owner creates your Admin account and gives you a User ID and a temporary password privately. Nobody can make an Admin account any other way.",
   },
   {
     number: "02",
-    title: "Sign in with your established account",
-    description: "Use the email address and password for the invited Connect Tutors account. The Admin Login page does not create or promote accounts.",
+    title: "Sign in and change your password",
+    description: "Use your User ID and the temporary password on the Admin Login page. You will be asked to choose your own password before anything else opens.",
   },
   {
     number: "03",
@@ -76,7 +76,7 @@ export default function AdminHelp() {
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2782c7]">Step by step</p>
               <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-j-ink">How the Admin access journey works</h2>
-              <p className="mt-3 text-sm leading-7 text-[#647f95]">Follow these steps in order. If you have not received an invitation, contact the Project Owner instead of attempting to register a separate Admin account.</p>
+              <p className="mt-3 text-sm leading-7 text-[#647f95]">Follow these steps in order. If you have not received a User ID, contact the Project Owner instead of attempting to register a separate Admin account.</p>
             </div>
             <ol className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {setupSteps.map((step) => (

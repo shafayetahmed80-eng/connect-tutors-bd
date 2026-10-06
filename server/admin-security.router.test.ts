@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 const securityDbMocks = vi.hoisted(() => ({
-  acceptAdminInvitation: vi.fn(),
-  getActiveAdminInvitationByTokenHash: vi.fn(),
+  createAdminAccount: vi.fn(),
+  getAdminPasswordChangeRequired: vi.fn(),
   getAdminTwoFactorSettings: vi.fn(),
   getGuardianContactForAdmin: vi.fn(),
   getOwnerAdminActivityReport: vi.fn(),
@@ -42,7 +42,7 @@ function createCaller(user: TrpcContext["user"] = adminUser) {
   const caller = appRouter.createCaller({
     user,
     req: { protocol: "https", headers: { host: "connecttutor.example" } },
-    res: { cookie() {}, clearCookie() {} },
+    res: { cookie() {}, clearCookie() {}, setHeader() {} },
   } as unknown as TrpcContext);
   return { caller };
 }
@@ -50,6 +50,7 @@ function createCaller(user: TrpcContext["user"] = adminUser) {
 beforeEach(() => {
   vi.clearAllMocks();
   securityDbMocks.logAdminAuditEvent.mockResolvedValue({ id: 1 });
+  securityDbMocks.getAdminPasswordChangeRequired.mockResolvedValue(false);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -168,14 +169,47 @@ describe("Admin role and Owner authorization", () => {
     expect(securityDbMocks.listAuthEventsPage).not.toHaveBeenCalled();
   });
 
-  it("lets an invited signed-in account accept its email-bound invitation before it is promoted", async () => {
-    const invitedUser = { ...adminUser, id: 71, role: "guardian" as const, email: "invitee@example.com", openId: "password:guardian:invitee@example.com" };
-    securityDbMocks.getActiveAdminInvitationByTokenHash.mockResolvedValue({ id: 8, email: "invitee@example.com", status: "pending", expiresAt: new Date(Date.now() + 60_000), createdByUserId: adminUser.id });
-    securityDbMocks.acceptAdminInvitation.mockResolvedValue({ accepted: true, acceptedAt: new Date() });
-    const { caller } = createCaller(invitedUser);
+  describe("the Owner creating an Admin", () => {
+    const input = { loginId: "rahim", name: "Rahim", email: "rahim@example.com", password: "a-strong-pass", confirmPassword: "a-strong-pass" };
 
-    await expect(caller.admin.acceptInvitation({ token: "a".repeat(64) })).resolves.toEqual({ accepted: true });
-    expect(securityDbMocks.acceptAdminInvitation).toHaveBeenCalledWith({ invitationId: 8, userId: 71, email: "invitee@example.com" });
+    it("makes the account with the Owner's first password and writes it to the audit log", async () => {
+      securityDbMocks.createAdminAccount.mockResolvedValue({ created: true, userId: 90, loginId: "rahim" });
+      await expect(createCaller().caller.admin.createAdmin(input)).resolves.toEqual({ userId: 90, loginId: "rahim" });
+      expect(securityDbMocks.createAdminAccount).toHaveBeenCalledWith({ loginId: "rahim", password: "a-strong-pass", name: "Rahim", email: "rahim@example.com" });
+      expect(securityDbMocks.logAdminAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ userId: 90, event: "credential_provisioned", metadata: expect.objectContaining({ provisionedByUserId: adminUser.id }) }));
+    });
+
+    it("is for the Owner alone", async () => {
+      const anotherAdmin = { ...adminUser, id: 74, openId: "admin:74" };
+      await expect(createCaller(anotherAdmin).caller.admin.createAdmin(input)).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(securityDbMocks.createAdminAccount).not.toHaveBeenCalled();
+    });
+
+    it("turns away passwords that do not match", async () => {
+      await expect(createCaller().caller.admin.createAdmin({ ...input, confirmPassword: "something-else" })).rejects.toThrow(/do not match/i);
+      expect(securityDbMocks.createAdminAccount).not.toHaveBeenCalled();
+    });
+
+    it("says plainly when the User ID or the email is already taken", async () => {
+      securityDbMocks.createAdminAccount.mockResolvedValueOnce({ created: false, reason: "LOGIN_ID_IN_USE" });
+      await expect(createCaller().caller.admin.createAdmin(input)).rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("User ID") });
+      securityDbMocks.createAdminAccount.mockResolvedValueOnce({ created: false, reason: "EMAIL_IN_USE" });
+      await expect(createCaller().caller.admin.createAdmin(input)).rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("email") });
+    });
+  });
+
+  describe("an Admin still on the Owner's temporary password", () => {
+    it("is held out of every workspace call until the password is changed", async () => {
+      securityDbMocks.getAdminPasswordChangeRequired.mockResolvedValue(true);
+      securityDbMocks.listTutorRequestMatchingPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+      await expect(createCaller().caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("10005") });
+      expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+    });
+
+    it("can still ask whether a change is owed, so the page knows to send them to it", async () => {
+      securityDbMocks.getAdminPasswordChangeRequired.mockResolvedValue(true);
+      await expect(createCaller().caller.admin.getWorkspaceAccess()).resolves.toMatchObject({ passwordChangeRequired: true });
+    });
   });
 
   it("exposes published job cards through the public router without private request fields", async () => {
