@@ -1,0 +1,272 @@
+# Connect Tutors BD — একদম শুরু থেকে লাইভ করার গাইড (cPanel)
+
+এই গাইড ধরে নিচ্ছে আপনি আগে কখনো ওয়েবসাইট লাইভ করেননি। প্রতিটা ধাপে **কী করবেন**, **কী দেখলে বুঝবেন ঠিক হয়েছে**, আর **না হলে কী করবেন** লেখা আছে। ধাপগুলো ক্রমে করুন, একটা শেষ না করে পরেরটায় যাবেন না।
+
+পুরো কাজে সময় লাগবে আনুমানিক ১–২ ঘণ্টা (বেশিরভাগ সময় `pnpm install` ও `build`-এর অপেক্ষা)।
+
+## আগে জেনে নিন (৩টা শব্দ)
+
+- **cPanel** — আপনার হোস্টিংয়ের কন্ট্রোল প্যানেল, যেখানে আইকনে ক্লিক করে সব করা যায়।
+- **Terminal** — cPanel-এর ভেতরের একটা কালো পর্দা, যেখানে কমান্ড লিখে এন্টার চাপলে কম্পিউটার কাজ করে। আপনি শুধু নিচের কমান্ডগুলো **কপি করে পেস্ট** করবেন, নিজে বানাতে হবে না।
+- **`.env` ফাইল** — সাইটের গোপন সেটিংসের (ডেটাবেসের পাসওয়ার্ড, SMS কী) ফাইল। এটা কখনো কাউকে পাঠাবেন না, স্ক্রিনশটও না।
+
+## শুরুর আগে হাতে রাখুন
+
+1. cPanel-এর লগইন (ইউজারনেম ও পাসওয়ার্ড)।
+2. BulkSMSBD-র **API Key** ও **Sender ID** (Guardian/Tutor-এর কোড এসএমএস এই দুটো দিয়ে যায়)।
+3. একটা নোটপ্যাড ফাইল, যেখানে নিচে যা যা বানাবেন (ডেটাবেসের নাম, পাসওয়ার্ড ইত্যাদি) লিখে রাখবেন।
+
+---
+
+## ধাপ ১: খালি ডেটাবেস বানান
+
+1. cPanel-এ **MySQL® Database Wizard** খুলুন।
+2. **Database name** দিন, যেমন `ctb`। cPanel নিজে সামনে আপনার ইউজারনেম বসিয়ে দেবে, তাই পুরো নাম হবে `আপনার-cpanel-নাম_ctb`। **পুরো নামটা** নোটপ্যাডে লিখুন।
+3. Next Step → **Username** দিন, যেমন `ctb`। পুরো নাম হবে `আপনার-cpanel-নাম_ctb`।
+4. **Password** দিন। ⚠️ **শুধু ইংরেজি অক্ষর (a–z, A–Z) ও সংখ্যা** ব্যবহার করুন, কোনো চিহ্ন (`@ # ! % /` ইত্যাদি) নয়। Password Generator চাপলে চিহ্ন আসতে পারে, তখন নিজে টাইপ করুন। পাসওয়ার্ড নোটপ্যাডে লিখুন।
+5. Next Step → **ALL PRIVILEGES** টিক দিন → Next Step।
+
+নোটপ্যাডে এই লাইনটা বানিয়ে রাখুন (বড় হাতের জায়গাগুলো নিজের মান দিয়ে):
+
+```
+mysql://ইউজারের-পুরো-নাম:পাসওয়ার্ড@localhost:3306/ডেটাবেসের-পুরো-নাম
+```
+
+এটাই আপনার `DATABASE_URL`।
+
+---
+
+## ধাপ ২: কোড সার্ভারে নামান
+
+1. cPanel-এ **Terminal** খুলুন।
+2. এই কমান্ড দুটো একটা একটা করে পেস্ট করে এন্টার চাপুন:
+
+```bash
+cd ~
+git clone https://github.com/shafayetahmed80-eng/connect-tutors-bd.git connecttutorsbd_app
+```
+
+3. শেষ হলে এটা চালান:
+
+```bash
+ls connecttutorsbd_app
+```
+
+**ঠিক হলে:** `package.json`, `server`, `client`, `start.cjs` এই নামগুলো দেখবেন।
+
+---
+
+## ধাপ ৩: cPanel-এ Node.js অ্যাপ তৈরি
+
+1. cPanel-এ **Setup Node.js App** খুলুন → **Create Application**।
+2. নিচের মতো ভরুন:
+
+| ঘর | কী দেবেন |
+|---|---|
+| Node.js version | তালিকার সর্বোচ্চ ভার্সন (২০ বা তার বেশি হলে ভালো; ২২ থাকলে ২২) |
+| Application mode | **Production** |
+| Application root | `connecttutorsbd_app` |
+| Application URL | ড্রপডাউন থেকে `connecttutorsbd.com`, পাশের ঘর ফাঁকা |
+| Application startup file | `start.cjs` |
+
+3. **Create** চাপুন।
+4. তৈরি হওয়ার পর পেজের উপরে একটা লম্বা কমান্ড দেখাবে, যেটা `source /home/.../activate && cd /home/...` দিয়ে শুরু। **ওটা কপি করুন** (পরের ধাপে লাগবে)।
+
+এখনই Start বা Restart চাপবেন না, কোড এখনো তৈরি হয়নি।
+
+---
+
+## ধাপ ৪: Terminal-এ অ্যাপের পরিবেশে ঢুকুন
+
+1. **Terminal**-এ ফিরে গিয়ে ধাপ ৩-এ কপি করা কমান্ডটা পেস্ট করে এন্টার চাপুন।
+2. লাইনের শুরুতে `[connecttutorsbd_app (22)]`-এর মতো কিছু দেখাবে।
+3. যাচাই করুন:
+
+```bash
+node -v
+```
+
+**ঠিক হলে:** `v20...` বা `v22...` দেখাবে।
+
+> এই কালো পর্দা বন্ধ করে আবার খুললে প্রতিবার এই ধাপ ৪ আবার করতে হয়।
+
+---
+
+## ধাপ ৫: প্রয়োজনীয় প্যাকেজ নামান ও সাইট বানান
+
+এই কমান্ডগুলো একটা একটা করে চালান। `install` ও `build`-এ কয়েক মিনিট লাগবে, অপেক্ষা করুন, লেখা চলতে থাকাই স্বাভাবিক।
+
+```bash
+npm install -g pnpm@10.4.1
+pnpm -v
+```
+
+**ঠিক হলে:** `10.4.1` দেখাবে।
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+**ঠিক হলে:** শেষে `Done` বা `Packages: +...` ধরনের লেখা আসবে, লাল `ERR` নয়। কিছু হলুদ `WARN` আসা স্বাভাবিক।
+
+```bash
+pnpm run build
+ls dist
+```
+
+**ঠিক হলে:** `ls dist`-এ `index.js` ও `public` দেখাবে।
+
+**যদি `Killed` লেখা আসে:** হোস্টিংয়ের মেমরি কম পড়েছে। এই লেখাটা আমাকে পাঠান, আমি অন্য উপায় বলব।
+
+---
+
+## ধাপ ৬: গোপন সেটিংসের `.env` ফাইল বানান
+
+1. টার্মিনালে এই কমান্ড চালান, একটা লম্বা এলোমেলো লেখা আসবে। **ওটা কপি করুন**, এটাই `JWT_SECRET`।
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+2. cPanel-এ **File Manager** খুলুন। উপরে ডানে **Settings** → **Show Hidden Files (dotfiles)** টিক দিয়ে Save।
+3. `connecttutorsbd_app` ফোল্ডারে ঢুকুন → **+ File** → নাম `.env` → Create New File।
+4. `.env` ফাইলে রাইট-ক্লিক → **Edit** → এই লেখা পেস্ট করে নিজের মান বসান:
+
+```
+NODE_ENV=production
+DATABASE_URL=ধাপ-১-এর-লাইনটা
+JWT_SECRET=ধাপ-৬-এর-লম্বা-লেখা
+SMS_API_KEY=BulkSMSBD-র-API-Key
+SMS_SENDER_ID=BulkSMSBD-র-Sender-ID
+PUBLIC_SITE_URL=https://connecttutorsbd.com
+LOCAL_STORAGE_DIR=/home/আপনার-cpanel-নাম/ctb-uploads
+```
+
+   - `=`-এর দুই পাশে ফাঁকা বা উদ্ধৃতি চিহ্ন (`"`) দেবেন না।
+   - `LOCAL_STORAGE_DIR`: এখানে ছবি ও NID-এর মতো ডকুমেন্ট জমা হয়। এটা অ্যাপ ফোল্ডারের বাইরে রাখা নিরাপদ। ফোল্ডারটা সার্ভার নিজে বানিয়ে নেবে।
+5. **Save Changes**।
+
+---
+
+## ধাপ ৭: ডেটাবেসে টেবিল ও তালিকা ভরুন
+
+টার্মিনালে (ধাপ ৪-এর পরিবেশে থেকে) একটা একটা করে চালান:
+
+```bash
+cd ~/connecttutorsbd_app
+set -a; source .env; set +a
+pnpm run db:migrate
+```
+
+**ঠিক হলে:** `migrations applied successfully` লেখা আসবে।
+
+```bash
+pnpm run db:seed:locations
+pnpm run db:seed:tutor-profile-catalog
+```
+
+**ঠিক হলে:** দুটোর শেষে `seed completed` লেখা ও একটা ছোট টেবিল আসবে।
+
+**ত্রুটি এলে:**
+- `Access denied` বা `ECONNREFUSED` → `.env`-এর `DATABASE_URL` ভুল। ইউজার, পাসওয়ার্ড, ডেটাবেসের নাম আবার মিলিয়ে দেখুন।
+- `DATABASE_URL is required` → `set -a; source .env; set +a` লাইনটা চালাননি।
+
+---
+
+## ধাপ ৮: আপনার Owner অ্যাডমিন অ্যাকাউন্ট বানান
+
+```bash
+node scripts/seed-owner-admin.mjs
+```
+
+এটা জিজ্ঞেস করবে:
+- **Admin User ID** — যে নামে সাইন-ইন করবেন (ইংরেজি, অক্ষর দিয়ে শুরু), যেমন `owner`
+- **Admin password** — শক্ত পাসওয়ার্ড দিন, নোটপ্যাডে লিখে রাখুন
+- নাম ও ইমেইল — চাইলে দিন
+
+শেষে একটা লাইন দেখাবে:
+
+```
+OWNER_OPEN_ID=একটা-লম্বা-লেখা
+```
+
+**ঐ লাইনটা কপি করে** File Manager-এ `.env` ফাইল আবার Edit করে একদম শেষে নতুন লাইনে যোগ করুন, Save করুন। এটা ছাড়া Owner-এর বিশেষ পেজগুলো (Admin security, Dynamic Section) খুলবে না।
+
+---
+
+## ধাপ ৯: সাইট চালু করুন
+
+1. cPanel → **Setup Node.js App** → আপনার অ্যাপের পাশে **Restart** (বা Start)।
+2. ব্রাউজারে `http://connecttutorsbd.com` খুলুন।
+
+**ঠিক হলে:** আপনার সাইটের হোমপেজ আসবে।
+
+**না এলে** (সাদা পেজ বা "Internal Server Error" বা "Incomplete response"):
+1. File Manager-এ `connecttutorsbd_app` ফোল্ডারে `stderr.log` ফাইল থাকলে সেটা খুলুন, শেষের কয়েক লাইন দেখুন। না থাকলে cPanel-এর **Errors** আইকন খুলুন।
+2. `[startup]` দিয়ে শুরু হওয়া লাইনগুলো সরাসরি বলে দেবে কোন সেটিং ভুল বা বাদ।
+3. ঠিক করে আবার Restart দিন। ঠিক না হলে ঐ কয়েক লাইন (`.env`-এর কিছু নয়) আমাকে পাঠান।
+
+---
+
+## ধাপ ১০: HTTPS (তালাচিহ্ন)
+
+1. cPanel → **SSL/TLS Status** → `connecttutorsbd.com` ও `www.connecttutorsbd.com` টিক দিয়ে **Run AutoSSL**। কয়েক মিনিটে সার্টিফিকেট বসে যাবে।
+2. cPanel → **Domains** → আপনার ডোমেইনের পাশে **Force HTTPS Redirect** চালু করুন।
+3. `https://connecttutorsbd.com` খুলুন, ঠিকানার পাশে তালাচিহ্ন দেখা উচিত।
+
+---
+
+## ধাপ ১১: সাইট ঠিকমতো চলছে কিনা দেখুন
+
+| ঠিকানা | কী দেখাবে |
+|---|---|
+| `https://connecttutorsbd.com` | হোমপেজ |
+| `https://connecttutorsbd.com/healthz` | `{"status":"ok"}` |
+| `https://connecttutorsbd.com/robots.txt` | `Disallow:`-এর তালিকা ও `Sitemap:` লাইন |
+| `https://connecttutorsbd.com/job-board` | Job Board (এখন ফাঁকা, কারণ ডেমো ডেটা নেই) |
+| `https://connecttutorsbd.com/admin/login` | অ্যাডমিন সাইন-ইন |
+
+এরপর `/admin/login`-এ ধাপ ৮-এর User ID ও পাসওয়ার্ড দিয়ে ঢুকুন:
+1. QR কোড আসবে। ফোনে **Google Authenticator** (বা Authy) অ্যাপ দিয়ে স্ক্যান করুন, অ্যাপের ৬ অঙ্কের কোড দিন।
+2. **১০টা recovery code** দেখাবে। এগুলো কাগজে লিখে বা নিরাপদ জায়গায় রাখুন। ফোন হারালে এগুলোই ভরসা।
+3. ঢুকতে পারলে Owner হিসেবে বাঁ পাশের মেনুতে Admin security ও Dynamic Section দেখবেন।
+
+---
+
+## ধাপ ১২: SMS কোড চালু করা
+
+Guardian-এর রেজিস্ট্রেশনে ফোনে কোড যায় BulkSMSBD দিয়ে। লাইভ সার্ভার থেকে এসএমএস পাঠাতে BulkSMSBD-কে সার্ভারের IP চিনিয়ে দিতে হয়।
+
+1. cPanel-এর ডানদিকের পাশের তথ্যে (**General Information**) **Shared IP Address** দেখুন, নোট করুন।
+2. BulkSMSBD-র নিজের প্যানেলে (API বা IP whitelist সেটিংসে) ঐ IP যোগ করুন। কোথায় যোগ করবেন তা না পেলে BulkSMSBD-র সাপোর্টকে বলুন "আমার API-র জন্য এই সার্ভার IP whitelist করুন"।
+3. একটা **নিজের মোবাইল নম্বর দিয়ে** `https://connecttutorsbd.com/request-tutor` থেকে Guardian রেজিস্ট্রেশন শুরু করে দেখুন কোড আসে কিনা।
+4. কোড এলে তবেই Admin Panel > Dynamic Section > Admin Control থেকে **Tutor and Guardian sign-in code**-এর সুইচ **On** করুন। এর আগে On করবেন না, নইলে এসএমএস না গেলে সবাই আটকে যাবে।
+
+---
+
+## ধাপ ১৩: নতুন অ্যাডমিন বানানো
+
+Owner হিসেবে সাইন-ইন করে `/admin/security`-এ **Create an Admin** ফর্ম পূরণ করুন। নতুন অ্যাডমিনকে User ID ও প্রথম পাসওয়ার্ড সরাসরি বা ফোনে জানান। সে প্রথম সাইন-ইনে নিজের পাসওয়ার্ড বেছে নেবে, তারপর 2FA সেটআপ করবে।
+
+---
+
+## পরে সাইট আপডেট করতে (নতুন কাজ লাইভে তুলতে)
+
+টার্মিনালে ধাপ ৪-এর পরিবেশে ঢুকে:
+
+```bash
+cd ~/connecttutorsbd_app
+git pull
+pnpm install --frozen-lockfile
+pnpm run build
+set -a; source .env; set +a
+pnpm run db:migrate
+```
+
+তারপর **Setup Node.js App** → **Restart**। আপডেটের আগে cPanel-এর **Backup** বা phpMyAdmin থেকে ডেটাবেসের একটা কপি রেখে দেওয়া ভালো।
+
+## নিরাপত্তার কয়েকটা কথা
+
+- `.env`-এর লেখা, ডেটাবেসের পাসওয়ার্ড, `JWT_SECRET`, SMS কী কাউকে পাঠাবেন না। কিছু আটকে গেলে আমাকে পাঠাবেন শুধু ত্রুটির বার্তা।
+- `JWT_SECRET` পরে বদলালে সব অ্যাডমিনকে 2FA নতুন করে সেটআপ করতে হবে, তাই একবার ঠিক করে আর বদলাবেন না।
+- ডেটাবেসের নিয়মিত ব্যাকআপ রাখুন (cPanel → **Backup**)।

@@ -1,5 +1,7 @@
 # Connect Tutors BD — connecttutorsbd.com Production Deployment Guide
 
+> **প্রথমবার লাইভ করছেন?** একদম শুরু থেকে, কমান্ডসহ ধাপে ধাপে গাইড: [`DEPLOY_FROM_ZERO_BN.md`](DEPLOY_FROM_ZERO_BN.md)। এই ফাইলটা তার রেফারেন্স।
+
 এই গাইড ধরে নিচ্ছে আপনি `connecttutorsbd.com`-এ থাকা পুরনো PHP সাইট সরিয়ে এই React/Node অ্যাপ্লিকেশন বসাচ্ছেন, এবং আপনার cPanel-এ **Node.js App setup ও SSH/Terminal access** দুটোই আছে।
 
 ## হোস্টিং প্ল্যানে Node.js/SSH "আছে" আর অ্যাপ চালানো এক জিনিস না
@@ -28,7 +30,7 @@ cPanel-এর **Setup Node.js App**-এ যান:
 - Application mode: **Production**
 - Application root: যেমন `connecttutorsbd_app` (document root-এর বাইরে একটা আলাদা ফোল্ডার — নিরাপত্তার জন্য গুরুত্বপূর্ণ, সোর্স কোড সরাসরি `public_html`-এ রাখবেন না)
 - Application URL: `connecttutorsbd.com`
-- Application startup file: `dist/index.js`
+- Application startup file: `start.cjs`
 
 ## ৩. কোড আপলোড
 

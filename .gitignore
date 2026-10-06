@@ -122,3 +122,6 @@ dev-dist/
 # vite-plugin-pwa dev artifacts
 dev-dist/
 **/dev-dist/
+
+# Uploaded files when LOCAL_STORAGE_DIR is not set (see server/_core/localStoragePaths.ts)
+private-uploads/
