@@ -6,7 +6,7 @@
 
 ## ১. cPanel application configuration
 
-cPanel-এর **Setup Node.js App** থেকে নতুন application তৈরি করুন (production অ্যাপ থেকে সম্পূর্ণ আলাদা একটা এন্ট্রি)। Application root হিসেবে subdomain-এর আলাদা folder ব্যবহার করুন। Application startup file: `dist/index.js`।
+cPanel-এর **Setup Node.js App** থেকে নতুন application তৈরি করুন (production অ্যাপ থেকে সম্পূর্ণ আলাদা একটা এন্ট্রি)। Application root হিসেবে subdomain-এর আলাদা folder ব্যবহার করুন। Application startup file: `start.cjs`।
 
 ## ২. Dependencies ও build
 
