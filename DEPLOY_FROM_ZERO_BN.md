@@ -138,10 +138,10 @@ ls dist
 0. **ফোনের পুশ নোটিফিকেশনের চাবি (VAPID) বানান।** এটা না থাকলে ফোনের লক স্ক্রিনে কোনো নোটিফিকেশন যায় না, আর Settings-এর "Notifications" সুইচটা দেখাই যায় না। ধাপ ৫ শেষ হওয়ার পর টার্মিনালে (অ্যাপের পরিবেশে):
 
    ```bash
-   pnpm exec web-push generate-vapid-keys
+   node -e "const w=require('web-push');const k=w.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey)"
    ```
 
-   দুটো লম্বা লেখা আসবে: **Public Key** ও **Private Key**। দুটোই নোটপ্যাডে রাখুন, নিচের `.env`-এ বসবে। ⚠️ এই চাবি একবারই বানাবেন। পরে বদলালে সবার আগের চালু করা নোটিফিকেশন বন্ধ হয়ে যায়, সবাইকে আবার চালু করতে হয়।
+   `VAPID_PUBLIC_KEY=...` ও `VAPID_PRIVATE_KEY=...` নামে দুটো লাইন আসবে, লাইন দুটো হুবহু। দুটোই নোটপ্যাডে রাখুন, নিচের `.env`-এ বসবে। ⚠️ এই চাবি একবারই বানাবেন। পরে বদলালে সবার আগের চালু করা নোটিফিকেশন বন্ধ হয়ে যায়, সবাইকে আবার চালু করতে হয়।
 
 1. টার্মিনালে এই কমান্ড চালান, একটা লম্বা এলোমেলো লেখা আসবে। **ওটা কপি করুন**, এটাই `JWT_SECRET`।
 
@@ -161,8 +161,8 @@ SMS_API_KEY=BulkSMSBD-র-API-Key
 SMS_SENDER_ID=BulkSMSBD-র-Sender-ID
 PUBLIC_SITE_URL=https://connecttutorsbd.com
 LOCAL_STORAGE_DIR=/home/আপনার-cpanel-নাম/ctb-uploads
-VAPID_PUBLIC_KEY=ধাপ-০-এর-Public-Key
-VAPID_PRIVATE_KEY=ধাপ-০-এর-Private-Key
+VAPID_PUBLIC_KEY=ধাপ-০-এর-লাইন-থেকে
+VAPID_PRIVATE_KEY=ধাপ-০-এর-লাইন-থেকে
 VAPID_SUBJECT=mailto:আপনার-ইমেইল
 ```
 
