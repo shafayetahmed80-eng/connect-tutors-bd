@@ -6,6 +6,7 @@ const guardianIntakeDbMocks = vi.hoisted(() => ({
   createPhoneVerificationCode: vi.fn(),
   deletePhoneVerificationCode: vi.fn(),
   checkPhoneVerificationCode: vi.fn(),
+  isGuardianPhoneRegistered: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -51,6 +52,43 @@ beforeEach(() => {
   guardianIntakeDbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 7 });
 });
 
+describe("guardianIntake.phoneStatus", () => {
+  it("says whether a Guardian account already signs in with the number, in whatever form it was typed", async () => {
+    guardianIntakeDbMocks.isGuardianPhoneRegistered.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const { caller } = createPublicCaller();
+
+    await expect(caller.guardianIntake.phoneStatus({ phone: "01516-131411" })).resolves.toEqual({ registered: true });
+    expect(guardianIntakeDbMocks.isGuardianPhoneRegistered).toHaveBeenCalledWith("+8801516131411");
+    await expect(caller.guardianIntake.phoneStatus({ phone: "+8801712345678" })).resolves.toEqual({ registered: false });
+  });
+
+  it("sends nothing and keeps nothing: looking a number up is not taking it in", async () => {
+    guardianIntakeDbMocks.isGuardianPhoneRegistered.mockResolvedValue(false);
+    const { caller, cookies } = createPublicCaller();
+
+    await caller.guardianIntake.phoneStatus({ phone: "01516131411" });
+
+    expect(guardianIntakeDbMocks.createPhoneVerificationCode).not.toHaveBeenCalled();
+    expect(guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake).not.toHaveBeenCalled();
+    expect(cookies).toEqual([]);
+  });
+
+  it("turns away a number that is not a Bangladesh mobile number, without touching the database", async () => {
+    const { caller } = createPublicCaller();
+
+    await expect(caller.guardianIntake.phoneStatus({ phone: "12345" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(guardianIntakeDbMocks.isGuardianPhoneRegistered).not.toHaveBeenCalled();
+  });
+
+  it("counts against the same per-connection limit as the rest of registration, so it cannot comb through numbers", async () => {
+    guardianIntakeDbMocks.isGuardianPhoneRegistered.mockResolvedValue(false);
+    const { caller } = createPublicCaller();
+
+    for (let attempt = 0; attempt < 15; attempt += 1) await caller.guardianIntake.phoneStatus({ phone: "01516131411" });
+    await expect(caller.guardianIntake.phoneStatus({ phone: "01516131411" })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+  });
+});
+
 describe("guardianIntake.capturePhone", () => {
   it("sends a 4-digit SMS code to the canonical number and takes nothing in yet", async () => {
     const { caller, cookies } = createPublicCaller();
@@ -63,7 +101,7 @@ describe("guardianIntake.capturePhone", () => {
       codeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     // No SMS key in tests, so the dev log carries the message in BulkSMSBD's wording.
-    expect(console.info).toHaveBeenCalledWith(expect.stringMatching(/^\[sms-dev\] to 8801516131411: Your Connect Tutors OTP is \d{4}$/));
+    expect(console.info).toHaveBeenCalledWith(expect.stringMatching(/^\[sms-dev\] to 8801516131411: Your Connect Tutors OTP is (\d{4})\n\n@[\w.-]+ #\1$/));
     expect(guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake).not.toHaveBeenCalled();
     expect(cookies).toHaveLength(0);
   });

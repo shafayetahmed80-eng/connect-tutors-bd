@@ -848,6 +848,32 @@ const confirmationLetterTermsInput = z.object({
 export const appRouter = router({
   system: router({}),
   guardianIntake: router({
+    /**
+     * The journey's first screen: is there already a Guardian account on this number? Nothing is sent
+     * and nothing is stored - the code goes out only once the account form is submitted (capturePhone).
+     * Counted against the same per-connection limit as the rest of registration, so it cannot be used
+     * to comb through numbers.
+     */
+    phoneStatus: publicProcedure
+      .input(z.object({ phone: z.string().trim().min(1).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const ip = getRequestIp(ctx);
+        if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
+          auditAuth("phone_intake_blocked", { role: "guardian", ip, identifier: input.phone });
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: REGISTRATION_RATE_LIMITED_MESSAGE });
+        }
+        ipRegistrationRateLimiter.record(`reg:${ip}`);
+        let phone: string;
+        try {
+          phone = normalizeBangladeshMobile(input.phone);
+        } catch (error) {
+          if (error instanceof GuardianIntakeValidationError) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          }
+          throw error;
+        }
+        return { registered: await db.isGuardianPhoneRegistered(phone) } as const;
+      }),
     capturePhone: publicProcedure
       .input(z.object({ phone: z.string().trim().min(1).max(32) }))
       .mutation(async ({ ctx, input }) => {

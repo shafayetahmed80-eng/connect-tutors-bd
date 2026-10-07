@@ -4888,6 +4888,14 @@ export async function listTutorAssignedRequests(userId: number) {
  * Stores only a canonical phone number and opaque expiring handoff reference.
  * A repeat capture safely supersedes an incomplete prior handoff.
  */
+/** Whether a Guardian account already signs in with this number - the first screen of the request journey asks before it takes anyone through a form. */
+export async function isGuardianPhoneRegistered(phone: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database.select({ id: users.id }).from(users).where(and(eq(users.role, "guardian"), eq(users.loginPhone, phone))).limit(1);
+  return Boolean(row);
+}
+
 export async function createOrResumeGuardianPhoneIntake(input: {
   phone: string;
   handoffTokenHash: string;
