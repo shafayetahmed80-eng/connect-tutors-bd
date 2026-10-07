@@ -1,3 +1,4 @@
+import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -382,6 +383,7 @@ export default function DashboardLayout({
       >
         {children}
       </DashboardLayoutContent>
+      {sidebarPanel === "tutor" || sidebarPanel === "guardian" ? <PushPermissionPrompt /> : null}
       </SiteContentProvider>
       </SiteContentProvider>
     </SidebarProvider>

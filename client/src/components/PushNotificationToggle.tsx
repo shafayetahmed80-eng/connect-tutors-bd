@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
-import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
+import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
 
 /**
  * Lets a Tutor or Guardian turn on push notifications for this browser - the
@@ -36,13 +36,8 @@ export function PushNotificationToggle() {
   const enable = async () => {
     setBusy(true);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("The browser did not return a usable subscription.");
-      await subscribeMutation.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth });
+      const outcome = await subscribeThisBrowser(publicKey, subscription => subscribeMutation.mutateAsync(subscription));
+      if (outcome === "denied") return;
       setSubscribed(true);
       toast.success("Notifications are on for this browser.");
     } catch {
