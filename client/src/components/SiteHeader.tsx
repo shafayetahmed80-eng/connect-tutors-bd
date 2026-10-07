@@ -1,8 +1,7 @@
 import { useSiteContact } from "@/lib/siteContent";
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, Phone, UserRound, X } from "lucide-react";
-import { FaWhatsapp } from "react-icons/fa";
+import { Menu, MessageCircle, Phone, UserRound, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
@@ -79,7 +78,7 @@ export default function SiteHeader() {
               aria-label="Message Connect Tutors on WhatsApp"
               title="Message us on WhatsApp"
             >
-              <FaWhatsapp size={16} aria-hidden="true" />
+              <MessageCircle size={15} aria-hidden="true" />
             </a>
           </div>
           {/* The account entry used to sit here. It lives in the navigation bar
