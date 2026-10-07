@@ -48,13 +48,23 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git fetch --quiet origin
 LOCAL="$(git rev-parse HEAD)"
 REMOTE="$(git rev-parse "origin/$BRANCH")"
-if [ "$LOCAL" = "$REMOTE" ]; then
+# dist/.commit says which commit the site now running was built from. Going by it, not only
+# by the downloaded code, means an update that stopped half-way (code downloaded, site not yet
+# swapped in) is finished by running this again instead of being skipped as "nothing new".
+LIVE_SHA=""
+if [ -f dist/.commit ]; then LIVE_SHA="$(tr -d '[:space:]' < dist/.commit)"; fi
+SINCE="$LOCAL"
+if [ -n "$LIVE_SHA" ] && git cat-file -e "$LIVE_SHA^{commit}" 2>/dev/null; then SINCE="$LIVE_SHA"; fi
+# A site downloaded but never swapped in (no marker yet, dist-next left behind) is unfinished work.
+HALF_DONE=0
+if [ -z "$LIVE_SHA" ] && [ -f dist-next/index.js ]; then HALF_DONE=1; fi
+if [ "$SINCE" = "$REMOTE" ] && [ "$HALF_DONE" = "0" ]; then
   echo "Nothing new. The site is already up to date."
   exit 0
 fi
-git --no-pager log --oneline "$LOCAL..$REMOTE"
+git --no-pager log --oneline "$SINCE..$REMOTE"
 
-NEW_MIGRATIONS="$(git diff --name-only "$LOCAL" "$REMOTE" -- 'drizzle/*.sql' | wc -l | tr -d ' ')"
+NEW_MIGRATIONS="$(git diff --name-only "$SINCE" "$REMOTE" -- 'drizzle/*.sql' | wc -l | tr -d ' ')"
 if [ "$NEW_MIGRATIONS" -gt 0 ]; then
   printf '\nThis update changes the database (%s new step(s)).\n' "$NEW_MIGRATIONS"
   printf 'Did you download a database backup from cPanel > Backup? If yes, type yes and press Enter: '
@@ -105,8 +115,8 @@ fi
 say "Applying database changes"
 set -a
 # .env pasted from Windows carries a carriage return at the end of each line.
-# shellcheck disable=SC1090
-source <(tr -d '\r' < .env)
+# eval, not "source <(...)": the cPanel shell has no /dev/fd, so process substitution fails there.
+eval "$(tr -d '\r' < .env)"
 set +a
 pnpm run db:migrate
 
@@ -114,6 +124,7 @@ say "Switching to the new site"
 rm -rf dist-old
 if [ -d dist ]; then mv dist dist-old; fi
 mv dist-next dist
+printf '%s\n' "$REMOTE" > dist/.commit
 
 say "Restarting the site"
 mkdir -p tmp
