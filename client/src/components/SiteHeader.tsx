@@ -19,16 +19,6 @@ export const mobilePublicQuickLinks = [
 
 export { brandWordmark };
 
-export type JourneyAudience = "guardian" | "tutor";
-
-export function getJourneyNavigation(audience: JourneyAudience) {
-  return [
-    { label: "Home", href: "/" },
-    { label: "Get help", href: "/contact" },
-    { label: audience === "guardian" ? "Guardian sign in" : "Tutor sign in", href: "/login" },
-  ] as const;
-}
-
 /**
  * The single sign-in entry in the navigation bar.
  *
@@ -62,27 +52,19 @@ export function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export default function SiteHeader({
-  variant = "default",
-  journeyAudience = "guardian",
-}: {
-  variant?: "default" | "journey";
-  journeyAudience?: JourneyAudience;
-}) {
+export default function SiteHeader() {
   const contact = useSiteContact();
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
-  const isJourneyHeader = variant === "journey";
-  const journeyNavigation = getJourneyNavigation(journeyAudience);
   // Same label whether or not someone is signed in; only where it goes changes.
   const accountNavigation = getPublicAccountNavigation(user);
 
   useEffect(() => setOpen(false), [location]);
 
   return (
-    <header className={`site-header${isJourneyHeader ? " journey-site-header" : ""}`}>
-      <div className={isJourneyHeader ? "journey-contact-bar" : "microbar"}>
+    <header className="site-header">
+      <div className="microbar">
         <div className="shell microbar-inner">
           <div className="contact-actions">
             <a href={contact.tel} className="phone-link">
@@ -102,36 +84,25 @@ export default function SiteHeader({
           </div>
           {/* The account entry used to sit here. It lives in the navigation bar
               now, so this strip carries contact details and nothing else. */}
-          {isJourneyHeader ? <Link href="/contact" className="journey-help-link">Need help? Contact us</Link> : null}
         </div>
       </div>
 
       <div className="shell header-inner">
         <BrandLogo />
 
-        <nav className={`desktop-nav reference-nav${isJourneyHeader ? " journey-desktop-nav" : ""}`} aria-label={isJourneyHeader ? "Journey navigation" : "Main navigation"}>
-          {isJourneyHeader ? (
-            journeyNavigation.map((item) => (
-              <Link key={item.href} href={item.href} className={location === item.href ? "nav-active" : ""}>
-                {item.label}
-              </Link>
-            ))
-          ) : (
-            <>
-              <Link href={accountNavigation.href} className="nav-sign-in">
-                <UserRound size={14} aria-hidden="true" />
-                {accountNavigation.label}
-              </Link>
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href} className={location === item.href ? "nav-active" : ""}>
-                  {item.label}
-                </Link>
-              ))}
-              <Link href="/become-tutor" className="become-tutor-link">
-                Become a Tutor
-              </Link>
-            </>
-          )}
+        <nav className="desktop-nav reference-nav" aria-label="Main navigation">
+          <Link href={accountNavigation.href} className="nav-sign-in">
+            <UserRound size={14} aria-hidden="true" />
+            {accountNavigation.label}
+          </Link>
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className={location === item.href ? "nav-active" : ""}>
+              {item.label}
+            </Link>
+          ))}
+          <Link href="/become-tutor" className="become-tutor-link">
+            Become a Tutor
+          </Link>
         </nav>
 
         <button
@@ -148,23 +119,13 @@ export default function SiteHeader({
 
       {open && (
         <nav id="mobile-navigation" className="mobile-nav" aria-label="Mobile navigation">
-          {isJourneyHeader ? (
-            journeyNavigation.map((item) => (
-              <Link key={item.href} href={item.href} className="mobile-menu-link">
-                {item.label}
-              </Link>
-            ))
-          ) : (
-            <>
-              {mobilePublicQuickLinks.map((item) => (
-                <Link key={item.href} href={item.href} className="mobile-menu-link">
-                  {item.label}
-                </Link>
-              ))}
-              <Link href="/become-tutor" className="mobile-menu-link mobile-tutor-link">Become a Tutor</Link>
-              <Link href={accountNavigation.href} className="mobile-menu-link"><UserRound size={16} aria-hidden="true" /> {accountNavigation.label}</Link>
-            </>
-          )}
+          {mobilePublicQuickLinks.map((item) => (
+            <Link key={item.href} href={item.href} className="mobile-menu-link">
+              {item.label}
+            </Link>
+          ))}
+          <Link href="/become-tutor" className="mobile-menu-link mobile-tutor-link">Become a Tutor</Link>
+          <Link href={accountNavigation.href} className="mobile-menu-link"><UserRound size={16} aria-hidden="true" /> {accountNavigation.label}</Link>
         </nav>
       )}
     </header>
