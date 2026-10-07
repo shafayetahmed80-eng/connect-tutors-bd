@@ -176,6 +176,12 @@
   outline-color: var(--saffron);
 }
 
+/* A field the form has refused says so on its own border as well as in the message under it. */
+.input-text-journey[aria-invalid="true"],
+.input-text-journey:has(input[aria-invalid="true"]) {
+  border-color: var(--j-err);
+}
+
 .eyebrow {
   color: var(--sky-deep);
 }

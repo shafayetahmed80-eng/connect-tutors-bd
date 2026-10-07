@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GUARDIAN_REGISTRATION_CONFLICTS } from "@shared/guardian-registration-conflicts";
 import { validateGuardianRegistration } from "./GuardianRequestJourney";
 
 const mocks = vi.hoisted(() => ({
@@ -289,6 +290,52 @@ describe("GuardianRequestJourney account creation flow", () => {
 
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
     expect(screen.getByText("An account with this email already exists.")).toBeTruthy();
+  });
+
+  /** Gets to a refused registration: number proved, form filled, code right, then the server says no. */
+  function refusedWith(message: string) {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
+    fillAccountForm();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    codeSent();
+    fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "4821" } });
+    act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+    act(() => mocks.registerOptions?.onError?.({ message, data: { code: "CONFLICT" } }));
+  }
+
+  it("puts a taken email's own sentence under the Email box, with a way to sign in", () => {
+    const message = GUARDIAN_REGISTRATION_CONFLICTS["email-taken"];
+    refusedWith(message);
+
+    expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
+    const email = screen.getByPlaceholderText("name@example.com");
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    const alert = document.getElementById(email.getAttribute("aria-describedby") ?? "")!;
+    expect(alert.textContent).toContain(message);
+    expect(screen.getByRole("link", { name: "সাইন ইন করুন" }).getAttribute("href")).toBe("/auth?role=guardian");
+  });
+
+  it("says a different kind of account holds the email, and offers no sign-in that would not work", () => {
+    const message = GUARDIAN_REGISTRATION_CONFLICTS["email-other-role"];
+    refusedWith(message);
+
+    const email = screen.getByPlaceholderText("name@example.com");
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(email.getAttribute("aria-describedby") ?? "")!.textContent).toBe(message);
+    expect(screen.queryByRole("link", { name: "সাইন ইন করুন" })).toBeNull();
+  });
+
+  it("puts a taken number's own sentence under the Phone box, not the Email box", () => {
+    const message = GUARDIAN_REGISTRATION_CONFLICTS["phone-taken"];
+    refusedWith(message);
+
+    const phone = document.getElementById("guardian-phone")!;
+    expect(phone.getAttribute("aria-describedby")).toBe("guardian-phone-error");
+    expect(document.getElementById("guardian-phone-error")!.textContent).toContain(message);
+    expect(screen.getByPlaceholderText("name@example.com").getAttribute("aria-invalid")).not.toBe("true");
+    expect(screen.getByRole("link", { name: "সাইন ইন করুন" })).toBeTruthy();
   });
 
   it("sends a completed Guardian straight to the dashboard Hire a tutor tab", () => {

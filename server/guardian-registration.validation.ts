@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TERMS_VERSION } from "@shared/terms-version";
+import type { GuardianRegistrationConflict } from "@shared/guardian-registration-conflicts";
 
 /**
  * Kept as a name the Guardian code already reads, now pointing at the one
@@ -9,7 +10,7 @@ import { TERMS_VERSION } from "@shared/terms-version";
 export const GUARDIAN_TERMS_VERSION = TERMS_VERSION;
 
 export class GuardianRegistrationError extends Error {
-  constructor(public readonly reason: "duplicate" | "invalid-location" | "handoff-expired" | "storage") {
+  constructor(public readonly reason: GuardianRegistrationConflict | "invalid-location" | "handoff-expired" | "storage") {
     super(reason);
     this.name = "GuardianRegistrationError";
   }
