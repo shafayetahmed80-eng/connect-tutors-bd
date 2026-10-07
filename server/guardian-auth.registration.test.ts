@@ -25,6 +25,7 @@ import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff } from "./guardian-intake-handoff";
 import { GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
+import { GUARDIAN_REGISTRATION_CONFLICTS } from "@shared/guardian-registration-conflicts";
 import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 
 type CookieCall = { name: string; value: string; options: Record<string, unknown> };
@@ -166,14 +167,15 @@ describe("guardianAuth.register", () => {
     expect(guardianAuthDbMocks.registerGuardianFromIntake).not.toHaveBeenCalled();
   });
 
-  it("maps duplicate recovery to a generic safe error and does not start a session", async () => {
-    guardianAuthDbMocks.registerGuardianFromIntake.mockRejectedValue(new GuardianRegistrationError("duplicate"));
+  it.each([
+    ["email-taken", GUARDIAN_REGISTRATION_CONFLICTS["email-taken"]],
+    ["email-other-role", GUARDIAN_REGISTRATION_CONFLICTS["email-other-role"]],
+    ["phone-taken", GUARDIAN_REGISTRATION_CONFLICTS["phone-taken"]],
+  ] as const)("says exactly why a %s registration is refused and does not start a session", async (reason, message) => {
+    guardianAuthDbMocks.registerGuardianFromIntake.mockRejectedValue(new GuardianRegistrationError(reason));
     const { caller, cookies } = createPublicCaller({ handoffCookie: createValidHandoffCookie() });
 
-    await expect(caller.guardianAuth.register(registrationInput)).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: "এই তথ্য দিয়ে নিবন্ধন সম্পন্ন করা যাচ্ছে না। অনুগ্রহ করে সাইন ইন করুন অথবা অন্য তথ্য দিয়ে চেষ্টা করুন।",
-    });
+    await expect(caller.guardianAuth.register(registrationInput)).rejects.toMatchObject({ code: "CONFLICT", message });
 
     expect(cookies).toHaveLength(0);
   });

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { guardianRegistrationConflictField, guardianRegistrationConflictOf } from "@shared/guardian-registration-conflicts";
 import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, primaryButton, ghostButton, requiredMark } from "@/components/journeyField";
 import { trpc } from "@/lib/trpc";
 import { rememberSignInRole } from "@/lib/signInRoleMemory";
@@ -435,12 +436,13 @@ export function guardianAuthErrorMessage(error: { message: string; data?: unknow
 }
 
 export type GuardianAccountFieldErrors = Partial<
-  Record<"name" | "gender" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
+  Record<"name" | "gender" | "phone" | "email" | "password" | "confirmPassword" | "cityLocationId" | "locationId" | "terms", string>
 >;
 
 const guardianAccountErrorFieldIds: Record<keyof GuardianAccountFieldErrors, string> = {
   name: "guardian-full-name",
   gender: "guardian-gender",
+  phone: "guardian-phone",
   email: "guardian-email",
   password: "guardian-password",
   confirmPassword: "guardian-confirm-password",
@@ -490,6 +492,12 @@ export function mapGuardianRegistrationServerErrors(zodFieldErrors: Record<strin
     if (key && messages[0]) mapped[key] = messages[0];
   }
   return mapped;
+}
+
+/** Signing in is offered under a refusal it would settle, and nowhere else. */
+function guardianConflictSignIn(message?: string) {
+  const conflict = message ? guardianRegistrationConflictOf(message) : null;
+  return conflict && guardianRegistrationConflictField(conflict).offerSignIn ? { href: "/auth?role=guardian", label: "সাইন ইন করুন" } : undefined;
 }
 
 function focusFirstGuardianAccountError(errors: GuardianAccountFieldErrors) {
@@ -706,6 +714,15 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       // The intake cookie has lapsed; the number has to be proved again.
       if (data?.code === "UNAUTHORIZED") { setVerifiedPhone(null); setStage("register"); }
       const mapped = mapGuardianRegistrationServerErrors(data?.zodFieldErrors);
+      const conflict = guardianRegistrationConflictOf(error.message);
+      if (data?.code === "CONFLICT" && conflict) {
+        const { field } = guardianRegistrationConflictField(conflict);
+        setStage("register");
+        setAccountFieldErrors((current) => ({ ...current, [field]: error.message }));
+        setJourneyError("Please fix the highlighted field and try again.");
+        focusFirstGuardianAccountError({ [field]: error.message });
+        return;
+      }
       if (Object.keys(mapped).length) {
         // The fields that need fixing are on the account form, not here.
         setStage("register");
@@ -1105,9 +1122,11 @@ export function AccountStage(props: GuardianAccountStageProps) {
         <GenderField id="guardian-gender" name="guardian-gender" label={resolveSlot("request-tutor.field.gender", "Gender")} value={props.gender} onSelect={props.onGender} />
       </RegistrationFieldError>
 
-      <PhoneField id="guardian-phone" label={resolveSlot("request-tutor.field.accountPhone", "Phone number")} value={displayPhone} readOnly />
+      <RegistrationFieldError id="guardian-phone-error" message={errors.phone} action={guardianConflictSignIn(errors.phone)}>
+        <PhoneField id="guardian-phone" label={resolveSlot("request-tutor.field.accountPhone", "Phone number")} value={displayPhone} readOnly invalid={Boolean(errors.phone)} describedBy={errors.phone ? "guardian-phone-error" : undefined} />
+      </RegistrationFieldError>
 
-      <RegistrationFieldError id="guardian-email-error" message={errors.email}>
+      <RegistrationFieldError id="guardian-email-error" message={errors.email} action={guardianConflictSignIn(errors.email)}>
         <label className="block" htmlFor="guardian-email"><span className={fieldLabel}>{resolveSlot("request-tutor.field.email", "Email")}<RequiredMark /></span><input id="guardian-email" type="email" maxLength={320} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "guardian-email-error" : undefined} className={`${filledField} mt-2`} value={props.email} onChange={(event) => props.onEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" /></label>
       </RegistrationFieldError>
 

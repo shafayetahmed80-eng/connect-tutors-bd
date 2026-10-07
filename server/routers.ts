@@ -13,6 +13,7 @@ import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff, verifyGuardianIntakeHandoff } from "./guardian-intake-handoff";
 import { guardianRegistrationSchema, GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
+import { GUARDIAN_REGISTRATION_CONFLICTS, isGuardianRegistrationConflict } from "@shared/guardian-registration-conflicts";
 import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
@@ -956,7 +957,7 @@ export const appRouter = router({
       } catch (error) {
         auditAuth("registration_rejected", { role: "guardian", ip, identifier: input.email, reason: error instanceof GuardianRegistrationError ? error.reason : "error" });
         if (error instanceof GuardianRegistrationError) {
-          if (error.reason === "duplicate") throw new TRPCError({ code: "CONFLICT", message: "এই তথ্য দিয়ে নিবন্ধন সম্পন্ন করা যাচ্ছে না। অনুগ্রহ করে সাইন ইন করুন অথবা অন্য তথ্য দিয়ে চেষ্টা করুন।" });
+          if (isGuardianRegistrationConflict(error.reason)) throw new TRPCError({ code: "CONFLICT", message: GUARDIAN_REGISTRATION_CONFLICTS[error.reason] });
           if (error.reason === "invalid-location") throw new TRPCError({ code: "BAD_REQUEST", message: "নির্বাচিত লোকেশনটি শহরের মধ্যে বৈধ নয়।" });
           throw new TRPCError({ code: "UNAUTHORIZED", message: "আপনার নিবন্ধন সেশনটি আর সক্রিয় নেই। ফোন নম্বর দিয়ে আবার শুরু করুন।" });
         }

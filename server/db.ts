@@ -994,7 +994,8 @@ export async function registerGuardianFromIntake(input: GuardianRegistrationTran
     }
     const existing = (await tx.select().from(users).where(eq(users.email, email)).limit(1))[0];
     if (existing) {
-      throw new GuardianRegistrationError("duplicate");
+      // Signing in is the way out only when the account is a Guardian one.
+      throw new GuardianRegistrationError(existing.role === "guardian" || existing.role === "user" ? "email-taken" : "email-other-role");
     }
     const loginPhone = normalizeBangladeshMobile(intake.phone);
     const existingPhone = (await tx
@@ -1003,7 +1004,7 @@ export async function registerGuardianFromIntake(input: GuardianRegistrationTran
       .where(and(eq(users.role, "guardian"), eq(users.loginPhone, loginPhone)))
       .limit(1))[0];
     if (existingPhone) {
-      throw new GuardianRegistrationError("duplicate");
+      throw new GuardianRegistrationError("phone-taken");
     }
     const created = await tx.insert(users).values({ openId: guardianPasswordOpenId(email), name: input.name.trim(), email, loginPhone, passwordHash, loginMethod: "password", role: "guardian", lastSignedIn: new Date() });
     const userId = Number(created[0].insertId);
