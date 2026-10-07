@@ -1,0 +1,53 @@
+# Builds the site on GitHub and keeps the result as the "dist-latest" release,
+# so the live server never has to build it. The cPanel host allows 1 GB of
+# memory and a build can need more, which killed one half-way and left the live
+# site without its pages. update.sh on the server downloads this archive.
+name: Build site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # Never cancel a run that is publishing; the next one waits its turn.
+  group: build-site
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and publish the site
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - name: Pack the build with the commit it came from
+        run: |
+          tar -czf dist.tar.gz dist
+          echo "$GITHUB_SHA" > dist-sha.txt
+
+      - name: Publish as the dist-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete dist-latest --cleanup-tag --yes || true
+          gh release create dist-latest dist.tar.gz dist-sha.txt \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Built site (latest main)" \
+            --notes "Built from $GITHUB_SHA. Downloaded by update.sh on the server."

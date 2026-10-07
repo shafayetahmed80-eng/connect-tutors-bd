@@ -125,3 +125,10 @@ dev-dist/
 
 # Uploaded files when LOCAL_STORAGE_DIR is not set (see server/_core/localStoragePaths.ts)
 private-uploads/
+
+# Build staging folders used by update.sh
+dist-next/
+dist-old/
+
+# Local build archives made for manual uploads
+/connecttutorsbd-dist.zip
