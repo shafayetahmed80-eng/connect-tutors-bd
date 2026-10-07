@@ -268,7 +268,7 @@ export default function JoinTutor() {
   };
 
   return <SiteContentProvider page="tutor-profile"><div className="site-page min-h-screen bg-j-page text-j-ink">
-    <SiteHeader variant="journey" journeyAudience="tutor" />
+    <SiteHeader />
     <main className="px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-4xl">
         <div className="mb-5 text-center">

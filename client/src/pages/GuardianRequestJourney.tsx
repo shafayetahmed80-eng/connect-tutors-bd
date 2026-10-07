@@ -953,7 +953,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   };
 
   return <div className={presentation.rootClassName}>
-    {presentation.showPublicChrome ? <SiteHeader variant="journey" journeyAudience="guardian" /> : null}
+    {presentation.showPublicChrome ? <SiteHeader /> : null}
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
