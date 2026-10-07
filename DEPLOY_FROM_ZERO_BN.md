@@ -273,18 +273,28 @@ Owner হিসেবে সাইন-ইন করে `/admin/security`-এ **C
 
 ## পরে সাইট আপডেট করতে (নতুন কাজ লাইভে তুলতে)
 
-টার্মিনালে ধাপ ৪-এর পরিবেশে ঢুকে:
+আমি কোডের কাজ করে GitHub-এ মার্জ করার পর সার্ভারে এক কমান্ডেই আপডেট হয়। cPanel-এর Terminal খুলে (ধাপ ৪-এর `bind` লাইন টাইপ করে):
+
+```bash
+bash ~/connecttutorsbd_app/update.sh
+```
+
+স্ক্রিপ্টটা নিজে নিজে: নতুন কোড আছে কিনা দেখে → ডেটাবেসের নতুন ধাপ থাকলে আপনার কাছে ব্যাকআপের নিশ্চয়তা চায় (cPanel > Backup থেকে কপি নামিয়ে `yes` লিখুন) → কোড নামায় → প্যাকেজ ঠিক করে → সাইট বানায় → ডেটাবেসের ধাপ চালায় → অ্যাপ Restart করে → `/healthz` দেখে বলে সব ঠিক কিনা। কোথাও সমস্যা হলে সেখানেই থেমে কারণ লেখে, আর আগের সাইট চলতেই থাকে।
+
+**নতুন কিছু না থাকলে** "নতুন কিছু নেই" লিখে শেষ হয়। বারবার চালালে ক্ষতি নেই।
+
+**স্ক্রিপ্ট না চললে** হাতে করার ধাপ (ধাপ ৪-এর পরিবেশে ঢুকে):
 
 ```bash
 cd ~/connecttutorsbd_app
 git pull
-pnpm install --frozen-lockfile
-pnpm run build
+pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1
+NODE_OPTIONS=--max-old-space-size=700 pnpm run build
 set -a; source .env; set +a
 pnpm run db:migrate
 ```
 
-তারপর **Setup Node.js App** → **Restart**। আপডেটের আগে cPanel-এর **Backup** বা phpMyAdmin থেকে ডেটাবেসের একটা কপি রেখে দেওয়া ভালো।
+তারপর **Setup Node.js App** → **Restart**।
 
 ## নিরাপত্তার কয়েকটা কথা
 
