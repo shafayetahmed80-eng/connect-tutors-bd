@@ -2,6 +2,7 @@ import { LabelIcon, RecordIcon } from "@/components/recordIcons";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { BadgeCheck, ClipboardList, FileCheck2, Megaphone, Settings, Star, UserRoundCog } from "lucide-react";
+import { notificationDestination, TUTOR_NOTIFICATIONS_PATH } from "@shared/notification-links";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -86,6 +87,8 @@ export function TutorNotificationInbox() {
       {notifications.map(notification => {
         const Icon = TYPE_ICON[notification.type] ?? ClipboardList;
         const unread = !notification.readAt;
+        // A notice with no page of its own has nothing to open, so it gets no Open link.
+        const destination = notificationDestination(notification.actionPath, TUTOR_NOTIFICATIONS_PATH);
         return <li key={notification.id} className={`rounded-xl border bg-white p-4 shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)] sm:p-5 ${unread ? "border-[#bcdcf3]" : "border-j-border"}`}>
           <div className="flex items-start gap-3">
             <span aria-hidden="true" className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-full ${unread ? "bg-j-accent-wash text-j-accent" : "bg-j-surface-muted text-j-ink-faint"}`}>
@@ -100,7 +103,7 @@ export function TutorNotificationInbox() {
               </div>
               <p className="mt-1 text-sm leading-6 text-j-ink-soft">{notification.message}</p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Link href={notification.actionPath} className="text-xs font-bold text-j-accent hover:underline">Open</Link>
+                {destination ? <Link href={destination} className="text-xs font-bold text-j-accent hover:underline">Open</Link> : null}
                 {unread
                   ? <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate({ notificationId: notification.id })} className="text-xs font-semibold text-j-ink-muted hover:text-j-ink-soft disabled:opacity-50">Mark read</button>
                   : null}
