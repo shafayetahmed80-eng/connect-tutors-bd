@@ -129,6 +129,7 @@ import {
 } from "../drizzle/schema";
 import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
 import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
+import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionPushUrl } from "@shared/push-messages";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import {
@@ -4454,7 +4455,7 @@ async function synchronizePublishedTutorJob(
       notes: string | null;
     };
   },
-): Promise<{ publicJobId?: string }> {
+): Promise<{ publicJobId?: string; createdNewJob?: boolean }> {
   // `go_live` is `publish` with a shorter road to it, so the projection treats
   // the two the same from here on.
   const publishes = input.action === "publish" || input.action === "go_live";
@@ -4501,7 +4502,7 @@ async function synchronizePublishedTutorJob(
       // kind of thing and a collision check to go with it; a derived number can
       // clash with nothing, because one request has one id.
       await tx.insert(tutorJobs).values(projection);
-      return { publicJobId: projection.publicJobId };
+      return { publicJobId: projection.publicJobId, createdNewJob: true };
     }
     await tx
       .update(tutorJobs)
@@ -4547,7 +4548,9 @@ export async function moderateTutorRequestPublication(input: {
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
+  // Filled inside the transaction, acted on only once it has committed: a push for a job that rolled back would point at nothing.
+  const newTuitions: NewTuitionAnnouncement[] = [];
+  const outcome = await database.transaction(async tx => {
     const [request] = await tx
       .select({
         id: tutorRequests.id,
@@ -4681,6 +4684,9 @@ export async function moderateTutorRequestPublication(input: {
       }).onDuplicateKeyUpdate({ set: { deduplicationKey: `lifecycle:${request.id}:live` } });
       void sendPushToUser(request.guardianUserId, { title: "আপনার টিউটর রিকোয়েস্ট এখন লাইভ", body: "আপনার রিকোয়েস্ট প্রকাশিত হয়েছে এবং ম্যাচিং প্রক্রিয়ার জন্য উন্মুক্ত।", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
     }
+    if (transition.nextState === "published" && jobProjection.createdNewJob && jobProjection.publicJobId) {
+      newTuitions.push({ publicJobId: jobProjection.publicJobId, tuitionType: request.tuitionType, locationId: request.tuitionLocationId });
+    }
     return {
       updated: true as const,
       eventId: Number(result[0].insertId),
@@ -4689,6 +4695,55 @@ export async function moderateTutorRequestPublication(input: {
       ...(jobProjection.publicJobId ? { publicJobId: jobProjection.publicJobId } : {}),
     };
   });
+  for (const tuition of newTuitions) void notifyTutorsOfNewTuition(tuition).catch(() => {});
+  return outcome;
+}
+
+export type NewTuitionAnnouncement = {
+  publicJobId: string;
+  tuitionType: "home" | "online" | "both" | "group" | "package";
+  /** The area the tuition is in; null for one with no place, which is how an online tuition arrives. */
+  locationId: string | null;
+};
+
+/**
+ * Approved, active Tutors a new tuition fits, by place alone.
+ *
+ * A tuition with an area reaches a Tutor whose Current Location or any
+ * Preferred area is that area. One with no area that is online reaches the
+ * Tutors who teach online. Anything else has no place to match, so nobody.
+ */
+export async function listTutorUserIdsForNewTuition(input: Pick<NewTuitionAnnouncement, "tuitionType" | "locationId">) {
+  const database = await getDb();
+  if (!database) return [];
+  const locationId = input.locationId?.trim();
+  let placeCondition;
+  if (locationId) {
+    placeCondition = or(
+      eq(tutors.locationId, locationId),
+      inArray(tutors.id, database.select({ id: tutorTeachingAreas.tutorId }).from(tutorTeachingAreas).where(eq(tutorTeachingAreas.locationId, locationId))),
+    );
+  } else if (input.tuitionType === "online" || input.tuitionType === "both") {
+    placeCondition = inArray(tutors.id, database.select({ id: tutorTuitionModes.tutorId }).from(tutorTuitionModes).where(eq(tutorTuitionModes.mode, "online")));
+  } else {
+    return [];
+  }
+  const rows = await database
+    .selectDistinct({ userId: tutors.userId })
+    .from(tutors)
+    .innerJoin(users, eq(users.id, tutors.userId))
+    .where(and(eq(tutors.profileStatus, "approved"), eq(users.accountStatus, "active"), isNotNull(tutors.userId), placeCondition));
+  return rows.map(row => row.userId).filter((userId): userId is number => userId !== null);
+}
+
+/** Phone alert to every Tutor the new tuition fits. Sent in small batches so a busy morning does not open hundreds of connections at once. */
+export async function notifyTutorsOfNewTuition(tuition: NewTuitionAnnouncement) {
+  const userIds = await listTutorUserIdsForNewTuition(tuition);
+  const payload = { title: NEW_TUITION_PUSH.title, body: NEW_TUITION_PUSH.body, url: newTuitionPushUrl(tuition.publicJobId) };
+  for (let start = 0; start < userIds.length; start += 25) {
+    await Promise.all(userIds.slice(start, start + 25).map(userId => sendPushToUser(userId, payload).catch(() => {})));
+  }
+  return userIds.length;
 }
 
 /** Admin-visible history excludes identity and contact information by design. */
@@ -6777,6 +6832,8 @@ export async function sendTutorAdminChatMessageFromAdmin(input: { tutorId: strin
   await database.insert(tutorAdminChatMessages).values({ threadId, senderRole: "admin", senderAdminId: input.adminUserId, body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType, createdAt: now });
   await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), adminLastReadAt: now, archivedAt: null }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyTutorOfChatMessage(input.tutorId);
+  // The open chat tab updates live; this is for the Tutor whose phone is locked or whose site is closed.
+  void sendPushToTutor(input.tutorId, { title: ADMIN_CHAT_PUSH_TITLE, body: adminChatPushBody(input.body, Boolean(input.attachmentKey)), url: ADMIN_CHAT_PUSH_URL }).catch(() => {});
   return { sent: true as const };
 }
 

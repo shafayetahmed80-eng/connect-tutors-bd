@@ -59,6 +59,22 @@ describe("the Tutor's notification inbox", () => {
     expect(screen.getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/tutor/dashboard/profile");
   });
 
+  it("gives no Open link to a notice that has no page of its own", () => {
+    state.items = [
+      note({ id: 1, type: "announcement", title: "A message from the team", actionPath: "/tutor/dashboard/notifications" }),
+      note({ id: 2, actionPath: "/tutor/dashboard/notifications?from=push#top" }),
+      note({ id: 3, title: "Your profile was approved", actionPath: "/tutor/dashboard/profile" }),
+    ];
+    state.unread = 3;
+    render(<TutorNotificationInbox />);
+
+    const links = screen.getAllByRole("link", { name: "Open" });
+    expect(links).toHaveLength(1);
+    expect(links[0]!.getAttribute("href")).toBe("/tutor/dashboard/profile");
+    // Marking it read is still there for the rows that cannot be opened.
+    expect(screen.getAllByRole("button", { name: "Mark read" })).toHaveLength(3);
+  });
+
   it("counts the unread ones and offers to clear them", () => {
     state.items = [note({ id: 1 }), note({ id: 2, readAt: "2026-09-04T01:00:00.000Z" })];
     state.unread = 1;
