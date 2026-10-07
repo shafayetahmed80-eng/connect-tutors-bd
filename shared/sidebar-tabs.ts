@@ -124,6 +124,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/dynamic/guardian-profile", "Guardian Profile"],
       ["/admin/dynamic/home", "Home page"],
       ["/admin/dynamic/public-pages", "Public pages"],
+      ["/admin/dynamic/how-it-works", "How it works"],
       ["/admin/dynamic/legal-pages", "Legal pages"],
       ["/admin/dynamic/form-options", "Form options"],
       ["/admin/dynamic/institutes", "Institutes & departments"],

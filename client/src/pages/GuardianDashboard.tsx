@@ -1,4 +1,5 @@
 import { useSiteContact } from "@/lib/siteContent";
+import HowItWorksPlayer from "@/components/HowItWorksPlayer";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentText } from "@/lib/siteContent";
@@ -142,8 +143,12 @@ function GuardianProfileWorkspace() {
 
 function GuardianHowItWorksPanel() {
   const contact = useSiteContact();
-  const steps = [["1", "Submit a private request", "Share the student’s learning needs, schedule, budget, City, and area. You can review the request before submission."], ["2", "Coordinator review", "Our team checks the request and may call you to confirm or clarify information before any publication."], ["3", "Job Board publication", "If suitable and confirmed, an Admin may publish a privacy-safe tuition opportunity. Your phone, email, exact address, student identity, and notes are never public."], ["4", "Tutor coordination", "Interested Tutors are reviewed by the Admin team. If a match is ready, you decide whether coordination contact may proceed."], ["5", "Next steps", "Your coordinator guides the private next step. Attendance, payment, and session records are not part of this first release."]];
-  return <div className="space-y-6"><Card className="rounded-xl border-j-border shadow-sm"><CardContent className="divide-y divide-j-border p-7">{steps.map(([number, title, detail]) => <div key={number} className="flex gap-4 py-5 first:pt-0 last:pb-0"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-sm font-black text-[#1677c8]">{number}</div><div><h2 className="font-extrabold text-j-ink">{title}</h2><p className="mt-1 text-sm leading-6 text-j-ink-soft">{detail}</p></div></div>)}</CardContent></Card><Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85]">Contact support on WhatsApp</a></CardContent></Card></div>;
+  return <SiteContentProvider page="how-it-works">
+    <div className="space-y-6">
+      <HowItWorksPlayer panel="guardian" />
+      <Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85]">Contact support on WhatsApp</a></CardContent></Card>
+    </div>
+  </SiteContentProvider>;
 }
 
 function formatNotificationDate(value: Date | string | number | null | undefined) {

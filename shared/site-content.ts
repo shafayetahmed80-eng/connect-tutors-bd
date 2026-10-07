@@ -24,7 +24,8 @@ import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK } from "./
 import { tutorProfileColourParts, tutorProfileColours, tutorProfileColourSlotId } from "./tutor-profile-colours";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels } from "./platform-charge";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
-export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control"] as const;
+import { howItWorksGuides, howItWorksPanels, howItWorksSlotId } from "./how-it-works";
+export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control", "how-it-works"] as const;
 export type SiteContentPageId = (typeof siteContentPageIds)[number];
 
 /**
@@ -479,6 +480,25 @@ const signInSlots: SiteContentSlot[] = [
   { id: "tutor-sign-in.copy", page: "info-pages", surface: "Tutor sign in", group: "/tutor/login", label: "Line under the heading", defaultText: "Use the email address or Bangladesh mobile number and password you created during Tutor registration.", defaultTextClass: "text-sm", kind: "text-only" },
 ];
 
+/**
+ * The animated "How it works" guides in the Guardian and Tutor panels, generated
+ * from `howItWorksGuides` so a slot's default is always what the panel plays.
+ * Plain text only: a guide's size comes from its design, not from a size box.
+ */
+const howItWorksSlots: SiteContentSlot[] = howItWorksPanels.flatMap(panel => {
+  const guide = howItWorksGuides[panel];
+  const slot = (id: string, group: string, label: string, defaultText: string, defaultTextClass: SiteContentSlot["defaultTextClass"]): SiteContentSlot =>
+    ({ id, page: "how-it-works", surface: guide.surface, group, label, defaultText, defaultTextClass, kind: "text-only" });
+  return [
+    slot(howItWorksSlotId(panel, "heading"), "Intro", "Heading", guide.heading, "text-2xl"),
+    slot(howItWorksSlotId(panel, "intro"), "Intro", "Line under the heading", guide.intro, "text-sm"),
+    ...guide.steps.flatMap((step, index) => [
+      slot(howItWorksSlotId(panel, "title", step.id), "Steps", `Step ${index + 1} — title`, step.title, "text-base"),
+      slot(howItWorksSlotId(panel, "copy", step.id), "Steps", `Step ${index + 1} — description`, step.copy, "text-sm"),
+    ]),
+  ];
+});
+
 const siteContentSlots: SiteContentSlot[] = [
   ...siteSlots,
   ...adminControlSlots,
@@ -492,6 +512,7 @@ const siteContentSlots: SiteContentSlot[] = [
   ...infoPageSlots,
   ...signInSlots,
   ...buttonSectionSlots,
+  ...howItWorksSlots,
 ];
 
 const siteContentSpacingSlots: SiteContentSpacingSlot[] = [
