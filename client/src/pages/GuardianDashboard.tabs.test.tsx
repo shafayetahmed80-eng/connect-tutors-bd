@@ -150,8 +150,8 @@ describe("Guardian dashboard working tabs", () => {
     window.history.replaceState(null, "", "/");
 
     rerender(<GuardianDashboardContent section="how-it-works" />);
-    expect(screen.getByText("Job Board publication")).toBeTruthy();
-    expect(screen.getByText(/phone, email, exact address, student identity, and notes are never public/i)).toBeTruthy();
+    expect(screen.getByText("It goes on the Job Board")).toBeTruthy();
+    expect(screen.getByText(/phone, email, address and student details are never shown/i)).toBeTruthy();
   });
 
   it("renders the cleared Dashboard home without legacy hero, stat, or request cards", () => {

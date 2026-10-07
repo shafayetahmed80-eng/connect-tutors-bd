@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -31,6 +31,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: LayoutTemplate, label: "Guardian Profile", path: "/admin/dynamic/guardian-profile", sectionLabel: "Dynamic Section", subgroup: dynamicProfileForms },
   { icon: House, label: "Home page", path: "/admin/dynamic/home", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
   { icon: Globe, label: "Public pages", path: "/admin/dynamic/public-pages", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
+  { icon: Workflow, label: "How it works", path: "/admin/dynamic/how-it-works", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
   { icon: Scale, label: "Legal pages", path: "/admin/dynamic/legal-pages", sectionLabel: "Dynamic Section", subgroup: dynamicSiteContent },
   { icon: ListChecks, label: "Form options", path: "/admin/dynamic/form-options", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },
   { icon: School, label: "Institutes & departments", path: "/admin/dynamic/institutes", sectionLabel: "Dynamic Section", subgroup: dynamicOptionLists },

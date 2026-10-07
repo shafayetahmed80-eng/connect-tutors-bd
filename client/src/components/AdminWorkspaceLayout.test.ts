@@ -72,6 +72,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Guardian Profile", path: "/admin/dynamic/guardian-profile" }),
       expect.objectContaining({ label: "Home page", path: "/admin/dynamic/home" }),
       expect.objectContaining({ label: "Public pages", path: "/admin/dynamic/public-pages" }),
+      expect.objectContaining({ label: "How it works", path: "/admin/dynamic/how-it-works" }),
       expect.objectContaining({ label: "Legal pages", path: "/admin/dynamic/legal-pages" }),
       expect.objectContaining({ label: "Form options", path: "/admin/dynamic/form-options" }),
       expect.objectContaining({ label: "Institutes & departments", path: "/admin/dynamic/institutes" }),

@@ -61,6 +61,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [{ label: "Tuition", path: "/tuition" }, { label: "Contact", path: "/contact" }, SIGN_IN],
   },
   {
+    path: "/admin/dynamic/how-it-works",
+    label: "How it works",
+    summary: "অভিভাবক ও টিউটর প্যানেলের অ্যানিমেটেড \"How it works\" গাইডের শিরোনাম এবং ছয়টা ধাপের নাম ও বর্ণনা। ধাপের সংখ্যা ও ছবি কোডে ঠিক করা।",
+    seeAt: [{ label: "অভিভাবকের How it works", path: "/guardian/dashboard/how-it-works" }, { label: "টিউটরের How it works", path: "/tutor/dashboard/how-it-works" }],
+  },
+  {
     path: "/admin/dynamic/legal-pages",
     label: "Legal pages",
     summary: "শর্তাবলি ও গোপনীয়তা নীতির পূর্ণ লেখা, অনুচ্ছেদ ধরে ধরে সম্পাদনা করার জন্য।",
@@ -150,6 +156,10 @@ export function findAdminDynamicGuide(path: string): AdminDynamicGuideEntry | un
  * shows no link.
  */
 const surfacePathsByPage: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  "how-it-works": {
+    "Guardian panel": "/guardian/dashboard/how-it-works",
+    "Tutor panel": "/tutor/dashboard/how-it-works",
+  },
   "tutor-profile": {
     "Tutor dashboard": "/tutor/dashboard/profile",
     "Tutor registration": "/become-tutor",
