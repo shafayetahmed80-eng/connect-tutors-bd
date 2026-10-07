@@ -104,6 +104,22 @@ describe("Public Guardian and Tutor account access", () => {
     expect(screen.queryByText("Admin", { exact: true })).toBeNull();
   });
 
+  it("keeps a phone keyboard from capitalising or auto-correcting the email, the mobile number or the password - shown or hidden", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<AuthPage />);
+    const identifier = screen.getByLabelText(/Email or mobile number/);
+    const password = screen.getByLabelText(/^Password/);
+    const guarded = (input: HTMLElement) => [input.getAttribute("autocapitalize"), input.getAttribute("autocorrect"), input.getAttribute("spellcheck")];
+
+    expect(guarded(identifier)).toEqual(["none", "off", "false"]);
+    expect(guarded(password)).toEqual(["none", "off", "false"]);
+
+    // "Show password" turns the box into plain text, which is where a keyboard would otherwise start helping.
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    expect((password as HTMLInputElement).type).toBe("text");
+    expect(guarded(password)).toEqual(["none", "off", "false"]);
+  });
+
   it("is sign-in only: no Register tab and no registration section", () => {
     window.history.replaceState({}, "", "/register");
     render(<AuthPage />);
