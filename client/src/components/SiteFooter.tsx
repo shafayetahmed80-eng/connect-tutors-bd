@@ -10,8 +10,6 @@ import { BrandLogo } from "./SiteHeader";
 export const footerQuickLinks = [
   { label: "Privacy", href: "/privacy-policy" },
   { label: "Terms", href: "/terms-conditions" },
-  { label: "Admin Login", href: "/admin/login" },
-  { label: "Admin Help", href: "/admin/help" },
 ] as const;
 
 export const footerSupportChannels = [
