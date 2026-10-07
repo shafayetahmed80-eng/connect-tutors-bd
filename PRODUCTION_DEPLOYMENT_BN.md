@@ -68,6 +68,8 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `OWNER_OPEN_ID` | **আবশ্যক** | ধাপ ৭-এর owner-admin স্ক্রিপ্ট এটা প্রিন্ট করে দেয়; না দিলে কেউ Owner-only পেজ (Admin Security, Dynamic Section) দেখতে পাবে না |
 | `SMS_API_KEY` / `SMS_SENDER_ID` | **আবশ্যক (লাইভে)** | BulkSMSBD-র কী ও Sender ID। Guardian/Tutor রেজিস্ট্রেশনের কোড, লগইন কোড আর পাসওয়ার্ড রিসেটের এসএমএস এদের উপর নির্ভর করে। লাইভে (`NODE_ENV=production`) এগুলো না থাকলে কোড আর যায় না, রেজিস্ট্রেশনই আটকে যায় — শুধু সার্ভার চালু হওয়ার সময় লগে সতর্কবার্তা আসে |
 | `SMS_API_URL` | ঐচ্ছিক | না দিলে ডিফল্ট `https://bulksmsbd.net/api/smsapi` |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | আবশ্যক (ফোনের পুশ নোটিফিকেশনের জন্য) | `pnpm exec web-push generate-vapid-keys` দিয়ে একবার বানান। না থাকলে লক স্ক্রিনে নোটিফিকেশন যায় না, আর Settings-এর Notifications সুইচ লুকানো থাকে। পরে বদলালে সবার সাবস্ক্রিপশন বাতিল হয় |
+| `VAPID_SUBJECT` | ঐচ্ছিক | `mailto:ইমেইল`; না দিলে `mailto:support@connecttutorsbd.com` |
 | `OTP_DEV_LOG` | **লাইভে দেবেন না** | `true` দিলে কোড এসএমএসে না গিয়ে শুধু লগে প্রিন্ট হয় — ডেভেলপমেন্টের জন্য |
 | `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক, আর `robots.txt`/`sitemap.xml`-এর ঠিকানা; না দিলে ডিফল্ট `https://connecttutorsbd.com`। শুধু এই ঠিকানার ডোমেইনে সার্চ ইঞ্জিনকে ঢুকতে দেওয়া হয়, অন্য কোনো হোস্টে (staging, লোকাল) সব বন্ধ |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |

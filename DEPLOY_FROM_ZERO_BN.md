@@ -135,6 +135,14 @@ ls dist
 
 ## ধাপ ৬: গোপন সেটিংসের `.env` ফাইল বানান
 
+0. **ফোনের পুশ নোটিফিকেশনের চাবি (VAPID) বানান।** এটা না থাকলে ফোনের লক স্ক্রিনে কোনো নোটিফিকেশন যায় না, আর Settings-এর "Notifications" সুইচটা দেখাই যায় না। ধাপ ৫ শেষ হওয়ার পর টার্মিনালে (অ্যাপের পরিবেশে):
+
+   ```bash
+   pnpm exec web-push generate-vapid-keys
+   ```
+
+   দুটো লম্বা লেখা আসবে: **Public Key** ও **Private Key**। দুটোই নোটপ্যাডে রাখুন, নিচের `.env`-এ বসবে। ⚠️ এই চাবি একবারই বানাবেন। পরে বদলালে সবার আগের চালু করা নোটিফিকেশন বন্ধ হয়ে যায়, সবাইকে আবার চালু করতে হয়।
+
 1. টার্মিনালে এই কমান্ড চালান, একটা লম্বা এলোমেলো লেখা আসবে। **ওটা কপি করুন**, এটাই `JWT_SECRET`।
 
 ```bash
@@ -153,6 +161,9 @@ SMS_API_KEY=BulkSMSBD-র-API-Key
 SMS_SENDER_ID=BulkSMSBD-র-Sender-ID
 PUBLIC_SITE_URL=https://connecttutorsbd.com
 LOCAL_STORAGE_DIR=/home/আপনার-cpanel-নাম/ctb-uploads
+VAPID_PUBLIC_KEY=ধাপ-০-এর-Public-Key
+VAPID_PRIVATE_KEY=ধাপ-০-এর-Private-Key
+VAPID_SUBJECT=mailto:আপনার-ইমেইল
 ```
 
    - `=`-এর দুই পাশে ফাঁকা বা উদ্ধৃতি চিহ্ন (`"`) দেবেন না।
