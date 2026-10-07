@@ -17,6 +17,9 @@ export const ENV = {
   smsApiKey: process.env.SMS_API_KEY ?? "",
   smsSenderId: process.env.SMS_SENDER_ID ?? "",
   otpDevLog: process.env.OTP_DEV_LOG === "true",
+  // Web push (phone lock-screen alerts). Both keys, or push stays off: the settings toggle is hidden and nothing is sent.
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   // Where the public site lives, for links printed on paper - the QR code on a
   // Confirmation Letter. No trailing slash.
   publicSiteUrl: (process.env.PUBLIC_SITE_URL ?? "https://connecttutorsbd.com").replace(/\/+$/, ""),

@@ -8,6 +8,8 @@ const good = {
   smsApiKey: "key",
   smsSenderId: "sender",
   otpDevLog: false,
+  vapidPublicKey: "public-key",
+  vapidPrivateKey: "private-key",
 };
 
 describe("production settings check", () => {
@@ -25,6 +27,7 @@ describe("production settings check", () => {
     const result = productionSettingsProblems({ ...good, ownerOpenId: "", smsApiKey: "", otpDevLog: true });
     expect(result.fatal).toEqual([]);
     expect(result.warnings).toHaveLength(3);
+    expect(productionSettingsProblems({ ...good, vapidPrivateKey: "" }).warnings.join(" ")).toContain("VAPID");
     expect(result.warnings.join(" ")).toContain("OWNER_OPEN_ID");
     expect(result.warnings.join(" ")).toContain("SMS_API_KEY");
     expect(result.warnings.join(" ")).toContain("OTP_DEV_LOG");
