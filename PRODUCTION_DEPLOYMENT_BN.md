@@ -70,6 +70,7 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `SMS_API_URL` | ঐচ্ছিক | না দিলে ডিফল্ট `https://bulksmsbd.net/api/smsapi` |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | আবশ্যক (ফোনের পুশ নোটিফিকেশনের জন্য) | ডেপ্লয় গাইডের (`DEPLOY_FROM_ZERO_BN.md`) ধাপ ৬-এর কমান্ড দিয়ে একবার বানান। না থাকলে লক স্ক্রিনে নোটিফিকেশন যায় না, আর Settings-এর Notifications সুইচ লুকানো থাকে। পরে বদলালে সবার সাবস্ক্রিপশন বাতিল হয় |
 | `VAPID_SUBJECT` | ঐচ্ছিক | `mailto:ইমেইল`; না দিলে `mailto:support@connecttutorsbd.com` |
+| `OTP_DOMAIN_LINE` | ঐচ্ছিক | কোড-এসএমএসের শেষে `@connecttutorsbd.com #1234` লাইনটা যায়, যাতে ফোন (Android/iPhone) কোডটা নিজে বসিয়ে দেয়। BulkSMSBD কখনো ঐ লাইনসহ মেসেজ ফিরিয়ে দিলে `false` লিখে Restart দিন, আগের সাধারণ লেখা ফিরবে। ঠিকানাটা আসে `PUBLIC_SITE_URL` থেকে |
 | `OTP_DEV_LOG` | **লাইভে দেবেন না** | `true` দিলে কোড এসএমএসে না গিয়ে শুধু লগে প্রিন্ট হয় — ডেভেলপমেন্টের জন্য |
 | `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক, আর `robots.txt`/`sitemap.xml`-এর ঠিকানা; না দিলে ডিফল্ট `https://connecttutorsbd.com`। শুধু এই ঠিকানার ডোমেইনে সার্চ ইঞ্জিনকে ঢুকতে দেওয়া হয়, অন্য কোনো হোস্টে (staging, লোকাল) সব বন্ধ |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |

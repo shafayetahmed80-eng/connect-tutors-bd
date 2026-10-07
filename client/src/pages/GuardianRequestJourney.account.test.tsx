@@ -10,6 +10,7 @@ afterEach(() => cleanup());
 const accountStageProps = {
   name: "",
   email: "",
+  phone: "01712345678",
   gender: "female" as const,
   password: "",
   confirmPassword: "",
@@ -28,6 +29,7 @@ const accountStageProps = {
   onCity: vi.fn(),
   onLocation: vi.fn(),
   onTerms: vi.fn(),
+  onBack: vi.fn(),
   onCreate: vi.fn(),
 };
 

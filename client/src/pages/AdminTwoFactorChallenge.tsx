@@ -3,6 +3,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useSecondsUntil } from "@/components/registrationFields";
+import { useWebOtp } from "@/lib/webOtp";
 import { LoadingCradle } from "@/components/BrandMark";
 import { KeyRound, LogOut, MessageSquareText, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -112,6 +113,8 @@ export default function AdminTwoFactorChallenge() {
     setSmsCode(digits);
     if (digits.length === 4) void runVerifySms(digits);
   };
+
+  useWebOtp(mode === "sms" && smsSentAt > 0, handleSmsCodeChange, smsSentAt);
 
   const submitSmsCode = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

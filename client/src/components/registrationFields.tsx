@@ -6,9 +6,10 @@
 // gaps. Both now render from here, so a change lands on both at once.
 
 import { Eye, EyeOff, Phone } from "lucide-react";
-import React, { type ReactNode, useEffect, useState } from "react";
+import React, { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { fieldLabel, filledField, requiredMark } from "@/components/journeyField";
+import { useWebOtp } from "@/lib/webOtp";
 
 export type RegistrationGender = "male" | "female";
 
@@ -128,21 +129,33 @@ export function useSecondsUntil(until: number) {
  * offer the code straight from the SMS - with the send-again control beside it,
  * which counts down until the server will accept another request.
  */
-export function PhoneCodeField({ id, label, sentTo, value, onChange, error, resendInSeconds, resending, onResend, resendLabel, onChangeNumber, changeNumberLabel }: {
+export function PhoneCodeField({ id, label, sentTo, value, onChange, onComplete, error, resendInSeconds, resending, onResend, resendLabel, onChangeNumber, changeNumberLabel }: {
   id: string;
   label: string;
   /** The number the code went to, shown so a typo is easy to spot. */
   sentTo: string;
   value: string;
   onChange: (value: string) => void;
+  /** Called with all four digits the moment they are in, typed or filled from the SMS - for a screen where the code is the last thing asked. */
+  onComplete?: (code: string) => void;
   error?: string;
   resendInSeconds: number;
   resending: boolean;
   onResend: () => void;
   resendLabel: string;
-  onChangeNumber: () => void;
-  changeNumberLabel: string;
+  /** Both or neither: a screen whose number is fixed leaves the link out. */
+  onChangeNumber?: () => void;
+  changeNumberLabel?: string;
 }) {
+  // A resend sends a new SMS, which needs a new wait: the countdown restarting is how this box knows one went out.
+  const [smsRound, setSmsRound] = useState(0);
+  const lastResendInSeconds = useRef(resendInSeconds);
+  useEffect(() => {
+    if (lastResendInSeconds.current === 0 && resendInSeconds > 0) setSmsRound(round => round + 1);
+    lastResendInSeconds.current = resendInSeconds;
+  }, [resendInSeconds]);
+  useWebOtp(true, code => { onChange(code); onComplete?.(code); }, smsRound);
+
   return <div>
     <label className="block" htmlFor={id}>
       <span className={fieldLabel}>{label}<RequiredMark /></span>
@@ -150,7 +163,11 @@ export function PhoneCodeField({ id, label, sentTo, value, onChange, error, rese
       <input
         id={id}
         value={value}
-        onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
+        onChange={(event) => {
+          const digits = event.target.value.replace(/\D/g, "").slice(0, 4);
+          onChange(digits);
+          if (digits.length === 4) onComplete?.(digits);
+        }}
         inputMode="numeric"
         autoComplete="one-time-code"
         pattern="\d{4}"
@@ -166,7 +183,7 @@ export function PhoneCodeField({ id, label, sentTo, value, onChange, error, rese
       <button type="button" onClick={onResend} disabled={resending || resendInSeconds > 0} className="font-extrabold text-j-accent underline underline-offset-2 disabled:cursor-not-allowed disabled:text-j-ink-faint disabled:no-underline">
         {resendInSeconds > 0 ? `${resendLabel} (${resendInSeconds}s)` : resendLabel}
       </button>
-      <button type="button" onClick={onChangeNumber} className="font-semibold text-j-ink-muted underline underline-offset-2 hover:text-j-ink-soft">{changeNumberLabel}</button>
+      {onChangeNumber ? <button type="button" onClick={onChangeNumber} className="font-semibold text-j-ink-muted underline underline-offset-2 hover:text-j-ink-soft">{changeNumberLabel}</button> : null}
     </div>
   </div>;
 }

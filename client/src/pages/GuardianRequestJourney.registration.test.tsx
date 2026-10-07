@@ -7,8 +7,10 @@ import { validateGuardianRegistration } from "./GuardianRequestJourney";
 
 const mocks = vi.hoisted(() => ({
   capturePhone: vi.fn(),
+  phoneStatus: vi.fn(),
   verifyPhone: vi.fn(),
   register: vi.fn(),
+  phoneStatusOptions: null as null | { onSuccess?: (result: { registered: boolean }) => void; onError?: (error: { message: string }) => void },
   intakeOptions: null as null | { onSuccess?: (result: { resendAfterSeconds: number }, variables: { phone: string }) => void; onError?: (error: { message: string }) => void },
   verifyOptions: null as null | { onSuccess?: (result: unknown, variables: { phone: string }) => void; onError?: (error: { message: string; data?: unknown }) => void },
   registerOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string; data?: unknown }) => void },
@@ -16,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  toastInfo: vi.fn(),
 }));
 
 vi.mock("@/components/SiteHeader", () => ({ default: () => <header /> }));
@@ -24,7 +27,7 @@ vi.mock("@/pages/JoinTutor", () => ({
   SearchableLocationSelect: ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) =>
     <input data-testid={`loc-${label}`} value={value} onChange={(event) => onChange(event.target.value)} />,
 }));
-vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => mocks.toastSuccess(...a), error: (...a: unknown[]) => mocks.toastError(...a) } }));
+vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => mocks.toastSuccess(...a), error: (...a: unknown[]) => mocks.toastError(...a), info: (...a: unknown[]) => mocks.toastInfo(...a) } }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ auth: { me: { invalidate: mocks.invalidate } }, tutorRequests: { mine: { invalidate: vi.fn() } } }),
@@ -38,6 +41,12 @@ vi.mock("@/lib/trpc", () => ({
       searchRegistrationLocations: { useQuery: () => ({ data: [] }) },
     },
     guardianIntake: {
+      phoneStatus: {
+        useMutation: (options: typeof mocks.phoneStatusOptions) => {
+          mocks.phoneStatusOptions = options;
+          return { mutate: mocks.phoneStatus, isPending: false };
+        },
+      },
       capturePhone: {
         useMutation: (options: typeof mocks.intakeOptions) => {
           mocks.intakeOptions = options;
@@ -77,12 +86,13 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.phoneStatusOptions = null;
   mocks.intakeOptions = null;
   mocks.registerOptions = null;
   mocks.verifyOptions = null;
 });
 
-/** Fills every account-form field the validator requires, so "Continue" moves on to the phone step. */
+/** Fills every account-form field the validator requires, so "Continue" sends the code. */
 function fillAccountForm() {
   fireEvent.change(screen.getByPlaceholderText("Your full name"), { target: { value: "Rahima Begum" } });
   fireEvent.click(screen.getByRole("radio", { name: "Female" }));
@@ -122,30 +132,41 @@ describe("validateGuardianRegistration", () => {
 });
 
 describe("GuardianRequestJourney account creation flow", () => {
-  it("asks for the account details first, then an SMS code for the +880 number - the account is only created once that code is verified", () => {
+  /** The first screen: the number, then Continue. `phoneStatus` answers whether the number already has an account. */
+  function enterNumber(number = "01712345678") {
+    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: number } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  }
+  const numberIsNew = () => act(() => mocks.phoneStatusOptions?.onSuccess?.({ registered: false }));
+  const codeSent = (phone = "+8801712345678") => act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone }));
+
+  it("takes the mobile number first, then the account form, and only then sends and checks the SMS code - the account is made once that code is right", () => {
     render(<GuardianRequestJourney />);
 
+    expect(screen.getByRole("heading", { name: "Start with your phone number" })).toBeTruthy();
+    expect(mocks.capturePhone).not.toHaveBeenCalled();
+    enterNumber();
+    expect(mocks.phoneStatus).toHaveBeenCalledWith({ phone: "+8801712345678" });
+    // Asking whether the number is known sends nothing.
+    expect(mocks.capturePhone).not.toHaveBeenCalled();
+    numberIsNew();
+
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
+    // The number is carried over and can be read, not typed over.
+    const shown = screen.getByDisplayValue("1712345678") as HTMLInputElement;
+    expect(shown.readOnly).toBe(true);
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(mocks.capturePhone).toHaveBeenCalledWith({ phone: "+8801712345678" });
     expect(mocks.register).not.toHaveBeenCalled();
 
+    codeSent();
     expect(screen.getByRole("heading", { name: "Verify your phone number" })).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    expect(mocks.capturePhone).toHaveBeenCalledWith({ phone: "+8801712345678" });
-
-    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
     expect(screen.getByText("Sent to +8801712345678")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Continue securely/i })).toBeNull();
     expect((screen.getByRole("button", { name: /Send a new code/ }) as HTMLButtonElement).disabled).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
-    expect(screen.getByText("৪ অঙ্কের কোডটি লিখুন।")).toBeTruthy();
-    expect(mocks.verifyPhone).not.toHaveBeenCalled();
-
+    // The fourth digit verifies by itself, however it got there.
     fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "48a21" } });
-    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
     expect(mocks.verifyPhone).toHaveBeenCalledWith({ phone: "+8801712345678", code: "4821" });
     expect(mocks.register).not.toHaveBeenCalled();
 
@@ -156,68 +177,112 @@ describe("GuardianRequestJourney account creation flow", () => {
     }));
   });
 
-  it("does not ask again for a number this visit already proved", () => {
+  it("sends a number that already has an account straight to sign-in", () => {
     render(<GuardianRequestJourney />);
+    enterNumber();
+    act(() => mocks.phoneStatusOptions?.onSuccess?.({ registered: true }));
+
+    expect(window.location.pathname + window.location.search).toBe("/auth?role=guardian");
+    expect(mocks.toastInfo).toHaveBeenCalled();
+    expect(mocks.capturePhone).not.toHaveBeenCalled();
+  });
+
+  it("does not look a number up until it is a whole Bangladesh mobile number", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber("0171234");
+
+    expect(mocks.phoneStatus).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain("Enter a valid Bangladesh mobile number");
+  });
+
+  it("still has the Verify code button for a code typed in slowly, and asks for all four digits", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    codeSent();
+
+    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
+    expect(screen.getByText("৪ অঙ্কের কোডটি লিখুন।")).toBeTruthy();
+    expect(mocks.verifyPhone).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "482" } });
+    expect(mocks.verifyPhone).not.toHaveBeenCalled();
+  });
+
+  it("goes back from the code screen to the form with everything still filled in, and back again to the number", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
+    fillAccountForm();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    codeSent();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to your details" }));
+    expect((screen.getByPlaceholderText("Your full name") as HTMLInputElement).value).toBe("Rahima Begum");
+    expect(screen.getByDisplayValue("1712345678")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
+    expect(screen.getByRole("heading", { name: "Start with your phone number" })).toBeTruthy();
+    expect((screen.getByPlaceholderText("01712345678") as HTMLInputElement).value).toBe("01712345678");
+  });
+
+  it("does not send a second SMS for a number this visit already proved", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
+    fillAccountForm();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    codeSent();
     act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
     expect(mocks.register).toHaveBeenCalledTimes(1);
 
-    // Back to the phone step with the same number: no second SMS, straight to creating the account again.
-    fireEvent.click(screen.getByRole("button", { name: "Back to your details" }));
+    // The server turned the form down (a taken email, say): back on the form, and Continue creates the account again with no new code.
+    act(() => mocks.registerOptions?.onError?.({ message: "", data: { zodFieldErrors: { email: ["An account with this email already exists."] } } }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
     expect(mocks.capturePhone).toHaveBeenCalledTimes(1);
     expect(mocks.register).toHaveBeenCalledTimes(2);
-
-    // A different number is a new proof.
-    fireEvent.click(screen.getByRole("button", { name: "Back to your details" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01812345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    expect(mocks.capturePhone).toHaveBeenLastCalledWith({ phone: "+8801812345678" });
   });
 
   it("asks for a new code once the intake has lapsed", () => {
     render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    codeSent();
     act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
     act(() => mocks.registerOptions?.onError?.({ message: "আপনার নিবন্ধন সেশনটি আর সক্রিয় নেই। ফোন নম্বর দিয়ে আবার শুরু করুন।", data: { code: "UNAUTHORIZED" } }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(mocks.capturePhone).toHaveBeenCalledTimes(2);
   });
 
-  it("shows a wrong code's message under the code box", () => {
+  it("shows a wrong code's message under the code box and empties the box", () => {
     render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    codeSent();
+    fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "0000" } });
 
     act(() => mocks.verifyOptions?.onError?.({ message: "কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।", data: { zodFieldErrors: { phoneCode: ["কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।"] } } }));
 
     expect(screen.getByRole("alert").textContent).toBe("কোডটি সঠিক নয়। আর 3 বার চেষ্টা করা যাবে।");
+    expect((screen.getByLabelText(/Verification code/) as HTMLInputElement).value).toBe("");
     expect(mocks.register).not.toHaveBeenCalled();
   });
 
   it("returns to the account form to fix a field the server rejects, such as a taken email", () => {
     render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: "01712345678" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/i }));
-    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 60 }, { phone: "+8801712345678" }));
+    codeSent();
     fireEvent.change(screen.getByLabelText(/Verification code/), { target: { value: "4821" } });
-    fireEvent.click(screen.getByRole("button", { name: /Verify code/ }));
     act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
 
     act(() => mocks.registerOptions?.onError?.({ message: "", data: { zodFieldErrors: { email: ["An account with this email already exists."] } } }));

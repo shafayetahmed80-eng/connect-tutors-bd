@@ -3,6 +3,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useSecondsUntil } from "@/components/registrationFields";
+import { useWebOtp } from "@/lib/webOtp";
 import { LoadingCradle } from "@/components/BrandMark";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -97,6 +98,9 @@ export default function LoginTwoFactorChallenge() {
     setCode(digits);
     if (digits.length === 4) void runVerify(digits);
   };
+
+  // The code SMS fills the box by itself on a phone where the browser can; it then verifies like a typed code.
+  useWebOtp(owed && sentAt > 0 && !verified, handleCodeChange, sentAt);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

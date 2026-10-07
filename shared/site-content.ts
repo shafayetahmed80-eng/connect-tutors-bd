@@ -257,7 +257,8 @@ const tutorRegistrationSlots: SiteContentSlot[] = [
 
 /** The public "Request a tutor" journey at /request-tutor. */
 const requestTutorSlots: SiteContentSlot[] = [
-  { id: "request-tutor.phone.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Phone step heading", defaultText: "Verify your phone number", defaultTextClass: "text-2xl" },
+  { id: "request-tutor.phone.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Phone step heading", defaultText: "Start with your phone number", defaultTextClass: "text-2xl" },
+  { id: "request-tutor.code.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Verification step heading", defaultText: "Verify your phone number", defaultTextClass: "text-2xl" },
   { id: "request-tutor.account.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Account step heading", defaultText: "Create your Guardian account", defaultTextClass: "text-2xl" },
   { id: "request-tutor.done.heading", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Confirmation heading", defaultText: "Thank you. Your request is now pending review.", defaultTextClass: "text-3xl" },
   { id: "request-tutor.sheet.title", page: "guardian-profile", surface: "Request a tutor", group: "Journey steps", label: "Hire a tutor sheet title", defaultText: "Hire a tutor", defaultTextClass: "text-base" },
@@ -307,10 +308,11 @@ const requestTutorSlots: SiteContentSlot[] = [
  * different states without erasing the distinction between them.
  */
 const buttonSectionSlots: SiteContentSlot[] = [
-  { id: "button-section.journey.phoneContinue", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Continue button", defaultText: "Continue securely", defaultTextClass: "text-sm" },
-  { id: "button-section.journey.phoneVerify", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Verify code button", defaultText: "Verify code", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.phoneContinue", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.phoneVerify", page: "button-section", surface: "Guardian journey", group: "Verification step", label: "Verify code button", defaultText: "Verify code", defaultTextClass: "text-sm" },
   { id: "button-section.journey.accountCreate", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
-  { id: "button-section.journey.phoneBack", page: "button-section", surface: "Guardian journey", group: "Phone step", label: "Back button", defaultText: "Back to your details", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.accountBack", page: "button-section", surface: "Guardian journey", group: "Account step", label: "Back button", defaultText: "Back to phone", defaultTextClass: "text-sm" },
+  { id: "button-section.journey.phoneBack", page: "button-section", surface: "Guardian journey", group: "Verification step", label: "Back button", defaultText: "Back to your details", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepContinue", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Continue button", defaultText: "Continue", defaultTextClass: "text-sm" },
   { id: "button-section.journey.stepBack", page: "button-section", surface: "Guardian journey", group: "Request steps", label: "Back button", defaultText: "Back", defaultTextClass: "text-sm" },
   { id: "button-section.journey.viewRequest", page: "button-section", surface: "Guardian journey", group: "Confirmation step", label: "View request button", defaultText: "View my request", defaultTextClass: "text-sm" },

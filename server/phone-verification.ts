@@ -8,6 +8,7 @@
  * bound to the number and the purpose - is stored.
  */
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { ENV } from "./_core/env";
 import type { PhoneVerificationPurpose } from "../drizzle/schema";
 
 export const PHONE_CODE_TTL_MS = 5 * 60 * 1000;
@@ -30,9 +31,23 @@ export function phoneCodeHashesMatch(stored: string, candidate: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** BulkSMSBD's required OTP wording: "Your {Brand} OTP is XXXX". */
-export function phoneCodeMessage(code: string) {
-  return `Your Connect Tutors OTP is ${code}`;
+/**
+ * BulkSMSBD's required OTP wording, "Your {Brand} OTP is XXXX", and under it the
+ * one-time-code line browsers read: `@host #XXXX`. A phone that gets this SMS
+ * while the site is open on the same host offers (iPhone) or just fills in
+ * (Android Chrome, the WebOTP API) the code, and only for that host - which is
+ * why the host is the published site address, not whatever the request said.
+ */
+export function phoneCodeMessage(code: string, siteUrl: string = ENV.publicSiteUrl, domainLine: boolean = ENV.otpDomainLine) {
+  const wording = `Your Connect Tutors OTP is ${code}`;
+  if (!domainLine) return wording;
+  try {
+    return `${wording}
+
+@${new URL(siteUrl).hostname} #${code}`;
+  } catch {
+    return wording;
+  }
 }
 
 export type PhoneCodeCheck =
