@@ -86,6 +86,7 @@ export function AdminAppointedJobsContent() {
       rowKey={job => job.id}
       empty={`No appointed job${query.trim() ? " for this search" : ""}.`}
       tableClassName="min-w-[80rem]"
+      animateEntrance
     /> : null}
 
     <TutorListPager

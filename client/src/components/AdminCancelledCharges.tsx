@@ -112,6 +112,7 @@ export default function AdminCancelledChargesContent() {
       rowKey={job => job.id}
       empty={`No cancelled job${query.trim() ? " for this search" : ""}.`}
       tableClassName="min-w-[84rem]"
+      animateEntrance
     /> : null}
 
     <TutorListPager
