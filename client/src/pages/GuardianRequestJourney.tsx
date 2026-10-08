@@ -1119,7 +1119,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
       </RegistrationFieldError>
 
       <RegistrationFieldError id="guardian-gender-error" message={errors.gender}>
-        <GenderField id="guardian-gender" name="guardian-gender" label={resolveSlot("request-tutor.field.gender", "Gender")} value={props.gender} onSelect={props.onGender} />
+        <GenderField id="guardian-gender" name="guardian-gender" label={resolveSlot("request-tutor.field.gender", "Gender")} value={props.gender} onSelect={props.onGender} invalid={Boolean(errors.gender)} describedBy={errors.gender ? "guardian-gender-error" : undefined} />
       </RegistrationFieldError>
 
       <RegistrationFieldError id="guardian-phone-error" message={errors.phone} action={guardianConflictSignIn(errors.phone)}>
@@ -1143,15 +1143,15 @@ export function AccountStage(props: GuardianAccountStageProps) {
       </RegistrationFieldError>
 
       <RegistrationFieldError id="guardian-account-city-error" message={errors.cityLocationId}>
-        <SearchableLocationSelect triggerId="guardian-account-city" label="City" slotId="request-tutor.field.accountCity" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} />
+        <SearchableLocationSelect triggerId="guardian-account-city" label="City" slotId="request-tutor.field.accountCity" value={props.accountCityId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onCity} invalid={Boolean(errors.cityLocationId)} describedBy={errors.cityLocationId ? "guardian-account-city-error" : undefined} />
       </RegistrationFieldError>
       <RegistrationFieldError id="guardian-account-location-error" message={errors.locationId}>
-        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" slotId="request-tutor.field.accountLocation" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required onChange={props.onLocation} />
+        <SearchableLocationSelect triggerId="guardian-account-location" label="Location" slotId="request-tutor.field.accountLocation" value={props.accountLocationId} options={props.accountLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!props.accountCityId} required onChange={props.onLocation} invalid={Boolean(errors.locationId)} describedBy={errors.locationId ? "guardian-account-location-error" : undefined} />
       </RegistrationFieldError>
     </div>
 
     <RegistrationFieldError id="guardian-terms-error" message={errors.terms}>
-      <PolicyConsent id="guardian-terms" checked={props.termsAccepted} onChange={props.onTerms} />
+      <PolicyConsent id="guardian-terms" checked={props.termsAccepted} onChange={props.onTerms} invalid={Boolean(errors.terms)} describedBy={errors.terms ? "guardian-terms-error" : undefined} />
     </RegistrationFieldError>
 
     <div className={registrationFooter}>

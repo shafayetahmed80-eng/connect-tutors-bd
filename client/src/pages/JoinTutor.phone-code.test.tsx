@@ -27,6 +27,7 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+import { TUTOR_REGISTRATION_CONFLICTS } from "@shared/tutor-registration-conflicts";
 import JoinTutor from "./JoinTutor";
 
 afterEach(() => {
@@ -84,17 +85,67 @@ describe("Tutor registration with an SMS code", () => {
     expect(sendCode).toHaveBeenLastCalledWith({ phone: "+8801812345678" });
   });
 
+  const conflictError = (message: string) => {
+    const error = new TRPCClientError(message);
+    Object.defineProperty(error, "data", { value: { code: "CONFLICT" }, configurable: true });
+    return error;
+  };
+
   it("puts an already-registered number's message on the phone field, before any SMS", async () => {
     const user = userEvent.setup({ document: window.document });
-    const conflict = new TRPCClientError("This mobile number is already registered to a Tutor account. Sign in instead, or use a different number.");
-    Object.defineProperty(conflict, "data", { value: { code: "CONFLICT" }, configurable: true });
-    sendCode.mockRejectedValue(conflict);
+    sendCode.mockRejectedValue(conflictError(TUTOR_REGISTRATION_CONFLICTS["phone-taken"]));
     render(<JoinTutor />);
     await fillTheForm(user);
 
     await user.click(screen.getByRole("button", { name: "Create Tutor account" }));
     expect(screen.getByText(/already registered to a Tutor account/)).toBeTruthy();
     expect(screen.queryByLabelText(/^Verification code/)).toBeNull();
+    // The box itself says so, and signing in is one press away.
+    const phone = screen.getByLabelText(/^Phone number/);
+    expect(phone.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(phone.getAttribute("aria-describedby") ?? "")!.textContent).toContain("already registered to a Tutor account");
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/auth?role=tutor");
+  });
+
+  /** Gets to a refused registration: code sent, code typed, then the server says no. */
+  async function registrationRefusedWith(message: string) {
+    const user = userEvent.setup({ document: window.document });
+    sendCode.mockResolvedValue({ success: true, resendAfterSeconds: 60, expiresInSeconds: 300 });
+    register.mockRejectedValue(conflictError(message));
+    render(<JoinTutor />);
+    await fillTheForm(user);
+    await user.click(screen.getByRole("button", { name: "Create Tutor account" }));
+    await user.type(screen.getByLabelText(/^Verification code/), "1234");
+    await user.click(screen.getByRole("button", { name: "Verify and create account" }));
+  }
+
+  it("puts a taken email under the Email box, with a way to sign in", async () => {
+    await registrationRefusedWith(TUTOR_REGISTRATION_CONFLICTS["email-taken"]);
+
+    const email = screen.getByLabelText(/^Email/);
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(email.getAttribute("aria-describedby") ?? "")!.textContent).toContain(TUTOR_REGISTRATION_CONFLICTS["email-taken"]);
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/auth?role=tutor");
+  });
+
+  it("says a different kind of account holds the email, and offers no sign-in that would not work", async () => {
+    await registrationRefusedWith(TUTOR_REGISTRATION_CONFLICTS["email-other-role"]);
+
+    expect(screen.getByLabelText(/^Email/).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getAllByText(TUTOR_REGISTRATION_CONFLICTS["email-other-role"]).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+  });
+
+  it("marks the City, Location, Gender and consent boxes when they are left empty", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<JoinTutor />);
+
+    await user.click(screen.getByRole("button", { name: "Create Tutor account" }));
+
+    expect(screen.getByRole("combobox", { name: /City/ }).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("combobox", { name: /Location/ }).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText(/I agree to the/).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("group", { name: /Gender/ }).getAttribute("aria-describedby")).toBe("gender-error");
   });
 
   it("shows a wrong code's message under the code box", async () => {

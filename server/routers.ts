@@ -16,6 +16,7 @@ import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff, verifyGuardianIntakeHandoff } from "./guardian-intake-handoff";
 import { guardianRegistrationSchema, GuardianRegistrationError, GUARDIAN_TERMS_VERSION } from "./guardian-registration.validation";
 import { GUARDIAN_REGISTRATION_CONFLICTS, isGuardianRegistrationConflict } from "@shared/guardian-registration-conflicts";
+import { TUTOR_REGISTRATION_CONFLICTS } from "@shared/tutor-registration-conflicts";
 import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
@@ -1120,7 +1121,7 @@ export const appRouter = router({
         ipRegistrationRateLimiter.record(`reg:${ip}`);
         // Registration would refuse this number anyway; say so before an SMS is paid for.
         if (await db.isTutorPhoneRegistered(input.phone)) {
-          throw new TRPCError({ code: "CONFLICT", message: "This mobile number is already registered to a Tutor account. Sign in instead, or use a different number." });
+          throw new TRPCError({ code: "CONFLICT", message: TUTOR_REGISTRATION_CONFLICTS["phone-taken"] });
         }
         return sendPhoneVerificationCode({ ip, phone: input.phone, purpose: "tutor_registration", role: "tutor", language: "en" });
       }),
@@ -1146,10 +1147,10 @@ export const appRouter = router({
         }
         const conflictMessage =
           result.reason === "phone"
-            ? "This mobile number is already registered to a Tutor account. Sign in instead, or use a different number."
+            ? TUTOR_REGISTRATION_CONFLICTS["phone-taken"]
             : result.reason === "email-other-role"
-              ? "This email is already used for a different Connect Tutors account. Use another email to register as a Tutor."
-              : "An account with this email already exists. Please sign in instead.";
+              ? TUTOR_REGISTRATION_CONFLICTS["email-other-role"]
+              : TUTOR_REGISTRATION_CONFLICTS["email-taken"];
         throw new TRPCError({ code: "CONFLICT", message: conflictMessage });
       }
       await db.consumePhoneVerificationCode(phoneCodeId);

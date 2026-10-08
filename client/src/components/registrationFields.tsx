@@ -29,10 +29,10 @@ export function RegistrationFieldError({ id, message, action, children }: { id: 
   return <div>{children}{message ? <p id={id} role="alert" className="mt-1.5 text-xs font-semibold text-j-err">{message}{action ? <> <Link href={action.href} className="underline underline-offset-2">{action.label}</Link></> : null}</p> : null}</div>;
 }
 
-export function GenderField({ id, name, label, value, onSelect }: { id?: string; name: string; label: string; value: "" | RegistrationGender; onSelect: (value: RegistrationGender) => void }) {
-  return <fieldset id={id}>
+export function GenderField({ id, name, label, value, onSelect, invalid, describedBy }: { id?: string; name: string; label: string; value: "" | RegistrationGender; onSelect: (value: RegistrationGender) => void; invalid?: boolean; describedBy?: string }) {
+  return <fieldset id={id} aria-describedby={describedBy}>
     <legend className={fieldLabel}>{label}<RequiredMark /></legend>
-    <div className="mt-2 inline-flex rounded-xl bg-j-surface-muted p-1">
+    <div className={`mt-2 inline-flex rounded-xl bg-j-surface-muted p-1 ${invalid ? "ring-1 ring-j-err" : ""}`}>
       {(["male", "female"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${value === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-j-ink-muted hover:text-j-ink-soft"}`}>
         <input type="radio" name={name} className="sr-only" checked={value === option} onChange={() => onSelect(option)} />{option === "male" ? "Male" : "Female"}
       </label>)}
@@ -102,10 +102,10 @@ export function confirmPasswordBorder(password: string, confirmPassword: string,
   return match?.matches ? "border-j-ok focus:border-j-ok" : "";
 }
 
-export function PolicyConsent({ id, checked, onChange }: { id: string; checked: boolean; onChange: (checked: boolean) => void }) {
+export function PolicyConsent({ id, checked, onChange, invalid, describedBy }: { id: string; checked: boolean; onChange: (checked: boolean) => void; invalid?: boolean; describedBy?: string }) {
   const [terms, privacy] = registrationPolicyLinks;
   return <label className="mt-5 flex items-start gap-2.5 text-sm leading-6 text-j-ink-muted" htmlFor={id}>
-    <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-1 h-4 w-4 rounded border-j-field-border text-j-accent" />
+    <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-invalid={invalid} aria-describedby={describedBy} className={`mt-1 h-4 w-4 rounded text-j-accent ${invalid ? "outline outline-2 outline-offset-1 outline-j-err" : "border-j-field-border"}`} />
     <span>I agree to the <Link href={terms.href} className={inlineLink}>{terms.label}</Link> and <Link href={privacy.href} className={inlineLink}>{privacy.label}</Link>.</span>
   </label>;
 }
