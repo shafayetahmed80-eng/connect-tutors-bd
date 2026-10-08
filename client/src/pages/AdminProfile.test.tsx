@@ -78,6 +78,19 @@ describe("an Admin's own profile", () => {
     expect(screen.getByRole("button", { name: "Upload profile photo" })).toBeTruthy();
   });
 
+  it("shows when and from where the Admin last signed in, or that they have not yet", () => {
+    state.profile = { ...baseProfile, lastSignIn: { at: new Date(2026, 9, 8, 17, 15).toISOString(), ip: "203.0.113.9" } };
+    const first = render(<AdminProfileContent />);
+
+    expect(screen.getByText("Last sign-in")).toBeTruthy();
+    expect(screen.getByText(/^8 Oct 2026, 5:15 ?pm · 203\.0\.113\.9$/i)).toBeTruthy();
+    first.unmount();
+
+    state.profile = { ...baseProfile, lastSignIn: null };
+    render(<AdminProfileContent />);
+    expect(screen.getByText("Not yet")).toBeTruthy();
+  });
+
   it("lets another Admin edit the rest, but not their name or mobile - those are asked for from Settings", () => {
     render(<AdminProfileContent />);
 

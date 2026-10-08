@@ -138,7 +138,7 @@ describe("Guardian dashboard working tabs", () => {
     const { rerender } = render(<GuardianDashboardContent section="settings" />);
     const settings = screen.getByRole("navigation", { name: "Account settings" });
     expect(within(settings).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual([
-      "Name", "Mobile Number", "Password", "Profile Verification", "Notifications", "Account Delete",
+      "Name", "Mobile Number", "Password", "Sign out everywhere", "Profile Verification", "Notifications", "Account Delete",
     ]);
     // A name change is a request now, not a phone call.
     expect(screen.getByLabelText("New name")).toBeTruthy();

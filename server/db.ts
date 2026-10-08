@@ -430,6 +430,20 @@ export async function revokeTutorPortalSession(input: { userId: number; tokenHas
   return result[0].affectedRows > 0;
 }
 
+/** "Sign out everywhere": every Tutor portal tab ends except the one in the Tutor's hand (`exceptTokenHash`). */
+export async function revokeOtherTutorPortalSessions(input: { userId: number; exceptTokenHash?: string; now: Date }) {
+  const database = await getDb();
+  if (!database) return;
+  await database
+    .update(tutorPortalSessions)
+    .set({ revokedAt: input.now })
+    .where(and(
+      eq(tutorPortalSessions.userId, input.userId),
+      isNull(tutorPortalSessions.revokedAt),
+      input.exceptTokenHash ? ne(tutorPortalSessions.tokenHash, input.exceptTokenHash) : undefined,
+    ));
+}
+
 /** Explicit Tutor sign-out invalidates every open Tutor portal tab for that account. */
 export async function revokeAllTutorPortalSessions(input: { userId: number; now: Date }) {
   const database = await getDb();
@@ -5016,10 +5030,49 @@ export async function createAdminAccount(input: { loginId: string; password: str
   });
 }
 
+/**
+ * When each Admin last signed in with their password, and from where, read from
+ * the audit log. Only the password sign-in counts: the other `login_success`
+ * rows are the workspace re-confirming a session that already exists.
+ */
+export async function getLastAdminSignIns(userIds: number[]) {
+  const result = new Map<number, { at: Date; ip: string | null }>();
+  if (userIds.length === 0) return result;
+  const database = await getDb();
+  if (!database) return result;
+  const passwordSignIn = and(
+    inArray(adminLoginAuditLogs.userId, userIds),
+    eq(adminLoginAuditLogs.event, "login_success"),
+    like(adminLoginAuditLogs.metadata, '%"reason":"password-login%'),
+  );
+  const latest = await database
+    .select({ id: sql<number>`max(${adminLoginAuditLogs.id})` })
+    .from(adminLoginAuditLogs)
+    .where(passwordSignIn)
+    .groupBy(adminLoginAuditLogs.userId);
+  if (latest.length === 0) return result;
+  const rows = await database
+    .select({ userId: adminLoginAuditLogs.userId, createdAt: adminLoginAuditLogs.createdAt, metadata: adminLoginAuditLogs.metadata })
+    .from(adminLoginAuditLogs)
+    .where(inArray(adminLoginAuditLogs.id, latest.map(row => Number(row.id))));
+  for (const row of rows) {
+    if (row.userId === null) continue;
+    let ip: string | null = null;
+    try {
+      const parsed = JSON.parse(row.metadata ?? "{}") as { ipAddress?: unknown };
+      ip = typeof parsed.ipAddress === "string" ? parsed.ipAddress : null;
+    } catch {
+      // A row whose details cannot be read still says when.
+    }
+    result.set(row.userId, { at: row.createdAt, ip });
+  }
+  return result;
+}
+
 export async function listAdminUsers() {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  return database
+  const admins = await database
     .select({
       id: users.id, name: users.name, email: users.email, loginId: adminCredentials.loginId, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
       phone: adminProfiles.phone, designation: adminProfiles.designation,
@@ -5030,6 +5083,8 @@ export async function listAdminUsers() {
     .leftJoin(adminProfiles, eq(adminProfiles.userId, users.id))
     .where(eq(users.role, "admin"))
     .orderBy(asc(users.createdAt));
+  const lastSignIns = await getLastAdminSignIns(admins.map(admin => admin.id));
+  return admins.map(admin => ({ ...admin, lastSignIn: lastSignIns.get(admin.id) ?? null }));
 }
 
 /**
@@ -5075,8 +5130,10 @@ export async function getAdminProfileByUserId(userId: number) {
     .limit(1);
   if (!row || row.role !== "admin") return undefined;
   const { openId, role: _role, photoKey, nidFrontKey, nidBackKey, ...profile } = row;
+  const lastSignIn = (await getLastAdminSignIns([userId])).get(userId) ?? null;
   return {
     ...profile,
+    lastSignIn,
     isOwner: openId === ENV.ownerOpenId,
     photoUploaded: Boolean(photoKey),
     nidFrontUploaded: Boolean(nidFrontKey),

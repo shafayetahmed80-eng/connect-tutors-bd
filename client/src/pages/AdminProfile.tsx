@@ -1,6 +1,6 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
 import {
-  ArrowLeft, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, Home, IdCard, Loader2, Mail, MapPin,
+  ArrowLeft, BookMarked, Briefcase, Camera, Contact, CreditCard, Flag, History, Home, IdCard, Loader2, Mail, MapPin,
   MessageSquareText, PencilLine, Phone, ShieldCheck, UserRound, Users, type LucideIcon,
 } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -11,6 +11,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { describeLastSignIn } from "@/lib/lastSignIn";
 import { trpc } from "@/lib/trpc";
 import {
   ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminProfileCompletion, adminReligionOptions, type AdminProfileImageKind,
@@ -43,6 +44,7 @@ type AdminProfileData = {
   photoUploaded: boolean;
   nidFrontUploaded: boolean;
   nidBackUploaded: boolean;
+  lastSignIn?: { at: string | Date; ip: string | null } | null;
 };
 
 type AdminProfileImages = { photo: string | null; nidFront: string | null; nidBack: string | null };
@@ -188,7 +190,7 @@ export function AdminProfileView({ profile, images, locations, own }: {
         <p className="mt-3 border-b border-j-border pb-3 text-xs font-bold text-j-ink">Profile completed: {completion}%</p>
 
         <div className="mt-4 space-y-2.5 text-left">
-          {([[Mail, "Email", profile.email ?? ""], [Phone, "Mobile", profile.phone ?? ""], [Phone, "Additional phone", profile.additionalPhone ?? ""], [MapPin, "Address", addressLine]] as const).map(([Icon, label, value]) => (
+          {([[Mail, "Email", profile.email ?? ""], [Phone, "Mobile", profile.phone ?? ""], [Phone, "Additional phone", profile.additionalPhone ?? ""], [MapPin, "Address", addressLine], [History, "Last sign-in", describeLastSignIn(profile.lastSignIn)]] as const).map(([Icon, label, value]) => (
             <div key={label} className="flex items-start gap-2.5">
               <Icon size={15} className="mt-0.5 shrink-0 text-[#8fb4d0]" aria-hidden={true} />
               <span className="min-w-0">

@@ -21,7 +21,7 @@ import { GuardianIntakeValidationError, normalizeBangladeshMobile } from "./guar
 import { getGuardianProfilePhotoForOwner } from "./guardian-profile-photo";
 import { getGuardianNidDocumentUrls } from "./guardian-nid-document";
 import { GUARDIAN_PROFILE_LIMITS, guardianHeardAboutUsValues, guardianNationalityOptions, guardianReligionOptions, guardianVerificationStatusValues } from "@shared/guardian-profile";
-import { adminIdentityProcedure, adminProcedure, guardianProcedure, loginIdentityProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
+import { adminIdentityProcedure, adminProcedure, guardianProcedure, loginIdentityProcedure, memberProcedure, protectedProcedure, publicProcedure, router, tutorProcedure } from "./_core/trpc";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
 import { TERMS_VERSION } from "@shared/terms-version";
 import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
@@ -1742,6 +1742,16 @@ export const appRouter = router({
       // A new Admin password signs every other browser out; this one stays.
       if (role === "admin") await keepThisAdminBrowserSignedIn({ req: ctx.req, res: ctx.res, user: ctx.user }, hadSecondFactorProof);
       return { changed: true } as const;
+    }),
+    /** A Tutor or Guardian signs themselves out of every browser but this one - the answer to a lost phone. */
+    signOutEverywhere: memberProcedure.mutation(async ({ ctx }) => {
+      await db.endAllSessionsFor(ctx.user.id);
+      if (ctx.user.role === "tutor") {
+        const token = getTutorPortalTokenFromHeaders(ctx.req.headers);
+        await db.revokeOtherTutorPortalSessions({ userId: ctx.user.id, exceptTokenHash: token ? hashTutorPortalToken(token) : undefined, now: new Date() });
+      }
+      await setPasswordSession(ctx, ctx.user);
+      return { success: true } as const;
     }),
     /** What this account may ask to change, what it has now, and its requests so far. */
     changeRequests: protectedProcedure.query(async ({ ctx }) => {
