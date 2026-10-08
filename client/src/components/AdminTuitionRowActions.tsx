@@ -53,6 +53,8 @@ export function useAdminTuitionRowActions(stage: "appointed" | "confirmed") {
     void utils.admin.listCancelledCharges.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
+    // A move answers any request waiting on the tuition, which the sidebar counts.
+    void utils.admin.guardianRequestCounts.invalidate();
   };
   const [pending, setPending] = useState<Pending | null>(null);
   const close = () => setPending(null);

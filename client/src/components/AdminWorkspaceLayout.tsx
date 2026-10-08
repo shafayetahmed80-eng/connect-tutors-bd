@@ -46,8 +46,12 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
 ];
 
-/** How many of each Guardian request wait for an answer - the counts beside the Guardian Requests rows. */
-export type GuardianRequestCounts = { shortlist: number; appoint: number; confirm: number; cancel: number };
+/**
+ * How many of each Guardian request wait for an answer - the counts beside the
+ * Guardian Requests rows - and how many Appointed and Confirmed tuitions have
+ * one waiting, the counts beside those two job lists.
+ */
+export type GuardianRequestCounts = { shortlist: number; appoint: number; confirm: number; cancel: number; appointedJobs: number; confirmedJobs: number };
 
 export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0, guardianRequests?: GuardianRequestCounts, tutorChatUnreadThreads = 0): DashboardNavigationItem[] {
   const requests = { label: "Guardian Requests", icon: Inbox };
@@ -61,8 +65,8 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: MessageCircle, label: "Tutor Chats", path: "/admin/tutor-chats", sectionLabel: "Operations", badge: tutorChatUnreadThreads },
     { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Operations", badge: pendingChangeRequests },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
-    { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations" },
-    { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations" },
+    { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations", badge: guardianRequests?.appointedJobs },
+    { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations", badge: guardianRequests?.confirmedJobs },
     { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
     { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Operations" },
     { icon: Target, label: "Tutor Matching", path: "/admin/tutor-matching", sectionLabel: "Operations" },

@@ -27,7 +27,7 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: () => ({ data: state.ownerLoading ? undefined : { userId: state.accessUserId, isOwner: state.isOwner }, isLoading: state.ownerLoading, isFetching: state.fetching || state.ownerLoading, refetch: state.refetch }),
       },
       // The Guardian Requests rows in the sidebar.
-      guardianRequestCounts: { useQuery: () => ({ data: { shortlist: 3, appoint: 2, confirm: 0, cancel: 1 } }) },
+      guardianRequestCounts: { useQuery: () => ({ data: { shortlist: 3, appoint: 2, confirm: 0, cancel: 1, appointedJobs: 0, confirmedJobs: 0 } }) },
       // The Tutor Chats row in the sidebar.
       tutorChatUnreadThreadCount: { useQuery: () => ({ data: { unreadThreadCount: 0 } }) },
     },

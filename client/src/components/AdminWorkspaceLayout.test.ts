@@ -43,7 +43,7 @@ describe("Admin workspace navigation", () => {
   });
 
   it("folds the Guardian Requests and the Dynamic Section into collapsible rows, with the counts on the rows that ask", () => {
-    const items = buildAdminWorkspaceNavigation(true, 0, { shortlist: 6, appoint: 2, confirm: 1, cancel: 0 });
+    const items = buildAdminWorkspaceNavigation(true, 0, { shortlist: 6, appoint: 2, confirm: 1, cancel: 0, appointedJobs: 0, confirmedJobs: 0 });
     const rows = groupNavigationRows(items).filter(row => row.kind === "subgroup");
     expect(rows.map(row => row.kind === "subgroup" && row.subgroup.label)).toEqual(["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"]);
     const requests = rows[0];
@@ -52,6 +52,14 @@ describe("Admin workspace navigation", () => {
     ]);
     // An Admin who is not the Owner has no Dynamic Section rows, and keeps Guardian Requests.
     expect(groupNavigationRows(buildAdminWorkspaceNavigation(false)).filter(row => row.kind === "subgroup")).toHaveLength(1);
+  });
+
+  it("counts the tuitions with a Guardian's request waiting beside Appointed Jobs and Confirmed Jobs", () => {
+    const items = buildAdminWorkspaceNavigation(false, 0, { shortlist: 0, appoint: 0, confirm: 3, cancel: 2, appointedJobs: 3, confirmedJobs: 1 });
+    expect(items.find(item => item.path === "/admin/appointed-jobs")).toMatchObject({ label: "Appointed Jobs", badge: 3 });
+    expect(items.find(item => item.path === "/admin/confirmed-jobs")).toMatchObject({ label: "Confirmed Jobs", badge: 1 });
+    // Until the counts arrive there is nothing to draw.
+    expect(buildAdminWorkspaceNavigation(false).find(item => item.path === "/admin/appointed-jobs")?.badge).toBeUndefined();
   });
 
   it("counts the change requests waiting beside their tab, and draws nothing for none", () => {

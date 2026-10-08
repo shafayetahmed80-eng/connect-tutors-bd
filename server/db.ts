@@ -5841,7 +5841,10 @@ const guardianTuitionRequestTypesFor = (kind: "confirm" | "cancel") =>
 /**
  * How many of each Guardian action there are: the requests still waiting for
  * an answer, and - for the shortlist, which is a signal rather than a question -
- * how many applicants Guardians have shortlisted.
+ * how many applicants Guardians have shortlisted. Also how many Appointed and
+ * how many Confirmed tuitions have a request waiting on them - the counts
+ * beside those two job lists, which are tuitions rather than requests (a
+ * tuition holds one answerable request at a time, as its row marks).
  */
 export async function countGuardianRequestActions() {
   const database = await getDb();
@@ -5855,11 +5858,31 @@ export async function countGuardianRequestActions() {
     .where(eq(guardianTuitionRequests.status, "pending"))
     .groupBy(guardianTuitionRequests.type);
   const of = (types: readonly string[]) => waiting.filter(row => types.includes(row.type)).reduce((sum, row) => sum + Number(row.total), 0);
+
+  // The same reading the job lists' rows use, so a count never promises a mark the row does not carry.
+  const heldTuitions = await database
+    .select({
+      id: tutorRequests.id,
+      status: tutorRequests.status,
+      publicationState: tutorRequests.publicationState,
+      tutorId: tutorRequests.tutorId,
+      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+    })
+    .from(tutorRequests)
+    .where(and(
+      or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed")),
+      inArray(tutorRequests.id, database.select({ id: guardianTuitionRequests.tutorRequestId }).from(guardianTuitionRequests).where(eq(guardianTuitionRequests.status, "pending"))),
+    ));
+  const answerable = await getWaitingGuardianTuitionRequests(heldTuitions);
+  const jobsAt = (stage: GuardianRequestLifecycle) => heldTuitions.filter(row => answerable.has(row.id) && getGuardianRequestLifecycle(row) === stage).length;
+
   return {
     shortlist: Number(shortlist?.total ?? 0),
     appoint: Number(appoint?.total ?? 0),
     confirm: of(guardianTuitionRequestTypesFor("confirm")),
     cancel: of(guardianTuitionRequestTypesFor("cancel")),
+    appointedJobs: jobsAt("appointed"),
+    confirmedJobs: jobsAt("confirmed"),
   };
 }
 

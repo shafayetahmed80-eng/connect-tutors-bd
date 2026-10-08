@@ -59,6 +59,7 @@ vi.mock("@/lib/trpc", () => ({
           listAppliedTutors: invalidator("listAppliedTutors"), listPostedJobs: invalidator("listPostedJobs"), listAppointedJobs: invalidator("listAppointedJobs"),
           listConfirmedJobs: invalidator("listConfirmedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
           listTutorDirectory: invalidator("listTutorDirectory"), listTutorApplications: invalidator("listTutorApplications"),
+          guardianRequestCounts: invalidator("guardianRequestCounts"),
         },
       };
     },
@@ -315,7 +316,7 @@ describe("the next move, from the row", () => {
     // Not the Appointed removal: that one leaves a closed listing closed.
     expect(mocks.reopen).not.toHaveBeenCalled();
     (mocks.removeConfirmed.mock.calls[0][1] as { onSuccess: () => void }).onSuccess();
-    expect(mocks.invalidated).toEqual(expect.arrayContaining(["listConfirmedJobs", "listAppointedJobs", "listPostedJobs"]));
+    expect(mocks.invalidated).toEqual(expect.arrayContaining(["listConfirmedJobs", "listAppointedJobs", "listPostedJobs", "guardianRequestCounts"]));
   });
 
   it("cancels the tuition only with a reason, and reads the Cancelled tab's list again", async () => {
