@@ -54,6 +54,15 @@ describe("tuitions cancelled after they were confirmed", () => {
     ]);
   });
 
+  it("lets the rows rise in one after another", () => {
+    mocks.data = { ...mocks.data, items: [row({ id: 21 }), row({ id: 22 })], total: 2 };
+    render(<AdminCancelledChargesContent />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0].className).toContain("stagger-row-enter");
+    expect(rows[1].style.getPropertyValue("--stagger")).toBe("1");
+  });
+
   it("marks a tuition nobody has settled, and offers no payments for it yet", () => {
     mocks.data = { ...mocks.data, items: [row({})], total: 1 };
     render(<AdminCancelledChargesContent />);

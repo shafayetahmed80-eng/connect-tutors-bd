@@ -125,6 +125,15 @@ describe("Admin Appointed Jobs", () => {
     expect(row.getByText("Online")).toBeTruthy();
   });
 
+  it("lets the rows rise in one after another", () => {
+    render(<AdminAppointedJobsContent />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0].className).toContain("stagger-row-enter");
+    expect(rows[0].style.getPropertyValue("--stagger")).toBe("0");
+    expect(rows[1].style.getPropertyValue("--stagger")).toBe("1");
+  });
+
   it("searches from the first page", () => {
     render(<AdminAppointedJobsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location or Tutor/), { target: { value: "Tania" } });
