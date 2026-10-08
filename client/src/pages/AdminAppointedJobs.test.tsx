@@ -5,6 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  confirm: vi.fn(),
+  reopen: vi.fn(),
+  cancelTuition: vi.fn(),
+  approveGuardian: vi.fn(),
+  declineGuardian: vi.fn(),
+  invalidated: [] as string[],
   data: {
     items: [
       {
@@ -26,8 +32,16 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+const invalidator = (name: string) => ({ invalidate: () => { mocks.invalidated.push(name); } });
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      admin: {
+        listAppliedTutors: invalidator("listAppliedTutors"), listPostedJobs: invalidator("listPostedJobs"), listAppointedJobs: invalidator("listAppointedJobs"),
+        listConfirmedJobs: invalidator("listConfirmedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
+        listTutorDirectory: invalidator("listTutorDirectory"), listTutorApplications: invalidator("listTutorApplications"),
+      },
+    }),
     admin: {
       listAppointedJobs: {
         useQuery: (input: unknown) => {
@@ -35,21 +49,35 @@ vi.mock("@/lib/trpc", () => ({
           return { data: mocks.data, isLoading: false, isError: false };
         },
       },
+      confirmTutorRequestAppointment: { useMutation: () => ({ mutate: mocks.confirm, isPending: false }) },
+      reopenAppointedTuition: { useMutation: () => ({ mutate: mocks.reopen, isPending: false }) },
+      removeConfirmedTutor: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      cancelTutorRequest: { useMutation: () => ({ mutate: mocks.cancelTuition, isPending: false }) },
+      approveGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.approveGuardian, isPending: false }) },
+      declineGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.declineGuardian, isPending: false }) },
     },
   },
 }));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { AdminAppointedJobsContent } from "./AdminAppointedJobs";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.data.items[0].guardianRequest = null; });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.invalidated.length = 0; mocks.data.items[0].guardianRequest = null; });
+
+/** Opens the Actions menu of the row at `index` (0 is the first Job) the way a mouse does. */
+const openMenu = (index: number) => {
+  const row = screen.getAllByRole("row")[index + 1];
+  fireEvent.pointerDown(within(row).getByRole("button", { name: /^Actions of Job ID/ }), { button: 0, ctrlKey: false, pointerType: "mouse" });
+  return screen.getByRole("menu");
+};
 
 describe("Admin Appointed Jobs", () => {
-  it("marks a Guardian's waiting request beside the Job ID, leading to Applied Tutors where it is answered", () => {
+  it("marks a Guardian's waiting request beside the Job ID", () => {
     mocks.data.items[0].guardianRequest = { id: 5, type: "confirm", tutorId: "tutor-175", reason: null, createdAt: new Date("2026-09-16T08:00:00.000Z") };
     render(<AdminAppointedJobsContent />);
 
     const rows = screen.getAllByRole("row").slice(1);
-    expect(within(rows[0]).getByText("Confirm requested").closest("a")?.getAttribute("href")).toBe("/admin/applied-tutors/13");
+    expect(within(rows[0]).getByText("Confirm requested")).toBeTruthy();
     expect(within(rows[1]).queryByText(/requested/)).toBeNull();
   });
 
@@ -58,7 +86,7 @@ describe("Admin Appointed Jobs", () => {
 
     expect(mocks.lastInput).toMatchObject({ query: "", page: 1 });
     expect(screen.getAllByRole("columnheader").map(cell => cell.textContent)).toEqual([
-      "Job ID", "Posted By", "Class", "Subjects", "Location", "Salary", "Days", "Tutor ID", "Name", "Mobile", "Appointed", "Tutor profile",
+      "Job ID", "Posted By", "Class", "Subjects", "Location", "Salary", "Days", "Tutor ID", "Name", "Mobile", "Appointed", "Actions", "Tutor profile",
     ]);
   });
 
@@ -101,5 +129,101 @@ describe("Admin Appointed Jobs", () => {
     render(<AdminAppointedJobsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location or Tutor/), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ query: "Tania", page: 1 });
+  });
+});
+
+describe("the next move, from the row", () => {
+  it("offers Confirm, Remove Tutor and Cancel Tuition on every Appointed row", async () => {
+    render(<AdminAppointedJobsContent />);
+
+    expect(within(openMenu(0)).getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Confirm", "Remove Tutor", "Cancel Tuition"]);
+  });
+
+  it("confirms the Tutor only after a confirmation, then reads the lists again", async () => {
+    render(<AdminAppointedJobsContent />);
+
+    fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Confirm" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Confirm Tania Sultana?")).toBeTruthy();
+    expect(within(dialog).getByText("Tutor ID 777 · Job ID 6812")).toBeTruthy();
+    expect(mocks.confirm).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm" }));
+    // The internal key, never the visible Tutor ID, goes to the server.
+    expect(mocks.confirm).toHaveBeenCalledWith({ requestId: 13, tutorId: "tutor-175" }, expect.anything());
+
+    // The tuition leaves this list for Confirmed Jobs, so the answer refreshes both.
+    (mocks.confirm.mock.calls[0][1] as { onSuccess: () => void }).onSuccess();
+    expect(mocks.invalidated).toEqual(expect.arrayContaining(["listAppointedJobs", "listConfirmedJobs", "listAppliedTutors"]));
+  });
+
+  it("leaves the focus in the dialog the menu opened, not on the button behind it", async () => {
+    render(<AdminAppointedJobsContent />);
+
+    fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Confirm" }));
+    const dialog = await screen.findByRole("dialog");
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it("removes the Tutor after a confirmation, and keeps everything when the Admin backs out", async () => {
+    render(<AdminAppointedJobsContent />);
+
+    fireEvent.click(within(openMenu(1)).getByRole("menuitem", { name: "Remove Tutor" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.reopen).not.toHaveBeenCalled();
+
+    fireEvent.click(within(openMenu(1)).getByRole("menuitem", { name: "Remove Tutor" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Remove Tanvir Ahmed?")).toBeTruthy();
+    expect(within(dialog).getByText("Tutor ID not set · Job ID 6820")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove Tutor" }));
+    expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 21, tutorId: "tutor-404" }, expect.anything());
+  });
+
+  it("cancels the tuition only with a reason", async () => {
+    render(<AdminAppointedJobsContent />);
+
+    fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Cancel Tuition" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    const cancel = within(dialog).getByRole("button", { name: "Cancel Tuition" }) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+
+    fireEvent.change(within(dialog).getByLabelText(/Reason/), { target: { value: "  The Guardian found a Tutor elsewhere  " } });
+    fireEvent.click(cancel);
+    expect(mocks.cancelTuition).toHaveBeenCalledWith({ requestId: 13, reason: "The Guardian found a Tutor elsewhere" }, expect.anything());
+    (mocks.cancelTuition.mock.calls[0][1] as { onSuccess: () => void }).onSuccess();
+    // A cancelled tuition may be one that was confirmed, so its charge list is read again too.
+    expect(mocks.invalidated).toContain("listCancelledCharges");
+  });
+
+  it("answers a Guardian's Confirm request from the row, and the Admin's own Confirm steps aside", async () => {
+    mocks.data.items[0].guardianRequest = { id: 5, type: "confirm", tutorId: "tutor-175", reason: null, createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppointedJobsContent />);
+
+    expect(within(openMenu(0)).getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Approve request", "Decline request", "Remove Tutor", "Cancel Tuition"]);
+
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Approve request" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Confirm Tania Sultana?")).toBeTruthy();
+    expect(mocks.approveGuardian).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 5 });
+
+    fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Decline request" }));
+    expect(mocks.declineGuardian).toHaveBeenCalledWith({ guardianRequestId: 5 });
+  });
+
+  it("puts a waiting cancellation request in place of Cancel Tuition, with the Guardian's reason", async () => {
+    mocks.data.items[0].guardianRequest = { id: 7, type: "cancel_tuition", tutorId: null, reason: "Found a Tutor elsewhere", createdAt: new Date("2026-09-16T08:00:00.000Z") };
+    render(<AdminAppointedJobsContent />);
+
+    expect(within(openMenu(0)).getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Approve request", "Decline request", "Confirm", "Remove Tutor"]);
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Approve request" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByText("Found a Tutor elsewhere")).toBeTruthy();
   });
 });

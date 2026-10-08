@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
+import { useAdminTuitionRowActions } from "@/components/AdminTuitionRowActions";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { TutorListPager } from "@/components/TutorListPager";
@@ -23,7 +24,8 @@ const notSet = <span className="italic text-j-ink-faint">Not set</span>;
  *
  * The row reads like Applied Tutors' own list of tuitions, with the appointed
  * Tutor's ID, name and number where the applicant count was, and its arrow
- * opens that Tutor's profile.
+ * opens that Tutor's profile. The Actions menu makes the next move without
+ * leaving the list: confirm the Tutor, remove them, or cancel the tuition.
  */
 export function AdminAppointedJobsContent() {
   const [query, setQuery] = useState("");
@@ -31,6 +33,7 @@ export function AdminAppointedJobsContent() {
   const [pageSize, setPageSize] = useState(20);
   const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize });
   const items = jobs.data?.items ?? [];
+  const rowActions = useAdminTuitionRowActions("appointed");
 
   type AppointedJob = (typeof items)[number];
   const columns: RecordColumn<AppointedJob>[] = [
@@ -38,8 +41,8 @@ export function AdminAppointedJobsContent() {
       key: "jobId", label: "Job ID", place: "head",
       cell: job => <span className="inline-flex flex-wrap items-center gap-2">
         <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span>
-        {/* A Guardian's waiting request is answered on Applied Tutors, so the mark leads there. */}
-        {job.guardianRequest ? <Link href={`/admin/applied-tutors/${job.id}`} className="hover:opacity-80"><AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /></Link> : null}
+        {/* A Guardian's waiting request is answered from the row's Actions menu. */}
+        {job.guardianRequest ? <AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /> : null}
       </span>,
     },
     { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
@@ -52,6 +55,7 @@ export function AdminAppointedJobsContent() {
     { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },
     { key: "tutorPhone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{job.tutorPhone || notSet}</span> },
     { key: "appointedAt", label: "Appointed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{appointedOn(job.appointedAt) ?? notSet}</span> },
+    { key: "actions", label: "Actions", place: "action", headingHidden: true, cellClassName: "text-right", cell: job => rowActions.renderMenu(job) },
     {
       key: "profile", label: "Tutor profile", place: "action", headingHidden: true, cellClassName: "text-right",
       cell: job => <Link href={`/admin/tutor-profiles/${encodeURIComponent(job.tutorId)}`} aria-label={`Open the profile of ${job.tutorName}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
@@ -94,6 +98,8 @@ export function AdminAppointedJobsContent() {
       onPageSize={next => { setPageSize(next); setPage(1); }}
       totalItems={jobs.data?.total}
     />
+
+    {rowActions.dialogs}
   </div>;
 }
 
