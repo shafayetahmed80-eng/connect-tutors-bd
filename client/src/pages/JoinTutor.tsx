@@ -10,6 +10,7 @@ import { formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBanglade
 import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
+import { tutorRegistrationConflictField, tutorRegistrationConflictOf } from "@shared/tutor-registration-conflicts";
 import { ChevronDown, LoaderCircle, MapPin, MapPinned } from "lucide-react";
 import React, { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -34,6 +35,12 @@ type TutorRegistrationErrorKey = keyof TutorRegistrationForm | "agreed" | "phone
 type TutorRegistrationErrors = Partial<Record<TutorRegistrationErrorKey, string>>;
 
 export const TUTOR_SIGN_IN_HREF = "/auth?role=tutor";
+
+/** Signing in is offered under a refusal it would settle, and nowhere else. */
+function tutorConflictSignIn(message?: string) {
+  const conflict = message ? tutorRegistrationConflictOf(message) : null;
+  return conflict && tutorRegistrationConflictField(conflict).offerSignIn ? { href: TUTOR_SIGN_IN_HREF, label: "Sign in" } : undefined;
+}
 /** Where a completed Tutor registration lands inside the portal. */
 export const TUTOR_REGISTRATION_DESTINATION = "/tutor/dashboard/jobs";
 
@@ -248,7 +255,10 @@ export default function JoinTutor() {
       // specific, user-ready message. Point at the field that actually clashed
       // instead of blaming the email every time.
       if (trpcError?.data?.code === "CONFLICT" && serverMessage) {
-        const clashingField: TutorRegistrationErrorKey = /mobile number/i.test(serverMessage) ? "phone" : "contactEmail";
+        const conflict = tutorRegistrationConflictOf(serverMessage);
+        const clashingField: TutorRegistrationErrorKey = conflict
+          ? (tutorRegistrationConflictField(conflict).field === "phone" ? "phone" : "contactEmail")
+          : /mobile number/i.test(serverMessage) ? "phone" : "contactEmail";
         setFieldErrors(current => ({ ...current, [clashingField]: serverMessage }));
         setSubmitError(serverMessage);
         focusFirstError({ [clashingField]: serverMessage });
@@ -279,13 +289,13 @@ export default function JoinTutor() {
           <section aria-labelledby="tutor-registration-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
             <div className={fieldGrid}>
               <RegistrationFieldError id="name-error" message={fieldErrors.name}><label className="block" htmlFor="name"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.fullName", "Full name")}<RequiredMark /></span><input id="name" required maxLength={160} value={form.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} className={fieldClass} placeholder="Your full name" autoComplete="name" /></label></RegistrationFieldError>
-              <RegistrationFieldError id="gender-error" message={fieldErrors.gender}><GenderField id="gender" name="gender" label={resolveSlot("tutor-registration.field.gender", "Gender")} value={form.gender} onSelect={(value) => update("gender", value)} /></RegistrationFieldError>
-              <RegistrationFieldError id="phone-error" message={fieldErrors.phone}><PhoneField id="phone" label={resolveSlot("tutor-registration.field.phone", "Phone number")} value={form.phone} onChange={(value) => update("phone", normalizeBangladeshLocalMobile(value))} placeholder="1XXXXXXXXX" invalid={Boolean(fieldErrors.phone)} describedBy={fieldErrors.phone ? "phone-error" : undefined} /></RegistrationFieldError>
-              <RegistrationFieldError id="contactEmail-error" message={fieldErrors.contactEmail}><label className="block" htmlFor="contactEmail"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.email", "Email")}<RequiredMark /></span><input id="contactEmail" required maxLength={320} value={form.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} aria-invalid={Boolean(fieldErrors.contactEmail)} aria-describedby={fieldErrors.contactEmail ? "contactEmail-error" : undefined} className={fieldClass} placeholder="name@example.com" type="email" autoComplete="email" /></label></RegistrationFieldError>
+              <RegistrationFieldError id="gender-error" message={fieldErrors.gender}><GenderField id="gender" name="gender" label={resolveSlot("tutor-registration.field.gender", "Gender")} value={form.gender} onSelect={(value) => update("gender", value)} invalid={Boolean(fieldErrors.gender)} describedBy={fieldErrors.gender ? "gender-error" : undefined} /></RegistrationFieldError>
+              <RegistrationFieldError id="phone-error" message={fieldErrors.phone} action={tutorConflictSignIn(fieldErrors.phone)}><PhoneField id="phone" label={resolveSlot("tutor-registration.field.phone", "Phone number")} value={form.phone} onChange={(value) => update("phone", normalizeBangladeshLocalMobile(value))} placeholder="1XXXXXXXXX" invalid={Boolean(fieldErrors.phone)} describedBy={fieldErrors.phone ? "phone-error" : undefined} /></RegistrationFieldError>
+              <RegistrationFieldError id="contactEmail-error" message={fieldErrors.contactEmail} action={tutorConflictSignIn(fieldErrors.contactEmail)}><label className="block" htmlFor="contactEmail"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.email", "Email")}<RequiredMark /></span><input id="contactEmail" required maxLength={320} value={form.contactEmail} onChange={(event) => update("contactEmail", event.target.value)} aria-invalid={Boolean(fieldErrors.contactEmail)} aria-describedby={fieldErrors.contactEmail ? "contactEmail-error" : undefined} className={fieldClass} placeholder="name@example.com" type="email" autoComplete="email" /></label></RegistrationFieldError>
               <RegistrationFieldError id="password-error" message={fieldErrors.password}><PasswordField id="password" label={resolveSlot("tutor-registration.field.password", "Password")} value={form.password} onChange={(value) => update("password", value)} placeholder="At least 8 characters" invalid={Boolean(fieldErrors.password)} describedBy={fieldErrors.password ? "password-error" : "password-strength"}><PasswordStrength id="password-strength" password={form.password} /></PasswordField></RegistrationFieldError>
               <RegistrationFieldError id="confirmPassword-error" message={fieldErrors.confirmPassword}><PasswordField id="confirmPassword" label={resolveSlot("tutor-registration.field.confirmPassword", "Confirm password")} value={form.confirmPassword} onChange={(value) => update("confirmPassword", value)} placeholder="Re-enter your password" invalid={fieldErrors.confirmPassword ? true : passwordMatch ? !passwordMatch.matches : undefined} describedBy={fieldErrors.confirmPassword ? "confirmPassword-error" : passwordMatch ? "password-match" : undefined} inputClassName={confirmPasswordBorder(form.password, form.confirmPassword, fieldErrors.confirmPassword)}><PasswordMatch id="password-match" password={form.password} confirmPassword={form.confirmPassword} /></PasswordField></RegistrationFieldError>
-              <RegistrationFieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" slotId="tutor-registration.field.city" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} /></RegistrationFieldError>
-              <RegistrationFieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" slotId="tutor-registration.field.location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} /></RegistrationFieldError>
+              <RegistrationFieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" slotId="tutor-registration.field.city" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} invalid={Boolean(fieldErrors.cityId)} describedBy={fieldErrors.cityId ? "cityId-error" : undefined} /></RegistrationFieldError>
+              <RegistrationFieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" slotId="tutor-registration.field.location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} invalid={Boolean(fieldErrors.locationId)} describedBy={fieldErrors.locationId ? "locationId-error" : undefined} /></RegistrationFieldError>
             </div>
             {codeSentTo ? <div className="mt-6 rounded-xl border border-j-border bg-j-surface-sunken p-4">
               <PhoneCodeField
@@ -303,7 +313,7 @@ export default function JoinTutor() {
                 changeNumberLabel="Change number"
               />
             </div> : null}
-            <RegistrationFieldError id="agreed-error" message={fieldErrors.agreed}><PolicyConsent id="agreed" checked={agreed} onChange={(checked) => { setAgreed(checked); setFieldErrors((current) => ({ ...current, agreed: undefined })); }} /></RegistrationFieldError>
+            <RegistrationFieldError id="agreed-error" message={fieldErrors.agreed}><PolicyConsent id="agreed" checked={agreed} onChange={(checked) => { setAgreed(checked); setFieldErrors((current) => ({ ...current, agreed: undefined })); }} invalid={Boolean(fieldErrors.agreed)} describedBy={fieldErrors.agreed ? "agreed-error" : undefined} /></RegistrationFieldError>
             {submitError ? <p role="alert" className="mt-4 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{submitError}</p> : null}
             <div className={registrationFooter}>
               <SignInPrompt href={TUTOR_SIGN_IN_HREF} />
@@ -331,7 +341,7 @@ export default function JoinTutor() {
  * screen reader agree about which place is highlighted. The chevron is
  * decorative and lets clicks fall through to the input behind it.
  */
-export function SearchableLocationSelect({ triggerId, label, slotId, required, value, options, disabled, placeholder, searchPlaceholder, emptyMessage, onChange }: {
+export function SearchableLocationSelect({ triggerId, label, slotId, required, value, options, disabled, placeholder, searchPlaceholder, emptyMessage, onChange, invalid, describedBy }: {
   triggerId?: string;
   label: string;
   /** A site-content slot that lets an Owner reword the label; falls back to `label`. */
@@ -346,6 +356,9 @@ export function SearchableLocationSelect({ triggerId, label, slotId, required, v
   searchPlaceholder: string;
   emptyMessage: string;
   onChange: (value: string) => void;
+  /** The form refused this field: its border says so beside the message under it. */
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -417,6 +430,8 @@ export function SearchableLocationSelect({ triggerId, label, slotId, required, v
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
         aria-activedescendant={activeOption ? `${listId}-${activeOption.id}` : undefined}
         autoComplete="off"
         disabled={disabled}

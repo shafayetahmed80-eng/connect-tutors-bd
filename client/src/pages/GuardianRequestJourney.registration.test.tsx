@@ -338,6 +338,17 @@ describe("GuardianRequestJourney account creation flow", () => {
     expect(screen.getByRole("link", { name: "সাইন ইন করুন" })).toBeTruthy();
   });
 
+  it("marks the consent and Gender boxes that the form refuses", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByRole("checkbox").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("group", { name: /Gender/ }).getAttribute("aria-describedby")).toBe("guardian-gender-error");
+  });
+
   it("sends a completed Guardian straight to the dashboard Hire a tutor tab", () => {
     render(<GuardianRequestJourney />);
     act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
