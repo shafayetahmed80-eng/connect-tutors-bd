@@ -40,7 +40,7 @@ import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tuto
 import { emptyTutorMatchFilters, rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief, type MatchingWeights } from "@shared/tutor-matching";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
-import { drizzle } from "drizzle-orm/mysql2";
+import { createDatabase } from "./database-connection";
 import {
   InsertUser,
   adminCredentials,
@@ -205,7 +205,7 @@ import {
 } from "./guardian-tuition-requests";
 import type { GuardianTuitionRequestType } from "../drizzle/schema";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: ReturnType<typeof createDatabase> | null = null;
 let tutorNumberAllocationTail: Promise<void> = Promise.resolve();
 
 /**
@@ -348,7 +348,7 @@ function passwordOpenId(email: string) {
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = createDatabase(process.env.DATABASE_URL);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
