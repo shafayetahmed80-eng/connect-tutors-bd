@@ -1,5 +1,6 @@
 import AdminCancelledChargesContent from "@/components/AdminCancelledCharges";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { useAdminTuitionRowActions } from "@/components/AdminTuitionRowActions";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
 import { AdminConfirmationLetterViewButton, ConfirmationLetterDraftPreview } from "@/components/ConfirmationLetterPreview";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
@@ -95,7 +96,8 @@ function ConfirmationLetterCell({ requestId, confirmedAt, budgetAmount, letter }
  * It reads like Applied Tutors' own list of tuitions. The payment status is
  * worked out from the payments on file, never set by hand: the wallet button
  * opens them, and is where an Admin records or verifies one. The arrow opens
- * the Tutor's profile.
+ * the Tutor's profile, and the Actions menu removes the Tutor or cancels the
+ * tuition.
  */
 export function AdminConfirmedJobsContent() {
   const [query, setQuery] = useState("");
@@ -105,6 +107,7 @@ export function AdminConfirmedJobsContent() {
   const items = jobs.data?.items ?? [];
 
   const [payingRequestId, setPayingRequestId] = useState<number | null>(null);
+  const rowActions = useAdminTuitionRowActions("confirmed");
 
   type ConfirmedJob = (typeof items)[number];
   const columns: RecordColumn<ConfirmedJob>[] = [
@@ -112,8 +115,8 @@ export function AdminConfirmedJobsContent() {
       key: "jobId", label: "Job ID", place: "head",
       cell: job => <span className="inline-flex flex-wrap items-center gap-2">
         <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span>
-        {/* A Guardian's waiting request is answered on Applied Tutors, so the mark leads there. */}
-        {job.guardianRequest ? <Link href={`/admin/applied-tutors/${job.id}`} className="hover:opacity-80"><AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /></Link> : null}
+        {/* A Guardian's waiting request is answered from the row's Actions menu. */}
+        {job.guardianRequest ? <AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /> : null}
       </span>,
     },
     { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
@@ -154,6 +157,7 @@ export function AdminConfirmedJobsContent() {
         <Wallet size={16} />
       </button>,
     },
+    { key: "actions", label: "Actions", place: "action", headingHidden: true, cellClassName: "text-right", cell: job => rowActions.renderMenu(job) },
     {
       key: "profile", label: "Tutor profile", place: "action", headingHidden: true, cellClassName: "text-right",
       cell: job => <Link href={`/admin/tutor-profiles/${encodeURIComponent(job.tutorId)}`} aria-label={`Open the profile of ${job.tutorName}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
@@ -198,6 +202,8 @@ export function AdminConfirmedJobsContent() {
     />
 
     {payingRequestId !== null ? <TuitionPaymentsModal requestId={payingRequestId} onClose={() => setPayingRequestId(null)} /> : null}
+
+    {rowActions.dialogs}
   </div>;
 }
 

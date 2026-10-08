@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestMark, ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
+import { CancelTuitionDialog, TutorMoveDialog } from "@/components/AdminTuitionActionDialogs";
 import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
@@ -117,9 +118,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 
   // Cancelling is the tuition's, not an applicant's: the Guardian is not taking a Tutor from us.
   const [cancelling, setCancelling] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
   const cancelTuition = trpc.admin.cancelTutorRequest.useMutation({
-    onSuccess: () => { setCancelling(false); setCancelReason(""); refresh(); toast.success(`Job ID ${jobIdForRequest(requestId)} is cancelled.`); },
+    onSuccess: () => { setCancelling(false); refresh(); toast.success(`Job ID ${jobIdForRequest(requestId)} is cancelled.`); },
     onError: error => { toast.error(error.message); refresh(); },
   });
 
@@ -144,7 +144,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         ? <AdminGuardianTuitionRequestMark request={guardianRequest} busy={guardianAnswer.busy} onApprove={() => setApprovingGuardianRequest(true)} onDecline={() => guardianAnswer.decline.mutate({ guardianRequestId: guardianRequest.id })} />
         : tuitionStage && canCancelTuition(tuitionStage) ? <button
         type="button"
-        onClick={() => { setCancelReason(""); setCancelling(true); }}
+        onClick={() => setCancelling(true)}
         className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
       >
         <CircleX className="h-4 w-4" /> Cancel Tuition
@@ -217,57 +217,23 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       onApprove={() => guardianAnswer.approve.mutate({ guardianRequestId: guardianRequest.id })}
     /> : null}
 
-    {cancelling ? <Modal size="sm" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
-      <ModalHeader title={`Cancel Job ID ${jobIdForRequest(requestId)}?`} meta={job ? `Guardian ${job.guardianName}` : undefined} />
-      <ModalBody className="space-y-3">
-        <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>
-        <label className="block text-sm font-bold text-j-ink-strong">Reason (required)
-          <textarea
-            value={cancelReason}
-            onChange={event => setCancelReason(event.target.value)}
-            rows={3}
-            maxLength={280}
-            className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-          />
-        </label>
-      </ModalBody>
-      <ModalFooter>
-        <button type="button" onClick={() => setCancelling(false)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
-        <button
-          type="button"
-          disabled={cancelTuition.isPending || cancelReason.trim().length < 3}
-          onClick={() => cancelTuition.mutate({ requestId, reason: cancelReason.trim() })}
-          className="h-10 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
-        >{cancelTuition.isPending ? "Cancelling…" : "Cancel Tuition"}</button>
-      </ModalFooter>
-    </Modal> : null}
+    {cancelling ? <CancelTuitionDialog
+      jobId={jobIdForRequest(requestId)}
+      guardianName={job?.guardianName}
+      busy={cancelTuition.isPending}
+      onClose={() => setCancelling(false)}
+      onCancel={reason => cancelTuition.mutate({ requestId, reason })}
+    /> : null}
 
-    {deciding ? <Modal size="sm" onClose={() => setDeciding(null)} busy={actionPending}>
-      <ModalHeader
-        title={deciding.action === "appoint" ? `Appoint ${deciding.tutor.name}?` : deciding.action === "confirm" ? `Confirm ${deciding.tutor.name}?` : `Remove ${deciding.tutor.name}?`}
-        meta={`Tutor ID ${deciding.tutor.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`}
-      />
-      <ModalBody>
-        <p className="text-sm leading-6 text-j-ink-soft">{deciding.action === "appoint"
-          ? "The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class."
-          : deciding.action === "confirm"
-            ? "The Guardian keeps the Tutor. The tuition leaves the Job Board."
-            : deciding.action === "remove_confirmed"
-              ? "The Tutor is removed and told. The tuition goes back on the Job Board, its payment status starts again at Full Due, and the Guardian can appoint another applicant."
-              : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
-      </ModalBody>
-      <ModalFooter>
-        <button type="button" onClick={() => setDeciding(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button
-          type="button"
-          disabled={actionPending}
-          onClick={decide}
-          className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" || deciding.action === "remove_confirmed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
-        >{actionPending
-          ? (deciding.action === "appoint" ? "Appointing…" : deciding.action === "confirm" ? "Confirming…" : "Removing…")
-          : (deciding.action === "appoint" ? "Appoint" : deciding.action === "confirm" ? "Confirm" : "Remove Tutor")}</button>
-      </ModalFooter>
-    </Modal> : null}
+    {deciding ? <TutorMoveDialog
+      move={deciding.action}
+      tutorName={deciding.tutor.name}
+      tutorNumber={deciding.tutor.tutorNumber}
+      jobId={jobIdForRequest(requestId)}
+      busy={actionPending}
+      onClose={() => setDeciding(null)}
+      onDecide={decide}
+    /> : null}
   </div>;
 }
 
