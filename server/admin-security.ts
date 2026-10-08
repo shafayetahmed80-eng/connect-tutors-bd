@@ -86,6 +86,27 @@ export function verifyAdminTwoFactorSessionProof(proof: string | undefined, user
   return timingSafeTextEqual(signature, expectedSignature);
 }
 
+/**
+ * A tamper-evident note that this browser has signed in as this Admin before.
+ * Signed over a different text than the two-factor proof ("device." in front),
+ * so one can never be passed off as the other.
+ */
+export function createAdminKnownDeviceToken(userId: number, keyMaterial: string, expiresAtMs: number) {
+  const payload = `${userId}.${expiresAtMs}`;
+  const signature = createHmac("sha256", deriveEncryptionKey(keyMaterial)).update(`device.${payload}`).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+export function verifyAdminKnownDeviceToken(token: string | undefined, userId: number, keyMaterial: string, nowMs = Date.now()) {
+  if (!token) return false;
+  const [claimedUserId, expiresAtText, signature, ...extraParts] = token.split(".");
+  if (!claimedUserId || !expiresAtText || !signature || extraParts.length > 0) return false;
+  const expiresAtMs = Number(expiresAtText);
+  if (claimedUserId !== String(userId) || !Number.isSafeInteger(expiresAtMs) || expiresAtMs <= nowMs) return false;
+  const expectedSignature = createHmac("sha256", deriveEncryptionKey(keyMaterial)).update(`device.${claimedUserId}.${expiresAtText}`).digest("base64url");
+  return timingSafeTextEqual(signature, expectedSignature);
+}
+
 export function generateRecoveryCodes() {
   return Array.from({ length: RECOVERY_CODE_COUNT }, () => {
     const raw = randomBytes(8).toString("hex").toUpperCase();

@@ -771,6 +771,13 @@
       "when": 1793900000000,
       "tag": "0109_owner_creates_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "5",
+      "when": 1794000000000,
+      "tag": "0110_admin_sessions_can_end",
+      "breakpoints": true
     }
   ]
 }

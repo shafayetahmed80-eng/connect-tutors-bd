@@ -25,6 +25,15 @@ import AdminLogin from "./AdminLogin";
 afterEach(() => cleanup());
 
 describe("Admin Login password visibility", () => {
+  it("has no password-recovery link: the old one led to a sign-in that does not exist, and an Admin asks the Owner", () => {
+    render(<AdminLogin />);
+
+    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Project Owner" })).toBeNull();
+    expect(document.querySelector('a[href="/admin/credential-setup"]')).toBeNull();
+    expect(screen.getByRole("link", { name: "See Admin Help" })).not.toBeNull();
+  });
+
   it("does not offer a direct homepage-return link from the Admin sign-in form", () => {
     render(<AdminLogin />);
 

@@ -115,7 +115,7 @@ export const adminIdentityProcedure = t.procedure.use(requireRole(["admin"]));
 const requireAdminTwoFactor = t.middleware(async ({ ctx, next }) => {
   if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
-  if (settings && !hasAdminTwoFactorProof(ctx.req, ctx.user.id)) {
+  if (settings && !hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom)) {
     throw new TRPCError({ code: "FORBIDDEN", message: ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG });
   }
   return next({ ctx: { ...ctx, user: ctx.user } });

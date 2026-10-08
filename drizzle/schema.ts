@@ -161,6 +161,8 @@ export const users = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+    /** A session signed before this moment no longer counts: "Sign out everywhere" and a changed Admin password set it. */
+    sessionsValidFrom: timestamp("sessionsValidFrom"),
   },
   table => [uniqueIndex("users_role_login_phone_unique").on(table.role, table.loginPhone)]
 );
@@ -282,6 +284,7 @@ export const adminAuditEventValues = [
   "two_factor_reset",
   "credential_provisioned",
   "credential_reset",
+  "sessions_ended",
 ] as const;
 export type AdminAuditEvent = (typeof adminAuditEventValues)[number];
 

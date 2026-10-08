@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
+import { ADMIN_KNOWN_DEVICE_COOKIE_NAME, ADMIN_SESSION_TTL_MS, COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
+import { createAdminKnownDeviceToken } from "./admin-security";
+import { ENV } from "./_core/env";
 import { TERMS_VERSION } from "../shared/terms-version";
 import type { TrpcContext } from "./_core/context";
 import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
@@ -40,10 +42,11 @@ const adminUser = {
 function createContext(
   cookieCalls: Array<{ name: string; value: string; options: Record<string, unknown> }>,
   authenticatedUser: TrpcContext["user"] = null,
+  headers: Record<string, string> = {},
 ): TrpcContext {
   return {
     user: authenticatedUser,
-    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    req: { protocol: "https", headers } as TrpcContext["req"],
     res: {
       cookie: (name: string, value: string, options: Record<string, unknown>) => cookieCalls.push({ name, value, options }),
     } as TrpcContext["res"],
@@ -448,8 +451,92 @@ describe("Admin User ID and password authentication", () => {
     expect(logAdminAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
       userId: adminUser.id,
       event: "login_success",
-      metadata: expect.objectContaining({ reason: "password-login" }),
+      metadata: expect.objectContaining({ reason: "password-login-new-device" }),
     }));
+  });
+
+  describe("session length, new devices, and wrong-password alerts", () => {
+    function signInAs(headers: Record<string, string> = {}) {
+      const cookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+      vi.spyOn(db, "verifyAdminPassword").mockResolvedValue(adminUser as never);
+      vi.spyOn(db, "logAdminAuditEvent").mockResolvedValue({ id: 20 } as never);
+      const createSessionToken = vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-admin-session");
+      const pushToOwner = vi.spyOn(db, "sendPushToOwner").mockResolvedValue(undefined);
+      const done = appRouter.createCaller(createContext(cookies, null, headers)).auth.loginAdmin({ userId: "Admin", password: "strong-pass-123" });
+      return { cookies, createSessionToken, pushToOwner, done };
+    }
+
+    it("keeps an Admin signed in for 30 days, not a year", async () => {
+      const { cookies, createSessionToken, done } = signInAs();
+      await done;
+
+      expect(createSessionToken).toHaveBeenCalledWith(adminUser.openId, expect.objectContaining({ expiresInMs: ADMIN_SESSION_TTL_MS }));
+      expect(cookies[0]?.options.maxAge).toBe(ADMIN_SESSION_TTL_MS);
+      expect(ADMIN_SESSION_TTL_MS).toBeLessThan(ONE_YEAR_MS);
+    });
+
+    it("tells the Owner's phone about a sign-in from a browser the account has not used, and remembers the browser", async () => {
+      const { cookies, pushToOwner, done } = signInAs({ "x-forwarded-for": "203.0.113.77" });
+      await done;
+
+      expect(cookies[1]).toMatchObject({ name: ADMIN_KNOWN_DEVICE_COOKIE_NAME });
+      expect(cookies[1]?.options).toMatchObject({ httpOnly: true, secure: true });
+      expect(pushToOwner).toHaveBeenCalledWith(expect.objectContaining({
+        title: "New Admin sign-in",
+        body: expect.stringContaining("203.0.113.77"),
+        url: "/admin/security",
+      }));
+    });
+
+    it("stays quiet when the browser is one the account has signed in from before", async () => {
+      const knownDevice = createAdminKnownDeviceToken(adminUser.id, ENV.cookieSecret, Date.now() + 60_000);
+      const { cookies, pushToOwner, done } = signInAs({ cookie: `${ADMIN_KNOWN_DEVICE_COOKIE_NAME}=${knownDevice}` });
+      await done;
+
+      expect(cookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME]);
+      expect(pushToOwner).not.toHaveBeenCalled();
+    });
+
+    it("does not take another Admin's remembered browser as this one's", async () => {
+      const someoneElses = createAdminKnownDeviceToken(adminUser.id + 1, ENV.cookieSecret, Date.now() + 60_000);
+      const { pushToOwner, done } = signInAs({ cookie: `${ADMIN_KNOWN_DEVICE_COOKIE_NAME}=${someoneElses}` });
+      await done;
+
+      expect(pushToOwner).toHaveBeenCalledTimes(1);
+    });
+
+    it("tells the Owner once when a real Admin account gets five wrong passwords in a row", async () => {
+      vi.spyOn(db, "verifyAdminPassword").mockResolvedValue(undefined);
+      vi.spyOn(db, "logAdminAuditEvent").mockResolvedValue({ id: 21 } as never);
+      vi.spyOn(db, "findActiveAdminByLoginId").mockResolvedValue({ id: adminUser.id, name: adminUser.name, openId: adminUser.openId });
+      const pushToOwner = vi.spyOn(db, "sendPushToOwner").mockResolvedValue(undefined);
+      const attempt = () => appRouter.createCaller(createContext([], null, { "x-forwarded-for": "198.51.100.9" })).auth.loginAdmin({ userId: "Admin", password: "wrong-pass" });
+
+      for (let i = 0; i < 4; i += 1) await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(pushToOwner).not.toHaveBeenCalled();
+
+      await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await vi.waitFor(() => expect(pushToOwner).toHaveBeenCalledTimes(1));
+      expect(pushToOwner).toHaveBeenCalledWith(expect.objectContaining({ title: "Wrong Admin password", body: expect.stringContaining("198.51.100.9"), url: "/admin/security" }));
+
+      await expect(attempt()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(pushToOwner).toHaveBeenCalledTimes(1);
+    });
+
+    it("says nothing about a User ID that belongs to no Admin", async () => {
+      vi.spyOn(db, "verifyAdminPassword").mockResolvedValue(undefined);
+      vi.spyOn(db, "logAdminAuditEvent").mockResolvedValue({ id: 22 } as never);
+      vi.spyOn(db, "findActiveAdminByLoginId").mockResolvedValue(undefined);
+      const pushToOwner = vi.spyOn(db, "sendPushToOwner").mockResolvedValue(undefined);
+
+      for (let i = 0; i < 6; i += 1) {
+        await expect(appRouter.createCaller(createContext([])).auth.loginAdmin({ userId: "nobody", password: "wrong-pass" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      }
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(pushToOwner).not.toHaveBeenCalled();
+    });
   });
 
   it("returns one generic failure and creates no session for an unknown User ID, wrong password, inactive account, or non-Admin account", async () => {

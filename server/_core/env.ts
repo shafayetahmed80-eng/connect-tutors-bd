@@ -1,3 +1,8 @@
+function parseTrustedProxyHops(value: string | undefined) {
+  const hops = Number.parseInt(value ?? "", 10);
+  return Number.isInteger(hops) && hops >= 0 && hops <= 5 ? hops : 1;
+}
+
 export const ENV = {
   // The session verifier rejects a token whose appId is empty, so an unset VITE_APP_ID
   // would sign every Admin in and then fail to recognise them. Any non-empty value works.
@@ -7,6 +12,9 @@ export const ENV = {
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
+  // How many web servers of ours sit in front of the app and add the visitor's address to X-Forwarded-For.
+  // 1 = the host's web server alone; 2 = a service such as Cloudflare in front of that; 0 = ignore the header.
+  trustedProxyHops: parseTrustedProxyHops(process.env.TRUSTED_PROXY_HOPS),
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",

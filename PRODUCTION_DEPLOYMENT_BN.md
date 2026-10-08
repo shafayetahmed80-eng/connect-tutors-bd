@@ -71,6 +71,7 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | আবশ্যক (ফোনের পুশ নোটিফিকেশনের জন্য) | ডেপ্লয় গাইডের (`DEPLOY_FROM_ZERO_BN.md`) ধাপ ৬-এর কমান্ড দিয়ে একবার বানান। না থাকলে লক স্ক্রিনে নোটিফিকেশন যায় না, আর Settings-এর Notifications সুইচ লুকানো থাকে। পরে বদলালে সবার সাবস্ক্রিপশন বাতিল হয় |
 | `VAPID_SUBJECT` | ঐচ্ছিক | `mailto:ইমেইল`; না দিলে `mailto:support@connecttutorsbd.com` |
 | `OTP_DOMAIN_LINE` | ঐচ্ছিক | কোড-এসএমএসের শেষে `@connecttutorsbd.com #1234` লাইনটা যায়, যাতে ফোন (Android/iPhone) কোডটা নিজে বসিয়ে দেয়। BulkSMSBD কখনো ঐ লাইনসহ মেসেজ ফিরিয়ে দিলে `false` লিখে Restart দিন, আগের সাধারণ লেখা ফিরবে। ঠিকানাটা আসে `PUBLIC_SITE_URL` থেকে |
+| `TRUSTED_PROXY_HOPS` | ঐচ্ছিক | ভুল-পাসওয়ার্ডের সীমা আর Admin অ্যালার্টে ভিজিটরের আসল IP ধরতে লাগে। না দিলে `1` (হোস্টের ওয়েব সার্ভার একাই সামনে আছে)। সামনে Cloudflare-এর মতো আলাদা সেবা থাকলে `2` লিখুন। ঠিক আছে কিনা বুঝবেন Admin security → "Security audit log"-এ আপনার সাইন-ইনের IP নিজের IP-র সাথে মিললে; সবার IP একই (সার্ভারের) দেখালে সংখ্যাটা বদলে Restart দিন |
 | `OTP_DEV_LOG` | **লাইভে দেবেন না** | `true` দিলে কোড এসএমএসে না গিয়ে শুধু লগে প্রিন্ট হয় — ডেভেলপমেন্টের জন্য |
 | `PUBLIC_SITE_URL` | ঐচ্ছিক | Confirmation Letter-এর QR কোডে যাওয়ার লিংক, আর `robots.txt`/`sitemap.xml`-এর ঠিকানা; না দিলে ডিফল্ট `https://connecttutorsbd.com`। শুধু এই ঠিকানার ডোমেইনে সার্চ ইঞ্জিনকে ঢুকতে দেওয়া হয়, অন্য কোনো হোস্টে (staging, লোকাল) সব বন্ধ |
 | `OAUTH_SERVER_URL`, `VITE_APP_ID` | আর প্রয়োজন নেই | Admin login এখন password-based, এগুলো বাদ দিতে পারেন |
@@ -152,7 +153,20 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 - **Reset credentials** — User ID বা পাসওয়ার্ড বদলানো। অন্য Admin-এর ক্ষেত্রে সে আবার নিজের পাসওয়ার্ড বেছে নিতে বাধ্য হয়।
 - **Reset 2FA** — ফোন হারালে নতুন QR কোড দিয়ে আবার সেটআপ।
 - **Revoke role** — Admin-এর অ্যাক্সেস বাতিল। Owner নিজেকে বাতিল করতে পারেন না।
+- **Sign out everywhere** — ফোন বা ল্যাপটপ হারালে ওই Admin-কে সব ডিভাইস থেকে বের করে দেয়। প্রতিটা Admin নিজের জন্য এটা পায় **Settings → Sign out everywhere**-এ (যে ব্রাউজারে চাপছে সেটা সাইন-ইন থাকে)। Admin পাসওয়ার্ড বদলালে বা Owner তার ক্রেডেনশিয়াল রিসেট করলেও একইভাবে অন্য সব ডিভাইস বের হয়ে যায়।
 - সব কাজ নিচের অডিট লগে থাকে।
+
+**সাইন-ইন কতদিন থাকে:** একবার সাইন-ইন করলে একটা ব্রাউজারে ৩০ দিন; তারপর আবার পাসওয়ার্ড (2FA-র "মনে রাখা" মেয়াদও ৩০ দিন)।
+
+**Owner-এর ফোনে অ্যালার্ট:** Owner **Settings → Notifications** চালু করলে ফোনে পুশ আসে যখন (১) কোনো Admin নতুন ব্রাউজার/ডিভাইস থেকে সাইন-ইন করে, (২) একটা Admin অ্যাকাউন্টে টানা ৫টা ভুল পাসওয়ার্ড পড়ে। অ্যালার্ট খুললে Admin security পেজ খোলে। এজন্য `VAPID_*` কী বসানো থাকতে হবে (ফোনের পুশ নোটিফিকেশনের ধাপ)।
+
+**পাসওয়ার্ড ভুলে গেলে:** লগইন পেজে "Forgot password?" নেই। অন্য Admin ভুললে Owner তার **Reset credentials** দেন (সে আবার নিজের পাসওয়ার্ড বেছে নেয়)। **Owner নিজে** পাসওয়ার্ড ভুললে সার্ভারে এই কমান্ড (cPanel Terminal, অ্যাপ ফোল্ডারে):
+
+```bash
+cd ~/connecttutorsbd_app && source ~/nodevenv/connecttutorsbd_app/24/bin/activate && node scripts/reset-admin-login.mjs
+```
+
+এটা Owner-এর User ID আর নতুন পাসওয়ার্ড জিজ্ঞেস করে (টাইপ করার সময় পাসওয়ার্ড দেখা যায়)। শেষে সব ব্রাউজার থেকে ওই অ্যাকাউন্ট সাইন-আউট হয়ে যায়।
 
 Guardian বা Tutor পাসওয়ার্ড ভুললে যে কোনো Admin তার জন্য রিসেট লিংক বানাতে পারে। প্রথম Owner অ্যাকাউন্ট শুধু সার্ভার থেকে `db:seed:owner-admin` দিয়ে (ধাপ ৭), সেখানে `OWNER_OPEN_ID` বসাতে হয়; অতিরিক্ত Admin বানাতে ওই স্ক্রিপ্ট আর লাগে না।
 
@@ -161,4 +175,4 @@ Guardian বা Tutor পাসওয়ার্ড ভুললে যে ক�
 - `private-uploads/` ফোল্ডার application root-এর বাইরে বা অন্তত `public_html`-এর বাইরে রাখুন, যাতে কেউ ফাইল ম্যানেজার URL দিয়ে সরাসরি ব্রাউজ করতে না পারে।
 - `.env` বা environment variable-এর মান কখনো ZIP, screenshot, বা public repository-তে শেয়ার করবেন না।
 - `DATABASE_URL`, `JWT_SECRET` — এই দুটো leak হলে সাথে সাথে rotate করুন। `JWT_SECRET` বদলালে প্রতিটা Admin-কে নতুন করে 2FA সেটআপ করতে হবে (পুরনো QR কোড আর কাজ করবে না) — তাই এটা যতটা সম্ভব একবারই ঠিক করে ফেলুন।
-- **2FA-তে লক আউট হলে:** প্রথমে setup-এর সময় দেখানো ১০টা recovery code দিয়ে সাইন-ইন করুন (প্রতিটা একবার কাজ করে)। একাধিক Admin থাকলে Owner অন্য কারো 2FA "Admin security" পেজ থেকে রিসেট করে দিতে পারবেন। Owner নিজেই ফোন আর recovery code দুটোই হারালে, শেষ উপায় `admin_two_factor_settings` টেবিল থেকে সরাসরি database-এ ওই userId-র row-টা মুছে ফেলা — এরপর `/admin/login`-এ সাইন-ইন করলে আবার নতুন QR কোড থেকে সেটআপ শুরু হবে।
+- **2FA-তে লক আউট হলে:** প্রথমে setup-এর সময় দেখানো ১০টা recovery code দিয়ে সাইন-ইন করুন (প্রতিটা একবার কাজ করে); না থাকলে SMS ব্যাকআপ নম্বর থাকলে সেটা। একাধিক Admin থাকলে Owner অন্য কারো 2FA "Admin security" পেজ থেকে রিসেট করে দিতে পারবেন। Owner নিজেই ফোন, recovery code আর SMS সবই হারালে শেষ উপায় সার্ভারে `node scripts/reset-admin-login.mjs --user-id আপনার-ইউজার-আইডি --clear-2fa` (পাসওয়ার্ডও নতুন করে দিতে হয়)। এরপর `/admin/login`-এ সাইন-ইন করলে আবার নতুন QR কোড থেকে সেটআপ শুরু হবে।
