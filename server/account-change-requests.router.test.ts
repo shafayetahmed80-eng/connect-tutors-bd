@@ -255,10 +255,10 @@ describe("a delete request", () => {
 describe("Guardian Requests screens", () => {
   it("are read by any Admin, one kind at a time, and closed to everyone else", async () => {
     dbMocks.listGuardianRequestActions.mockResolvedValue({ items: [], counts: { pending: 0, approved: 0, declined: 0 }, totalPages: 1 });
-    dbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4 });
+    dbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4, appointedJobs: 5, confirmedJobs: 6 });
     await createCaller(otherAdmin).admin.listGuardianRequestActions({ kind: "cancel", status: "approved" });
     expect(dbMocks.listGuardianRequestActions).toHaveBeenCalledWith({ kind: "cancel", status: "approved", page: 1, pageSize: 20 });
-    await expect(createCaller(otherAdmin).admin.guardianRequestCounts()).resolves.toEqual({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4 });
+    await expect(createCaller(otherAdmin).admin.guardianRequestCounts()).resolves.toEqual({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4, appointedJobs: 5, confirmedJobs: 6 });
     await expect(createCaller(guardianUser).admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller(guardianUser).admin.listGuardianRequestActions({ kind: "confirm" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
