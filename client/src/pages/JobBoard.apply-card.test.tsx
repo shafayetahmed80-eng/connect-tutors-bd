@@ -81,6 +81,24 @@ describe("applying from a Job Board card", () => {
     expect(word.className).toContain("text-[#7c3aed]");
   });
 
+  it("marks a job that went live in the last day as New, and only that long", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-11-01T12:00:00.000Z"));
+      const view = render(<JobBoardContent embedded />);
+      expect(within(cardFor("6801")).getByText("New")).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Job ID 6801, new$/ })).toBeTruthy();
+      view.unmount();
+
+      vi.setSystemTime(new Date("2026-11-02T00:00:01.000Z"));
+      render(<JobBoardContent embedded />);
+      expect(within(cardFor("6801")).queryByText("New")).toBeNull();
+      expect(screen.queryByRole("button", { name: /, new$/ })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("replaces the button with Applied and the day it was made", () => {
     mocks.interests = [{ interestId: 7, status: "interested", createdAt: new Date("2026-11-20T00:00:00.000Z"), publicJobId: "6801" }];
     render(<JobBoardContent embedded />);

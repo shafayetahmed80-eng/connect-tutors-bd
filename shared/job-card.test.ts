@@ -10,8 +10,34 @@ import {
   formatSubjects,
   formatTuitionType,
   formatTutorPreference,
+  isNewJob,
   readSubjects,
 } from "./job-card";
+
+describe("which jobs count as new", () => {
+  const now = new Date("2026-11-02T10:00:00.000Z").getTime();
+
+  it("marks a job that went live within the last day", () => {
+    expect(isNewJob(new Date("2026-11-02T09:59:00.000Z"), now)).toBe(true);
+    expect(isNewJob("2026-11-01T10:00:01.000Z", now)).toBe(true);
+  });
+
+  it("stops marking it once a full day has passed", () => {
+    expect(isNewJob(new Date("2026-11-01T10:00:00.000Z"), now)).toBe(false);
+    expect(isNewJob(new Date("2026-10-20T00:00:00.000Z"), now)).toBe(false);
+  });
+
+  it("treats a slightly-ahead clock as new, and a far-future date as not", () => {
+    expect(isNewJob(new Date("2026-11-02T10:02:00.000Z"), now)).toBe(true);
+    expect(isNewJob(new Date("2026-11-05T00:00:00.000Z"), now)).toBe(false);
+  });
+
+  it("is not new when there is no usable time", () => {
+    expect(isNewJob(null, now)).toBe(false);
+    expect(isNewJob(undefined, now)).toBe(false);
+    expect(isNewJob("not a date", now)).toBe(false);
+  });
+});
 
 describe("job card wording", () => {
   it("names each tuition type the way the forms do", () => {

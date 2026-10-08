@@ -61,7 +61,7 @@ function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; labe
   </div>;
 }
 
-export default function JobCard({ job, onOpen, action, showMapLink = true, footerStart }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Leads the footer on the left - the Admin board puts the post type there. */ footerStart?: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean }) {
+export default function JobCard({ job, onOpen, action, showMapLink = true, footerStart, isNew = false }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Leads the footer on the left - the Admin board puts the post type there. */ footerStart?: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean; /** The Job Board marks a job that went live in the last day, for the Tutors reading it. */ isNew?: boolean }) {
   const salary = formatSalaryAmount(job.budgetAmount);
   const place = formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel });
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
@@ -73,14 +73,17 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
-      aria-label={`${job.title}, Job ID ${job.jobId}`}
+      aria-label={`${job.title}, Job ID ${job.jobId}${isNew ? ", new" : ""}`}
       // A calmer hover than it had: half the lift, a longer and gentler curve,
       // a border that warms rather than snapping to full accent blue, and a
       // shadow that is softer but spreads further. On a page of twenty cards
       // the old 3px snap read as the list twitching under the pointer.
       className="flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
-      <h3 className="text-sm font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
+        {isNew ? <span className="mt-px shrink-0 rounded-full bg-j-accent-wash px-2 py-0.5 text-2xs font-bold uppercase tracking-[0.06em] text-j-accent">New</span> : null}
+      </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs tabular-nums text-j-ink-muted">
         <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
