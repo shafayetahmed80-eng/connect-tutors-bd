@@ -8,6 +8,9 @@
 # normal path never builds here: GitHub builds every merge to main and keeps the
 # result as the "dist-latest" release. This script downloads that, installs
 # packages, applies database migrations, swaps the new site in and restarts.
+# Before an update that changes the database it saves a copy of the database
+# (scripts/backup-database.sh); only if that cannot be done does it ask whether
+# you downloaded a backup from cPanel instead.
 # The running site is only replaced once everything before it has worked.
 # Messages are English on purpose: the cPanel terminal cannot draw Bengali letters.
 set -euo pipefail
@@ -67,9 +70,22 @@ git --no-pager log --oneline "$SINCE..$REMOTE"
 NEW_MIGRATIONS="$(git diff --name-only "$SINCE" "$REMOTE" -- 'drizzle/*.sql' | wc -l | tr -d ' ')"
 if [ "$NEW_MIGRATIONS" -gt 0 ]; then
   printf '\nThis update changes the database (%s new step(s)).\n' "$NEW_MIGRATIONS"
-  printf 'Did you download a database backup from cPanel > Backup? If yes, type yes and press Enter: '
-  read -r ANSWER
-  [ "$ANSWER" = "yes" ] || die "Take the backup first, then run this again. Nothing was changed."
+  say "Saving a copy of the database first"
+  BACKUP_OK=0
+  if [ -f scripts/backup-database.sh ]; then
+    if BACKUP_OUTPUT="$(bash scripts/backup-database.sh "before-${REMOTE:0:7}" 2>&1)"; then
+      BACKUP_OK=1
+    fi
+    printf '%s\n' "$BACKUP_OUTPUT"
+  else
+    echo "The backup tool (scripts/backup-database.sh) is missing on this server."
+  fi
+  if [ "$BACKUP_OK" != "1" ]; then
+    printf '\nThe automatic copy was not made, so a backup from cPanel is needed instead.\n'
+    printf 'Did you download a database backup from cPanel > Backup? If yes, type yes and press Enter: '
+    read -r ANSWER
+    [ "$ANSWER" = "yes" ] || die "Take the backup first, then run this again. Nothing was changed."
+  fi
 fi
 
 rm -rf dist-next

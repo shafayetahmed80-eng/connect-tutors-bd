@@ -127,7 +127,7 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 5. সাইন আউট করে আবার সাইন-ইন করলে এবার `/admin/2fa-challenge`-এ যায় (নতুন করে QR কোড না দেখিয়ে), এবং authenticator app-এর কোড দিলে workspace খোলে
 6. Guardian request submission database-এ persist হয়
 7. Guardian/Tutor profile photo আপলোড করে দেখুন — `private-uploads/` ফোল্ডারে ফাইল তৈরি হচ্ছে কিনা যাচাই করুন
-8. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
+8. Telegram notification কনফিগার করে থাকলে সেটা কাজ করছে কিনা যাচাই করুন
 9. `https://connecttutorsbd.com/healthz` খুললে `{"status":"ok"}` আসে (ডেটাবেস না পেলে `503`)। এই ঠিকানা UptimeRobot-এর মতো কোনো মনিটরে দিলে সাইট বন্ধ হলে আপনাকে জানাবে
 10. `https://connecttutorsbd.com/robots.txt` খুললে `Disallow:`-এর একটা তালিকা আর `Sitemap:` লাইন থাকবে। যদি শুধু `Disallow: /` দেখায়, সার্ভার আসল ডোমেইনটা চিনতে পারছে না — তাহলে সার্চ ইঞ্জিন সাইটটা সূচিতে তুলবে না, `PUBLIC_SITE_URL` ঠিক করুন
 11. `https://connecttutorsbd.com/sitemap.xml` খুললে পাবলিক পেজগুলোর তালিকা আসে
@@ -176,3 +176,21 @@ Guardian বা Tutor পাসওয়ার্ড ভুললে যে ক�
 - `.env` বা environment variable-এর মান কখনো ZIP, screenshot, বা public repository-তে শেয়ার করবেন না।
 - `DATABASE_URL`, `JWT_SECRET` — এই দুটো leak হলে সাথে সাথে rotate করুন। `JWT_SECRET` বদলালে প্রতিটা Admin-কে নতুন করে 2FA সেটআপ করতে হবে (পুরনো QR কোড আর কাজ করবে না) — তাই এটা যতটা সম্ভব একবারই ঠিক করে ফেলুন।
 - **2FA-তে লক আউট হলে:** প্রথমে setup-এর সময় দেখানো ১০টা recovery code দিয়ে সাইন-ইন করুন (প্রতিটা একবার কাজ করে); না থাকলে SMS ব্যাকআপ নম্বর থাকলে সেটা। একাধিক Admin থাকলে Owner অন্য কারো 2FA "Admin security" পেজ থেকে রিসেট করে দিতে পারবেন। Owner নিজেই ফোন, recovery code আর SMS সবই হারালে শেষ উপায় সার্ভারে `node scripts/reset-admin-login.mjs --user-id আপনার-ইউজার-আইডি --clear-2fa` (পাসওয়ার্ডও নতুন করে দিতে হয়)। এরপর `/admin/login`-এ সাইন-ইন করলে আবার নতুন QR কোড থেকে সেটআপ শুরু হবে।
+
+## ১৪. ডেটাবেসের ব্যাকআপ
+
+`update.sh` যে আপডেটে ডেটাবেসের নতুন ধাপ (migration) থাকে, সেটা চালানোর আগে নিজে ডেটাবেসের একটা কপি রাখে `~/db-backups` ফোল্ডারে (`public_html`-এর বাইরে, শুধু এই অ্যাকাউন্ট পড়তে পারে)। ফাইলের নাম `connect-tutors-তারিখ-সময়-before-কমিটের-শুরু.sql.gz`। সর্বশেষ ১০টা থাকে, পুরনোগুলো নিজে মুছে যায়। কপি সফল হলে আর `yes` লিখতে হয় না। কপি না হলে (যেমন সার্ভারে `mysqldump` না পেলে) স্ক্রিপ্ট কারণ লিখে আগের মতো cPanel > Backup-এর নিশ্চয়তা চায়।
+
+ইচ্ছে মতো হাতেও নেওয়া যায়:
+
+```bash
+cd ~/connecttutorsbd_app && bash scripts/backup-database.sh
+```
+
+- এটা একই সার্ভারে থাকে, তাই খারাপ আপডেট ফেরানোর কাজে লাগে; হোস্টিং অ্যাকাউন্টই হারালে এগুলোও যায়। মাঝে মাঝে cPanel > Backup থেকে নিজের কম্পিউটারে একটা কপি নামিয়ে রাখুন।
+- কয়টা রাখবে বদলাতে: `BACKUP_KEEP=30 bash scripts/backup-database.sh`। ফোল্ডার বদলাতে `BACKUP_DIR`। (স্বয়ংক্রিয় আপডেটে ১০টাই থাকে।)
+- কপি থেকে ফেরানো (বর্তমান ডেটা মুছে পুরনো অবস্থায় যায়, তাই আমাকে জানিয়ে করুন):
+
+```bash
+gunzip -c ~/db-backups/ফাইলের-নাম.sql.gz | mysql -u DB_USER -p DB_NAME
+```
