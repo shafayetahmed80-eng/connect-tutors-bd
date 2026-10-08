@@ -46,6 +46,12 @@ export function getAccountRoleFromCause(cause: unknown): "guardian" | "tutor" | 
   return role === "guardian" || role === "tutor" ? role : undefined;
 }
 
+export function getSupportReferenceFromCause(cause: unknown): string | undefined {
+  if (!cause || typeof cause !== "object") return undefined;
+  const reference = (cause as { supportReference?: unknown }).supportReference;
+  return typeof reference === "string" && /^[A-F0-9]{6}$/.test(reference) ? reference : undefined;
+}
+
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error, path }) {
@@ -55,8 +61,10 @@ const t = initTRPC.context<TrpcContext>().create({
       : [];
 
     const accountRole = path === "auth.loginAccount" && error.code === "UNAUTHORIZED" ? getAccountRoleFromCause(error.cause) : undefined;
+    // The short code a Tutor reads out when a save fails for a reason of ours; it finds the log line.
+    const supportReference = path && tutorProfileValidationPaths.has(path) && error.code === "INTERNAL_SERVER_ERROR" ? getSupportReferenceFromCause(error.cause) : undefined;
 
-    if (!zodFieldErrors && tutorProfileFieldIssues.length === 0 && !accountRole) return shape;
+    if (!zodFieldErrors && tutorProfileFieldIssues.length === 0 && !accountRole && !supportReference) return shape;
 
     return {
       ...shape,
@@ -65,6 +73,7 @@ const t = initTRPC.context<TrpcContext>().create({
         ...(zodFieldErrors ? { zodFieldErrors } : {}),
         ...(tutorProfileFieldIssues.length ? { tutorProfileFieldIssues } : {}),
         ...(accountRole ? { accountRole } : {}),
+        ...(supportReference ? { supportReference } : {}),
       },
     };
   },

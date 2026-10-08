@@ -68,6 +68,12 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   feeMax: 2,
 };
 
+/** The part of the profile a field lives in, e.g. "Tuition and location", or null for one that has no part. */
+export function getTutorProfileStepTitleForField(key: string): string | null {
+  const index = stepIndexByField[key as TutorProfileSubmissionErrorKey];
+  return typeof index === "number" ? tutorProfileWizardSteps[index]?.title ?? null : null;
+}
+
 /** Returns the earliest wizard step containing an inline submission error. */
 export function getTutorProfileWizardStepForErrors(errors: TutorProfileSubmissionErrors) {
   const stepIndexes = (Object.keys(errors) as TutorProfileSubmissionErrorKey[])

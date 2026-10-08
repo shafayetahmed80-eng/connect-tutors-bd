@@ -1,5 +1,53 @@
 import { describe, expect, it } from "vitest";
-import { getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
+import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationErrors } from "./TutorProfileServerValidation";
+
+describe("getTutorProfileServerIssueDetails", () => {
+  it("says what the server refused and which part of the profile it lives in", () => {
+    expect(getTutorProfileServerIssueDetails({
+      data: { tutorProfileFieldIssues: [{ path: ["availableNationwide"], message: "Online tuition requires nationwide availability." }] },
+    })).toEqual(["Tuition and location · Available Nationwide: Online tuition requires nationwide availability."]);
+  });
+
+  it("names the record and the field inside an education record or private detail", () => {
+    expect(getTutorProfileServerIssueDetails({
+      data: {
+        tutorProfileFieldIssues: [
+          { path: ["educationRecords", 1, "passingYear"], message: "Enter a valid year." },
+          { path: ["privateDetails", "fatherPhone"], message: "Enter a valid mobile number." },
+        ],
+      },
+    })).toEqual([
+      "Education · Education history, record 2, Passing year: Enter a valid year.",
+      "Father phone: Enter a valid mobile number.",
+    ]);
+  });
+
+  it("falls back to the server's input-check reasons when the profile rules never ran", () => {
+    expect(getTutorProfileServerIssueDetails({
+      data: { zodFieldErrors: { preferredTeachingDays: ["Choose each day once."], feeMin: ["Number must be greater than or equal to 0"] } },
+    })).toEqual([
+      "Preferred Teaching Days: Choose each day once.",
+      "Minimum Monthly Fee: Number must be greater than or equal to 0",
+    ]);
+  });
+
+  it("lists a reason once, caps the list, and ignores a malformed one", () => {
+    const issues = [
+      ...Array.from({ length: 12 }, (_, index) => ({ path: ["educationRecords", index, "passingYear"], message: "Enter a valid year." })),
+      { path: ["feeMax"], message: "Same." },
+      { path: ["feeMax"], message: "Same." },
+      { path: "feeMax", message: "Malformed path" },
+      { path: ["feeMax"], message: "   " },
+    ];
+
+    const details = getTutorProfileServerIssueDetails({ data: { tutorProfileFieldIssues: issues } });
+
+    expect(details).toHaveLength(8);
+    expect(new Set(details).size).toBe(8);
+    expect(getTutorProfileServerIssueDetails(null)).toEqual([]);
+    expect(getTutorProfileServerIssueDetails({ data: {} })).toEqual([]);
+  });
+});
 
 describe("getTutorProfileServerValidationErrors", () => {
   it("maps allowlisted server issue paths to actionable English field guidance", () => {
