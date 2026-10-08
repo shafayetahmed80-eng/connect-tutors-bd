@@ -72,7 +72,7 @@ export default function AdminPasswordChange() {
         {isAdmin && access.data?.passwordChangeRequired ? <form className="mt-8 grid gap-3" onSubmit={submit} noValidate>
           <div>
             <label htmlFor="admin-current-password" className="text-xs font-bold text-j-ink-soft">Temporary password</label>
-            <input id="admin-current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} onKeyDown={currentCapsLock.updateCapsLockState} onKeyUp={currentCapsLock.updateCapsLockState} onBlur={currentCapsLock.clearCapsLockWarning} required className="mt-1 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+            <input id="admin-current-password" type="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} onKeyDown={currentCapsLock.updateCapsLockState} onKeyUp={currentCapsLock.updateCapsLockState} onBlur={currentCapsLock.clearCapsLockWarning} required className="mt-1 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
             <CapsLockWarning isCapsLockOn={currentCapsLock.isCapsLockOn} />
           </div>
           <CredentialPasswordFields idPrefix="change" password={newPassword} confirmPassword={confirmNewPassword} onPasswordChange={setNewPassword} onConfirmPasswordChange={setConfirmNewPassword} />

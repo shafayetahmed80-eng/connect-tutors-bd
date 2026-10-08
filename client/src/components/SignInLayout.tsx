@@ -76,7 +76,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
   return <form className="mt-8 space-y-5" onSubmit={onSubmit}>
     <div>
       <label htmlFor={identifierId} className={fieldLabel}>Email or mobile number{star}</label>
-      <input id={identifierId} name="identifier" required type="text" inputMode="text" autoComplete="username" value={identifier} onChange={(event) => onIdentifier(event.target.value)} placeholder="name@example.com or 017XXXXXXXX" className={`${filledField} mt-2`} />
+      <input id={identifierId} name="identifier" required type="text" inputMode="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={identifier} onChange={(event) => onIdentifier(event.target.value)} placeholder="name@example.com or 017XXXXXXXX" className={`${filledField} mt-2`} />
     </div>
     <div>
       <div className="flex items-center justify-between gap-4">
@@ -84,7 +84,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
         <Link className="text-xs font-semibold text-j-accent underline-offset-4 hover:underline" href={forgotHref}>Forgot password?</Link>
       </div>
       <span className="relative mt-2 block">
-        <input id={passwordId} name="password" required type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => onPassword(event.target.value)} onKeyDown={capsLock.updateCapsLockState} onKeyUp={capsLock.updateCapsLockState} onBlur={capsLock.clearCapsLockWarning} placeholder="Your password" className={`${filledField} pr-12`} />
+        <input id={passwordId} name="password" required type={showPassword ? "text" : "password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="current-password" value={password} onChange={(event) => onPassword(event.target.value)} onKeyDown={capsLock.updateCapsLockState} onKeyUp={capsLock.updateCapsLockState} onBlur={capsLock.clearCapsLockWarning} placeholder="Your password" className={`${filledField} pr-12`} />
         <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 inline-flex items-center rounded-r-xl px-3 text-j-ink-soft transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button>
       </span>
       <CapsLockWarning isCapsLockOn={capsLock.isCapsLockOn} />

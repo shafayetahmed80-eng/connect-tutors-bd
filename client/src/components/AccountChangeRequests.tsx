@@ -199,7 +199,7 @@ export function CloseAccountRequest({ changes, liveTuitionMessage }: { changes: 
       <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">
         <span>Enter Your Password<span aria-hidden={true} className="text-[#d84a4a]"> *</span></span>
         <span className="relative">
-          <input type={showPassword ? "text" : "password"} value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" maxLength={128} disabled={Boolean(liveTuitionMessage)} className={`${inputClass} pr-11 disabled:bg-j-surface-muted`} />
+          <input type={showPassword ? "text" : "password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" maxLength={128} disabled={Boolean(liveTuitionMessage)} className={`${inputClass} pr-11 disabled:bg-j-surface-muted`} />
           <button type="button" onClick={() => setShowPassword(shown => !shown)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 grid w-10 place-items-center text-j-ink-soft hover:text-j-ink">
             {showPassword ? <EyeOff size={16} aria-hidden={true} /> : <Eye size={16} aria-hidden={true} />}
           </button>

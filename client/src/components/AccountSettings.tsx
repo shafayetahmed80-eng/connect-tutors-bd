@@ -177,13 +177,13 @@ export function ChangePasswordForm() {
 
   return <form className="grid max-w-xl gap-4" onSubmit={event => { event.preventDefault(); mutation.mutate(form); }}>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">Current password
-      <input required type="password" autoComplete="current-password" value={form.currentPassword} onChange={event => set({ currentPassword: event.target.value })} className={passwordInput} />
+      <input required type="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.currentPassword} onChange={event => set({ currentPassword: event.target.value })} className={passwordInput} />
     </label>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">New password
-      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" value={form.newPassword} onChange={event => set({ newPassword: event.target.value })} className={passwordInput} />
+      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.newPassword} onChange={event => set({ newPassword: event.target.value })} className={passwordInput} />
     </label>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">Confirm new password
-      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" value={form.confirmNewPassword} onChange={event => set({ confirmNewPassword: event.target.value })} className={`${passwordInput} ${mismatch ? "border-red-300" : ""}`} />
+      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.confirmNewPassword} onChange={event => set({ confirmNewPassword: event.target.value })} className={`${passwordInput} ${mismatch ? "border-red-300" : ""}`} />
       {mismatch ? <span className="text-xs font-semibold text-red-700">New passwords do not match.</span> : null}
     </label>
     <Button type="submit" disabled={mutation.isPending || mismatch} className="w-fit rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">

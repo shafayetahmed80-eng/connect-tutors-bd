@@ -59,7 +59,7 @@ export function PasswordField({ id, label, value, onChange, placeholder, invalid
   return <label className="block" htmlFor={id}>
     <span className={fieldLabel}>{label}<RequiredMark /></span>
     <span className="relative mt-2 block">
-      <input id={id} value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={invalid} aria-describedby={describedBy} className={`${filledField} pr-12 ${inputClassName}`} placeholder={placeholder} type={show ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={128} />
+      <input id={id} value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={invalid} aria-describedby={describedBy} className={`${filledField} pr-12 ${inputClassName}`} placeholder={placeholder} type={show ? "text" : "password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="new-password" minLength={8} maxLength={128} />
       <button type="button" onClick={() => setShow((current) => !current)} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 inline-flex items-center rounded-r-xl px-3 text-j-ink-soft transition hover:text-j-accent focus:outline-none focus:ring-2 focus:ring-j-accent/40">{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
     </span>
     {children}
