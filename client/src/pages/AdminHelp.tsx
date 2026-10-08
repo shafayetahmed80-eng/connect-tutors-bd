@@ -12,6 +12,7 @@ export const adminHelpSafetyPoints = [
   "Set up an Authenticator app by scanning the QR code shown during your first Admin access.",
   "Store each recovery code privately and use it only when your Authenticator is unavailable.",
   "If both your Authenticator and recovery codes are unavailable, contact the Project Owner for a 2FA reset.",
+  "If a phone or laptop you signed in on is lost, use Sign out everywhere in your Settings, then change your password.",
 ] as const;
 
 const setupSteps = [
@@ -42,8 +43,8 @@ const setupSteps = [
   },
   {
     number: "06",
-    title: "Request a reset if access is lost",
-    description: "If you cannot use your authenticator or a recovery code, contact the Project Owner. Only the Owner can reset Admin two-factor access.",
+    title: "Ask the Owner if access is lost",
+    description: "If you forget your password, or cannot use your authenticator or a recovery code, contact the Project Owner. Only the Owner can reset an Admin password or two-factor access.",
   },
 ] as const;
 
@@ -57,7 +58,7 @@ export default function AdminHelp() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2782c7]">Admin access help</p>
               <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight tracking-[-0.05em] text-j-ink sm:text-5xl">Secure sign-in and two-factor guidance.</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-[#647f95]">This public guide explains the normal Admin access journey. It never displays account secrets, recovery codes, invitation tokens, or private Admin activity.</p>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-[#647f95]">This public guide explains the normal Admin access journey. It never displays account secrets, recovery codes, or private Admin activity.</p>
               <Link href="/admin/login" className="mt-8 inline-flex items-center gap-2 rounded-lg bg-j-ink px-5 py-3.5 text-sm font-bold !text-white shadow-[0_8px_18px_rgba(23,59,96,0.2)] transition hover:bg-[#102f4c] active:scale-[0.97]">
                 Go to Admin Login <ArrowRight size={17} />
               </Link>
@@ -65,7 +66,7 @@ export default function AdminHelp() {
             <aside className="rounded-[1.5rem] bg-j-ink p-7 text-white shadow-[0_20px_55px_rgba(23,59,96,0.2)] sm:p-9">
               <div className="inline-flex rounded-xl bg-white/10 p-3 text-[#9edcff]"><ShieldCheck size={30} /></div>
               <h2 className="mt-6 text-2xl font-bold tracking-[-0.03em]">What Admin login needs</h2>
-              <p className="mt-3 text-sm leading-7 text-[#c8dbea]">An invited Admin account signs in with three checks: the correct email address, the correct password, and a current authenticator code or one-time recovery code.</p>
+              <p className="mt-3 text-sm leading-7 text-[#c8dbea]">An Admin account the Project Owner created signs in with three checks: the User ID, the correct password, and a current authenticator code or one-time recovery code.</p>
               <div className="mt-6 border-t border-white/15 pt-5 text-sm font-semibold text-[#bde9ff]">Two-factor verification remains mandatory for protected Admin actions.</div>
             </aside>
           </div>

@@ -3,34 +3,49 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
+const { adminMutate, memberMutate } = vi.hoisted(() => ({ adminMutate: vi.fn(), memberMutate: vi.fn() }));
 
 vi.mock("@/lib/trpc", () => ({
-  trpc: { admin: { signOutEverywhere: { useMutation: () => ({ mutate, isPending: false }) } } },
+  trpc: {
+    admin: { signOutEverywhere: { useMutation: () => ({ mutate: adminMutate, isPending: false }) } },
+    account: { signOutEverywhere: { useMutation: () => ({ mutate: memberMutate, isPending: false }) } },
+  },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { SignOutEverywhereButton } from "./SignOutEverywhereButton";
 
-beforeEach(() => mutate.mockReset());
-afterEach(() => cleanup());
+beforeEach(() => { adminMutate.mockReset(); memberMutate.mockReset(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("Sign out everywhere", () => {
-  it("signs every other device out once the Admin confirms", () => {
+  it("signs every other device out once an Admin confirms", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<SignOutEverywhereButton />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
 
-    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(adminMutate).toHaveBeenCalledTimes(1);
+    expect(memberMutate).not.toHaveBeenCalled();
   });
 
-  it("does nothing if the Admin backs out of the question", () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-    render(<SignOutEverywhereButton />);
+  it("goes through the Tutor and Guardian route when it is theirs", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<SignOutEverywhereButton member />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
 
-    expect(mutate).not.toHaveBeenCalled();
+    expect(memberMutate).toHaveBeenCalledTimes(1);
+    expect(adminMutate).not.toHaveBeenCalled();
+  });
+
+  it("does nothing if the person backs out of the question", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<SignOutEverywhereButton member />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
+
+    expect(memberMutate).not.toHaveBeenCalled();
+    expect(adminMutate).not.toHaveBeenCalled();
   });
 });

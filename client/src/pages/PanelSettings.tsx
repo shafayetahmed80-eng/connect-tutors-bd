@@ -67,8 +67,8 @@ function notificationsItem(): AccountSettingsItem {
   };
 }
 
-/** Admin Settings only. */
-function signOutEverywhereItem(): AccountSettingsItem {
+/** Every panel's Settings; a Tutor's or Guardian's (`member`) goes through their own route. */
+function signOutEverywhereItem(member = false): AccountSettingsItem {
   return {
     key: "sessions",
     label: "Sign out everywhere",
@@ -76,7 +76,7 @@ function signOutEverywhereItem(): AccountSettingsItem {
     icon: LogOut,
     iconTone: "teal",
     value: "All devices",
-    content: <SignOutEverywhereButton />,
+    content: <SignOutEverywhereButton member={member} />,
   };
 }
 
@@ -131,6 +131,7 @@ export function GuardianSettingsContent() {
   const items: AccountSettingsItem[] = [
     ...requestedValueItems(changes),
     passwordItem(),
+    signOutEverywhereItem(true),
     {
       key: "verification",
       label: "Profile Verification",
@@ -178,6 +179,7 @@ export function TutorSettingsContent({ profile }: { profile: TutorSettingsProfil
   const items: AccountSettingsItem[] = [
     ...requestedValueItems(changes),
     passwordItem("Sign-in email", profile?.contactEmail ?? ""),
+    signOutEverywhereItem(true),
     {
       key: "verification",
       label: "Profile Verification",

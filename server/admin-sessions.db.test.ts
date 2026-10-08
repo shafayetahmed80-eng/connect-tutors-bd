@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { adminCredentials, users } from "../drizzle/schema";
+import { adminCredentials, adminLoginAuditLogs, users } from "../drizzle/schema";
 import { sdk } from "./_core/sdk";
-import { changeOwnPasswordByUserId, createAdminAccount, endAllSessionsFor, findActiveAdminByLoginId, getDb, getUserByOpenId, provisionAdminPasswordCredential } from "./db";
+import { changeOwnPasswordByUserId, createAdminAccount, endAllSessionsFor, findActiveAdminByLoginId, getDb, getLastAdminSignIns, getUserByOpenId, listAdminUsers, logAdminAuditEvent, getAdminProfileByUserId, provisionAdminPasswordCredential } from "./db";
 
 const suffix = () => randomBytes(4).toString("hex");
 const created: number[] = [];
@@ -32,6 +32,7 @@ afterAll(async () => {
   const database = await getDb();
   if (!database) return;
   for (const userId of created) {
+    await database.delete(adminLoginAuditLogs).where(eq(adminLoginAuditLogs.userId, userId));
     await database.delete(adminCredentials).where(eq(adminCredentials.userId, userId));
     await database.delete(users).where(eq(users.id, userId));
   }
@@ -104,5 +105,50 @@ describe("finding an Admin by sign-in id", () => {
     await expect(findActiveAdminByLoginId(admin.loginId.toUpperCase())).resolves.toMatchObject({ id: admin.userId });
     await expect(findActiveAdminByLoginId(`nobody-${suffix()}`)).resolves.toBeUndefined();
     await expect(findActiveAdminByLoginId("x")).resolves.toBeUndefined();
+  });
+});
+
+describe("when an Admin last signed in", () => {
+  it("is the newest password sign-in, with its address, and ignores the workspace re-confirming a session", async () => {
+    const admin = await newAdmin();
+    await logAdminAuditEvent({ userId: admin.userId, event: "login_success", metadata: { ipAddress: "198.51.100.1", reason: "password-login" } });
+    await logAdminAuditEvent({ userId: admin.userId, event: "login_success", metadata: { ipAddress: "198.51.100.2", reason: "password-login-new-device" } });
+    await logAdminAuditEvent({ userId: admin.userId, event: "login_success", metadata: { ipAddress: "198.51.100.3", reason: "admin-session-established" } });
+    await logAdminAuditEvent({ userId: admin.userId, event: "login_failure", metadata: { ipAddress: "198.51.100.4", reason: "invalid-password-credentials" } });
+
+    const last = (await getLastAdminSignIns([admin.userId])).get(admin.userId);
+    expect(last).toMatchObject({ ip: "198.51.100.2" });
+    expect(last?.at).toBeInstanceOf(Date);
+  });
+
+  it("is absent for an Admin who has never signed in, and one Admin's sign-in is not another's", async () => {
+    const quiet = await newAdmin();
+    const busy = await newAdmin();
+    await logAdminAuditEvent({ userId: busy.userId, event: "login_success", metadata: { ipAddress: "203.0.113.5", reason: "password-login" } });
+
+    const found = await getLastAdminSignIns([quiet.userId, busy.userId]);
+    expect(found.has(quiet.userId)).toBe(false);
+    expect(found.get(busy.userId)).toMatchObject({ ip: "203.0.113.5" });
+    expect((await getLastAdminSignIns([])).size).toBe(0);
+  });
+
+  it("still gives a time when the details of the row cannot be read", async () => {
+    const admin = await newAdmin();
+    const database = (await getDb())!;
+    await database.insert(adminLoginAuditLogs).values({ userId: admin.userId, event: "login_success", metadata: '{"reason":"password-login","ipAddress":' });
+
+    expect((await getLastAdminSignIns([admin.userId])).get(admin.userId)).toMatchObject({ ip: null });
+  });
+
+  it("travels with the Admin list and the Admin's own profile", async () => {
+    const admin = await newAdmin();
+    await logAdminAuditEvent({ userId: admin.userId, event: "login_success", metadata: { ipAddress: "192.0.2.77", reason: "password-login" } });
+
+    const listed = (await listAdminUsers()).find(row => row.id === admin.userId);
+    expect(listed?.lastSignIn).toMatchObject({ ip: "192.0.2.77" });
+    expect((await getAdminProfileByUserId(admin.userId))?.lastSignIn).toMatchObject({ ip: "192.0.2.77" });
+
+    const fresh = await newAdmin();
+    expect((await listAdminUsers()).find(row => row.id === fresh.userId)?.lastSignIn).toBeNull();
   });
 });

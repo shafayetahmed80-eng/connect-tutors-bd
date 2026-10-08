@@ -102,6 +102,8 @@ const requireLoginTwoFactor = t.middleware(async ({ ctx, next }) => {
 
 export const guardianProcedure = t.procedure.use(requireRole(["guardian", "user"])).use(requireLoginTwoFactor);
 export const tutorProcedure = t.procedure.use(requireRole(["tutor"])).use(requireLoginTwoFactor);
+/** A Tutor or a Guardian, for what both have - Settings. */
+export const memberProcedure = t.procedure.use(requireRole(["tutor", "guardian", "user"])).use(requireLoginTwoFactor);
 
 /**
  * An Admin whose password was right - nothing about their second factor.

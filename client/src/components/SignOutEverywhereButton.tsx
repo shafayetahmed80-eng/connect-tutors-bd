@@ -3,12 +3,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 
-/** An Admin signs themselves out of every browser but this one - the answer to a lost phone or laptop. */
-export function SignOutEverywhereButton() {
-  const mutation = trpc.admin.signOutEverywhere.useMutation({
-    onSuccess: () => toast.success("Signed out on every other device."),
-    onError: error => toast.error(error.message),
-  });
+/**
+ * Signs the person out of every browser but this one - the answer to a lost
+ * phone or laptop. An Admin's goes through the Admin panel (which also keeps
+ * this browser's remembered second factor); a Tutor's or Guardian's through `account`.
+ */
+export function SignOutEverywhereButton({ member = false }: { member?: boolean }) {
+  const options = {
+    onSuccess: () => { toast.success("Signed out on every other device."); },
+    onError: (error: { message: string }) => { toast.error(error.message); },
+  };
+  const admin = trpc.admin.signOutEverywhere.useMutation(options);
+  const other = trpc.account.signOutEverywhere.useMutation(options);
+  const mutation = member ? other : admin;
   return <Button
     type="button"
     disabled={mutation.isPending}
