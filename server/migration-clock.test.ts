@@ -28,6 +28,17 @@ describe("migrations that write a time", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("are not undone by a server script that writes the clock with NOW()", () => {
+    const scripts = path.resolve(import.meta.dirname, "..", "scripts");
+    const offenders: string[] = [];
+    for (const file of fs.readdirSync(scripts).filter(name => name.endsWith(".mjs"))) {
+      fs.readFileSync(path.join(scripts, file), "utf-8").split(/\r?\n/).forEach((line, index) => {
+        if (/=\s*NOW\(\)/i.test(line.replace(/\/\/.*$/, ""))) offenders.push(`${file}:${index + 1}: ${line.trim()}`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("includes the one that used to", () => {
     const sql = fs.readFileSync(path.join(folder, "0110_admin_sessions_can_end.sql"), "utf-8");
     expect(sql).toContain("UTC_TIMESTAMP()");

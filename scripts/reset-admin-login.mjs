@@ -97,8 +97,9 @@ try {
   }
 
   const passwordHash = await hashPassword(password);
+  // UTC_TIMESTAMP(), not NOW(): the app reads every stored time as UTC, and NOW() is the database server's own clock (Asia/Dhaka on the live host).
   await connection.query(
-    "UPDATE users SET passwordHash = ?, loginMethod = 'password', sessionsValidFrom = NOW() WHERE id = ?",
+    "UPDATE users SET passwordHash = ?, loginMethod = 'password', sessionsValidFrom = UTC_TIMESTAMP() WHERE id = ?",
     [passwordHash, found.id],
   );
   await connection.query("UPDATE admin_credentials SET passwordChangeRequired = ? WHERE userId = ?", [requireChange ? 1 : 0, found.id]);
