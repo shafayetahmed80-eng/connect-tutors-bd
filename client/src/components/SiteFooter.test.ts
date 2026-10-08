@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import { footerQuickLinks, footerSupportChannels } from "./SiteFooter";
 
 describe("homepage footer quick links", () => {
-  it("includes a dedicated Admin Login destination", () => {
-    expect(footerQuickLinks).toContainEqual({ label: "Admin Login", href: "/admin/login" });
+  it("lists only the two legal pages", () => {
+    expect(footerQuickLinks).toEqual([
+      { label: "Privacy", href: "/privacy-policy" },
+      { label: "Terms", href: "/terms-conditions" },
+    ]);
   });
 
-  it("includes a separate public Admin Help destination", () => {
-    expect(footerQuickLinks).toContainEqual({ label: "Admin Help", href: "/admin/help" });
+  it("does not advertise the Admin entrance to everyone who scrolls to the bottom", () => {
+    const hrefs = footerQuickLinks.map((link) => link.href);
+
+    expect(hrefs.some((href) => href.startsWith("/admin"))).toBe(false);
   });
 });
 
