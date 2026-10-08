@@ -1,4 +1,5 @@
 import webpush from "web-push";
+import { withPushGrouping, type PushPayload } from "@shared/push-messages";
 
 /**
  * Kept separate from `db.ts` the same way `chat-ws.ts` is: a thin, dependency-free
@@ -28,12 +29,12 @@ export function getWebPushPublicKey() {
 export type WebPushSubscriptionKeys = { endpoint: string; p256dh: string; auth: string };
 
 /** Sends one push message; `gone: true` means the browser has dropped this subscription, so the caller should delete its row. */
-export async function sendWebPushNotification(subscription: WebPushSubscriptionKeys, payload: { title: string; body: string; url?: string }) {
+export async function sendWebPushNotification(subscription: WebPushSubscriptionKeys, payload: PushPayload) {
   if (!vapidConfigured()) return { ok: false as const, gone: false };
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-      JSON.stringify(payload)
+      JSON.stringify(withPushGrouping(payload))
     );
     return { ok: true as const, gone: false };
   } catch (error) {
