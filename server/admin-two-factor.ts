@@ -3,6 +3,7 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Request, Response } from "express";
 import { createAdminKnownDeviceToken, createAdminTwoFactorSessionProof, verifyAdminKnownDeviceToken, verifyAdminTwoFactorSessionProof } from "./admin-security";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { usableSessionsValidFrom } from "./_core/session-cutoff";
 import { ENV } from "./_core/env";
 
 /**
@@ -31,10 +32,11 @@ export function clearAdminTwoFactorProofCookie(req: Request, res: Response) {
  * moment: a proof earned before it no longer counts, so a lost laptop that
  * remembered the second factor is not trusted after "Sign out everywhere".
  */
-export function hasAdminTwoFactorProof(req: Request, userId: number, sessionsValidFrom?: Date | null) {
+export function hasAdminTwoFactorProof(req: Request, userId: number, storedSessionsValidFrom?: Date | null, nowMs = Date.now()) {
   const cookies = parseCookieHeader(req.headers.cookie ?? "");
   const proof = cookies[ADMIN_TWO_FACTOR_COOKIE_NAME];
-  if (!verifyAdminTwoFactorSessionProof(proof, userId, ENV.cookieSecret)) return false;
+  if (!verifyAdminTwoFactorSessionProof(proof, userId, ENV.cookieSecret, nowMs)) return false;
+  const sessionsValidFrom = usableSessionsValidFrom(storedSessionsValidFrom, nowMs);
   if (!sessionsValidFrom) return true;
   const expiresAtMs = Number(proof?.split(".")[1]);
   return expiresAtMs - ADMIN_TWO_FACTOR_SESSION_TTL_MS >= Math.floor(sessionsValidFrom.getTime() / 1000) * 1000;

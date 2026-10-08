@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { usableSessionsValidFrom } from "./session-cutoff";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -339,7 +340,8 @@ const LAST_SIGNED_IN_REFRESH_MS = 60 * 60_000;
  * predates the feature, so it cannot prove it is newer and is ended with it.
  * Whole seconds on both sides: that is all a token carries.
  */
-export function isSessionStillValid(issuedAtSeconds: number | undefined, sessionsValidFrom: Date | null | undefined) {
+export function isSessionStillValid(issuedAtSeconds: number | undefined, storedSessionsValidFrom: Date | null | undefined, nowMs = Date.now()) {
+  const sessionsValidFrom = usableSessionsValidFrom(storedSessionsValidFrom, nowMs);
   if (!sessionsValidFrom) return true;
   if (issuedAtSeconds === undefined) return false;
   return issuedAtSeconds >= Math.floor(sessionsValidFrom.getTime() / 1000);
