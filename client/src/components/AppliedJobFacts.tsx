@@ -1,5 +1,5 @@
 import { RecordIcon, type RecordIconName } from "@/components/recordIcons";
-import { formatDaysPerWeek, formatSubjects, formatTutorPreference } from "@shared/job-card";
+import { formatDaysPerWeek, formatSubjects, formatTutorPreference, tutorPreferenceToneClass } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import type { ReactNode } from "react";
@@ -11,10 +11,16 @@ import type { ReactNode } from "react";
  * and a `wide` one (a place, a mobile number) takes both columns. From `lg`
  * the strip is one flowing line again, so each fact keeps to one line there.
  */
-export function JobFact({ icon, value, wide = false }: { icon: RecordIconName; value: string; wide?: boolean }) {
+export function JobFact({ icon, value, wide = false, tone }: {
+  icon: RecordIconName;
+  value: string;
+  wide?: boolean;
+  /** A text colour class that the icon and the words both take, in place of the strip's usual two. */
+  tone?: string;
+}) {
   return <span className={`inline-flex min-w-0 items-start gap-1.5 lg:items-center ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
-    <RecordIcon name={icon} size={12} className="mt-px shrink-0 text-[#8fb4d0] lg:mt-0" />
-    <span className="min-w-0 break-words text-[#173d60] lg:truncate">{value}</span>
+    <RecordIcon name={icon} size={12} className={`mt-px shrink-0 lg:mt-0 ${tone ?? "text-[#8fb4d0]"}`} />
+    <span className={`min-w-0 break-words lg:truncate ${tone ?? "text-[#173d60]"}`}>{value}</span>
   </span>;
 }
 
@@ -48,7 +54,7 @@ export default function AppliedJobFacts({ job, afterJobId, children }: {
       <RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID {jobIdForRequest(job.id)}
     </span>
     {afterJobId}
-    <JobFact icon="tutorGender" value={`${formatTutorPreference(job.preferredGender)} Tutor`} />
+    <JobFact icon="tutorGender" value={`${formatTutorPreference(job.preferredGender)} Tutor`} tone={tutorPreferenceToneClass(job.preferredGender)} />
     <JobFact icon="location" value={job.tuitionLocationLabel ?? job.locationText ?? "Online"} wide />
     <JobFact icon="classLevel" value={job.classCourse} />
     <JobFact icon="subjects" value={formatSubjects(job.subjects)} />

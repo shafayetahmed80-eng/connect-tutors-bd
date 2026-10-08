@@ -10,7 +10,7 @@ import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import ShareJobButton from "@/components/ShareJobButton";
 import { isJobIdNumber } from "@shared/job-id";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
-import { formatPostedDate } from "@shared/job-card";
+import { formatPostedDate, isNewJob } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorListPager } from "@/components/TutorListPager";
 import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
@@ -620,6 +620,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
   const applied = getJobBoardAppliedState(interest);
   const interestCopy = getTutorInterestPresentation(interest?.status);
   return <SharedJobCard
+    isNew={isNewJob(job.publishedAt)}
     job={{
       jobId: job.jobId,
       title: job.title,

@@ -30,6 +30,18 @@ export function tutorPreferenceToneClass(value: TutorGenderPreference): string {
   return "text-[#7c3aed]";
 }
 
+/** How long a job counts as new after it went live. */
+export const NEW_JOB_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** A job that went live within the last day. A time a little ahead of this clock is a skewed clock, not a new job. */
+export function isNewJob(publishedAt: Date | string | number | null | undefined, now: number = Date.now()): boolean {
+  if (!publishedAt) return false;
+  const published = new Date(publishedAt).getTime();
+  if (Number.isNaN(published)) return false;
+  const age = now - published;
+  return age >= -5 * 60 * 1000 && age < NEW_JOB_WINDOW_MS;
+}
+
 /** "Male" / "Female" / "Any". Written as a word so the icon is not the only cue. */
 export function formatTutorPreference(value: TutorGenderPreference): string {
   if (value === "male") return "Male";
