@@ -2,7 +2,7 @@
  * Connect Tutors visual direction: Neighbourhood Learning Blue — a bright, human, guided path
  * from a confident hero promise to understandable matching steps, using Connected Sky as the main signal.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight, BadgeCheck, BookOpen, BriefcaseBusiness, CalendarDays, Check,
@@ -13,6 +13,7 @@ import { homeCopy } from "@shared/public-content";
 import { SiteContentProvider, useSiteContentResolver } from "@/lib/siteContent";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { useScrollReveal } from "@/lib/scrollReveal";
 
 export const homeEditorialImages = {
   hero: "/images/hero.webp",
@@ -58,11 +59,14 @@ function HomeContent() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const t = useSiteContentResolver();
   const { hero, proof, tuition, belief, journey, stories, faq, finalCta } = homeCopy;
+  // Everything below the hero settles in as it is scrolled to; the hero has its own entrance.
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollReveal(mainRef);
 
   return (
     <div className="site-page">
       <SiteHeader />
-      <main>
+      <main ref={mainRef}>
         <section className="hero-section">
           <div className="shell hero-shell">
             <div className="hero-copy">
@@ -87,7 +91,7 @@ function HomeContent() {
         </section>
 
         <section className="proof-strip" aria-label="How Connect Tutors helps">
-          <div className="shell proof-grid">
+          <div className="shell proof-grid" data-reveal-group>
             <div className="proof-intro"><Heart size={17} fill="currentColor" /><span>{t("home.proof.introLead", proof.introLead)}<b>{t("home.proof.introStrong", proof.introStrong)}</b></span></div>
             {proof.items.map(item => {
               const Icon = proofIcons[item.id] ?? CalendarDays;
@@ -98,54 +102,54 @@ function HomeContent() {
 
         <section className="section tuition-section">
           <div className="shell">
-            <div className="section-heading split-heading">
+            <div className="section-heading split-heading" data-reveal>
               <div>
                 <p className="eyebrow">{t("home.tuition.eyebrow", tuition.eyebrow)}</p>
                 <h2>{t("home.tuition.title.lead", tuition.title.lead)}<br /><span>{t("home.tuition.title.accent", tuition.title.accent)}</span></h2>
               </div>
               <p>{t("home.tuition.description", tuition.description)}</p>
             </div>
-            <div className="tuition-toggle" role="tablist" aria-label="Tuition format">
+            <div className="tuition-toggle" role="tablist" aria-label="Tuition format" data-reveal>
               <button type="button" role="tab" aria-selected={mode === "home"} className={mode === "home" ? "selected" : ""} onClick={() => setMode("home")}><School size={17} /> {t("home.tuition.homeToggle", tuition.homeToggle)}</button>
               <button type="button" role="tab" aria-selected={mode === "online"} className={mode === "online" ? "selected" : ""} onClick={() => setMode("online")}><MonitorSmartphone size={17} /> {t("home.tuition.onlineToggle", tuition.onlineToggle)}</button>
             </div>
-            <div className="tuition-cards">
+            <div className="tuition-cards" data-reveal-group>
               {tuition.cards.map(card => {
                 const meta = tuitionIcons[card.id] ?? { icon: BookOpen, color: "blue" };
                 const Icon = meta.icon;
                 return <article className={`tuition-card ${meta.color}`} key={card.id}><div className="tuition-icon"><Icon /></div><h3>{t(`home.tuition.${card.id}.title`, card.title)}</h3><p>{t(`home.tuition.${card.id}.copy`, card.copy)}</p><Link href="/request-tutor" aria-label={`Request a ${card.title} tutor`}><ArrowRight size={19} /></Link></article>;
               })}
             </div>
-            <div className="mode-note"><Check size={17} /> {mode === "home"
+            <div className="mode-note" data-reveal><Check size={17} /> {mode === "home"
               ? t("home.tuition.homeNote", tuition.homeNote)
               : t("home.tuition.onlineNote", tuition.onlineNote)}</div>
           </div>
         </section>
 
         <section className="belief-banner">
-          <div className="shell belief-inner"><span className="belief-mark">“</span><p>{t("home.belief.lead", belief.lead)}<em>{t("home.belief.accent", belief.accent)}</em></p><span className="belief-line" /></div>
+          <div className="shell belief-inner" data-reveal><span className="belief-mark">“</span><p>{t("home.belief.lead", belief.lead)}<em>{t("home.belief.accent", belief.accent)}</em></p><span className="belief-line" /></div>
         </section>
 
         <section className="section journey-section">
           <div className="shell">
-            <div className="section-heading centered-heading">
+            <div className="section-heading centered-heading" data-reveal>
               <p className="eyebrow">{t("home.journey.eyebrow", journey.eyebrow)}</p>
               <h2>{t("home.journey.title.lead", journey.title.lead)}<span>{t("home.journey.title.accent", journey.title.accent)}</span></h2>
               <p>{t("home.journey.description", journey.description)}</p>
             </div>
-            <div className="journey-path">
-              <div className="journey-line" />
+            <div className="journey-path" data-reveal-group>
+              <div className="journey-line" data-reveal-skip />
               {journey.steps.map((step, index) => {
                 const Icon = stepIcons[step.id] ?? BookOpen;
                 return <article className="journey-step" key={step.id}><div className="step-number">{step.number}</div><div className="step-icon"><Icon /></div><h3>{t(`home.journey.${step.id}.title`, step.title)}</h3><p>{t(`home.journey.${step.id}.copy`, step.copy)}</p>{index < journey.steps.length - 1 && <ArrowRight className="step-arrow" size={20} />}</article>;
               })}
             </div>
-            <div className="journey-cta"><Link href="/request-tutor" className="text-action">{t("home.journey.action", journey.action)} <ArrowRight size={18} /></Link></div>
+            <div className="journey-cta" data-reveal><Link href="/request-tutor" className="text-action">{t("home.journey.action", journey.action)} <ArrowRight size={18} /></Link></div>
           </div>
         </section>
 
         <section className="stories-section">
-          <div className="shell stories-layout">
+          <div className="shell stories-layout" data-reveal-group>
             <div className="stories-images">
               <img className="story-image story-one" src={homeEditorialImages.homeLearning} alt="A Bangladeshi tutor supporting a student in a home study session" />
               <img className="story-image story-two" src={homeEditorialImages.onlineLearning} alt="A Bangladeshi student learning with an online tutor" />
@@ -162,7 +166,7 @@ function HomeContent() {
         </section>
 
         <section className="section faq-section">
-          <div className="shell faq-layout">
+          <div className="shell faq-layout" data-reveal-group>
             <div className="faq-intro">
               <p className="eyebrow">{t("home.faq.eyebrow", faq.eyebrow)}</p>
               <h2>{t("home.faq.title.lead", faq.title.lead)}<br /><span>{t("home.faq.title.accent", faq.title.accent)}</span></h2>
@@ -178,7 +182,7 @@ function HomeContent() {
           </div>
         </section>
 
-        <section className="final-cta"><div className="shell final-cta-inner">
+        <section className="final-cta"><div className="shell final-cta-inner" data-reveal>
           <div>
             <p className="eyebrow eyebrow-light">{t("home.cta.eyebrow", finalCta.eyebrow)}</p>
             <h2>{t("home.cta.titleLead", finalCta.titleLead)}<br />{t("home.cta.titleTail", finalCta.titleTail)}</h2>
