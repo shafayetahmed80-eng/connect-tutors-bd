@@ -40,6 +40,7 @@ vi.mock("@/lib/trpc", () => ({
         listAppliedTutors: invalidator("listAppliedTutors"), listPostedJobs: invalidator("listPostedJobs"), listAppointedJobs: invalidator("listAppointedJobs"),
         listConfirmedJobs: invalidator("listConfirmedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
         listTutorDirectory: invalidator("listTutorDirectory"), listTutorApplications: invalidator("listTutorApplications"),
+        guardianRequestCounts: invalidator("guardianRequestCounts"),
       },
     }),
     admin: {
@@ -164,6 +165,8 @@ describe("the next move, from the row", () => {
     // The tuition leaves this list for Confirmed Jobs, so the answer refreshes both.
     (mocks.confirm.mock.calls[0][1] as { onSuccess: () => void }).onSuccess();
     expect(mocks.invalidated).toEqual(expect.arrayContaining(["listAppointedJobs", "listConfirmedJobs", "listAppliedTutors"]));
+    // The sidebar's counts follow the move.
+    expect(mocks.invalidated).toContain("guardianRequestCounts");
   });
 
   it("leaves the focus in the dialog the menu opened, not on the button behind it", async () => {

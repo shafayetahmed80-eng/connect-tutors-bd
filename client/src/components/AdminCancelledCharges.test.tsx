@@ -50,7 +50,7 @@ describe("tuitions cancelled after they were confirmed", () => {
 
     expect(mocks.lastInput).toMatchObject({ query: "", page: 1 });
     expect(screen.getAllByRole("columnheader").map(cell => cell.textContent)).toEqual([
-      "Job ID", "Settlement", "Tutor ID", "Name", "Confirmed", "Cancelled", "Payment Status", "Charge", "Paid", "Class", "Settle", "Payments", "Tutor profile",
+      "Job ID", "Settlement", "Tutor ID", "Name", "Confirmed", "Cancelled", "Reason", "Payment Status", "Charge", "Paid", "Class", "Settle", "Payments", "Tutor profile",
     ]);
   });
 
@@ -61,6 +61,19 @@ describe("tuitions cancelled after they were confirmed", () => {
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows[0].className).toContain("stagger-row-enter");
     expect(rows[1].style.getPropertyValue("--stagger")).toBe("1");
+  });
+
+  it("shows why the tuition was cancelled, and says Not set for one cancelled before reasons were kept", () => {
+    mocks.data = { ...mocks.data, items: [
+      row({ id: 21, cancellationReason: "The Guardian found a Tutor elsewhere" }),
+      row({ id: 22, cancellationReason: null }),
+    ], total: 2 };
+    render(<AdminCancelledChargesContent />);
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("The Guardian found a Tutor elsewhere")).toBeTruthy();
+    expect(within(rows[1]).queryByText("The Guardian found a Tutor elsewhere")).toBeNull();
+    expect(within(rows[1]).getAllByText("Not set").length).toBeGreaterThanOrEqual(1);
   });
 
   it("marks a tuition nobody has settled, and offers no payments for it yet", () => {

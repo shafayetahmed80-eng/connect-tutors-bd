@@ -26,6 +26,8 @@ export function useAdminGuardianTuitionRequest(onApproved?: () => void) {
     void utils.admin.listConfirmedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
+    // The sidebar's counts beside Appointed Jobs, Confirmed Jobs and Guardian Requests.
+    void utils.admin.guardianRequestCounts.invalidate();
   };
   // A refusal can mean the tuition moved on and the request was closed, so the lists are read again then too.
   const onError = (error: { message: string }) => { toast.error(error.message); refresh(); };

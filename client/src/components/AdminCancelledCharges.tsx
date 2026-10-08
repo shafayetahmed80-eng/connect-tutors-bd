@@ -55,6 +55,8 @@ export default function AdminCancelledChargesContent() {
     { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },
     { key: "confirmedAt", label: "Confirmed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.confirmedAt) ?? notSet}</span> },
     { key: "cancelledAt", label: "Cancelled", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.cancelledAt) ?? notSet}</span> },
+    // What was typed when the tuition was cancelled, not the settlement's own reason.
+    { key: "reason", label: "Reason", wide: true, cellClassName: "max-w-[18rem]", cell: job => job.cancellationReason ? <span className="whitespace-pre-line break-words text-j-ink-strong">{job.cancellationReason}</span> : notSet },
     { key: "status", label: "Payment Status", cell: job => job.charge ? <PaymentStatusPill status={job.charge.status} /> : notSet },
     { key: "charge", label: "Charge", cellClassName: "whitespace-nowrap", cell: job => <span className="tabular-nums text-j-ink-strong">{job.charge ? formatSalaryAmount(job.charge.owed) : notSet}</span> },
     { key: "paid", label: "Paid", cellClassName: "whitespace-nowrap", cell: job => <span className="tabular-nums text-j-ink-strong">{job.charge ? formatSalaryAmount(job.charge.paid) : notSet}</span> },

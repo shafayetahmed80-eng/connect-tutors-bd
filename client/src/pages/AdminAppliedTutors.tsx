@@ -52,6 +52,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     void utils.admin.listConfirmedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
+    // A move answers any request waiting on the tuition, which the sidebar counts.
+    void utils.admin.guardianRequestCounts.invalidate();
   };
   const onError = (error: { message: string }) => { toast.error(error.message); };
   const approve = trpc.admin.approveAppointmentRequest.useMutation({ onSuccess: () => { setApproving(null); refresh(); }, onError });
