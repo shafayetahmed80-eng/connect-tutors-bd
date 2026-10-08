@@ -5,6 +5,11 @@ export const LOGIN_TWO_FACTOR_COOKIE_NAME = "connect-login-2fa";
 export const LOGIN_TWO_FACTOR_REQUIRED_ERR_MSG = "Two-factor verification is required (10004)";
 /** How long a browser that cleared the challenge is trusted before it is asked again. */
 export const ADMIN_TWO_FACTOR_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+/** How long an Admin stays signed in on one browser before the password is asked again. */
+export const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+/** A browser an Admin has signed in from before; a sign-in from one without it is a new device. */
+export const ADMIN_KNOWN_DEVICE_COOKIE_NAME = "connect-admin-device";
+export const ADMIN_KNOWN_DEVICE_TTL_MS = ONE_YEAR_MS;
 export const AXIOS_TIMEOUT_MS = 30_000;
 export const UNAUTHED_ERR_MSG = "Please login (10001)";
 export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";

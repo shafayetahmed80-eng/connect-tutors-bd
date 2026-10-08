@@ -190,13 +190,14 @@ class SDKServer {
       name: payload.name,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuedAt(Math.floor(issuedAt / 1000))
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; issuedAt?: number } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -222,6 +223,7 @@ class SDKServer {
         openId,
         appId,
         name,
+        issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -313,6 +315,10 @@ class SDKServer {
       throw ForbiddenError("Account closed");
     }
 
+    if (!isSessionStillValid(session.issuedAt, user.sessionsValidFrom)) {
+      throw ForbiddenError("Session ended");
+    }
+
     // `lastSignedIn` is a coarse "last seen" marker, not a per-request counter.
     // Refresh it at most once an hour so an authenticated session does not write
     // to `users` on every tRPC call (auth.me polling, the 20s portal renew, …).
@@ -326,6 +332,18 @@ class SDKServer {
 }
 
 const LAST_SIGNED_IN_REFRESH_MS = 60 * 60_000;
+
+/**
+ * A session signed before the account's `sessionsValidFrom` has been ended
+ * ("Sign out everywhere", a changed Admin password). A token with no issue time
+ * predates the feature, so it cannot prove it is newer and is ended with it.
+ * Whole seconds on both sides: that is all a token carries.
+ */
+export function isSessionStillValid(issuedAtSeconds: number | undefined, sessionsValidFrom: Date | null | undefined) {
+  if (!sessionsValidFrom) return true;
+  if (issuedAtSeconds === undefined) return false;
+  return issuedAtSeconds >= Math.floor(sessionsValidFrom.getTime() / 1000);
+}
 
 const CRON_OPEN_ID_PREFIX = "cron_";
 

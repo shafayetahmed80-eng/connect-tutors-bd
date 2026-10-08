@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   adminCredentialLoginForm,
   adminLoginHelpLink,
-  adminPasswordRecoveryLink,
   getAdminDashboardDestination,
 } from "./AdminLogin";
 
@@ -20,9 +19,8 @@ describe("getAdminDashboardDestination", () => {
 });
 
 describe("Admin Login credential guidance", () => {
-  it("keeps the two routes off this page pointing at public destinations", () => {
+  it("points the one link off this page at the public Admin guide", () => {
     expect(adminLoginHelpLink).toEqual({ label: "See Admin Help", href: "/admin/help" });
-    expect(adminPasswordRecoveryLink.href).toBe("/admin/credential-setup");
   });
 
   it("uses a direct User ID and password form without an authenticator requirement", () => {
@@ -34,12 +32,5 @@ describe("Admin Login credential guidance", () => {
     const labels = Object.values(adminCredentialLoginForm).join(" ").toLowerCase();
     expect(labels).not.toContain("authenticator");
     expect(labels).not.toContain("two-factor");
-  });
-
-  it("offers a generic password recovery route that requires Project Owner verification", () => {
-    expect(adminPasswordRecoveryLink).toEqual({
-      label: "Forgot password?",
-      href: "/admin/credential-setup",
-    });
   });
 });

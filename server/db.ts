@@ -1252,7 +1252,9 @@ export async function changeOwnPasswordByUserId(input: {
   if (user?.role !== input.role || !user.passwordHash || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
     return "invalid-current-password";
   }
-  await database.update(users).set({ passwordHash: await hashPassword(input.newPassword) }).where(eq(users.id, input.userId));
+  // A new Admin password also ends every other sign-in; the caller signs the browser in hand back in.
+  const endOtherSessions = input.role === "admin" ? { sessionsValidFrom: wholeSecondNow() } : {};
+  await database.update(users).set({ passwordHash: await hashPassword(input.newPassword), ...endOtherSessions }).where(eq(users.id, input.userId));
   if (input.role === "admin") {
     await database.update(adminCredentials).set({ passwordChangeRequired: false }).where(eq(adminCredentials.userId, input.userId));
   }
@@ -1426,8 +1428,38 @@ export async function provisionAdminPasswordCredential(input: { userId: number; 
   } else {
     await database.insert(adminCredentials).values({ userId: input.userId, loginId, passwordChangeRequired: Boolean(input.requirePasswordChange) });
   }
-  await database.update(users).set({ passwordHash, loginMethod: "password" }).where(eq(users.id, input.userId));
+  // Whoever held the old password, or a session made with it, is signed out with it.
+  await database.update(users).set({ passwordHash, loginMethod: "password", sessionsValidFrom: wholeSecondNow() }).where(eq(users.id, input.userId));
   return { updated: true, action: assigned ? "reset" as const : "provisioned" as const };
+}
+
+/** A token carries whole seconds, and the column keeps whole seconds, so compare like with like. */
+function wholeSecondNow() {
+  return new Date(Math.floor(Date.now() / 1000) * 1000);
+}
+
+/** Signs this account out of every browser it is signed in on: sessions made before this moment stop working. */
+export async function endAllSessionsFor(userId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const validFrom = wholeSecondNow();
+  const result = await database.update(users).set({ sessionsValidFrom: validFrom }).where(eq(users.id, userId));
+  return { ended: Boolean(result[0].affectedRows), validFrom } as const;
+}
+
+/** The sign-in id of an Admin, if there is one - the alerts only care about real Admin accounts. */
+export async function findActiveAdminByLoginId(loginId: string) {
+  const normalized = normalizeAdminLoginId(loginId);
+  if (!normalized) return undefined;
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select({ id: users.id, name: users.name, openId: users.openId })
+    .from(adminCredentials)
+    .innerJoin(users, eq(users.id, adminCredentials.userId))
+    .where(and(eq(adminCredentials.loginId, normalized), eq(users.role, "admin"), eq(users.accountStatus, "active")))
+    .limit(1);
+  return row;
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -7017,6 +7049,13 @@ export async function sendPushToUser(userId: number | null, payload: { title: st
   })));
   const goneIds = results.filter(row => row.result.gone).map(row => row.id);
   if (goneIds.length > 0) await database.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, goneIds));
+}
+
+/** The Project Owner's phone, for security alerts. Does nothing until the Owner has turned notifications on in Settings. */
+export async function sendPushToOwner(payload: { title: string; body: string; url: string }) {
+  if (!ENV.ownerOpenId) return;
+  const owner = await getUserByOpenId(ENV.ownerOpenId);
+  await sendPushToUser(owner?.id ?? null, payload);
 }
 
 /** `tutor_notifications` is keyed by `tutorId`, not `users.id` - this resolves that join once so every call site can just name the Tutor. */

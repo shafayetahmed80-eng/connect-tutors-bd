@@ -1,4 +1,5 @@
-import { COOKIE_NAME, ONE_YEAR_MS, PENDING_REDIRECT_COOKIE } from "@shared/const";
+import { ADMIN_SESSION_TTL_MS, COOKIE_NAME, ONE_YEAR_MS, PENDING_REDIRECT_COOKIE } from "@shared/const";
+import type { Request, Response } from "express";
 import { INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES } from "@shared/request-source";
 import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
@@ -9,6 +10,7 @@ import { GUARDIAN_REQUEST_REASON_MAX_LENGTH, guardianTuitionRequestRefusalMessag
 import { guardianTuitionRequestTypeValues } from "../drizzle/schema";
 import { adminAppointmentRefusalMessages } from "./admin-appointment";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { resolveClientIp } from "./_core/client-ip";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { createGuardianIntakeHandoff, verifyGuardianIntakeHandoff } from "./guardian-intake-handoff";
@@ -70,7 +72,8 @@ import {
   hashRecoveryCode,
   validateAdminTotpCode,
 } from "./admin-security";
-import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, setAdminTwoFactorProofCookie } from "./admin-two-factor";
+import { adminNewDevicePush, adminWrongPasswordPush, createFailureStreak } from "./admin-sign-in-alerts";
+import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, isKnownAdminDevice, markAdminDeviceKnown, setAdminTwoFactorProofCookie } from "./admin-two-factor";
 import { clearLoginTwoFactorProofCookie, hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
 import QRCode from "qrcode";
 import {
@@ -482,9 +485,7 @@ const adminGuardianRequestInputSchema = z.object({
 const GUARDIAN_INTAKE_HANDOFF_TTL_MS = 20 * 60 * 1000;
 
 function getRequestIp(ctx: { req: { headers: Record<string, string | string[] | undefined>; ip?: string } }) {
-  const forwarded = ctx.req.headers["x-forwarded-for"];
-  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return forwardedValue?.split(",")[0]?.trim() || ctx.req.ip || "unknown";
+  return resolveClientIp({ forwardedFor: ctx.req.headers["x-forwarded-for"], socketIp: ctx.req.ip, trustedProxyHops: ENV.trustedProxyHops });
 }
 
 // --- Public authentication abuse controls (in-process; see auth-rate-limit.ts) ---
@@ -519,6 +520,7 @@ export function __resetAuthRateLimitsForTests() {
   pairLoginRateLimiter.clear();
   ipRegistrationRateLimiter.clear();
   twoFactorChallengeRateLimiter.clear();
+  adminWrongPasswordStreak.clear();
 }
 
 function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string) {
@@ -613,12 +615,38 @@ async function trustBrowserAfterPhoneProof(ctx: { req: Parameters<typeof setLogi
   if (enabled) setLoginTwoFactorProofCookie(ctx.req, ctx.res, userId, rememberDays, epoch);
 }
 
-async function setPasswordSession(ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: Record<string, unknown>) => void } }, user: { openId: string; name: string | null }) {
+async function setPasswordSession(ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: Record<string, unknown>) => void } }, user: { openId: string; name: string | null }, lifetimeMs = ONE_YEAR_MS) {
   const sessionToken = await sdk.createSessionToken(user.openId, {
     name: user.name ?? "",
-    expiresInMs: ONE_YEAR_MS,
+    expiresInMs: lifetimeMs,
   });
-  ctx.res.cookie(COOKIE_NAME, sessionToken, getSessionCookieOptions(ctx.req));
+  ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: lifetimeMs });
+}
+
+/**
+ * After an Admin ends every other sign-in (or changes the password), the browser in their hand
+ * must not be one of the casualties: it gets a fresh session, and keeps its remembered second factor.
+ */
+async function keepThisAdminBrowserSignedIn(
+  ctx: { req: Request; res: Response; user: { id: number; openId: string; name: string | null } },
+  hadSecondFactorProof: boolean,
+) {
+  await setPasswordSession(ctx, ctx.user, ADMIN_SESSION_TTL_MS);
+  if (hadSecondFactorProof) setAdminTwoFactorProofCookie(ctx.req, ctx.res, ctx.user.id);
+}
+
+/** Wrong passwords for one real Admin account in a row: the 5th tells the Owner. Cleared by a correct sign-in. */
+const adminWrongPasswordStreak = createFailureStreak({ threshold: 5, windowMs: 15 * 60_000 });
+
+async function tellOwnerAboutWrongPasswords(loginId: string, ip: string) {
+  try {
+    const admin = await db.findActiveAdminByLoginId(loginId);
+    if (admin && adminWrongPasswordStreak.record(String(admin.id))) {
+      await db.sendPushToOwner(adminWrongPasswordPush(loginId.trim().toLowerCase(), ip));
+    }
+  } catch {
+    // An alert that cannot be sent never changes what the visitor is told.
+  }
 }
 
 /** Browser-safe account identity; server authorization continues to use complete user rows. */
@@ -1240,17 +1268,24 @@ export const appRouter = router({
         } catch {
           // Preserve the generic authentication failure if audit storage is unavailable.
         }
+        void tellOwnerAboutWrongPasswords(input.userId, ip);
         throw new TRPCError({ code: "UNAUTHORIZED", message: ADMIN_PASSWORD_LOGIN_ERROR });
       }
       ipLoginRateLimiter.reset(ipKey);
       pairLoginRateLimiter.reset(pairKey);
+      adminWrongPasswordStreak.reset(String(user.id));
+      const knownDevice = isKnownAdminDevice(ctx.req, user.id);
       await db.logAdminAuditEvent({
         userId: user.id,
         email: user.email ?? undefined,
         event: "login_success",
-        metadata: { ipAddress: ip, reason: "password-login" },
+        metadata: { ipAddress: ip, reason: knownDevice ? "password-login" : "password-login-new-device" },
       });
-      await setPasswordSession(ctx, user);
+      await setPasswordSession(ctx, user, ADMIN_SESSION_TTL_MS);
+      if (!knownDevice) {
+        markAdminDeviceKnown(ctx.req, ctx.res, user.id);
+        void db.sendPushToOwner(adminNewDevicePush(input.userId.trim().toLowerCase(), ip)).catch(() => {});
+      }
       return { success: true, user: toClientAuthIdentity(user) } as const;
     }),
     endTutorPortalSession: activeTutorIdentityProcedure.input(z.object({
@@ -1693,6 +1728,7 @@ export const appRouter = router({
       if (role !== "guardian" && role !== "tutor" && role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "This account has no password to change." });
       }
+      const hadSecondFactorProof = role === "admin" && hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom);
       const result = await db.changeOwnPasswordByUserId({
         userId: ctx.user.id,
         role,
@@ -1702,6 +1738,8 @@ export const appRouter = router({
       if (result === "invalid-current-password") {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Your current password is incorrect." });
       }
+      // A new Admin password signs every other browser out; this one stays.
+      if (role === "admin") await keepThisAdminBrowserSignedIn({ req: ctx.req, res: ctx.res, user: ctx.user }, hadSecondFactorProof);
       return { changed: true } as const;
     }),
     /** What this account may ask to change, what it has now, and its requests so far. */
@@ -2038,7 +2076,7 @@ export const appRouter = router({
         loginId: await db.getAdminLoginId(ctx.user.id),
         twoFactor: {
           enrolled: Boolean(twoFactorSettings),
-          verified: Boolean(twoFactorSettings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id),
+          verified: Boolean(twoFactorSettings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom),
         },
       };
     }),
@@ -2046,7 +2084,7 @@ export const appRouter = router({
       const settings = await db.getAdminTwoFactorSettings(ctx.user.id);
       return {
         enrolled: Boolean(settings),
-        verified: Boolean(settings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id),
+        verified: Boolean(settings) && hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom),
         smsBackup: settings?.smsPhone ? { maskedPhone: maskAdminSmsPhone(settings.smsPhone) } : null,
       };
     }),
@@ -2255,6 +2293,7 @@ export const appRouter = router({
       message: "Passwords do not match.",
       path: ["confirmPassword"],
     })).mutation(async ({ ctx, input }) => {
+      const hadSecondFactorProof = hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom);
       const result = await db.provisionAdminPasswordCredential({ userId: input.userId, loginId: input.loginId, password: input.password, requirePasswordChange: input.userId !== ctx.user.id });
       if (!result.updated) {
         const errors: Record<string, TRPCError> = {
@@ -2269,10 +2308,30 @@ export const appRouter = router({
         event: result.action === "provisioned" ? "credential_provisioned" : "credential_reset",
         metadata: { provisionedByUserId: ctx.user.id },
       });
+      // The Owner changing their own credentials ends their other sign-ins too, but not this browser's.
+      if (input.userId === ctx.user.id) await keepThisAdminBrowserSignedIn({ req: ctx.req, res: ctx.res, user: ctx.user }, hadSecondFactorProof);
       return { updated: true } as const;
     }),
+    /** An Admin signs themselves out of every browser; the one they are using stays signed in. */
+    signOutEverywhere: adminProcedure.mutation(async ({ ctx }) => {
+      const hadSecondFactorProof = hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom);
+      await db.endAllSessionsFor(ctx.user.id);
+      await db.logAdminAuditEvent({ userId: ctx.user.id, email: ctx.user.email ?? undefined, event: "sessions_ended", metadata: { ipAddress: getRequestIp(ctx), reason: "own request" } });
+      await keepThisAdminBrowserSignedIn({ req: ctx.req, res: ctx.res, user: ctx.user }, hadSecondFactorProof);
+      return { success: true } as const;
+    }),
+    /** The Owner signs any Admin out of every browser - a lost phone or laptop. */
+    signOutAdminEverywhere: ownerAdminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const target = await db.getUserById(input.userId);
+      if (!target || target.role !== "admin") throw new TRPCError({ code: "NOT_FOUND", message: "Admin account not found." });
+      const hadSecondFactorProof = hasAdminTwoFactorProof(ctx.req, ctx.user.id, ctx.user.sessionsValidFrom);
+      await db.endAllSessionsFor(target.id);
+      await db.logAdminAuditEvent({ userId: target.id, email: target.email ?? undefined, event: "sessions_ended", metadata: { ipAddress: getRequestIp(ctx), reason: `by admin ${ctx.user.id}` } });
+      if (target.id === ctx.user.id) await keepThisAdminBrowserSignedIn({ req: ctx.req, res: ctx.res, user: ctx.user }, hadSecondFactorProof);
+      return { success: true } as const;
+    }),
     getAuditLog: ownerAdminProcedure.input(z.object({
-      event: z.enum(["all", "login_success", "login_failure", "two_factor_required", "two_factor_success", "two_factor_failure", "recovery_code_used", "invitation_created", "invitation_accepted", "invitation_revoked", "two_factor_reset", "credential_provisioned", "credential_reset"]).default("all"),
+      event: z.enum(["all", "login_success", "login_failure", "two_factor_required", "two_factor_success", "two_factor_failure", "recovery_code_used", "invitation_created", "invitation_accepted", "invitation_revoked", "two_factor_reset", "credential_provisioned", "credential_reset", "sessions_ended"]).default("all"),
       email: z.string().trim().max(320).default(""),
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(20),

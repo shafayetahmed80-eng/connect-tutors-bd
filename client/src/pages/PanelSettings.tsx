@@ -1,4 +1,4 @@
-import { BadgeCheck, Bell, KeyRound, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { BadgeCheck, Bell, KeyRound, LogOut, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { Link } from "wouter";
 import {
   CloseAccountRequest,
@@ -13,6 +13,7 @@ import { AccountSettings, ChangePasswordForm, SettingValue, type AccountSettings
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { SignOutEverywhereButton } from "@/components/SignOutEverywhereButton";
 import { trpc } from "@/lib/trpc";
 
 /*
@@ -53,7 +54,7 @@ function requestedValueItems(changes: AccountChanges): AccountSettingsItem[] {
   ];
 }
 
-/** Guardian and Tutor Settings only - Admin has its own chat-alert toggle, on the chat page itself. */
+/** Guardian and Tutor Settings, and the Project Owner's (sign-in alerts) - another Admin has its own chat-alert toggle, on the chat page itself. */
 function notificationsItem(): AccountSettingsItem {
   return {
     key: "notifications",
@@ -63,6 +64,19 @@ function notificationsItem(): AccountSettingsItem {
     alwaysOpen: true,
     value: "This device",
     content: <PushNotificationToggle />,
+  };
+}
+
+/** Admin Settings only. */
+function signOutEverywhereItem(): AccountSettingsItem {
+  return {
+    key: "sessions",
+    label: "Sign out everywhere",
+    shortLabel: "Sessions",
+    icon: LogOut,
+    iconTone: "teal",
+    value: "All devices",
+    content: <SignOutEverywhereButton />,
   };
 }
 
@@ -96,8 +110,10 @@ export function AdminSettingsContent() {
         { key: "name", label: "Name", icon: UserRound, iconTone: "violet", value: name ?? "", content: <OwnerContactForm field="name" name={name} phone={mobile} /> },
         { key: "mobile", label: "Mobile Number", shortLabel: "Mobile", icon: Phone, iconTone: "rose", value: mobile ?? "", content: <OwnerContactForm field="mobile" name={name} phone={mobile} /> },
         passwordItem("User ID", profile?.loginId ?? ""),
+        signOutEverywhereItem(),
+        notificationsItem(),
       ]
-    : [...requestedValueItems(changes), passwordItem("User ID", profile?.loginId ?? ""), closeAccountItem(changes)];
+    : [...requestedValueItems(changes), passwordItem("User ID", profile?.loginId ?? ""), signOutEverywhereItem(), closeAccountItem(changes)];
   return <AccountSettings items={items} basePath={ADMIN_SETTINGS_PATH} />;
 }
 
