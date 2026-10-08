@@ -5,6 +5,8 @@
  * paired DM Sans/Manrope/Noto Sans Bengali typography, and warm low-shadow editorial surfaces.
  */
 @import "tailwindcss";
+/* The site is built from client/, so Tailwind only reads classes there; shared/ holds class names too (job-card.ts). */
+@source "../../shared";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
