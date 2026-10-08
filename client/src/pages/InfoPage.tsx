@@ -2,6 +2,7 @@
  * Connect Tutors visual direction: Neighbourhood Learning Blue — lightweight, clear informational pages
  * that keep the brand's quiet confidence and always leave users with an obvious next action.
  */
+import { useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, BookOpen, CalendarDays, GraduationCap, MapPinned, Newspaper, UserRoundCheck } from "lucide-react";
 import { findInfoPageCopy, infoPageCopy } from "@shared/public-content";
@@ -11,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import PolicyDocument from "@/components/PolicyDocument";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { useScrollReveal } from "@/lib/scrollReveal";
 
 /**
  * The copy lives in `@shared/public-content` so the Admin panel's slot defaults
@@ -47,10 +49,14 @@ function InfoPageContent() {
   const t = useSiteContentResolver();
   // Only two of the seven info pages carry a document beneath the hero.
   const policy = findPolicyPageByPath(location);
+  // The heading block settles in a piece at a time, and a legal document rises as it is reached.
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollReveal(mainRef, location);
   return <div className="site-page">
       <SiteHeader />
-      <main className="info-page">
-        <section className="shell info-hero">
+      {/* Keyed by page, so moving from one info page to another starts the entrance again. */}
+      <main className="info-page" ref={mainRef} key={location}>
+        <section className="shell info-hero" data-reveal-group>
           <div className="info-icon"><Icon /></div>
           <p className="eyebrow">{t(`info.${content.key}.eyebrow`, content.eyebrow)}</p>
           <h1>{t(`info.${content.key}.title`, content.title)}</h1>
@@ -59,7 +65,7 @@ function InfoPageContent() {
             {t(action.slotId, action.label)} <ArrowRight size={18} />
           </Link>
         </section>
-        {policy ? <section className="shell pb-16"><PolicyBody pageKey={policy.key} fallback={policy.defaultBody} /></section> : null}
+        {policy ? <section className="shell pb-16" data-reveal><PolicyBody pageKey={policy.key} fallback={policy.defaultBody} /></section> : null}
       </main>
       <SiteFooter />
   </div>;

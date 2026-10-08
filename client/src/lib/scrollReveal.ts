@@ -51,10 +51,16 @@ export function startScrollReveal(root: HTMLElement, win: RevealWindow = window)
   };
 }
 
-/** Before the first paint, so nothing flashes visible and then hides. */
-export function useScrollReveal(rootRef: RefObject<HTMLElement | null>) {
+/**
+ * Before the first paint, so nothing flashes visible and then hides.
+ *
+ * `resetKey` is for a page that swaps one document for another without
+ * remounting (one component serving several routes): when it changes, the new
+ * page is watched afresh.
+ */
+export function useScrollReveal(rootRef: RefObject<HTMLElement | null>, resetKey?: string) {
   useLayoutEffect(() => {
     const root = rootRef.current;
     return root ? startScrollReveal(root) : undefined;
-  }, [rootRef]);
+  }, [rootRef, resetKey]);
 }
