@@ -8,7 +8,7 @@ import { SiteText } from "@/lib/siteContent";
 type TutorProfileSectionModalProps = {
   title: string;
   submitting?: boolean;
-  notice?: { tone: "error" | "success"; text: string } | null;
+  notice?: { tone: "error" | "success"; text: string; details?: string[] } | null;
   onClose: () => void;
   onSubmit: () => void;
   children: React.ReactNode;
@@ -30,7 +30,10 @@ export function TutorProfileSectionModal({ title, submitting = false, notice, on
     <Modal size="md" onClose={onClose} busy={submitting} isSuspended={photoCropperIsOpen} decor="water-wide">
       <ModalHeader title={title} eyebrow="Edit section" srPrefix="Edit" />
       <ModalBody className="space-y-3.5">
-        {notice ? <p role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-tp-danger-ink" : "border-j-ok-border bg-j-ok-wash text-j-ok"}`}>{notice.text}</p> : null}
+        {notice ? <div role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-tp-danger-ink" : "border-j-ok-border bg-j-ok-wash text-j-ok"}`}>
+          <p>{notice.text}</p>
+          {notice.details?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 font-normal">{notice.details.map(detail => <li key={detail}>{detail}</li>)}</ul> : null}
+        </div> : null}
         {children}
       </ModalBody>
       <ModalFooter>

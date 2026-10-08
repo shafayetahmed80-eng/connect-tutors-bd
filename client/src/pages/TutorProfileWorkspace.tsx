@@ -21,7 +21,7 @@ import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
-import { getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
+import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
 import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
 import { resolveTutorProfileHistoryNavigation } from "./TutorProfileNavigationGuard";
@@ -441,7 +441,7 @@ function TutorProfileWorkspaceBody({
   // Set to the upload time on success so the "Upload Successful" badge mounts,
   // replays its motion on a repeat upload, and clears itself shortly after.
   const [photoSuccessAt, setPhotoSuccessAt] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string; details?: string[] } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TutorProfileSubmissionErrors>({});
   // Kept apart from `fieldErrors`, which the server’s narrow issue contract fills
   // and which carries no path for anything under `privateDetails`.
@@ -805,7 +805,8 @@ function TutorProfileWorkspaceBody({
     if (Object.keys(serverErrors).length === 0) return false;
 
     setFieldErrors(serverErrors);
-    setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+    // The highlighted box may live in another section than the popup that is open, so say what and where.
+    setFeedback({ type: "error", message: "Review the highlighted details and try again.", details: getTutorProfileServerIssueDetails(error) });
     window.requestAnimationFrame(() => {
       const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
       firstInvalidField?.scrollIntoView?.({ behavior: "smooth", block: "center" });
@@ -843,9 +844,10 @@ function TutorProfileWorkspaceBody({
       if (!recoverServerValidationErrors(error)) {
         // The request arrived and was refused; saying "check your connection"
         // sends the Tutor to look in entirely the wrong place.
+        const details = getTutorProfileServerIssueDetails(error);
         setFeedback(hasTutorProfileFieldIssues(error)
-          ? { type: "error", message: "Some details in this section were not accepted. Review the fields above and try again." }
-          : { type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
+          ? { type: "error", message: "Some details in this section were not accepted. Review the list and try again.", details }
+          : { type: "error", message: getTutorProfileMutationFailureFeedback(error).message, details });
       }
       return false;
     }
@@ -931,7 +933,7 @@ function TutorProfileWorkspaceBody({
       setFeedback({ type: "success", message: "Profile submitted." });
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
-        setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message });
+        setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message, details: getTutorProfileServerIssueDetails(error) });
       }
     }
   };
@@ -1336,7 +1338,7 @@ function TutorProfileWorkspaceBody({
     {editingSection ? <TutorProfileSectionModal
       title={editTargetTitle(editingGroupId ?? editingSection, resolveSlot)}
       submitting={saveDraftMutation.isPending}
-      notice={feedback ? { tone: feedback.type, text: feedback.message } : null}
+      notice={feedback ? { tone: feedback.type, text: feedback.message, details: feedback.details } : null}
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{renderEditTargetFields(editingGroupId ?? editingSection)}</TutorProfileSectionModal> : null}
@@ -1382,7 +1384,10 @@ function TutorProfileWorkspaceBody({
           <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-j-warn-ink">{profile.moderationNote}</p>
         </section> : null}
 
-        {feedback && !editingSection ? <p role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-j-ok-border bg-j-ok-wash text-j-ok" : "border-j-err-border bg-j-err-wash text-tp-danger-ink"}`}>{feedback.message}</p> : null}
+        {feedback && !editingSection ? <div role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-j-ok-border bg-j-ok-wash text-j-ok" : "border-j-err-border bg-j-err-wash text-tp-danger-ink"}`}>
+          <p>{feedback.message}</p>
+          {feedback.details?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 font-normal">{feedback.details.map(detail => <li key={detail}>{detail}</li>)}</ul> : null}
+        </div> : null}
 
         {previewMode ? <div role="radiogroup" aria-label="Preview as" className="nav-tab-outer inline-flex gap-1 rounded-xl border border-tp-border bg-j-surface-sunken/80 p-1">
           {([["self", "Full profile"], ["guardian", "As a Guardian sees it"]] as const).map(([audience, label]) => <button

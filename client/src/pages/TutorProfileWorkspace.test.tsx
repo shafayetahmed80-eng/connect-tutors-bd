@@ -349,8 +349,8 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(teachingDialog).getByText("Select at least one teaching area.")).toBeTruthy();
   });
 
-  it("keeps the popup card open and shows a safe temporary-failure message without raw server text", async () => {
-    trpcMocks.saveDraft.mockRejectedValue({ data: { code: "INTERNAL_SERVER_ERROR" }, message: "SQL duplicate key tutor_profile" });
+  it("keeps the popup card open and says a failure was the server's, with its reference and without raw server text", async () => {
+    trpcMocks.saveDraft.mockRejectedValue({ data: { code: "INTERNAL_SERVER_ERROR", supportReference: "A1B2C3" }, message: "SQL duplicate key tutor_profile" });
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
@@ -359,10 +359,34 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
     await user.click(within(dialog).getByRole("button", { name: "Submit" }));
 
-    expect(await screen.findByText("We could not save your profile right now. Check your connection and try again.")).toBeTruthy();
+    expect(await screen.findByText(/problem on our side \(reference A1B2C3\)/)).toBeTruthy();
     expect(screen.queryByText(/SQL duplicate key/i)).toBeNull();
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(within(screen.getByRole("dialog")).getByDisplayValue("Updated Mathematics Tutor")).toBeTruthy();
+  });
+
+  it("lists exactly what the server refused, and where, in the popup that is open", async () => {
+    trpcMocks.saveDraft.mockRejectedValue({
+      data: {
+        code: "BAD_REQUEST",
+        tutorProfileFieldIssues: [
+          { path: ["availableNationwide"], message: "Online tuition requires nationwide availability." },
+          { path: ["educationRecords", 0, "passingYear"], message: "Enter a valid year." },
+        ],
+      },
+      message: "Online tuition requires nationwide availability. Enter a valid year.",
+    });
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
+    await user.click(within(dialog).getByRole("button", { name: "Submit" }));
+
+    expect(await within(screen.getByRole("dialog")).findByText("Tuition and location · Available Nationwide: Online tuition requires nationwide availability.")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("Education · Education history, record 1, Passing year: Enter a valid year.")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("Review the highlighted details and try again.")).toBeTruthy();
   });
 
   it("keeps the profile values and shows the pending-review conflict message after review submission fails", async () => {

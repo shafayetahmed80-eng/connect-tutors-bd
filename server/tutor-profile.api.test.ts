@@ -174,6 +174,38 @@ describe("TP-05 owner Tutor Profile procedures", () => {
     expect(profileDbMocks.submitTutorProfile).toHaveBeenCalledWith(101);
   });
 
+  it("gives a failure of ours a short reference, logs it with the cause, and never sends the cause to the Tutor", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    profileDbMocks.saveTutorProfileDraft.mockRejectedValue(new Error("Data too long for column 'availability' at row 1"));
+
+    const failure = await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ headline: "Experienced Mathematics Tutor" }).catch((caught: any) => caught);
+
+    expect(failure.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(failure.message).toBe("Tutor Profile could not be saved.");
+    const reference = failure.cause.supportReference as string;
+    expect(reference).toMatch(/^[A-F0-9]{6}$/);
+    expect(String(error.mock.calls[0][0])).toContain(`reference ${reference}`);
+    expect(String(error.mock.calls[0][0])).toContain("saveProfileDraft failed for user 101");
+    expect(error.mock.calls[0][1]).toMatchObject({ message: expect.stringContaining("Data too long") });
+    error.mockRestore();
+  });
+
+  it("logs what a refused save was refused for, with the path of each reason", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    profileDbMocks.saveTutorProfileDraft.mockRejectedValue(
+      new (await import("./db")).TutorProfileValidationError([
+        { path: ["educationRecords", "0", "passingYear"], message: "Enter a valid year." },
+      ]),
+    );
+
+    const failure = await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ headline: "Experienced Mathematics Tutor" }).catch((caught: any) => caught);
+
+    expect(failure.code).toBe("BAD_REQUEST");
+    expect(String(warn.mock.calls[0][0])).toContain("saveProfileDraft refused for user 101");
+    expect(String(warn.mock.calls[0][0])).toContain("passingYear");
+    warn.mockRestore();
+  });
+
   it("does not transition an incomplete persisted profile to pending review", async () => {
     profileDbMocks.submitTutorProfile.mockRejectedValue(
       new (await import("./db")).TutorProfileValidationError([

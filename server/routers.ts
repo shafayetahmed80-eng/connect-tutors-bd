@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { ADMIN_SESSION_TTL_MS, COOKIE_NAME, ONE_YEAR_MS, PENDING_REDIRECT_COOKIE } from "@shared/const";
 import type { Request, Response } from "express";
 import { INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES } from "@shared/request-source";
@@ -265,18 +266,27 @@ function rethrowTutorInterestError(error: unknown): never {
   throw errors[error.message] ?? error;
 }
 
-function rethrowProfileValidationError(error: unknown): never {
+/**
+ * A refused profile save, in words the Tutor can act on; anything unexpected
+ * is logged with a short reference and the Tutor is given the same reference,
+ * so "it would not save" can be found in the log instead of guessed at.
+ */
+function rethrowProfileValidationError(error: unknown, context: { procedure: string; userId: number }): never {
   if (error instanceof db.TutorProfileStateError) {
     throw new TRPCError({ code: "CONFLICT", message: error.message });
   }
   if (error instanceof db.TutorProfileValidationError) {
+    console.warn(`[tutor-profile] ${context.procedure} refused for user ${context.userId}: ${JSON.stringify(error.issues.map(issue => ({ path: issue.path, message: issue.message })))}`);
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: error.issues.map(issue => issue.message).join(" "),
       cause: { tutorProfileFieldIssues: getSafeTutorProfileFieldIssues(error.issues) },
     });
   }
-  throw error;
+  if (error instanceof TRPCError) throw error;
+  const supportReference = randomBytes(3).toString("hex").toUpperCase();
+  console.error(`[tutor-profile] ${context.procedure} failed for user ${context.userId} (reference ${supportReference}):`, error);
+  throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Tutor Profile could not be saved.", cause: { supportReference } });
 }
 
 /**
@@ -1404,14 +1414,14 @@ export const appRouter = router({
       try {
         return await db.saveTutorProfileDraft(ctx.user.id, input);
       } catch (error) {
-        return rethrowProfileValidationError(error);
+        return rethrowProfileValidationError(error, { procedure: "saveProfileDraft", userId: ctx.user.id });
       }
     }),
     submitProfile: activeTutorProcedure.mutation(async ({ ctx }) => {
       try {
         return await db.submitTutorProfile(ctx.user.id);
       } catch (error) {
-        return rethrowProfileValidationError(error);
+        return rethrowProfileValidationError(error, { procedure: "submitProfile", userId: ctx.user.id });
       }
     }),
     getDashboardStats: activeTutorProcedure.query(({ ctx }) => db.getTutorDashboardStats(ctx.user.id)),
