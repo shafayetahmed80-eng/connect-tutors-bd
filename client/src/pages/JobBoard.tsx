@@ -7,14 +7,17 @@ import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
 import ChipMultiSelect, { type ChipOption } from "@/components/ChipMultiSelect";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
+import ShareJobButton from "@/components/ShareJobButton";
+import { isJobIdNumber } from "@shared/job-id";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { formatPostedDate } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorListPager } from "@/components/TutorListPager";
 import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 
 type TutorGender = "male" | "female" | "any";
 type TuitionType = "home" | "online" | "both" | "group" | "package";
@@ -366,6 +369,30 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
     if (matchingJob) setActiveJob(matchingJob);
   }, [activeJob, jobs, location]);
 
+  // A link someone shared (/job-board?job=6945) opens that tuition's details.
+  // The job is asked for by its own ID, so it opens even when it is not on the
+  // page the board is showing; the board's filters are left alone.
+  const search = useSearch();
+  const sharedJobId = useMemo(() => {
+    if (embedded) return null;
+    const id = new URLSearchParams(search).get("job");
+    return id && isJobIdNumber(id) ? id : null;
+  }, [embedded, search]);
+  const sharedJobQuery = trpc.jobBoard.list.useQuery({ page: 1, pageSize: 1, jobId: sharedJobId ?? undefined }, { enabled: Boolean(sharedJobId) });
+  const handledSharedJob = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sharedJobId || handledSharedJob.current === sharedJobId || !sharedJobQuery.isSuccess) return;
+    handledSharedJob.current = sharedJobId;
+    const sharedJob = (sharedJobQuery.data.items as JobBoardJob[]).find(job => job.jobId === sharedJobId);
+    if (sharedJob) setActiveJob(sharedJob);
+    else toast.info("This tuition is no longer on the Job Board.");
+  }, [sharedJobId, sharedJobQuery.isSuccess, sharedJobQuery.data]);
+  // Closing it takes the job out of the address, so a reload does not reopen it.
+  const closeActiveJob = () => {
+    setActiveJob(null);
+    if (sharedJobId) navigate("/job-board", { replace: true });
+  };
+
   const goToPage = (page: number) => setFilters(current => ({ ...current, page }));
   const changePageSize = (pageSize: number) => setFilters(current => ({ ...current, pageSize, page: 1 }));
   const applyFilters = () => setFilters(draft);
@@ -457,7 +484,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         totalItems={totalCount}
       /></div>
     </div>
-    {activeJob ? <JobDetails job={activeJob} onClose={() => setActiveJob(null)} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
+    {activeJob ? <JobDetails job={activeJob} onClose={closeActiveJob} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
 
     {confirmJob ? <JobBoardApplyConfirm
       mismatchNote={jobBoardGenderMismatchNote(confirmJob.preferredTutorGender, tutorProfileQuery.data?.gender)}
@@ -606,6 +633,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
       preferredTutorGender: job.preferredTutorGender,
     }}
     onOpen={onDetails}
+    footerStart={<ShareJobButton job={job} />}
     action={applied
       ? <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
           <Check size={13} aria-hidden={true} />{applied.label} <span className="font-semibold text-[#3f8468]">{applied.appliedOn}</span>
@@ -658,6 +686,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
       notes: job.notes,
     }}
     onClose={onClose}
+    footerStart={<ShareJobButton job={job} labelled />}
     extraRows={appliedNote ? <div className="sm:col-span-2 border-t border-[#eef4f9] pt-2.5"><p className="text-2xs font-semibold leading-[1.6] text-[#bd3535]">Note: {appliedNote}</p></div> : null}
     action={<>
       {/* The day the application was made, beside the reason it cannot be made
