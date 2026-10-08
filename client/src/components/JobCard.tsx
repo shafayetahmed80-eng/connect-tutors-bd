@@ -103,7 +103,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
       </p>
 
       {/* Pushed to the foot so every card in a row ends level. */}
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
         {footerStart || mapUrl
           ? <span className="flex min-w-0 items-center gap-3">
               {footerStart}

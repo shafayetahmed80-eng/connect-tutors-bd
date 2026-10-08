@@ -31,8 +31,9 @@ vi.mock("@/lib/trpc", () => ({
     jobBoard: {
       filterOptions: { useQuery: () => ({ data: options, isLoading: false }) },
       list: {
-        useQuery: (input: unknown) => {
-          mocks.lastQuery = input;
+        // The board asks for its list; a shared link's single job is a second, disabled-until-needed ask.
+        useQuery: (input: unknown, options?: { enabled?: boolean }) => {
+          if (options?.enabled !== false) mocks.lastQuery = input;
           return { data: { items: [], totalCount: 7 }, isLoading: false };
         },
       },
