@@ -6,6 +6,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
+import { adminJobFiltersSchema } from "./admin-job-filters";
 import { appointmentRefusalMessages } from "./guardian-applicant-actions";
 import { GUARDIAN_REQUEST_REASON_MAX_LENGTH, guardianTuitionRequestRefusalMessages } from "./guardian-tuition-requests";
 import { guardianTuitionRequestTypeValues } from "../drizzle/schema";
@@ -2589,8 +2590,13 @@ export const appRouter = router({
         pageSize: z.number().int().min(1).max(100).default(20),
         postedBy: z.enum(["all", "admin"]).default("all"),
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "cancelled"])).min(1).max(5).optional(),
+        filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
+    /** What the tuition filter panel may offer, from the tuitions in the list it sits on. */
+    jobFilterOptions: adminProcedure
+      .input(z.object({ postedBy: z.enum(["all", "admin"]).default("all") }))
+      .query(({ input }) => db.getAdminJobFilterOptions(input)),
     /** Tuitions in the Appointed stage, each with the Tutor who holds it. */
     listAppointedJobs: adminProcedure
       .input(z.object({

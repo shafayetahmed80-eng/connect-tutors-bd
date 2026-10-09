@@ -35,7 +35,7 @@ import {
   type TutorProfileFieldOverrideRow,
 } from "@shared/tutor-profile-field-registry";
 import type { RequestSource } from "@shared/request-source";
-import { jobIdForRequest } from "@shared/job-id";
+import { jobIdForRequest, requestIdFromJobId } from "@shared/job-id";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
 import { emptyTutorMatchFilters, rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief, type MatchingWeights } from "@shared/tutor-matching";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
@@ -131,6 +131,8 @@ import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
 import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionPushUrl } from "@shared/push-messages";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
+import type { AdminJobFilters } from "./admin-job-filters";
+import { buildJobFilterOptions } from "./job-filter-options";
 import {
   guardianMaySeeApplicantPhone,
   guardianCountedInterestStatuses,
@@ -4134,51 +4136,8 @@ export async function getJobBoardFilterOptions() {
     : [];
   const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
 
-  const countries = new Set<string>();
-  const tuitionTypes = new Set<string>();
-  const daysPerWeek = new Set<number>();
-  const cities = new Map<string, string>();
-  const locationsByCity = new Map<string, Map<string, string>>();
-  const classesByCategory = new Map<string, Set<string>>();
-  const subjectsByClass = new Map<string, Set<string>>();
-
-  for (const row of rows) {
-    countries.add(row.country);
-    tuitionTypes.add(row.tuitionType);
-    daysPerWeek.add(row.daysPerWeek);
-    if (row.cityLocationId) {
-      cities.set(row.cityLocationId, cityLabelById.get(row.cityLocationId) ?? row.cityLocationId);
-      if (row.locationId) {
-        const areas = locationsByCity.get(row.cityLocationId) ?? new Map<string, string>();
-        // Stored as "Area, City", and the City is already chosen above this
-        // filter, so the chip carries the area alone.
-        const cityLabel = cityLabelById.get(row.cityLocationId);
-        const label = row.locationLabel ?? row.locationId;
-        areas.set(row.locationId, cityLabel && label.endsWith(`, ${cityLabel}`) ? label.slice(0, -(cityLabel.length + 2)) : label);
-        locationsByCity.set(row.cityLocationId, areas);
-      }
-    }
-    const classes = classesByCategory.get(row.category) ?? new Set<string>();
-    classes.add(row.classCourse);
-    classesByCategory.set(row.category, classes);
-    const forClass = subjectsByClass.get(row.classCourse) ?? new Set<string>();
-    for (const subject of safeJsonStringArray(row.subjects)) forClass.add(subject);
-    subjectsByClass.set(row.classCourse, forClass);
-  }
-
-  const sorted = (values: Iterable<string>) => Array.from(values).sort((left, right) => left.localeCompare(right));
-  return {
-    countries: sorted(countries),
-    tuitionTypes: sorted(tuitionTypes),
-    daysPerWeek: Array.from(daysPerWeek).sort((left, right) => left - right),
-    cities: Array.from(cities, ([id, label]) => ({ id, label })).sort((left, right) => left.label.localeCompare(right.label)),
-    locationsByCity: Object.fromEntries(Array.from(locationsByCity, ([cityId, areas]) => [
-      cityId,
-      Array.from(areas, ([id, label]) => ({ id, label })).sort((left, right) => left.label.localeCompare(right.label)),
-    ])),
-    classesByCategory: Object.fromEntries(Array.from(classesByCategory, ([category, classes]) => [category, sorted(classes)])),
-    subjectsByClass: Object.fromEntries(Array.from(subjectsByClass, ([classCourse, subjects]) => [classCourse, sorted(subjects)])),
-  };
+  const countries = Array.from(new Set(rows.map(row => row.country))).sort((left, right) => left.localeCompare(right));
+  return { countries, ...buildJobFilterOptions(rows, cityLabelById) };
 }
 export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) {
   const database = await getDb();
@@ -7555,6 +7514,8 @@ export type AdminPostedJobFilters = {
   postedBy: "all" | "admin";
   /** Several stages at once, in place of `stage` - Applied Tutors lists Live, Appointed and Confirmed together. */
   stages?: GuardianRequestLifecycle[];
+  /** The Admin's filter panel; narrows the cards and every stage's count. */
+  filters?: AdminJobFilters;
 };
 
 /**
@@ -7575,6 +7536,107 @@ function adminPostedJobStageCondition(stage: GuardianRequestLifecycle): SQL {
     case "live": return and(live, unconfirmed, notAppointed, eq(tutorRequests.publicationState, "published"))!;
     default: return and(live, unconfirmed, notAppointed, ne(tutorRequests.publicationState, "published"))!;
   }
+}
+
+/**
+ * The tuitions that came to the stage they are in at least `days` days ago.
+ *
+ * Each stage counts from its own date. Pending and Live both count from when
+ * the Guardian posted it, since a Live tuition has no date of its own.
+ */
+function adminJobEnteredStageBefore(stage: GuardianRequestLifecycle, days: number): SQL {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const enteredAt = stage === "appointed" ? tutorRequests.appointedAt
+    : stage === "confirmed" ? tutorRequests.appointmentConfirmedAt
+    : stage === "cancelled" ? tutorRequests.cancelledAt
+    : tutorRequests.createdAt;
+  return lte(enteredAt, cutoff);
+}
+
+/**
+ * A Guardian's Confirm, Remove or Cancel request is waiting on the tuition.
+ *
+ * Only one the tuition can still be answered by counts - the same test the
+ * rows use to put the mark on (`guardianTuitionRequestApplies`) - so a request
+ * left behind after the tuition moved on is not found by a filter the row
+ * would then disagree with.
+ */
+function adminJobWaitingRequestCondition(kind: NonNullable<AdminJobFilters["waitingRequest"]>): SQL {
+  const appointed = adminPostedJobStageCondition("appointed");
+  const confirmed = adminPostedJobStageCondition("confirmed");
+  const cancelled = adminPostedJobStageCondition("cancelled");
+  const ofKind = kind === "any" ? sql`true` : sql`${guardianTuitionRequests.type} = ${kind}`;
+  return sql`exists (select 1 from ${guardianTuitionRequests} where ${guardianTuitionRequests.tutorRequestId} = ${tutorRequests.id} and ${guardianTuitionRequests.status} = 'pending' and ${ofKind} and (
+    (${guardianTuitionRequests.type} = 'cancel_tuition' and not ${cancelled})
+    or (${guardianTuitionRequests.type} = 'confirm' and ${appointed} and ${guardianTuitionRequests.tutorId} = ${tutorRequests.tutorId})
+    or (${guardianTuitionRequests.type} = 'remove_tutor' and (${appointed} or ${confirmed}) and ${guardianTuitionRequests.tutorId} = ${tutorRequests.tutorId})
+  ))`;
+}
+
+/** How many Tutors have applied, counted the way the card's Applied number is: withdrawn interest is not an application. */
+const adminJobApplicantCount = sql`(select count(*) from ${tutorJobInterests} inner join ${tutorJobs} on ${tutorJobs.id} = ${tutorJobInterests.tutorJobId} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobInterests.status} <> 'withdrawn')`;
+
+/**
+ * The Admin's filters as conditions on `tutor_requests`.
+ *
+ * The same rules as the Job Board's (`activePublishedTutorJobConditions`), read
+ * from the request rather than its published copy, plus the ones only an Admin
+ * has to go on. Needs `users` and `guardian_profiles` joined, for the
+ * Guardian search.
+ */
+function adminJobFilterConditions(filters: AdminJobFilters | undefined): SQL[] {
+  if (!filters) return [];
+  const conditions: SQL[] = [];
+  if (filters.postedFrom) conditions.push(gte(tutorRequests.createdAt, filters.postedFrom));
+  if (filters.postedTo) conditions.push(lte(tutorRequests.createdAt, filters.postedTo));
+  if (filters.cityId) conditions.push(eq(tutorRequests.tuitionCityLocationId, filters.cityId));
+  if (filters.locationIds?.length) conditions.push(inArray(tutorRequests.tuitionLocationId, filters.locationIds));
+  if (filters.tuitionTypes?.length) conditions.push(inArray(tutorRequests.tuitionType, filters.tuitionTypes));
+  if (filters.daysPerWeek?.length) conditions.push(inArray(tutorRequests.daysPerWeek, filters.daysPerWeek));
+  if (filters.categories?.length) conditions.push(inArray(tutorRequests.category, filters.categories));
+  if (filters.classCourses?.length) conditions.push(inArray(tutorRequests.classCourse, filters.classCourses));
+  // `subjects` is a JSON array in one column, so each chosen subject is a
+  // separate LIKE and any one of them may match - as on the Job Board.
+  if (filters.subjects?.length) {
+    const anySubject = or(...filters.subjects.map(subject => like(tutorRequests.subjects, `%"${subject}"%`)));
+    if (anySubject) conditions.push(anySubject);
+  }
+  if (filters.studentGender) conditions.push(eq(tutorRequests.studentGender, filters.studentGender));
+  if (filters.preferredTutorGender) conditions.push(eq(tutorRequests.preferredGender, filters.preferredTutorGender));
+  if (filters.jobId) {
+    const requestId = requestIdFromJobId(filters.jobId);
+    conditions.push(requestId === null ? sql`1 = 0` : eq(tutorRequests.id, requestId));
+  }
+  // A tuition with no salary on it is not found by a salary range.
+  if (filters.salaryFrom !== undefined) conditions.push(gte(tutorRequests.budgetAmount, filters.salaryFrom));
+  if (filters.salaryTo !== undefined) conditions.push(lte(tutorRequests.budgetAmount, filters.salaryTo));
+  if (filters.postedBy) conditions.push(eq(tutorRequests.postedByAdmin, filters.postedBy === "admin" ? 1 : 0));
+  if (filters.guardian) {
+    const pattern = `%${filters.guardian}%`;
+    const matches = or(like(users.name, pattern), like(guardianProfiles.phone, pattern), like(guardianProfiles.guardianId, pattern));
+    if (matches) conditions.push(matches);
+  }
+  if (filters.heardAboutUs?.length) conditions.push(inArray(tutorRequests.heardAboutUs, filters.heardAboutUs));
+  if (filters.waitingRequest) conditions.push(adminJobWaitingRequestCondition(filters.waitingRequest));
+  return conditions;
+}
+
+/** The filters that mean something in one stage only; they narrow that stage and no other. */
+function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: AdminJobFilters | undefined): SQL[] {
+  if (!filters) return [];
+  const conditions: SQL[] = [];
+  if (stage === "pending" && filters.publicationStates?.length) conditions.push(inArray(tutorRequests.publicationState, filters.publicationStates));
+  if (stage === "live") {
+    if (filters.applicants === "none") conditions.push(sql`${adminJobApplicantCount} = 0`);
+    if (filters.applicants === "few") conditions.push(sql`${adminJobApplicantCount} between 1 and 5`);
+    if (filters.applicants === "many") conditions.push(sql`${adminJobApplicantCount} >= 6`);
+    if (filters.expiringSoon) {
+      const now = new Date();
+      const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      conditions.push(sql`exists (select 1 from ${tutorJobs} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobs.publicationStatus} = 'published' and ${tutorJobs.expiresAt} >= ${now} and ${tutorJobs.expiresAt} <= ${soon})`);
+    }
+  }
+  return conditions;
 }
 
 const adminPostedJobFields = {
@@ -9520,35 +9582,52 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
 
   // Admin Posted Jobs is this same board narrowed to the tuitions an Admin
   // added, so the narrowing applies to the tab counts as well as the cards.
+  // So do the Admin's filters: a tab that said nine and opened on two would be
+  // the first thing anyone stopped trusting.
   const scope = and(
     ...(searchCondition ? [searchCondition] : []),
     ...(filters.postedBy === "admin" ? [eq(tutorRequests.postedByAdmin, 1)] : []),
+    ...adminJobFilterConditions(filters.filters),
   );
 
-  // Counts span every stage for the current search, so the tab bar keeps
-  // showing where the rest of the results are while one stage is open. The
-  // five stages are derived, so they are counted with the same function that
-  // labels a card rather than a second set of SQL rules.
-  const countRows = await database
+  // The one stage the list is open on, if it is open on one. The filters that
+  // only mean something there narrow that stage's count and no other.
+  const openStage = !filters.stages?.length && filters.stage !== "all" ? filters.stage : undefined;
+  const stageCondition = (stage: GuardianRequestLifecycle) => and(
+    adminPostedJobStageCondition(stage),
+    ...(filters.filters?.daysInStage ? [adminJobEnteredStageBefore(stage, filters.filters.daysInStage)] : []),
+    ...(stage === openStage ? adminJobStageOnlyConditions(stage, filters.filters) : []),
+  )!;
+
+  // Counts span every stage for the current search and filters, so the tab bar
+  // keeps showing where the rest of the results are while one stage is open.
+  // The five stages are derived, so each is counted with the same condition
+  // that lists it rather than a second set of rules.
+  const [countRow] = await database
     .select({
-      status: tutorRequests.status,
-      publicationState: tutorRequests.publicationState,
-      tutorId: tutorRequests.tutorId,
-      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      pending: sql<string>`coalesce(sum(case when ${stageCondition("pending")} then 1 else 0 end), 0)`,
+      live: sql<string>`coalesce(sum(case when ${stageCondition("live")} then 1 else 0 end), 0)`,
+      appointed: sql<string>`coalesce(sum(case when ${stageCondition("appointed")} then 1 else 0 end), 0)`,
+      confirmed: sql<string>`coalesce(sum(case when ${stageCondition("confirmed")} then 1 else 0 end), 0)`,
+      cancelled: sql<string>`coalesce(sum(case when ${stageCondition("cancelled")} then 1 else 0 end), 0)`,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(scope);
-
-  const counts: Record<GuardianRequestLifecycle, number> = { pending: 0, live: 0, appointed: 0, confirmed: 0, cancelled: 0 };
-  for (const row of countRows) counts[getGuardianRequestLifecycle(row)] += 1;
+  const counts: Record<GuardianRequestLifecycle, number> = {
+    pending: Number(countRow?.pending ?? 0),
+    live: Number(countRow?.live ?? 0),
+    appointed: Number(countRow?.appointed ?? 0),
+    confirmed: Number(countRow?.confirmed ?? 0),
+    cancelled: Number(countRow?.cancelled ?? 0),
+  };
 
   const conditions = [
     ...(scope ? [scope] : []),
     ...(filters.stages?.length
-      ? [or(...filters.stages.map(stage => adminPostedJobStageCondition(stage)))!]
-      : filters.stage === "all" ? [] : [adminPostedJobStageCondition(filters.stage)]),
+      ? [or(...filters.stages.map(stageCondition))!]
+      : filters.stage === "all" ? [] : [stageCondition(filters.stage)]),
   ];
   const where = conditions.length ? and(...conditions) : undefined;
   const offset = (filters.page - 1) * filters.pageSize;
@@ -9599,6 +9678,37 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     pageSize: filters.pageSize,
     totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
   };
+}
+
+/**
+ * What the Admin's filter panel may offer, read from the tuitions that exist.
+ *
+ * From every stage together, not the one open: the filters hold while the Admin
+ * moves between the stage tabs, and a tab count that follows them has to be
+ * able to show where a chosen subject or area is found in the other stages.
+ */
+export async function getAdminJobFilterOptions(input: { postedBy: "all" | "admin" }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const rows = await database
+    .select({
+      cityLocationId: tutorRequests.tuitionCityLocationId,
+      locationId: tutorRequests.tuitionLocationId,
+      locationLabel: tutorRequests.tuitionLocationLabel,
+      tuitionType: tutorRequests.tuitionType,
+      daysPerWeek: tutorRequests.daysPerWeek,
+      category: tutorRequests.category,
+      classCourse: tutorRequests.classCourse,
+      subjects: tutorRequests.subjects,
+    })
+    .from(tutorRequests)
+    .where(input.postedBy === "admin" ? eq(tutorRequests.postedByAdmin, 1) : undefined);
+
+  const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
+  const cityRows = cityIds.length
+    ? await database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+    : [];
+  return buildJobFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)));
 }
 
 /** Resolves one requested Guardian contact record and appends exactly one successful access event. */

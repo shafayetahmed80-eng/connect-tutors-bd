@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listAdminPostedJobsPage: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ listAdminPostedJobsPage: vi.fn(), getAdminJobFilterOptions: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -56,5 +56,48 @@ describe("admin.listPostedJobs", () => {
 
     const guardian = { ...adminUser, role: "guardian" as const };
     await expect(createCaller(guardian).admin.listPostedJobs({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("admin.listPostedJobs filters", () => {
+  it("passes the Admin's filters through as the server will enforce them", async () => {
+    dbMocks.listAdminPostedJobsPage.mockResolvedValue({ items: [], counts: {}, total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const from = new Date("2026-10-01T00:00:00.000Z");
+
+    await createCaller().admin.listPostedJobs({
+      stage: "live",
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", expiringSoon: true },
+    });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith(expect.objectContaining({
+      stage: "live",
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", expiringSoon: true },
+    }));
+  });
+
+  it("refuses a range the wrong way round, an unknown choice, and more than the panel can hold", async () => {
+    const ask = (filters: Record<string, unknown>) => createCaller().admin.listPostedJobs({ stage: "live", filters: filters as never });
+    await expect(ask({ salaryFrom: 9000, salaryTo: 5000 })).rejects.toThrow();
+    await expect(ask({ postedFrom: new Date("2026-10-09"), postedTo: new Date("2026-10-01") })).rejects.toThrow();
+    await expect(ask({ tuitionTypes: ["hybrid"] })).rejects.toThrow();
+    await expect(ask({ waitingRequest: "approve" })).rejects.toThrow();
+    await expect(ask({ expiringSoon: false })).rejects.toThrow();
+    await expect(ask({ locationIds: Array.from({ length: 11 }, (_, index) => `area-${index}`) })).rejects.toThrow();
+    await expect(ask({ subjects: Array.from({ length: 13 }, (_, index) => `subject-${index}`) })).rejects.toThrow();
+    await expect(ask({ salaryFrom: -1 })).rejects.toThrow();
+    expect(dbMocks.listAdminPostedJobsPage).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin.jobFilterOptions", () => {
+  it("reads the options for the whole board or for Admin posts alone, for an Admin only", async () => {
+    dbMocks.getAdminJobFilterOptions.mockResolvedValue({ tuitionTypes: [], daysPerWeek: [], cities: [], locationsByCity: {}, classesByCategory: {}, subjectsByClass: {} });
+
+    await createCaller().admin.jobFilterOptions({});
+    expect(dbMocks.getAdminJobFilterOptions).toHaveBeenLastCalledWith({ postedBy: "all" });
+    await createCaller().admin.jobFilterOptions({ postedBy: "admin" });
+    expect(dbMocks.getAdminJobFilterOptions).toHaveBeenLastCalledWith({ postedBy: "admin" });
+
+    await expect(createCaller().admin.jobFilterOptions({ postedBy: "guardian" as never })).rejects.toThrow();
+    await expect(createCaller({ ...adminUser, role: "guardian" as const }).admin.jobFilterOptions({})).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
