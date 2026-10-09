@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import { AdminGuardianTuitionRequestMark, ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
 import { CancelTuitionDialog, TutorMoveDialog } from "@/components/AdminTuitionActionDialogs";
 import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
@@ -259,11 +260,18 @@ export const appliedTuitionStages = ["live", "appointed", "confirmed"] as const;
  * Confirmed, each with its stage - since an Appointed or Confirmed tuition
  * keeps the applicants it had. It reads the same `admin.listPostedJobs` the
  * Posted jobs board reads, so the counts on the two screens cannot disagree.
+ *
+ * The card above the list and its Filter panel are the Posted jobs board's, with
+ * the choices that fit a list of three stages: which of them to show, how many
+ * Tutors applied, and whether any is shortlisted.
  */
 export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors", linkLabel = "applicants" }: { basePath?: string; linkLabel?: string } = {}) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stages: [...appliedTuitionStages], query, page, pageSize: APPLIED_PAGE_SIZE });
+  const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const chosenStages = appliedTuitionStages.filter(stage => filterPanel.applied.listStages.includes(stage));
+  const stages = chosenStages.length ? chosenStages : [...appliedTuitionStages];
+  const jobs = trpc.admin.listPostedJobs.useQuery({ stages, query, page, pageSize: APPLIED_PAGE_SIZE, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
 
   type PostedTuition = (typeof items)[number];
@@ -298,6 +306,19 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
       />
     </label>
 
+    <AdminJobFilterBar
+      filters={filterPanel}
+      stage="applied"
+      eyebrow="Tuitions"
+      count={jobs.data?.total}
+      total={jobs.data?.total}
+      loading={jobs.isLoading}
+      searching={query.trim().length > 0}
+      idleCaption="live, appointed and confirmed"
+      matchingCaption="matching tuitions"
+      panelLabel="Tuition filters"
+    />
+
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading tuitions…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
 
@@ -306,7 +327,7 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
       columns={tuitionColumns}
       rows={items}
       rowKey={job => job.id}
-      empty={`No live, appointed or confirmed tuition${query.trim() ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.`}
+      empty={`No live, appointed or confirmed tuition${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}. A tuition has to be Live before a Tutor can apply to it.`}
       tableClassName="min-w-[70rem]"
     /> : null}
 

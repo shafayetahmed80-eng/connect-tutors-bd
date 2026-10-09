@@ -65,6 +65,19 @@ describe("the later stages' choices", () => {
   });
 });
 
+describe("the Applied Tutors list's own choices", () => {
+  it("start empty, and the shortlist choice goes to the server while the stages stay with the list", () => {
+    expect(DEFAULT_ADMIN_JOB_FILTERS.shortlisted).toBe("");
+    expect(DEFAULT_ADMIN_JOB_FILTERS.listStages).toEqual([]);
+    const input = buildAdminJobFilterInput({ ...DEFAULT_ADMIN_JOB_FILTERS, applicants: "none", shortlisted: "has", listStages: ["live", "appointed"] });
+    expect(input).toEqual({ applicants: "none", shortlisted: "has" });
+  });
+
+  it("each count as a filter that is narrowing", () => {
+    expect(countAdminJobFilters({ ...DEFAULT_ADMIN_JOB_FILTERS, shortlisted: "none", listStages: ["confirmed"] })).toBe(2);
+  });
+});
+
 describe("countAdminJobFilters", () => {
   it("counts the filters that are narrowing, one each, whatever their kind", () => {
     expect(countAdminJobFilters(DEFAULT_ADMIN_JOB_FILTERS)).toBe(0);

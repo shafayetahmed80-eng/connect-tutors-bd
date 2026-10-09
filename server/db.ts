@@ -7504,6 +7504,21 @@ function adminJobWaitingRequestCondition(kind: NonNullable<AdminJobFilters["wait
 /** How many Tutors have applied, counted the way the card's Applied number is: withdrawn interest is not an application. */
 const adminJobApplicantCount = sql`(select count(*) from ${tutorJobInterests} inner join ${tutorJobs} on ${tutorJobs.id} = ${tutorJobInterests.tutorJobId} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobInterests.status} <> 'withdrawn')`;
 
+/** A Tutor the Admin has shortlisted is on the tuition: the interest row's own status, as the Admin's Shortlist button sets it. */
+const adminJobShortlistedExists = sql`exists (select 1 from ${tutorJobInterests} inner join ${tutorJobs} on ${tutorJobs.id} = ${tutorJobInterests.tutorJobId} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobInterests.status} = 'shortlisted')`;
+
+/** What the Admin narrows by from the Tutors who applied: how many, and whether any is shortlisted. */
+function adminJobApplicantConditions(filters: AdminJobFilters | undefined): SQL[] {
+  if (!filters) return [];
+  const conditions: SQL[] = [];
+  if (filters.applicants === "none") conditions.push(sql`${adminJobApplicantCount} = 0`);
+  if (filters.applicants === "few") conditions.push(sql`${adminJobApplicantCount} between 1 and 5`);
+  if (filters.applicants === "many") conditions.push(sql`${adminJobApplicantCount} >= 6`);
+  if (filters.shortlisted === "has") conditions.push(adminJobShortlistedExists);
+  if (filters.shortlisted === "none") conditions.push(sql`not ${adminJobShortlistedExists}`);
+  return conditions;
+}
+
 /**
  * The Admin's filters as conditions on `tutor_requests`.
  *
@@ -7554,11 +7569,7 @@ function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: A
   if (!filters) return [];
   const conditions: SQL[] = [];
   if (stage === "pending" && filters.publicationStates?.length) conditions.push(inArray(tutorRequests.publicationState, filters.publicationStates));
-  if (stage === "live") {
-    if (filters.applicants === "none") conditions.push(sql`${adminJobApplicantCount} = 0`);
-    if (filters.applicants === "few") conditions.push(sql`${adminJobApplicantCount} between 1 and 5`);
-    if (filters.applicants === "many") conditions.push(sql`${adminJobApplicantCount} >= 6`);
-  }
+  if (stage === "live") conditions.push(...adminJobApplicantConditions(filters));
   // The stages after Live are about a Tutor, a date and money.
   if (stage === "appointed" || stage === "confirmed") {
     if (filters.appointedFrom) conditions.push(gte(tutorRequests.appointedAt, filters.appointedFrom));
@@ -9553,6 +9564,8 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     ...(searchCondition ? [searchCondition] : []),
     ...(filters.postedBy === "admin" ? [eq(tutorRequests.postedByAdmin, 1)] : []),
     ...adminJobFilterConditions(filters.filters),
+    // Applied Tutors lists Live, Appointed and Confirmed together, and each of them keeps its applicants.
+    ...(filters.stages?.length ? adminJobApplicantConditions(filters.filters) : []),
   );
 
   // The one stage the list is open on, if it is open on one. The filters that
