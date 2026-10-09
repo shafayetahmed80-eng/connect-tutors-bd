@@ -2603,6 +2603,7 @@ export const appRouter = router({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
+        filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminAppointedJobsPage(input)),
     /** Tuitions in the Confirmed stage, each with its Tutor, dates and payment status. */
@@ -2611,6 +2612,7 @@ export const appRouter = router({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
+        filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminConfirmedJobsPage(input)),
     // A tuition's Payment Status is worked out from these payments; it is never set by hand.
@@ -2641,6 +2643,7 @@ export const appRouter = router({
         query: z.string().trim().max(100).default(""),
         page: z.number().int().positive().default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
+        filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminCancelledChargesPage(input)),
     previewTuitionSettlement: adminProcedure

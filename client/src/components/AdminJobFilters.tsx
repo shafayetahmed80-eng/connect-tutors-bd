@@ -1,5 +1,6 @@
 import ChipMultiSelect from "@/components/ChipMultiSelect";
-import { EMPTY_JOB_FILTER_OPTIONS, FilterSelect, FilterTextBox, JobCoreFilterFields, type JobFilterOptions } from "@/components/JobFilterFields";
+import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { DateField, EMPTY_JOB_FILTER_OPTIONS, FilterSelect, FilterTextBox, JobCoreFilterFields, type JobFilterOptions } from "@/components/JobFilterFields";
 import { trpc } from "@/lib/trpc";
 import {
   ADMIN_JOB_LOCATION_LIMIT,
@@ -9,8 +10,13 @@ import {
   adminJobDatesOutOfOrder,
   adminJobDaysInStageOptions,
   adminJobHeardAboutUsOptions,
+  adminJobLetterOptions,
+  adminJobPaymentStatusOptions,
   adminJobPublicationStates,
+  adminJobRefundDispositionOptions,
   adminJobSalaryOutOfOrder,
+  adminJobSettlementOptions,
+  adminJobSettlementReasonOptions,
   adminJobWaitingRequestOptions,
   buildAdminJobFilterInput,
   clearOtherStageFilters,
@@ -18,7 +24,7 @@ import {
   type AdminJobFilterState,
   type AdminJobStage,
 } from "@shared/admin-job-filters";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 /**
  * The state behind an Admin tuition list's filter panel.
@@ -90,6 +96,10 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
   showPostedBy: boolean;
 }) {
   const set = (change: Partial<AdminJobFilterState>) => setDraft({ ...draft, ...change });
+  const tutorGender = <FilterSelect label="Assigned Tutor Gender" value={draft.tutorGender} onChange={value => set({ tutorGender: value as AdminJobFilterState["tutorGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }]} />;
+  const paymentStatus = <div className="sm:col-span-2">
+    <ChipMultiSelect label="Payment Status" options={adminJobPaymentStatusOptions} selectedIds={draft.paymentStatuses} onChange={paymentStatuses => set({ paymentStatuses })} />
+  </div>;
   return <JobCoreFilterFields
     draft={draft}
     setDraft={setDraft}
@@ -105,7 +115,7 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
       <FilterTextBox label="Guardian Name, Mobile or ID" value={draft.guardian} onChange={guardian => set({ guardian })} />
     </div>
 
-    <FilterSelect label="Waiting Request" value={draft.waitingRequest} onChange={value => set({ waitingRequest: value as AdminJobFilterState["waitingRequest"] })} options={[...adminJobWaitingRequestOptions]} />
+    {stage === "cancelled" ? null : <FilterSelect label="Waiting Request" value={draft.waitingRequest} onChange={value => set({ waitingRequest: value as AdminJobFilterState["waitingRequest"] })} options={[...adminJobWaitingRequestOptions]} />}
     <FilterSelect label="Days in Stage" value={draft.daysInStage} onChange={value => set({ daysInStage: value as AdminJobFilterState["daysInStage"] })} options={[...adminJobDaysInStageOptions]} />
     <div className="sm:col-span-2">
       <ChipMultiSelect label="Heard About Us" options={[...adminJobHeardAboutUsOptions]} selectedIds={draft.heardAboutUs} onChange={heardAboutUs => set({ heardAboutUs })} />
@@ -121,5 +131,91 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
         <span className={draft.expiringSoon ? "" : "text-[#8fa3b4]"}>Ending Within 3 Days</span>
       </label>
     </> : null}
+    {stage === "appointed" ? <>
+      <DateField label="Appointed Date From" value={draft.appointedFrom} max={draft.appointedTo || undefined} onChange={appointedFrom => set({ appointedFrom })} />
+      <DateField label="Appointed Date To" value={draft.appointedTo} min={draft.appointedFrom || undefined} onChange={appointedTo => set({ appointedTo })} />
+      {tutorGender}
+    </> : null}
+    {stage === "confirmed" ? <>
+      <DateField label="Confirmed Date From" value={draft.confirmedFrom} max={draft.confirmedTo || undefined} onChange={confirmedFrom => set({ confirmedFrom })} />
+      <DateField label="Confirmed Date To" value={draft.confirmedTo} min={draft.confirmedFrom || undefined} onChange={confirmedTo => set({ confirmedTo })} />
+      <DateField label="Appointed Date From" value={draft.appointedFrom} max={draft.appointedTo || undefined} onChange={appointedFrom => set({ appointedFrom })} />
+      <DateField label="Appointed Date To" value={draft.appointedTo} min={draft.appointedFrom || undefined} onChange={appointedTo => set({ appointedTo })} />
+      {paymentStatus}
+      <FilterSelect label="Confirmation Letter" value={draft.letter} onChange={value => set({ letter: value as AdminJobFilterState["letter"] })} options={[...adminJobLetterOptions]} />
+      {tutorGender}
+    </> : null}
+    {stage === "cancelled" ? <>
+      <DateField label="Cancelled Date From" value={draft.cancelledFrom} max={draft.cancelledTo || undefined} onChange={cancelledFrom => set({ cancelledFrom })} />
+      <DateField label="Cancelled Date To" value={draft.cancelledTo} min={draft.cancelledFrom || undefined} onChange={cancelledTo => set({ cancelledTo })} />
+      <FilterSelect label="Settlement" value={draft.settlement} onChange={value => set({ settlement: value as AdminJobFilterState["settlement"] })} options={[...adminJobSettlementOptions]} />
+      <FilterSelect label="Refund" value={draft.refundDisposition} onChange={value => set({ refundDisposition: value as AdminJobFilterState["refundDisposition"] })} options={[...adminJobRefundDispositionOptions]} />
+      <div className="sm:col-span-2">
+        <ChipMultiSelect label="Settlement Reason" options={adminJobSettlementReasonOptions} selectedIds={draft.settlementReasons} onChange={settlementReasons => set({ settlementReasons })} />
+      </div>
+      {paymentStatus}
+      <div className="sm:col-span-2">
+        <FilterTextBox label="Cancellation Reason" value={draft.cancelReason} onChange={cancelReason => set({ cancelReason })} />
+      </div>
+      {tutorGender}
+    </> : null}
   </JobCoreFilterFields>;
+}
+
+/**
+ * The card that heads an Admin tuition list and the panel it opens: what the
+ * list is, how many tuitions are in it, the Filter button, and the filters.
+ *
+ * One piece so every list that has them draws them the same, and so the panel
+ * asks for its options only once it is opened.
+ */
+export function AdminJobFilterBar({ filters, stage, eyebrow, count, total, loading, searching, idleCaption, matchingCaption, panelLabel, postedBy = "all", actions }: {
+  filters: ReturnType<typeof useAdminJobFilters>;
+  stage: AdminJobStage;
+  /** What the list is: "Appointed Jobs". */
+  eyebrow: string;
+  /** The number under it; the open stage's count, or the list's total. */
+  count: number | undefined;
+  /** What "N jobs found" in the panel counts. */
+  total: number | undefined;
+  loading: boolean;
+  /** A search is narrowing the list as well. */
+  searching: boolean;
+  idleCaption: string;
+  matchingCaption: string;
+  /** The panel's accessible name. */
+  panelLabel: string;
+  /** "admin" on the list that holds only the Admin's own tuitions. */
+  postedBy?: "all" | "admin";
+  /** Other buttons for the list, drawn beside Filter. */
+  actions?: ReactNode;
+}) {
+  const options = useAdminJobFilterOptions({ postedBy, enabled: filters.open });
+  return <>
+    <ListToolbarCard
+      eyebrow={eyebrow}
+      count={count}
+      loading={loading}
+      caption={filters.activeCount > 0 || searching ? matchingCaption : idleCaption}
+      filterOpen={filters.open}
+      onToggleFilter={filters.toggle}
+      activeFilterCount={filters.activeCount}
+      panelId="admin-job-filters"
+      actions={actions}
+    />
+
+    {filters.open ? <FilterPanelFrame
+      id="admin-job-filters"
+      ariaLabel={panelLabel}
+      total={total}
+      loading={loading}
+      onClose={filters.close}
+      onClear={filters.clear}
+      onApply={filters.apply}
+      applyDisabled={!filters.canApply}
+      alerts={filters.alerts}
+    >
+      <AdminJobFilterFields draft={filters.draft} setDraft={filters.setDraft} options={options} stage={stage} showPostedBy={postedBy === "all"} />
+    </FilterPanelFrame> : null}
+  </>;
 }

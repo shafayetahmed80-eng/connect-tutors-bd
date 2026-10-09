@@ -44,6 +44,18 @@ describe("admin.listConfirmedJobs", () => {
     expect(dbMocks.listAdminConfirmedJobsPage).toHaveBeenLastCalledWith({ query: "777", page: 3, pageSize: 20 });
   });
 
+  it("passes the Admin's filters through, and refuses what the panel could not send", async () => {
+    dbMocks.listAdminConfirmedJobsPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const filters = { paymentStatuses: ["half_paid" as const], letter: "issued" as const, tutorGender: "female" as const, salaryFrom: 5000 };
+
+    await createCaller().admin.listConfirmedJobs({ filters });
+    expect(dbMocks.listAdminConfirmedJobsPage).toHaveBeenLastCalledWith({ query: "", page: 1, pageSize: 20, filters });
+
+    await expect(createCaller().admin.listConfirmedJobs({ filters: { letter: "draft" } as never })).rejects.toThrow();
+    await expect(createCaller().admin.listConfirmedJobs({ filters: { paymentStatuses: ["unpaid"] } as never })).rejects.toThrow();
+    await expect(createCaller().admin.listConfirmedJobs({ filters: { confirmedFrom: new Date("2026-10-09"), confirmedTo: new Date("2026-10-01") } })).rejects.toThrow();
+  });
+
   it("is an Admin's to read", async () => {
     await expect(createCaller({ ...adminUser, role: "guardian" as const }).admin.listConfirmedJobs({}))
       .rejects.toMatchObject({ code: "FORBIDDEN" });

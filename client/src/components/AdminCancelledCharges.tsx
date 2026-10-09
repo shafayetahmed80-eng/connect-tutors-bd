@@ -1,3 +1,4 @@
+import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TuitionPaymentsModal from "@/components/TuitionPaymentsModal";
@@ -28,7 +29,8 @@ export default function AdminCancelledChargesContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const jobs = trpc.admin.listCancelledCharges.useQuery({ query, page, pageSize });
+  const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const jobs = trpc.admin.listCancelledCharges.useQuery({ query, page, pageSize, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
   const [settlingId, setSettlingId] = useState<number | null>(null);
   const [payingId, setPayingId] = useState<number | null>(null);
@@ -102,6 +104,19 @@ export default function AdminCancelledChargesContent() {
       />
     </label>
 
+    <AdminJobFilterBar
+      filters={filterPanel}
+      stage="cancelled"
+      eyebrow="Cancelled Jobs"
+      count={jobs.data?.total}
+      total={jobs.data?.total}
+      loading={jobs.isLoading}
+      searching={query.trim().length > 0}
+      idleCaption="cancelled in total"
+      matchingCaption="matching cancelled jobs"
+      panelLabel="Cancelled jobs filters"
+    />
+
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading cancelled jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Cancelled jobs could not be loaded.</div> : null}
 
@@ -110,7 +125,7 @@ export default function AdminCancelledChargesContent() {
       columns={columns}
       rows={items}
       rowKey={job => job.id}
-      empty={`No cancelled job${query.trim() ? " for this search" : ""}.`}
+      empty={`No cancelled job${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}.`}
       tableClassName="min-w-[84rem]"
       animateEntrance
     /> : null}

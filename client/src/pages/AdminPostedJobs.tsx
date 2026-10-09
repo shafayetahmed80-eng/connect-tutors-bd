@@ -1,9 +1,8 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import AdminAddTuitionModal, { type AdminTuitionDraft } from "@/components/AdminAddTuitionModal";
 import { AdminGuardianTuitionRequestMark, AdminGuardianTuitionRequestPill, ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
-import { AdminJobFilterFields, useAdminJobFilterOptions, useAdminJobFilters } from "@/components/AdminJobFilters";
+import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import StatusTabRow from "@/components/StatusTabRow";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -61,7 +60,6 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
 
   // The filter panel's choices narrow the cards and every stage's count together.
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
-  const filterOptions = useAdminJobFilterOptions({ postedBy, enabled: filterPanel.open });
   const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize, postedBy, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
   const counts = jobs.data?.counts;
@@ -122,33 +120,22 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       </div>
     </div>
 
-    <ListToolbarCard
+    <AdminJobFilterBar
+      filters={filterPanel}
+      stage={stage}
       eyebrow={`${stageLabel} Jobs`}
       count={counts?.[stage]}
+      total={jobs.data?.total}
       loading={jobs.isLoading}
-      caption={narrowed ? `matching ${stageLabel.toLowerCase()} jobs` : stageCaptions[stage]}
-      filterOpen={filterPanel.open}
-      onToggleFilter={filterPanel.toggle}
-      activeFilterCount={filterPanel.activeCount}
-      panelId="admin-job-filters"
+      searching={query.trim().length > 0}
+      idleCaption={stageCaptions[stage]}
+      matchingCaption={`matching ${stageLabel.toLowerCase()} jobs`}
+      panelLabel="Posted jobs filters"
+      postedBy={postedBy}
       actions={<button type="button" onClick={() => setAdding(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
         <Plus size={16} /> Add Tuition
       </button>}
     />
-
-    {filterPanel.open ? <FilterPanelFrame
-      id="admin-job-filters"
-      ariaLabel="Posted jobs filters"
-      total={jobs.data?.total}
-      loading={jobs.isLoading}
-      onClose={filterPanel.close}
-      onClear={filterPanel.clear}
-      onApply={filterPanel.apply}
-      applyDisabled={!filterPanel.canApply}
-      alerts={filterPanel.alerts}
-    >
-      <AdminJobFilterFields draft={filterPanel.draft} setDraft={filterPanel.setDraft} options={filterOptions} stage={stage} showPostedBy={postedBy === "all"} />
-    </FilterPanelFrame> : null}
 
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading posted jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Posted jobs could not be loaded.</div> : null}

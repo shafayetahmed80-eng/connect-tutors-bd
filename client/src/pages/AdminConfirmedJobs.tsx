@@ -1,5 +1,6 @@
 import AdminCancelledChargesContent from "@/components/AdminCancelledCharges";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import { useAdminTuitionRowActions } from "@/components/AdminTuitionRowActions";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
 import { AdminConfirmationLetterViewButton, ConfirmationLetterDraftPreview } from "@/components/ConfirmationLetterPreview";
@@ -103,7 +104,8 @@ export function AdminConfirmedJobsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const jobs = trpc.admin.listConfirmedJobs.useQuery({ query, page, pageSize });
+  const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const jobs = trpc.admin.listConfirmedJobs.useQuery({ query, page, pageSize, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
 
   const [payingRequestId, setPayingRequestId] = useState<number | null>(null);
@@ -178,6 +180,19 @@ export function AdminConfirmedJobsContent() {
       />
     </label>
 
+    <AdminJobFilterBar
+      filters={filterPanel}
+      stage="confirmed"
+      eyebrow="Confirmed Jobs"
+      count={jobs.data?.total}
+      total={jobs.data?.total}
+      loading={jobs.isLoading}
+      searching={query.trim().length > 0}
+      idleCaption="currently confirmed"
+      matchingCaption="matching confirmed jobs"
+      panelLabel="Confirmed jobs filters"
+    />
+
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading confirmed jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Confirmed jobs could not be loaded.</div> : null}
 
@@ -186,7 +201,7 @@ export function AdminConfirmedJobsContent() {
       columns={columns}
       rows={items}
       rowKey={job => job.id}
-      empty={`No confirmed job${query.trim() ? " for this search" : ""}.`}
+      empty={`No confirmed job${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}.`}
       tableClassName="min-w-[92rem]"
       animateEntrance
     /> : null}

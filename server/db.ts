@@ -7623,6 +7623,38 @@ function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: A
       conditions.push(sql`exists (select 1 from ${tutorJobs} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobs.publicationStatus} = 'published' and ${tutorJobs.expiresAt} >= ${now} and ${tutorJobs.expiresAt} <= ${soon})`);
     }
   }
+  // The stages after Live are about a Tutor, a date and money.
+  if (stage === "appointed" || stage === "confirmed") {
+    if (filters.appointedFrom) conditions.push(gte(tutorRequests.appointedAt, filters.appointedFrom));
+    if (filters.appointedTo) conditions.push(lte(tutorRequests.appointedAt, filters.appointedTo));
+  }
+  if (stage === "confirmed") {
+    if (filters.confirmedFrom) conditions.push(gte(tutorRequests.appointmentConfirmedAt, filters.confirmedFrom));
+    if (filters.confirmedTo) conditions.push(lte(tutorRequests.appointmentConfirmedAt, filters.confirmedTo));
+    // The stored Payment Status is the ledger's own reading (`syncChargeStatus` is the only thing that writes it), the one a row's pill shows.
+    if (filters.paymentStatuses?.length) conditions.push(inArray(tutorRequests.paymentStatus, filters.paymentStatuses));
+    // A row offers "View letter" once one is issued and "Issue letter" otherwise - a draft is not yet a letter.
+    if (filters.letter) {
+      const issued = sql`exists (select 1 from ${confirmationLetters} where ${confirmationLetters.tutorRequestId} = ${tutorRequests.id} and ${confirmationLetters.status} = 'issued')`;
+      conditions.push(filters.letter === "issued" ? issued : sql`not ${issued}`);
+    }
+  }
+  if (stage === "cancelled") {
+    if (filters.cancelledFrom) conditions.push(gte(tutorRequests.cancelledAt, filters.cancelledFrom));
+    if (filters.cancelledTo) conditions.push(lte(tutorRequests.cancelledAt, filters.cancelledTo));
+    if (filters.paymentStatuses?.length) conditions.push(inArray(tutorRequests.paymentStatus, filters.paymentStatuses));
+    if (filters.cancelReason) conditions.push(like(tutorRequests.cancellationReason, `%${filters.cancelReason}%`));
+    const settled = (...extra: SQL[]) => sql`exists (select 1 from ${tuitionSettlements} where ${tuitionSettlements.tutorRequestId} = ${tutorRequests.id}${extra.length ? sql` and ${and(...extra)}` : sql``})`;
+    if (filters.settlement === "not_settled") conditions.push(sql`not ${settled()}`);
+    if (filters.settlement === "settled") conditions.push(settled());
+    if (filters.settlement === "refund") conditions.push(settled(sql`${tuitionSettlements.refundAmount} > 0`));
+    if (filters.refundDisposition) conditions.push(settled(sql`${tuitionSettlements.refundAmount} > 0`, eq(tuitionSettlements.disposition, filters.refundDisposition)));
+    if (filters.settlementReasons?.length) conditions.push(settled(inArray(tuitionSettlements.reason, filters.settlementReasons)));
+  }
+  // Whose Tutor holds it; a pending or live tuition has none.
+  if (filters.tutorGender && (stage === "appointed" || stage === "confirmed" || stage === "cancelled")) {
+    conditions.push(sql`exists (select 1 from ${tutors} where ${tutors.id} = ${tutorRequests.tutorId} and ${tutors.gender} = ${filters.tutorGender})`);
+  }
   return conditions;
 }
 
@@ -8743,7 +8775,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
   });
 }
 
-export type AdminAppointedJobFilters = { query: string; page: number; pageSize: number };
+export type AdminAppointedJobFilters = { query: string; page: number; pageSize: number; /** The Admin's filter panel. */ filters?: AdminJobFilters };
 
 /**
  * Tuitions a Tutor holds, with that Tutor beside each: the Appointed stage (a
@@ -8771,6 +8803,8 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
       like(sql`cast(${tutorRegistrations.tutorNumber} as char)`, pattern),
     )!);
   }
+  conditions.push(...adminJobFilterConditions(filters.filters), ...adminJobStageOnlyConditions(stage, filters.filters));
+  if (filters.filters?.daysInStage) conditions.push(adminJobEnteredStageBefore(stage, filters.filters.daysInStage));
   const where = and(...conditions);
   const offset = (filters.page - 1) * filters.pageSize;
 
@@ -8800,6 +8834,9 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
     .from(tutorRequests)
     .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    // The Guardian is only there to be searched; a tuition never drops out of the list for want of a profile.
+    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where)
     .orderBy(desc(stage === "confirmed" ? tutorRequests.appointmentConfirmedAt : tutorRequests.appointedAt), desc(tutorRequests.id))
     .limit(filters.pageSize)
@@ -8809,6 +8846,8 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
     .from(tutorRequests)
     .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where);
   const total = Number(totals?.value ?? 0);
   // A Guardian's waiting Confirm, Remove or Cancel request is marked on the row.
@@ -9478,7 +9517,8 @@ export async function saveTuitionSettlement(input: {
 export async function listAdminCancelledChargesPage(filters: AdminAppointedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const conditions: SQL[] = [cancelledChargeCondition()];
+  const conditions: SQL[] = [cancelledChargeCondition(), ...adminJobFilterConditions(filters.filters), ...adminJobStageOnlyConditions("cancelled", filters.filters)];
+  if (filters.filters?.daysInStage) conditions.push(adminJobEnteredStageBefore("cancelled", filters.filters.daysInStage));
   const search = filters.query.trim();
   if (search) {
     const pattern = `%${search}%`;
@@ -9517,6 +9557,8 @@ export async function listAdminCancelledChargesPage(filters: AdminAppointedJobFi
     .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where)
     .orderBy(desc(tutorRequests.cancelledAt), desc(tutorRequests.id))
     .limit(filters.pageSize)
@@ -9526,6 +9568,8 @@ export async function listAdminCancelledChargesPage(filters: AdminAppointedJobFi
     .from(tutorRequests)
     .innerJoin(tutors, eq(tutors.id, tutorRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where);
   const total = Number(totals?.value ?? 0);
 
