@@ -6,6 +6,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  optionsInput: null as unknown,
+  optionsEnabled: undefined as boolean | undefined,
+  options: {
+    tuitionTypes: ["home", "online"],
+    daysPerWeek: [3, 5],
+    cities: [{ id: "dhaka", label: "Dhaka" }],
+    locationsByCity: { dhaka: [{ id: "banasree", label: "Banasree" }] },
+    classesByCategory: { "English Version": ["Class 8"] },
+    subjectsByClass: { "Class 8": ["History"] },
+  },
   publish: vi.fn(),
   approveGuardian: vi.fn(),
   declineGuardian: vi.fn(),
@@ -62,6 +72,13 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
           return { data: mocks.data, isLoading: false, isError: false };
+        },
+      },
+      jobFilterOptions: {
+        useQuery: (input: unknown, options?: { enabled?: boolean }) => {
+          mocks.optionsInput = input;
+          mocks.optionsEnabled = options?.enabled;
+          return { data: mocks.options };
         },
       },
       moderateTutorRequestPublication: {
@@ -278,5 +295,162 @@ describe("Admin Posted jobs board", () => {
   it("keeps the applied count off a tuition that is not live yet", () => {
     render(<AdminPostedJobsContent />);
     expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
+  });
+});
+
+describe("the filter card and panel", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Posted jobs filters" });
+  };
+
+  it("heads the list with the open stage's name and count, as the Job Board does", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Pending Jobs")).toBeTruthy();
+    expect(within(card).getByText("4")).toBeTruthy();
+    expect(within(card).getByText("currently pending")).toBeTruthy();
+    // Add Tuition now sits in the card beside Filter.
+    expect(within(card).getByRole("button", { name: /Add Tuition/ })).toBeTruthy();
+
+    await user.click(screen.getByRole("tab", { name: /Live/ }));
+    expect(within(screen.getByRole("banner")).getByText("Live Jobs")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("9")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("currently live")).toBeTruthy();
+  });
+
+  it("reads the options only once the panel is opened, and offers no Country", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+    expect(mocks.optionsEnabled).toBe(false);
+    expect(screen.queryByRole("region", { name: "Posted jobs filters" })).toBeNull();
+
+    const panel = await openPanel(user);
+    expect(mocks.optionsEnabled).toBe(true);
+    expect(mocks.optionsInput).toEqual({ postedBy: "all" });
+    expect(within(panel).getByText("jobs found").parentElement?.textContent).toContain("4");
+    expect(within(panel).queryByRole("combobox", { name: "Country" })).toBeNull();
+    for (const name of ["City", "Student Gender", "Tutor Gender", "Waiting Request", "Days in Stage", "Posted By"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    for (const label of ["Posted Date From", "Posted Date To", "Job ID", "Salary From", "Salary To", "Guardian Name, Mobile or ID"]) {
+      expect(within(panel).getByLabelText(label)).toBeTruthy();
+    }
+    await user.click(within(panel).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("region", { name: "Posted jobs filters" })).toBeNull();
+  });
+
+  it("changes nothing until Apply, then narrows the list and says how many filters", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "5,000" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Waiting Request" }), { target: { value: "confirm" } });
+    fireEvent.change(within(panel).getByLabelText("Guardian Name, Mobile or ID"), { target: { value: " Sojib " } });
+    expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
+
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ salaryFrom: 5000, waitingRequest: "confirm", guardian: "Sojib" });
+    expect(mocks.lastInput).toMatchObject({ stage: "pending", page: 1 });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("3")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching pending jobs")).toBeTruthy();
+  });
+
+  it("starts again from the first page when filters are applied or cleared", async () => {
+    const user = userEvent.setup();
+    mocks.data.totalPages = 3;
+    try {
+      render(<AdminPostedJobsContent />);
+      await user.click(screen.getByRole("button", { name: /Next/ }));
+      expect(mocks.lastInput).toMatchObject({ page: 2 });
+
+      const panel = await openPanel(user);
+      fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "4000" } });
+      await user.click(within(panel).getByRole("button", { name: "Apply" }));
+      expect(mocks.lastInput).toMatchObject({ page: 1 });
+
+      await user.click(screen.getByRole("button", { name: /Next/ }));
+      await user.click(within(screen.getByRole("region", { name: "Posted jobs filters" })).getByRole("button", { name: "Clear" }));
+      expect(mocks.lastInput).toMatchObject({ page: 1 });
+      expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
+    } finally {
+      mocks.data.totalPages = 1;
+    }
+  });
+
+  it("will not apply a range the wrong way round", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "9000" } });
+    fireEvent.change(within(panel).getByLabelText("Salary To"), { target: { value: "5000" } });
+    expect(within(panel).getByRole("alert").textContent).toContain("lowest salary cannot be above the highest");
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(within(panel).getByLabelText("Salary To"), { target: { value: "12,000" } });
+    expect(within(panel).queryByRole("alert")).toBeNull();
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows the choices that belong to the open stage only, and drops the others when the stage changes", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+    let panel = await openPanel(user);
+
+    // Pending: the moderation stage; nothing about applicants yet.
+    expect(within(panel).getByRole("combobox", { name: "Moderation" })).toBeTruthy();
+    expect(within(panel).queryByRole("combobox", { name: "Applicants" })).toBeNull();
+
+    await user.click(screen.getByRole("tab", { name: /Live/ }));
+    panel = screen.getByRole("region", { name: "Posted jobs filters" });
+    expect(within(panel).queryByRole("combobox", { name: "Moderation" })).toBeNull();
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Applicants" }), { target: { value: "none" } });
+    await user.click(within(panel).getByLabelText("Ending Within 3 Days"));
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ applicants: "none", expiringSoon: true });
+
+    // Back to Pending: those two mean nothing there, so they are gone from the list and from the count.
+    await user.click(screen.getByRole("tab", { name: /Pending/ }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).queryByText("2")).toBeNull();
+  });
+
+  it("keeps a filter that holds in every stage while the Admin moves between them", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+    const panel = await openPanel(user);
+    fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "5000" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+
+    await user.click(screen.getByRole("tab", { name: /Live/ }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ salaryFrom: 5000 });
+  });
+
+  it("offers Posted By on the whole board and not on the Admin's own, and asks for that board's options", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent postedBy="admin" />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).queryByRole("combobox", { name: "Posted By" })).toBeNull();
+    expect(mocks.optionsInput).toEqual({ postedBy: "admin" });
+  });
+
+  it("says no tuition matches when the filters leave nothing", async () => {
+    const user = userEvent.setup();
+    const items = mocks.data.items;
+    mocks.data.items = [];
+    try {
+      render(<AdminPostedJobsContent />);
+      const panel = await openPanel(user);
+      fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "99000" } });
+      await user.click(within(panel).getByRole("button", { name: "Apply" }));
+      expect(screen.getByText(/No pending jobs for this search/)).toBeTruthy();
+    } finally {
+      mocks.data.items = items;
+    }
   });
 });

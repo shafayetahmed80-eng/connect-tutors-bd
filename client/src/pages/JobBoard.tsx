@@ -5,7 +5,8 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
-import ChipMultiSelect, { type ChipOption } from "@/components/ChipMultiSelect";
+import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { EMPTY_JOB_FILTER_OPTIONS, JOB_FILTER_LOCATION_LIMIT, JOB_FILTER_SUBJECT_LIMIT, JobCoreFilterFields, formatJobBoardTuitionType, reconcileJobFilters, type JobFilterOptions } from "@/components/JobFilterFields";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import ShareJobButton from "@/components/ShareJobButton";
 import { isJobIdNumber } from "@shared/job-id";
@@ -13,7 +14,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { formatPostedDate, isNewJob } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorListPager } from "@/components/TutorListPager";
-import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, LayoutGrid, MapPinned, ShieldCheck, SlidersHorizontal, X, XCircle } from "lucide-react";
+import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, MapPinned, ShieldCheck, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,8 +92,8 @@ export const DEFAULT_FILTERS: JobBoardFilterState = {
 };
 
 /** The two ceilings the panel enforces; the server carries them as well. */
-export const JOB_BOARD_LOCATION_LIMIT = 10;
-export const JOB_BOARD_SUBJECT_LIMIT = 12;
+export const JOB_BOARD_LOCATION_LIMIT = JOB_FILTER_LOCATION_LIMIT;
+export const JOB_BOARD_SUBJECT_LIMIT = JOB_FILTER_SUBJECT_LIMIT;
 
 const PAGE_SIZE = 20;
 /** Cards rise in one after another; past the ninth they all go together, so a full page never keeps anyone waiting. */
@@ -134,27 +135,12 @@ export function buildJobBoardQuery(filters: JobBoardFilterState) {
   };
 }
 
-/**
- * Keeps a selection honest when what it depends on changes.
- *
- * Choosing a City is what makes areas meaningful, and a Category is what makes
- * a Class meaningful, so dropping either has to take its children with it -
- * otherwise a filter no one can see goes on narrowing the board.
- */
+/** Keeps a selection honest when what it depends on changes; the rule is shared with the Admin's lists. */
 export function reconcileJobBoardFilters(
   filters: JobBoardFilterState,
-  options: { locationsByCity: Record<string, ChipOption[]>; classesByCategory: Record<string, string[]>; subjectsByClass: Record<string, string[]> },
+  options: { locationsByCity: JobFilterOptions["locationsByCity"]; classesByCategory: JobFilterOptions["classesByCategory"]; subjectsByClass: JobFilterOptions["subjectsByClass"] },
 ): JobBoardFilterState {
-  const allowedLocations = new Set((filters.cityId ? options.locationsByCity[filters.cityId] ?? [] : []).map(option => option.id));
-  const allowedClasses = new Set(filters.categories.flatMap(category => options.classesByCategory[category] ?? []));
-  const classCourses = filters.classCourses.filter(classCourse => allowedClasses.has(classCourse));
-  const allowedSubjects = new Set(classCourses.flatMap(classCourse => options.subjectsByClass[classCourse] ?? []));
-  return {
-    ...filters,
-    locationIds: filters.locationIds.filter(id => allowedLocations.has(id)),
-    classCourses,
-    subjects: filters.subjects.filter(subject => allowedSubjects.has(subject)),
-  };
+  return reconcileJobFilters(filters, options);
 }
 
 /** How many filters are actually narrowing the board. */
@@ -195,9 +181,7 @@ export function getTutorInterestPresentation(status?: TutorInterestStatus) {
   return { statusLabel: "Application withdrawn", description: "You can apply again while this tuition remains available.", action: "express" as const, actionLabel: "Apply again" };
 }
 
-export function formatJobBoardTuitionType(type: TuitionType) {
-  return type === "home" ? "Home Tutoring" : type === "online" ? "Online Tutoring" : type === "group" ? "Group Tutoring" : type === "package" ? "Package Tutoring" : "Home and Online Tutoring";
-}
+export { formatJobBoardTuitionType };
 
 function formatTutorGender(gender: TutorGender) {
   return gender === "any" ? "Any tutor preferred" : gender === "female" ? "Female tutor preferred" : "Male tutor preferred";
@@ -437,34 +421,30 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   };
 
   return <section className={embedded ? "space-y-5" : "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12"} aria-label="Available tuition Job Board">
-    <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce8f0] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:px-5">
-      <div><p className="text-2xs font-extrabold uppercase tracking-[0.14em] text-[#5a88a8]">Live Jobs</p><p aria-live="polite" className="mt-0.5 text-2xl font-extrabold tracking-[-0.03em] text-j-ink">{jobsQuery.isLoading ? "—" : totalCount}</p><p className="text-xs font-semibold text-[#55738a]">{appliedFilterCount ? "matching live jobs" : "currently live"}</p></div>
-      <button
-        type="button"
-        onClick={() => setFilterOpen(current => !current)}
-        aria-expanded={filterOpen}
-        aria-controls="job-board-filters"
-        className="motion-interactive inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#cfe0eb] bg-j-surface-sunken px-3 text-sm font-bold text-[#245676] hover:border-[#9fcbe6] hover:bg-[#eef8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-2"
-      ><SlidersHorizontal className="h-4 w-4" aria-hidden="true" /><span>Filter</span>{appliedFilterCount ? <span className="grid size-5 place-items-center rounded-full bg-j-accent text-2xs text-white">{appliedFilterCount}</span> : null}</button>
-    </header>
+    <ListToolbarCard
+      eyebrow="Live Jobs"
+      count={totalCount}
+      loading={jobsQuery.isLoading}
+      caption={appliedFilterCount ? "matching live jobs" : "currently live"}
+      filterOpen={filterOpen}
+      onToggleFilter={() => setFilterOpen(current => !current)}
+      activeFilterCount={appliedFilterCount}
+      panelId="job-board-filters"
+    />
 
-    {/* Inline rather than a drawer: twelve fields want the width of the page,
-        and the panel carries its own count and its own way out. */}
-    {filterOpen ? <section id="job-board-filters" aria-label="Job Board filters" className="rounded-xl border border-[#dce8f0] bg-[#f7fbfe] p-4 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#e4edf3] pb-3">
-        <p className="inline-flex items-center gap-2 text-sm text-[#55738a]"><LayoutGrid className="h-4 w-4 text-j-accent" aria-hidden="true" /><strong className="font-extrabold text-j-ink">{jobsQuery.isLoading ? "—" : totalCount}</strong> jobs found</p>
-        <button type="button" onClick={() => setFilterOpen(false)} className="motion-interactive inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover"><XCircle className="h-4 w-4" aria-hidden="true" /> Close</button>
-      </div>
-
-      <JobBoardFilters draft={draft} setDraft={setDraft} options={filterOptionsQuery.data ?? EMPTY_OPTIONS} />
-
-      {datesOutOfOrder ? <p role="alert" className="mt-3 text-xs font-semibold text-[#bd3535]">The 'from' date cannot be later than the 'to' date.</p> : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={clearFilters} className="motion-interactive min-h-10 rounded-xl bg-[#d43c3c] px-5 text-sm font-bold text-white hover:bg-[#b93232]">Clear</button>
-        <button type="button" onClick={applyFilters} disabled={datesOutOfOrder} className="motion-interactive min-h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50">Apply</button>
-      </div>
-    </section> : null}
+    {filterOpen ? <FilterPanelFrame
+      id="job-board-filters"
+      ariaLabel="Job Board filters"
+      total={totalCount}
+      loading={jobsQuery.isLoading}
+      onClose={() => setFilterOpen(false)}
+      onClear={clearFilters}
+      onApply={applyFilters}
+      applyDisabled={datesOutOfOrder}
+      alerts={datesOutOfOrder ? ["The 'from' date cannot be later than the 'to' date."] : []}
+    >
+      <JobBoardFilters draft={draft} setDraft={setDraft} options={filterOptionsQuery.data ?? EMPTY_JOB_FILTER_OPTIONS} />
+    </FilterPanelFrame> : null}
 
     <div className="min-w-0">
         {jobsQuery.isError ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800"><p className="font-bold">Available tuition could not be loaded right now.</p><p className="mt-1">Please try again shortly. No private Guardian details are displayed in this view.</p><button type="button" onClick={() => jobsQuery.refetch()} disabled={jobsQuery.isFetching} data-motion={jobsQuery.isFetching ? "pending" : undefined} className="motion-interactive mt-4 inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 font-bold text-rose-800 ring-1 ring-inset ring-rose-200 hover:bg-rose-100 disabled:cursor-progress disabled:opacity-60">{jobsQuery.isFetching ? "Trying again…" : "Try again"}</button></div> : null}
@@ -496,107 +476,19 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   </section>;
 }
 
-function FilterLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-xs font-bold text-[#496a82]"><span>{label}</span><span className="mt-1.5 block">{children}</span></label>;
-}
-
-type JobBoardFilterOptions = {
-  countries: string[];
-  tuitionTypes: string[];
-  daysPerWeek: number[];
-  cities: ChipOption[];
-  locationsByCity: Record<string, ChipOption[]>;
-  classesByCategory: Record<string, string[]>;
-  subjectsByClass: Record<string, string[]>;
-};
-
-const EMPTY_OPTIONS: JobBoardFilterOptions = { countries: [], tuitionTypes: [], daysPerWeek: [], cities: [], locationsByCity: {}, classesByCategory: {}, subjectsByClass: {} };
-
-const asChips = (values: readonly string[]): ChipOption[] => values.map(value => ({ id: value, label: value }));
-
-/**
- * A date box that says what it is for.
- *
- * A native date input has no placeholder - it shows the locale mask instead,
- * so two of them side by side both read "mm/dd/yyyy" and neither says which
- * end of the range it is. It starts as a text box carrying its own label and
- * becomes a date picker the moment it is focused or holds a value.
- */
-function DateField({ label, value, onChange, min, max }: { label: string; value: string; onChange: (value: string) => void; min?: string; max?: string }) {
-  const [focused, setFocused] = useState(false);
-  return <input
-    type={focused || value ? "date" : "text"}
-    aria-label={label}
-    placeholder={label}
-    value={value}
-    min={min}
-    max={max}
-    onFocus={() => setFocused(true)}
-    onBlur={() => setFocused(false)}
-    onChange={event => onChange(event.target.value)}
-    className={`h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100 ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}
-  />;
-}
-function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: ChipOption[] }) {
-  return <select aria-label={label} value={value} onChange={event => onChange(event.target.value)} className={`h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}>
-    <option value="">{label}</option>
-    {options.map(option => <option key={option.id} value={option.id} className="text-j-ink">{option.label}</option>)}
-  </select>;
-}
-
 /**
  * The Job Board's filters, all of them on one panel.
  *
- * The four that depend on something else say so by going quiet rather than by
- * explaining themselves: Location waits for a City, Class for a Category,
- * Subject for a Class. What each one may offer comes from the jobs that are
- * actually live, so nothing here can be chosen that returns an empty board.
+ * The fields and the rules between them are `JobCoreFilterFields`, shared with
+ * the Admin's tuition lists; this only says that choosing anything starts again
+ * from the first page.
  */
 export function JobBoardFilters({ draft, setDraft, options }: {
   draft: JobBoardFilterState;
   setDraft: (next: JobBoardFilterState) => void;
-  options: JobBoardFilterOptions;
+  options: JobFilterOptions;
 }) {
-  const set = (change: Partial<JobBoardFilterState>) =>
-    setDraft(reconcileJobBoardFilters({ ...draft, ...change, page: 1 }, options));
-
-  const locationOptions = draft.cityId ? options.locationsByCity[draft.cityId] ?? [] : [];
-  const classOptions = asChips(Array.from(new Set(draft.categories.flatMap(category => options.classesByCategory[category] ?? []))).sort());
-  const subjectOptions = asChips(Array.from(new Set(draft.classCourses.flatMap(classCourse => options.subjectsByClass[classCourse] ?? []))).sort());
-
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <DateField label="Posted Date From" value={draft.postedFrom} max={draft.postedTo || undefined} onChange={postedFrom => set({ postedFrom })} />
-    <DateField label="Posted Date To" value={draft.postedTo} min={draft.postedFrom || undefined} onChange={postedTo => set({ postedTo })} />
-    <div className="lg:col-span-2">
-      <ChipMultiSelect label="Tuition Type" options={asChips(options.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType)))} selectedIds={draft.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType))} onChange={labels => set({ tuitionTypes: options.tuitionTypes.filter(type => labels.includes(formatJobBoardTuitionType(type as TuitionType))) })} />
-    </div>
-
-    <FilterSelect label="Country" value={draft.country} onChange={country => set({ country })} options={asChips(options.countries)} />
-    <FilterSelect label="City" value={draft.cityId} onChange={cityId => set({ cityId })} options={options.cities} />
-    <div className="lg:col-span-2">
-      <ChipMultiSelect label="Tutoring Days Per Week" options={options.daysPerWeek.map(days => ({ id: String(days), label: `${days} day${days === 1 ? "" : "s"}` }))} selectedIds={draft.daysPerWeek} onChange={daysPerWeek => set({ daysPerWeek })} />
-    </div>
-
-    <div className="sm:col-span-2">
-      <ChipMultiSelect label="Category" options={asChips(Object.keys(options.classesByCategory).sort())} selectedIds={draft.categories} onChange={categories => set({ categories })} />
-    </div>
-    <div className="sm:col-span-2">
-      <ChipMultiSelect label="Location" options={locationOptions} selectedIds={draft.locationIds} onChange={locationIds => set({ locationIds })} disabled={!draft.cityId} disabledPlaceholder="Location - select a City first" maxSelections={JOB_BOARD_LOCATION_LIMIT} />
-    </div>
-
-    <div className="sm:col-span-2">
-      <FilterSelect label="Student Gender" value={draft.studentGender} onChange={value => set({ studentGender: value as JobBoardFilterState["studentGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }]} />
-    </div>
-    <div className="sm:col-span-2">
-      <ChipMultiSelect label="Class" options={classOptions} selectedIds={draft.classCourses} onChange={classCourses => set({ classCourses })} disabled={draft.categories.length === 0} disabledPlaceholder="Class - select a Category first" />
-    </div>
-
-    <div className="sm:col-span-2">
-      <ChipMultiSelect label="Subject" options={subjectOptions} selectedIds={draft.subjects} onChange={subjects => set({ subjects })} disabled={draft.classCourses.length === 0} disabledPlaceholder="Subject - select a Class first" maxSelections={JOB_BOARD_SUBJECT_LIMIT} />
-    </div>
-    <FilterSelect label="Tutor Gender" value={draft.preferredTutorGender} onChange={value => set({ preferredTutorGender: value as JobBoardFilterState["preferredTutorGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "any", label: "Any" }]} />
-    <input aria-label="Job ID" value={draft.jobId} onChange={event => set({ jobId: event.target.value })} placeholder="Job ID" className="h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm text-j-ink outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-  </div>;
+  return <JobCoreFilterFields draft={draft} setDraft={next => setDraft({ ...next, page: 1 })} options={options} />;
 }
 
 export function TutorInterestControl({ interest, isInterestSaving, onAction }: { interest?: TutorJobInterest; isInterestSaving: boolean; onAction: () => void }) {
