@@ -49,7 +49,7 @@ const profile = {
   completionPercentage: 20, assignedRequestCount: 0, lastUpdatedAt: null, profilePhotoUrl: null,
   name: "Test Tutor", gender: "male" as const, dateOfBirth: "1998-02-10",
   headline: "Experienced Mathematics Tutor", phone: "+8801712345678", contactEmail: "t@example.test",
-  currentLocationId: "1", teachingAreaIds: ["1"], availableNationwide: true,
+  currentLocationId: "1", teachingAreaIds: ["1"],
   highestEducation: "Honours", universityId: 14, facultyDepartmentId: null,
   studyStatus: "graduated" as const, graduationYear: 2020,
 } as never;

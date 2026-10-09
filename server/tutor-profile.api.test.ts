@@ -40,7 +40,6 @@ const completeDraftPayload = {
   contactEmail: "amina@example.com",
   currentLocationId: "bd-dhaka",
   teachingAreaIds: ["bd-dhaka", "bd-mirpur"],
-  availableNationwide: true,
   highestEducation: "Honours" as const,
   universityId: 1,
   facultyDepartmentId: 2,
@@ -56,7 +55,6 @@ const completeDraftPayload = {
   studentTypeIds: [1],
   tuitionTypes: ["home", "online"] as const,
   preferredStudentGender: "both" as const,
-  preferredClassSizes: ["one_to_one" as const],
   preferredTeachingDays: ["monday" as const, "wednesday" as const],
   preferredTimeSlots: ["evening" as const],
   feeMin: 5000,
@@ -149,13 +147,19 @@ describe("TP-05 owner Tutor Profile procedures", () => {
       gender: completeDraftPayload.gender,
       phone: completeDraftPayload.phone,
       contactEmail: completeDraftPayload.contactEmail,
-      availableNationwide: true,
     };
 
     await expect((createCaller("tutor", 101).tutor as any).saveProfileDraft(partialDraft)).resolves.toMatchObject({
       profileStatus: "draft",
     });
     expect(profileDbMocks.saveTutorProfileDraft).toHaveBeenCalledWith(101, partialDraft);
+  });
+
+  it("still saves from a page opened before Available Nationwide and Preferred Class Size left, without passing them on", async () => {
+    const stalePage = { ...completeDraftPayload, availableNationwide: true, preferredClassSizes: ["one_to_one"] };
+
+    await expect((createCaller("tutor", 101).tutor as any).saveProfileDraft(stalePage)).resolves.toMatchObject({ profileStatus: "draft" });
+    expect(profileDbMocks.saveTutorProfileDraft).toHaveBeenCalledWith(101, completeDraftPayload);
   });
 
   it("rejects structurally invalid draft fields and client-supplied system or owner fields", async () => {

@@ -24,7 +24,6 @@ const serverProfile = {
   completionPercentage: 22,
   assignedRequestCount: 0,
   teachingAreaIds: ["dhaka-uttara"],
-  availableNationwide: false,
   universityId: null,
   facultyDepartmentId: null,
   degreeMajorId: null,
@@ -93,7 +92,6 @@ describe("Tutor Profile form hydration", () => {
     const state = {
       ...hydrateTutorProfileForm(serverProfile, onboardingFallback),
       teachingAreaIds: [],
-      preferredClassSizes: [],
       preferredTeachingDays: [],
       preferredTimeSlots: [],
     };
@@ -101,7 +99,6 @@ describe("Tutor Profile form hydration", () => {
     const payload = createProfileDraftPayload(state);
 
     expect(payload).not.toHaveProperty("teachingAreaIds");
-    expect(payload).not.toHaveProperty("preferredClassSizes");
     expect(payload).not.toHaveProperty("preferredTeachingDays");
     expect(payload).not.toHaveProperty("preferredTimeSlots");
   });
@@ -111,7 +108,6 @@ describe("Tutor Profile form hydration", () => {
       ...serverProfile,
       tuitionTypes: ["home", "online"],
       preferredStudentGender: "female",
-      preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
       preferredTimeSlots: ["evening"],
       feeMin: 5000,
@@ -126,7 +122,6 @@ describe("Tutor Profile form hydration", () => {
     expect(hydrated).toMatchObject({
       tuitionTypes: ["home", "online"],
       preferredStudentGender: "female",
-      preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
       preferredTimeSlots: ["evening"],
       feeMin: "5000",
@@ -141,7 +136,6 @@ describe("Tutor Profile form hydration", () => {
       ...hydrateTutorProfileForm(serverProfile, onboardingFallback),
       tuitionTypes: ["home", "online"],
       preferredStudentGender: "both",
-      preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
       preferredTimeSlots: ["evening"],
       feeMin: "5000",
@@ -158,7 +152,6 @@ describe("Tutor Profile form hydration", () => {
     expect(payload).toMatchObject({
       tuitionTypes: ["home", "online"],
       preferredStudentGender: "both",
-      preferredClassSizes: ["one_to_one", "small_group"],
       preferredTeachingDays: ["monday", "wednesday"],
       preferredTimeSlots: ["evening"],
       feeMin: 5000,
@@ -300,6 +293,31 @@ describe("Tutor Profile form hydration", () => {
     const withStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "studying" });
 
     expect(withStatus.totalRequired).toBe(withoutStatus.totalRequired + 1);
+  });
+
+  it("asks for Teaching Areas from everyone except a Tutor who offers only online tuition", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections, teachingAreaIds: [] as string[] };
+
+    for (const tuitionTypes of [["home"], ["home", "online"], []]) {
+      expect(getTutorProfileSubmissionErrors({ ...state, tuitionTypes })).toHaveProperty("teachingAreaIds", "Select at least one teaching area.");
+    }
+    expect(getTutorProfileSubmissionErrors({ ...state, tuitionTypes: ["online"] })).not.toHaveProperty("teachingAreaIds");
+  });
+
+  it("leaves Teaching Areas out of the required count for an online-only Tutor", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections, studyStatus: "" as const };
+
+    const online = getTutorProfileCompletionSummary({ ...state, tuitionTypes: ["online"] });
+    const inPerson = getTutorProfileCompletionSummary({ ...state, tuitionTypes: ["home"] });
+
+    expect(inPerson.totalRequired).toBe(online.totalRequired + 1);
+  });
+
+  it("no longer sends Available Nationwide or Preferred Class Size in the draft payload", () => {
+    const payload = createProfileDraftPayload(hydrateTutorProfileForm(serverProfile, onboardingFallback));
+
+    expect(payload).not.toHaveProperty("availableNationwide");
+    expect(payload).not.toHaveProperty("preferredClassSizes");
   });
 });
 

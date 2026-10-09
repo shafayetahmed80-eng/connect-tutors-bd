@@ -39,9 +39,7 @@ function fullProfile(): GuardianProfileSource {
     curriculumIds: [5],
     teachingExperienceYears: 5,
     tuitionType: "home",
-    availableNationwide: true,
     preferredStudentGender: "both",
-    preferredClassSizes: ["one_to_one"],
     preferredTeachingDays: ["monday"],
     preferredTimeSlots: ["evening"],
     currentCityId: "dhaka",
@@ -110,7 +108,7 @@ describe("what a Guardian reads by default", () => {
   it("sends the teaching profile", () => {
     expect(projected).toMatchObject({
       tutorId: "tutor-175", tutorNumber: 777, name: "Tania Sultana", headline: "Physics made simple", universityId: 7,
-      primarySubjectIds: [1, 2], teachingAreaIds: ["banani"], aboutMe: "I teach.", availableNationwide: true,
+      primarySubjectIds: [1, 2], teachingAreaIds: ["banani"], aboutMe: "I teach.",
     });
   });
 

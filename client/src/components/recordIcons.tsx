@@ -133,10 +133,10 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
   "Teaching experience (years)": "experience", "Prior teaching experience": "experience",
   "Primary subjects": "subjects", "Additional subjects": "subjects",
   "Curriculum": "curriculumType", "Student types": "students",
-  "Preferred class size": "students", "Preferred student gender": "studentGender",
+  "Preferred student gender": "studentGender",
   "Preferred teaching days": "daysPerWeek", "Preferred time slots": "timeSlots",
   "Teaching areas": "areas", "Teaching languages": "language",
-  "Available nationwide": "online", "Travel distance (km)": "travel",
+  "Travel distance (km)": "travel",
   "Minimum monthly fee": "salary", "Maximum monthly fee": "salary",
 };
 

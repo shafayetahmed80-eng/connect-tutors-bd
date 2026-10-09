@@ -1,4 +1,5 @@
 import { isStudyYear } from "@shared/tutor-education";
+import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
 export const tutorProfileCopy = {
@@ -30,7 +31,6 @@ export const tutorProfileCopy = {
     studentTypes: "Student Types",
     tuitionType: "Tuition Type",
     preferredStudentGender: "Preferred Student Gender",
-    classSizes: "Preferred Class Size",
     teachingDays: "Preferred Teaching Days",
     timeSlots: "Preferred Time Slots",
     feeMin: "Minimum Monthly Fee",
@@ -88,7 +88,6 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   studentTypeIds: tutorProfileCopy.fields.studentTypes,
   tuitionTypes: tutorProfileCopy.fields.tuitionType,
   preferredStudentGender: tutorProfileCopy.fields.preferredStudentGender,
-  preferredClassSizes: tutorProfileCopy.fields.classSizes,
   preferredTeachingDays: tutorProfileCopy.fields.teachingDays,
   preferredTimeSlots: tutorProfileCopy.fields.timeSlots,
   feeMin: tutorProfileCopy.fields.feeMin,
@@ -121,7 +120,8 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";
   if (!form.currentCityId) errors.currentCityId = "Select your current city.";
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
-  requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
+  // An online-only Tutor has no place to teach in, so Teaching Areas is theirs to leave empty.
+  if (!offersOnlineTuitionOnly(form)) requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
   if (!form.universityId) errors.universityId = "Select your institute.";
   if (!form.facultyDepartmentId) errors.facultyDepartmentId = "Select your related department or subject.";
   if (!form.degreeExamTitle.trim()) errors.degreeExamTitle = "Enter your degree or exam title.";
@@ -138,13 +138,11 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!/^\d+$/.test(form.teachingExperienceYears) || Number(form.teachingExperienceYears) < 0 || Number(form.teachingExperienceYears) > 60) errors.teachingExperienceYears = "Enter teaching experience between 0 and 60 years.";
   requiredSelection(errors, "tuitionTypes", "Select at least one tuition type.", form.tuitionTypes);
   if (!form.preferredStudentGender) errors.preferredStudentGender = "Select a preferred student gender.";
-  requiredSelection(errors, "preferredClassSizes", "Select at least one class size.", form.preferredClassSizes);
   requiredSelection(errors, "preferredTeachingDays", "Select at least one teaching day.", form.preferredTeachingDays);
   requiredSelection(errors, "preferredTimeSlots", "Select at least one time slot.", form.preferredTimeSlots);
   if (!Number.isInteger(feeMin) || (feeMin ?? 0) < 0) errors.feeMin = "Enter a minimum monthly fee.";
   if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
   else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
-  if (form.tuitionTypes.includes("online") && !form.availableNationwide) errors.availableNationwide = "Enable available nationwide when you select Online tuition.";
 
   return errors;
 }
@@ -155,12 +153,12 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  // 24 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // 22 unconditional checks in getTutorProfileSubmissionErrors, plus the two
   // gated ones: the study timeline only applies once a study status is chosen,
-  // and nationwide availability only applies to online tuition.
-  const totalRequired = 24
+  // and Teaching Areas does not apply to a Tutor who offers only online tuition.
+  const totalRequired = 22
     + (form.studyStatus ? 1 : 0)
-    + (form.tuitionTypes.includes("online") ? 1 : 0);
+    + (offersOnlineTuitionOnly(form) ? 0 : 1);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);
 

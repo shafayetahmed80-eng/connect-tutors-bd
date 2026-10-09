@@ -18,7 +18,6 @@ const staticLabels = {
   studyStatus: { studying: "Studying", graduated: "Graduated", professional: "Professional" },
   tuitionType: { home: "Home tuition", online: "Online tuition", group: "Group tuition", package: "Package tuition" },
   preferredStudentGender: { male: "Male", female: "Female", both: "Both" },
-  classSize: { one_to_one: "One-to-one", small_group: "Small group", group: "Group" },
   day: {
     monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday", thursday: "Thursday",
     friday: "Friday", saturday: "Saturday", sunday: "Sunday",
@@ -197,10 +196,8 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
 
   tuitionType: form => ({ label: "Tuition type", value: list(form.tuitionTypes, id => fromMap(staticLabels.tuitionType, id)) }),
   preferredStudentGender: form => ({ label: "Preferred student gender", value: fromMap(staticLabels.preferredStudentGender, form.preferredStudentGender) }),
-  preferredClassSizes: form => ({ label: "Preferred class size", value: list(form.preferredClassSizes, id => fromMap(staticLabels.classSize, id)) }),
   preferredTeachingDays: form => ({ label: "Preferred teaching days", value: list(form.preferredTeachingDays, id => fromMap(staticLabels.day, id)) }),
   preferredTimeSlots: form => ({ label: "Preferred time slots", value: list(form.preferredTimeSlots, id => fromMap(staticLabels.timeSlot, id)) }),
-  availableNationwide: form => ({ label: "Available nationwide", value: form.availableNationwide ? "Yes" : "No" }),
   currentCityId: (form, resolve) => ({ label: "Current City", value: form.currentCityId ? resolve.location(form.currentCityId) : "" }),
   currentLocationId: (form, resolve) => ({ label: "Current location", value: form.currentLocationId ? resolve.location(form.currentLocationId) : "" }),
   teachingAreaIds: (form, resolve) => ({ label: "Teaching areas", value: list(form.teachingAreaIds, resolve.area) }),

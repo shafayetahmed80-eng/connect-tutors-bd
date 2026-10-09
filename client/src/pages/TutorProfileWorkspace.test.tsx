@@ -79,7 +79,6 @@ const completeProfile = {
   currentCityId: "dhaka-city",
   currentLocationId: "1",
   teachingAreaIds: ["1"],
-  availableNationwide: true,
   highestEducation: "Honours",
   universityId: 1,
   facultyDepartmentId: 1,
@@ -94,7 +93,6 @@ const completeProfile = {
   studentTypeIds: ["1"],
   tuitionTypes: ["home", "online"],
   preferredStudentGender: "both" as const,
-  preferredClassSizes: ["one-to-one"],
   preferredTeachingDays: ["saturday"],
   preferredTimeSlots: ["evening"],
   feeMin: 5000,
@@ -370,11 +368,11 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
       data: {
         code: "BAD_REQUEST",
         tutorProfileFieldIssues: [
-          { path: ["availableNationwide"], message: "Online tuition requires nationwide availability." },
+          { path: ["teachingAreaIds"], message: "Select at least one teaching area." },
           { path: ["educationRecords", 0, "passingYear"], message: "Enter a valid year." },
         ],
       },
-      message: "Online tuition requires nationwide availability. Enter a valid year.",
+      message: "Select at least one teaching area. Enter a valid year.",
     });
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
@@ -384,7 +382,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     fireEvent.change(within(dialog).getByDisplayValue("Experienced Mathematics Tutor"), { target: { value: "Updated Mathematics Tutor" } });
     await user.click(within(dialog).getByRole("button", { name: "Submit" }));
 
-    expect(await within(screen.getByRole("dialog")).findByText("Tuition and location · Available Nationwide: Online tuition requires nationwide availability.")).toBeTruthy();
+    expect(await within(screen.getByRole("dialog")).findByText("Tuition and location · Teaching Areas: Select at least one teaching area.")).toBeTruthy();
     expect(within(screen.getByRole("dialog")).getByText("Education · Education history, record 1, Passing year: Enter a valid year.")).toBeTruthy();
     expect(within(screen.getByRole("dialog")).getByText("Review the highlighted details and try again.")).toBeTruthy();
   });
