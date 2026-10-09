@@ -167,6 +167,7 @@ import {
   type TutorProfileDraftInput,
   type TutorProfileEditableDraftInput,
 } from "./tutor-profile.validation";
+import { educationRecordFromRow } from "./tutor-profile-education-record";
 import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 import {
   buildSafeTutorRequestPublicationSnapshot,
@@ -1741,21 +1742,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
       emergencyContactPhone: row.privateProfile.emergencyContactPhone ?? undefined,
       emergencyContactAddress: row.privateProfile.emergencyContactAddress ?? undefined,
     } : undefined,
-    educationRecords: educationRecordRows.map((record: typeof tutorEducationRecords.$inferSelect) => ({
-      qualificationLevel: record.qualificationLevel,
-      instituteName: record.instituteName,
-      degreeExamTitle: record.degreeExamTitle,
-      majorGroup: record.majorGroup,
-      resultGpa: record.resultGpa ?? undefined,
-      curriculum: record.curriculum ?? undefined,
-      studyStartYear: record.studyStartYear,
-      studyEndYear: record.studyEndYear ?? undefined,
-      currentlyStudying: Boolean(record.currentlyStudying),
-      instituteIdCardNumber: record.instituteIdCardNumber ?? undefined,
-      passingYear: record.passingYear ?? undefined,
-      rollNumber: record.rollNumber ?? undefined,
-      registrationNumber: record.registrationNumber ?? undefined,
-    })),
+    educationRecords: educationRecordRows.map(educationRecordFromRow),
     universityIdDocumentStatus: row.universityIdDocument?.documentStatus === "uploaded" ? "uploaded" as const : "not_uploaded" as const,
     uploadedSupportingDocuments: supportingDocumentRows.map((document: { documentType: string }) => document.documentType),
     profileStatus: row.tutor.profileStatus,
