@@ -1,10 +1,11 @@
 import { useSiteContact } from "@/lib/siteContent";
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, MessageCircle, Phone, UserRound, X } from "lucide-react";
+import { Download, Menu, MessageCircle, Phone, UserRound, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
+import InstallAppButton from "./InstallAppButton";
 
 export const navItems = [
   { label: "Job Board", href: "/job-board" },
@@ -82,7 +83,12 @@ export default function SiteHeader() {
             </a>
           </div>
           {/* The account entry used to sit here. It lives in the navigation bar
-              now, so this strip carries contact details and nothing else. */}
+              now, so this strip carries contact details, and the install button
+              when the browser has offered one. */}
+          <InstallAppButton className="install-app-link">
+            <Download size={14} aria-hidden="true" />
+            <span>Install app</span>
+          </InstallAppButton>
         </div>
       </div>
 

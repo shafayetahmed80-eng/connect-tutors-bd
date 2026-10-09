@@ -6,6 +6,7 @@ import { useSiteContact } from "@/lib/siteContent";
 import { Link } from "wouter";
 import { CircleHelp, ClipboardList, MessageCircle } from "lucide-react";
 import { BrandLogo } from "./SiteHeader";
+import InstallAppButton from "./InstallAppButton";
 
 export const footerQuickLinks = [
   { label: "Privacy", href: "/privacy-policy" },
@@ -76,6 +77,7 @@ export default function SiteFooter() {
         <p>© {new Date().getFullYear()} Connect Tutors. All rights reserved.</p>
         <div className="footer-links">
           {footerQuickLinks.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}
+          <InstallAppButton className="footer-install-link" />
         </div>
       </div>
     </footer>

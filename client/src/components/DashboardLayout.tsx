@@ -23,6 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
+import { promptToInstallApp, useCanInstallApp } from "@/lib/installApp";
 import { communityLinkSlotId, DEFAULT_COMMUNITY_LINK, isCommunityPanel } from "@shared/community";
 import { SiteContentProvider, useSiteContentColour, useSiteContentHeightStyle, useSiteContentPaddingStyle, useSiteContentResolver, useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import {
@@ -36,7 +37,7 @@ import {
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
 import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
-import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useBellSwing, usePushBellBounce } from "@/lib/bellSwing";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
@@ -61,7 +62,7 @@ export type DashboardNavigationItem = {
   dividerBefore?: boolean;
   sectionLabel?: string;
   planned?: boolean;
-  action?: "signout";
+  action?: "signout" | "install";
   /**
    * A row that leaves the panel for the Owner's community group, in a new tab.
    * The address is theirs to change from Admin Control, so it is resolved from
@@ -286,6 +287,15 @@ export function closeMobileSidebarAfterNavigation(
   if (isMobile) setOpenMobile(false);
 }
 
+/**
+ * The rows to draw. The "install" row is the browser's to offer, so it is left
+ * out until the browser has, and never appears where it has not (an iPhone, an
+ * installed app).
+ */
+export function visibleNavigationItems(items: DashboardNavigationItem[], canInstall: boolean): DashboardNavigationItem[] {
+  return canInstall ? items : items.filter(item => item.action !== "install");
+}
+
 export function getMobileWorkspaceContext(workspace: string, destination?: string) {
   return { workspace, destination: destination ?? "Menu" };
 }
@@ -321,6 +331,9 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const canInstall = useCanInstallApp();
+  // Memoised: the sidebar re-measures its active-row marker whenever this list changes identity.
+  const shownItems = useMemo(() => visibleNavigationItems(navigationItems, canInstall), [navigationItems, canInstall]);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -370,7 +383,7 @@ export default function DashboardLayout({
       <SiteContentProvider page="admin-control">
       <DashboardLayoutContent
         setSidebarWidth={setSidebarWidth}
-        navigationItems={navigationItems}
+        navigationItems={shownItems}
         title={title}
         loginPath={loginPath}
         signOutPath={signOutPath}
@@ -552,6 +565,12 @@ function DashboardLayoutContent({
   }, [isResizing, setSidebarWidth]);
 
   const handleNavigation = (item: DashboardNavigationItem) => {
+    // Installing leaves the page where it is, so it is not a move the panel's own guards need to approve.
+    if (item.action === "install") {
+      closeMobileSidebarAfterNavigation(isMobile, setOpenMobile);
+      void promptToInstallApp();
+      return;
+    }
     if (onBeforeNavigation && !onBeforeNavigation(item)) return;
     closeMobileSidebarAfterNavigation(isMobile, setOpenMobile);
     if (item.action === "signout") {

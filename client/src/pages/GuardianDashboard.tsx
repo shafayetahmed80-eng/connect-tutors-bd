@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
 import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
 import { GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
-import { Bell, Clock3, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
+import { Bell, Clock3, Download, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { Link, useLocation, useRoute } from "wouter";
@@ -34,6 +34,7 @@ export const guardianDashboardNavigation: DashboardNavigationItem[] = [
   { icon: MessageCircle, label: "Exclusively yours", path: "/guardian/dashboard/exclusive", planned: true },
   { icon: HelpCircle, label: "How it works", path: "/guardian/dashboard/how-it-works", planned: false },
   { icon: Users, label: "Join Guardian Community", path: "/guardian/dashboard/community", community: true },
+  { icon: Download, label: "Install app", path: "/guardian/dashboard/install", action: "install" },
   // Last, as in the Tutor sidebar. The path is never navigated to - the layout
   // sees `action: "signout"` and signs out instead - but a nav item needs one.
   { icon: LogOut, label: "Sign Out", path: "/guardian/dashboard/sign-out", sectionLabel: "Account", action: "signout" },
