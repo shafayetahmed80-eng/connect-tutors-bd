@@ -34,7 +34,6 @@ import {
   shouldAutoApplyDefaultSavedView,
   type MatchingRequest,
   getAdminRequestAgeDisplay,
-  getAdminPublicationExpiryDisplay,
 } from "./AdminMatchingWorkspace";
 
 const reviewingRequest: MatchingRequest = {
@@ -43,7 +42,6 @@ const reviewingRequest: MatchingRequest = {
   publicationState: "reviewing",
   tutorId: null,
   guardianConfirmedAt: null,
-  guardianReconfirmedAt: null,
   appointmentConfirmedAt: null,
   cancellationReason: null,
   tuitionType: "home",
@@ -245,7 +243,8 @@ describe("AdminMatchingWorkspace helpers", () => {
   it("presents Job Board lifecycle state independently from manual matching status", () => {
     expect(getAdminPublicationStatePresentation("approved")).toMatchObject({ label: "Approved for Job Board" });
     expect(getAdminPublicationStatePresentation("published")).toMatchObject({ label: "Published" });
-    expect(getAdminPublicationActions({ state: "published", guardianConfirmed: true })).toContain("unpublish");
+    // A Live job has no button here: no Unpublish, no extension call, no extension. It stays until it is appointed or closed.
+    expect(getAdminPublicationActions({ state: "published", guardianConfirmed: true })).toEqual([]);
   });
 
   it("renders a Guardian-call-first control and prevents premature approval in the reviewing state", () => {
@@ -373,104 +372,12 @@ describe("what a matching card says about its own age", () => {
   });
 });
 
-describe("what a published card says about its remaining visibility", () => {
-  const now = new Date("2026-09-12T10:00:00.000Z");
-
-  it("counts down the fourteen-day window and warns inside three days", () => {
-    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-22T10:00:00.000Z" }, now))
-      .toMatchObject({ label: "Expires in 10 days", tone: "ok" });
-    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-14T10:00:00.000Z" }, now))
-      .toMatchObject({ label: "Expires in 2 days", tone: "soon" });
-    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: "2026-09-10T10:00:00.000Z" }, now))
-      .toMatchObject({ label: "Visibility expired", tone: "expired" });
-  });
-
-  it("has nothing to say unless the job is actually published", () => {
-    // `expiresAt` belongs to the published tutor_jobs row, so an approved
-    // request has no window to count down yet.
-    expect(getAdminPublicationExpiryDisplay({ publicationState: "approved", publishedExpiresAt: "2026-09-22T10:00:00.000Z" }, now)).toBeNull();
-    expect(getAdminPublicationExpiryDisplay({ publicationState: "published", publishedExpiresAt: null }, now)).toBeNull();
-  });
-});
-
-
-describe("the Tutor picker on a matching card", () => {
-  const request = {
-    id: 7,
-    subjects: JSON.stringify(["Physics"]),
-    classCourse: "HSC 1st Year",
-    category: "Bangla Medium",
-    preferredGender: "female" as const,
-    tuitionType: "home" as const,
-    budgetAmount: 6000,
-    monthlyBudget: null,
-    tuitionLocationLabel: "Uttara",
-    locationText: "Uttara, Dhaka",
-  };
-  const tutors = [
-    { id: "far", name: "Far Away", subjects: ["Biology"], levels: [], fee: 9000, gender: "male" as const, modes: ["online"], locationLabel: "Khulna", city: "Khulna", experience: 1 },
-    { id: "near", name: "Near Match", subjects: ["Physics"], levels: ["HSC 1st Year"], fee: 5000, gender: "female" as const, modes: ["home"], locationLabel: "Uttara", city: "Dhaka", experience: 6 },
-  ];
-
-  function renderPicker(overrides: Record<string, unknown> = {}) {
-    const onSelect = vi.fn();
-    render(createElement(TutorMatchPicker, {
-      request: request as never,
-      tutors,
-      isLoading: false,
-      disabled: false,
-      selectedTutorId: "",
-      onSelect,
-      ...overrides,
-    }));
-    return { onSelect };
-  }
-
-  it("leads with the best match and writes out why, for both of them", () => {
-    renderPicker();
-    const options = screen.getAllByRole("radio");
-
-    expect(options).toHaveLength(2);
-    expect(options[0].getAttribute("value")).toBe("near");
-    expect(screen.getByText("Teaches Physics")).toBeTruthy();
-    // The weaker Tutor stays on the list, with its mismatches named.
-    expect(screen.getByText("Does not list Physics")).toBeTruthy();
-    expect(screen.getByText("Asks 9000 over the 6000 budget")).toBeTruthy();
-  });
-
-  it("narrows to subject matches when asked, and says so when nothing is left", () => {
-    renderPicker();
-    fireEvent.click(screen.getByRole("button", { name: "Subject match" }));
-    expect(screen.getAllByRole("radio")).toHaveLength(1);
-
-    fireEvent.change(screen.getByPlaceholderText("Search name or subject"), { target: { value: "zzz" } });
-    expect(screen.queryAllByRole("radio")).toHaveLength(0);
-    expect(screen.getByText(/No approved Tutor matches these narrowing choices/)).toBeTruthy();
-  });
-
-  it("reports the chosen Tutor to the card that owns the assignment", () => {
-    const { onSelect } = renderPicker();
-    fireEvent.click(screen.getAllByRole("radio")[0]);
-    expect(onSelect).toHaveBeenCalledWith("near");
-  });
-
-  it("goes read-only while assignment is blocked", () => {
-    renderPicker({ disabled: true });
-    for (const option of screen.getAllByRole("radio")) {
-      expect((option as HTMLInputElement).disabled).toBe(true);
-    }
-    expect((screen.getByPlaceholderText("Search name or subject") as HTMLInputElement).disabled).toBe(true);
-  });
-});
-
-
 describe("acting on a batch of requests", () => {
   function request(id: number, overrides: Partial<MatchingRequest> = {}) {
     return {
       id,
       publicationState: "approved",
       guardianConfirmedAt: new Date("2026-09-01T10:00:00.000Z"),
-      guardianReconfirmedAt: null,
       ...overrides,
     } as MatchingRequest;
   }

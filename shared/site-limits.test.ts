@@ -60,7 +60,7 @@ describe("site limits", () => {
   });
 
   it("ignores a fractional value", () => {
-    expect(resolveSiteLimits([{ limitId: "jobBoard.expiryDays", value: 7.5 }])["jobBoard.expiryDays"]).toBe(14);
+    expect(resolveSiteLimits([{ limitId: "request.subjects", value: 7.5 }])["request.subjects"]).toBe(12);
   });
 
   it("turns the upload limit into bytes", () => {

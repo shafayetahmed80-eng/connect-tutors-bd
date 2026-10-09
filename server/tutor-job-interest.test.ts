@@ -12,8 +12,6 @@ describe("Tutor Job Board interest contract", () => {
       canSubmitTutorInterest({
         tutorId: "T1503",
         jobStatus: "published",
-        expiresAt: new Date("2030-04-15T00:00:00.000Z"),
-        now: new Date("2030-04-01T00:00:00.000Z"),
         existingStatus: null,
       })
     ).toEqual({ allowed: true });
@@ -24,33 +22,26 @@ describe("Tutor Job Board interest contract", () => {
       canSubmitTutorInterest({
         tutorId: "T1503",
         jobStatus: "published",
-        expiresAt: new Date("2030-04-15T00:00:00.000Z"),
-        now: new Date("2030-04-01T00:00:00.000Z"),
         existingStatus: "interested",
       })
     ).toEqual({ allowed: false, reason: "already_interested" });
   });
 
-  it("does not accept interest for unavailable or expired jobs", () => {
-    expect(
-      canSubmitTutorInterest({
-        tutorId: "T1503",
-        jobStatus: "unpublished",
-        expiresAt: new Date("2030-04-15T00:00:00.000Z"),
-        now: new Date("2030-04-01T00:00:00.000Z"),
-        existingStatus: null,
-      })
-    ).toEqual({ allowed: false, reason: "job_unavailable" });
+  it("does not accept interest for a job that is off the board", () => {
+    for (const jobStatus of ["unpublished", "closed"] as const) {
+      expect(
+        canSubmitTutorInterest({
+          tutorId: "T1503",
+          jobStatus,
+          existingStatus: null,
+        })
+      ).toEqual({ allowed: false, reason: "job_unavailable" });
+    }
+  });
 
-    expect(
-      canSubmitTutorInterest({
-        tutorId: "T1503",
-        jobStatus: "published",
-        expiresAt: new Date("2030-04-01T00:00:00.000Z"),
-        now: new Date("2030-04-01T00:00:00.000Z"),
-        existingStatus: null,
-      })
-    ).toEqual({ allowed: false, reason: "job_unavailable" });
+  it("keeps a published job open however long ago it was posted", () => {
+    // There is no end date any more: the listing stays until an Admin takes the tuition further.
+    expect(canSubmitTutorInterest({ tutorId: "T1503", jobStatus: "published", existingStatus: null })).toEqual({ allowed: true });
   });
 
   it("allows only Admin review states and prevents a Tutor from marking themselves matched", () => {

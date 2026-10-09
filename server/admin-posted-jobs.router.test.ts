@@ -66,12 +66,18 @@ describe("admin.listPostedJobs filters", () => {
 
     await createCaller().admin.listPostedJobs({
       stage: "live",
-      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", expiringSoon: true },
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few" },
     });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith(expect.objectContaining({
       stage: "live",
-      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", expiringSoon: true },
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few" },
     }));
+  });
+
+  it("no longer carries the retired Ending Within 3 Days choice through to the server", async () => {
+    dbMocks.listAdminPostedJobsPage.mockResolvedValue({ items: [], counts: {}, total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    await createCaller().admin.listPostedJobs({ stage: "live", filters: { applicants: "few", expiringSoon: true } as never });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith(expect.objectContaining({ filters: { applicants: "few" } }));
   });
 
   it("refuses a range the wrong way round, an unknown choice, and more than the panel can hold", async () => {
@@ -80,7 +86,6 @@ describe("admin.listPostedJobs filters", () => {
     await expect(ask({ postedFrom: new Date("2026-10-09"), postedTo: new Date("2026-10-01") })).rejects.toThrow();
     await expect(ask({ tuitionTypes: ["hybrid"] })).rejects.toThrow();
     await expect(ask({ waitingRequest: "approve" })).rejects.toThrow();
-    await expect(ask({ expiringSoon: false })).rejects.toThrow();
     await expect(ask({ locationIds: Array.from({ length: 11 }, (_, index) => `area-${index}`) })).rejects.toThrow();
     await expect(ask({ subjects: Array.from({ length: 13 }, (_, index) => `subject-${index}`) })).rejects.toThrow();
     await expect(ask({ salaryFrom: -1 })).rejects.toThrow();

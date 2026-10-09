@@ -14,8 +14,6 @@ export type TutorInterestActor = "tutor" | "admin";
 type SubmitTutorInterestInput = {
   tutorId: string | null | undefined;
   jobStatus: "published" | "unpublished" | "closed";
-  expiresAt: Date;
-  now: Date;
   existingStatus: TutorJobInterestStatus | null;
 };
 
@@ -23,7 +21,7 @@ export function canSubmitTutorInterest(input: SubmitTutorInterestInput):
   | { allowed: true }
   | { allowed: false; reason: "already_interested" | "job_unavailable" | "tutor_required" } {
   if (!input.tutorId) return { allowed: false, reason: "tutor_required" };
-  if (input.jobStatus !== "published" || input.expiresAt <= input.now) {
+  if (input.jobStatus !== "published") {
     return { allowed: false, reason: "job_unavailable" };
   }
   if (["interested", "shortlisted", "matched"].includes(input.existingStatus ?? "")) {

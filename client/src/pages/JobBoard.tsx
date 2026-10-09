@@ -70,7 +70,6 @@ export type JobBoardJob = {
   locationLabel: string | null;
   directionLabel: string | null;
   publishedAt: Date | string;
-  expiresAt: Date | string;
 };
 
 export const DEFAULT_FILTERS: JobBoardFilterState = {

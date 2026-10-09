@@ -14,13 +14,10 @@ export const ADMIN_REQUEST_PUBLICATION_ACTIONS = [
   "verify",
   "edit",
   "guardian_confirmed",
-  "guardian_reconfirmed",
   "request_changes",
   "approve",
   "publish",
   "go_live",
-  "extend_expiry",
-  "unpublish",
   "close",
 ] as const;
 
@@ -30,7 +27,6 @@ type PublicationValidationInput = {
   from: AdminRequestPublicationState;
   action: AdminRequestPublicationAction;
   guardianConfirmed: boolean;
-  guardianReconfirmed?: boolean;
 };
 
 type PublicationValidationResult =
@@ -41,7 +37,6 @@ const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminReq
   verify: { submitted: "reviewing", changes_requested: "reviewing" },
   edit: { reviewing: "reviewing" },
   guardian_confirmed: { reviewing: "reviewing" },
-  guardian_reconfirmed: { published: "published" },
   request_changes: { reviewing: "changes_requested" },
   approve: { reviewing: "approved" },
   publish: { approved: "published", unpublished: "published" },
@@ -49,8 +44,6 @@ const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminReq
   // request had got to. Same destination as `publish`, no review path in front
   // of it - which is why it is a separate action rather than a wider `publish`.
   go_live: { submitted: "published", reviewing: "published", changes_requested: "published", approved: "published", unpublished: "published" },
-  extend_expiry: { published: "published" },
-  unpublish: { published: "unpublished" },
   close: { submitted: "closed", reviewing: "closed", changes_requested: "closed", approved: "closed", unpublished: "closed", published: "closed" },
 };
 
@@ -62,12 +55,10 @@ const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminReq
  * single deliberate act rather than at the end of a review.
  */
 export function validateAdminRequestPublicationAction(input: PublicationValidationInput): PublicationValidationResult {
-  const nextState = transitions[input.action][input.from];
+  // An action this build no longer knows (a retired one from a stale page) is no transition, not a crash.
+  const nextState = transitions[input.action]?.[input.from];
   if (!nextState) return { valid: false, reason: "INVALID_TRANSITION" };
   if ((input.action === "approve" || input.action === "publish") && !input.guardianConfirmed) {
-    return { valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" };
-  }
-  if (input.action === "extend_expiry" && !input.guardianReconfirmed) {
     return { valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" };
   }
   return { valid: true, nextState };

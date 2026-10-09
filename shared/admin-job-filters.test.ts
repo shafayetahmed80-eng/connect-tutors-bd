@@ -24,7 +24,6 @@ describe("buildAdminJobFilterInput", () => {
       guardian: "  Sojib ",
       jobId: " ",
       daysInStage: "7",
-      expiringSoon: true,
       applicants: "few",
     });
     expect(input).toEqual({
@@ -36,7 +35,6 @@ describe("buildAdminJobFilterInput", () => {
       guardian: "Sojib",
       daysInStage: 7,
       applicants: "few",
-      expiringSoon: true,
     });
   });
 
@@ -70,15 +68,15 @@ describe("the later stages' choices", () => {
 describe("countAdminJobFilters", () => {
   it("counts the filters that are narrowing, one each, whatever their kind", () => {
     expect(countAdminJobFilters(DEFAULT_ADMIN_JOB_FILTERS)).toBe(0);
-    expect(countAdminJobFilters({ ...DEFAULT_ADMIN_JOB_FILTERS, subjects: ["Math", "English"], studentGender: "male", expiringSoon: true, guardian: "  " })).toBe(3);
+    expect(countAdminJobFilters({ ...DEFAULT_ADMIN_JOB_FILTERS, subjects: ["Math", "English"], studentGender: "male", applicants: "few", guardian: "  " })).toBe(3);
   });
 });
 
 describe("clearOtherStageFilters", () => {
-  const set = { ...DEFAULT_ADMIN_JOB_FILTERS, publicationStates: ["reviewing"], applicants: "none" as const, expiringSoon: true, salaryFrom: "5000" };
+  const set = { ...DEFAULT_ADMIN_JOB_FILTERS, publicationStates: ["reviewing"], applicants: "none" as const, salaryFrom: "5000" };
 
   it("keeps the choices of the stage now open and drops the other stages'", () => {
-    expect(clearOtherStageFilters(set, "pending")).toEqual({ ...set, applicants: "", expiringSoon: false });
+    expect(clearOtherStageFilters(set, "pending")).toEqual({ ...set, applicants: "" });
     expect(clearOtherStageFilters(set, "live")).toEqual({ ...set, publicationStates: [] });
   });
 

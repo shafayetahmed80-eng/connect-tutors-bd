@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_JOB_EXPIRY_DAYS,
   buildPublishedTutorJobProjection,
   generateAutoJobId,
   getPublishedTutorJobRefresh,
@@ -8,10 +7,6 @@ import {
 } from "./job-board-projection";
 
 describe("Job Board published projection", () => {
-  it("uses the approved 14-day availability window by default", () => {
-    expect(DEFAULT_JOB_EXPIRY_DAYS).toBe(14);
-  });
-
   it("creates a deterministic immutable auto Job ID from the source request", () => {
     expect(generateAutoJobId(1503)).toBe("8302");
     expect(generateAutoJobId(1503)).toBe(generateAutoJobId(1503));
@@ -45,7 +40,8 @@ describe("Job Board published projection", () => {
     expect(job.directionLabel).toBe("Mirpur 10, Dhaka");
     expect(job.studentCount).toBe(2);
     expect(job.studentGender).toBe("female");
-    expect(job.expiresAt.getTime()).toBe(publishedAt.getTime() + DEFAULT_JOB_EXPIRY_DAYS * 86_400_000);
+    // A listing has no end date: it stays until an Admin takes the tuition further.
+    expect(job).not.toHaveProperty("expiresAt");
     expect(job).not.toHaveProperty("privateAddress");
     expect(job).not.toHaveProperty("addressDetails");
     expect(job).not.toHaveProperty("guardianPhone");
@@ -110,7 +106,6 @@ describe("Job Board published projection", () => {
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",
       publishedAt: new Date("2026-08-21T00:00:00.000Z"),
-      expiresAt: new Date("2026-09-20T00:00:00.000Z"),
       guardianName: "Private Guardian",
       guardianPhone: "+8801516131411",
       studentFirstName: "Private Student",
