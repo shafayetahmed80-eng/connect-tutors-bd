@@ -143,17 +143,21 @@ export function AdminTutorProfilesContent() {
         <button
           type="button"
           onClick={() => setHistoryOpen(true)}
-          className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+          aria-label="History"
+          title="History"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken max-sm:w-10 max-sm:justify-center max-sm:px-0"
         >
-          <History className="h-4 w-4" aria-hidden="true" /> History
+          <History className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">History</span>
         </button>
         <button
           type="button"
           onClick={() => setNotifyOpen(true)}
           disabled={matchCount === 0 && selectedIds.size === 0}
-          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Notify"
+          title="Notify"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-10 max-sm:justify-center max-sm:px-0"
         >
-          <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
+          <Megaphone className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">Notify</span>
         </button>
       </>}
     />

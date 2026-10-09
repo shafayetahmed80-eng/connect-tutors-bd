@@ -50,7 +50,7 @@ export function AdminGuardianRequestFilterFields({ draft, setDraft, dateLabel, s
   showRequestType: boolean;
 }) {
   const set = (change: Partial<AdminGuardianRequestFilterState>) => setDraft({ ...draft, ...change });
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
     <DateField label={`${dateLabel} Date From`} value={draft.requestedFrom} max={draft.requestedTo || undefined} onChange={requestedFrom => set({ requestedFrom })} />
     <DateField label={`${dateLabel} Date To`} value={draft.requestedTo} min={draft.requestedFrom || undefined} onChange={requestedTo => set({ requestedTo })} />
     {showRequestType ? <FilterSelect label="Request" value={draft.requestType} onChange={value => set({ requestType: value as AdminGuardianRequestFilterState["requestType"] })} options={[...adminGuardianRequestTypeOptions]} /> : null}
@@ -72,13 +72,13 @@ export function AdminChangeRequestFilterFields({ draft, setDraft, canSeeAdmins, 
 }) {
   const set = (change: Partial<AdminChangeRequestFilterState>) => setDraft({ ...draft, ...change });
   const panels = [{ id: "guardian", label: "Guardian" }, { id: "tutor", label: "Tutor" }, ...(canSeeAdmins ? [{ id: "admin", label: "Admin" }] : [])];
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
     <FilterSelect label="Panel" value={draft.role} onChange={value => set({ role: value as AdminChangeRequestFilterState["role"] })} options={panels} />
     <FilterSelect label="Request" value={draft.type} onChange={value => set({ type: value as AdminChangeRequestFilterState["type"] })} options={accountChangeTypeValues.map(id => ({ id, label: accountChangeTypeLabels[id] }))} />
     <span className="hidden lg:block" />
     <DateField label="Requested Date From" value={draft.requestedFrom} max={draft.requestedTo || undefined} onChange={requestedFrom => set({ requestedFrom })} />
     <DateField label="Requested Date To" value={draft.requestedTo} min={draft.requestedFrom || undefined} onChange={requestedTo => set({ requestedTo })} />
-    {showDeclineReason ? <FilterTextBox label="Decline Reason" value={draft.declineReason} onChange={declineReason => set({ declineReason })} /> : null}
+    {showDeclineReason ? <div className="col-span-2 lg:col-span-1"><FilterTextBox label="Decline Reason" value={draft.declineReason} onChange={declineReason => set({ declineReason })} /></div> : null}
   </div>;
 }
 
