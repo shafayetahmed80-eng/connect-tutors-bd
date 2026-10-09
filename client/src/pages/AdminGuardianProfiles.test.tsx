@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -104,10 +105,100 @@ describe("Guardian Profiles", () => {
   });
 });
 
+describe("the card and filter panel over the Guardians", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Guardian filters" });
+  };
+
+  it("heads the list with its count, and keeps the buttons that act on it in the card", () => {
+    render(<AdminGuardianProfilesContent />);
+
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Guardians")).toBeTruthy();
+    expect(within(card).getByText("1")).toBeTruthy();
+    expect(within(card).getByText("guardian profiles")).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "History" })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "Notify" })).toBeTruthy();
+  });
+
+  it("offers each box, and changes nothing until Apply", async () => {
+    const user = userEvent.setup();
+    render(<AdminGuardianProfilesContent />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).getByText("guardians found").parentElement?.textContent).toContain("1");
+    for (const name of ["Tuitions Posted", "Change Request", "Account Status"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    for (const label of ["Joined Date From", "Joined Date To"]) expect(within(panel).getByLabelText(label)).toBeTruthy();
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Tuitions Posted" }), { target: { value: "many" } });
+    expect(state.lastQuery).toEqual({ query: "", verification: "all", page: 1, pageSize: 20 });
+  });
+
+  it("lists, counts and Notifies by the same applied choices", async () => {
+    const user = userEvent.setup();
+    render(<AdminGuardianProfilesContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Tuitions Posted" }), { target: { value: "many" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Change Request" }), { target: { value: "has" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Account Status" }), { target: { value: "active" } });
+    fireEvent.change(within(panel).getByLabelText("Joined Date From"), { target: { value: "2026-08-01" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+
+    expect(state.lastQuery).toEqual({
+      query: "", verification: "all", tuitions: "many", changeRequest: "has", accountStatus: "active", joinedFrom: new Date("2026-08-01T00:00:00"), page: 1, pageSize: 20,
+    });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("4")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching guardians")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
+    expect(state.notifyInput).toEqual({
+      query: "", verification: "all", tuitions: "many", changeRequest: "has", accountStatus: "active", joinedFrom: new Date("2026-08-01T00:00:00"), title: "Hi", message: "Hello there",
+    });
+  });
+
+  it("keeps Apply waiting while the dates are the wrong way round, and Clear puts everything back", async () => {
+    const user = userEvent.setup();
+    render(<AdminGuardianProfilesContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Joined Date From"), { target: { value: "2026-09-10" } });
+    fireEvent.change(within(panel).getByLabelText("Joined Date To"), { target: { value: "2026-09-01" } });
+    expect(within(panel).getByText("The 'from' date cannot be later than the 'to' date.")).toBeTruthy();
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(within(panel).getByLabelText("Joined Date To"), { target: { value: "2026-09-30" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Account Status" }), { target: { value: "closed" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(state.lastQuery).toMatchObject({ accountStatus: "closed" });
+
+    await user.click(within(panel).getByRole("button", { name: "Clear" }));
+    expect(state.lastQuery).toEqual({ query: "", verification: "all", page: 1, pageSize: 20 });
+  });
+
+  it("narrows the tab counts and the search together with the panel, from page one", async () => {
+    const user = userEvent.setup();
+    render(<AdminGuardianProfilesContent />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search name, Guardian ID/i), { target: { value: "Rina" } });
+    const panel = await openPanel(user);
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Tuitions Posted" }), { target: { value: "none" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(state.lastQuery).toMatchObject({ query: "Rina", tuitions: "none", page: 1 });
+  });
+});
+
 describe("Guardian directory Notify", () => {
   it("sends to every Guardian the current filters match", () => {
     render(<AdminGuardianProfilesContent />);
-    expect(screen.getByTestId("guardian-notify-match-count").textContent).toContain("1 Guardian matches the current filters.");
+    expect(screen.getByRole("banner").textContent).toContain("guardian profiles");
 
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Platform maintenance" } });
@@ -126,7 +217,7 @@ describe("Guardian directory Notify", () => {
     render(<AdminGuardianProfilesContent />);
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Rina Akter" }));
-    expect(screen.getByTestId("guardian-notify-match-count").textContent).toContain("1 Guardian selected.");
+    expect(screen.getByRole("banner").textContent).toContain("1 selected.");
 
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     expect(screen.getByRole("dialog", { name: "Notify these Guardians" }).textContent).toContain("1 hand-picked Guardian");

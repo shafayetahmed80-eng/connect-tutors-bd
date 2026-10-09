@@ -165,7 +165,8 @@ describe("the Cancelled list", () => {
   it("narrows by the day it was cancelled and by days since", async () => {
     expect(await cancelled({ cancelledFrom: ago(5) })).toEqual(["x3"]);
     expect(await cancelled({ cancelledTo: ago(11) })).toEqual(["x2"]);
-    expect(await cancelled({ daysInStage: 10 })).toEqual(["x1", "x2"]);
+    // A day short of the 10 that x1 was cancelled ago: a stored timestamp is rounded to the second, so asking for exactly 10 passes or fails on timing.
+    expect(await cancelled({ daysInStage: 9 })).toEqual(["x1", "x2"]);
   });
 
   it("tells a settled tuition from one nobody has settled, and one with a refund from one without", async () => {

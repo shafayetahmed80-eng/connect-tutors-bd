@@ -1,5 +1,6 @@
 import AccountChangeHistory from "@/components/AccountChangeHistory";
 import { AdminPasswordResetLink } from "@/components/AdminPasswordResetLink";
+import { AdminGuardianFilterBar, useAdminGuardianFilters } from "@/components/AdminGuardianFilters";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
@@ -10,6 +11,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { GuardianActivityContent, GuardianVerificationModal } from "@/pages/AdminGuardianActivity";
+import type { AdminGuardianFilterInput } from "@shared/admin-guardian-filters";
 import { formatRequestSource } from "@shared/request-source";
 import { ArrowLeft, History, Megaphone, Search, ShieldCheck } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -18,6 +20,9 @@ import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
 
 type Verification = "all" | "unverified" | "verified" | "rejected";
+
+/** Who the Guardian Profiles list is showing, less its page: what Notify sends to. */
+type DirectoryQuery = { query: string; verification: Verification } & AdminGuardianFilterInput;
 
 type GuardianRow = {
   userId: number;
@@ -99,9 +104,13 @@ export function AdminGuardianProfilesContent() {
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const guardians = trpc.admin.listGuardianProfiles.useQuery({ query, verification, page, pageSize });
+  const panel = useAdminGuardianFilters({ onChange: () => setPage(1) });
+  // Who is on the list: the search, the Verification tab and the applied panel. The list reads it with a page; Notify sends to exactly it.
+  const directory: DirectoryQuery = { query, verification, ...panel.input };
+  const guardians = trpc.admin.listGuardianProfiles.useQuery({ ...directory, page, pageSize });
   const counts = guardians.data?.counts;
   const matchCount = guardians.data?.total ?? 0;
+  const narrowed = panel.activeCount > 0 || query.trim().length > 0 || verification !== "all";
   const toggleSelected = (userId: number) => setSelectedIds(current => {
     const next = new Set(current);
     if (next.has(userId)) next.delete(userId); else next.add(userId);
@@ -119,32 +128,32 @@ export function AdminGuardianProfilesContent() {
       </label>
     </div>
 
-    {/* Sends to exactly who the verification tabs and search above are
-        currently showing - or, when an Admin ticks specific rows below,
+    {/* Sends to exactly who the verification tabs, the search and the Filter panel
+        are currently showing - or, when an Admin ticks specific rows below,
         exactly those. */}
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-4 py-3">
-      <p data-testid="guardian-notify-match-count" className="text-sm text-j-ink-soft">
-        {selectedIds.size > 0
-          ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> Guardian{selectedIds.size === 1 ? "" : "s"} selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
-          : <><span className="font-bold text-j-ink">{matchCount}</span> Guardian{matchCount === 1 ? "" : "s"} match{matchCount === 1 ? "es" : ""} the current filters.</>}
-      </p>
-      <div className="flex shrink-0 items-center gap-2">
-        <button type="button" onClick={() => setHistoryOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+    <AdminGuardianFilterBar
+      filters={panel}
+      count={guardians.data?.total}
+      loading={guardians.isLoading}
+      caption={selectedIds.size > 0
+        ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
+        : narrowed ? "matching guardians" : "guardian profiles"}
+      actions={<>
+        <button type="button" onClick={() => setHistoryOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
           <History className="h-4 w-4" aria-hidden="true" /> History
         </button>
         <button
           type="button"
           onClick={() => setNotifyOpen(true)}
           disabled={matchCount === 0 && selectedIds.size === 0}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
         </button>
-      </div>
-    </div>
+      </>}
+    />
     {notifyOpen ? <NotifyGuardiansModal
-      query={query}
-      verification={verification}
+      filters={directory}
       matchCount={matchCount}
       selectedIds={Array.from(selectedIds)}
       onSent={() => setSelectedIds(new Set())}
@@ -181,13 +190,13 @@ const NOTIFY_TITLE_MAX = 120;
 const NOTIFY_MESSAGE_MAX = 360;
 
 /**
- * One message, sent either to every Guardian the verification tab and search
- * currently match, or - when the Admin ticked specific rows first - to
+ * One message, sent either to every Guardian the verification tab, search and
+ * filter panel currently match, or - when the Admin ticked specific rows first - to
  * exactly those. Lands in each Guardian's own Notifications tab.
  */
-function NotifyGuardiansModal({ query, verification, matchCount, selectedIds, onSent, onClose }: {
-  query: string;
-  verification: Verification;
+function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClose }: {
+  /** Who the directory is showing: the search, the Verification tab and the applied panel. */
+  filters: DirectoryQuery;
   matchCount: number;
   /** Hand-picked Guardian user ids; a non-empty list overrides the filters entirely. */
   selectedIds: number[];
@@ -213,7 +222,7 @@ function NotifyGuardiansModal({ query, verification, matchCount, selectedIds, on
     : `${recipientCount} Guardian${recipientCount === 1 ? "" : "s"} match the current filters`;
   const send = () => notify.mutate(usingSelection
     ? { query: "", verification: "all", guardianUserIds: selectedIds, title: title.trim(), message: message.trim() }
-    : { query, verification, title: title.trim(), message: message.trim() });
+    : { ...filters, title: title.trim(), message: message.trim() });
 
   if (confirming) {
     return <Modal size="sm" onClose={onClose} busy={notify.isPending}>

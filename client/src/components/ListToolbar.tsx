@@ -13,7 +13,7 @@ export function ListToolbarCard({ eyebrow, count, caption, loading = false, filt
   eyebrow: string;
   count: number | undefined;
   /** The line under the number: "currently live", or "matching ..." while filters narrow it. */
-  caption: string;
+  caption: ReactNode;
   loading?: boolean;
   filterOpen: boolean;
   onToggleFilter: () => void;
