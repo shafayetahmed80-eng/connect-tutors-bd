@@ -38,6 +38,17 @@ describe("admin.listAppointedJobs", () => {
     expect(dbMocks.listAdminAppointedJobsPage).toHaveBeenLastCalledWith({ query: "Tania", page: 2, pageSize: 10 });
   });
 
+  it("passes the Admin's filters through, and refuses what the panel could not send", async () => {
+    dbMocks.listAdminAppointedJobsPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const filters = { tutorGender: "male" as const, daysInStage: 7, waitingRequest: "confirm" as const, guardian: "Sojib" };
+
+    await createCaller().admin.listAppointedJobs({ filters });
+    expect(dbMocks.listAdminAppointedJobsPage).toHaveBeenLastCalledWith({ query: "", page: 1, pageSize: 20, filters });
+
+    await expect(createCaller().admin.listAppointedJobs({ filters: { tutorGender: "any" } as never })).rejects.toThrow();
+    await expect(createCaller().admin.listAppointedJobs({ filters: { appointedFrom: new Date("2026-10-09"), appointedTo: new Date("2026-10-01") } })).rejects.toThrow();
+  });
+
   it("refuses a silly page size and anyone who is not an Admin", async () => {
     await expect(createCaller().admin.listAppointedJobs({ pageSize: 500 })).rejects.toThrow();
     expect(dbMocks.listAdminAppointedJobsPage).not.toHaveBeenCalled();

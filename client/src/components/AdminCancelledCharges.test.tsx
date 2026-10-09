@@ -1,16 +1,34 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: undefined as unknown,
+  optionsInput: null as unknown,
+  optionsEnabled: undefined as boolean | undefined,
+  options: {
+    tuitionTypes: ["home", "online"],
+    daysPerWeek: [3, 5],
+    cities: [{ id: "dhaka", label: "Dhaka" }],
+    locationsByCity: { dhaka: [{ id: "banasree", label: "Banasree" }] },
+    classesByCategory: { "English Version": ["Class 8"] },
+    subjectsByClass: { "Class 8": ["History"] },
+  },
   data: { items: [] as any[], total: 0, page: 1, pageSize: 20, totalPages: 1 },
 }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     admin: {
+      jobFilterOptions: {
+        useQuery: (input: unknown, options?: { enabled?: boolean }) => {
+          mocks.optionsInput = input;
+          mocks.optionsEnabled = options?.enabled;
+          return { data: mocks.options };
+        },
+      },
       listCancelledCharges: { useQuery: (input: unknown) => { mocks.lastInput = input; return { data: mocks.data, isLoading: false, isError: false }; } },
     },
   },
@@ -135,5 +153,74 @@ describe("tuitions cancelled after they were confirmed", () => {
     expect(card.getByText("6820")).toBeTruthy();
     expect(card.getByText("Not settled")).toBeTruthy();
     expect(card.getByRole("button", { name: "Settle Job ID 6820" })).toBeTruthy();
+  });
+});
+
+describe("the filter card and panel", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Cancelled jobs filters" });
+  };
+
+  it("heads the list with its count, and says when something narrows it", async () => {
+    const user = userEvent.setup();
+    mocks.data = { ...mocks.data, items: [row({ id: 21 }), row({ id: 22 })], total: 2 };
+    render(<AdminCancelledChargesContent />);
+
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Cancelled Jobs")).toBeTruthy();
+    expect(within(card).getByText("2")).toBeTruthy();
+    expect(within(card).getByText("cancelled in total")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search class, subject or Tutor/), { target: { value: "Math" } });
+    expect(within(screen.getByRole("banner")).getByText("matching cancelled jobs")).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(/Search class, subject or Tutor/), { target: { value: "" } });
+
+    expect(mocks.optionsEnabled).toBe(false);
+    await openPanel(user);
+    expect(mocks.optionsEnabled).toBe(true);
+    expect(mocks.optionsInput).toEqual({ postedBy: "all" });
+  });
+
+  it("offers the Job Board's fields/ and the Admin's, and no Country", async () => {
+    const user = userEvent.setup();
+    mocks.data = { ...mocks.data, items: [row({})], total: 1 };
+    render(<AdminCancelledChargesContent />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).queryByRole("combobox", { name: "Country" })).toBeNull();
+    for (const name of ["City", "Student Gender", "Tutor Gender", "Posted By", "Days in Stage"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    for (const label of ["Posted Date From", "Job ID", "Salary From", "Salary To", "Guardian Name, Mobile or ID"]) {
+      expect(within(panel).getByLabelText(label)).toBeTruthy();
+    }
+    // What belongs to the earlier stages is not here.
+    expect(within(panel).queryByRole("combobox", { name: "Applicants" })).toBeNull();
+    expect(within(panel).queryByRole("combobox", { name: "Moderation" })).toBeNull();
+  });
+
+  it("adds the Cancelled stage's own choices, leaves out a request nobody can wait on, and sends them once Applied", async () => {
+    const user = userEvent.setup();
+    mocks.data = { ...mocks.data, items: [row({})], total: 1 };
+    render(<AdminCancelledChargesContent />);
+    const panel = await openPanel(user);
+
+    for (const label of ["Cancelled Date From", "Cancelled Date To", "Cancellation Reason"]) {
+      expect(within(panel).getByLabelText(label)).toBeTruthy();
+    }
+    for (const name of ["Settlement", "Refund", "Settlement Reason", "Payment Status", "Assigned Tutor Gender"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    // A cancelled tuition has no Guardian request left to wait on.
+    expect(within(panel).queryByRole("combobox", { name: "Waiting Request" })).toBeNull();
+    expect(within(panel).queryByLabelText("Confirmed Date From")).toBeNull();
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Settlement" }), { target: { value: "refund" } });
+    fireEvent.change(within(panel).getByLabelText("Cancellation Reason"), { target: { value: "  moved abroad " } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ settlement: "refund", cancelReason: "moved abroad" });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("2")).toBeTruthy();
   });
 });

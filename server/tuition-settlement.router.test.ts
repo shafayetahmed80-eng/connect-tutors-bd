@@ -41,6 +41,18 @@ describe("the cancelled tuitions list", () => {
     expect(dbMocks.listAdminCancelledChargesPage).toHaveBeenLastCalledWith({ query: "777", page: 2, pageSize: 20 });
   });
 
+  it("passes the Admin's filters through, and refuses what the panel could not send", async () => {
+    dbMocks.listAdminCancelledChargesPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const filters = { settlement: "refund" as const, refundDisposition: "credited" as const, settlementReasons: ["tutor_fault" as const], paymentStatuses: ["full_paid" as const], cancelReason: "moved" };
+
+    await createCaller().admin.listCancelledCharges({ filters });
+    expect(dbMocks.listAdminCancelledChargesPage).toHaveBeenLastCalledWith({ query: "", page: 1, pageSize: 20, filters });
+
+    await expect(createCaller().admin.listCancelledCharges({ filters: { settlement: "pending" } as never })).rejects.toThrow();
+    await expect(createCaller().admin.listCancelledCharges({ filters: { cancelledFrom: new Date("2026-10-09"), cancelledTo: new Date("2026-10-01") } })).rejects.toThrow();
+    await expect(createCaller().admin.listCancelledCharges({ filters: { settlementReasons: ["because"] } as never })).rejects.toThrow();
+  });
+
   it("is an Admin's to read", async () => {
     await expect(createCaller({ ...adminUser, role: "tutor" as const }).admin.listCancelledCharges({})).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.listAdminCancelledChargesPage).not.toHaveBeenCalled();

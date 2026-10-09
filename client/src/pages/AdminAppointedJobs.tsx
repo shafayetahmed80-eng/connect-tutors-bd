@@ -1,5 +1,6 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminGuardianTuitionRequestPill } from "@/components/AdminGuardianTuitionRequest";
+import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import { useAdminTuitionRowActions } from "@/components/AdminTuitionRowActions";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -31,7 +32,8 @@ export function AdminAppointedJobsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize });
+  const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const jobs = trpc.admin.listAppointedJobs.useQuery({ query, page, pageSize, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
   const rowActions = useAdminTuitionRowActions("appointed");
 
@@ -76,6 +78,19 @@ export function AdminAppointedJobsContent() {
       />
     </label>
 
+    <AdminJobFilterBar
+      filters={filterPanel}
+      stage="appointed"
+      eyebrow="Appointed Jobs"
+      count={jobs.data?.total}
+      total={jobs.data?.total}
+      loading={jobs.isLoading}
+      searching={query.trim().length > 0}
+      idleCaption="currently appointed"
+      matchingCaption="matching appointed jobs"
+      panelLabel="Appointed jobs filters"
+    />
+
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading appointed jobs…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Appointed jobs could not be loaded.</div> : null}
 
@@ -84,7 +99,7 @@ export function AdminAppointedJobsContent() {
       columns={columns}
       rows={items}
       rowKey={job => job.id}
-      empty={`No appointed job${query.trim() ? " for this search" : ""}.`}
+      empty={`No appointed job${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}.`}
       tableClassName="min-w-[80rem]"
       animateEntrance
     /> : null}

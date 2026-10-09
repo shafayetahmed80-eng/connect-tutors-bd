@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { ADMIN_JOB_LOCATION_LIMIT, ADMIN_JOB_SUBJECT_LIMIT } from "@shared/admin-job-filters";
+import { jobPaymentStatusValues } from "@shared/job-payment-status";
+import { cancellationReasons } from "@shared/platform-charge";
 
 /**
  * What the Admin's tuition lists accept to narrow by. The client's own shape
@@ -7,7 +9,7 @@ import { ADMIN_JOB_LOCATION_LIMIT, ADMIN_JOB_SUBJECT_LIMIT } from "@shared/admin
  * thing as the server enforces it, so a hand-made request cannot ask for more
  * than the panel could.
  */
-export const adminJobFiltersSchema = z.object({
+const baseFilters = z.object({
   postedFrom: z.coerce.date().optional(),
   postedTo: z.coerce.date().optional(),
   cityId: z.string().trim().min(1).max(80).optional(),
@@ -30,12 +32,37 @@ export const adminJobFiltersSchema = z.object({
   publicationStates: z.array(z.enum(["submitted", "reviewing", "changes_requested", "approved", "unpublished"])).max(5).optional(),
   applicants: z.enum(["none", "few", "many"]).optional(),
   expiringSoon: z.literal(true).optional(),
-}).refine(value => !value.postedFrom || !value.postedTo || value.postedFrom <= value.postedTo, {
-  message: "The 'from' date cannot be later than the 'to' date.",
-  path: ["postedFrom"],
-}).refine(value => value.salaryFrom === undefined || value.salaryTo === undefined || value.salaryFrom <= value.salaryTo, {
-  message: "The lowest salary cannot be above the highest.",
-  path: ["salaryFrom"],
+  appointedFrom: z.coerce.date().optional(),
+  appointedTo: z.coerce.date().optional(),
+  confirmedFrom: z.coerce.date().optional(),
+  confirmedTo: z.coerce.date().optional(),
+  cancelledFrom: z.coerce.date().optional(),
+  cancelledTo: z.coerce.date().optional(),
+  tutorGender: z.enum(["male", "female"]).optional(),
+  paymentStatuses: z.array(z.enum(jobPaymentStatusValues)).max(4).optional(),
+  letter: z.enum(["issued", "not_issued"]).optional(),
+  settlement: z.enum(["not_settled", "settled", "refund"]).optional(),
+  refundDisposition: z.enum(["credited", "refunded"]).optional(),
+  settlementReasons: z.array(z.enum(cancellationReasons)).max(4).optional(),
+  cancelReason: z.string().trim().min(1).max(120).optional(),
+});
+
+const dateRanges = [
+  ["postedFrom", "postedTo"],
+  ["appointedFrom", "appointedTo"],
+  ["confirmedFrom", "confirmedTo"],
+  ["cancelledFrom", "cancelledTo"],
+] as const;
+
+export const adminJobFiltersSchema = baseFilters.superRefine((value, context) => {
+  for (const [from, to] of dateRanges) {
+    const start = value[from];
+    const end = value[to];
+    if (start && end && start > end) context.addIssue({ code: "custom", message: "The 'from' date cannot be later than the 'to' date.", path: [from] });
+  }
+  if (value.salaryFrom !== undefined && value.salaryTo !== undefined && value.salaryFrom > value.salaryTo) {
+    context.addIssue({ code: "custom", message: "The lowest salary cannot be above the highest.", path: ["salaryFrom"] });
+  }
 });
 
 export type AdminJobFilters = z.infer<typeof adminJobFiltersSchema>;

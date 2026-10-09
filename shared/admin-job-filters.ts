@@ -4,14 +4,16 @@
  * The first thirteen are the Job Board's own filters, so the Admin's list and
  * the board read a tuition the same way; the rest are what only an Admin has to
  * go on - the salary, who posted it, who the Guardian is, whether a Guardian's
- * request is waiting, how long it has sat in its stage.
+ * request is waiting, how long it has sat in its stage - and, for the stages
+ * after Live, the dates and money that stage is about.
  *
  * The state is what the panel holds (every value a string, a list of strings or
  * a flag, so an empty box and a missing filter are the same thing); the input
  * is what the server takes. `buildAdminJobFilterInput` is the only way from one
  * to the other.
  */
-
+import { cancellationReasonLabels, cancellationReasons } from "./platform-charge";
+import { jobPaymentStatusLabels, jobPaymentStatusValues } from "./job-payment-status";
 import { parseSalaryAmount } from "./salary-amount";
 
 export type AdminJobStage = "pending" | "live" | "appointed" | "confirmed" | "cancelled";
@@ -46,6 +48,29 @@ export type AdminJobFilterState = {
   applicants: "" | "none" | "few" | "many";
   /** Live only: the Job Board listing ends within three days. */
   expiringSoon: boolean;
+  /** The day a Tutor was appointed; Appointed and Confirmed. */
+  appointedFrom: string;
+  appointedTo: string;
+  /** The day the Guardian kept the Tutor; Confirmed. */
+  confirmedFrom: string;
+  confirmedTo: string;
+  /** The day the tuition was cancelled; Cancelled. */
+  cancelledFrom: string;
+  cancelledTo: string;
+  /** The gender of the Tutor who holds the tuition. */
+  tutorGender: "" | "male" | "female";
+  /** Confirmed and Cancelled: how much of the fee is paid. */
+  paymentStatuses: string[];
+  /** Confirmed: whether a Confirmation Letter has been issued. */
+  letter: "" | "issued" | "not_issued";
+  /** Cancelled: whether the Admin has settled what the Tutor owes or is owed. */
+  settlement: "" | "not_settled" | "settled" | "refund";
+  /** Cancelled: what became of a refund. */
+  refundDisposition: "" | "credited" | "refunded";
+  /** Cancelled: why the Admin decided the tuition ended. */
+  settlementReasons: string[];
+  /** Cancelled: words from the reason typed when it was cancelled. */
+  cancelReason: string;
 };
 
 export const DEFAULT_ADMIN_JOB_FILTERS: AdminJobFilterState = {
@@ -71,13 +96,41 @@ export const DEFAULT_ADMIN_JOB_FILTERS: AdminJobFilterState = {
   publicationStates: [],
   applicants: "",
   expiringSoon: false,
+  appointedFrom: "",
+  appointedTo: "",
+  confirmedFrom: "",
+  confirmedTo: "",
+  cancelledFrom: "",
+  cancelledTo: "",
+  tutorGender: "",
+  paymentStatuses: [],
+  letter: "",
+  settlement: "",
+  refundDisposition: "",
+  settlementReasons: [],
+  cancelReason: "",
 };
 
-/** The filters that mean something in one stage only, by stage. */
-export const STAGE_ONLY_FILTERS = {
+type FilterKey = keyof AdminJobFilterState;
+
+/**
+ * The filters that mean something in some stages only, by stage.
+ *
+ * One that two stages share (the Appointed date, the Tutor's gender) is listed
+ * under both and stays when the Admin moves between them.
+ */
+export const STAGE_ONLY_FILTERS: Partial<Record<AdminJobStage, readonly FilterKey[]>> = {
   pending: ["publicationStates"],
   live: ["applicants", "expiringSoon"],
-} as const satisfies Partial<Record<AdminJobStage, readonly (keyof AdminJobFilterState)[]>>;
+  appointed: ["appointedFrom", "appointedTo", "tutorGender"],
+  confirmed: ["confirmedFrom", "confirmedTo", "appointedFrom", "appointedTo", "paymentStatuses", "letter", "tutorGender"],
+  cancelled: ["cancelledFrom", "cancelledTo", "settlement", "refundDisposition", "settlementReasons", "cancelReason", "paymentStatuses", "tutorGender"],
+};
+
+/** The filters a stage cannot answer: a cancelled tuition has no request left to wait on. */
+const STAGE_EXCLUDED_FILTERS: Partial<Record<AdminJobStage, readonly FilterKey[]>> = {
+  cancelled: ["waitingRequest"],
+};
 
 /** The two ceilings the panel enforces, as the Job Board's panel does; the server carries them as well. */
 export const ADMIN_JOB_LOCATION_LIMIT = 10;
@@ -118,6 +171,26 @@ export const adminJobApplicantOptions = [
   { id: "many", label: "6 or more" },
 ] as const;
 
+export const adminJobPaymentStatusOptions = jobPaymentStatusValues.map(id => ({ id, label: jobPaymentStatusLabels[id] }));
+
+export const adminJobLetterOptions = [
+  { id: "issued", label: "Issued" },
+  { id: "not_issued", label: "Not issued" },
+] as const;
+
+export const adminJobSettlementOptions = [
+  { id: "not_settled", label: "Not settled" },
+  { id: "settled", label: "Settled" },
+  { id: "refund", label: "With a refund" },
+] as const;
+
+export const adminJobRefundDispositionOptions = [
+  { id: "credited", label: "Credited" },
+  { id: "refunded", label: "Sent back" },
+] as const;
+
+export const adminJobSettlementReasonOptions = cancellationReasons.map(id => ({ id, label: cancellationReasonLabels[id] }));
+
 /**
  * Drops what does not belong to the stage now open.
  *
@@ -126,11 +199,13 @@ export const adminJobApplicantOptions = [
  * on screen to explain it.
  */
 export function clearOtherStageFilters(filters: AdminJobFilterState, stage: AdminJobStage): AdminJobFilterState {
-  let next = filters;
-  for (const [owner, keys] of Object.entries(STAGE_ONLY_FILTERS) as Array<[AdminJobStage, readonly (keyof AdminJobFilterState)[]]>) {
-    if (owner === stage) continue;
-    for (const key of keys) next = { ...next, [key]: DEFAULT_ADMIN_JOB_FILTERS[key] };
+  const kept: readonly FilterKey[] = STAGE_ONLY_FILTERS[stage] ?? [];
+  const cleared: FilterKey[] = [...(STAGE_EXCLUDED_FILTERS[stage] ?? [])];
+  for (const keys of Object.values(STAGE_ONLY_FILTERS)) {
+    for (const key of keys ?? []) if (!kept.includes(key) && !cleared.includes(key)) cleared.push(key);
   }
+  let next = filters;
+  for (const key of cleared) next = { ...next, [key]: DEFAULT_ADMIN_JOB_FILTERS[key] };
   return next;
 }
 
@@ -149,19 +224,38 @@ function salaryOf(value: string) {
   return parseSalaryAmount(value) ?? undefined;
 }
 
+/** The first moment of a day typed into a date box, or undefined while the box is empty. */
+function startOfDay(value: string) {
+  const day = trimmed(value);
+  return day ? new Date(`${day}T00:00:00`) : undefined;
+}
+
+/** The last moment of it, or a tuition posted at noon on the last day would fall outside its own range. */
+function endOfDay(value: string) {
+  const day = trimmed(value);
+  return day ? new Date(`${day}T23:59:59.999`) : undefined;
+}
+
 /** The panel's state as the server wants it: an unused filter is left out, not sent empty. */
 export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
   const list = <T,>(values: T[]) => (values.length ? values : undefined);
-  const from = trimmed(filters.postedFrom);
-  const to = trimmed(filters.postedTo);
+  const postedFrom = startOfDay(filters.postedFrom);
+  const postedTo = endOfDay(filters.postedTo);
+  const appointedFrom = startOfDay(filters.appointedFrom);
+  const appointedTo = endOfDay(filters.appointedTo);
+  const confirmedFrom = startOfDay(filters.confirmedFrom);
+  const confirmedTo = endOfDay(filters.confirmedTo);
+  const cancelledFrom = startOfDay(filters.cancelledFrom);
+  const cancelledTo = endOfDay(filters.cancelledTo);
   const salaryFrom = salaryOf(filters.salaryFrom);
   const salaryTo = salaryOf(filters.salaryTo);
   const cityId = trimmed(filters.cityId);
   const guardian = trimmed(filters.guardian);
   const jobId = trimmed(filters.jobId);
+  const cancelReason = trimmed(filters.cancelReason);
   return {
-    ...(from ? { postedFrom: new Date(`${from}T00:00:00`) } : {}),
-    ...(to ? { postedTo: new Date(`${to}T23:59:59.999`) } : {}),
+    ...(postedFrom ? { postedFrom } : {}),
+    ...(postedTo ? { postedTo } : {}),
     ...(cityId ? { cityId } : {}),
     ...(list(filters.locationIds) ? { locationIds: filters.locationIds } : {}),
     ...(list(filters.tuitionTypes) ? { tuitionTypes: filters.tuitionTypes as Array<"home" | "online" | "both" | "group" | "package"> } : {}),
@@ -182,14 +276,34 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(list(filters.publicationStates) ? { publicationStates: filters.publicationStates as Array<(typeof adminJobPublicationStates)[number]["id"]> } : {}),
     ...(filters.applicants ? { applicants: filters.applicants } : {}),
     ...(filters.expiringSoon ? { expiringSoon: true as const } : {}),
+    ...(appointedFrom ? { appointedFrom } : {}),
+    ...(appointedTo ? { appointedTo } : {}),
+    ...(confirmedFrom ? { confirmedFrom } : {}),
+    ...(confirmedTo ? { confirmedTo } : {}),
+    ...(cancelledFrom ? { cancelledFrom } : {}),
+    ...(cancelledTo ? { cancelledTo } : {}),
+    ...(filters.tutorGender ? { tutorGender: filters.tutorGender } : {}),
+    ...(list(filters.paymentStatuses) ? { paymentStatuses: filters.paymentStatuses as Array<(typeof jobPaymentStatusValues)[number]> } : {}),
+    ...(filters.letter ? { letter: filters.letter } : {}),
+    ...(filters.settlement ? { settlement: filters.settlement } : {}),
+    ...(filters.refundDisposition ? { refundDisposition: filters.refundDisposition } : {}),
+    ...(list(filters.settlementReasons) ? { settlementReasons: filters.settlementReasons as Array<(typeof cancellationReasons)[number]> } : {}),
+    ...(cancelReason ? { cancelReason } : {}),
   };
 }
 
 export type AdminJobFilterInput = ReturnType<typeof buildAdminJobFilterInput>;
 
-/** Whether the two dates, when both are set, are the right way round. */
-export function adminJobDatesOutOfOrder(filters: Pick<AdminJobFilterState, "postedFrom" | "postedTo">): boolean {
-  return Boolean(filters.postedFrom && filters.postedTo && filters.postedFrom > filters.postedTo);
+const dateRanges = [
+  ["postedFrom", "postedTo"],
+  ["appointedFrom", "appointedTo"],
+  ["confirmedFrom", "confirmedTo"],
+  ["cancelledFrom", "cancelledTo"],
+] as const;
+
+/** Whether any of the date ranges, where both ends are set, is the wrong way round. */
+export function adminJobDatesOutOfOrder(filters: Partial<Pick<AdminJobFilterState, (typeof dateRanges)[number][number]>>): boolean {
+  return dateRanges.some(([from, to]) => Boolean(filters[from] && filters[to] && filters[from]! > filters[to]!));
 }
 
 /** Whether the two salary boxes, when both are set, are the right way round. */

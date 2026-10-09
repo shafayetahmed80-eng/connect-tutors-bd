@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  optionsInput: null as unknown,
+  optionsEnabled: undefined as boolean | undefined,
+  options: {
+    tuitionTypes: ["home", "online"],
+    daysPerWeek: [3, 5],
+    cities: [{ id: "dhaka", label: "Dhaka" }],
+    locationsByCity: { dhaka: [{ id: "banasree", label: "Banasree" }] },
+    classesByCategory: { "English Version": ["Class 8"] },
+    subjectsByClass: { "Class 8": ["History"] },
+  },
   confirm: vi.fn(),
   reopen: vi.fn(),
   cancelTuition: vi.fn(),
@@ -44,6 +55,13 @@ vi.mock("@/lib/trpc", () => ({
       },
     }),
     admin: {
+      jobFilterOptions: {
+        useQuery: (input: unknown, options?: { enabled?: boolean }) => {
+          mocks.optionsInput = input;
+          mocks.optionsEnabled = options?.enabled;
+          return { data: mocks.options };
+        },
+      },
       listAppointedJobs: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -237,5 +255,85 @@ describe("the next move, from the row", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
     expect(within(dialog).getByText("Found a Tutor elsewhere")).toBeTruthy();
+  });
+});
+
+describe("the filter card and panel", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Appointed jobs filters" });
+  };
+
+  it("heads the list with its count, and says when something narrows it", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppointedJobsContent />);
+
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Appointed Jobs")).toBeTruthy();
+    expect(within(card).getByText("2")).toBeTruthy();
+    expect(within(card).getByText("currently appointed")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location/), { target: { value: "Math" } });
+    expect(within(screen.getByRole("banner")).getByText("matching appointed jobs")).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(/Search class, subject, location/), { target: { value: "" } });
+
+    // Nothing is asked for until the panel is opened.
+    expect(mocks.optionsEnabled).toBe(false);
+    await openPanel(user);
+    expect(mocks.optionsEnabled).toBe(true);
+    expect(mocks.optionsInput).toEqual({ postedBy: "all" });
+  });
+
+  it("offers the Job Board's fields and the Admin's, and no Country", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppointedJobsContent />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).queryByRole("combobox", { name: "Country" })).toBeNull();
+    for (const name of ["City", "Student Gender", "Tutor Gender", "Posted By", "Days in Stage"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    for (const label of ["Posted Date From", "Job ID", "Salary From", "Salary To", "Guardian Name, Mobile or ID"]) {
+      expect(within(panel).getByLabelText(label)).toBeTruthy();
+    }
+    // What belongs to the earlier stages is not here.
+    expect(within(panel).queryByRole("combobox", { name: "Applicants" })).toBeNull();
+    expect(within(panel).queryByRole("combobox", { name: "Moderation" })).toBeNull();
+  });
+
+  it("adds the Appointed stage's own choices, and sends them once Applied", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppointedJobsContent />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).getByLabelText("Appointed Date From")).toBeTruthy();
+    expect(within(panel).getByLabelText("Appointed Date To")).toBeTruthy();
+    expect(within(panel).getByRole("combobox", { name: "Waiting Request" })).toBeTruthy();
+    expect(within(panel).queryByLabelText("Confirmed Date From")).toBeNull();
+    expect(within(panel).queryByRole("combobox", { name: "Settlement" })).toBeNull();
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Assigned Tutor Gender" }), { target: { value: "female" } });
+    fireEvent.change(within(panel).getByLabelText("Salary From"), { target: { value: "5,000" } });
+    expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
+
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ tutorGender: "female", salaryFrom: 5000 });
+    expect(mocks.lastInput).toMatchObject({ page: 1 });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("2")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching appointed jobs")).toBeTruthy();
+
+    await user.click(within(screen.getByRole("region", { name: "Appointed jobs filters" })).getByRole("button", { name: "Clear" }));
+    expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
+  });
+
+  it("will not apply a date range the wrong way round", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppointedJobsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Appointed Date From"), { target: { value: "2026-10-09" } });
+    fireEvent.change(within(panel).getByLabelText("Appointed Date To"), { target: { value: "2026-10-01" } });
+    expect(within(panel).getByRole("alert").textContent).toContain("'from' date cannot be later");
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
