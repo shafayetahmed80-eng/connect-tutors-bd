@@ -4,6 +4,7 @@ import { AdminGuardianTuitionRequestMark, AdminGuardianTuitionRequestPill, Appro
 import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import AppliedTutorsButton from "@/components/AppliedTutorsButton";
 import PostTypeBadge from "@/components/PostTypeBadge";
+import TuitionHistory from "@/components/TuitionHistory";
 import StatusTabRow from "@/components/StatusTabRow";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
@@ -217,6 +218,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         <JobDetailRow icon={<MapPin size={12} />} label="Heard via" value={formatRequestSource(openJob.heardAboutUs)} muted={!openJob.heardAboutUs} />
         <JobDetailRow icon={<UserRound size={12} />} label="Guardian" value={openJob.guardianName || "Not given"} muted={!openJob.guardianName} />
         <JobDetailRow icon={<Phone size={12} />} label="Guardian phone" value={openJob.guardianPhone || "Not given"} muted={!openJob.guardianPhone} />
+        <div className="sm:col-span-2"><TuitionHistory requestId={openJob.id} /></div>
       </>}
       action={<>
         <button type="button" onClick={() => setExpandedId(null)} className="h-8 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>

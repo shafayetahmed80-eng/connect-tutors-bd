@@ -9,6 +9,7 @@ import {
 } from "@shared/location-catalog";
 import { defaultSiteLimits, resolveSiteLimits, type SiteLimitValues } from "@shared/site-limits";
 import { findSiteContentSlot, normalizeSiteContactNumber } from "@shared/site-content";
+import { mergeTuitionHistory, parseChangedFields, type TuitionHistoryEntry } from "@shared/tuition-history";
 import type { AccountChangeRole, AccountChangeStatus, AccountChangeType } from "@shared/account-change-requests";
 import { accountChangeDecisionNotice, type AccountChangeContext, type AccountChangeDecisionRefusal } from "./account-change-requests";
 import { alias } from "drizzle-orm/mysql-core";
@@ -4691,6 +4692,60 @@ export async function listTutorRequestPublicationEvents(requestId: number) {
     .from(tutorRequestPublicationEvents)
     .where(eq(tutorRequestPublicationEvents.tutorRequestId, requestId))
     .orderBy(desc(tutorRequestPublicationEvents.createdAt));
+}
+
+/**
+ * Everything done to one tuition, for the Admin reading its details: the moves on
+ * the Job Board and the other changes made to the request, with who made each,
+ * newest first. Both logs hold only safe fields - names of what changed, never
+ * the Guardian's words or numbers.
+ */
+export async function listTuitionHistory(requestId: number): Promise<TuitionHistoryEntry[]> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [boardRows, requestRows] = await Promise.all([
+    database
+      .select({
+        action: tutorRequestPublicationEvents.action,
+        from: tutorRequestPublicationEvents.previousState,
+        to: tutorRequestPublicationEvents.nextState,
+        reason: tutorRequestPublicationEvents.reason,
+        at: tutorRequestPublicationEvents.createdAt,
+        actorName: users.name,
+      })
+      .from(tutorRequestPublicationEvents)
+      .leftJoin(users, eq(users.id, tutorRequestPublicationEvents.adminUserId))
+      .where(eq(tutorRequestPublicationEvents.tutorRequestId, requestId)),
+    database
+      .select({
+        action: tutorRequestOperationEvents.action,
+        changedFields: tutorRequestOperationEvents.changedFields,
+        at: tutorRequestOperationEvents.createdAt,
+        actorName: users.name,
+      })
+      .from(tutorRequestOperationEvents)
+      .leftJoin(users, eq(users.id, tutorRequestOperationEvents.actorUserId))
+      .where(eq(tutorRequestOperationEvents.tutorRequestId, requestId)),
+  ]);
+  return mergeTuitionHistory(
+    boardRows.map(row => ({
+      source: "board" as const,
+      action: row.action,
+      at: row.at,
+      actorName: row.actorName?.trim() || null,
+      // A move that stayed where it was (an edit) has nothing to say about a state.
+      from: row.from !== row.to ? row.from : null,
+      to: row.from !== row.to ? row.to : null,
+      reason: row.reason,
+    })),
+    requestRows.map(row => ({
+      source: "request" as const,
+      action: row.action,
+      at: row.at,
+      actorName: row.actorName?.trim() || null,
+      changedFields: parseChangedFields(row.changedFields),
+    })),
+  );
 }
 
 /**

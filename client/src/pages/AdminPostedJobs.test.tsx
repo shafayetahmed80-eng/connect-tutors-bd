@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
     subjectsByClass: { "Class 8": ["History"] },
   },
   publish: vi.fn(),
+  historyEnabled: undefined as boolean | undefined,
+  history: [] as Array<Record<string, unknown>>,
   approveGuardian: vi.fn(),
   declineGuardian: vi.fn(),
   confirm: vi.fn(),
@@ -83,6 +85,12 @@ vi.mock("@/lib/trpc", () => ({
       },
       moderateTutorRequestPublication: {
         useMutation: () => ({ mutate: mocks.publish, isPending: false }),
+      },
+      tuitionHistory: {
+        useQuery: (_input: unknown, options?: { enabled?: boolean }) => {
+          mocks.historyEnabled = options?.enabled;
+          return { data: options?.enabled ? mocks.history : undefined, isLoading: false, isError: false };
+        },
       },
       approveGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.approveGuardian, isPending: false }) },
       declineGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.declineGuardian, isPending: false }) },
@@ -152,6 +160,43 @@ describe("Admin Posted jobs board", () => {
     expect(within(dialog).queryByRole("button", { name: "Update" })).toBeNull();
     expect(within(dialog).getByRole("button", { name: /Change Status/ })).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: /Edit/ })).toBeTruthy();
+  });
+
+  it("keeps a tuition's history closed in the details dialog, and reads it only once opened", async () => {
+    const user = userEvent.setup();
+    mocks.history = [
+      { source: "request", action: "admin_updated", at: new Date("2026-10-09T08:30:00.000Z"), actorName: "Rahim Uddin", changedFields: ["request"] },
+      { source: "board", action: "go_live", at: new Date("2026-10-08T10:00:00.000Z"), actorName: "Karim Hossain", from: "submitted", to: "published", reason: null },
+    ];
+    render(<AdminPostedJobsContent />);
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getByText("History")).toBeTruthy();
+    expect(mocks.historyEnabled).toBe(false);
+    expect(within(dialog).queryByText("Edited by an Admin")).toBeNull();
+
+    await user.click(within(dialog).getByText("History"));
+
+    expect(mocks.historyEnabled).toBe(true);
+    expect(within(dialog).getByText("Edited by an Admin")).toBeTruthy();
+    expect(within(dialog).getByText(/Rahim Uddin/)).toBeTruthy();
+    expect(within(dialog).getByText("Changed: Request")).toBeTruthy();
+    expect(within(dialog).getByText("Went Live")).toBeTruthy();
+    expect(within(dialog).getByText(/submitted → published/)).toBeTruthy();
+    mocks.history = [];
+  });
+
+  it("says so when nothing has been recorded for a tuition yet", async () => {
+    const user = userEvent.setup();
+    mocks.history = [];
+    render(<AdminPostedJobsContent />);
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = screen.getByRole("dialog");
+
+    await user.click(within(dialog).getByText("History"));
+
+    expect(within(dialog).getByText("Nothing has been recorded for this tuition yet.")).toBeTruthy();
   });
 
   it("takes a Pending tuition Live in one click", async () => {
