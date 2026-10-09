@@ -6,7 +6,6 @@ import {
   buildAdminJobFilterInput,
   clearOtherStageFilters,
   countAdminJobFilters,
-  isSalaryText,
 } from "./admin-job-filters";
 
 describe("buildAdminJobFilterInput", () => {
@@ -41,12 +40,9 @@ describe("buildAdminJobFilterInput", () => {
     });
   });
 
-  it("does not guess at a salary that is not a whole number", () => {
-    expect(buildAdminJobFilterInput({ ...DEFAULT_ADMIN_JOB_FILTERS, salaryFrom: "5k", salaryTo: "6000.5" })).toEqual({});
-    expect(isSalaryText("")).toBe(true);
-    expect(isSalaryText("5000")).toBe(true);
-    expect(isSalaryText("5k")).toBe(false);
-    expect(isSalaryText("-5")).toBe(false);
+  it("reads a salary the way every other salary box in the Admin panel does", () => {
+    expect(buildAdminJobFilterInput({ ...DEFAULT_ADMIN_JOB_FILTERS, salaryFrom: "5,000", salaryTo: "9,500 Taka" })).toEqual({ salaryFrom: 5000, salaryTo: 9500 });
+    expect(buildAdminJobFilterInput({ ...DEFAULT_ADMIN_JOB_FILTERS, salaryFrom: "abc", salaryTo: "  " })).toEqual({});
   });
 });
 

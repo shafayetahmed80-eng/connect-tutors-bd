@@ -12,6 +12,8 @@
  * to the other.
  */
 
+import { parseSalaryAmount } from "./salary-amount";
+
 export type AdminJobStage = "pending" | "live" | "appointed" | "confirmed" | "cancelled";
 
 export type AdminJobFilterState = {
@@ -28,7 +30,7 @@ export type AdminJobFilterState = {
   studentGender: "" | "male" | "female";
   preferredTutorGender: "" | "male" | "female" | "any";
   jobId: string;
-  /** Whole taka, as typed. */
+  /** Taka, typed however an Admin writes a number: 5000, 5,000 or "5,000 Taka". */
   salaryFrom: string;
   salaryTo: string;
   postedBy: "" | "guardian" | "admin";
@@ -142,20 +144,9 @@ function trimmed(value: string) {
   return text || undefined;
 }
 
-function wholeNumber(value: string) {
-  const text = value.trim();
-  if (!/^\d+$/.test(text)) return undefined;
-  return Number(text);
-}
-
-/**
- * Whether a salary box holds something the panel can send.
- *
- * Only whole numbers are a salary; anything else is left out rather than sent
- * as a guess, and the panel says so.
- */
-export function isSalaryText(value: string): boolean {
-  return !value.trim() || wholeNumber(value) !== undefined;
+/** A salary as every other salary box in the Admin panel reads it: the digits, whatever else was typed. */
+function salaryOf(value: string) {
+  return parseSalaryAmount(value) ?? undefined;
 }
 
 /** The panel's state as the server wants it: an unused filter is left out, not sent empty. */
@@ -163,8 +154,8 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
   const list = <T,>(values: T[]) => (values.length ? values : undefined);
   const from = trimmed(filters.postedFrom);
   const to = trimmed(filters.postedTo);
-  const salaryFrom = wholeNumber(filters.salaryFrom);
-  const salaryTo = wholeNumber(filters.salaryTo);
+  const salaryFrom = salaryOf(filters.salaryFrom);
+  const salaryTo = salaryOf(filters.salaryTo);
   const cityId = trimmed(filters.cityId);
   const guardian = trimmed(filters.guardian);
   const jobId = trimmed(filters.jobId);
@@ -173,7 +164,7 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(to ? { postedTo: new Date(`${to}T23:59:59.999`) } : {}),
     ...(cityId ? { cityId } : {}),
     ...(list(filters.locationIds) ? { locationIds: filters.locationIds } : {}),
-    ...(list(filters.tuitionTypes) ? { tuitionTypes: filters.tuitionTypes } : {}),
+    ...(list(filters.tuitionTypes) ? { tuitionTypes: filters.tuitionTypes as Array<"home" | "online" | "both" | "group" | "package"> } : {}),
     ...(list(filters.daysPerWeek) ? { daysPerWeek: filters.daysPerWeek.map(Number) } : {}),
     ...(list(filters.categories) ? { categories: filters.categories } : {}),
     ...(list(filters.classCourses) ? { classCourses: filters.classCourses } : {}),
@@ -185,10 +176,10 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(salaryTo !== undefined ? { salaryTo } : {}),
     ...(filters.postedBy ? { postedBy: filters.postedBy } : {}),
     ...(guardian ? { guardian } : {}),
-    ...(list(filters.heardAboutUs) ? { heardAboutUs: filters.heardAboutUs } : {}),
+    ...(list(filters.heardAboutUs) ? { heardAboutUs: filters.heardAboutUs as Array<(typeof adminJobHeardAboutUsOptions)[number]["id"]> } : {}),
     ...(filters.waitingRequest ? { waitingRequest: filters.waitingRequest } : {}),
     ...(filters.daysInStage ? { daysInStage: Number(filters.daysInStage) } : {}),
-    ...(list(filters.publicationStates) ? { publicationStates: filters.publicationStates } : {}),
+    ...(list(filters.publicationStates) ? { publicationStates: filters.publicationStates as Array<(typeof adminJobPublicationStates)[number]["id"]> } : {}),
     ...(filters.applicants ? { applicants: filters.applicants } : {}),
     ...(filters.expiringSoon ? { expiringSoon: true as const } : {}),
   };
@@ -203,7 +194,7 @@ export function adminJobDatesOutOfOrder(filters: Pick<AdminJobFilterState, "post
 
 /** Whether the two salary boxes, when both are set, are the right way round. */
 export function adminJobSalaryOutOfOrder(filters: Pick<AdminJobFilterState, "salaryFrom" | "salaryTo">): boolean {
-  const from = wholeNumber(filters.salaryFrom);
-  const to = wholeNumber(filters.salaryTo);
+  const from = salaryOf(filters.salaryFrom);
+  const to = salaryOf(filters.salaryTo);
   return from !== undefined && to !== undefined && from > to;
 }
