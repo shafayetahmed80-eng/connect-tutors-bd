@@ -11,12 +11,14 @@ import {
   adminJobDaysInStageOptions,
   adminJobHeardAboutUsOptions,
   adminJobLetterOptions,
+  adminJobListStageOptions,
   adminJobPaymentStatusOptions,
   adminJobPublicationStates,
   adminJobRefundDispositionOptions,
   adminJobSalaryOutOfOrder,
   adminJobSettlementOptions,
   adminJobSettlementReasonOptions,
+  adminJobShortlistedOptions,
   adminJobWaitingRequestOptions,
   buildAdminJobFilterInput,
   clearOtherStageFilters,
@@ -25,6 +27,9 @@ import {
   type AdminJobStage,
 } from "@shared/admin-job-filters";
 import { useMemo, useState, type ReactNode } from "react";
+
+/** The five stage boards, and the one list that holds Live, Appointed and Confirmed together: Applied Tutors and Tutor Matching. */
+export type AdminJobFilterStage = AdminJobStage | "applied";
 
 /**
  * The state behind an Admin tuition list's filter panel.
@@ -86,12 +91,14 @@ export function useAdminJobFilterOptions({ postedBy, enabled }: { postedBy: "all
  *
  * There is no Country box: every tuition is in one country. The choices that
  * mean something in one stage alone appear only while that stage is open.
+ * The list that holds three stages at once has its own: which stages, how many
+ * Tutors applied, and whether any is shortlisted.
  */
 export function AdminJobFilterFields({ draft, setDraft, options, stage, showPostedBy }: {
   draft: AdminJobFilterState;
   setDraft: (next: AdminJobFilterState) => void;
   options: JobFilterOptions;
-  stage: AdminJobStage;
+  stage: AdminJobFilterStage;
   /** Posted By tells the Admin's posts from the Guardians' - pointless on the list that holds only the Admin's. */
   showPostedBy: boolean;
 }) {
@@ -125,6 +132,13 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
       <ChipMultiSelect label="Moderation" options={[...adminJobPublicationStates]} selectedIds={draft.publicationStates} onChange={publicationStates => set({ publicationStates })} />
     </div> : null}
     {stage === "live" ? <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} /> : null}
+    {stage === "applied" ? <>
+      <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} />
+      <FilterSelect label="Shortlisted Tutors" value={draft.shortlisted} onChange={value => set({ shortlisted: value as AdminJobFilterState["shortlisted"] })} options={[...adminJobShortlistedOptions]} />
+      <div className="sm:col-span-2">
+        <ChipMultiSelect label="Stage" options={[...adminJobListStageOptions]} selectedIds={draft.listStages} onChange={listStages => set({ listStages })} />
+      </div>
+    </> : null}
     {stage === "appointed" ? <>
       <DateField label="Appointed Date From" value={draft.appointedFrom} max={draft.appointedTo || undefined} onChange={appointedFrom => set({ appointedFrom })} />
       <DateField label="Appointed Date To" value={draft.appointedTo} min={draft.appointedFrom || undefined} onChange={appointedTo => set({ appointedTo })} />
@@ -165,7 +179,7 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
  */
 export function AdminJobFilterBar({ filters, stage, eyebrow, count, total, loading, searching, idleCaption, matchingCaption, panelLabel, postedBy = "all", actions }: {
   filters: ReturnType<typeof useAdminJobFilters>;
-  stage: AdminJobStage;
+  stage: AdminJobFilterStage;
   /** What the list is: "Appointed Jobs". */
   eyebrow: string;
   /** The number under it; the open stage's count, or the list's total. */

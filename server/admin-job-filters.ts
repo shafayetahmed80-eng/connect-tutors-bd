@@ -31,6 +31,7 @@ const baseFilters = z.object({
   daysInStage: z.number().int().min(1).max(365).optional(),
   publicationStates: z.array(z.enum(["submitted", "reviewing", "changes_requested", "approved", "unpublished"])).max(5).optional(),
   applicants: z.enum(["none", "few", "many"]).optional(),
+  shortlisted: z.enum(["has", "none"]).optional(),
   appointedFrom: z.coerce.date().optional(),
   appointedTo: z.coerce.date().optional(),
   confirmedFrom: z.coerce.date().optional(),

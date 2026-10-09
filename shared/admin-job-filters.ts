@@ -46,6 +46,14 @@ export type AdminJobFilterState = {
   publicationStates: string[];
   /** Live only: how many Tutors have applied. */
   applicants: "" | "none" | "few" | "many";
+  /** Applied Tutors and Tutor Matching: whether any applicant is on the Admin's shortlist. */
+  shortlisted: "" | "has" | "none";
+  /**
+   * Applied Tutors and Tutor Matching: which of Live, Appointed and Confirmed to
+   * list. It chooses the stages the list asks for, so it is not part of the
+   * filter input below.
+   */
+  listStages: string[];
   /** The day a Tutor was appointed; Appointed and Confirmed. */
   appointedFrom: string;
   appointedTo: string;
@@ -93,6 +101,8 @@ export const DEFAULT_ADMIN_JOB_FILTERS: AdminJobFilterState = {
   daysInStage: "",
   publicationStates: [],
   applicants: "",
+  shortlisted: "",
+  listStages: [],
   appointedFrom: "",
   appointedTo: "",
   confirmedFrom: "",
@@ -168,6 +178,18 @@ export const adminJobApplicantOptions = [
   { id: "none", label: "No applicants" },
   { id: "few", label: "1 to 5 applicants" },
   { id: "many", label: "6 or more" },
+] as const;
+
+export const adminJobShortlistedOptions = [
+  { id: "has", label: "Has shortlisted" },
+  { id: "none", label: "None shortlisted" },
+] as const;
+
+/** The stages a tuition can have applicants in: on the Job Board, or past it. */
+export const adminJobListStageOptions = [
+  { id: "live", label: "Live" },
+  { id: "appointed", label: "Appointed" },
+  { id: "confirmed", label: "Confirmed" },
 ] as const;
 
 export const adminJobPaymentStatusOptions = jobPaymentStatusValues.map(id => ({ id, label: jobPaymentStatusLabels[id] }));
@@ -274,6 +296,7 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(filters.daysInStage ? { daysInStage: Number(filters.daysInStage) } : {}),
     ...(list(filters.publicationStates) ? { publicationStates: filters.publicationStates as Array<(typeof adminJobPublicationStates)[number]["id"]> } : {}),
     ...(filters.applicants ? { applicants: filters.applicants } : {}),
+    ...(filters.shortlisted ? { shortlisted: filters.shortlisted } : {}),
     ...(appointedFrom ? { appointedFrom } : {}),
     ...(appointedTo ? { appointedTo } : {}),
     ...(confirmedFrom ? { confirmedFrom } : {}),

@@ -57,7 +57,7 @@ async function makeRequest(name: string, guardianUserId: number, over: Made) {
   return key[name];
 }
 
-async function makeJob(requestId: number, interests: Array<{ tutorId: string; status: "interested" | "withdrawn" }>) {
+async function makeJob(requestId: number, interests: Array<{ tutorId: string; status: "interested" | "withdrawn" | "shortlisted" | "matched" }>) {
   const db = await database();
   const [job] = await db.insert(tutorJobs).values({
     tutorRequestId: requestId, publicJobId: `TAJF-${tag}-${requestId}`, tuitionType: "home", category: "Bangla Medium", classCourse: "Class 5",
@@ -97,7 +97,7 @@ beforeAll(async () => {
     budgetAmount: 5000, tuitionCityLocationId: cityA, tuitionLocationId: areaA, tuitionLocationLabel: "Test Area A, Test City A",
     status: "reviewing", publicationState: "published", createdAt: ago(8),
   });
-  await makeJob(l1, [{ tutorId: holderId, status: "interested" }, { tutorId: otherTutorId, status: "withdrawn" }]);
+  await makeJob(l1, [{ tutorId: holderId, status: "shortlisted" }, { tutorId: otherTutorId, status: "withdrawn" }]);
   const l2 = await makeRequest("l2", second, {
     classCourse: "Class 6", subjects: JSON.stringify(["Bangla"]), daysPerWeek: 4, budgetAmount: 6000, tuitionCityLocationId: cityA, tuitionLocationId: areaA,
     tuitionLocationLabel: "Test Area A, Test City A", status: "reviewing", publicationState: "published", createdAt: ago(1),
@@ -106,12 +106,15 @@ beforeAll(async () => {
   // Appointed, with the Guardian's Confirm waiting
   const a1 = await makeRequest("a1", second, { status: "matched", tutorId: holderId, publicationState: "published", appointedAt: ago(5), createdAt: ago(12) });
   await waitingRequest(a1, second, { type: "confirm" });
+  // The Tutor it holds, and one more who applied and was not picked
+  await makeJob(a1, [{ tutorId: holderId, status: "matched" }, { tutorId: otherTutorId, status: "interested" }]);
   // Appointed, with a Confirm about a Tutor who no longer holds it: left behind, not answerable
   const a2 = await makeRequest("a2", second, { status: "matched", tutorId: holderId, publicationState: "published", appointedAt: ago(1), createdAt: ago(3) });
   await waitingRequest(a2, second, { type: "confirm", tutorId: otherTutorId });
   // Confirmed, with the Guardian's removal waiting
   const c1 = await makeRequest("c1", second, { status: "matched", tutorId: holderId, publicationState: "published", appointedAt: ago(30), appointmentConfirmedAt: ago(20), createdAt: ago(35) });
   await waitingRequest(c1, second, { type: "remove_tutor", reason: "Misses classes" });
+  await makeJob(c1, [{ tutorId: holderId, status: "matched" }]);
   // Cancelled
   await makeRequest("x1", second, { status: "closed", publicationState: "closed", cancelledAt: ago(40), cancellationReason: "No longer needed", createdAt: ago(50) });
 });
@@ -138,6 +141,12 @@ async function read(filters: AdminJobFilters, stage: "all" | "pending" | "live" 
   const page = await listAdminPostedJobsPage({ query: "", stage, page: 1, pageSize: 100, postedBy: "all", filters: { guardian: tag, ...filters } });
   const names = Object.keys(key).filter(name => page.items.some(item => item.id === key[name])).sort();
   return { names, counts: page.counts, total: page.total };
+}
+
+/** The tuitions Applied Tutors lists - Live, Appointed and Confirmed together - by name. */
+async function readApplied(filters: AdminJobFilters, stages: Array<"live" | "appointed" | "confirmed"> = ["live", "appointed", "confirmed"]) {
+  const page = await listAdminPostedJobsPage({ query: "", stage: "all", stages, page: 1, pageSize: 100, postedBy: "all", filters: { guardian: tag, ...filters } });
+  return Object.keys(key).filter(name => page.items.some(item => item.id === key[name])).sort();
 }
 
 describe("the Admin's job filters", () => {
@@ -238,6 +247,30 @@ describe("the Admin's job filters", () => {
     // Withdrawn interest is not an application, so one standing applicant is "few".
     expect((await read({ applicants: "few" }, "live")).names).toEqual(["l1"]);
     expect((await read({ applicants: "many" }, "live")).names).toEqual([]);
+  });
+
+  it("lists Live, Appointed and Confirmed together for Applied Tutors, each with the applicants it kept", async () => {
+    expect(await readApplied({})).toEqual(["a1", "a2", "c1", "l1", "l2"]);
+    // Applicants are read the way the card's own number is: withdrawn interest is not an application.
+    expect(await readApplied({ applicants: "none" })).toEqual(["a2", "l2"]);
+    expect(await readApplied({ applicants: "few" })).toEqual(["a1", "c1", "l1"]);
+    expect(await readApplied({ applicants: "many" })).toEqual([]);
+    expect(await readApplied({ applicants: "few" }, ["appointed"])).toEqual(["a1"]);
+  });
+
+  it("finds the tuitions that have a Tutor on the Admin's shortlist, and those that have none", async () => {
+    // Only a Tutor whose own status is "shortlisted" counts: the one who holds a tuition has moved past it.
+    expect(await readApplied({ shortlisted: "has" })).toEqual(["l1"]);
+    expect(await readApplied({ shortlisted: "none" })).toEqual(["a1", "a2", "c1", "l2"]);
+    expect(await readApplied({ shortlisted: "has", applicants: "none" })).toEqual([]);
+    expect(await readApplied({ shortlisted: "has", applicants: "few" }, ["appointed", "confirmed"])).toEqual([]);
+  });
+
+  it("counts days in the stage each tuition is in when three stages are listed together", async () => {
+    // Live from its posting (8 days), Appointed from the day a Tutor was (5), Confirmed from its confirmation (20).
+    expect(await readApplied({ daysInStage: 7 })).toEqual(["c1", "l1"]);
+    expect(await readApplied({ daysInStage: 14 })).toEqual(["c1"]);
+    expect(await readApplied({ daysInStage: 60 })).toEqual([]);
   });
 
   it("offers only what the tuitions hold, from every stage, and narrows to Admin posts on request", async () => {

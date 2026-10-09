@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +24,16 @@ const mocks = vi.hoisted(() => ({
   declineGuardian: vi.fn(),
   lastInput: null as unknown,
   liveInput: null as unknown,
+  optionsInput: null as unknown,
+  optionsEnabled: undefined as boolean | undefined,
+  options: {
+    tuitionTypes: ["home", "online"],
+    daysPerWeek: [3, 5],
+    cities: [{ id: "dhaka", label: "Dhaka" }],
+    locationsByCity: { dhaka: [{ id: "banasree", label: "Banasree" }] },
+    classesByCategory: { "English Version": ["Class 8"] },
+    subjectsByClass: { "Class 8": ["History"] },
+  },
   live: {
     items: [{
       id: 13, classCourse: "Class 8", subjects: JSON.stringify(["History"]),
@@ -89,6 +100,13 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
           return { data: mocks.data, isLoading: false, isError: false, error: null };
+        },
+      },
+      jobFilterOptions: {
+        useQuery: (input: unknown, options?: { enabled?: boolean }) => {
+          mocks.optionsInput = input;
+          mocks.optionsEnabled = options?.enabled;
+          return { data: mocks.options };
         },
       },
       listPostedJobs: {
@@ -501,5 +519,69 @@ describe("the tuitions the sidebar tab lands on", () => {
     render(<AdminAppliedTuitionsContent />);
     fireEvent.change(screen.getByPlaceholderText(/Search subject/i), { target: { value: "Banasree" } });
     expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"], query: "Banasree", page: 1 });
+  });
+});
+
+describe("the card and filter panel over the tuitions", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Tuition filters" });
+  };
+
+  it("heads the list with its count, as the Posted jobs board does, and asks for no options until the panel opens", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTuitionsContent />);
+
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Tuitions")).toBeTruthy();
+    expect(within(card).getByText("2")).toBeTruthy();
+    expect(within(card).getByText("live, appointed and confirmed")).toBeTruthy();
+    expect(mocks.optionsEnabled).toBe(false);
+
+    const panel = await openPanel(user);
+    expect(mocks.optionsEnabled).toBe(true);
+    expect(mocks.optionsInput).toEqual({ postedBy: "all" });
+    // The Job Board's own boxes, the Admin's, and the three this list has.
+    for (const name of ["City", "Student Gender", "Waiting Request", "Days in Stage", "Posted By", "Applicants", "Shortlisted Tutors"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    expect(within(panel).getByRole("combobox", { name: "Stage" })).toBeTruthy();
+    // What belongs to one stage board alone is not here.
+    for (const name of ["Moderation", "Settlement", "Assigned Tutor Gender", "Confirmation Letter"]) {
+      expect(within(panel).queryByRole("combobox", { name })).toBeNull();
+    }
+  });
+
+  it("sends the applicant and shortlist choices on Apply, still asking for all three stages", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTuitionsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Applicants" }), { target: { value: "few" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Shortlisted Tutors" }), { target: { value: "has" } });
+    expect((mocks.liveInput as { filters?: unknown }).filters).toBeUndefined();
+
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"], page: 1, filters: { applicants: "few", shortlisted: "has" } });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("2")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching tuitions")).toBeTruthy();
+  });
+
+  it("asks for only the stages the Admin chose, and counts that as a filter", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTuitionsContent />);
+    const panel = await openPanel(user);
+
+    await user.click(within(panel).getByRole("combobox", { name: "Stage" }));
+    await user.click(within(panel).getByRole("button", { name: "Appointed" }));
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+
+    expect(mocks.liveInput).toMatchObject({ stages: ["appointed"] });
+    // The stages are what the list is made of, not a narrowing of what the server filters.
+    expect((mocks.liveInput as { filters?: unknown }).filters).toBeUndefined();
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("1")).toBeTruthy();
+
+    await user.click(within(panel).getByRole("button", { name: "Clear" }));
+    expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"] });
   });
 });

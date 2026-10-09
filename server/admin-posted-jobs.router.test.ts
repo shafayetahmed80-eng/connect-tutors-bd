@@ -66,11 +66,11 @@ describe("admin.listPostedJobs filters", () => {
 
     await createCaller().admin.listPostedJobs({
       stage: "live",
-      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few" },
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", shortlisted: "has" },
     });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenCalledWith(expect.objectContaining({
       stage: "live",
-      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few" },
+      filters: { postedFrom: from, salaryFrom: 5000, salaryTo: 9000, tuitionTypes: ["home"], daysPerWeek: [3], waitingRequest: "confirm", applicants: "few", shortlisted: "has" },
     }));
   });
 
@@ -86,6 +86,7 @@ describe("admin.listPostedJobs filters", () => {
     await expect(ask({ postedFrom: new Date("2026-10-09"), postedTo: new Date("2026-10-01") })).rejects.toThrow();
     await expect(ask({ tuitionTypes: ["hybrid"] })).rejects.toThrow();
     await expect(ask({ waitingRequest: "approve" })).rejects.toThrow();
+    await expect(ask({ shortlisted: "maybe" })).rejects.toThrow();
     await expect(ask({ locationIds: Array.from({ length: 11 }, (_, index) => `area-${index}`) })).rejects.toThrow();
     await expect(ask({ subjects: Array.from({ length: 13 }, (_, index) => `subject-${index}`) })).rejects.toThrow();
     await expect(ask({ salaryFrom: -1 })).rejects.toThrow();
