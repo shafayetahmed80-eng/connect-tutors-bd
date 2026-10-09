@@ -234,6 +234,22 @@ describe("admin.listGuardianProfiles", () => {
     expect(dbMocks.listGuardianProfilesForAdmin).toHaveBeenCalledWith({ query: "Rina", verification: "verified", page: 1, pageSize: 20 });
     await expect(createCaller(guardianUser).admin.listGuardianProfiles({})).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("passes the Guardian Profiles panel through, and refuses a choice it does not have", async () => {
+    dbMocks.listGuardianProfilesForAdmin.mockResolvedValue({ items: [], counts: { all: 0, unverified: 0, verified: 0, rejected: 0 }, totalPages: 1 });
+    const joinedFrom = new Date("2026-08-01T00:00:00.000Z");
+    await createCaller(otherAdmin).admin.listGuardianProfiles({ tuitions: "many", changeRequest: "has", accountStatus: "active", joinedFrom });
+    expect(dbMocks.listGuardianProfilesForAdmin).toHaveBeenLastCalledWith(expect.objectContaining({ tuitions: "many", changeRequest: "has", accountStatus: "active", joinedFrom, page: 1 }));
+
+    await createCaller(otherAdmin).admin.listGuardianProfiles({});
+    const [asked] = dbMocks.listGuardianProfilesForAdmin.mock.calls.at(-1)!;
+    for (const key of ["tuitions", "changeRequest", "accountStatus", "joinedFrom", "joinedTo"]) expect(asked).not.toHaveProperty(key);
+
+    const ask = (input: Record<string, unknown>) => createCaller(otherAdmin).admin.listGuardianProfiles(input as never);
+    await expect(ask({ tuitions: "three" })).rejects.toThrow();
+    await expect(ask({ changeRequest: "maybe" })).rejects.toThrow();
+    await expect(ask({ accountStatus: "banned" })).rejects.toThrow();
+  });
 });
 
 describe("a delete request", () => {

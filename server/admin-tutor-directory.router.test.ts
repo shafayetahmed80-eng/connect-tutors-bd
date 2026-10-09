@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn(), listTutorJobInterestsForTutor: vi.fn(), notifyTutorDirectory: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ listAdminTutorDirectoryPage: vi.fn(), listTutorJobInterestsForTutor: vi.fn(), notifyTutorDirectory: vi.fn(), getAdminTutorFilterOptions: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -38,6 +38,29 @@ describe("admin.listTutorDirectory", () => {
     expect(dbMocks.listAdminTutorDirectoryPage).toHaveBeenLastCalledWith(expect.objectContaining({ profileStatus: "approved", jobStage: "confirmed" }));
   });
 
+  it("passes the Tutor Profiles panel through, and leaves it out when it is not asked for", async () => {
+    dbMocks.listAdminTutorDirectoryPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1, counts: {} });
+    const joinedFrom = new Date("2026-08-01T00:00:00.000Z");
+
+    await createCaller().admin.listTutorDirectory({ gender: "female", cityId: "dhaka", locationIds: ["adabor"], subjects: ["Physics"], experienceFrom: 3, ratingFrom: 4.5, joinedFrom });
+    expect(dbMocks.listAdminTutorDirectoryPage).toHaveBeenLastCalledWith(expect.objectContaining({ gender: "female", cityId: "dhaka", locationIds: ["adabor"], subjects: ["Physics"], experienceFrom: 3, ratingFrom: 4.5, joinedFrom }));
+
+    await createCaller().admin.listTutorDirectory({});
+    const [asked] = dbMocks.listAdminTutorDirectoryPage.mock.calls.at(-1)!;
+    for (const key of ["gender", "cityId", "locationIds", "subjects", "experienceFrom", "ratingFrom", "joinedFrom"]) expect(asked).not.toHaveProperty(key);
+  });
+
+  it("refuses a choice the panel could not have made, and more areas or subjects than it can hold", async () => {
+    const ask = (input: Record<string, unknown>) => createCaller().admin.listTutorDirectory(input as never);
+    await expect(ask({ gender: "other" })).rejects.toThrow();
+    await expect(ask({ ratingFrom: 6 })).rejects.toThrow();
+    await expect(ask({ experienceFrom: -1 })).rejects.toThrow();
+    await expect(ask({ experienceFrom: 2.5 })).rejects.toThrow();
+    await expect(ask({ locationIds: Array.from({ length: 11 }, (_, index) => `area-${index}`) })).rejects.toThrow();
+    await expect(ask({ subjects: Array.from({ length: 13 }, (_, index) => `subject-${index}`) })).rejects.toThrow();
+    expect(dbMocks.listAdminTutorDirectoryPage).not.toHaveBeenCalled();
+  });
+
   it("refuses a job stage the Status tab does not have", async () => {
     await expect(createCaller().admin.listTutorDirectory({ jobStage: "hired" as never })).rejects.toThrow();
     expect(dbMocks.listAdminTutorDirectoryPage).not.toHaveBeenCalled();
@@ -65,6 +88,15 @@ describe("admin.notifyTutorDirectory", () => {
     expect(filtersArg).not.toHaveProperty("pageSize");
   });
 
+  it("sends with the Tutor Profiles panel as well, so the list and the notice reach the same Tutors", async () => {
+    dbMocks.notifyTutorDirectory.mockResolvedValue({ sent: 3 });
+
+    await createCaller().admin.notifyTutorDirectory({ gender: "male", experienceFrom: 2, subjects: ["Physics"], title: "Hi", message: "Hello." });
+    expect(dbMocks.notifyTutorDirectory).toHaveBeenCalledWith(expect.objectContaining({
+      filters: expect.objectContaining({ gender: "male", experienceFrom: 2, subjects: ["Physics"] }),
+    }));
+  });
+
   it("sends to a hand-picked set of Tutors instead, when given", async () => {
     dbMocks.notifyTutorDirectory.mockResolvedValue({ sent: 2 });
 
@@ -86,6 +118,16 @@ describe("admin.notifyTutorDirectory", () => {
     const guardian = { ...adminUser, role: "guardian" as const };
     await expect(createCaller(guardian).admin.notifyTutorDirectory({ title: "Hi", message: "Hi" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.notifyTutorDirectory).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin.tutorFilterOptions", () => {
+  it("reads the options of the panel for an Admin, and only an Admin", async () => {
+    dbMocks.getAdminTutorFilterOptions.mockResolvedValue({ cities: [], locationsByCity: {}, subjects: ["Physics"] });
+    await expect(createCaller().admin.tutorFilterOptions()).resolves.toEqual({ cities: [], locationsByCity: {}, subjects: ["Physics"] });
+
+    const guardian = { ...adminUser, role: "guardian" as const };
+    await expect(createCaller(guardian).admin.tutorFilterOptions()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
 

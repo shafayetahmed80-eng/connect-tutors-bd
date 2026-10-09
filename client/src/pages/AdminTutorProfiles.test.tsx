@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  optionsEnabled: undefined as boolean | undefined,
+  options: {
+    cities: [{ id: "dhaka", label: "Dhaka" }, { id: "sylhet", label: "Sylhet" }],
+    locationsByCity: { dhaka: [{ id: "adabor", label: "Adabor" }, { id: "uttara", label: "Uttara" }], sylhet: [{ id: "zindabazar", label: "Zindabazar" }] },
+    subjects: ["Mathematics", "Physics"],
+  },
   notifyInput: null as unknown,
   notifyResult: { sent: 2, isError: false },
   historyInput: null as unknown,
@@ -75,6 +82,12 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
           return { data: mocks.data, isLoading: false, isError: false };
+        },
+      },
+      tutorFilterOptions: {
+        useQuery: (_input: unknown, options?: { enabled?: boolean }) => {
+          mocks.optionsEnabled = options?.enabled;
+          return { data: mocks.options };
         },
       },
       notifyTutorDirectory: {
@@ -168,7 +181,7 @@ describe("Admin Tutor Profiles list", () => {
     expect(within(statusRow).getByRole("tab", { name: /Approved/ }).getAttribute("aria-selected")).toBe("true");
 
     // The tabs replace the dropdown the filter set carries on other screens.
-    fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Filter/ }));
     expect(screen.queryByRole("combobox", { name: "Profile status" })).toBeNull();
   });
 
@@ -198,19 +211,135 @@ describe("Admin Tutor Profiles list", () => {
 
     expect(mocks.lastInput).toMatchObject({ query: "", profileStatus: "all", jobStage: "all", page: 1 });
 
-    // The filter set ships collapsed, as it does on the other Admin screens.
-    fireEvent.click(screen.getByRole("button", { name: /Filters/i }));
-
+    // The search sits above the card, as on the tuition lists, not behind the Filter button.
     fireEvent.change(screen.getByPlaceholderText(/Search Tutor name/i), { target: { value: "Tania" } });
     expect(mocks.lastInput).toMatchObject({ query: "Tania", page: 1 });
   });
 });
 
+describe("the card and filter panel over the Tutors", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Tutor filters" });
+  };
+
+  it("asks for no options until the panel opens, then offers every box", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorProfilesContent />);
+    expect(mocks.optionsEnabled).toBe(false);
+
+    const panel = await openPanel(user);
+    expect(mocks.optionsEnabled).toBe(true);
+    expect(within(panel).getByText("tutors found").parentElement?.textContent).toContain("2");
+    for (const name of ["Verification", "Tuition Type", "Gender", "City"]) {
+      expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    }
+    for (const name of ["Location - select a City first", "Subject"]) {
+      expect(within(panel).getByPlaceholderText(name)).toBeTruthy();
+    }
+    for (const label of ["Experience From", "Experience To", "Rating From", "Rating To", "Joined Date From", "Joined Date To"]) {
+      expect(within(panel).getByLabelText(label)).toBeTruthy();
+    }
+    // The search and the two tab rows are above the card, not in the panel.
+    expect(within(panel).queryByLabelText("Search Tutors")).toBeNull();
+    expect(within(panel).queryByRole("combobox", { name: "Profile status" })).toBeNull();
+  });
+
+  it("changes nothing until Apply, then lists, counts and Notifies by the same choices", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorProfilesContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Gender" }), { target: { value: "female" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Verification" }), { target: { value: "verified" } });
+    fireEvent.change(within(panel).getByLabelText("Experience From"), { target: { value: "3" } });
+    fireEvent.change(within(panel).getByLabelText("Rating From"), { target: { value: "4.5" } });
+    fireEvent.change(within(panel).getByLabelText("Joined Date From"), { target: { value: "2026-08-01" } });
+    expect(mocks.lastInput).toMatchObject({ verified: "all" });
+    expect(mocks.lastInput).not.toHaveProperty("gender");
+
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(mocks.lastInput).toMatchObject({ verified: "verified", gender: "female", experienceFrom: 3, ratingFrom: 4.5, joinedFrom: new Date("2026-08-01T00:00:00"), page: 1 });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("5")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching tutors")).toBeTruthy();
+
+    // Notify sends to exactly what is applied, not to a different list.
+    fireEvent.click(screen.getByRole("button", { name: "Notify" }));
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Hi" } });
+    fireEvent.change(screen.getByLabelText(/^Message/), { target: { value: "Hello there" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Review & send to/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Confirm & send to/ }));
+    expect(mocks.notifyInput).toMatchObject({ verified: "verified", gender: "female", experienceFrom: 3, ratingFrom: 4.5, joinedFrom: new Date("2026-08-01T00:00:00"), title: "Hi" });
+    expect(mocks.notifyInput).not.toHaveProperty("page");
+  });
+
+  it("keeps Apply waiting while a range is the wrong way round", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorProfilesContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Experience From"), { target: { value: "9" } });
+    fireEvent.change(within(panel).getByLabelText("Experience To"), { target: { value: "2" } });
+    fireEvent.change(within(panel).getByLabelText("Rating From"), { target: { value: "5" } });
+    fireEvent.change(within(panel).getByLabelText("Rating To"), { target: { value: "3.5" } });
+    expect(within(panel).getByText("The lowest experience cannot be above the highest.")).toBeTruthy();
+    expect(within(panel).getByText("The lowest rating cannot be above the highest.")).toBeTruthy();
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(within(panel).getByLabelText("Experience To"), { target: { value: "12" } });
+    fireEvent.change(within(panel).getByLabelText("Rating To"), { target: { value: "5" } });
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("offers the areas of the City chosen, and the subjects Tutors teach, to type into and pick", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorProfilesContent />);
+    const panel = await openPanel(user);
+
+    expect((within(panel).getByPlaceholderText("Location - select a City first") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.change(within(panel).getByRole("combobox", { name: "City" }), { target: { value: "dhaka" } });
+    await user.click(within(panel).getByRole("combobox", { name: "Location" }));
+    // Only Dhaka's areas, never Sylhet's.
+    expect(within(panel).getByRole("button", { name: "Adabor" })).toBeTruthy();
+    expect(within(panel).queryByRole("button", { name: "Zindabazar" })).toBeNull();
+    await user.click(within(panel).getByRole("button", { name: "Adabor" }));
+
+    await user.click(within(panel).getByRole("combobox", { name: "Subject" }));
+    await user.click(within(panel).getByRole("button", { name: "Physics" }));
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(mocks.lastInput).toMatchObject({ cityId: "dhaka", locationIds: ["adabor"], subjects: ["Physics"] });
+
+    // Moving to another City takes its own areas with it.
+    fireEvent.change(within(panel).getByRole("combobox", { name: "City" }), { target: { value: "sylhet" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(mocks.lastInput).toMatchObject({ cityId: "sylhet", subjects: ["Physics"] });
+    expect(mocks.lastInput).not.toHaveProperty("locationIds");
+  });
+
+  it("clears the panel and the list with Clear", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorProfilesContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Gender" }), { target: { value: "male" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(mocks.lastInput).toMatchObject({ gender: "male" });
+
+    await user.click(within(panel).getByRole("button", { name: "Clear" }));
+    expect(mocks.lastInput).not.toHaveProperty("gender");
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).queryByText("1")).toBeNull();
+  });
+});
+
 describe("Notify Tutors", () => {
-  it("counts how many Tutors the current filters match, next to the button that sends to them", () => {
+  it("counts how many Tutors the list holds, in the card the button that sends to them sits in", () => {
     render(<AdminTutorProfilesContent />);
 
-    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    const card = screen.getByRole("banner");
+    expect(within(card).getByText("Tutors")).toBeTruthy();
+    expect(within(card).getByText("2")).toBeTruthy();
+    expect(within(card).getByText("tutor profiles")).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "Notify" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Notify" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -298,11 +427,11 @@ describe("Notifying a hand-picked set of Tutors", () => {
   it("ticking a row switches the toolbar to a selection count, and Notify targets just that Tutor", () => {
     render(<AdminTutorProfilesContent />);
 
-    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect(screen.getByRole("banner").textContent).toContain("tutor profiles");
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
 
-    expect(screen.getByTestId("notify-match-count").textContent).toContain("1 Tutor selected.");
+    expect(screen.getByRole("banner").textContent).toContain("1 selected.");
 
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     expect(screen.getByRole("dialog", { name: "Notify these Tutors" }).textContent).toContain("1 hand-picked Tutor");
@@ -325,7 +454,7 @@ describe("Notifying a hand-picked set of Tutors", () => {
     fireEvent.click(screen.getByRole("button", { name: "Review & send to 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm & send to 1" }));
 
-    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect(screen.getByRole("banner").textContent).toContain("tutor profiles");
   });
 
   it("clears the selection from the toolbar's own link, without opening the dialog", () => {
@@ -334,7 +463,7 @@ describe("Notifying a hand-picked set of Tutors", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Tania Sultana" }));
     fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
 
-    expect(screen.getByTestId("notify-match-count").textContent).toContain("2 Tutors match the current filters.");
+    expect(screen.getByRole("banner").textContent).toContain("tutor profiles");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

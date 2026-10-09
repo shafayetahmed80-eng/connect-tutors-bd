@@ -132,6 +132,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
+import { buildTutorFilterOptions } from "./tutor-filter-options";
 import {
   guardianMaySeeApplicantPhone,
   guardianCountedInterestStatuses,
@@ -204,7 +205,7 @@ import {
   guardianTuitionRequestTypesAnsweredBy,
   type TuitionMove,
 } from "./guardian-tuition-requests";
-import type { GuardianTuitionRequestType } from "../drizzle/schema";
+import type { AccountStatus, GuardianTuitionRequestType } from "../drizzle/schema";
 
 let _db: ReturnType<typeof createDatabase> | null = null;
 let tutorNumberAllocationTail: Promise<void> = Promise.resolve();
@@ -5344,7 +5345,21 @@ export async function getUserRoleById(userId: number) {
 export type AdminGuardianDirectoryFilters = {
   query: string;
   verification: "all" | "unverified" | "verified" | "rejected";
+  /** The day the account was opened. */
+  joinedFrom?: Date;
+  joinedTo?: Date;
+  /** How many tuitions the Guardian has posted: none, exactly one, or two and more. */
+  tuitions?: "none" | "one" | "many";
+  /** Whether a change request of the Guardian's is waiting for an Admin. */
+  changeRequest?: "has" | "none";
+  accountStatus?: AccountStatus;
 };
+
+/** How many tuitions a Guardian has posted: the same count the list's own Tuitions column shows. */
+const guardianTuitionCount = sql`(select count(*) from \`tutor_requests\` tr where tr.\`guardianUserId\` = \`users\`.\`id\`)`;
+
+/** A change request of the Guardian's is waiting: the one the list's Change requests column marks. */
+const guardianHasWaitingChangeRequest = sql`exists (select 1 from \`account_change_requests\` acr where acr.\`userId\` = \`users\`.\`id\` and acr.\`status\` = 'pending')`;
 
 /**
  * The Guardian Profiles list's own WHERE clause, shared with `notifyGuardianDirectory`
@@ -5357,7 +5372,16 @@ function getAdminGuardianDirectoryConditions(input: AdminGuardianDirectoryFilter
   const search = term
     ? or(like(users.name, `%${term}%`), like(users.email, `%${term}%`), like(users.loginPhone, `%${term}%`), like(guardianProfiles.phone, `%${term}%`), like(guardianProfiles.guardianId, `%${term}%`))
     : undefined;
-  const base = and(eq(users.role, "guardian"), search);
+  const narrowing: SQL[] = [];
+  if (input.joinedFrom) narrowing.push(gte(users.createdAt, input.joinedFrom));
+  if (input.joinedTo) narrowing.push(lte(users.createdAt, input.joinedTo));
+  if (input.tuitions === "none") narrowing.push(sql`${guardianTuitionCount} = 0`);
+  if (input.tuitions === "one") narrowing.push(sql`${guardianTuitionCount} = 1`);
+  if (input.tuitions === "many") narrowing.push(sql`${guardianTuitionCount} >= 2`);
+  if (input.changeRequest === "has") narrowing.push(guardianHasWaitingChangeRequest);
+  if (input.changeRequest === "none") narrowing.push(sql`not ${guardianHasWaitingChangeRequest}`);
+  if (input.accountStatus) narrowing.push(eq(users.accountStatus, input.accountStatus));
+  const base = and(eq(users.role, "guardian"), search, ...narrowing);
   return input.verification === "all" ? base : and(base, sql`${verification} = ${input.verification}`);
 }
 
@@ -5399,7 +5423,7 @@ export async function listGuardianProfilesForAdmin(input: AdminGuardianDirectory
       verificationStatus: verification,
       accountStatus: users.accountStatus,
       joinedAt: users.createdAt,
-      tuitions: sql<number>`(select count(*) from \`tutor_requests\` tr where tr.\`guardianUserId\` = \`users\`.\`id\`)`,
+      tuitions: sql<number>`${guardianTuitionCount}`,
       pendingRequests: sql<number>`(select count(*) from \`account_change_requests\` acr where acr.\`userId\` = \`users\`.\`id\` and acr.\`status\` = 'pending')`,
     })
     .from(users)
@@ -6214,7 +6238,26 @@ export type AdminTutorDirectoryFilters = {
   tuitionType: "all" | "home" | "online" | "group" | "package";
   page: number;
   pageSize: number;
+  // What only the Tutor Profiles list asks by; the lists that share this type leave them out.
+  /** The areas a Tutor teaches from; any one of them. */
+  locationIds?: string[];
+  /** Subject names; a Tutor who teaches any one of them. */
+  subjects?: string[];
+  gender?: "male" | "female";
+  cityId?: string;
+  /** Whole years of teaching experience; a Tutor who has not said how many is not found by a range. */
+  experienceFrom?: number;
+  experienceTo?: number;
+  /** The Guardians' average rating to one decimal, as the profile shows it; an unrated Tutor is not found by a range. */
+  ratingFrom?: number;
+  ratingTo?: number;
+  /** The day the profile was opened. */
+  joinedFrom?: Date;
+  joinedTo?: Date;
 };
+
+/** A Tutor's average rating to one decimal, the way `summariseTutorRatings` shows it; a review an Admin hid counts toward nothing. */
+const tutorRatingAverage = sql`(select round(avg(${tutorReviews.rating}), 1) from ${tutorReviews} where ${tutorReviews.tutorId} = ${tutors.id} and ${tutorReviews.hiddenAt} is null)`;
 
 /**
  * A Tutor with at least one application in this stage: the SQL twin of
@@ -6256,6 +6299,20 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   }
   if (filters.location) conditions.push(like(locations.label, `%${filters.location}%`));
   if (filters.subject) conditions.push(like(tutors.subjects, `%${filters.subject}%`));
+  if (filters.cityId) conditions.push(eq(tutors.cityLocationId, filters.cityId));
+  if (filters.locationIds?.length) conditions.push(inArray(tutors.locationId, filters.locationIds));
+  // `subjects` is a JSON array in one column, so each chosen subject is a separate LIKE and any one of them may match - as on the Job Board.
+  if (filters.subjects?.length) {
+    const anySubject = or(...filters.subjects.map(subject => like(tutors.subjects, `%"${subject}"%`)));
+    if (anySubject) conditions.push(anySubject);
+  }
+  if (filters.gender) conditions.push(eq(tutors.gender, filters.gender));
+  if (filters.experienceFrom !== undefined) conditions.push(gte(tutors.teachingExperienceYears, filters.experienceFrom));
+  if (filters.experienceTo !== undefined) conditions.push(lte(tutors.teachingExperienceYears, filters.experienceTo));
+  if (filters.ratingFrom !== undefined) conditions.push(sql`${tutorRatingAverage} >= ${filters.ratingFrom}`);
+  if (filters.ratingTo !== undefined) conditions.push(sql`${tutorRatingAverage} <= ${filters.ratingTo}`);
+  if (filters.joinedFrom) conditions.push(gte(tutors.createdAt, filters.joinedFrom));
+  if (filters.joinedTo) conditions.push(lte(tutors.createdAt, filters.joinedTo));
   if (filters.query) {
     const pattern = `%${filters.query}%`;
     const searchCondition = or(
@@ -6364,6 +6421,30 @@ async function enrichAdminTutorDirectoryRows<
   }));
 }
 /** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
+/**
+ * What the Tutor Profiles filter may offer, from every Tutor: the Cities and
+ * areas they teach from and the subjects they teach. A Tutor with no City yet
+ * (older accounts) still adds their subjects.
+ */
+export async function getAdminTutorFilterOptions() {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const rows = await database
+    .select({
+      cityLocationId: tutors.cityLocationId,
+      locationId: tutors.locationId,
+      locationLabel: locations.label,
+      subjects: tutors.subjects,
+    })
+    .from(tutors)
+    .leftJoin(locations, eq(tutors.locationId, locations.id));
+  const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
+  const cityRows = cityIds.length
+    ? await database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
+    : [];
+  return buildTutorFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)));
+}
+
 export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");

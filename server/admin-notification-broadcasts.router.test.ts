@@ -45,6 +45,15 @@ describe("admin.notifyGuardianDirectory", () => {
     });
   });
 
+  it("sends with the Guardian Profiles panel as well, so the list and the notice reach the same Guardians", async () => {
+    dbMocks.notifyGuardianDirectory.mockResolvedValue({ sent: 4 });
+
+    await createCaller().admin.notifyGuardianDirectory({ tuitions: "many", changeRequest: "has", title: "Hi", message: "Hello." });
+    expect(dbMocks.notifyGuardianDirectory).toHaveBeenCalledWith(expect.objectContaining({
+      filters: expect.objectContaining({ tuitions: "many", changeRequest: "has" }),
+    }));
+  });
+
   it("sends to a hand-picked set of Guardians instead, when given", async () => {
     dbMocks.notifyGuardianDirectory.mockResolvedValue({ sent: 2 });
 

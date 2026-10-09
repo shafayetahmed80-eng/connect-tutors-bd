@@ -1,15 +1,16 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminTutorFilterBar, useAdminTutorFilters } from "@/components/AdminTutorFilters";
 import AdminTutorRows from "@/components/AdminTutorRows";
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
 import StatusTabRow from "@/components/StatusTabRow";
-import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
+import type { AdminTutorFilterInput } from "@shared/admin-tutor-filters";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
-import { History, Megaphone, Search, SlidersHorizontal } from "lucide-react";
+import { History, Megaphone, Search } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,6 +27,9 @@ export type TutorFilters = {
   page: number;
   pageSize: number;
 };
+
+/** Who the Tutor Profiles list is showing, less its page: what Notify sends to. */
+type DirectoryQuery = Omit<TutorFilters, "page" | "pageSize"> & Omit<AdminTutorFilterInput, "verified" | "tuitionType">;
 
 export const defaultTutorFilters: TutorFilters = { query: "", profileStatus: "all", jobStage: "all", verified: "all", location: "", subject: "", tuitionType: "all", page: 1, pageSize: 20 };
 
@@ -72,58 +76,74 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
  * the list, together with the filter set.
  */
 export function AdminTutorProfilesContent() {
-  const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
+  const [query, setQuery] = useState("");
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>("all");
+  const [jobStage, setJobStage] = useState<TutorFilters["jobStage"]>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // The tab rows show their own choices, so the Filters badge counts the rest.
-  const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize", "profileStatus", "jobStage"] });
-  const tutors = trpc.admin.listTutorDirectory.useQuery(filters);
+  const panel = useAdminTutorFilters({ onChange: () => setPage(1) });
+  // Everything that decides who is on the list: the search, the two tab rows and the applied panel.
+  // The list reads it with a page; Notify sends to exactly it.
+  const { verified, tuitionType, ...panelRest } = panel.input;
+  const directory: DirectoryQuery = { query, profileStatus, jobStage, location: "", subject: "", verified: verified ?? "all", tuitionType: tuitionType ?? "all", ...panelRest };
+  const tutors = trpc.admin.listTutorDirectory.useQuery({ ...directory, page, pageSize });
   const counts = tutors.data?.counts;
   const matchCount = tutors.data?.total ?? 0;
-  const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
+  const narrowed = panel.activeCount > 0 || query.trim().length > 0 || profileStatus !== "all" || jobStage !== "all";
   const toggleSelected = (tutorId: string) => setSelectedIds(current => {
     const next = new Set(current);
     if (next.has(tutorId)) next.delete(tutorId); else next.add(tutorId);
     return next;
   });
+  const choose = (change: () => void) => { change(); setPage(1); };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-5 pb-10">
     <div>
       <StatusTabRow
         label="Profile status"
         items={profileStatusTabs.map(tab => ({ ...tab, count: counts?.profileStatus[tab.key] }))}
-        selected={filters.profileStatus}
-        onSelect={key => updateFilter({ profileStatus: key ?? "all" })}
+        selected={profileStatus}
+        onSelect={key => choose(() => setProfileStatus(key ?? "all"))}
       />
       <StatusTabRow
         label="Job status"
         toggle
         compact
         items={tutorApplicationStages.map(stage => ({ key: stage.key, label: stage.label.replace(/\s*Jobs$/, ""), wideSuffix: "Jobs", count: counts?.jobStage[stage.key] }))}
-        selected={filters.jobStage === "all" ? null : filters.jobStage}
-        onSelect={key => updateFilter({ jobStage: key ?? "all" })}
+        selected={jobStage === "all" ? null : jobStage}
+        onSelect={key => choose(() => setJobStage(key ?? "all"))}
       />
     </div>
 
-    <CollapsiblePanel title="Filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={activeFilterCount}>
-      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} showProfileStatus={false} />
-    </CollapsiblePanel>
+    <label className="relative block max-w-sm">
+      <span className="sr-only">Search Tutors</span>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+      <input
+        value={query}
+        onChange={event => choose(() => setQuery(event.target.value))}
+        placeholder="Search Tutor name, ID, institution or headline"
+        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+      />
+    </label>
 
-    {/* Sends to exactly who the two tab rows and the Filters panel above are
+    {/* Sends to exactly who the two tab rows, the search and the Filter panel are
         currently showing - or, when an Admin ticks specific rows below,
         exactly those - never a separate hand-picked list built elsewhere. */}
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-4 py-3">
-      <p data-testid="notify-match-count" className="text-sm text-j-ink-soft">
-        {selectedIds.size > 0
-          ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> Tutor{selectedIds.size === 1 ? "" : "s"} selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
-          : <><span className="font-bold text-j-ink">{matchCount}</span> Tutor{matchCount === 1 ? "" : "s"} match{matchCount === 1 ? "es" : ""} the current filters.</>}
-      </p>
-      <div className="flex shrink-0 items-center gap-2">
+    <AdminTutorFilterBar
+      filters={panel}
+      count={tutors.data?.total}
+      loading={tutors.isLoading}
+      caption={selectedIds.size > 0
+        ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
+        : narrowed ? "matching tutors" : "tutor profiles"}
+      actions={<>
         <button
           type="button"
           onClick={() => setHistoryOpen(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
         >
           <History className="h-4 w-4" aria-hidden="true" /> History
         </button>
@@ -131,14 +151,14 @@ export function AdminTutorProfilesContent() {
           type="button"
           onClick={() => setNotifyOpen(true)}
           disabled={matchCount === 0 && selectedIds.size === 0}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Megaphone className="h-4 w-4" aria-hidden="true" /> Notify
         </button>
-      </div>
-    </div>
+      </>}
+    />
     {notifyOpen ? <NotifyTutorsModal
-      filters={filters}
+      filters={directory}
       matchCount={matchCount}
       selectedIds={Array.from(selectedIds)}
       onSent={() => setSelectedIds(new Set())}
@@ -159,13 +179,13 @@ export function AdminTutorProfilesContent() {
       : null}
 
     <TutorListPager
-      page={filters.page}
+      page={page}
       totalPages={tutors.data?.totalPages ?? 1}
-      onPage={next => updateFilter({ page: next })}
+      onPage={setPage}
       label="Tutor profile pages"
-      pageSize={filters.pageSize}
+      pageSize={pageSize}
       pageSizeOptions={[20, 50, 100]}
-      onPageSize={next => updateFilter({ pageSize: next })}
+      onPageSize={next => { setPageSize(next); setPage(1); }}
       totalItems={tutors.data?.total}
     />
   </div>;
@@ -180,7 +200,8 @@ const NOTIFY_MESSAGE_MAX = 360;
  * exactly those. Lands in each Tutor's own Notifications tab.
  */
 function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }: {
-  filters: TutorFilters;
+  /** Who the directory is showing: the search, both tab rows and the applied panel. */
+  filters: DirectoryQuery;
   matchCount: number;
   /** Hand-picked Tutor ids; a non-empty list overrides the filters entirely. */
   selectedIds: string[];
@@ -202,13 +223,12 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
     onError: error => toast.error(error.message),
   });
   const ready = title.trim().length > 0 && message.trim().length > 0;
-  const { page: _page, pageSize: _pageSize, ...directoryFilters } = filters;
   const recipientLine = usingSelection
     ? `${recipientCount} hand-picked Tutor${recipientCount === 1 ? "" : "s"}`
     : `${recipientCount} Tutor${recipientCount === 1 ? "" : "s"} match the current filters`;
   const send = () => notify.mutate(usingSelection
     ? { ...defaultTutorFilters, tutorIds: selectedIds, title: title.trim(), message: message.trim() }
-    : { ...directoryFilters, title: title.trim(), message: message.trim() });
+    : { ...filters, title: title.trim(), message: message.trim() });
 
   if (confirming) {
     return <Modal size="sm" onClose={onClose} busy={notify.isPending}>

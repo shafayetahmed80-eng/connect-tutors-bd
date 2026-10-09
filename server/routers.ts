@@ -7,9 +7,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { adminJobFiltersSchema } from "./admin-job-filters";
+import { ADMIN_TUTOR_LOCATION_LIMIT, ADMIN_TUTOR_SUBJECT_LIMIT } from "@shared/admin-tutor-filters";
 import { appointmentRefusalMessages } from "./guardian-applicant-actions";
 import { GUARDIAN_REQUEST_REASON_MAX_LENGTH, guardianTuitionRequestRefusalMessages } from "./guardian-tuition-requests";
-import { guardianTuitionRequestTypeValues } from "../drizzle/schema";
+import { accountStatusValues, guardianTuitionRequestTypeValues } from "../drizzle/schema";
 import { adminAppointmentRefusalMessages } from "./admin-appointment";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { resolveClientIp } from "./_core/client-ip";
@@ -458,11 +459,28 @@ const adminTutorDirectoryInputSchema = z.object({
   tuitionType: tuitionTypeSchema.or(z.literal("all")).default("all"),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
+  // The Tutor Profiles panel's own. A range the wrong way round finds nothing, as one in a hand-made request would.
+  locationIds: z.array(z.string().trim().min(1).max(80)).max(ADMIN_TUTOR_LOCATION_LIMIT).optional(),
+  subjects: z.array(z.string().trim().min(1).max(120)).max(ADMIN_TUTOR_SUBJECT_LIMIT).optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  cityId: z.string().trim().min(1).max(80).optional(),
+  experienceFrom: z.number().int().min(0).max(99).optional(),
+  experienceTo: z.number().int().min(0).max(99).optional(),
+  ratingFrom: z.number().min(0).max(5).optional(),
+  ratingTo: z.number().min(0).max(5).optional(),
+  joinedFrom: z.coerce.date().optional(),
+  joinedTo: z.coerce.date().optional(),
 });
 
 const adminGuardianDirectoryInputSchema = z.object({
   query: z.string().trim().max(120).default(""),
   verification: z.enum(["all", "unverified", "verified", "rejected"]).default("all"),
+  // The Guardian Profiles panel's own. A range the wrong way round finds nothing, as one in a hand-made request would.
+  joinedFrom: z.coerce.date().optional(),
+  joinedTo: z.coerce.date().optional(),
+  tuitions: z.enum(["none", "one", "many"]).optional(),
+  changeRequest: z.enum(["has", "none"]).optional(),
+  accountStatus: z.enum(accountStatusValues).optional(),
 });
 
 /** Tutor Matching's own page sizes: a ranked list is worth scanning further than the 50-row directory ceiling. */
@@ -2399,6 +2417,8 @@ export const appRouter = router({
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
       .query(({ input }) => db.listAdminTutorDirectoryPage(input)),
+    /** What the Tutor Profiles filter panel may offer, from the Tutors that exist. */
+    tutorFilterOptions: adminProcedure.query(() => db.getAdminTutorFilterOptions()),
     /** Sends one message to every Tutor the directory's active filters currently match, or a hand-picked set of them. */
     notifyTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema.omit({ page: true, pageSize: true }).extend({
