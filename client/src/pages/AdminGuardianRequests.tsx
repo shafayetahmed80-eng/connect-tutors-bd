@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminGuardianRequestFilterFields, AdminRequestFilterBar, useAdminGuardianRequestFilters } from "@/components/AdminRequestFilters";
 import { ApproveGuardianTuitionRequestDialog, useAdminGuardianTuitionRequest } from "@/components/AdminGuardianTuitionRequest";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import StatusTabRow from "@/components/StatusTabRow";
@@ -7,6 +8,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
 import { LoadingCradle } from "@/components/BrandMark";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, Redirect, useRoute } from "wouter";
@@ -37,11 +39,11 @@ export type GuardianRequestRow = {
 };
 
 /** What each screen is for, said once, in the words the sidebar uses. */
-const kindCopy: Record<GuardianRequestKind, { title: string; empty: string; dateLabel: string; caption: string }> = {
-  shortlist: { title: "Shortlist Requests", empty: "No Guardian has shortlisted an applicant.", dateLabel: "Shortlisted", caption: "Applicants Guardians have shortlisted" },
-  appoint: { title: "Appoint Requests", empty: "No appointment request is waiting.", dateLabel: "Requested", caption: "Appointment requests" },
-  confirm: { title: "Confirm Requests", empty: "No confirmation request.", dateLabel: "Requested", caption: "Confirmation requests" },
-  cancel: { title: "Cancel Requests", empty: "No cancellation or removal request.", dateLabel: "Requested", caption: "Cancellation and removal requests" },
+const kindCopy: Record<GuardianRequestKind, { title: string; empty: string; dateLabel: string; caption: string; idle: string; matching: string }> = {
+  shortlist: { title: "Shortlist Requests", empty: "No Guardian has shortlisted an applicant.", dateLabel: "Shortlisted", caption: "Applicants Guardians have shortlisted", idle: "applicants shortlisted", matching: "matching applicants" },
+  appoint: { title: "Appoint Requests", empty: "No appointment request is waiting.", dateLabel: "Requested", caption: "Appointment requests", idle: "waiting for an answer", matching: "matching requests" },
+  confirm: { title: "Confirm Requests", empty: "No confirmation request.", dateLabel: "Requested", caption: "Confirmation requests", idle: "waiting for an answer", matching: "matching requests" },
+  cancel: { title: "Cancel Requests", empty: "No cancellation or removal request.", dateLabel: "Requested", caption: "Cancellation and removal requests", idle: "waiting for an answer", matching: "matching requests" },
 };
 
 const typeLabels: Record<RequestType, string> = {
@@ -82,10 +84,14 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
   const [status, setStatus] = useState<Status>("pending");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [query, setQuery] = useState("");
   const [approving, setApproving] = useState<GuardianRequestRow | null>(null);
-  useEffect(() => { setStatus("pending"); setPage(1); }, [kind]);
+  const panel = useAdminGuardianRequestFilters({ onChange: () => setPage(1) });
+  // Another screen of the same page: its own tab, search and panel, not the last one's.
+  const { clear: clearPanel } = panel;
+  useEffect(() => { setStatus("pending"); setQuery(""); clearPanel(); setPage(1); }, [kind]);
 
-  const list = trpc.admin.listGuardianRequestActions.useQuery({ kind, status, page, pageSize });
+  const list = trpc.admin.listGuardianRequestActions.useQuery({ kind, status, page, pageSize, query, filters: Object.keys(panel.input).length ? panel.input : undefined });
   const utils = trpc.useUtils();
   const refresh = () => {
     void utils.admin.listGuardianRequestActions.invalidate();
@@ -99,6 +105,8 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
   const busy = tuitionAnswer.busy || appointApprove.isPending || appointDecline.isPending;
 
   const rows = (list.data?.items ?? []) as GuardianRequestRow[];
+  const narrowed = panel.activeCount > 0 || query.trim().length > 0;
+  const statusCaption = kind === "confirm" || kind === "cancel" ? (status === "pending" ? copy.idle : status) : copy.idle;
   const answerable = kind !== "shortlist" && status === "pending";
   const decline = (row: GuardianRequestRow) => {
     if (row.type === "appoint" && row.interestId) appointDecline.mutate({ interestId: row.interestId });
@@ -143,10 +151,33 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
       ? <StatusTabRow label="Request status" items={statusTabs.map(tab => ({ ...tab, count: list.data?.counts[tab.key] }))} selected={status} onSelect={key => { setStatus(key ?? "pending"); setPage(1); }} />
       : null}
 
+    <label className="relative block max-w-sm">
+      <span className="sr-only">Search requests</span>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+      <input
+        value={query}
+        onChange={event => { setQuery(event.target.value); setPage(1); }}
+        placeholder="Search Job ID, Guardian or Tutor"
+        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+      />
+    </label>
+
+    <AdminRequestFilterBar
+      filters={panel}
+      eyebrow={copy.title}
+      count={list.data?.total}
+      loading={list.isLoading}
+      caption={narrowed ? copy.matching : statusCaption}
+      panelId="admin-guardian-request-filters"
+      panelLabel={`${copy.title} filters`}
+    >
+      <AdminGuardianRequestFilterFields draft={panel.draft} setDraft={panel.setDraft} dateLabel={copy.dateLabel} showRequestType={kind === "cancel"} />
+    </AdminRequestFilterBar>
+
     {list.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading…</div> : null}
     {list.isError ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{copy.title} could not be loaded.</div> : null}
     {!list.isLoading && !list.isError
-      ? <RecordTable caption={copy.caption} columns={columns} rows={rows} rowKey={row => row.key} empty={copy.empty} tableClassName="min-w-[56rem]" />
+      ? <RecordTable caption={copy.caption} columns={columns} rows={rows} rowKey={row => row.key} empty={narrowed ? `${copy.empty.replace(/\.$/, "")} for this search.` : copy.empty} tableClassName="min-w-[56rem]" />
       : null}
     <TutorListPager
       page={page}

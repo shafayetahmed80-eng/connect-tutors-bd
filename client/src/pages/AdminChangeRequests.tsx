@@ -1,4 +1,5 @@
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { AdminChangeRequestFilterFields, AdminRequestFilterBar, useAdminChangeRequestFilters } from "@/components/AdminRequestFilters";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import StatusTabRow from "@/components/StatusTabRow";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -7,11 +8,10 @@ import {
   ACCOUNT_CHANGE_REASON_MAX,
   ACCOUNT_CHANGE_REASON_MIN,
   accountChangeTypeLabels,
-  accountChangeTypeValues,
   type AccountChangeRole,
   type AccountChangeType,
 } from "@shared/account-change-requests";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -147,12 +147,18 @@ function DeclineDialog({ row, busy, onClose, onDecline }: { row: ChangeRequestRo
  */
 export function AdminChangeRequestsContent() {
   const [status, setStatus] = useState<QueueStatus>("pending");
-  const [role, setRole] = useState<AccountChangeRole | "all">("all");
-  const [type, setType] = useState<AccountChangeType | "all">("all");
+  const [query, setQuery] = useState("");
   const [approving, setApproving] = useState<ChangeRequestRow | null>(null);
   const [declining, setDeclining] = useState<ChangeRequestRow | null>(null);
   const isOwner = Boolean(trpc.admin.getWorkspaceAccess.useQuery().data?.isOwner);
-  const requests = trpc.accountChanges.list.useQuery({ status, role, type });
+  const panel = useAdminChangeRequestFilters();
+  const { role, type, ...asked } = panel.input;
+  const requests = trpc.accountChanges.list.useQuery({ status, role: role ?? "all", type: type ?? "all", query, ...asked });
+  // A decline reason means something on the Declined tab alone, so leaving it takes the choice with it.
+  const chooseStatus = (next: QueueStatus) => {
+    setStatus(next);
+    if (next !== "declined" && panel.applied.declineReason) panel.drop({ declineReason: "" });
+  };
   const utils = trpc.useUtils();
   const refresh = () => {
     void utils.accountChanges.list.invalidate();
@@ -171,6 +177,7 @@ export function AdminChangeRequestsContent() {
 
   const counts = requests.data?.counts;
   const rows = (requests.data?.items ?? []) as ChangeRequestRow[];
+  const narrowed = panel.activeCount > 0 || query.trim().length > 0;
   const columns: RecordColumn<ChangeRequestRow>[] = [
     { key: "account", label: "Account", place: "head", cell: row => <AccountCell row={row} /> },
     { key: "type", label: "Request", cell: row => <span className="whitespace-nowrap font-semibold text-j-ink">{accountChangeTypeLabels[row.type]}</span> },
@@ -193,26 +200,35 @@ export function AdminChangeRequestsContent() {
   ];
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:border-b sm:border-[#dce9f1]">
-      <StatusTabRow label="Request status" flush items={statusTabs.map(tab => ({ ...tab, count: counts?.[tab.key] }))} selected={status} onSelect={key => setStatus(key ?? "pending")} />
-      <div className="grid grid-cols-2 gap-2 pb-2 sm:flex">
-        <select value={role} onChange={event => setRole(event.target.value as AccountChangeRole | "all")} aria-label="Panel" className="h-9 rounded-lg border border-j-border bg-white px-2.5 text-xs font-semibold text-j-ink">
-          <option value="all">All panels</option>
-          <option value="guardian">Guardian</option>
-          <option value="tutor">Tutor</option>
-          {isOwner ? <option value="admin">Admin</option> : null}
-        </select>
-        <select value={type} onChange={event => setType(event.target.value as AccountChangeType | "all")} aria-label="Request type" className="h-9 rounded-lg border border-j-border bg-white px-2.5 text-xs font-semibold text-j-ink">
-          <option value="all">All requests</option>
-          {accountChangeTypeValues.map(value => <option key={value} value={value}>{accountChangeTypeLabels[value]}</option>)}
-        </select>
-      </div>
-    </div>
+    <StatusTabRow label="Request status" items={statusTabs.map(tab => ({ ...tab, count: counts?.[tab.key] }))} selected={status} onSelect={key => chooseStatus(key ?? "pending")} />
+
+    <label className="relative block max-w-sm">
+      <span className="sr-only">Search change requests</span>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+      <input
+        value={query}
+        onChange={event => setQuery(event.target.value)}
+        placeholder="Search name, Guardian ID or Tutor ID"
+        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+      />
+    </label>
+
+    <AdminRequestFilterBar
+      filters={panel}
+      eyebrow="Change Requests"
+      count={counts?.[status]}
+      loading={requests.isLoading}
+      caption={narrowed ? "matching requests" : status === "pending" ? "waiting for an answer" : status}
+      panelId="admin-change-request-filters"
+      panelLabel="Change requests filters"
+    >
+      <AdminChangeRequestFilterFields draft={panel.draft} setDraft={panel.setDraft} canSeeAdmins={isOwner} showDeclineReason={status === "declined"} />
+    </AdminRequestFilterBar>
 
     {requests.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading change requests…</div> : null}
     {requests.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Change requests could not be loaded.</div> : null}
     {!requests.isLoading && !requests.isError
-      ? <RecordTable caption="Change requests" columns={columns} rows={rows} rowKey={row => row.id} empty={`No ${status} change requests.`} tableClassName="min-w-[56rem]" />
+      ? <RecordTable caption="Change requests" columns={columns} rows={rows} rowKey={row => row.id} empty={narrowed ? `No ${status} change requests for this search.` : `No ${status} change requests.`} tableClassName="min-w-[56rem]" />
       : null}
 
     {approving ? <ApproveDialog row={approving} busy={decide.isPending} onClose={() => setApproving(null)} onApprove={() => decide.mutate({ requestId: approving.id, decision: "approve" })} /> : null}

@@ -268,12 +268,50 @@ describe("a delete request", () => {
   });
 });
 
+describe("the Guardian Requests search and panel", () => {
+  it("passes the search and the panel through, and leaves them out when they are not asked for", async () => {
+    dbMocks.listGuardianRequestActions.mockResolvedValue({ items: [], counts: { pending: 0, approved: 0, declined: 0 }, totalPages: 1 });
+    const requestedFrom = new Date("2026-09-01T00:00:00.000Z");
+    await createCaller(otherAdmin).admin.listGuardianRequestActions({ kind: "cancel", query: " Rina ", filters: { requestedFrom, requestType: "remove_tutor", postedBy: "admin", tuitionStage: "confirmed" } });
+    expect(dbMocks.listGuardianRequestActions).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: "cancel", query: "Rina", filters: { requestedFrom, requestType: "remove_tutor", postedBy: "admin", tuitionStage: "confirmed" },
+    }));
+
+    await createCaller(otherAdmin).admin.listGuardianRequestActions({ kind: "confirm" });
+    const [asked] = dbMocks.listGuardianRequestActions.mock.calls.at(-1)!;
+    expect(asked).not.toHaveProperty("filters");
+  });
+
+  it("refuses a choice the panel could not have made", async () => {
+    const ask = (filters: Record<string, unknown>) => createCaller(otherAdmin).admin.listGuardianRequestActions({ kind: "cancel", filters: filters as never });
+    await expect(ask({ requestType: "confirm" })).rejects.toThrow();
+    await expect(ask({ postedBy: "tutor" })).rejects.toThrow();
+    await expect(ask({ tuitionStage: "pending" })).rejects.toThrow();
+  });
+});
+
+describe("the Change requests search and panel", () => {
+  it("passes the search, the dates and the decline reason through to the queue", async () => {
+    dbMocks.listAccountChangeRequestsForAdmin.mockResolvedValue({ items: [], counts: { pending: 0, approved: 0, declined: 0 } });
+    const requestedFrom = new Date("2026-09-01T00:00:00.000Z");
+    await createCaller(otherAdmin).accountChanges.list({ status: "declined", query: " Rina ", requestedFrom, declineReason: "payment" });
+    expect(dbMocks.listAccountChangeRequestsForAdmin).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: "declined", query: "Rina", requestedFrom, declineReason: "payment", includeAdminRequests: false,
+    }));
+
+    await createCaller(otherAdmin).accountChanges.list({ status: "pending" });
+    const [asked] = dbMocks.listAccountChangeRequestsForAdmin.mock.calls.at(-1)!;
+    expect(asked).toMatchObject({ query: "" });
+    for (const key of ["requestedFrom", "requestedTo", "declineReason"]) expect(asked).not.toHaveProperty(key);
+  });
+});
+
 describe("Guardian Requests screens", () => {
   it("are read by any Admin, one kind at a time, and closed to everyone else", async () => {
     dbMocks.listGuardianRequestActions.mockResolvedValue({ items: [], counts: { pending: 0, approved: 0, declined: 0 }, totalPages: 1 });
     dbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4, appointedJobs: 5, confirmedJobs: 6 });
     await createCaller(otherAdmin).admin.listGuardianRequestActions({ kind: "cancel", status: "approved" });
-    expect(dbMocks.listGuardianRequestActions).toHaveBeenCalledWith({ kind: "cancel", status: "approved", page: 1, pageSize: 20 });
+    expect(dbMocks.listGuardianRequestActions).toHaveBeenCalledWith({ kind: "cancel", status: "approved", page: 1, pageSize: 20, query: "" });
     await expect(createCaller(otherAdmin).admin.guardianRequestCounts()).resolves.toEqual({ shortlist: 1, appoint: 2, confirm: 3, cancel: 4, appointedJobs: 5, confirmedJobs: 6 });
     await expect(createCaller(guardianUser).admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller(guardianUser).admin.listGuardianRequestActions({ kind: "confirm" })).rejects.toMatchObject({ code: "FORBIDDEN" });
