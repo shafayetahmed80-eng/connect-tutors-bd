@@ -1,5 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -33,7 +34,7 @@ export default function AdminPasswordChange() {
 
   // Nothing to change (already done, or never required): straight on to the workspace.
   useEffect(() => {
-    if (access.data && !access.data.passwordChangeRequired) navigate("/admin/matching");
+    if (access.data && !access.data.passwordChangeRequired) navigate(ADMIN_HOME_PATH);
   }, [access.data, navigate]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -49,7 +50,7 @@ export default function AdminPasswordChange() {
       setNewPassword("");
       setConfirmNewPassword("");
       await utils.admin.getWorkspaceAccess.invalidate();
-      navigate("/admin/matching");
+      navigate(ADMIN_HOME_PATH);
     } catch (cause) {
       setFormError(getErrorMessage(cause));
     }

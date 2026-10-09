@@ -59,7 +59,7 @@ describe("the temporary-password change page", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save password" })); });
 
     expect(mocks.change).toHaveBeenCalledWith({ currentPassword: "temporary-pass-1", newPassword: "my-own-password-2", confirmNewPassword: "my-own-password-2" });
-    await waitFor(() => expect(window.location.pathname).toBe("/admin/matching"));
+    await waitFor(() => expect(window.location.pathname).toBe("/admin/applied-tutors"));
     expect(mocks.invalidate).toHaveBeenCalled();
   });
 
@@ -85,7 +85,7 @@ describe("the temporary-password change page", () => {
   it("sends an Admin with nothing to change straight to the workspace", async () => {
     mocks.access = { data: { passwordChangeRequired: false }, isLoading: false };
     render(<AdminPasswordChange />);
-    await waitFor(() => expect(window.location.pathname).toBe("/admin/matching"));
+    await waitFor(() => expect(window.location.pathname).toBe("/admin/applied-tutors"));
   });
 
   it("sends anyone who is not signed in as an Admin to the Admin sign-in", async () => {

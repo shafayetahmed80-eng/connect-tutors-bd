@@ -1,4 +1,5 @@
 import { useSiteContact } from "@/lib/siteContent";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { Download, Menu, MessageCircle, Phone, UserRound, X } from "lucide-react";
@@ -31,7 +32,7 @@ export const PUBLIC_ACCOUNT_LABEL = "Sign In";
 export function getPublicAccountNavigation(user: { role?: string } | null | undefined) {
   if (!user) return { href: "/login", label: PUBLIC_ACCOUNT_LABEL };
   if (user.role === "tutor") return { href: "/tutor/dashboard/jobs", label: PUBLIC_ACCOUNT_LABEL };
-  if (user.role === "admin") return { href: "/admin/matching", label: PUBLIC_ACCOUNT_LABEL };
+  if (user.role === "admin") return { href: ADMIN_HOME_PATH, label: PUBLIC_ACCOUNT_LABEL };
   if (user.role === "guardian" || user.role === "user") return { href: "/guardian/dashboard/posted-jobs", label: PUBLIC_ACCOUNT_LABEL };
   return { href: "/account", label: PUBLIC_ACCOUNT_LABEL };
 }

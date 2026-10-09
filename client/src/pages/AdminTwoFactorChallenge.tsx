@@ -1,5 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useSecondsUntil } from "@/components/registrationFields";
@@ -36,12 +37,12 @@ export default function AdminTwoFactorChallenge() {
   useEffect(() => {
     if (!status.data) return;
     if (!status.data.enrolled) navigate("/admin/2fa-setup");
-    else if (status.data.verified) navigate("/admin/matching");
+    else if (status.data.verified) navigate(ADMIN_HOME_PATH);
   }, [status.data, navigate]);
 
   const succeed = async () => {
     await utils.admin.getWorkspaceAccess.invalidate();
-    navigate("/admin/matching");
+    navigate(ADMIN_HOME_PATH);
   };
 
   const runVerifyCode = async (candidate: string) => {

@@ -11,6 +11,6 @@ describe("getAdminTwoFactorDestination", () => {
   });
 
   it("allows only a verified Admin session into matching", () => {
-    expect(getAdminTwoFactorDestination({ enrolled: true, verified: true })).toBe("/admin/matching");
+    expect(getAdminTwoFactorDestination({ enrolled: true, verified: true })).toBe("/admin/applied-tutors");
   });
 });

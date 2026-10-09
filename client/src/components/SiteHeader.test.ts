@@ -30,7 +30,7 @@ describe("public marketing account navigation", () => {
 
     expect(getPublicAccountNavigation(null).href).toBe("/login");
     expect(getPublicAccountNavigation({ role: "tutor" }).href).toBe("/tutor/dashboard/jobs");
-    expect(getPublicAccountNavigation({ role: "admin" }).href).toBe("/admin/matching");
+    expect(getPublicAccountNavigation({ role: "admin" }).href).toBe("/admin/applied-tutors");
     expect(getPublicAccountNavigation({ role: "guardian" }).href).toBe("/guardian/dashboard/posted-jobs");
     expect(getPublicAccountNavigation({ role: "user" }).href).toBe("/guardian/dashboard/posted-jobs");
     expect(getPublicAccountNavigation({ role: "moderator" }).href).toBe("/account");

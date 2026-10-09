@@ -6,7 +6,7 @@ describe("account redirect", () => {
     expect(getAccountRedirectPath("tutor")).toBe("/tutor/dashboard/jobs");
     expect(getAccountRedirectPath("guardian")).toBe("/guardian/dashboard/posted-jobs");
     expect(getAccountRedirectPath("user")).toBe("/guardian/dashboard/posted-jobs");
-    expect(getAccountRedirectPath("admin")).toBe("/admin/matching");
+    expect(getAccountRedirectPath("admin")).toBe("/admin/applied-tutors");
   });
 
   it("returns an unknown or missing role to the public site", () => {

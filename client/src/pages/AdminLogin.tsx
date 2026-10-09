@@ -1,5 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
@@ -11,7 +12,7 @@ import React, { FormEvent, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 
 export function getAdminDashboardDestination(role: string | null | undefined) {
-  return role === "admin" ? "/admin/matching" : null;
+  return role === "admin" ? ADMIN_HOME_PATH : null;
 }
 
 export const adminLoginHelpLink = { label: "See Admin Help", href: "/admin/help" } as const;
@@ -59,7 +60,7 @@ export default function AdminLogin() {
         throw new Error("This account does not have Admin access.");
       }
       setPassword("");
-      navigate("/admin/matching");
+      navigate(ADMIN_HOME_PATH);
     } catch (cause) {
       setPassword("");
       setFormError(getErrorMessage(cause));
