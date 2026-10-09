@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -449,5 +450,105 @@ describe("the Admin's Tutor chat list", () => {
       .map(button => button.textContent ?? "")
       .filter(text => /Rahman|Sheikh/.test(text));
     expect(names[0]).toContain("Karim Sheikh");
+  });
+});
+
+describe("the card and filter panel over the conversations", () => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    return screen.getByRole("region", { name: "Tutor chat filters" });
+  };
+
+  it("heads the two panes with how many conversations the list holds, and follows the Active and Archived tabs", () => {
+    state.threads = [thread(), thread({ tutorId: "tutor-2", tutorName: "Karim Sheikh" })];
+    render(<AdminTutorChatsContent />);
+
+    let card = screen.getByRole("banner");
+    expect(within(card).getByText("Active Chats")).toBeTruthy();
+    expect(within(card).getByText("2")).toBeTruthy();
+    expect(within(card).getByText("conversations")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    card = screen.getByRole("banner");
+    expect(within(card).getByText("Archived Chats")).toBeTruthy();
+  });
+
+  it("names the narrowed list once the search is used", () => {
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    fireEvent.change(screen.getByPlaceholderText("Search Tutor name or ID"), { target: { value: "Amina" } });
+    expect(state.threadsQueryInput).toMatchObject({ query: "Amina", archived: false });
+    expect(within(screen.getByRole("banner")).getByText("matching conversations")).toBeTruthy();
+  });
+
+  it("offers each box, and changes nothing until Apply, then asks the list with what was chosen", async () => {
+    const user = userEvent.setup();
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    const panel = await openPanel(user);
+
+    expect(within(panel).getByText("conversations found").parentElement?.textContent).toContain("1");
+    for (const name of ["Status", "Claimed By", "Waiting For A Reply"]) expect(within(panel).getByRole("combobox", { name })).toBeTruthy();
+    for (const label of ["Last Message From", "Last Message To"]) expect(within(panel).getByLabelText(label)).toBeTruthy();
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Status" }), { target: { value: "unread" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Claimed By" }), { target: { value: "nobody" } });
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Waiting For A Reply" }), { target: { value: "24" } });
+    fireEvent.change(within(panel).getByLabelText("Last Message From"), { target: { value: "2026-09-01" } });
+    expect(state.threadsQueryInput).toEqual({ query: "", page: 1, pageSize: 50, archived: false });
+
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(state.threadsQueryInput).toEqual({
+      query: "", page: 1, pageSize: 50, archived: false,
+      unread: "unread", claim: "unclaimed", waitingHours: 24, lastMessageFrom: new Date("2026-09-01T00:00:00"),
+    });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("4")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("matching conversations")).toBeTruthy();
+
+    await user.click(within(panel).getByRole("button", { name: "Clear" }));
+    expect(state.threadsQueryInput).toEqual({ query: "", page: 1, pageSize: 50, archived: false });
+  });
+
+  it("asks for the conversations the signed-in Admin or another Admin has claimed", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorChatsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Claimed By" }), { target: { value: "mine" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(state.threadsQueryInput).toMatchObject({ claim: "mine" });
+
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Claimed By" }), { target: { value: "others" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(state.threadsQueryInput).toMatchObject({ claim: "others" });
+  });
+
+  it("keeps Apply waiting while the dates are the wrong way round", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorChatsContent />);
+    const panel = await openPanel(user);
+
+    fireEvent.change(within(panel).getByLabelText("Last Message From"), { target: { value: "2026-09-10" } });
+    fireEvent.change(within(panel).getByLabelText("Last Message To"), { target: { value: "2026-09-01" } });
+    expect(within(panel).getByText("The 'from' date cannot be later than the 'to' date.")).toBeTruthy();
+    expect((within(panel).getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("says nothing matches, rather than that nobody has written in, when a filter empties the list", async () => {
+    const user = userEvent.setup();
+    render(<AdminTutorChatsContent />);
+    expect(screen.getByText("No Tutor has written in yet.")).toBeTruthy();
+
+    const panel = await openPanel(user);
+    fireEvent.change(within(panel).getByRole("combobox", { name: "Status" }), { target: { value: "unread" } });
+    await user.click(within(panel).getByRole("button", { name: "Apply" }));
+    expect(screen.getByText("Nothing matches that search.")).toBeTruthy();
+  });
+
+  it("keeps the sort a separate thing: it regroups the list and sends nothing to the server", () => {
+    state.threads = [thread({ unreadCount: 2 })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.change(screen.getByLabelText("Sort conversations"), { target: { value: "unread" } });
+    expect(state.threadsQueryInput).toEqual({ query: "", page: 1, pageSize: 50, archived: false });
   });
 });

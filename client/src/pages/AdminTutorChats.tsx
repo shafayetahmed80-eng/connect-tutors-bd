@@ -1,3 +1,5 @@
+import { AdminChatFilterFields, useAdminChatFilters } from "@/components/AdminChatFilters";
+import { AdminRequestFilterBar } from "@/components/AdminRequestFilters";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -205,13 +207,26 @@ function ChatNotesModal({ tutorId, onClose }: { tutorId: string; onClose: () => 
 
 type ThreadSortMode = "recent" | "unread" | "mine";
 
-/** The Admin's list of every Tutor who has written in - newest activity first, unread ones easy to spot. */
-function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange }: { selectedTutorId: string | null; onSelect: (tutorId: string) => void; archived: boolean; onArchivedChange: (value: boolean) => void }) {
-  const [query, setQuery] = useState("");
+/**
+ * The Admin's list of every Tutor who has written in - newest activity first,
+ * unread ones easy to spot. The page reads the list (the card over both panes
+ * counts it); this draws it, with its tabs, search and sort.
+ */
+function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, query, onQueryChange, threads, loading, narrowed }: {
+  selectedTutorId: string | null;
+  onSelect: (tutorId: string) => void;
+  archived: boolean;
+  onArchivedChange: (value: boolean) => void;
+  query: string;
+  onQueryChange: (value: string) => void;
+  threads: ChatThreadRow[];
+  loading: boolean;
+  /** The search or the filter panel is narrowing the list. */
+  narrowed: boolean;
+}) {
   const [sortMode, setSortMode] = useState<ThreadSortMode>("recent");
   const { user } = useAuth();
-  const threadsQuery = trpc.admin.listTutorChatThreads.useQuery({ query, page: 1, pageSize: 50, archived });
-  const rawItems = (threadsQuery.data?.items ?? []) as ChatThreadRow[];
+  const rawItems = threads;
   // The server's own order (newest activity first) is always the tiebreaker -
   // `Array.prototype.sort` is stable, so this only ever regroups it, never
   // reshuffles within a group.
@@ -232,7 +247,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange }: {
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
         <input
           value={query}
-          onChange={event => setQuery(event.target.value)}
+          onChange={event => onQueryChange(event.target.value)}
           placeholder="Search Tutor name or ID"
           className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
@@ -251,9 +266,9 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange }: {
       </label>
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto">
-      {threadsQuery.isLoading ? <p className="p-4 text-center text-sm font-semibold text-j-ink-muted">Loading conversations…</p> : null}
-      {!threadsQuery.isLoading && items.length === 0
-        ? <p className="p-4 text-center text-sm text-j-ink-muted">{query ? "Nothing matches that search." : archived ? "No archived conversations." : "No Tutor has written in yet."}</p>
+      {loading ? <p className="p-4 text-center text-sm font-semibold text-j-ink-muted">Loading conversations…</p> : null}
+      {!loading && items.length === 0
+        ? <p className="p-4 text-center text-sm text-j-ink-muted">{narrowed ? "Nothing matches that search." : archived ? "No archived conversations." : "No Tutor has written in yet."}</p>
         : null}
       {items.map(item => <button
         key={item.tutorId}
@@ -517,11 +532,17 @@ export function AdminTutorChatsContent() {
   const utils = trpc.useUtils();
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(() => new URLSearchParams(search).get("tutorId"));
   const [archived, setArchived] = useState(false);
+  const [query, setQuery] = useState("");
+  const panel = useAdminChatFilters();
+  const threadsQuery = trpc.admin.listTutorChatThreads.useQuery({ query, page: 1, pageSize: 50, archived, ...panel.input });
+  const threads = (threadsQuery.data?.items ?? []) as ChatThreadRow[];
+  const narrowed = panel.activeCount > 0 || query.trim().length > 0;
+  const listProps = { query, onQueryChange: setQuery, threads, loading: threadsQuery.isLoading, narrowed };
   const [noteAlertTutorIds, setNoteAlertTutorIds] = useState<ReadonlySet<string>>(new Set());
   const [typingTutorId, setTypingTutorId] = useState<string | null>(null);
   const [typingUntil, setTypingUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const frameClassName = "h-[calc(100vh-236px)] min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]";
+  const frameClassName = "h-[calc(100vh-340px)] min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -560,14 +581,26 @@ export function AdminTutorChatsContent() {
       <ChatStatsStrip />
       <ChatPushToggle />
     </div>
+    <AdminRequestFilterBar
+      filters={panel}
+      eyebrow={archived ? "Archived Chats" : "Active Chats"}
+      count={threadsQuery.data?.total}
+      loading={threadsQuery.isLoading}
+      caption={narrowed ? "matching conversations" : "conversations"}
+      panelId="admin-chat-filters"
+      panelLabel="Tutor chat filters"
+      noun="conversations found"
+    >
+      <AdminChatFilterFields draft={panel.draft} setDraft={panel.setDraft} />
+    </AdminRequestFilterBar>
     {isMobile
       ? <div className={frameClassName}>
           {selectedTutorId
             ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
-            : <ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} />}
+            : <ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} />}
         </div>
       : <div className={`grid min-h-0 grid-cols-[320px_1fr] ${frameClassName}`}>
-          <div className="min-h-0 border-r border-[#dce9f1]"><ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} /></div>
+          <div className="min-h-0 border-r border-[#dce9f1]"><ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} /></div>
           <div className="min-h-0">
             {selectedTutorId
               ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
