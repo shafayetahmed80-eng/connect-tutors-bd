@@ -81,9 +81,15 @@ describe("who a new tuition reaches, against the real database", () => {
     expect(reached).not.toContain(who.suspended);
   });
 
-  it("treats a Home or Online tuition that has an area as an area tuition", async () => {
-    const reached = mine(await listTutorUserIdsForNewTuition({ tuitionType: "both", locationId: areaA }));
-    expect(reached).toEqual([who.current!, who.preferred!].sort((a, b) => a - b));
+  it("also reaches the Tutors who teach online when a tuition can be taken online, even with an area", async () => {
+    const everyone = [who.current!, who.preferred!, who.online!].sort((a, b) => a - b);
+    expect(mine(await listTutorUserIdsForNewTuition({ tuitionType: "both", locationId: areaA }))).toEqual(everyone);
+    expect(mine(await listTutorUserIdsForNewTuition({ tuitionType: "online", locationId: areaA }))).toEqual(everyone);
+  });
+
+  it("does not bring the online Tutors into a tuition that can only be taught in person", async () => {
+    expect(mine(await listTutorUserIdsForNewTuition({ tuitionType: "home", locationId: areaA }))).not.toContain(who.online);
+    expect(mine(await listTutorUserIdsForNewTuition({ tuitionType: "group", locationId: areaA }))).not.toContain(who.online);
   });
 
   it("sends an online tuition with no area to the Tutors who teach online, and no one else", async () => {
