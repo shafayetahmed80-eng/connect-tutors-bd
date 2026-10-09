@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { adminJobFiltersSchema } from "./admin-job-filters";
+import { adminGuardianRequestQueueFiltersSchema } from "./admin-request-filters";
 import { ADMIN_TUTOR_LOCATION_LIMIT, ADMIN_TUTOR_SUBJECT_LIMIT } from "@shared/admin-tutor-filters";
 import { appointmentRefusalMessages } from "./guardian-applicant-actions";
 import { GUARDIAN_REQUEST_REASON_MAX_LENGTH, guardianTuitionRequestRefusalMessages } from "./guardian-tuition-requests";
@@ -1872,6 +1873,12 @@ export const appRouter = router({
       role: z.enum(["all", "guardian", "tutor", "admin"]).default("all"),
       type: z.enum(["all", ...accountChangeTypeValues]).default("all"),
       userId: z.number().int().positive().optional(),
+      /** An account's name, its Guardian ID or its Tutor ID. */
+      query: z.string().trim().max(100).default(""),
+      requestedFrom: z.coerce.date().optional(),
+      requestedTo: z.coerce.date().optional(),
+      /** Declined tab only. */
+      declineReason: z.string().trim().min(1).max(120).optional(),
     })).query(({ ctx, input }) => db.listAccountChangeRequestsForAdmin({ ...input, includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
     pendingCount: adminProcedure.query(({ ctx }) => db.countPendingAccountChangeRequests({ includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
     /** One account's requests, for its profile page. An Admin's are the Project Owner's to read. */
@@ -2904,6 +2911,9 @@ export const appRouter = router({
       status: z.enum(["pending", "approved", "declined"]).default("pending"),
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(20),
+      /** A Job ID, a Guardian's name or Guardian ID, a Tutor's name or Tutor ID. */
+      query: z.string().trim().max(100).default(""),
+      filters: adminGuardianRequestQueueFiltersSchema.optional(),
     })).query(({ input }) => db.listGuardianRequestActions(input)),
     approveAppointmentRequest: adminProcedure
       .input(z.object({ interestId: z.number().int().positive() }))

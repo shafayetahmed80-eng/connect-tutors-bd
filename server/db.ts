@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, getTableName, gt,
   gte, inArray, isNotNull, isNull, like, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
-import type { MySqlTable } from "drizzle-orm/mysql-core";
+import type { AnyMySqlColumn, MySqlTable } from "drizzle-orm/mysql-core";
 import {
   MAX_LOCATION_ID_LENGTH,
   isValidChildType,
@@ -133,6 +133,7 @@ import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tu
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
+import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
 import {
   guardianMaySeeApplicantPhone,
   guardianCountedInterestStatuses,
@@ -5254,16 +5255,31 @@ export async function listAccountChangeRequestsForAdmin(input: {
   type: AccountChangeType | "all";
   includeAdminRequests: boolean;
   userId?: number;
+  /** An account's name, its Guardian ID or its Tutor ID. */
+  query?: string;
+  /** The day the account asked. */
+  requestedFrom?: Date;
+  requestedTo?: Date;
+  /** Words from the reason an Admin gave; narrows the Declined tab alone. */
+  declineReason?: string;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const decider = alias(users, "decider");
+  const term = input.query?.trim();
+  const pattern = term ? `%${term}%` : undefined;
   const filters = [
     input.role === "all" ? undefined : eq(accountChangeRequests.role, input.role),
     input.type === "all" ? undefined : eq(accountChangeRequests.type, input.type),
     input.includeAdminRequests ? undefined : ne(accountChangeRequests.role, "admin"),
     input.userId ? eq(accountChangeRequests.userId, input.userId) : undefined,
+    pattern ? or(like(users.name, pattern), like(guardianProfiles.guardianId, pattern), like(tutorRegistrations.tutorNumber, pattern)) : undefined,
+    input.requestedFrom ? gte(accountChangeRequests.createdAt, input.requestedFrom) : undefined,
+    input.requestedTo ? lte(accountChangeRequests.createdAt, input.requestedTo) : undefined,
   ].filter(Boolean) as SQL[];
+  // A decline reason only exists once a request is declined, so it narrows that tab and no other.
+  const reasonPattern = input.declineReason?.trim() ? `%${input.declineReason.trim()}%` : undefined;
+  const declinedReason = reasonPattern ? like(accountChangeRequests.declineReason, reasonPattern) : undefined;
 
   const items = await database
     .select({
@@ -5291,17 +5307,24 @@ export async function listAccountChangeRequestsForAdmin(input: {
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, accountChangeRequests.userId))
     .leftJoin(guardianProfiles, eq(guardianProfiles.userId, accountChangeRequests.userId))
     .leftJoin(decider, eq(decider.id, accountChangeRequests.decidedByUserId))
-    .where(and(eq(accountChangeRequests.status, input.status), ...filters))
+    .where(and(eq(accountChangeRequests.status, input.status), ...filters, input.status === "declined" ? declinedReason : undefined))
     .orderBy(input.status === "pending" ? asc(accountChangeRequests.id) : desc(accountChangeRequests.decidedAt), desc(accountChangeRequests.id))
     .limit(200);
 
-  const grouped = await database
+  const counted = (...extra: Array<SQL | undefined>) => database
     .select({ status: accountChangeRequests.status, total: count() })
     .from(accountChangeRequests)
-    .where(filters.length ? and(...filters) : undefined)
-    .groupBy(accountChangeRequests.status);
+    .innerJoin(users, eq(users.id, accountChangeRequests.userId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, accountChangeRequests.userId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, accountChangeRequests.userId))
+    .where(and(...filters, ...extra));
+  const grouped = await counted().groupBy(accountChangeRequests.status);
   const counts = { pending: 0, approved: 0, declined: 0 };
   for (const row of grouped) if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.total);
+  if (declinedReason) {
+    const [declined] = await counted(declinedReason, eq(accountChangeRequests.status, "declined"));
+    counts.declined = Number(declined?.total ?? 0);
+  }
   return { items, counts };
 }
 
@@ -5788,23 +5811,67 @@ export async function countGuardianRequestActions() {
 }
 
 /**
+ * What a Guardian Requests search looks for: a Job ID, a Guardian's name or
+ * Guardian ID, a Tutor's name or Tutor ID. Needs `users`, `guardian_profiles`,
+ * `tutors` and `tutor_registrations` joined.
+ */
+function guardianRequestSearchCondition(query: string | undefined): SQL | undefined {
+  const term = query?.trim();
+  if (!term) return undefined;
+  const pattern = `%${term}%`;
+  const requestId = requestIdFromJobId(term);
+  return or(
+    ...(requestId !== null ? [eq(tutorRequests.id, requestId)] : []),
+    like(users.name, pattern),
+    like(guardianProfiles.guardianId, pattern),
+    like(tutors.name, pattern),
+    like(tutorRegistrations.tutorNumber, pattern),
+  );
+}
+
+/** The panel's own choices; `stamp` is the column that says when the Guardian asked (or shortlisted). */
+function guardianRequestFilterConditions(filters: AdminGuardianRequestQueueFilters | undefined, stamp: AnyMySqlColumn): SQL[] {
+  if (!filters) return [];
+  const conditions: SQL[] = [];
+  if (filters.requestedFrom) conditions.push(gte(stamp, filters.requestedFrom));
+  if (filters.requestedTo) conditions.push(lte(stamp, filters.requestedTo));
+  if (filters.postedBy) conditions.push(eq(tutorRequests.postedByAdmin, filters.postedBy === "admin" ? 1 : 0));
+  // The stage the tuition is in now, by the same rule the job lists use.
+  if (filters.tuitionStage) conditions.push(adminPostedJobStageCondition(filters.tuitionStage));
+  return conditions;
+}
+
+/**
  * One kind of Guardian action, a page at a time, newest first. A shortlist
  * and an appointment request live on the applicant (an appointment request
  * leaves no trace once answered, so only the waiting ones can be listed);
  * Confirm and Cancel are rows of their own, kept after they are decided.
+ *
+ * The search and the filter panel narrow the rows and, on the two kinds that
+ * have status tabs, every tab's count as well, so a tab never says more than it
+ * opens on.
  */
-export async function listGuardianRequestActions(input: { kind: GuardianRequestKind; status: "pending" | "approved" | "declined"; page: number; pageSize?: number }) {
+export async function listGuardianRequestActions(input: {
+  kind: GuardianRequestKind;
+  status: "pending" | "approved" | "declined";
+  page: number;
+  pageSize?: number;
+  query?: string;
+  filters?: AdminGuardianRequestQueueFilters;
+}) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const pageSize = input.pageSize ?? GUARDIAN_REQUEST_PAGE_SIZE;
   const offset = (input.page - 1) * pageSize;
+  const search = guardianRequestSearchCondition(input.query);
 
   if (input.kind === "shortlist" || input.kind === "appoint") {
     const stamp = input.kind === "appoint" ? tutorJobInterests.appointmentRequestedAt : tutorJobInterests.guardianShortlistedAt;
-    const where = input.kind === "appoint"
+    const base = input.kind === "appoint"
       ? isNotNull(tutorJobInterests.appointmentRequestedAt)
       : and(isNotNull(tutorJobInterests.guardianShortlistedAt), notInArray(tutorJobInterests.status, ["withdrawn", "declined"]));
-    const base = database
+    const where = and(base, search, ...guardianRequestFilterConditions(input.filters, stamp));
+    const rows = await database
       .select({
         key: tutorJobInterests.id,
         interestId: tutorJobInterests.id,
@@ -5825,9 +5892,20 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
       .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
       .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
       .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+      .where(where)
+      .orderBy(desc(stamp), desc(tutorJobInterests.id))
+      .limit(pageSize)
+      .offset(offset);
+    const [{ total }] = await database
+      .select({ total: count() })
+      .from(tutorJobInterests)
+      .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+      .innerJoin(tutorRequests, eq(tutorRequests.id, tutorJobs.tutorRequestId))
+      .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+      .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
+      .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
       .where(where);
-    const [{ total }] = await database.select({ total: count() }).from(tutorJobInterests).where(where);
-    const rows = await base.orderBy(desc(stamp), desc(tutorJobInterests.id)).limit(pageSize).offset(offset);
     return {
       items: rows.map(row => ({
         ...row,
@@ -5844,11 +5922,22 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
   }
 
   const types = guardianTuitionRequestTypesFor(input.kind);
-  const typeFilter = inArray(guardianTuitionRequests.type, [...types]);
+  // What narrows every tab alike: the kind, the search and the panel. The status is the tab's own.
+  const narrowing = and(
+    inArray(guardianTuitionRequests.type, [...types]),
+    input.filters?.requestType ? eq(guardianTuitionRequests.type, input.filters.requestType) : undefined,
+    search,
+    ...guardianRequestFilterConditions(input.filters, guardianTuitionRequests.createdAt),
+  );
   const grouped = await database
     .select({ status: guardianTuitionRequests.status, total: count() })
     .from(guardianTuitionRequests)
-    .where(typeFilter)
+    .innerJoin(tutorRequests, eq(tutorRequests.id, guardianTuitionRequests.tutorRequestId))
+    .innerJoin(users, eq(users.id, guardianTuitionRequests.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, guardianTuitionRequests.guardianUserId))
+    .leftJoin(tutors, eq(tutors.id, guardianTuitionRequests.tutorId))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(narrowing)
     .groupBy(guardianTuitionRequests.status);
   const counts = { pending: 0, approved: 0, declined: 0 };
   for (const row of grouped) if (row.status in counts) counts[row.status as keyof typeof counts] = Number(row.total);
@@ -5877,7 +5966,7 @@ export async function listGuardianRequestActions(input: { kind: GuardianRequestK
     .leftJoin(guardianProfiles, eq(guardianProfiles.userId, guardianTuitionRequests.guardianUserId))
     .leftJoin(tutors, eq(tutors.id, guardianTuitionRequests.tutorId))
     .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
-    .where(and(typeFilter, eq(guardianTuitionRequests.status, input.status)))
+    .where(and(narrowing, eq(guardianTuitionRequests.status, input.status)))
     .orderBy(input.status === "pending" ? asc(guardianTuitionRequests.createdAt) : desc(guardianTuitionRequests.decidedAt), desc(guardianTuitionRequests.id))
     .limit(pageSize)
     .offset(offset);
