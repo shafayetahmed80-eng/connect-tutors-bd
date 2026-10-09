@@ -72,7 +72,8 @@ export function FilterPanelFrame({ id, ariaLabel, total, loading = false, noun =
 
     {alerts.map(message => <p key={message} role="alert" className="mt-3 text-xs font-semibold text-[#bd3535]">{message}</p>)}
 
-    <div className="mt-4 flex flex-wrap gap-2">
+    {/* On a phone the panel can run a thousand pixels, so the two buttons that finish it stay at the foot of the screen while it scrolls. */}
+    <div className="mt-4 flex flex-wrap gap-2 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:-mb-4 max-sm:rounded-b-xl max-sm:border-t max-sm:border-[#e4edf3] max-sm:bg-[#f7fbfe] max-sm:px-4 max-sm:py-3">
       <button type="button" onClick={onClear} className="motion-interactive min-h-10 rounded-xl bg-[#d43c3c] px-5 text-sm font-bold text-white hover:bg-[#b93232]">Clear</button>
       <button type="button" onClick={onApply} disabled={applyDisabled} className="motion-interactive min-h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-50">Apply</button>
     </div>

@@ -50,7 +50,7 @@ export function AdminGuardianFilterFields({ draft, setDraft }: {
   setDraft: (next: AdminGuardianFilterState) => void;
 }) {
   const set = (change: Partial<AdminGuardianFilterState>) => setDraft({ ...draft, ...change });
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
     <DateField label="Joined Date From" value={draft.joinedFrom} max={draft.joinedTo || undefined} onChange={joinedFrom => set({ joinedFrom })} />
     <DateField label="Joined Date To" value={draft.joinedTo} min={draft.joinedFrom || undefined} onChange={joinedTo => set({ joinedTo })} />
     <FilterSelect label="Tuitions Posted" value={draft.tuitions} onChange={value => set({ tuitions: value as AdminGuardianFilterState["tuitions"] })} options={[...adminGuardianTuitionOptions]} />

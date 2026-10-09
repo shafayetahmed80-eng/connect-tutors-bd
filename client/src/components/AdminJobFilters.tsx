@@ -104,7 +104,7 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
 }) {
   const set = (change: Partial<AdminJobFilterState>) => setDraft({ ...draft, ...change });
   const tutorGender = <FilterSelect label="Assigned Tutor Gender" value={draft.tutorGender} onChange={value => set({ tutorGender: value as AdminJobFilterState["tutorGender"] })} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }]} />;
-  const paymentStatus = <div className="sm:col-span-2">
+  const paymentStatus = <div className="sm:col-span-2 max-sm:col-span-2">
     <ChipMultiSelect label="Payment Status" options={adminJobPaymentStatusOptions} selectedIds={draft.paymentStatuses} onChange={paymentStatuses => set({ paymentStatuses })} />
   </div>;
   return <JobCoreFilterFields
@@ -114,28 +114,29 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
     showCountry={false}
     locationLimit={ADMIN_JOB_LOCATION_LIMIT}
     subjectLimit={ADMIN_JOB_SUBJECT_LIMIT}
+    pairOnPhone
   >
     <FilterTextBox label="Salary From" value={draft.salaryFrom} onChange={salaryFrom => set({ salaryFrom })} inputMode="numeric" suffix="Taka" />
     <FilterTextBox label="Salary To" value={draft.salaryTo} onChange={salaryTo => set({ salaryTo })} inputMode="numeric" suffix="Taka" />
     {showPostedBy ? <FilterSelect label="Posted By" value={draft.postedBy} onChange={value => set({ postedBy: value as AdminJobFilterState["postedBy"] })} options={[{ id: "guardian", label: "Guardian" }, { id: "admin", label: "Admin" }]} /> : null}
-    <div className={showPostedBy ? undefined : "sm:col-span-2"}>
+    <div className={`max-sm:col-span-2 ${showPostedBy ? "" : "sm:col-span-2"}`}>
       <FilterTextBox label="Guardian Name, Mobile or ID" value={draft.guardian} onChange={guardian => set({ guardian })} />
     </div>
 
     {stage === "cancelled" ? null : <FilterSelect label="Waiting Request" value={draft.waitingRequest} onChange={value => set({ waitingRequest: value as AdminJobFilterState["waitingRequest"] })} options={[...adminJobWaitingRequestOptions]} />}
     <FilterSelect label="Days in Stage" value={draft.daysInStage} onChange={value => set({ daysInStage: value as AdminJobFilterState["daysInStage"] })} options={[...adminJobDaysInStageOptions]} />
-    <div className="sm:col-span-2">
+    <div className="sm:col-span-2 max-sm:col-span-2">
       <ChipMultiSelect label="Heard About Us" options={[...adminJobHeardAboutUsOptions]} selectedIds={draft.heardAboutUs} onChange={heardAboutUs => set({ heardAboutUs })} />
     </div>
 
-    {stage === "pending" ? <div className="sm:col-span-2">
+    {stage === "pending" ? <div className="sm:col-span-2 max-sm:col-span-2">
       <ChipMultiSelect label="Moderation" options={[...adminJobPublicationStates]} selectedIds={draft.publicationStates} onChange={publicationStates => set({ publicationStates })} />
     </div> : null}
     {stage === "live" ? <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} /> : null}
     {stage === "applied" ? <>
       <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} />
       <FilterSelect label="Shortlisted Tutors" value={draft.shortlisted} onChange={value => set({ shortlisted: value as AdminJobFilterState["shortlisted"] })} options={[...adminJobShortlistedOptions]} />
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 max-sm:col-span-2">
         <ChipMultiSelect label="Stage" options={[...adminJobListStageOptions]} selectedIds={draft.listStages} onChange={listStages => set({ listStages })} />
       </div>
     </> : null}
@@ -158,11 +159,11 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
       <DateField label="Cancelled Date To" value={draft.cancelledTo} min={draft.cancelledFrom || undefined} onChange={cancelledTo => set({ cancelledTo })} />
       <FilterSelect label="Settlement" value={draft.settlement} onChange={value => set({ settlement: value as AdminJobFilterState["settlement"] })} options={[...adminJobSettlementOptions]} />
       <FilterSelect label="Refund" value={draft.refundDisposition} onChange={value => set({ refundDisposition: value as AdminJobFilterState["refundDisposition"] })} options={[...adminJobRefundDispositionOptions]} />
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 max-sm:col-span-2">
         <ChipMultiSelect label="Settlement Reason" options={adminJobSettlementReasonOptions} selectedIds={draft.settlementReasons} onChange={settlementReasons => set({ settlementReasons })} />
       </div>
       {paymentStatus}
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 max-sm:col-span-2">
         <FilterTextBox label="Cancellation Reason" value={draft.cancelReason} onChange={cancelReason => set({ cancelReason })} />
       </div>
       {tutorGender}

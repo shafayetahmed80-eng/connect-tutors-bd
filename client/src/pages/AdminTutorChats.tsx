@@ -542,7 +542,9 @@ export function AdminTutorChatsContent() {
   const [typingTutorId, setTypingTutorId] = useState<string | null>(null);
   const [typingUntil, setTypingUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const frameClassName = "h-[calc(100vh-340px)] min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]";
+  // On a phone an open conversation has the screen to itself: the card and its panel are for the list, and the room they take goes to the thread.
+  const threadOpenOnPhone = isMobile && selectedTutorId !== null;
+  const frameClassName = `${threadOpenOnPhone ? "h-[calc(100vh-236px)]" : "h-[calc(100vh-340px)]"} min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]`;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -581,7 +583,7 @@ export function AdminTutorChatsContent() {
       <ChatStatsStrip />
       <ChatPushToggle />
     </div>
-    <AdminRequestFilterBar
+    {threadOpenOnPhone ? null : <AdminRequestFilterBar
       filters={panel}
       eyebrow={archived ? "Archived Chats" : "Active Chats"}
       count={threadsQuery.data?.total}
@@ -592,7 +594,7 @@ export function AdminTutorChatsContent() {
       noun="conversations found"
     >
       <AdminChatFilterFields draft={panel.draft} setDraft={panel.setDraft} />
-    </AdminRequestFilterBar>
+    </AdminRequestFilterBar>}
     {isMobile
       ? <div className={frameClassName}>
           {selectedTutorId

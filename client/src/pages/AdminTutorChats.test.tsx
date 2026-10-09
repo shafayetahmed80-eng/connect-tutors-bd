@@ -545,6 +545,43 @@ describe("the card and filter panel over the conversations", () => {
     expect(screen.getByText("Nothing matches that search.")).toBeTruthy();
   });
 
+  it("on a phone, takes the card and its panel away while a conversation is open, and gives them back on Back", () => {
+    state.isMobile = true;
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    expect(screen.getByRole("button", { name: /^Filter/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Amina Rahman/ }));
+    expect(screen.queryByRole("button", { name: /^Filter/ })).toBeNull();
+    expect(screen.queryByText("Active Chats")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    expect(screen.getByRole("button", { name: /^Filter/ })).toBeTruthy();
+  });
+
+  it("on a desktop, keeps the card over the two panes while a conversation is open", () => {
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Amina Rahman/ }));
+    expect(screen.getByRole("button", { name: /^Filter/ })).toBeTruthy();
+    expect(screen.getByText("Active Chats")).toBeTruthy();
+  });
+
+  it("keeps a filter that was applied through a visit to a conversation on a phone", async () => {
+    const user = userEvent.setup();
+    state.isMobile = true;
+    state.threads = [thread()];
+    render(<AdminTutorChatsContent />);
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    fireEvent.change(within(screen.getByRole("region", { name: "Tutor chat filters" })).getByRole("combobox", { name: "Status" }), { target: { value: "unread" } });
+    await user.click(within(screen.getByRole("region", { name: "Tutor chat filters" })).getByRole("button", { name: "Apply" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Amina Rahman/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+    expect(state.threadsQueryInput).toMatchObject({ unread: "unread" });
+    expect(within(screen.getByRole("button", { name: /^Filter/ })).getByText("1")).toBeTruthy();
+  });
+
   it("keeps the sort a separate thing: it regroups the list and sends nothing to the server", () => {
     state.threads = [thread({ unreadCount: 2 })];
     render(<AdminTutorChatsContent />);
