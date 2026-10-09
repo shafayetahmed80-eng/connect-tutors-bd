@@ -103,5 +103,15 @@ jobs:
           pnpm db:seed:tutor-profile-catalog
           node scripts/seed-dev-discovery-fixtures.mjs
 
+      - name: Keep real user ids clear of the made-up Admin
+        # Many router tests call as an Admin with id 42 that exists nowhere, and
+        # the Admin guards look that id up in the real database. In a database
+        # this fresh, another test's real user can be numbered 42 while they run
+        # - an Admin made with a temporary password turns every call into
+        # "Change your temporary password first". Numbering real users from a
+        # hundred thousand keeps the two apart.
+        run: |
+          node -e "const mysql = require('mysql2/promise'); (async () => { const db = await mysql.createConnection(process.env.DATABASE_URL); await db.query('ALTER TABLE users AUTO_INCREMENT = 100000'); await db.end(); })().catch(error => { console.error(error); process.exit(1); });"
+
       - name: Tests
         run: pnpm test
