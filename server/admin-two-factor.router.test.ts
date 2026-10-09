@@ -10,7 +10,7 @@ const dbMocks = vi.hoisted(() => ({
   consumeAdminRecoveryCode: vi.fn(),
   resetAdminTwoFactor: vi.fn(),
   logAdminAuditEvent: vi.fn(),
-  listTutorRequestMatchingPage: vi.fn(),
+  countGuardianRequestActions: vi.fn(),
   setAdminTwoFactorSmsPhone: vi.fn(),
   clearAdminTwoFactorSmsPhone: vi.fn(),
   getPhoneCodeSendState: vi.fn(),
@@ -180,8 +180,8 @@ describe("the sign-in challenge for an already-enrolled Admin", () => {
     await caller.admin.verifyTwoFactorChallenge({ code });
 
     const { caller: nextRequest } = createCaller(ownerUser, cookieHeaderFor(setCookies));
-    dbMocks.listTutorRequestMatchingPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
-    await expect(nextRequest.admin.listMatchingRequests({})).resolves.toMatchObject({ total: 0 });
+    dbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 0, appoint: 0, confirm: 0, cancel: 0 });
+    await expect(nextRequest.admin.guardianRequestCounts()).resolves.toMatchObject({ appoint: 0 });
   });
 });
 
@@ -197,7 +197,7 @@ describe("signing out", () => {
     expect(setCookies["connect-admin-2fa"]).toBe("");
 
     const { caller: afterLogout } = createCaller(ownerUser, cookieHeaderFor(setCookies));
-    await expect(afterLogout.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(afterLogout.admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
 
