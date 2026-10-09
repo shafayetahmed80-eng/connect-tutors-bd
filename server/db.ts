@@ -6870,7 +6870,40 @@ async function sweepStaleTutorAdminChatThreads(database: NonNullable<Awaited<Ret
 }
 
 /** The Admin's list of every Tutor who has written in, newest activity first, with the visible Tutor ID (`tutorNumber`) alongside the name. */
-export async function listTutorAdminChatThreadsForAdmin(input: { query: string; page: number; pageSize: number; archived?: boolean }) {
+/**
+ * A Tutor message in the thread that no Admin has read yet - optionally one
+ * that has been waiting since before `cutoff`.
+ *
+ * `>=`, not `>`, against the read cursor: whole-second `timestamp` precision
+ * means a Tutor message landing the same second an Admin's cursor moved must
+ * still count, not vanish into a tie.
+ *
+ * The cutoff goes through the column's own comparison, not a bare parameter: a
+ * `timestamp` is stored in UTC and a bare Date is written in the connection's
+ * own zone, which on a machine that is not on UTC moves the line by hours.
+ */
+function tutorChatUnreadMessage(cutoff?: Date): SQL {
+  return sql`exists (
+    select 1 from ${tutorAdminChatMessages}
+    where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
+      and ${tutorAdminChatMessages.senderRole} = 'tutor'
+      and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
+      ${cutoff ? sql`and ${lte(tutorAdminChatMessages.createdAt, cutoff)}` : sql``}
+  )`;
+}
+
+export type AdminTutorChatThreadFilters = {
+  /** Whether a Tutor message waits that no Admin has read. */
+  unread?: "unread" | "read";
+  /** Who has claimed the thread: the Admin looking, no one, or another Admin. */
+  claim?: "mine" | "unclaimed" | "others";
+  /** The oldest unread Tutor message has been waiting at least this many hours. */
+  waitingHours?: number;
+  lastMessageFrom?: Date;
+  lastMessageTo?: Date;
+};
+
+export async function listTutorAdminChatThreadsForAdmin(input: { query: string; page: number; pageSize: number; archived?: boolean; adminUserId: number } & AdminTutorChatThreadFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   await sweepStaleTutorAdminChatThreads(database);
@@ -6880,7 +6913,16 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
     ? or(like(tutors.name, `%${trimmedQuery}%`), queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined)
     : undefined;
   const archivedCondition = input.archived ? isNotNull(tutorAdminChatThreads.archivedAt) : isNull(tutorAdminChatThreads.archivedAt);
-  const condition = searchCondition ? and(searchCondition, archivedCondition) : archivedCondition;
+  const narrowing: SQL[] = [];
+  if (input.unread === "unread") narrowing.push(tutorChatUnreadMessage());
+  if (input.unread === "read") narrowing.push(sql`not ${tutorChatUnreadMessage()}`);
+  if (input.claim === "mine") narrowing.push(eq(tutorAdminChatThreads.claimedByAdminId, input.adminUserId));
+  if (input.claim === "unclaimed") narrowing.push(isNull(tutorAdminChatThreads.claimedByAdminId));
+  if (input.claim === "others") narrowing.push(and(isNotNull(tutorAdminChatThreads.claimedByAdminId), ne(tutorAdminChatThreads.claimedByAdminId, input.adminUserId))!);
+  if (input.waitingHours) narrowing.push(tutorChatUnreadMessage(new Date(Date.now() - input.waitingHours * 60 * 60 * 1000)));
+  if (input.lastMessageFrom) narrowing.push(gte(tutorAdminChatThreads.lastMessageAt, input.lastMessageFrom));
+  if (input.lastMessageTo) narrowing.push(lte(tutorAdminChatThreads.lastMessageAt, input.lastMessageTo));
+  const condition = and(archivedCondition, searchCondition, ...narrowing);
   const claimedByAdmin = alias(users, "chat_list_claimed_by_admin");
   const items = await database
     .select({
@@ -6933,12 +6975,7 @@ export async function getTutorAdminChatUnreadThreadCountForAdmin() {
   const [row] = await database
     .select({ value: count() })
     .from(tutorAdminChatThreads)
-    .where(sql`exists (
-      select 1 from ${tutorAdminChatMessages}
-      where ${tutorAdminChatMessages.threadId} = ${tutorAdminChatThreads.id}
-        and ${tutorAdminChatMessages.senderRole} = 'tutor'
-        and (${tutorAdminChatThreads.adminLastReadAt} is null or ${tutorAdminChatMessages.createdAt} >= ${tutorAdminChatThreads.adminLastReadAt})
-    )`);
+    .where(tutorChatUnreadMessage());
   return { unreadThreadCount: Number(row?.value ?? 0) };
 }
 

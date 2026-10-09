@@ -86,7 +86,7 @@ export function AdminChangeRequestFilterFields({ draft, setDraft, canSeeAdmins, 
  * The card that heads a request queue and the panel it opens: what the queue
  * is, how many requests are on the tab open, the Filter button, and the filters.
  */
-export function AdminRequestFilterBar({ filters, eyebrow, count, loading, caption, panelId, panelLabel, children }: {
+export function AdminRequestFilterBar({ filters, eyebrow, count, loading, caption, panelId, panelLabel, noun = "requests found", children }: {
   filters: Pick<ReturnType<typeof useAdminGuardianRequestFilters>, "open" | "toggle" | "close" | "clear" | "apply" | "activeCount" | "alerts" | "canApply">;
   /** What the queue is: "Confirm Requests". */
   eyebrow: string;
@@ -95,6 +95,8 @@ export function AdminRequestFilterBar({ filters, eyebrow, count, loading, captio
   caption: ReactNode;
   panelId: string;
   panelLabel: string;
+  /** What the number in the panel counts. */
+  noun?: string;
   /** The boxes of the panel. */
   children: ReactNode;
 }) {
@@ -115,7 +117,7 @@ export function AdminRequestFilterBar({ filters, eyebrow, count, loading, captio
       ariaLabel={panelLabel}
       total={count}
       loading={loading}
-      noun="requests found"
+      noun={noun}
       onClose={filters.close}
       onClear={filters.clear}
       onApply={filters.apply}

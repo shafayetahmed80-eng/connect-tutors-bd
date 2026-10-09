@@ -2451,8 +2451,14 @@ export const appRouter = router({
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
         archived: z.boolean().default(false),
+        // The Tutor Chats panel's own.
+        unread: z.enum(["unread", "read"]).optional(),
+        claim: z.enum(["mine", "unclaimed", "others"]).optional(),
+        waitingHours: z.number().int().min(1).max(24 * 30).optional(),
+        lastMessageFrom: z.coerce.date().optional(),
+        lastMessageTo: z.coerce.date().optional(),
       }))
-      .query(({ input }) => db.listTutorAdminChatThreadsForAdmin(input)),
+      .query(({ ctx, input }) => db.listTutorAdminChatThreadsForAdmin({ ...input, adminUserId: ctx.user.id })),
     tutorChatUnreadThreadCount: adminProcedure.query(() => db.getTutorAdminChatUnreadThreadCountForAdmin()),
     /** How busy the inbox is: threads awaiting a reply, and the 30-day average response time. */
     getTutorChatStats: adminProcedure.query(() => db.getTutorAdminChatStats()),

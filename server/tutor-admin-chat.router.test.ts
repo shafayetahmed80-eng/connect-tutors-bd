@@ -119,13 +119,34 @@ describe("the Admin side of the Tutor chat", () => {
   it("lists every Tutor thread, newest activity first", async () => {
     dbMocks.listTutorAdminChatThreadsForAdmin.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
     await createCaller(admin).admin.listTutorChatThreads({});
-    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: false });
+    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: false, adminUserId: 42 });
   });
 
   it("lists the Archived tab on request", async () => {
     dbMocks.listTutorAdminChatThreadsForAdmin.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
     await createCaller(admin).admin.listTutorChatThreads({ archived: true });
-    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: true });
+    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenCalledWith({ query: "", page: 1, pageSize: 20, archived: true, adminUserId: 42 });
+  });
+
+  it("passes the panel through with the Admin asking, so Claimed By \"me\" means whoever is signed in", async () => {
+    dbMocks.listTutorAdminChatThreadsForAdmin.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+    const lastMessageFrom = new Date("2026-09-01T00:00:00.000Z");
+    await createCaller(admin).admin.listTutorChatThreads({ unread: "unread", claim: "mine", waitingHours: 24, lastMessageFrom });
+    expect(dbMocks.listTutorAdminChatThreadsForAdmin).toHaveBeenLastCalledWith(expect.objectContaining({
+      unread: "unread", claim: "mine", waitingHours: 24, lastMessageFrom, adminUserId: 42,
+    }));
+
+    await createCaller(admin).admin.listTutorChatThreads({});
+    const [asked] = dbMocks.listTutorAdminChatThreadsForAdmin.mock.calls.at(-1)!;
+    for (const key of ["unread", "claim", "waitingHours", "lastMessageFrom", "lastMessageTo"]) expect(asked).not.toHaveProperty(key);
+  });
+
+  it("refuses a choice the panel could not have made", async () => {
+    const ask = (input: Record<string, unknown>) => createCaller(admin).admin.listTutorChatThreads(input as never);
+    await expect(ask({ unread: "maybe" })).rejects.toThrow();
+    await expect(ask({ claim: "everyone" })).rejects.toThrow();
+    await expect(ask({ waitingHours: 0 })).rejects.toThrow();
+    await expect(ask({ waitingHours: 2.5 })).rejects.toThrow();
   });
 
   it("reopens an archived thread", async () => {
