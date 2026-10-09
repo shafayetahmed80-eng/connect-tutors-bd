@@ -22,8 +22,8 @@ export type AdminPriorityQueueMetrics = {
 export function buildAdminPriorityQueue(metrics: AdminPriorityQueueMetrics) {
   return [
     metrics.pendingTutorReviews > 0 ? { count: metrics.pendingTutorReviews, label: "Review Tutor profiles", href: "/admin/tutor-profiles" } : null,
-    metrics.newRequests > 0 ? { count: metrics.newRequests, label: "Review new Guardian requests", href: "/admin/matching" } : null,
-    metrics.consentBacklog > 0 ? { count: metrics.consentBacklog, label: "Resolve consent decisions", href: "/admin/matching" } : null,
+    metrics.newRequests > 0 ? { count: metrics.newRequests, label: "Review new Guardian requests", href: "/admin/posted-jobs" } : null,
+    metrics.consentBacklog > 0 ? { count: metrics.consentBacklog, label: "Resolve consent decisions", href: "/admin/posted-jobs" } : null,
   ].filter((item): item is { count: number; label: string; href: string } => item !== null);
 }
 

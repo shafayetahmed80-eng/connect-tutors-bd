@@ -9,7 +9,7 @@ const securityDbMocks = vi.hoisted(() => ({
   getOwnerAdminActivityReport: vi.fn(),
   listAuthEventsPage: vi.fn(),
   listPublishedTutorJobs: vi.fn(),
-  listTutorRequestMatchingPage: vi.fn(),
+  countGuardianRequestActions: vi.fn(),
   logAdminAuditEvent: vi.fn(),
   moderateTutorProfile: vi.fn(),
   moderateTutorRequestPublication: vi.fn(),
@@ -55,27 +55,27 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("Admin role and Owner authorization", () => {
-  it("allows an Admin matching access without 2FA enrollment or a 2FA proof cookie", async () => {
-    securityDbMocks.listTutorRequestMatchingPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
+  it("allows an Admin workspace read without 2FA enrollment or a 2FA proof cookie", async () => {
+    securityDbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 0, appoint: 0, confirm: 0, cancel: 0 });
     const { caller } = createCaller();
 
-    await expect(caller.admin.listMatchingRequests({})).resolves.toMatchObject({ total: 0, totalPages: 1 });
-    expect(securityDbMocks.listTutorRequestMatchingPage).toHaveBeenCalledOnce();
+    await expect(caller.admin.guardianRequestCounts()).resolves.toMatchObject({ appoint: 0 });
+    expect(securityDbMocks.countGuardianRequestActions).toHaveBeenCalledOnce();
   });
 
-  it("keeps Admin matching inaccessible to non-Admin accounts", async () => {
+  it("keeps an Admin workspace read inaccessible to non-Admin accounts", async () => {
     const { caller } = createCaller({ ...adminUser, id: 11, role: "guardian" });
 
-    await expect(caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+    await expect(caller.admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(securityDbMocks.countGuardianRequestActions).not.toHaveBeenCalled();
   });
 
   it("refuses an enrolled Admin who has not cleared this browser's two-factor challenge", async () => {
     securityDbMocks.getAdminTwoFactorSettings.mockResolvedValue({ userId: adminUser.id, secretCiphertext: "x", enabledAt: new Date(), lastVerifiedAt: new Date() });
     const { caller } = createCaller();
 
-    await expect(caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+    await expect(caller.admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(securityDbMocks.countGuardianRequestActions).not.toHaveBeenCalled();
     // The two-factor lifecycle itself stays reachable so the Admin can clear the challenge.
     securityDbMocks.getAdminTwoFactorSettings.mockResolvedValue({ userId: adminUser.id, secretCiphertext: "x", enabledAt: new Date(), lastVerifiedAt: new Date() });
     await expect(caller.admin.twoFactorStatus()).resolves.toMatchObject({ enrolled: true, verified: false });
@@ -92,15 +92,15 @@ describe("Admin role and Owner authorization", () => {
     expect(securityDbMocks.moderateTutorProfile).toHaveBeenCalledWith({ tutorId: "1503", nextStatus: "approved", adminUserId: adminUser.id });
   });
 
-  it("passes an Admin publication decision without a 2FA session to the safe database workflow", async () => {
-    securityDbMocks.moderateTutorRequestPublication.mockResolvedValue({ updated: true, eventId: 9, previousState: "reviewing", nextState: "approved" });
+  it("passes an Admin taking a tuition Live, without a 2FA session, to the safe database workflow", async () => {
+    securityDbMocks.moderateTutorRequestPublication.mockResolvedValue({ updated: true, eventId: 9, previousState: "reviewing", nextState: "published" });
     const { caller } = createCaller();
     const adminCaller = caller.admin as unknown as {
-      moderateTutorRequestPublication: (input: { requestId: number; action: "approve" }) => Promise<{ nextState: string }>;
+      moderateTutorRequestPublication: (input: { requestId: number; action: "go_live" }) => Promise<{ nextState: string }>;
     };
 
-    await expect(adminCaller.moderateTutorRequestPublication({ requestId: 23, action: "approve" })).resolves.toMatchObject({ nextState: "approved" });
-    expect(securityDbMocks.moderateTutorRequestPublication).toHaveBeenCalledWith({ requestId: 23, action: "approve", adminUserId: adminUser.id });
+    await expect(adminCaller.moderateTutorRequestPublication({ requestId: 23, action: "go_live" })).resolves.toMatchObject({ nextState: "published" });
+    expect(securityDbMocks.moderateTutorRequestPublication).toHaveBeenCalledWith({ requestId: 23, action: "go_live", adminUserId: adminUser.id });
   });
 
   it("returns Guardian contact only through the role-protected Admin detail contract", async () => {
@@ -201,9 +201,9 @@ describe("Admin role and Owner authorization", () => {
   describe("an Admin still on the Owner's temporary password", () => {
     it("is held out of every workspace call until the password is changed", async () => {
       securityDbMocks.getAdminPasswordChangeRequired.mockResolvedValue(true);
-      securityDbMocks.listTutorRequestMatchingPage.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
-      await expect(createCaller().caller.admin.listMatchingRequests({})).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("10005") });
-      expect(securityDbMocks.listTutorRequestMatchingPage).not.toHaveBeenCalled();
+      securityDbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 0, appoint: 0, confirm: 0, cancel: 0 });
+      await expect(createCaller().caller.admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN", message: expect.stringContaining("10005") });
+      expect(securityDbMocks.countGuardianRequestActions).not.toHaveBeenCalled();
     });
 
     it("can still ask whether a change is owed, so the page knows to send them to it", async () => {

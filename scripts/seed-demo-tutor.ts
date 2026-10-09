@@ -242,7 +242,7 @@ async function main() {
   console.log(`  Password   : ${DEMO.password}`);
   console.log(`  Name       : ${DEMO.name}`);
   if (tutorNumber) console.log(`  Tutor no.  : ${tutorNumber}`);
-  console.log(`  Status     : pending (in the Admin matching workspace review queue)`);
+  console.log(`  Status     : pending (in the Admin Tutor Profiles review queue)`);
 }
 
 main().then(

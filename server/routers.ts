@@ -336,89 +336,18 @@ const catalogSearchInputSchema = z.object({
   limit: z.number().int().min(1).max(CATALOG_SEARCH_LIMIT).default(30),
 });
 
-const adminMatchingRequestInputSchema = z.object({
-  query: z.string().trim().max(100).default(""),
-  status: z.enum(["all", "new", "reviewing", "matched", "closed"]).default("all"),
-  lifecycle: z.enum(["all", "pending", "live", "appointed", "confirmed", "cancelled"]).default("all"),
-  tuitionType: guardianRequestTuitionTypeSchema.or(z.literal("all")).default("all"),
-  preferredGender: z.enum(["all", "male", "female", "any"]).default("all"),
-  contactConsent: z.enum(["all", "not_required", "pending", "approved", "declined"]).default("all"),
-  subject: z.string().trim().max(100).default(""),
-  category: z.string().trim().max(120).default(""),
-  location: z.string().trim().max(120).default(""),
-  assignmentState: z.enum(["all", "assigned", "unassigned"]).default("all"),
-  appointmentState: z.enum(["all", "confirmed", "pending"]).default("all"),
-  cancellationState: z.enum(["all", "active", "cancelled"]).default("all"),
-  budgetMinimum: z.number().int().min(0).max(1000000).optional(),
-  budgetMaximum: z.number().int().min(0).max(1000000).optional(),
-  createdAfter: z.coerce.date().optional(),
-  createdBefore: z.coerce.date().optional(),
-  lastActivityAfter: z.coerce.date().optional(),
-  lastActivityBefore: z.coerce.date().optional(),
-  page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(100).default(20),
-})
-  .refine(value => value.budgetMinimum === undefined || value.budgetMaximum === undefined || value.budgetMinimum <= value.budgetMaximum, { message: "Minimum budget cannot exceed maximum budget.", path: ["budgetMinimum"] })
-  .refine(value => value.createdAfter === undefined || value.createdBefore === undefined || value.createdAfter <= value.createdBefore, { message: "Created-date range is invalid.", path: ["createdAfter"] })
-  .refine(value => value.lastActivityAfter === undefined || value.lastActivityBefore === undefined || value.lastActivityAfter <= value.lastActivityBefore, { message: "Activity-date range is invalid.", path: ["lastActivityAfter"] });
-
-const adminMatchingSavedViewFiltersInputSchema = z.object({
-  query: z.string().trim().max(100).optional(),
-  status: z.enum(["all", "new", "reviewing", "matched", "closed"]).optional(),
-  lifecycle: z.enum(["all", "pending", "live", "appointed", "confirmed", "cancelled"]).optional(),
-  tuitionType: guardianRequestTuitionTypeSchema.or(z.literal("all")).optional(),
-  preferredGender: z.enum(["all", "male", "female", "any"]).optional(),
-  contactConsent: z.enum(["all", "not_required", "pending", "approved", "declined"]).optional(),
-  subject: z.string().trim().max(100).optional(),
-  category: z.string().trim().max(120).optional(),
-  location: z.string().trim().max(120).optional(),
-  assignmentState: z.enum(["all", "assigned", "unassigned"]).optional(),
-  appointmentState: z.enum(["all", "confirmed", "pending"]).optional(),
-  cancellationState: z.enum(["all", "active", "cancelled"]).optional(),
-  budgetMinimum: z.number().int().min(0).max(1_000_000).optional(),
-  budgetMaximum: z.number().int().min(0).max(1_000_000).optional(),
-  createdAfter: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
-  createdBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
-  lastActivityAfter: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
-  lastActivityBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
-  pageSize: z.number().int().min(1).max(100).optional(),
-}).strict()
-  .refine(value => value.budgetMinimum === undefined || value.budgetMaximum === undefined || value.budgetMinimum <= value.budgetMaximum, { message: "Minimum budget cannot exceed maximum budget.", path: ["budgetMinimum"] })
-  .refine(value => !value.createdAfter || !value.createdBefore || value.createdAfter <= value.createdBefore, { message: "Created-date range is invalid.", path: ["createdAfter"] })
-  .refine(value => !value.lastActivityAfter || !value.lastActivityBefore || value.lastActivityAfter <= value.lastActivityBefore, { message: "Activity-date range is invalid.", path: ["lastActivityAfter"] });
-
 const adminTutorRequestStatusInputSchema = z.object({
   requestId: z.number().int().positive(),
   status: z.literal("reviewing"),
 });
 
-const adminTutorRequestPublicationEditSchema = z.object({
-  category: z.string().trim().min(1).max(120).optional(),
-  classCourse: z.string().trim().min(1).max(120).optional(),
-  subjects: z.array(z.string().trim().min(1).max(120)).min(1).max(siteLimitCeiling("request.subjects")).optional(),
-  daysPerWeek: z.number().int().min(1).max(7).optional(),
-  preferredGender: z.enum(["male", "female", "any"]).optional(),
-  budgetAmount: salaryAmountSchema.optional(),
-  // The Guardian's note went to the Job Board word for word. It is the one
-  // free-text field a stranger reads, so an Admin needs to be able to trim a
-  // phone number out of it before publishing. Empty string clears it.
-  notes: z.string().trim().max(2000).optional(),
-}).refine(value => Object.values(value).some(entry => entry !== undefined), {
-  message: "Provide at least one approved job-facing edit.",
-});
-
+/**
+ * The only publication move an Admin makes: taking a Pending tuition Live from Posted jobs.
+ * (The review chain - verify, record a Guardian call, approve, publish - went with the Matching workspace.)
+ */
 const adminTutorRequestPublicationInputSchema = z.object({
   requestId: z.number().int().positive(),
-  action: z.enum(["verify", "edit", "guardian_confirmed", "request_changes", "approve", "publish", "go_live", "close"]),
-  reason: z.string().trim().max(1000).optional(),
-  edit: adminTutorRequestPublicationEditSchema.optional(),
-}).superRefine((value, context) => {
-  if (value.action === "edit" && !value.edit) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["edit"], message: "A safe job-facing edit is required." });
-  }
-  if (value.action === "request_changes" && !value.reason) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["reason"], message: "A Guardian follow-up reason is required." });
-  }
+  action: z.literal("go_live"),
 });
 
 /**
@@ -2755,60 +2684,6 @@ export const appRouter = router({
         return result;
       }),
     listTutorRequests: adminProcedure.query(() => db.listTutorRequestsForAdmin()),
-    listMatchingRequests: adminProcedure
-      .input(adminMatchingRequestInputSchema)
-      .query(({ input }) => db.listTutorRequestMatchingPage(input)),
-    listMatchingSavedViews: adminProcedure
-      .query(({ ctx }) => db.listAdminMatchingSavedViews({ adminUserId: ctx.user.id })),
-    createMatchingSavedView: adminProcedure
-      .input(z.object({
-        name: z.string().trim().min(1, "Enter a name for this Saved View.").max(80),
-        filters: adminMatchingSavedViewFiltersInputSchema,
-      }))
-      .mutation(async ({ ctx, input }) => {
-        try {
-          return await db.createAdminMatchingSavedView({ ...input, adminUserId: ctx.user.id });
-        } catch (error) {
-          if (error instanceof db.AdminMatchingSavedViewNameConflictError) {
-            throw new TRPCError({ code: "CONFLICT", message: "A Saved View with this name already exists." });
-          }
-          throw error;
-        }
-      }),
-    renameMatchingSavedView: adminProcedure
-      .input(z.object({
-        savedViewId: z.number().int().positive(),
-        name: z.string().trim().min(1, "Enter a name for this Saved View.").max(80),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        try {
-          const result = await db.renameAdminMatchingSavedView({ ...input, adminUserId: ctx.user.id });
-          if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "Saved View is unavailable." });
-          return result;
-        } catch (error) {
-          if (error instanceof db.AdminMatchingSavedViewNameConflictError) {
-            throw new TRPCError({ code: "CONFLICT", message: "A Saved View with this name already exists." });
-          }
-          throw error;
-        }
-      }),
-    deleteMatchingSavedView: adminProcedure
-      .input(z.object({ savedViewId: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        const result = await db.deleteAdminMatchingSavedView({ adminUserId: ctx.user.id, savedViewId: input.savedViewId });
-        if (!result.deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Saved View is unavailable." });
-        return result;
-      }),
-    setMatchingDefaultSavedView: adminProcedure
-      .input(z.object({ savedViewId: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        const result = await db.setAdminMatchingDefaultSavedView({ adminUserId: ctx.user.id, savedViewId: input.savedViewId });
-        if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "Saved View is unavailable." });
-        return result;
-      }),
-    clearMatchingDefaultSavedView: adminProcedure
-      .mutation(({ ctx }) => db.clearAdminMatchingDefaultSavedView({ adminUserId: ctx.user.id })),
-    listMatchingTutors: adminProcedure.query(() => db.listTutors()),
     updateTutorRequestStatus: adminProcedure
       .input(adminTutorRequestStatusInputSchema)
       .mutation(async ({ input }) => {
@@ -2895,9 +2770,6 @@ export const appRouter = router({
         if (result.reason === "REQUEST_NOT_FOUND") {
           throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor Request is unavailable." });
         }
-        if (result.reason === "GUARDIAN_CONFIRMATION_REQUIRED") {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record the Guardian confirmation call before this action." });
-        }
         throw new TRPCError({ code: "CONFLICT", message: "This publication action is no longer available for the request." });
       }),
     reviewTutorJobInterest: adminProcedure
@@ -2957,32 +2829,6 @@ export const appRouter = router({
     tuitionHistory: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))
       .query(({ input }) => db.listTuitionHistory(input.requestId)),
-    listTutorRequestPublicationEvents: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive() }))
-      .query(({ input }) => db.listTutorRequestPublicationEvents(input.requestId)),
-    assignTutorRequest: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive(), tutorId: z.string().trim().min(1).max(32) }))
-      .mutation(async ({ ctx, input }) => {
-        const result = await db.assignTutorToRequest({ ...input, adminUserId: ctx.user.id });
-        if (!result.assigned) {
-          throw new TRPCError({ code: "CONFLICT", message: result.reason === "tutor-unavailable" ? "এই Tutor বর্তমানে manual matching-এর জন্য অনুমোদিত নয়।" : "এই request ইতিমধ্যে assign করা হয়েছে বা আর active নেই।" });
-        }
-        return result;
-      }),
-    addTutorRequestAssignmentNote: adminProcedure
-      .input(z.object({
-        requestId: z.number().int().positive(),
-        category: z.enum(["matching", "guardian_contact", "tutor_follow_up", "internal_risk"]),
-        body: z.string().trim().min(1, "Enter a note.").max(1000),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const result = await db.addTutorRequestAssignmentNote({ ...input, adminUserId: ctx.user.id });
-        if (!result.created) throw new TRPCError({ code: "NOT_FOUND", message: "Tutor request was not found." });
-        return result;
-      }),
-    listTutorRequestAssignmentNotes: adminProcedure
-      .input(z.object({ requestId: z.number().int().positive() }))
-      .query(({ input }) => db.listTutorRequestAssignmentNotes(input)),
     createGuardianRequestFollowUp: adminProcedure
       .input(z.object({
         requestId: z.number().int().positive(),
