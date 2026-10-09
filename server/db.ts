@@ -4745,24 +4745,26 @@ export type NewTuitionAnnouncement = {
  * Approved, active Tutors a new tuition fits, by place alone.
  *
  * A tuition with an area reaches a Tutor whose Current Location or any
- * Preferred area is that area. One with no area that is online reaches the
- * Tutors who teach online. Anything else has no place to match, so nobody.
+ * Preferred area is that area. An online one (or one a Guardian would take
+ * either way) also reaches every Tutor who teaches online, wherever they are:
+ * online has no place to teach in, so a Tutor who teaches only online may have
+ * no area at all. Anything else with no area has no place to match, so nobody.
  */
 export async function listTutorUserIdsForNewTuition(input: Pick<NewTuitionAnnouncement, "tuitionType" | "locationId">) {
   const database = await getDb();
   if (!database) return [];
   const locationId = input.locationId?.trim();
-  let placeCondition;
-  if (locationId) {
-    placeCondition = or(
-      eq(tutors.locationId, locationId),
-      inArray(tutors.id, database.select({ id: tutorTeachingAreas.tutorId }).from(tutorTeachingAreas).where(eq(tutorTeachingAreas.locationId, locationId))),
-    );
-  } else if (input.tuitionType === "online" || input.tuitionType === "both") {
-    placeCondition = inArray(tutors.id, database.select({ id: tutorTuitionModes.tutorId }).from(tutorTuitionModes).where(eq(tutorTuitionModes.mode, "online")));
-  } else {
-    return [];
-  }
+  const areaCondition = locationId
+    ? or(
+        eq(tutors.locationId, locationId),
+        inArray(tutors.id, database.select({ id: tutorTeachingAreas.tutorId }).from(tutorTeachingAreas).where(eq(tutorTeachingAreas.locationId, locationId))),
+      )
+    : undefined;
+  const onlineCondition = input.tuitionType === "online" || input.tuitionType === "both"
+    ? inArray(tutors.id, database.select({ id: tutorTuitionModes.tutorId }).from(tutorTuitionModes).where(eq(tutorTuitionModes.mode, "online")))
+    : undefined;
+  const placeCondition = areaCondition && onlineCondition ? or(areaCondition, onlineCondition) : areaCondition ?? onlineCondition;
+  if (!placeCondition) return [];
   const rows = await database
     .selectDistinct({ userId: tutors.userId })
     .from(tutors)
