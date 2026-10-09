@@ -53,7 +53,7 @@ const valueFieldIds = [
 /** List fields: sent empty rather than absent, because the read-out maps over them. */
 const listFieldIds = [
   "primarySubjectIds", "additionalSubjectIds", "classLevelIds", "curriculumIds",
-  "preferredClassSizes", "preferredTeachingDays", "preferredTimeSlots", "teachingAreaIds",
+  "preferredTeachingDays", "preferredTimeSlots", "teachingAreaIds",
 ] as const;
 
 /** The private-details keys that are not on the floor. */
@@ -87,7 +87,6 @@ export function projectTutorProfileForGuardian(profile: GuardianProfileSource, c
   for (const fieldId of listFieldIds) {
     projected[fieldId] = readable(fieldId) && Array.isArray(profile[fieldId]) ? profile[fieldId] : [];
   }
-  projected.availableNationwide = readable("availableNationwide") ? Boolean(profile.availableNationwide) : false;
 
   const privateDetails: Record<string, unknown> = {};
   for (const key of privateDetailKeys) {

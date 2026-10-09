@@ -617,7 +617,6 @@ export const tutors = mysqlTable("tutors", {
   headline: varchar("headline", { length: 240 }),
   profilePhotoKey: varchar("profilePhotoKey", { length: 512 }),
   dateOfBirth: date("dateOfBirth"),
-  nationwideAvailability: int("nationwideAvailability").default(0).notNull(),
   institution: varchar("institution", { length: 240 }),
   education: varchar("education", { length: 240 }),
   subjects: text("subjects"),
@@ -1134,22 +1133,6 @@ export const tutorStudentTypes = mysqlTable(
     primaryKey({ columns: [table.tutorId, table.studentTypeId] }),
     index("tutor_student_types_catalog_idx").on(table.studentTypeId),
   ]
-);
-
-export const tutorPreferredClassSizes = mysqlTable(
-  "tutor_preferred_class_sizes",
-  {
-    tutorId: varchar("tutorId", { length: 32 })
-      .notNull()
-      .references(() => tutors.id),
-    classSize: mysqlEnum("classSize", [
-      "one_to_one",
-      "small_group",
-      "group",
-    ]).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [primaryKey({ columns: [table.tutorId, table.classSize] })]
 );
 
 export const tutorTuitionModes = mysqlTable(
@@ -2031,7 +2014,6 @@ export const tutorsRelations = relations(tutors, ({ one, many }) => ({
   classLevelSelections: many(tutorClassLevels),
   curriculumSelections: many(tutorCurricula),
   studentTypeSelections: many(tutorStudentTypes),
-  preferredClassSizes: many(tutorPreferredClassSizes),
   tuitionModes: many(tutorTuitionModes),
   preferredTeachingDays: many(tutorPreferredTeachingDays),
   preferredTimeSlots: many(tutorPreferredTimeSlots),

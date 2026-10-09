@@ -4,8 +4,8 @@ import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationError
 describe("getTutorProfileServerIssueDetails", () => {
   it("says what the server refused and which part of the profile it lives in", () => {
     expect(getTutorProfileServerIssueDetails({
-      data: { tutorProfileFieldIssues: [{ path: ["availableNationwide"], message: "Online tuition requires nationwide availability." }] },
-    })).toEqual(["Tuition and location · Available Nationwide: Online tuition requires nationwide availability."]);
+      data: { tutorProfileFieldIssues: [{ path: ["teachingAreaIds"], message: "Select at least one teaching area." }] },
+    })).toEqual(["Tuition and location · Teaching Areas: Select at least one teaching area."]);
   });
 
   it("names the record and the field inside an education record or private detail", () => {
@@ -86,13 +86,13 @@ describe("getTutorProfileServerValidationErrors", () => {
         data: {
           tutorProfileFieldIssues: [
             { path: ["profilePhotoKey"], message: "Photo is required." },
-            { path: ["availableNationwide"], message: "Nationwide availability is required." },
+            { path: ["teachingAreaIds"], message: "Select at least one teaching area." },
           ],
         },
       }),
     ).toEqual({
       profilePhotoUrl: "Check Profile Photo and try again.",
-      availableNationwide: "Check Available Nationwide and try again.",
+      teachingAreaIds: "Check Teaching Areas and try again.",
     });
   });
 });

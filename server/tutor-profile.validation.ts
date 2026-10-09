@@ -10,6 +10,7 @@ import {
   qualificationEducationLevels, fixedSchoolRecords } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
+import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -162,7 +163,6 @@ const profileShape = {
   currentCityId: locationIdSchema.optional(),
   currentLocationId: locationIdSchema.optional(),
   teachingAreaIds: optionalUniqueLocationIdList(15),
-  availableNationwide: z.boolean().optional(),
 
   highestEducation: z.enum(academicEducationLevels).optional(),
   universityId: positiveIdSchema.optional(),
@@ -188,7 +188,6 @@ const profileShape = {
 
   tuitionTypes: uniqueEnumList(["home", "online", "group", "package"], 4).optional(),
   preferredStudentGender: z.enum(["male", "female", "both"]).optional(),
-  preferredClassSizes: uniqueEnumList(["one_to_one", "small_group", "group"], 3).optional(),
   preferredTeachingDays: uniqueEnumList(
     ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
     7,
@@ -242,31 +241,24 @@ function addCrossFieldIssues(
 }
 
 export const tutorProfileDraftSchema = z.object(profileShape).strict().superRefine(addCrossFieldIssues);
+/**
+ * Answers the profile no longer asks for. A page opened before they were removed
+ * still sends them with every save, and the schema below rejects unknown keys on
+ * purpose, so they are dropped from the request first instead of failing it.
+ */
+export const retiredTutorProfileFields = ["availableNationwide", "preferredClassSizes"] as const;
+
+export function withoutRetiredTutorProfileFields<Schema extends z.ZodTypeAny>(schema: Schema) {
+  return z.preprocess(raw => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+    const kept = { ...(raw as Record<string, unknown>) };
+    for (const field of retiredTutorProfileFields) delete kept[field];
+    return kept;
+  }, schema);
+}
+
 /** Client profile edits cannot set a storage key; only the protected upload route may do so. */
 export const tutorProfileEditableDraftSchema = z.object(editableProfileShape).strict().superRefine(addCrossFieldIssues);
-
-/**
- * "Online tuition needs Available Nationwide confirmed" depends on whether an
- * Owner still offers that field at all - baked into the schema itself this
- * became unenforceable and unfixable the moment an Owner disabled Available
- * Nationwide: a Tutor who picked Online could never save any Tuition Related
- * section again, since the one field that would satisfy the rule was hidden
- * from them. Built per request from the resolved field config instead, so a
- * disabled field stops demanding an answer nobody can give it.
- */
-export function buildOnlineTuitionNationwideRefinement(config: ResolvedTutorProfileFieldConfig) {
-  const nationwideFieldEnabled = config.byId.get("availableNationwide")?.enabled ?? true;
-  return (value: TutorProfileDraftInput, ctx: z.RefinementCtx) => {
-    if (!nationwideFieldEnabled) return;
-    if (value.tuitionTypes?.includes("online") && value.availableNationwide !== true) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["availableNationwide"],
-        message: "Online tuition requires nationwide availability.",
-      });
-    }
-  };
-}
 
 /**
  * A registry id like `"profilePhotoUrl"` doesn't always name the schema key
@@ -310,6 +302,8 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       // alone entirely, not treat `requiredByDefault` as a flat requirement.
       if (!field.requiredConfigurable) continue;
       if (!field.enabled || !field.required) continue;
+      // Teaching Areas is for tutors who go somewhere; an online-only tutor does not.
+      if (field.id === "teachingAreaIds" && offersOnlineTuitionOnly(value)) continue;
       if (BLOCK_FIELD_IDS.has(field.id) || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.")) continue;
       if (!isSubmissionFieldPresent(value, field.id)) {
         ctx.addIssue({
@@ -380,8 +374,7 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
 
 /** The submission schema at the shipped defaults - what every existing test validates against. */
 export const tutorProfileSubmissionSchema = tutorProfileDraftSchema
-  .superRefine(buildTutorProfileSubmissionRefinement(defaultTutorProfileFieldConfig()))
-  .superRefine(buildOnlineTuitionNationwideRefinement(defaultTutorProfileFieldConfig()));
+  .superRefine(buildTutorProfileSubmissionRefinement(defaultTutorProfileFieldConfig()));
 
 export type TutorProfileDraftInput = z.infer<typeof tutorProfileDraftSchema>;
 export type TutorProfileEditableDraftInput = z.infer<typeof tutorProfileEditableDraftSchema>;
@@ -554,8 +547,7 @@ export function calculateTutorProfileCompletion(
     { id: "contactEmail", ok: hasNonEmptyString(profile.contactEmail) },
     { id: "currentCityId", ok: hasLocationId(profile.currentCityId) },
     { id: "currentLocationId", ok: hasLocationId(profile.currentLocationId) },
-    { id: "teachingAreaIds", ok: hasSelections(profile.teachingAreaIds) },
-    { id: "availableNationwide", ok: typeof profile.availableNationwide === "boolean" },
+    { id: "teachingAreaIds", ok: offersOnlineTuitionOnly(profile as { tuitionTypes?: readonly string[] }) || hasSelections(profile.teachingAreaIds) },
     { id: "universityId", ok: hasPositiveId(profile.universityId) },
     { id: "facultyDepartmentId", ok: hasPositiveId(profile.facultyDepartmentId) },
     { id: "degreeExamTitle", ok: hasNonEmptyString(profile.degreeExamTitle) },
@@ -567,7 +559,6 @@ export function calculateTutorProfileCompletion(
     { id: "teachingExperienceYears", ok: typeof profile.teachingExperienceYears === "number" && Number.isInteger(profile.teachingExperienceYears) && profile.teachingExperienceYears >= 0 },
     { id: "tuitionType", ok: hasSelections(profile.tuitionTypes) },
     { id: "preferredStudentGender", ok: profile.preferredStudentGender === "male" || profile.preferredStudentGender === "female" || profile.preferredStudentGender === "both" },
-    { id: "preferredClassSizes", ok: hasSelections(profile.preferredClassSizes) },
     { id: "preferredTeachingDays", ok: hasSelections(profile.preferredTeachingDays) },
     { id: "preferredTimeSlots", ok: hasSelections(profile.preferredTimeSlots) },
     { id: null, ok: typeof profile.feeMin === "number" && typeof profile.feeMax === "number" && profile.feeMin >= 0 && profile.feeMin <= profile.feeMax },

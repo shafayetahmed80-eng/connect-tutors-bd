@@ -62,7 +62,7 @@ import {
 import { notifyTelegramAdmin } from "./telegram-notification";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
-import { tutorProfileEditableDraftSchema } from "./tutor-profile.validation";
+import { tutorProfileEditableDraftSchema, withoutRetiredTutorProfileFields } from "./tutor-profile.validation";
 import {
   createAdminTotp,
   encryptAdminSecret,
@@ -1408,7 +1408,7 @@ export const appRouter = router({
   }),
   tutor: router({
     getMyProfile: activeTutorProcedure.query(({ ctx }) => db.getTutorProfileByUserId(ctx.user.id)),
-    saveProfileDraft: activeTutorProcedure.input(tutorProfileEditableDraftSchema).mutation(async ({ ctx, input }) => {
+    saveProfileDraft: activeTutorProcedure.input(withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema)).mutation(async ({ ctx, input }) => {
       // The schema holds the ceiling; these are the Owner's numbers.
       assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);
       try {

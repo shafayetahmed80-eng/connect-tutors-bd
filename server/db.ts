@@ -93,7 +93,6 @@ import {
   siteLimits as siteLimitsTable,
   tutorProfileFieldOverrides as tutorProfileFieldOverridesTable,
   sitePolicyDocuments,
-  tutorPreferredClassSizes,
   tutorTuitionModes,
   tutorPreferredTeachingDays,
   tutorPreferredTimeSlots,
@@ -159,7 +158,6 @@ import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSum
 import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
 import { tutorRatedNotification } from "./tutor-rating-notification";
 import {
-  buildOnlineTuitionNationwideRefinement,
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
   tutorProfileDraftSchema,
@@ -1646,13 +1644,12 @@ async function loadTutorProfileOwner(database: any, userId: number) {
   if (!row) return undefined;
 
   const tutorId = row.tutor.id;
-  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, classSizeRows, tuitionModeRows, teachingDayRows, timeSlotRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
+  const [teachingAreas, subjectRows, levelRows, curriculumRows, studentTypeRows, tuitionModeRows, teachingDayRows, timeSlotRows, educationRecordRows, supportingDocumentRows, assignedCountRows, moderationRows] = await Promise.all([
     database.select().from(tutorTeachingAreas).where(eq(tutorTeachingAreas.tutorId, tutorId)),
     database.select().from(tutorSubjects).where(eq(tutorSubjects.tutorId, tutorId)),
     database.select().from(tutorClassLevels).where(eq(tutorClassLevels.tutorId, tutorId)),
     database.select().from(tutorCurricula).where(eq(tutorCurricula.tutorId, tutorId)),
     database.select().from(tutorStudentTypes).where(eq(tutorStudentTypes.tutorId, tutorId)),
-    database.select().from(tutorPreferredClassSizes).where(eq(tutorPreferredClassSizes.tutorId, tutorId)),
     database.select().from(tutorTuitionModes).where(eq(tutorTuitionModes.tutorId, tutorId)),
     database.select().from(tutorPreferredTeachingDays).where(eq(tutorPreferredTeachingDays.tutorId, tutorId)),
     database.select().from(tutorPreferredTimeSlots).where(eq(tutorPreferredTimeSlots.tutorId, tutorId)),
@@ -1686,7 +1683,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     currentLocationLabel: row.location?.label ?? row.tutor.locationId,
     locationId: row.tutor.locationId,
     teachingAreaIds: teachingAreas.map((selection: typeof tutorTeachingAreas.$inferSelect) => selection.locationId),
-    availableNationwide: Boolean(row.tutor.nationwideAvailability),
     highestEducation: row.academic?.highestEducation ?? undefined,
     institution: row.tutor.institution ?? "Not specified",
     education: row.tutor.education ?? "Not specified",
@@ -1711,7 +1707,6 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     academicAchievement: row.tutor.academicAchievement ?? undefined,
     tuitionTypes: tuitionModeRows.map((selection: typeof tutorTuitionModes.$inferSelect) => selection.mode),
     preferredStudentGender: row.tutor.preferredStudentGender ?? undefined,
-    preferredClassSizes: classSizeRows.map((selection: typeof tutorPreferredClassSizes.$inferSelect) => selection.classSize),
     preferredTeachingDays: teachingDayRows.map((selection: typeof tutorPreferredTeachingDays.$inferSelect) => selection.dayOfWeek),
     preferredTimeSlots: timeSlotRows.map((selection: typeof tutorPreferredTimeSlots.$inferSelect) => selection.timeSlot),
     feeMin: row.tutor.monthlyFeeMin ?? undefined,
@@ -2036,7 +2031,6 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     currentCityId: input.currentCityId ?? existing.currentCityId,
     currentLocationId: input.currentLocationId ?? existing.currentLocationId,
     teachingAreaIds: keepList(input.teachingAreaIds, existing.teachingAreaIds),
-    availableNationwide: input.availableNationwide ?? existing.availableNationwide,
     highestEducation: input.highestEducation ?? existing.highestEducation,
     universityId: input.universityId ?? existing.universityId,
     facultyDepartmentId: input.facultyDepartmentId ?? existing.facultyDepartmentId,
@@ -2058,7 +2052,6 @@ function mergeTutorProfileDraft(existing: any, input: TutorProfileEditableDraftI
     academicAchievement: input.academicAchievement ?? existing.academicAchievement,
     tuitionTypes: keepList(input.tuitionTypes, existing.tuitionTypes),
     preferredStudentGender: input.preferredStudentGender ?? existing.preferredStudentGender,
-    preferredClassSizes: keepList(input.preferredClassSizes, existing.preferredClassSizes),
     preferredTeachingDays: keepList(input.preferredTeachingDays, existing.preferredTeachingDays),
     preferredTimeSlots: keepList(input.preferredTimeSlots, existing.preferredTimeSlots),
     feeMin: input.feeMin ?? existing.feeMin,
@@ -2094,7 +2087,7 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (existingProfile.phone?.trim()) input = { ...input, phone: undefined };
     const effectiveDraft = mergeTutorProfileDraft(existingProfile, input);
     const fieldConfig = await getTutorProfileFieldConfig();
-    const effectiveDraftResult = tutorProfileDraftSchema.superRefine(buildOnlineTuitionNationwideRefinement(fieldConfig)).safeParse(effectiveDraft);
+    const effectiveDraftResult = tutorProfileDraftSchema.safeParse(effectiveDraft);
     if (!effectiveDraftResult.success) {
       throw new TutorProfileValidationError(effectiveDraftResult.error.issues.map(issue => ({ path: issue.path.map(String), message: issue.message })));
     }
@@ -2117,7 +2110,6 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     if (input.contactEmail !== undefined) tutorValues.contactEmail = input.contactEmail;
     if (input.currentCityId !== undefined) tutorValues.cityLocationId = input.currentCityId;
     if (input.currentLocationId !== undefined) tutorValues.locationId = input.currentLocationId;
-    if (input.availableNationwide !== undefined) tutorValues.nationwideAvailability = input.availableNationwide ? 1 : 0;
     if (input.teachingExperienceYears !== undefined) tutorValues.teachingExperienceYears = input.teachingExperienceYears;
     if (input.priorTeachingExperience !== undefined) tutorValues.priorTeachingExperience = input.priorTeachingExperience;
     if (input.specialExpertise !== undefined) tutorValues.specialExpertise = input.specialExpertise;
@@ -2218,7 +2210,6 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     await replaceSelections(tutorClassLevels, input.classLevelIds?.map(classLevelId => ({ tutorId, classLevelId })));
     await replaceSelections(tutorCurricula, input.curriculumIds?.map(curriculumId => ({ tutorId, curriculumId })));
     await replaceSelections(tutorStudentTypes, input.studentTypeIds?.map(studentTypeId => ({ tutorId, studentTypeId })));
-    await replaceSelections(tutorPreferredClassSizes, input.preferredClassSizes?.map(classSize => ({ tutorId, classSize })));
     await replaceSelections(tutorTuitionModes, input.tuitionTypes?.map(mode => ({ tutorId, mode })));
     await replaceSelections(tutorPreferredTeachingDays, input.preferredTeachingDays?.map(dayOfWeek => ({ tutorId, dayOfWeek })));
     await replaceSelections(tutorPreferredTimeSlots, input.preferredTimeSlots?.map(timeSlot => ({ tutorId, timeSlot })));
@@ -2248,7 +2239,6 @@ export async function submitTutorProfile(userId: number) {
       currentCityId: profile.currentCityId,
       currentLocationId: profile.currentLocationId,
       teachingAreaIds: profile.teachingAreaIds,
-      availableNationwide: profile.availableNationwide,
       highestEducation: profile.highestEducation,
       universityId: profile.universityId,
       facultyDepartmentId: profile.facultyDepartmentId,
@@ -2274,7 +2264,6 @@ export async function submitTutorProfile(userId: number) {
       academicAchievement: profile.academicAchievement,
       tuitionTypes: profile.tuitionTypes,
       preferredStudentGender: profile.preferredStudentGender,
-      preferredClassSizes: profile.preferredClassSizes,
       preferredTeachingDays: profile.preferredTeachingDays,
       preferredTimeSlots: profile.preferredTimeSlots,
       feeMin: profile.feeMin,
@@ -2291,7 +2280,6 @@ export async function submitTutorProfile(userId: number) {
     const fieldConfig = await getTutorProfileFieldConfig();
     const parsed = tutorProfileDraftSchema
       .superRefine(buildTutorProfileSubmissionRefinement(fieldConfig))
-      .superRefine(buildOnlineTuitionNationwideRefinement(fieldConfig))
       .safeParse(editableProfile);
     if (!parsed.success) {
       throw new TutorProfileValidationError(parsed.error.issues.map(issue => ({ path: issue.path.map(String), message: issue.message })));

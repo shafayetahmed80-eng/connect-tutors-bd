@@ -163,9 +163,7 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
 
   // Section d, sub-group d-availability - "Availability"
   { id: "tuitionType", label: "Tuition Type", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
-  { id: "availableNationwide", label: "Available Nationwide", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 70, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredStudentGender", label: "Preferred Student Gender", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 30, requiredByDefault: true, requiredConfigurable: true },
-  { id: "preferredClassSizes", label: "Preferred Class Size", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 40, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredTeachingDays", label: "Preferred Teaching Days", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 50, requiredByDefault: true, requiredConfigurable: true },
   { id: "preferredTimeSlots", label: "Preferred Time Slots", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 60, requiredByDefault: true, requiredConfigurable: true },
 

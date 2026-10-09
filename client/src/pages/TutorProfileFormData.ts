@@ -33,7 +33,6 @@ export type PersistedTutorProfileForForm = {
   assignedRequestCount: number;
   lastUpdatedAt: Date | string | null;
   teachingAreaIds: string[];
-  availableNationwide: boolean;
   universityId: number | null;
   facultyDepartmentId: number | null;
   degreeMajorId?: number | null;
@@ -49,7 +48,6 @@ export type PersistedTutorProfileForForm = {
   graduationYear: number | null;
   tuitionTypes?: string[];
   preferredStudentGender?: "male" | "female" | "both" | null;
-  preferredClassSizes?: string[];
   preferredTeachingDays?: string[];
   preferredTimeSlots?: string[];
   feeMin?: number | null;
@@ -207,7 +205,6 @@ export type TutorProfileFormState = {
   currentCityId: string;
   currentLocationId: string;
   teachingAreaIds: string[];
-  availableNationwide: boolean;
   highestEducation: AcademicEducationLevel | "";
   universityId: string;
   facultyDepartmentId: string;
@@ -219,7 +216,6 @@ export type TutorProfileFormState = {
   graduationYear: string;
   tuitionTypes: string[];
   preferredStudentGender: "" | "male" | "female" | "both";
-  preferredClassSizes: string[];
   preferredTeachingDays: string[];
   preferredTimeSlots: string[];
   feeMin: string;
@@ -281,7 +277,6 @@ export function hydrateTutorProfileForm(
       currentCityId: onboardingFallback?.cityId ?? "",
       currentLocationId: onboardingFallback?.locationId ?? "",
       teachingAreaIds: [],
-      availableNationwide: false,
       highestEducation: "",
       universityId: "",
       facultyDepartmentId: "",
@@ -293,7 +288,6 @@ export function hydrateTutorProfileForm(
       graduationYear: "",
       tuitionTypes: [],
       preferredStudentGender: "",
-      preferredClassSizes: [],
       preferredTeachingDays: [],
       preferredTimeSlots: [],
       feeMin: "",
@@ -323,7 +317,6 @@ export function hydrateTutorProfileForm(
     currentCityId: profile.currentCityId ?? "",
     currentLocationId: profile.currentLocationId ?? "",
     teachingAreaIds: profile.teachingAreaIds,
-    availableNationwide: profile.availableNationwide,
     highestEducation: asEducationOption(academicEducationLevels, profile.highestEducation),
     universityId: profile.universityId ? String(profile.universityId) : "",
     facultyDepartmentId: profile.facultyDepartmentId ? String(profile.facultyDepartmentId) : "",
@@ -335,7 +328,6 @@ export function hydrateTutorProfileForm(
     graduationYear: profile.graduationYear ? String(profile.graduationYear) : "",
     tuitionTypes: toStringList(profile.tuitionTypes),
     preferredStudentGender: profile.preferredStudentGender ?? "",
-    preferredClassSizes: toStringList(profile.preferredClassSizes),
     preferredTeachingDays: toStringList(profile.preferredTeachingDays),
     preferredTimeSlots: toStringList(profile.preferredTimeSlots),
     feeMin: profile.feeMin === null || profile.feeMin === undefined ? "" : String(profile.feeMin),
@@ -368,7 +360,6 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     currentCityId: optionalText(form.currentCityId),
     currentLocationId: optionalText(form.currentLocationId),
     ...(form.teachingAreaIds.length > 0 ? { teachingAreaIds: form.teachingAreaIds } : {}),
-    availableNationwide: form.availableNationwide,
     highestEducation: form.highestEducation || undefined,
     universityId: optionalId(form.universityId),
     facultyDepartmentId: optionalId(form.facultyDepartmentId),
@@ -380,7 +371,6 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     graduationYear: Number.isInteger(graduationYear) ? graduationYear : undefined,
     ...(form.tuitionTypes.length > 0 ? { tuitionTypes: form.tuitionTypes } : {}),
     preferredStudentGender: form.preferredStudentGender || undefined,
-    ...(form.preferredClassSizes.length > 0 ? { preferredClassSizes: form.preferredClassSizes } : {}),
     ...(form.preferredTeachingDays.length > 0 ? { preferredTeachingDays: form.preferredTeachingDays } : {}),
     ...(form.preferredTimeSlots.length > 0 ? { preferredTimeSlots: form.preferredTimeSlots } : {}),
     feeMin: optionalInteger(form.feeMin),

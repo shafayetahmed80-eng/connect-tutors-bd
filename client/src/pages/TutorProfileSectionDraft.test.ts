@@ -26,7 +26,6 @@ describe("Tutor Profile section draft payloads", () => {
       headline: "Experienced Mathematics Tutor for SSC Students",
       tuitionTypes: ["home"],
       preferredStudentGender: "both",
-      preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
       preferredTimeSlots: ["evening"],
       feeMin: "5000",
@@ -47,20 +46,18 @@ describe("Tutor Profile section draft payloads", () => {
     expect(payload).not.toHaveProperty("aboutMe");
   });
 
-  it("keeps the online/nationwide and fee cross-field pairs together in Section D", () => {
+  it("keeps the fee pair together in Section D", () => {
     const payload = createTutorProfileSectionDraftPayload("d", {
       ...baseState,
       tuitionTypes: ["online"],
-      availableNationwide: true,
       feeMin: "4000",
       feeMax: "9000",
       preferredStudentGender: "both",
-      preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
       preferredTimeSlots: ["evening"],
     });
 
-    expect(payload).toMatchObject({ tuitionTypes: ["online"], availableNationwide: true, feeMin: 4000, feeMax: 9000 });
+    expect(payload).toMatchObject({ tuitionTypes: ["online"], feeMin: 4000, feeMax: 9000 });
     expect(payload).not.toHaveProperty("aboutMe");
   });
 
@@ -164,7 +161,6 @@ describe("Tutor Profile section draft payloads", () => {
       priorTeachingExperience: "Two years of home tuition.",
       tuitionTypes: ["home"],
       preferredStudentGender: "both",
-      preferredClassSizes: ["one_to_one"],
       preferredTeachingDays: ["monday"],
       preferredTimeSlots: ["evening"],
     });

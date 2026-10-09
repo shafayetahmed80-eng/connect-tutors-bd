@@ -21,7 +21,6 @@ const expectedTutorSelectionTables = [
   "tutorClassLevels",
   "tutorCurricula",
   "tutorStudentTypes",
-  "tutorPreferredClassSizes",
   "tutorPreferredTeachingDays",
   "tutorPreferredTimeSlots",
 ] as const;
@@ -131,12 +130,21 @@ describe("TP-02 Tutor Profile catalog schema", () => {
     expect(tutorColumns).toMatchObject({
       profilePhotoKey: expect.anything(),
       dateOfBirth: expect.anything(),
-      nationwideAvailability: expect.anything(),
       teachingExperienceYears: expect.anything(),
       monthlyFeeMin: expect.anything(),
       monthlyFeeMax: expect.anything(),
       preferredStudentGender: expect.anything(),
     });
+  });
+
+  it("no longer keeps Available Nationwide or Preferred Class Size, and the migration drops what they stored", () => {
+    expect(getTableColumns(schema.tutors)).not.toHaveProperty("nationwideAvailability");
+    expect(schema).not.toHaveProperty("tutorPreferredClassSizes");
+
+    const migration = readFileSync(new URL("../drizzle/0112_remove_nationwide_and_class_size.sql", import.meta.url), "utf8");
+    expect(migration).toContain("DROP TABLE `tutor_preferred_class_sizes`");
+    expect(migration).toContain("ALTER TABLE `tutors` DROP COLUMN `nationwideAvailability`");
+    expect(migration).toMatch(/DELETE FROM `tutor_profile_field_overrides` WHERE `fieldId` IN \('availableNationwide', 'preferredClassSizes'\)/);
   });
 
   it("defines the catalog uniqueness and lookup indexes required for safe searchable selectors", () => {
@@ -196,10 +204,6 @@ describe("TP-02 Tutor Profile catalog schema", () => {
     expectPrimaryKeyColumns(schema.tutorStudentTypes, [
       "tutorId",
       "studentTypeId",
-    ]);
-    expectPrimaryKeyColumns(schema.tutorPreferredClassSizes, [
-      "tutorId",
-      "classSize",
     ]);
     expectPrimaryKeyColumns(schema.tutorPreferredTeachingDays, [
       "tutorId",

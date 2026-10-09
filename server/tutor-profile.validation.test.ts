@@ -3,8 +3,10 @@ import {
   buildTutorProfileSubmissionRefinement,
   calculateTutorProfileCompletion,
   tutorProfileDraftSchema,
+  tutorProfileEditableDraftSchema,
   tutorProfileSubmissionSchema,
   validateTutorProfileCatalogReferences,
+  withoutRetiredTutorProfileFields,
 } from "./tutor-profile.validation";
 import { defaultTutorProfileFieldConfig, resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 
@@ -19,7 +21,6 @@ const completeSubmission = {
   currentCityId: "bd-dhaka-city",
   currentLocationId: "bd-dhaka",
   teachingAreaIds: ["bd-mirpur"],
-  availableNationwide: true,
   universityId: 1,
   facultyDepartmentId: 11,
   degreeMajorId: 111,
@@ -34,7 +35,6 @@ const completeSubmission = {
   studentTypeIds: [1],
   tuitionTypes: ["home", "online"],
   preferredStudentGender: "both",
-  preferredClassSizes: ["one_to_one"],
   preferredTeachingDays: ["monday"],
   preferredTimeSlots: ["evening"],
   feeMin: 5000,
@@ -132,7 +132,6 @@ describe("Tutor Profile domain validation", () => {
     const invalidSubmission = tutorProfileSubmissionSchema.safeParse({
       ...approvedExpandedSubmission,
       additionalSubjectIds: [1],
-      availableNationwide: false,
       feeMin: 8000,
       feeMax: 7000,
     });
@@ -141,7 +140,7 @@ describe("Tutor Profile domain validation", () => {
     if (!invalidSubmission.success) {
       const invalidFields = invalidSubmission.error.issues.map(issue => String(issue.path[0]));
       expect(invalidFields).toEqual(
-        expect.arrayContaining(["additionalSubjectIds", "availableNationwide", "feeMax"]),
+        expect.arrayContaining(["additionalSubjectIds", "feeMax"]),
       );
     }
   });
@@ -153,6 +152,41 @@ describe("Tutor Profile domain validation", () => {
     // ever submit.
     expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, studentTypeIds: undefined }).success).toBe(true);
     expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, studentTypeIds: [] }).success).toBe(false);
+  });
+
+  it("lets a Tutor who offers only online tuition leave Teaching Areas empty, and nobody else", () => {
+    const noAreas = { ...approvedExpandedSubmission, teachingAreaIds: undefined };
+
+    expect(tutorProfileSubmissionSchema.safeParse({ ...noAreas, tuitionTypes: ["online"] }).success).toBe(true);
+
+    for (const tuitionTypes of [["home"], ["home", "online"], ["online", "group"]]) {
+      const result = tutorProfileSubmissionSchema.safeParse({ ...noAreas, tuitionTypes });
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues.map(issue => String(issue.path[0]))).toContain("teachingAreaIds");
+    }
+  });
+
+  it("counts Teaching Areas toward completion for everyone except an online-only Tutor", () => {
+    const withoutAreas = { ...completeSubmission, teachingAreaIds: undefined };
+
+    expect(calculateTutorProfileCompletion({ ...withoutAreas, tuitionTypes: ["online"] })).toBe(100);
+    expect(calculateTutorProfileCompletion({ ...withoutAreas, tuitionTypes: ["home"] })).toBeLessThan(100);
+  });
+
+  it("no longer knows Available Nationwide or Preferred Class Size, and refuses them as unknown keys", () => {
+    for (const retired of [{ availableNationwide: true }, { preferredClassSizes: ["one_to_one"] }]) {
+      expect(tutorProfileDraftSchema.safeParse({ headline: "Experienced Mathematics Tutor", ...retired }).success).toBe(false);
+    }
+    // ...but a page opened before they left may still send them; the save input drops them rather than refusing the whole save.
+    const stale = withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema).safeParse({
+      headline: "Experienced Mathematics Tutor for SSC Students",
+      availableNationwide: true,
+      preferredClassSizes: ["one_to_one"],
+    });
+    expect(stale.success).toBe(true);
+    if (stale.success) expect(stale.data).toEqual({ headline: "Experienced Mathematics Tutor for SSC Students" });
+    // Anything else unknown is still refused.
+    expect(withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema).safeParse({ headline: "Experienced Mathematics Tutor", surprise: 1 }).success).toBe(false);
   });
 
   it("requires approved private identity/family information, one complete education record, and University ID upload before final review", () => {
