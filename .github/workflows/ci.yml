@@ -28,7 +28,10 @@ jobs:
 
     services:
       mysql:
-        image: mysql:8
+        # The same official image, from the AWS public mirror: Docker Hub refuses anonymous pulls
+        # from GitHub's shared runners once its hourly limit is spent, which failed every run at
+        # "Initialize containers" before a line of our code was read.
+        image: public.ecr.aws/docker/library/mysql:8
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
           MYSQL_DATABASE: connect_tutors_db
