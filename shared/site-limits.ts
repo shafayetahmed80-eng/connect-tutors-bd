@@ -26,7 +26,6 @@ export const siteLimitIds = [
   "tutor.levels",
   "tutor.languages",
   "tutor.educationRecords",
-  "jobBoard.expiryDays",
   "upload.documentMb",
   "tutor.headlineChars",
   "request.addressChars",
@@ -113,7 +112,7 @@ export const siteLimitIds = [
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Job board" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation";
+export type SiteLimitGroup = "Selection" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -203,16 +202,6 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 12,
     min: 1,
     max: 20,
-  },
-  {
-    id: "jobBoard.expiryDays",
-    group: "Job board",
-    label: "Job expires after",
-    help: "How long a published job stays on the board. Changing this affects jobs published from now on, not ones already live.",
-    unit: "days",
-    value: 14,
-    min: 1,
-    max: 180,
   },
   {
     id: "upload.documentMb",

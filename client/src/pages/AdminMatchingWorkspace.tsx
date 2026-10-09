@@ -49,7 +49,6 @@ type AdminMatchingFilters = {
   tuitionType: "all" | "home" | "online" | "both" | "group" | "package";
   preferredGender: "all" | "male" | "female" | "any";
   contactConsent: "all" | "not_required" | "pending" | "approved" | "declined";
-  expiry: "all" | "soon" | "expired";
   subject: string;
   category: string;
   location: string;
@@ -72,7 +71,6 @@ export type MatchingRequest = {
   publicationState: AdminPublicationState;
   tutorId: string | null;
   guardianConfirmedAt: Date | null;
-  guardianReconfirmedAt: Date | null;
   appointmentConfirmedAt: Date | null;
   cancellationReason: string | null;
   tuitionType: "home" | "online" | "both" | "group" | "package";
@@ -102,11 +100,9 @@ export type MatchingRequest = {
   guardianPhone: string | null;
   /** How many Tutors have applied through the Job Board, withdrawals aside. */
   appliedTutorCount: number;
-  /** When the published Job Board copy stops being visible. */
-  publishedExpiresAt: Date | string | null;
 };
 
-type PublicationAction = "verify" | "guardian_confirmed" | "guardian_reconfirmed" | "approve" | "publish" | "extend_expiry" | "unpublish";
+type PublicationAction = "verify" | "guardian_confirmed" | "approve" | "publish";
 
 const initialFilters: AdminMatchingFilters = {
   query: "",
@@ -115,7 +111,6 @@ const initialFilters: AdminMatchingFilters = {
   tuitionType: "all",
   preferredGender: "all",
   contactConsent: "all",
-  expiry: "all",
   subject: "",
   category: "",
   location: "",
@@ -185,15 +180,12 @@ export function getAdminPublicationStatePresentation(state: AdminPublicationStat
   return presentations[state];
 }
 
-export function getAdminPublicationActions(input: { state: AdminPublicationState; guardianConfirmed: boolean; guardianReconfirmed: boolean }) {
+export function getAdminPublicationActions(input: { state: AdminPublicationState; guardianConfirmed: boolean }) {
   const actions: PublicationAction[] = [];
   if (input.state === "submitted" || input.state === "changes_requested") actions.push("verify");
   if (input.state === "reviewing" && !input.guardianConfirmed) actions.push("guardian_confirmed");
   if (input.state === "reviewing" && input.guardianConfirmed) actions.push("approve");
   if ((input.state === "approved" || input.state === "unpublished") && input.guardianConfirmed) actions.push("publish");
-  if (input.state === "published" && !input.guardianReconfirmed) actions.push("guardian_reconfirmed");
-  if (input.state === "published" && input.guardianReconfirmed) actions.push("extend_expiry");
-  if (input.state === "published") actions.push("unpublish");
   return actions;
 }
 
@@ -210,7 +202,6 @@ export function getBulkActionableRequests(requests: MatchingRequest[], selectedI
   return requests.filter(request => selected.has(request.id) && getAdminPublicationActions({
     state: request.publicationState,
     guardianConfirmed: Boolean(request.guardianConfirmedAt),
-    guardianReconfirmed: Boolean(request.guardianReconfirmedAt),
   }).includes(action));
 }
 
@@ -243,32 +234,6 @@ export function getAdminRequestAgeDisplay(
     quietDays,
     /** A week with nothing happening is the cue to pick the phone up. */
     stale: (quietDays ?? openDays) >= 7,
-  };
-}
-
-/**
- * The published copy's remaining visibility.
- *
- * `expiresAt` lives on the published `tutor_jobs` row, so an unpublished
- * request has none - and the Extend button was the only place the fourteen-day
- * window appeared at all, which meant noticing an expiry required clicking
- * into a card to look for it.
- */
-export function getAdminPublicationExpiryDisplay(
-  request: Pick<MatchingRequest, "publicationState" | "publishedExpiresAt">,
-  now = new Date(),
-) {
-  if (request.publicationState !== "published" || !request.publishedExpiresAt) return null;
-  const expiresAt = new Date(request.publishedExpiresAt);
-  if (Number.isNaN(expiresAt.getTime())) return null;
-  if (expiresAt.getTime() <= now.getTime()) {
-    return { label: "Visibility expired", tone: "expired" as const, days: 0 };
-  }
-  const days = daysBetween(now, expiresAt);
-  return {
-    label: days === 0 ? "Expires today" : `Expires in ${days} day${days === 1 ? "" : "s"}`,
-    tone: days <= 3 ? ("soon" as const) : ("ok" as const),
-    days,
   };
 }
 
@@ -360,20 +325,17 @@ export function PublicationControls({ request, busy, onAction, onEdit }: {
   onAction: (action: PublicationAction) => void;
   onEdit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
-  const actions = getAdminPublicationActions({ state: request.publicationState, guardianConfirmed: Boolean(request.guardianConfirmedAt), guardianReconfirmed: Boolean(request.guardianReconfirmedAt) });
+  const actions = getAdminPublicationActions({ state: request.publicationState, guardianConfirmed: Boolean(request.guardianConfirmedAt) });
   const state = getAdminPublicationStatePresentation(request.publicationState);
   return <section aria-label={`Job Board verification for request ${request.id}`} className="space-y-3 rounded-xl border border-sky-100 bg-sky-50/60 p-3">
     {request.studentGender || request.studentCount || request.addressDetails ? <div className="rounded-xl border border-j-border bg-white p-3 text-sm text-j-ink-soft"><p className="text-xs font-bold uppercase tracking-[0.12em] text-j-ink-muted">Private matching details</p><dl className="mt-2 grid gap-2"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Number of students</dt><dd className="text-j-ink-strong">{getAdminStudentCountDisplay(request) ?? "Not applicable for Group Tutoring"}</dd></div>{request.studentGender ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium text-j-ink-muted"><RecordIcon name="studentGender" size={12} className="text-j-ink-faint" />Student gender</dt><dd className="text-j-ink-strong">{request.studentGender === "female" ? "Female" : "Male"}</dd></div> : null}{request.addressDetails ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Address details</dt><dd className="leading-5 text-j-ink-strong">{request.addressDetails}</dd></div> : null}</dl></div> : null}
-    <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-j-ink-muted">Job Board verification</p><span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${state.className}`}>{state.label}</span></div>{request.publicationState === "published" && request.guardianReconfirmedAt ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><BadgeCheck className="h-4 w-4" /> Extension call recorded</span> : request.guardianConfirmedAt ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><BadgeCheck className="h-4 w-4" /> Call recorded</span> : null}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-j-ink-muted">Job Board verification</p><span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${state.className}`}>{state.label}</span></div>{request.guardianConfirmedAt ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><BadgeCheck className="h-4 w-4" /> Call recorded</span> : null}</div>
     {request.publicationState === "reviewing" && !request.guardianConfirmedAt ? <p className="flex gap-2 text-xs leading-5 text-amber-800"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> Call the Guardian and confirm the current request before approval or publication.</p> : null}
     <div className="grid gap-2">
       {actions.includes("verify") ? <button type="button" disabled={busy} onClick={() => onAction("verify")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"><CheckCircle2 className="h-4 w-4" /> Start verification</button> : null}
       {actions.includes("guardian_confirmed") ? <button type="button" disabled={busy} onClick={() => onAction("guardian_confirmed")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-j-accent px-3 text-sm font-semibold text-white hover:bg-j-accent-hover disabled:opacity-50"><PhoneCall className="h-4 w-4" /> Record Guardian call confirmation</button> : null}
       {actions.includes("approve") ? <button type="button" disabled={busy} onClick={() => onAction("approve")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"><BadgeCheck className="h-4 w-4" /> Approve for Job Board</button> : null}
       {actions.includes("publish") ? <button type="button" disabled={busy} onClick={() => onAction("publish")} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><Send className="h-4 w-4" /> Publish to Job Board</button> : null}
-      {actions.includes("guardian_reconfirmed") ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs leading-5 text-amber-900">Published jobs expire after 14 days. Call the Guardian to confirm that this tuition is still available before extending it.</p><button type="button" disabled={busy} onClick={() => onAction("guardian_reconfirmed")} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-3 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50"><PhoneCall className="h-4 w-4" /> Record extension call</button></div> : null}
-      {actions.includes("extend_expiry") ? <button type="button" disabled={busy} onClick={() => onAction("extend_expiry")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><RotateCcw className="h-4 w-4" /> Extend visibility for 14 days</button> : null}
-      {actions.includes("unpublish") ? <button type="button" disabled={busy} onClick={() => onAction("unpublish")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-j-border bg-white px-3 text-sm font-semibold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50"><RotateCcw className="h-4 w-4" /> Unpublish</button> : null}
     </div>
     {request.publicationState === "reviewing" ? <details className="rounded-xl border border-sky-100 bg-white p-3"><summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-j-ink-soft"><FilePenLine className="h-4 w-4 text-j-accent" /> Edit job-facing details</summary><p className="mt-2 text-xs leading-5 text-j-ink-muted">Changes clear the recorded Guardian confirmation. City and area are intentionally Guardian-controlled and cannot be altered here.</p><form className="mt-3 grid gap-2" onSubmit={onEdit}><label className="text-xs font-medium text-j-ink-soft">Category<input name="category" required defaultValue={request.category} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Class / course<input name="classCourse" required defaultValue={request.classCourse} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Subjects, separated by commas<input name="subjects" required defaultValue={subjectsForEdit(request.subjects)} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs font-medium text-j-ink-soft">Days / week<input name="daysPerWeek" type="number" min="1" max="7" required defaultValue={request.daysPerWeek} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm" /></label><label className="text-xs font-medium text-j-ink-soft">Tutor preference<select name="preferredGender" defaultValue={request.preferredGender} className="mt-1 h-10 w-full rounded-lg border border-j-border px-2 text-sm"><option value="any">Any</option><option value="female">Female</option><option value="male">Male</option></select></label></div><label className="text-xs font-medium text-j-ink-soft"><span className="inline-flex items-center gap-1.5"><RecordIcon name="notes" size={13} className="text-j-accent" />Job Board note</span><textarea name="notes" rows={3} maxLength={2000} defaultValue={request.notes ?? ""} placeholder="Leave empty to publish no note" className="mt-1 w-full rounded-lg border border-j-border px-2 py-1.5 text-sm leading-6 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label><button type="submit" disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:opacity-50"><FilePenLine className="h-4 w-4" /> Save approved edit</button></form></details> : null}
     <AssignmentNotes requestId={request.id} />
@@ -633,7 +595,7 @@ function MatchingWorkspaceContent() {
     only: ["query", "status", "tuitionType", "subject", "category", "preferredGender", "contactConsent", "budgetMinimum", "budgetMaximum"],
   });
   const operationalFilterCount = countActiveFilters(filters, initialFilters, {
-    only: ["lifecycle", "assignmentState", "appointmentState", "cancellationState", "expiry", "createdAfter", "createdBefore", "lastActivityAfter", "lastActivityBefore"],
+    only: ["lifecycle", "assignmentState", "appointmentState", "cancellationState", "createdAfter", "createdBefore", "lastActivityAfter", "lastActivityBefore"],
   });
   const [selectedTutorByRequest, setSelectedTutorByRequest] = useState<Record<number, string>>({});
   const [selectedRequestIds, setSelectedRequestIds] = useState<number[]>([]);
@@ -757,7 +719,6 @@ function MatchingWorkspaceContent() {
         <label className="text-xs font-semibold text-j-ink-soft">Guardian lifecycle<select aria-label="Guardian lifecycle" value={filters.lifecycle} onChange={event => applyFilters({ lifecycle: event.target.value as AdminMatchingFilters["lifecycle"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any lifecycle</option><option value="pending">Pending</option><option value="live">Live</option><option value="appointed">Appointed</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Tutor assignment<select aria-label="Tutor assignment state" value={filters.assignmentState} onChange={event => applyFilters({ assignmentState: event.target.value as AdminMatchingFilters["assignmentState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any assignment</option><option value="unassigned">Unassigned</option><option value="assigned">Assigned</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Appointment<select aria-label="Appointment state" value={filters.appointmentState} onChange={event => applyFilters({ appointmentState: event.target.value as AdminMatchingFilters["appointmentState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any appointment state</option><option value="pending">Confirmation pending</option><option value="confirmed">Confirmed</option></select></label>
-        <label className="text-xs font-semibold text-j-ink-soft">Job Board visibility<select aria-label="Publication expiry" value={filters.expiry} onChange={event => applyFilters({ expiry: event.target.value as AdminMatchingFilters["expiry"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any visibility</option><option value="soon">Expiring within 3 days</option><option value="expired">Already expired</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Closure<select aria-label="Cancellation state" value={filters.cancellationState} onChange={event => applyFilters({ cancellationState: event.target.value as AdminMatchingFilters["cancellationState"] })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100"><option value="all">Any closure state</option><option value="active">Active requests</option><option value="cancelled">Cancelled requests</option></select></label>
         <label className="text-xs font-semibold text-j-ink-soft">Location<input aria-label="Operational location" value={filters.location} onChange={event => applyFilters({ location: event.target.value })} placeholder="City, area or location" className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong placeholder:text-j-ink-faint outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100" /></label>
         <label className="text-xs font-semibold text-j-ink-soft">Created from<input aria-label="Created from" type="date" value={filters.createdAfter} onChange={event => applyFilters({ createdAfter: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm font-normal text-j-ink-strong outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-100" /></label>
@@ -771,10 +732,9 @@ function MatchingWorkspaceContent() {
     {publishAction.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{publishAction.error?.message}</p> : null}
     {matchingQueue.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading requests…</div> : matchingQueue.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The matching queue could not be loaded. Please refresh and try again.</div> : requests.length === 0 ? <div className="rounded-xl border border-dashed border-j-field-border bg-white p-10 text-center"><ClipboardList className="mx-auto h-10 w-10 text-j-ink-faint" /><h2 className="mt-4 font-semibold text-j-ink">No requests match these filters</h2></div> : <section className="space-y-4">{requests.map(request => {
       const status = getAdminRequestStatusPresentation(request.status); const selectedTutor = selectedTutorByRequest[request.id] ?? ""; const isBusy = publishAction.isPending || assignTutor.isPending; const assignmentBlocked = request.status === "matched" || request.status === "closed" || request.publicationState === "published" || tutors.isLoading;
-      const expiry = getAdminPublicationExpiryDisplay(request); const age = getAdminRequestAgeDisplay(request);
+      const age = getAdminRequestAgeDisplay(request);
       const groupCapacity = getAdminGroupCapacityDisplay(request); const packageDuration = getAdminPackageDurationDisplay(request); const studentCount = getAdminStudentCountDisplay(request);
       return <article key={request.id} className="overflow-hidden rounded-xl border border-j-border bg-white shadow-sm"><div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><label className="inline-flex items-center gap-1.5 text-sm font-bold text-j-ink"><input type="checkbox" aria-label={`Select Job ID ${jobIdForRequest(request.id)} for a bulk action`} checked={selectedRequestIds.includes(request.id)} onChange={event => setSelectedRequestIds(current => event.target.checked ? [...current, request.id] : current.filter(id => id !== request.id))} className="h-4 w-4" /><RecordIcon name="jobId" size={13} className="text-j-ink-faint" />Job ID {jobIdForRequest(request.id)}</label><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${status.className}`}>{status.label}</span><span className="rounded-full bg-j-surface-muted px-2.5 py-1 text-xs font-semibold text-j-ink-soft">{formatAdminTuitionType(request.tuitionType)}</span>{request.contactConsent === "pending" ? <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">Consent pending</span> : null}
-        {expiry ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${expiry.tone === "expired" ? "bg-red-50 text-red-800 ring-red-200" : expiry.tone === "soon" ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}>{expiry.label}</span> : null}
         {request.appliedTutorCount > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-200"><UserCheck className="h-3.5 w-3.5" />{request.appliedTutorCount} applied</span> : null}
         {age ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${age.stale ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-j-surface-muted text-j-ink-soft ring-j-border"}`} title={age.quietLabel ?? undefined}>{age.label}{age.quietLabel ? ` · ${age.quietLabel}` : ""}</span> : null}
       </div><h2 className="mt-3 text-lg font-bold text-j-ink">{request.category} · {request.classCourse}</h2><p className="mt-1 text-sm font-medium text-j-accent">{formatSubjects(request.subjects)}</p><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="location" size={12} className="text-j-ink-faint" />Location</dt><dd className="mt-1 text-j-ink-strong">{request.tuitionLocationLabel ?? request.locationText ?? "Online / not required"}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="daysPerWeek" size={12} className="text-j-ink-faint" />Schedule</dt><dd className="mt-1 text-j-ink-strong">{request.daysPerWeek} day(s) weekly</dd></div>{groupCapacity ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="students" size={12} className="text-j-ink-faint" />Maximum students</dt><dd className="mt-1 text-j-ink-strong">{groupCapacity}</dd></div> : null}{packageDuration ? <div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="packageDuration" size={12} className="text-j-ink-faint" />Package duration</dt><dd className="mt-1 text-j-ink-strong">{packageDuration}</dd></div> : null}<div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="institute" size={12} className="text-j-ink-faint" />Institute Name</dt><dd className="mt-1 text-j-ink-strong">{formatInstituteName(request.instituteName)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="referral" size={12} className="text-j-ink-faint" />Heard About Us</dt><dd className="mt-1 text-j-ink-strong">{formatRequestSource(request.heardAboutUs)}</dd></div><div><dt className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-j-ink-muted"><RecordIcon name="salary" size={12} className="text-j-ink-faint" />Salary</dt><dd className="mt-1 text-j-ink-strong">{formatBudget(request)}</dd></div>

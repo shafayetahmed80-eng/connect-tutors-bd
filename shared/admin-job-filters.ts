@@ -41,13 +41,11 @@ export type AdminJobFilterState = {
   heardAboutUs: string[];
   waitingRequest: "" | "any" | "confirm" | "remove_tutor" | "cancel_tuition";
   /** At least this many days in the stage the tuition is in, as a string. */
-  daysInStage: "" | "3" | "7" | "14" | "30";
+  daysInStage: "" | "3" | "7" | "14" | "30" | "60" | "90";
   /** Pending only: where in moderation the tuition is. */
   publicationStates: string[];
   /** Live only: how many Tutors have applied. */
   applicants: "" | "none" | "few" | "many";
-  /** Live only: the Job Board listing ends within three days. */
-  expiringSoon: boolean;
   /** The day a Tutor was appointed; Appointed and Confirmed. */
   appointedFrom: string;
   appointedTo: string;
@@ -95,7 +93,6 @@ export const DEFAULT_ADMIN_JOB_FILTERS: AdminJobFilterState = {
   daysInStage: "",
   publicationStates: [],
   applicants: "",
-  expiringSoon: false,
   appointedFrom: "",
   appointedTo: "",
   confirmedFrom: "",
@@ -121,7 +118,7 @@ type FilterKey = keyof AdminJobFilterState;
  */
 export const STAGE_ONLY_FILTERS: Partial<Record<AdminJobStage, readonly FilterKey[]>> = {
   pending: ["publicationStates"],
-  live: ["applicants", "expiringSoon"],
+  live: ["applicants"],
   appointed: ["appointedFrom", "appointedTo", "tutorGender"],
   confirmed: ["confirmedFrom", "confirmedTo", "appointedFrom", "appointedTo", "paymentStatuses", "letter", "tutorGender"],
   cancelled: ["cancelledFrom", "cancelledTo", "settlement", "refundDisposition", "settlementReasons", "cancelReason", "paymentStatuses", "tutorGender"],
@@ -163,6 +160,8 @@ export const adminJobDaysInStageOptions = [
   { id: "7", label: "7+ days" },
   { id: "14", label: "14+ days" },
   { id: "30", label: "30+ days" },
+  { id: "60", label: "60+ days" },
+  { id: "90", label: "90+ days" },
 ] as const;
 
 export const adminJobApplicantOptions = [
@@ -275,7 +274,6 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(filters.daysInStage ? { daysInStage: Number(filters.daysInStage) } : {}),
     ...(list(filters.publicationStates) ? { publicationStates: filters.publicationStates as Array<(typeof adminJobPublicationStates)[number]["id"]> } : {}),
     ...(filters.applicants ? { applicants: filters.applicants } : {}),
-    ...(filters.expiringSoon ? { expiringSoon: true as const } : {}),
     ...(appointedFrom ? { appointedFrom } : {}),
     ...(appointedTo ? { appointedTo } : {}),
     ...(confirmedFrom ? { confirmedFrom } : {}),

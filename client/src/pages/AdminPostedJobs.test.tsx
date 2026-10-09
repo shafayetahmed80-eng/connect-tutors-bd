@@ -409,11 +409,10 @@ describe("the filter card and panel", () => {
     panel = screen.getByRole("region", { name: "Posted jobs filters" });
     expect(within(panel).queryByRole("combobox", { name: "Moderation" })).toBeNull();
     fireEvent.change(within(panel).getByRole("combobox", { name: "Applicants" }), { target: { value: "none" } });
-    await user.click(within(panel).getByLabelText("Ending Within 3 Days"));
     await user.click(within(panel).getByRole("button", { name: "Apply" }));
-    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ applicants: "none", expiringSoon: true });
+    expect((mocks.lastInput as { filters?: unknown }).filters).toEqual({ applicants: "none" });
 
-    // Back to Pending: those two mean nothing there, so they are gone from the list and from the count.
+    // Back to Pending: that choice means nothing there, so it is gone from the list and from the count.
     await user.click(screen.getByRole("tab", { name: /Pending/ }));
     expect((mocks.lastInput as { filters?: unknown }).filters).toBeUndefined();
     expect(within(screen.getByRole("button", { name: /^Filter/ })).queryByText("2")).toBeNull();

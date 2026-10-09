@@ -341,7 +341,6 @@ const adminMatchingRequestInputSchema = z.object({
   tuitionType: guardianRequestTuitionTypeSchema.or(z.literal("all")).default("all"),
   preferredGender: z.enum(["all", "male", "female", "any"]).default("all"),
   contactConsent: z.enum(["all", "not_required", "pending", "approved", "declined"]).default("all"),
-  expiry: z.enum(["all", "soon", "expired"]).default("all"),
   subject: z.string().trim().max(100).default(""),
   category: z.string().trim().max(120).default(""),
   location: z.string().trim().max(120).default(""),
@@ -408,7 +407,7 @@ const adminTutorRequestPublicationEditSchema = z.object({
 
 const adminTutorRequestPublicationInputSchema = z.object({
   requestId: z.number().int().positive(),
-  action: z.enum(["verify", "edit", "guardian_confirmed", "guardian_reconfirmed", "request_changes", "approve", "publish", "go_live", "extend_expiry", "unpublish", "close"]),
+  action: z.enum(["verify", "edit", "guardian_confirmed", "request_changes", "approve", "publish", "go_live", "close"]),
   reason: z.string().trim().max(1000).optional(),
   edit: adminTutorRequestPublicationEditSchema.optional(),
 }).superRefine((value, context) => {
@@ -2864,7 +2863,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "This Tutor Request is unavailable." });
         }
         if (result.reason === "GUARDIAN_CONFIRMATION_REQUIRED") {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record the Guardian confirmation or reconfirmation call before this action." });
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record the Guardian confirmation call before this action." });
         }
         throw new TRPCError({ code: "CONFLICT", message: "This publication action is no longer available for the request." });
       }),

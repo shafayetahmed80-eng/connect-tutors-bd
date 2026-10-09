@@ -84,7 +84,6 @@ beforeAll(async () => {
     subjects: "Mathematics",
     daysPerWeek: 3,
     publishedAt: now,
-    expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
   });
   tutorJobId = jobResult.insertId as number;
 

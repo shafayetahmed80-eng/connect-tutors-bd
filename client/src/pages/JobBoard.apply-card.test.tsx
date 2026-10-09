@@ -21,7 +21,6 @@ const job = (id: number, jobId: string, title: string) => ({
   locationLabel: "Adabor, Dhaka",
   directionLabel: null,
   publishedAt: new Date("2026-11-01T00:00:00.000Z"),
-  expiresAt: new Date("2026-12-01T00:00:00.000Z"),
 });
 
 const mocks = vi.hoisted(() => ({

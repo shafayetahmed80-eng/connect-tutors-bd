@@ -56,10 +56,6 @@ export function normalizeJobIdSearch(value: string): string {
   return normalized;
 }
 
-export function isJobExpired(expiresAt: Date | null, now = new Date()): boolean {
-  return expiresAt !== null && expiresAt.getTime() <= now.getTime();
-}
-
 
 export type JobBoardFilters = {
   cityId?: string;

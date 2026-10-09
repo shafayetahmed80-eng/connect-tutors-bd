@@ -118,7 +118,6 @@ import {
   type InsertTutorRequest,
   type AdminAuditEvent,
   type AuthEventType,
-  type TutorRequestPublicationAction,
   type GuardianRequestFollowUpKind,
   type TutorRequestAssignmentNoteCategory,
   type TutorProfileStatus,
@@ -175,6 +174,7 @@ import {
   buildSafeTutorRequestPublicationSnapshot,
   validateAdminRequestPublicationAction,
   resolvePublishedJobNote,
+  type AdminRequestPublicationAction,
 } from "./admin-request-publication";
 import {
   buildPublishedTutorJobProjection,
@@ -2615,7 +2615,6 @@ export async function updateAdminPostedTuition(input: {
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
 
   return database.transaction(async tx => {
     const [existing] = await tx
@@ -2648,8 +2647,8 @@ export async function updateAdminPostedTuition(input: {
     }
 
     // Live means the Job Board is already showing this tuition, so the
-    // projection is rebuilt from what was just saved. An expired or unpublished
-    // job is left alone: republishing it is a status change, not an edit.
+    // projection is rebuilt from what was just saved. A job that is not Live is
+    // left alone: taking it Live is a status change, not an edit.
     if (existing.publicationState === "published" && input.request.budgetAmount !== null) {
       const [job] = await tx
         .select({ id: tutorJobs.id })
@@ -2675,7 +2674,7 @@ export async function updateAdminPostedTuition(input: {
           budgetAmount: input.request.budgetAmount,
           notes: input.request.notes ?? null,
           publishedAt: new Date(),
-        }, jobExpiryDays);
+        });
         await tx.update(tutorJobs).set(getPublishedTutorJobRefresh(projection)).where(eq(tutorJobs.id, job.id));
       }
     }
@@ -3657,8 +3656,6 @@ export type AdminTutorRequestMatchingFilters = {
   tuitionType: "all" | "home" | "online" | "both" | "group" | "package";
   preferredGender: "all" | "male" | "female" | "any";
   contactConsent: "all" | "not_required" | "pending" | "approved" | "declined";
-  /** Published visibility: running out within three days, or already gone. */
-  expiry: "all" | "soon" | "expired";
   subject: string;
   category: string;
   location: string;
@@ -3818,9 +3815,6 @@ export async function clearAdminMatchingDefaultSavedView(input: { adminUserId: n
   return { updated: true as const };
 }
 
-/** The window the expiry badge calls "soon", so the filter and the card agree. */
-const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-
 function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatchingFilters) {
   const conditions: SQL[] = [];
   if (filters.status !== "all") conditions.push(eq(tutorRequests.status, filters.status));
@@ -3832,18 +3826,6 @@ function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatching
   if (filters.tuitionType !== "all") conditions.push(eq(tutorRequests.tuitionType, filters.tuitionType));
   if (filters.preferredGender !== "all") conditions.push(eq(tutorRequests.preferredGender, filters.preferredGender));
   if (filters.contactConsent !== "all") conditions.push(eq(tutorRequests.contactConsent, filters.contactConsent));
-  if (filters.expiry !== "all") {
-    // Only a published request has a window at all: `expiresAt` belongs to
-    // the published tutor_jobs row, not to the request.
-    const now = new Date();
-    const soonBoundary = new Date(now.getTime() + THREE_DAYS_MS);
-    conditions.push(and(
-      eq(tutorRequests.publicationState, "published"),
-      filters.expiry === "expired"
-        ? lte(tutorJobs.expiresAt, now)
-        : and(gt(tutorJobs.expiresAt, now), lte(tutorJobs.expiresAt, soonBoundary)),
-    )!);
-  }
   if (filters.subject) conditions.push(like(tutorRequests.subjects, `%${filters.subject}%`));
   if (filters.category) conditions.push(eq(tutorRequests.category, filters.category));
   if (filters.location) conditions.push(or(like(tutorRequests.tuitionLocationLabel, `%${filters.location}%`), like(tutorRequests.locationText, `%${filters.location}%`))!);
@@ -3905,7 +3887,6 @@ const adminTutorRequestFields = {
   status: tutorRequests.status,
   publicationState: tutorRequests.publicationState,
   guardianConfirmedAt: tutorRequests.guardianConfirmedAt,
-  guardianReconfirmedAt: tutorRequests.guardianReconfirmedAt,
   appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
   cancellationReason: tutorRequests.cancellationReason,
   contactConsent: tutorRequests.contactConsent,
@@ -3914,21 +3895,19 @@ const adminTutorRequestFields = {
 };
 
 /**
- * The matching queue reads three joined columns the shared projection cannot
+ * The matching queue reads two joined columns the shared projection cannot
  * carry. `adminTutorRequestFields` is also selected by queries that join
  * nothing, and a column from a table they never join is invalid SQL there -
  * which is exactly how the Admin Tutor review broke earlier.
  *
  * Both guardian joins are left joins on purpose: an inner join would drop a
  * request from the Admin queue entirely if its Guardian row were ever missing,
- * which is the worst possible way to hide work. `tutorJobs.tutorRequestId` is
- * unique, so its join adds a column without multiplying rows.
+ * which is the worst possible way to hide work.
  */
 const adminMatchingRequestFields = {
   ...adminTutorRequestFields,
   guardianName: users.name,
   guardianPhone: guardianProfiles.phone,
-  publishedExpiresAt: tutorJobs.expiresAt,
 };
 
 export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMatchingFilters) {
@@ -3940,8 +3919,7 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
     .select(adminMatchingRequestFields)
     .from(tutorRequests)
     .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
-    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
-    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id));
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId));
   const items = conditions.length
     ? await itemQuery
       .where(and(...conditions))
@@ -3952,14 +3930,9 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
     .orderBy(asc(tutorRequests.createdAt))
     .limit(filters.pageSize)
     .offset(offset);
-  // Both counting queries carry the same join as the item query. The expiry
-  // filter reads `tutorJobs`, so a count without the join would be invalid
-  // SQL - and the join cannot change a count, because `tutorRequestId` is
-  // unique on that table.
   const totalQuery = database
     .select({ value: count() })
-    .from(tutorRequests)
-    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id));
+    .from(tutorRequests);
   const totals = conditions.length
     ? await totalQuery.where(and(...conditions))
     : await totalQuery;
@@ -3970,7 +3943,6 @@ export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMat
   const stateQuery = database
     .select({ state: tutorRequests.publicationState, value: count() })
     .from(tutorRequests)
-    .leftJoin(tutorJobs, eq(tutorJobs.tutorRequestId, tutorRequests.id))
     .groupBy(tutorRequests.publicationState);
   const stateRows = conditions.length ? await stateQuery.where(and(...conditions)) : await stateQuery;
   const publicationStateCounts = Object.fromEntries(
@@ -4054,11 +4026,7 @@ export type PublishedTutorJobListInput = {
 };
 
 function activePublishedTutorJobConditions(input: PublishedTutorJobListInput) {
-  const now = new Date();
-  const conditions: SQL[] = [
-    eq(tutorJobs.publicationStatus, "published"),
-    gte(tutorJobs.expiresAt, now),
-  ];
+  const conditions: SQL[] = [eq(tutorJobs.publicationStatus, "published")];
   if (input.postedFrom) conditions.push(gte(tutorJobs.publishedAt, input.postedFrom));
   if (input.postedTo) conditions.push(lte(tutorJobs.publishedAt, input.postedTo));
   if (input.country) conditions.push(eq(tutorJobs.country, input.country));
@@ -4098,7 +4066,7 @@ function activePublishedTutorJobConditions(input: PublishedTutorJobListInput) {
 export async function getJobBoardFilterOptions() {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const live = and(eq(tutorJobs.publicationStatus, "published"), gte(tutorJobs.expiresAt, new Date()))!;
+  const live = eq(tutorJobs.publicationStatus, "published");
 
   const rows = await database
     .select({
@@ -4151,7 +4119,6 @@ export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) 
       notes: tutorJobs.notes,
       directionLabel: tutorJobs.directionLabel,
       publishedAt: tutorJobs.publishedAt,
-      expiresAt: tutorJobs.expiresAt,
     })
     .from(tutorJobs)
     .where(where)
@@ -4173,7 +4140,7 @@ export async function submitTutorJobInterest(input: { tutorId: string; tutorJobI
 
   return database.transaction(async tx => {
     const [job] = await tx
-      .select({ id: tutorJobs.id, publicationStatus: tutorJobs.publicationStatus, expiresAt: tutorJobs.expiresAt })
+      .select({ id: tutorJobs.id, publicationStatus: tutorJobs.publicationStatus })
       .from(tutorJobs)
       .where(eq(tutorJobs.id, input.tutorJobId))
       .limit(1)
@@ -4188,8 +4155,6 @@ export async function submitTutorJobInterest(input: { tutorId: string; tutorJobI
     const eligibility = canSubmitTutorInterest({
       tutorId: input.tutorId,
       jobStatus: job?.publicationStatus ?? "closed",
-      expiresAt: job?.expiresAt ?? new Date(0),
-      now: new Date(),
       existingStatus: (existing?.status as TutorInterestDatabaseStatus | undefined) ?? null,
     });
     if (!eligibility.allowed) throw new Error(`TUTOR_INTEREST_${eligibility.reason.toUpperCase()}`);
@@ -4222,7 +4187,7 @@ export async function ensureTutorJobInterestForRequest(input: { requestId: numbe
 
   return database.transaction(async tx => {
     const [job] = await tx
-      .select({ id: tutorJobs.id, publicationStatus: tutorJobs.publicationStatus, expiresAt: tutorJobs.expiresAt })
+      .select({ id: tutorJobs.id, publicationStatus: tutorJobs.publicationStatus })
       .from(tutorJobs)
       .where(eq(tutorJobs.tutorRequestId, input.requestId))
       .limit(1)
@@ -4241,8 +4206,6 @@ export async function ensureTutorJobInterestForRequest(input: { requestId: numbe
     const eligibility = canSubmitTutorInterest({
       tutorId: input.tutorId,
       jobStatus: job.publicationStatus,
-      expiresAt: job.expiresAt,
-      now: new Date(),
       existingStatus: (existing?.status as TutorInterestDatabaseStatus | undefined) ?? null,
     });
     if (!eligibility.allowed) throw new Error(`TUTOR_INTEREST_${eligibility.reason.toUpperCase()}`);
@@ -4313,7 +4276,6 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       subjects: tutorJobs.subjects,
       daysPerWeek: tutorJobs.daysPerWeek,
       locationLabel: tutorJobs.locationLabel,
-      expiresAt: tutorJobs.expiresAt,
       publicationStatus: tutorJobs.publicationStatus,
       budgetAmount: tutorJobs.budgetAmount,
       // The Admin's copy of this list links each application to its tuition.
@@ -4416,7 +4378,7 @@ type JobProjectionTransaction = Parameters<Parameters<NonNullable<Awaited<Return
 async function synchronizePublishedTutorJob(
   tx: JobProjectionTransaction,
   input: {
-    action: TutorRequestPublicationAction;
+    action: AdminRequestPublicationAction;
     request: {
       id: number;
       tuitionType: "home" | "online" | "both" | "group" | "package";
@@ -4440,9 +4402,8 @@ async function synchronizePublishedTutorJob(
   // `go_live` is `publish` with a shorter road to it, so the projection treats
   // the two the same from here on.
   const publishes = input.action === "publish" || input.action === "go_live";
-  if (!publishes && input.action !== "extend_expiry" && input.action !== "unpublish" && input.action !== "close") return {};
+  if (!publishes && input.action !== "close") return {};
   const now = new Date();
-  const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
   const [existingJob] = await tx
     .select({ id: tutorJobs.id, publicJobId: tutorJobs.publicJobId })
     .from(tutorJobs)
@@ -4472,11 +4433,7 @@ async function synchronizePublishedTutorJob(
       budgetAmount: input.request.budgetAmount,
       notes: input.request.notes,
       publishedAt: now,
-      // Read here rather than inside the projection so that function stays
-      // pure and its tests need no database. Changing the limit moves jobs
-      // published from now on; ones already live keep the expiry they were
-      // given, which is the only fair reading of "expires on".
-    }, jobExpiryDays);
+    });
     if (!existingJob) {
       // The number comes from the request and from nowhere else. An Admin used
       // to be able to type one in, which allowed two kinds of ID for the same
@@ -4492,22 +4449,11 @@ async function synchronizePublishedTutorJob(
     return { publicJobId: existingJob.publicJobId };
   }
 
-  if (input.action === "extend_expiry") {
-    if (!existingJob) throw new Error("PUBLISHED_JOB_NOT_FOUND");
-    await tx
-      .update(tutorJobs)
-      // A second hardcoded 14 lived here, so extending an expiry always gave
-      // a fortnight no matter what publishing gave. Both read the limit now.
-      .set({ expiresAt: addDays(now, jobExpiryDays), publicationStatus: "published", deactivatedAt: null })
-      .where(eq(tutorJobs.id, existingJob.id));
-    return { publicJobId: existingJob.publicJobId };
-  }
-
   if (!existingJob) return {};
   await tx
     .update(tutorJobs)
     .set({
-      publicationStatus: input.action === "unpublish" ? "unpublished" : "closed",
+      publicationStatus: "closed",
       deactivatedAt: now,
     })
     .where(eq(tutorJobs.id, existingJob.id));
@@ -4523,7 +4469,7 @@ async function synchronizePublishedTutorJob(
 export async function moderateTutorRequestPublication(input: {
   requestId: number;
   adminUserId: number;
-  action: TutorRequestPublicationAction;
+  action: AdminRequestPublicationAction;
   reason?: string;
   edit?: AdminTutorRequestPublicationEdit;
 }) {
@@ -4538,7 +4484,6 @@ export async function moderateTutorRequestPublication(input: {
         guardianUserId: tutorRequests.guardianUserId,
         publicationState: tutorRequests.publicationState,
         guardianConfirmedAt: tutorRequests.guardianConfirmedAt,
-        guardianReconfirmedAt: tutorRequests.guardianReconfirmedAt,
         category: tutorRequests.category,
         classCourse: tutorRequests.classCourse,
         subjects: tutorRequests.subjects,
@@ -4567,7 +4512,6 @@ export async function moderateTutorRequestPublication(input: {
       from: request.publicationState,
       action: input.action,
       guardianConfirmed: Boolean(request.guardianConfirmedAt),
-      guardianReconfirmed: Boolean(request.guardianReconfirmedAt),
     });
     if (!transition.valid) return { updated: false as const, reason: transition.reason };
     if (input.action === "edit" && !input.edit) return { updated: false as const, reason: "EDIT_REQUIRED" as const };
@@ -4584,7 +4528,6 @@ export async function moderateTutorRequestPublication(input: {
       notes?: string | null;
       monthlyBudget?: number | null;
       guardianConfirmedAt?: Date | null;
-      guardianReconfirmedAt?: Date | null;
       status?: "reviewing" | "closed";
       contactConsent?: "not_required";
       lastActivityAt?: Date;
@@ -4595,8 +4538,6 @@ export async function moderateTutorRequestPublication(input: {
       update.contactConsent = "not_required";
     }
     if (input.action === "guardian_confirmed") update.guardianConfirmedAt = new Date();
-    if (input.action === "guardian_reconfirmed") update.guardianReconfirmedAt = new Date();
-    if (input.action === "extend_expiry") update.guardianReconfirmedAt = null;
     if (input.action === "edit") {
       const edit = input.edit!;
       if (edit.category !== undefined) update.category = edit.category;
@@ -7617,11 +7558,6 @@ function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: A
     if (filters.applicants === "none") conditions.push(sql`${adminJobApplicantCount} = 0`);
     if (filters.applicants === "few") conditions.push(sql`${adminJobApplicantCount} between 1 and 5`);
     if (filters.applicants === "many") conditions.push(sql`${adminJobApplicantCount} >= 6`);
-    if (filters.expiringSoon) {
-      const now = new Date();
-      const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-      conditions.push(sql`exists (select 1 from ${tutorJobs} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobs.publicationStatus} = 'published' and ${tutorJobs.expiresAt} >= ${now} and ${tutorJobs.expiresAt} <= ${soon})`);
-    }
   }
   // The stages after Live are about a Tutor, a date and money.
   if (stage === "appointed" || stage === "confirmed") {
@@ -8722,14 +8658,12 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
       await tx.update(tutorJobInterests)
         .set({ status: "declined", appointmentRequestedAt: null, ...tutorInterestStageStamps("declined") })
         .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, removedTutorId)));
-      if (confirmed) {
-        // Confirming took the listing down; it goes back up for a full run, not the rest of the old one.
-        const jobExpiryDays = (await getSiteLimits())["jobBoard.expiryDays"];
-        const reopened = await tx.update(tutorJobs)
-          .set({ publicationStatus: "published", deactivatedAt: null, expiresAt: addDays(now, jobExpiryDays) })
-          .where(and(eq(tutorJobs.id, job.id), eq(tutorJobs.publicationStatus, "closed")));
-        if (reopened[0].affectedRows) changedFields.push("job_board_listing_reopened");
-      }
+      // Live again means on the Job Board again. Confirming took the listing down, and a tuition
+      // appointed before the listings stopped expiring may have had its listing taken down with them.
+      const reopened = await tx.update(tutorJobs)
+        .set({ publicationStatus: "published", deactivatedAt: null })
+        .where(and(eq(tutorJobs.id, job.id), ne(tutorJobs.publicationStatus, "published")));
+      if (reopened[0].affectedRows) changedFields.push("job_board_listing_reopened");
     }
     if (confirmed) {
       const superseded = await tx.update(confirmationLetters)

@@ -3,7 +3,6 @@ import {
   buildJobTitle,
   canTransitionJobState,
   createPaginationMeta,
-  isJobExpired,
   normalizeJobBoardFilters,
   type JobBoardFilters,
   type JobLifecycleState,
@@ -39,14 +38,6 @@ describe("job board lifecycle contract", () => {
     expect(() => normalizeJobIdSearch("abc")).toThrow();
     // Below the offset there is no request to find.
     expect(() => normalizeJobIdSearch("1")).toThrow();
-  });
-
-  it("treats an expiry timestamp at or before now as expired", () => {
-    const now = new Date("2026-08-21T00:00:00.000Z");
-    expect(isJobExpired(new Date("2026-08-20T23:59:59.999Z"), now)).toBe(true);
-    expect(isJobExpired(now, now)).toBe(true);
-    expect(isJobExpired(new Date("2026-08-21T00:00:00.001Z"), now)).toBe(false);
-    expect(isJobExpired(null, now)).toBe(false);
   });
 
   it("builds the dynamic title from normalized safe learning details", () => {

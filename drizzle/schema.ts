@@ -47,6 +47,15 @@ export const tutorRequestPublicationStateValues = [
 ] as const;
 export type TutorRequestPublicationState = (typeof tutorRequestPublicationStateValues)[number];
 
+/**
+ * Every action the publication history has ever recorded.
+ *
+ * `guardian_reconfirmed`, `extend_expiry` and `unpublish` are retired: a job on
+ * the Job Board no longer has an end date to extend, and an Admin no longer takes
+ * one off the board without cancelling it. They stay in the list only so the rows
+ * already written under them keep reading. What an Admin can do now is
+ * `ADMIN_REQUEST_PUBLICATION_ACTIONS` in `server/admin-request-publication.ts`.
+ */
 export const tutorRequestPublicationActionValues = [
   "verify",
   "edit",
@@ -1246,8 +1255,6 @@ export const tutorRequests = mysqlTable("tutor_requests", {
     .default("submitted")
     .notNull(),
   guardianConfirmedAt: timestamp("guardianConfirmedAt"),
-  /** One-time proof for an Admin expiry extension after a new Guardian call. */
-  guardianReconfirmedAt: timestamp("guardianReconfirmedAt"),
   /** Recorded only when an Admin finalizes the Guardian and assigned Tutor appointment. */
   appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
   /** When a Tutor was Appointed to it; cleared if the tuition goes back to Live. */
@@ -1321,14 +1328,13 @@ export const tutorJobs = mysqlTable("tutor_jobs", {
   /** Area/sub-area text only. Never store a street address or map coordinates. */
   directionLabel: varchar("directionLabel", { length: 240 }),
   publishedAt: timestamp("publishedAt").notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
   deactivatedAt: timestamp("deactivatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [
-  index("tutor_jobs_publication_expiry_idx").on(table.publicationStatus, table.expiresAt),
-  index("tutor_jobs_city_expiry_idx").on(table.cityLocationId, table.expiresAt),
-  index("tutor_jobs_location_expiry_idx").on(table.locationId, table.expiresAt),
+  index("tutor_jobs_publication_idx").on(table.publicationStatus, table.publishedAt),
+  index("tutor_jobs_city_idx").on(table.cityLocationId),
+  index("tutor_jobs_location_idx").on(table.locationId),
 ]);
 
 /**

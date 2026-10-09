@@ -15,7 +15,6 @@ const otherTutorId = "dev-tutor-rakib";
 const tag = randomBytes(3).toString("hex");
 const day = 24 * 60 * 60 * 1000;
 const ago = (days: number) => new Date(Date.now() - days * day);
-const ahead = (days: number) => new Date(Date.now() + days * day);
 
 const cityA = `test-ajf-city-a-${tag}`;
 const areaA = `test-ajf-area-a-${tag}`;
@@ -58,11 +57,11 @@ async function makeRequest(name: string, guardianUserId: number, over: Made) {
   return key[name];
 }
 
-async function makeJob(requestId: number, expiresAt: Date, interests: Array<{ tutorId: string; status: "interested" | "withdrawn" }>) {
+async function makeJob(requestId: number, interests: Array<{ tutorId: string; status: "interested" | "withdrawn" }>) {
   const db = await database();
   const [job] = await db.insert(tutorJobs).values({
     tutorRequestId: requestId, publicJobId: `TAJF-${tag}-${requestId}`, tuitionType: "home", category: "Bangla Medium", classCourse: "Class 5",
-    subjects: JSON.stringify(["Math"]), daysPerWeek: 3, publishedAt: new Date(), expiresAt,
+    subjects: JSON.stringify(["Math"]), daysPerWeek: 3, publishedAt: new Date(),
   });
   jobIds.push(Number(job.insertId));
   for (const interest of interests) await db.insert(tutorJobInterests).values({ tutorJobId: Number(job.insertId), ...interest });
@@ -98,12 +97,12 @@ beforeAll(async () => {
     budgetAmount: 5000, tuitionCityLocationId: cityA, tuitionLocationId: areaA, tuitionLocationLabel: "Test Area A, Test City A",
     status: "reviewing", publicationState: "published", createdAt: ago(8),
   });
-  await makeJob(l1, ahead(2), [{ tutorId: holderId, status: "interested" }, { tutorId: otherTutorId, status: "withdrawn" }]);
+  await makeJob(l1, [{ tutorId: holderId, status: "interested" }, { tutorId: otherTutorId, status: "withdrawn" }]);
   const l2 = await makeRequest("l2", second, {
     classCourse: "Class 6", subjects: JSON.stringify(["Bangla"]), daysPerWeek: 4, budgetAmount: 6000, tuitionCityLocationId: cityA, tuitionLocationId: areaA,
     tuitionLocationLabel: "Test Area A, Test City A", status: "reviewing", publicationState: "published", createdAt: ago(1),
   });
-  await makeJob(l2, ahead(30), []);
+  await makeJob(l2, []);
   // Appointed, with the Guardian's Confirm waiting
   const a1 = await makeRequest("a1", second, { status: "matched", tutorId: holderId, publicationState: "published", appointedAt: ago(5), createdAt: ago(12) });
   await waitingRequest(a1, second, { type: "confirm" });
@@ -214,6 +213,9 @@ describe("the Admin's job filters", () => {
     expect((await read({ daysInStage: 14 }, "confirmed")).names).toEqual(["c1"]);
     expect((await read({ daysInStage: 30 }, "cancelled")).names).toEqual(["x1"]);
     expect((await read({ daysInStage: 30 }, "confirmed")).names).toEqual([]);
+    // The two longest waits the filter offers: nothing here has waited that long yet.
+    expect((await read({ daysInStage: 60 }, "pending")).names).toEqual([]);
+    expect((await read({ daysInStage: 90 }, "live")).names).toEqual([]);
   });
 
   it("lets the tab counts follow the filters, so a tab never says more than it opens on", async () => {
@@ -236,7 +238,6 @@ describe("the Admin's job filters", () => {
     // Withdrawn interest is not an application, so one standing applicant is "few".
     expect((await read({ applicants: "few" }, "live")).names).toEqual(["l1"]);
     expect((await read({ applicants: "many" }, "live")).names).toEqual([]);
-    expect((await read({ expiringSoon: true }, "live")).names).toEqual(["l1"]);
   });
 
   it("offers only what the tuitions hold, from every stage, and narrows to Admin posts on request", async () => {

@@ -1,21 +1,5 @@
 import { buildJobTitle } from "./job-board.contract";
-import { findSiteLimit } from "@shared/site-limits";
 import { jobIdForRequest } from "@shared/job-id";
-
-/**
- * How long a published tuition stays on the board unless an Admin closes or
- * unpublishes it earlier.
- *
- * The Owner can change this from the Admin panel. What is here is the number
- * the site ships with, and the fallback wherever the stored settings cannot be
- * read - the projection is pure, so the caller passes the resolved value in.
- */
-export const DEFAULT_JOB_EXPIRY_DAYS = findSiteLimit("jobBoard.expiryDays")!.value;
-const DAY_IN_MILLISECONDS = 86_400_000;
-
-export function calculateJobExpiry(from: Date, expiryDays: number = DEFAULT_JOB_EXPIRY_DAYS): Date {
-  return new Date(from.getTime() + expiryDays * DAY_IN_MILLISECONDS);
-}
 
 export type SafeTutorRequestForPublication = {
   requestId: number;
@@ -61,7 +45,6 @@ export type PublishedTutorJobProjection = {
   locationLabel: string | null;
   directionLabel: string | null;
   publishedAt: Date;
-  expiresAt: Date;
 };
 
 /**
@@ -74,7 +57,7 @@ export type PublishedTutorJobProjection = {
  */
 export const generateAutoJobId = jobIdForRequest;
 
-export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPublication, expiryDays: number = DEFAULT_JOB_EXPIRY_DAYS): PublishedTutorJobProjection {
+export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPublication): PublishedTutorJobProjection {
   const directionLabel = input.tuitionType === "online" ? null : input.locationLabel;
   return {
     tutorRequestId: input.requestId,
@@ -95,7 +78,6 @@ export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPubli
     locationLabel: input.tuitionType === "online" ? null : input.locationLabel,
     directionLabel,
     publishedAt: input.publishedAt,
-    expiresAt: calculateJobExpiry(input.publishedAt, expiryDays),
   };
 }
 
@@ -128,7 +110,6 @@ type PublishedTutorJobRow = {
   locationLabel: string | null;
   directionLabel: string | null;
   publishedAt: Date;
-  expiresAt: Date;
 };
 
 function parsePublicSubjects(value: string): string[] {
@@ -175,6 +156,5 @@ export function toPublicTutorJob(row: PublishedTutorJobRow) {
     locationLabel: row.locationLabel,
     directionLabel: row.directionLabel,
     publishedAt: row.publishedAt,
-    expiresAt: row.expiresAt,
   };
 }

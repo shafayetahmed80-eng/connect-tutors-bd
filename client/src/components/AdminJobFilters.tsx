@@ -124,13 +124,7 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
     {stage === "pending" ? <div className="sm:col-span-2">
       <ChipMultiSelect label="Moderation" options={[...adminJobPublicationStates]} selectedIds={draft.publicationStates} onChange={publicationStates => set({ publicationStates })} />
     </div> : null}
-    {stage === "live" ? <>
-      <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} />
-      <label className="flex h-11 w-full cursor-pointer items-center gap-2 rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm text-j-ink focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100">
-        <input type="checkbox" checked={draft.expiringSoon} onChange={event => set({ expiringSoon: event.target.checked })} className="size-4 accent-[#1677e8]" />
-        <span className={draft.expiringSoon ? "" : "text-[#8fa3b4]"}>Ending Within 3 Days</span>
-      </label>
-    </> : null}
+    {stage === "live" ? <FilterSelect label="Applicants" value={draft.applicants} onChange={value => set({ applicants: value as AdminJobFilterState["applicants"] })} options={[...adminJobApplicantOptions]} /> : null}
     {stage === "appointed" ? <>
       <DateField label="Appointed Date From" value={draft.appointedFrom} max={draft.appointedTo || undefined} onChange={appointedFrom => set({ appointedFrom })} />
       <DateField label="Appointed Date To" value={draft.appointedTo} min={draft.appointedFrom || undefined} onChange={appointedTo => set({ appointedTo })} />
