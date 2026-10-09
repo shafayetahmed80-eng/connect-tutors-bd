@@ -130,7 +130,7 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     path: "/admin/dynamic/limits",
     label: "Limits",
     summary: "সংখ্যার সীমা — সর্বোচ্চ কয়টা বাছা যাবে, লেখা কত লম্বা হতে পারে, ফাইল কত বড়। সীমা ছাড়ালে কাজটা আটকে যায়।",
-    seeAt: [TUTOR_PROFILE, JOB_BOARD],
+    seeAt: [TUTOR_PROFILE],
   },
   {
     path: "/admin/dynamic/admin-control",
