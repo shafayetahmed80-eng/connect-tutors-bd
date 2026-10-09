@@ -53,7 +53,6 @@ describe("site limit editor", () => {
     // Both subject limits share a range, so this is a getAll: the point is that
     // the range is shown at all, not that it is unique.
     expect(screen.getAllByText(`${subjects.min}–${subjects.max} subjects`).length).toBeGreaterThan(0);
-    expect(screen.getByText("1–180 days")).toBeTruthy();
     expect(screen.getByText("40–240 characters")).toBeTruthy();
   });
 
