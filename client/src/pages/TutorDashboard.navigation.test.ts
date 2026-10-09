@@ -6,7 +6,7 @@ describe("Tutor Dashboard navigation", () => {
     expect(getTutorNavigationGroups(tutorDashboardNavigation)).toEqual([
       {
         label: "Active workspace",
-        items: ["Dashboard", "Profile", "Status", "Notifications", "Chat with Admin", "Tuition preferences", "Tutor requests", "Settings", "Job Board", "Confirmation Letter", "Payment", "How It Works", "Join our Community"],
+        items: ["Dashboard", "Profile", "Status", "Notifications", "Chat with Admin", "Tuition preferences", "Tutor requests", "Settings", "Job Board", "Confirmation Letter", "Payment", "How It Works", "Join our Community", "Install app"],
       },
       {
         label: "Coming later",
@@ -45,6 +45,7 @@ describe("Tutor Dashboard navigation", () => {
       "Payment",
       "How It Works",
       "Join our Community",
+      "Install app",
     ]);
   });
 

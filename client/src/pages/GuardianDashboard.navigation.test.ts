@@ -18,6 +18,7 @@ describe("Guardian workspace navigation", () => {
       "/guardian/dashboard/exclusive",
       "/guardian/dashboard/how-it-works",
       "/guardian/dashboard/community",
+      "/guardian/dashboard/install",
       "/guardian/dashboard/sign-out",
     ]);
   });

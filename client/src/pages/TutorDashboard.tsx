@@ -27,7 +27,7 @@ import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
-import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, Download, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -49,6 +49,7 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Active workspace" },
   { icon: CircleHelp, label: "How It Works", path: "/tutor/dashboard/how-it-works", sectionLabel: "Active workspace" },
   { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Active workspace", community: true },
+  { icon: Download, label: "Install app", path: "/tutor/dashboard/install", sectionLabel: "Active workspace", action: "install" },
   { icon: GraduationCap, label: "Certificate", path: "/tutor/dashboard/certificate", sectionLabel: "Coming later", planned: true },
   { icon: Share2, label: "Refer & Earn", path: "/tutor/dashboard/refer-earn", sectionLabel: "Coming later", planned: true },
   { icon: Sparkles, label: "Exclusively Yours", path: "/tutor/dashboard/exclusively-yours", sectionLabel: "Coming later", planned: true },

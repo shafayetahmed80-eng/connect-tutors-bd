@@ -6,8 +6,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { trpc } from "./lib/trpc";
 import { getCurrentTutorPortalToken } from "./lib/tutorPortalSession";
+import { startListeningForInstallPrompt } from "./lib/installApp";
 import "./index.css";
 import "./styles/brand-foundation.css";
+
+startListeningForInstallPrompt();
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: error => sendToLoginCodeIfOwed(error) }),
