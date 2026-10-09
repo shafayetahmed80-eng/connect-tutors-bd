@@ -2954,6 +2954,9 @@ export const appRouter = router({
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages.not_waiting });
         return { declined: true as const };
       }),
+    tuitionHistory: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .query(({ input }) => db.listTuitionHistory(input.requestId)),
     listTutorRequestPublicationEvents: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))
       .query(({ input }) => db.listTutorRequestPublicationEvents(input.requestId)),
