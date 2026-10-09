@@ -1,5 +1,6 @@
 import { Redirect } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 
 /**
  * `/account` has no page of its own — a signed-in visitor is sent straight to
@@ -9,7 +10,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
  */
 export function getAccountRedirectPath(role: string | null | undefined): string {
   if (role === "tutor") return "/tutor/dashboard/jobs";
-  if (role === "admin") return "/admin/matching";
+  if (role === "admin") return ADMIN_HOME_PATH;
   if (role === "guardian" || role === "user") return "/guardian/dashboard/posted-jobs";
   return "/";
 }

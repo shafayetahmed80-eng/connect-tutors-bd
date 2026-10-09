@@ -1,5 +1,6 @@
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import { ADMIN_HOME_PATH } from "@/lib/adminHome";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -29,7 +30,7 @@ export default function AdminTwoFactorSetup() {
   // through an earlier setup) belongs on the challenge instead.
   useEffect(() => {
     if (!status.data || recoveryCodes) return;
-    if (status.data.enrolled) navigate(status.data.verified ? "/admin/matching" : "/admin/2fa-challenge");
+    if (status.data.enrolled) navigate(status.data.verified ? ADMIN_HOME_PATH : "/admin/2fa-challenge");
   }, [status.data, recoveryCodes, navigate]);
 
   // One secret for the whole flow: requesting a new one on every keystroke
@@ -93,7 +94,7 @@ export default function AdminTwoFactorSetup() {
             <ol className="grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono text-sm text-j-ink">{recoveryCodes.map(recoveryCode => <li key={recoveryCode}>{recoveryCode}</li>)}</ol>
           </div>
           <button type="button" onClick={() => void copy(recoveryCodes.join("\n"), setCopiedCodes)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-j-field-border bg-white px-4 py-2.5 text-sm font-bold text-j-ink-soft transition hover:bg-j-surface-muted"><ClipboardCopy size={15} /> {copiedCodes ? "Copied" : "Copy all 10 codes"}</button>
-          <button type="button" onClick={() => navigate("/admin/matching")} className="flex w-full items-center justify-center rounded-lg bg-j-accent px-5 py-3.5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(23,59,96,0.24)] transition hover:bg-j-accent-hover">Continue to the Admin workspace</button>
+          <button type="button" onClick={() => navigate(ADMIN_HOME_PATH)} className="flex w-full items-center justify-center rounded-lg bg-j-accent px-5 py-3.5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(23,59,96,0.24)] transition hover:bg-j-accent-hover">Continue to the Admin workspace</button>
         </div> : null}
 
         {isAdmin && !busy && !recoveryCodes ? <div className="mt-8 space-y-6">

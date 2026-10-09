@@ -7,7 +7,7 @@ import {
 
 describe("getAdminDashboardDestination", () => {
   it("opens the Admin workspace only for an established Admin role", () => {
-    expect(getAdminDashboardDestination("admin")).toBe("/admin/matching");
+    expect(getAdminDashboardDestination("admin")).toBe("/admin/applied-tutors");
   });
 
   it.each([undefined, null, "guardian", "tutor", "user"]) (
