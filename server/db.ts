@@ -146,6 +146,7 @@ import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
+import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
 import { storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
 import { letterVerificationCode, letterVerificationUrl, matchesLetterVerificationCode } from "./confirmation-letter-verification";
@@ -8788,12 +8789,14 @@ async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId:
     await tx.update(tutorRequests).set({ paymentStatus: summary.status, paymentCompletedAt: closedAt, lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
   }
   if (statusChanged) {
+    // Reaching Full Paid is the tuition closing, and its history says so in one line of its own; every other move of the status is a plain change.
+    const closing = summary.status === "full_paid" && !request.cancelled;
     await tx.insert(tutorRequestOperationEvents).values({
       tutorRequestId: request.id,
       guardianUserId: request.guardianUserId,
       actorUserId: adminUserId,
-      action: "admin_payment_status_changed",
-      changedFields: JSON.stringify(["payment_status"]),
+      action: closing ? "tuition_closed" : "admin_payment_status_changed",
+      changedFields: closing ? null : JSON.stringify(["payment_status"]),
     });
     // The last payment landing is the Tutor's news: their tuition has moved to Closed. A tuition that was cancelled has no such news.
     if (summary.status === "full_paid" && !request.cancelled && request.tutorId) {
@@ -8831,6 +8834,141 @@ export type TuitionPaymentFailure =
   | { outcome: "no_credit"; available: number }
   | { outcome: "credit_used" }
   | { outcome: "over"; most: number };
+
+/** A Tutor's name and the Tutor ID people see, for a receipt. */
+async function receiptTutor(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [tutor] = await database
+    .select({ name: tutors.name, tutorNumber: tutorRegistrations.tutorNumber })
+    .from(tutors)
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
+    .where(eq(tutors.id, tutorId))
+    .limit(1);
+  return tutor;
+}
+
+/**
+ * The receipt for one verified payment, as a PDF: for the Tutor who made it
+ * (`tutorId` is then their own, and anyone else's payment is simply not found) or
+ * for an Admin. A payment still waiting, or rejected, has no receipt.
+ *
+ * It says where the charge stood after this payment. When the tuition no longer
+ * has this Tutor - they were removed from it - the payment is still theirs to
+ * prove, and the receipt carries the payment alone.
+ */
+export async function getPaymentReceiptFile(input: { paymentId: number; tutorId?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [payment] = await database
+    .select({
+      id: tuitionPayments.id,
+      tutorRequestId: tuitionPayments.tutorRequestId,
+      tutorId: tuitionPayments.tutorId,
+      amount: tuitionPayments.amount,
+      method: tuitionPayments.method,
+      reference: tuitionPayments.reference,
+      status: tuitionPayments.status,
+      paidAt: tuitionPayments.paidAt,
+      decidedAt: tuitionPayments.decidedAt,
+    })
+    .from(tuitionPayments)
+    .where(eq(tuitionPayments.id, input.paymentId))
+    .limit(1);
+  if (!payment || payment.status !== "verified") return undefined;
+  if (input.tutorId && payment.tutorId !== input.tutorId) return undefined;
+  const tutor = await receiptTutor(database, payment.tutorId);
+  if (!tutor) return undefined;
+
+  const [request] = await database
+    .select({
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+      settledOwed: tuitionSettlements.retained,
+    })
+    .from(tutorRequests)
+    .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
+    .where(eq(tutorRequests.id, payment.tutorRequestId))
+    .limit(1);
+
+  let charge: { owed: number; paidThrough: number; balance: number } | null = null;
+  if (request?.confirmedAt && request.tutorId === payment.tutorId) {
+    const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+    if (terms) {
+      const verified = await database
+        .select({ id: tuitionPayments.id, amount: tuitionPayments.amount, paidAt: tuitionPayments.paidAt })
+        .from(tuitionPayments)
+        .where(and(eq(tuitionPayments.tutorRequestId, payment.tutorRequestId), eq(tuitionPayments.tutorId, payment.tutorId), eq(tuitionPayments.status, "verified")));
+      const owed = chargeSummary(terms, request.confirmedAt, verified, settledOptions(request)).owed;
+      // Everything paid up to and including this payment, in the order the payments were made.
+      const paidThrough = verified
+        .filter(other => other.paidAt < payment.paidAt || (other.paidAt.getTime() === payment.paidAt.getTime() && other.id <= payment.id))
+        .reduce((sum, other) => sum + other.amount, 0);
+      charge = { owed, paidThrough, balance: Math.max(0, owed - paidThrough) };
+    }
+  }
+
+  const receiptNumber = paymentReceiptNumber(payment.id, payment.decidedAt ?? payment.paidAt);
+  const pdf = await renderPaymentReceiptPdf({
+    receiptNumber,
+    requestId: payment.tutorRequestId,
+    tutorName: tutor.name ?? "Tutor",
+    tutorNumber: tutor.tutorNumber ?? null,
+    payment: { amount: payment.amount, method: payment.method, reference: payment.reference, paidAt: payment.paidAt, verifiedAt: payment.decidedAt },
+    charge,
+    issuedAt: new Date(),
+  }, { contactNumber: await getSiteContactNumber() });
+  return { fileName: receiptFileName(receiptNumber), pdfBase64: pdf.toString("base64") };
+}
+
+/**
+ * The final receipt of a Closed tuition, as a PDF: every payment that paid its
+ * fee, and that it is paid in full. For the Tutor who holds the tuition
+ * (`tutorId`) or an Admin; a tuition that is not Closed has none.
+ */
+export async function getClosedTuitionReceiptFile(input: { requestId: number; tutorId?: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [request] = await database
+    .select({
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      closedAt: tutorRequests.paymentCompletedAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+    })
+    .from(tutorRequests)
+    .where(and(eq(tutorRequests.id, input.requestId), adminPostedJobStageCondition("closed")))
+    .limit(1);
+  if (!request?.tutorId || !request.confirmedAt) return undefined;
+  if (input.tutorId && request.tutorId !== input.tutorId) return undefined;
+  const tutor = await receiptTutor(database, request.tutorId);
+  if (!tutor) return undefined;
+
+  const payments = await database
+    .select({ id: tuitionPayments.id, amount: tuitionPayments.amount, method: tuitionPayments.method, reference: tuitionPayments.reference, paidAt: tuitionPayments.paidAt })
+    .from(tuitionPayments)
+    .where(and(eq(tuitionPayments.tutorRequestId, input.requestId), eq(tuitionPayments.tutorId, request.tutorId), eq(tuitionPayments.status, "verified")))
+    .orderBy(asc(tuitionPayments.paidAt), asc(tuitionPayments.id));
+  const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
+  const owed = terms ? chargeSummary(terms, request.confirmedAt, payments).owed : payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+  const closedAt = request.closedAt ?? request.confirmedAt;
+  const receiptNumber = closedReceiptNumber(input.requestId, closedAt);
+  const pdf = await renderClosedTuitionReceiptPdf({
+    receiptNumber,
+    requestId: input.requestId,
+    tutorName: tutor.name ?? "Tutor",
+    tutorNumber: tutor.tutorNumber ?? null,
+    closedAt,
+    payments: payments.map(payment => ({ amount: payment.amount, method: payment.method, reference: payment.reference, paidAt: payment.paidAt })),
+    charge: { owed, paid: payments.reduce((sum, payment) => sum + payment.amount, 0) },
+    issuedAt: new Date(),
+  }, { contactNumber: await getSiteContactNumber() });
+  return { fileName: receiptFileName(receiptNumber), pdfBase64: pdf.toString("base64") };
+}
 
 /**
  * Everything an Admin needs to see about a Confirmed tuition's payments: where

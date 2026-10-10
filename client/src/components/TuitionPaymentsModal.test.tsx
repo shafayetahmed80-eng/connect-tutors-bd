@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -10,11 +10,19 @@ const state = vi.hoisted(() => ({
   chooseKind: vi.fn(),
   invalidateLedger: vi.fn(),
   invalidateJobs: vi.fn(),
+  fetchReceipt: vi.fn(),
+  fetchFinal: vi.fn(),
+  saveFile: vi.fn(),
 }));
+
+vi.mock("@/lib/pdfPreview", () => ({ saveFile: state.saveFile, base64ToBytes: (base64: string) => new Uint8Array(Buffer.from(base64, "base64")) }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ admin: { listTuitionPayments: { invalidate: state.invalidateLedger }, listConfirmedJobs: { invalidate: state.invalidateJobs } } }),
+    useUtils: () => ({ admin: {
+      listTuitionPayments: { invalidate: state.invalidateLedger }, listConfirmedJobs: { invalidate: state.invalidateJobs },
+      paymentReceipt: { fetch: state.fetchReceipt }, closedTuitionReceipt: { fetch: state.fetchFinal },
+    } }),
     admin: {
       listTuitionPayments: { useQuery: () => state.ledger },
       recordTuitionPayment: { useMutation: () => ({ mutate: state.record, isPending: false }) },
@@ -42,6 +50,47 @@ const open = (ledger: Record<string, unknown>) => {
 };
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); state.ledger = { data: undefined, isLoading: false, isError: false }; });
+
+describe("receipts", () => {
+  const file = { fileName: "Connect-Tutors-Receipt-RCT-2026-000006.pdf", pdfBase64: Buffer.from("%PDF-1.7").toString("base64") };
+
+  it("puts a Receipt button on each verified payment, and on no other", () => {
+    open({ charge, payments: [payment({ id: 5, status: "submitted", reference: "WAIT" }), payment({ id: 6, status: "verified", reference: "DONE" }), payment({ id: 7, status: "rejected", reference: "NO" })] });
+
+    const buttons = screen.getAllByRole("button", { name: /^Receipt for the/ });
+    expect(buttons).toHaveLength(1);
+    expect(within(buttons[0]!.closest("li")!).getByText(/DONE/)).toBeTruthy();
+  });
+
+  it("downloads the receipt of the payment that was chosen", async () => {
+    state.fetchReceipt.mockResolvedValue(file);
+    open({ charge, payments: [payment({ id: 6, status: "verified" })] });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Receipt for the/ }));
+
+    await waitFor(() => expect(state.saveFile).toHaveBeenCalledTimes(1));
+    expect(state.fetchReceipt).toHaveBeenCalledWith({ paymentId: 6 });
+    expect(state.saveFile.mock.calls[0]![1]).toBe(file.fileName);
+  });
+
+  it("offers one Final receipt once the fee is paid in full, and not before", async () => {
+    state.fetchFinal.mockResolvedValue({ ...file, fileName: "Connect-Tutors-Receipt-RCT-2026-J6820.pdf" });
+    open({ charge: { ...charge, status: "full_paid", paid: 6000, balance: 0 }, cancelled: false, payments: [payment({ id: 6 })] });
+
+    fireEvent.click(screen.getByRole("button", { name: "Final receipt of Job ID 6820" }));
+    await waitFor(() => expect(state.saveFile).toHaveBeenCalledTimes(1));
+    expect(state.fetchFinal).toHaveBeenCalledWith({ requestId: 21 });
+
+    cleanup();
+    open({ charge, cancelled: false, payments: [payment({ id: 6 })] });
+    expect(screen.queryByRole("button", { name: /Final receipt/ })).toBeNull();
+  });
+
+  it("has no Final receipt on a tuition that was cancelled, however much was paid", () => {
+    open({ charge: { ...charge, status: "full_paid", paid: 6000, balance: 0 }, cancelled: true, payments: [payment({ id: 6 })] });
+    expect(screen.queryByRole("button", { name: /Final receipt/ })).toBeNull();
+  });
+});
 
 describe("a tuition's payments", () => {
   it("names the tuition by its Job ID and shows what is owed, paid and left", () => {

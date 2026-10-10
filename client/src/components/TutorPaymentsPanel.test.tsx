@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,11 +8,16 @@ const state = vi.hoisted(() => ({
   accounts: { data: [] as Array<{ slotId: string; text: string | null }> },
   report: vi.fn(),
   invalidate: vi.fn(),
+  fetchReceipt: vi.fn(),
+  fetchFinal: vi.fn(),
+  saveFile: vi.fn(),
 }));
+
+vi.mock("@/lib/pdfPreview", () => ({ saveFile: state.saveFile, base64ToBytes: (base64: string) => new Uint8Array(Buffer.from(base64, "base64")) }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ tutorPayments: { mine: { invalidate: state.invalidate } } }),
+    useUtils: () => ({ tutorPayments: { mine: { invalidate: state.invalidate }, receipt: { fetch: state.fetchReceipt }, closedReceipt: { fetch: state.fetchFinal } } }),
     tutorPayments: {
       mine: { useQuery: () => state.overview },
       report: { useMutation: () => ({ mutate: state.report, isPending: false }) },
@@ -115,6 +120,45 @@ describe("the Tutor's Payment tab", () => {
     expect(dialog.getByRole("table", { name: "Schedule" })).toBeTruthy();
     expect(dialog.getByText(/bKash · 9A8B7C/)).toBeTruthy();
     expect(dialog.getByText("Waiting")).toBeTruthy();
+  });
+
+  it("gives the Tutor a receipt for each verified payment, and none for one still waiting", async () => {
+    state.fetchReceipt.mockResolvedValue({ fileName: "Connect-Tutors-Receipt-RCT-2026-000004.pdf", pdfBase64: Buffer.from("%PDF-1.7").toString("base64") });
+    state.overview = asOverview([tuition({ payments: [
+      { id: 3, amount: 3000, method: "bkash", reference: "WAIT", status: "submitted", paidAt: day(-1) },
+      { id: 4, amount: 2000, method: "cash", reference: null, status: "verified", paidAt: day(-2) },
+    ] })]);
+    render(<TutorPaymentsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Payments" }));
+
+    const buttons = screen.getAllByRole("button", { name: /^Receipt for the/ });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]!);
+    await waitFor(() => expect(state.saveFile).toHaveBeenCalledTimes(1));
+    expect(state.fetchReceipt).toHaveBeenCalledWith({ paymentId: 4 });
+  });
+
+  it("gives one Final receipt for a tuition that is paid in full, and none while something is owed or after it was cancelled", async () => {
+    state.fetchFinal.mockResolvedValue({ fileName: "Connect-Tutors-Receipt-RCT-2026-J6820.pdf", pdfBase64: Buffer.from("%PDF-1.7").toString("base64") });
+    state.overview = asOverview([tuition({ charge: charge({ status: "full_paid", paid: 6000, balance: 0 }) })]);
+    render(<TutorPaymentsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Payments" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Final receipt of Job ID 6820" }));
+    await waitFor(() => expect(state.saveFile).toHaveBeenCalledTimes(1));
+    expect(state.fetchFinal).toHaveBeenCalledWith({ requestId: 21 });
+
+    cleanup();
+    state.overview = asOverview([tuition()]);
+    render(<TutorPaymentsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Payments" }));
+    expect(screen.queryByRole("button", { name: /Final receipt/ })).toBeNull();
+
+    cleanup();
+    state.overview = asOverview([tuition({ cancelled: true, charge: charge({ status: "full_paid", paid: 6000, balance: 0 }) })]);
+    render(<TutorPaymentsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Payments" }));
+    expect(screen.queryByRole("button", { name: /Final receipt/ })).toBeNull();
   });
 
   it("reports a payment as the Tutor typed it", () => {

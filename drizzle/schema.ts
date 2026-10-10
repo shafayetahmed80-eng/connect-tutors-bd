@@ -91,6 +91,8 @@ export const tutorRequestOperationActionValues = [
   /** An Admin sent an Appointed tuition back to Live, removing its Tutor. */
   "admin_reopened",
   "admin_payment_status_changed",
+  /** The last payment came in: a Confirmed tuition's fee reached Full Paid and it moved to Closed. */
+  "tuition_closed",
 ] as const;
 export type TutorRequestOperationAction = (typeof tutorRequestOperationActionValues)[number];
 

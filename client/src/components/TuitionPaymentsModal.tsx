@@ -1,5 +1,6 @@
 import ChargeSummaryBlock, { onDate } from "@/components/ChargeSummaryBlock";
 import PaymentForm from "@/components/PaymentForm";
+import ReceiptButton from "@/components/ReceiptButton";
 import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
@@ -78,6 +79,11 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
 
         {charge ? <ChargeSummaryBlock charge={charge} /> : <p className="rounded-xl border border-dashed border-[#c9dce9] p-4 text-sm text-j-ink-muted">This tuition has no salary, so there is no charge.</p>}
 
+        {/* Once the fee is paid in full the tuition is Closed, and one receipt covers every payment. */}
+        {charge?.status === "full_paid" && !ledger.data.cancelled
+          ? <ReceiptButton label="Final receipt" ariaLabel={`Final receipt of Job ID ${jobIdForRequest(requestId)}`} load={() => utils.admin.closedTuitionReceipt.fetch({ requestId })} />
+          : null}
+
         <section aria-label="Payments on file">
           <h3 className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">On file</h3>
           {ledger.data.payments.length === 0
@@ -91,6 +97,9 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
                   {payment.fromCurrentTutor ? null : <span className="ml-2 text-2xs font-bold uppercase text-j-ink-faint">Previous Tutor</span>}
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-2xs font-bold ${statusTone[payment.status]}`}>{tuitionPaymentStatusLabels[payment.status]}</span>
+                {payment.status === "verified"
+                  ? <ReceiptButton label="Receipt" ariaLabel={`Receipt for the ${formatSalaryAmount(payment.amount)} payment of ${onDate(payment.paidAt)}`} load={() => utils.admin.paymentReceipt.fetch({ paymentId: payment.id })} />
+                  : null}
                 {payment.status === "submitted" ? <span className="flex gap-2">
                   <button type="button" disabled={decide.isPending} onClick={() => decide.mutate({ paymentId: payment.id, decision: "verified" })} className="h-8 rounded-lg bg-j-accent px-3 text-2xs font-bold text-white disabled:opacity-50">Verify</button>
                   <button type="button" disabled={decide.isPending} onClick={() => decide.mutate({ paymentId: payment.id, decision: "rejected" })} className="h-8 rounded-lg border border-j-border px-3 text-2xs font-bold text-j-ink-soft disabled:opacity-50">Reject</button>

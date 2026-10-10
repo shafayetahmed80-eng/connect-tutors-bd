@@ -2,13 +2,17 @@ import { randomBytes } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { guardianProfiles, locations, tuitionPayments, tutorNotifications, tutorRequestOperationEvents, tutorRequests, users } from "../drizzle/schema";
+import { jobIdForRequest } from "@shared/job-id";
 import {
+  getClosedTuitionReceiptFile,
   getDb,
+  getPaymentReceiptFile,
   getTuitionPaymentLedger,
   getTutorChargeOverview,
   listAdminClosedJobsPage,
   listAdminConfirmedJobsPage,
   listAdminPostedJobsPage,
+  listTuitionHistory,
   recordTuitionPayment,
 } from "./db";
 
@@ -24,6 +28,8 @@ const dayText = (date: Date) => date.toISOString().slice(0, 10);
 let guardianUserId = 0;
 let adminUserId = 0;
 let requestId = 0;
+const extraRequestIds: number[] = [];
+const otherTutorId = "dev-tutor-rakib";
 const city = `test-closed-city-${tag}`;
 const area = `test-closed-area-${tag}`;
 
@@ -54,6 +60,10 @@ beforeAll(async () => {
 afterAll(async () => {
   const db = await getDb();
   if (!db) return;
+  if (extraRequestIds.length) {
+    await db.delete(tuitionPayments).where(inArray(tuitionPayments.tutorRequestId, extraRequestIds));
+    await db.delete(tutorRequests).where(inArray(tutorRequests.id, extraRequestIds));
+  }
   if (requestId) {
     await db.delete(tutorNotifications).where(and(eq(tutorNotifications.tutorId, tutorId), inArray(tutorNotifications.deduplicationKey, [`closed:${requestId}:${tutorId}`])));
     const payments = await db.select({ id: tuitionPayments.id }).from(tuitionPayments).where(eq(tuitionPayments.tutorRequestId, requestId));
@@ -122,6 +132,18 @@ describe("a Confirmed tuition closes when its fee is paid in full", () => {
     expect(note?.message).toContain("Closed");
   });
 
+  it("puts one 'Closed' line in the tuition's history, and an ordinary change for the payments before it", async () => {
+    const history = await listTuitionHistory(requestId);
+    const actions = history.map(entry => entry.action);
+
+    // Part payment moved the status on (Full Due to Half Paid or Partial Paid); the last payment closed it.
+    expect(actions.filter(action => action === "tuition_closed")).toHaveLength(1);
+    expect(actions.filter(action => action === "admin_payment_status_changed").length).toBeGreaterThanOrEqual(1);
+    const closed = history.find(entry => entry.action === "tuition_closed");
+    expect(closed?.at).toBeInstanceOf(Date);
+    expect(closed?.changedFields ?? []).toEqual([]);
+  });
+
   it("lists the Closed row with the day it closed and a Payment Status of Full Paid", async () => {
     const [row] = (await listAdminClosedJobsPage(ask())).items;
     expect(row).toMatchObject({ id: requestId, paymentStatus: "full_paid" });
@@ -149,6 +171,89 @@ describe("a Closed tuition is still a Confirmed one wherever that matters", () =
   it("keeps its payments ledger open to the Admin", async () => {
     const ledger = await getTuitionPaymentLedger(requestId);
     expect(ledger?.charge).toMatchObject({ status: "full_paid", balance: 0 });
+  });
+});
+
+describe("receipts", () => {
+  const isPdf = (file: { pdfBase64: string } | undefined) => Buffer.from(file?.pdfBase64 ?? "", "base64").subarray(0, 5).toString("latin1") === "%PDF-";
+
+  async function ledgerPayments() {
+    return (await getTuitionPaymentLedger(requestId))!.payments;
+  }
+
+  it("gives the Tutor a receipt for each verified payment, numbered by the payment", async () => {
+    const verified = (await ledgerPayments()).filter(payment => payment.status === "verified");
+    expect(verified).toHaveLength(2);
+
+    for (const payment of verified) {
+      const file = await getPaymentReceiptFile({ paymentId: payment.id, tutorId });
+      expect(isPdf(file)).toBe(true);
+      expect(file!.fileName).toMatch(new RegExp(`^Connect-Tutors-Receipt-RCT-\\d{4}-0*${payment.id}\\.pdf$`));
+    }
+  });
+
+  it("gives an Admin the same receipt without asking whose it is", async () => {
+    const [payment] = await ledgerPayments();
+    const forTutor = await getPaymentReceiptFile({ paymentId: payment!.id, tutorId });
+    const forAdmin = await getPaymentReceiptFile({ paymentId: payment!.id });
+    expect(isPdf(forAdmin)).toBe(true);
+    expect(forAdmin!.fileName).toBe(forTutor!.fileName);
+  });
+
+  it("will not give another Tutor's payment, a payment not found, one still waiting, or one rejected", async () => {
+    const [payment] = await ledgerPayments();
+    expect(await getPaymentReceiptFile({ paymentId: payment!.id, tutorId: otherTutorId })).toBeUndefined();
+    expect(await getPaymentReceiptFile({ paymentId: 2_000_000_000, tutorId })).toBeUndefined();
+    expect(await getPaymentReceiptFile({ paymentId: 2_000_000_000 })).toBeUndefined();
+
+    const db = await database();
+    const paidAt = ago(1);
+    const [waiting] = await db.insert(tuitionPayments).values({ tutorRequestId: requestId, tutorId, amount: 100, method: "cash", status: "submitted", paidAt });
+    const [rejected] = await db.insert(tuitionPayments).values({ tutorRequestId: requestId, tutorId, amount: 100, method: "cash", status: "rejected", paidAt });
+    expect(await getPaymentReceiptFile({ paymentId: Number(waiting.insertId), tutorId })).toBeUndefined();
+    expect(await getPaymentReceiptFile({ paymentId: Number(rejected.insertId) })).toBeUndefined();
+  });
+
+  it("still gives a Tutor the receipt for money they paid on a tuition that is no longer theirs", async () => {
+    const db = await database();
+    // A tuition now held by someone else, with a verified payment from the Tutor who held it before.
+    const [made] = await db.insert(tutorRequests).values({
+      guardianUserId, tuitionType: "home", category: "Bangla Medium", classCourse: "Class 6", subjects: JSON.stringify(["Math"]),
+      daysPerWeek: 3, locationText: "Dhaka", budgetAmount: 8000, status: "matched", tutorId: otherTutorId, appointmentConfirmedAt: ago(5),
+    });
+    const earlierId = Number(made.insertId);
+    extraRequestIds.push(earlierId);
+    const [payment] = await db.insert(tuitionPayments).values({ tutorRequestId: earlierId, tutorId, amount: 500, method: "bkash", status: "verified", paidAt: ago(4), decidedAt: ago(4) });
+
+    const file = await getPaymentReceiptFile({ paymentId: Number(payment.insertId), tutorId });
+    expect(isPdf(file)).toBe(true);
+    // The tuition's charge now belongs to the new Tutor, so this one is not asked for a final receipt on it.
+    expect(await getClosedTuitionReceiptFile({ requestId: earlierId, tutorId })).toBeUndefined();
+  });
+
+  it("gives the Closed tuition's Tutor, and an Admin, one final receipt numbered by the Job ID", async () => {
+    const forTutor = await getClosedTuitionReceiptFile({ requestId, tutorId });
+    const forAdmin = await getClosedTuitionReceiptFile({ requestId });
+
+    expect(isPdf(forTutor)).toBe(true);
+    expect(forTutor!.fileName).toMatch(/^Connect-Tutors-Receipt-RCT-\d{4}-J\d+\.pdf$/);
+    expect(forTutor!.fileName).toContain(jobIdForRequest(requestId));
+    expect(forAdmin!.fileName).toBe(forTutor!.fileName);
+  });
+
+  it("will not give the final receipt to another Tutor, or for a tuition that is not Closed", async () => {
+    expect(await getClosedTuitionReceiptFile({ requestId, tutorId: otherTutorId })).toBeUndefined();
+    expect(await getClosedTuitionReceiptFile({ requestId: 2_000_000_000 })).toBeUndefined();
+
+    const db = await database();
+    const [made] = await db.insert(tutorRequests).values({
+      guardianUserId, tuitionType: "home", category: "Bangla Medium", classCourse: "Class 7", subjects: JSON.stringify(["Math"]),
+      daysPerWeek: 3, locationText: "Dhaka", budgetAmount: 8000, status: "matched", tutorId, appointmentConfirmedAt: ago(2),
+    });
+    const openId = Number(made.insertId);
+    extraRequestIds.push(openId);
+    // Confirmed and unpaid: nothing to be a final receipt for.
+    expect(await getClosedTuitionReceiptFile({ requestId: openId, tutorId })).toBeUndefined();
   });
 });
 

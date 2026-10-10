@@ -1399,6 +1399,24 @@ export const appRouter = router({
         if (result.outcome === "reported") return result;
         throw tuitionPaymentError(result);
       }),
+    /** The receipt for one of this Tutor's verified payments, as a PDF. */
+    receipt: activeTutorProcedure
+      .input(z.object({ paymentId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
+        const file = await db.getPaymentReceiptFile({ paymentId: input.paymentId, tutorId });
+        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "This receipt is unavailable." });
+        return file;
+      }),
+    /** The final receipt of a tuition of this Tutor's that is Closed. */
+    closedReceipt: activeTutorProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
+        const file = await db.getClosedTuitionReceiptFile({ requestId: input.requestId, tutorId });
+        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "This receipt is unavailable." });
+        return file;
+      }),
   }),
   siteContent: router({
     // Public: the overrides are the published copy, and some of the pages that
@@ -2592,6 +2610,22 @@ export const appRouter = router({
         const ledger = await db.getTuitionPaymentLedger(input.requestId);
         if (!ledger) throw new TRPCError({ code: "NOT_FOUND", message: "This confirmed tuition is unavailable." });
         return ledger;
+      }),
+    /** The receipt for any verified payment, as a PDF: the Admin's copy of what the Tutor can download. */
+    paymentReceipt: adminProcedure
+      .input(z.object({ paymentId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const file = await db.getPaymentReceiptFile({ paymentId: input.paymentId });
+        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "This receipt is unavailable." });
+        return file;
+      }),
+    /** The final receipt of a Closed tuition, as a PDF. */
+    closedTuitionReceipt: adminProcedure
+      .input(z.object({ requestId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const file = await db.getClosedTuitionReceiptFile({ requestId: input.requestId });
+        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "This receipt is unavailable." });
+        return file;
       }),
     recordTuitionPayment: adminProcedure
       .input(z.object({

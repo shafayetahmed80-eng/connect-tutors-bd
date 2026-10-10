@@ -1,6 +1,7 @@
 import ChargeSummaryBlock, { onDate } from "@/components/ChargeSummaryBlock";
 import PaymentForm from "@/components/PaymentForm";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
+import ReceiptButton from "@/components/ReceiptButton";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 import { statusTone } from "@/components/TuitionPaymentsModal";
@@ -145,6 +146,11 @@ function TutorPaymentModal({ item, requestId, onClose }: { item: TutorTuition | 
       <div className="space-y-5">
         {charge ? <ChargeSummaryBlock charge={charge} settled={Boolean(item?.cancelled)} /> : null}
 
+        {/* Paid in full: the tuition is Closed, and one receipt covers every payment. */}
+        {charge?.status === "full_paid" && item && !item.cancelled
+          ? <ReceiptButton label="Final receipt" ariaLabel={`Final receipt of Job ID ${jobIdForRequest(requestId)}`} load={() => utils.tutorPayments.closedReceipt.fetch({ requestId })} />
+          : null}
+
         <section aria-label="Your payments">
           <h3 className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Your payments</h3>
           {!item || item.payments.length === 0
@@ -155,6 +161,9 @@ function TutorPaymentModal({ item, requestId, onClose }: { item: TutorTuition | 
                 <span className="w-24 shrink-0 font-bold tabular-nums text-j-ink">{formatSalaryAmount(payment.amount)}</span>
                 <span className="min-w-0 flex-1 text-j-ink-soft">{tuitionPaymentMethodLabels[payment.method]}{payment.reference ? ` · ${payment.reference}` : ""}</span>
                 <span className={`rounded-full border px-2.5 py-1 text-2xs font-bold ${statusTone[payment.status]}`}>{tuitionPaymentStatusLabels[payment.status]}</span>
+                {payment.status === "verified"
+                  ? <ReceiptButton label="Receipt" ariaLabel={`Receipt for the ${formatSalaryAmount(payment.amount)} payment of ${onDate(payment.paidAt)}`} load={() => utils.tutorPayments.receipt.fetch({ paymentId: payment.id })} />
+                  : null}
               </li>)}
             </ul>}
         </section>

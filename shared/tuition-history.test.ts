@@ -10,6 +10,11 @@ describe("tuitionHistoryActionLabel", () => {
     expect(tuitionHistoryActionLabel("admin_cancelled")).toBe("Cancelled by an Admin");
   });
 
+  it("names the line a tuition gets when its fee is paid in full, apart from an ordinary payment-status change", () => {
+    expect(tuitionHistoryActionLabel("tuition_closed")).toBe("Closed - fee paid in full");
+    expect(tuitionHistoryActionLabel("admin_payment_status_changed")).toBe("Payment status changed");
+  });
+
   it("still names a step the Job Board no longer has, so an old tuition's history reads whole", () => {
     expect(tuitionHistoryActionLabel("guardian_confirmed")).toBe("Guardian call recorded");
     expect(tuitionHistoryActionLabel("approve")).toBe("Approved for the Job Board");
