@@ -12,7 +12,7 @@ export const adminGuardianRequestQueueFiltersSchema = z.object({
   requestedTo: z.coerce.date().optional(),
   requestType: z.enum(["remove_tutor", "cancel_tuition"]).optional(),
   postedBy: z.enum(["guardian", "admin"]).optional(),
-  tuitionStage: z.enum(["live", "appointed", "confirmed", "cancelled"]).optional(),
+  tuitionStage: z.enum(["live", "appointed", "confirmed", "closed", "cancelled"]).optional(),
 });
 
 export type AdminGuardianRequestQueueFilters = z.infer<typeof adminGuardianRequestQueueFiltersSchema>;

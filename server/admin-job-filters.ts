@@ -36,6 +36,8 @@ const baseFilters = z.object({
   appointedTo: z.coerce.date().optional(),
   confirmedFrom: z.coerce.date().optional(),
   confirmedTo: z.coerce.date().optional(),
+  closedFrom: z.coerce.date().optional(),
+  closedTo: z.coerce.date().optional(),
   cancelledFrom: z.coerce.date().optional(),
   cancelledTo: z.coerce.date().optional(),
   tutorGender: z.enum(["male", "female"]).optional(),
@@ -51,6 +53,7 @@ const dateRanges = [
   ["postedFrom", "postedTo"],
   ["appointedFrom", "appointedTo"],
   ["confirmedFrom", "confirmedTo"],
+  ["closedFrom", "closedTo"],
   ["cancelledFrom", "cancelledTo"],
 ] as const;
 

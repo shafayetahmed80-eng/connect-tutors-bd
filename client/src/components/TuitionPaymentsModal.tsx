@@ -34,6 +34,8 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
   const refresh = () => {
     void utils.admin.listTuitionPayments.invalidate({ requestId });
     void utils.admin.listConfirmedJobs.invalidate();
+    // The payment that makes it Full Paid moves the tuition from Confirmed to Closed, and a payment taken back moves it back.
+    void utils.admin.listClosedJobs.invalidate();
   };
 
   const [clearSignal, setClearSignal] = useState(0);

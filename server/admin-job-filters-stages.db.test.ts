@@ -3,7 +3,7 @@ import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { confirmationLetters, guardianProfiles, locations, tuitionSettlements, tutorRequests, users } from "../drizzle/schema";
 import type { AdminJobFilters } from "./admin-job-filters";
-import { getDb, listAdminAppointedJobsPage, listAdminCancelledChargesPage, listAdminConfirmedJobsPage, listAdminPostedJobsPage } from "./db";
+import { getDb, listAdminAppointedJobsPage, listAdminCancelledChargesPage, listAdminClosedJobsPage, listAdminConfirmedJobsPage, listAdminPostedJobsPage } from "./db";
 
 // Both Tutors are seeded by scripts/seed-dev-discovery-fixtures.mjs: Amina is a
 // woman, Rakib a man. Every row this test makes is removed afterwards, by id.
@@ -51,8 +51,8 @@ beforeAll(async () => {
   await make("a1", { status: "matched", tutorId: womanId, appointedAt: ago(20), createdAt: ago(25) });
   await make("a2", { status: "matched", tutorId: manId, appointedAt: ago(1), createdAt: ago(2), tuitionCityLocationId: city, tuitionLocationId: area, tuitionLocationLabel: "Test Area, Test City", budgetAmount: 7000 });
 
-  // Confirmed: fully paid with an issued letter; half paid with only a draft.
-  const c1 = await make("c1", { status: "matched", tutorId: womanId, appointedAt: ago(9), appointmentConfirmedAt: ago(3), paymentStatus: "full_paid", createdAt: ago(12) });
+  // Confirmed: fully paid (so Closed) with an issued letter; half paid (still Confirmed) with only a draft.
+  const c1 = await make("c1", { status: "matched", tutorId: womanId, appointedAt: ago(9), appointmentConfirmedAt: ago(3), paymentStatus: "full_paid", paymentCompletedAt: ago(2), createdAt: ago(12) });
   const c2 = await make("c2", { status: "matched", tutorId: manId, appointedAt: ago(40), appointmentConfirmedAt: ago(30), paymentStatus: "half_paid", createdAt: ago(45) });
   await db.insert(confirmationLetters).values({
     tutorRequestId: c1, guardianUserId, tutorId: womanId, createdByAdminUserId: guardianUserId, issuedByAdminUserId: guardianUserId, status: "issued",
@@ -91,6 +91,7 @@ const namesOf = (items: Array<{ id: number }>) => Object.keys(key).filter(name =
 const ask = (filters: AdminJobFilters) => ({ query: "", page: 1, pageSize: 100, filters: { guardian: tag, ...filters } });
 const appointed = async (filters: AdminJobFilters = {}) => namesOf((await listAdminAppointedJobsPage(ask(filters))).items);
 const confirmed = async (filters: AdminJobFilters = {}) => namesOf((await listAdminConfirmedJobsPage(ask(filters))).items);
+const closed = async (filters: AdminJobFilters = {}) => namesOf((await listAdminClosedJobsPage(ask(filters))).items);
 const cancelled = async (filters: AdminJobFilters = {}) => namesOf((await listAdminCancelledChargesPage(ask(filters))).items);
 
 describe("the Appointed Jobs list", () => {
@@ -128,32 +129,63 @@ describe("the Appointed Jobs list", () => {
 });
 
 describe("the Confirmed Jobs list", () => {
-  it("lists the confirmed ones", async () => {
-    expect(await confirmed()).toEqual(["c1", "c2"]);
+  it("lists the confirmed ones, and not the one whose fee is paid in full", async () => {
+    expect(await confirmed()).toEqual(["c2"]);
   });
 
   it("narrows by the Payment Status the ledger keeps, one or several", async () => {
-    expect(await confirmed({ paymentStatuses: ["full_paid"] })).toEqual(["c1"]);
     expect(await confirmed({ paymentStatuses: ["half_paid"] })).toEqual(["c2"]);
-    expect(await confirmed({ paymentStatuses: ["half_paid", "full_paid"] })).toEqual(["c1", "c2"]);
+    expect(await confirmed({ paymentStatuses: ["half_paid", "partial_paid"] })).toEqual(["c2"]);
     expect(await confirmed({ paymentStatuses: ["full_due"] })).toEqual([]);
+    // Full Paid is Closed, so no Confirmed list ever holds one.
+    expect(await confirmed({ paymentStatuses: ["full_paid"] })).toEqual([]);
   });
 
   it("separates a tuition whose letter is issued from one with a draft or none", async () => {
-    expect(await confirmed({ letter: "issued" })).toEqual(["c1"]);
+    expect(await confirmed({ letter: "issued" })).toEqual([]);
     expect(await confirmed({ letter: "not_issued" })).toEqual(["c2"]);
   });
 
   it("narrows by the day it was confirmed, the day it was appointed, and days since", async () => {
-    expect(await confirmed({ confirmedFrom: ago(10) })).toEqual(["c1"]);
+    expect(await confirmed({ confirmedFrom: ago(10) })).toEqual([]);
     expect(await confirmed({ confirmedTo: ago(10) })).toEqual(["c2"]);
-    expect(await confirmed({ appointedFrom: ago(20) })).toEqual(["c1"]);
+    expect(await confirmed({ appointedFrom: ago(20) })).toEqual([]);
     expect(await confirmed({ daysInStage: 14 })).toEqual(["c2"]);
   });
 
   it("narrows by the Tutor's gender", async () => {
-    expect(await confirmed({ tutorGender: "female" })).toEqual(["c1"]);
+    expect(await confirmed({ tutorGender: "female" })).toEqual([]);
     expect(await confirmed({ tutorGender: "male" })).toEqual(["c2"]);
+  });
+});
+
+describe("the Closed Jobs list", () => {
+  it("lists the Confirmed tuition whose fee is Full Paid, with the day it closed", async () => {
+    expect(await closed()).toEqual(["c1"]);
+    const [row] = (await listAdminClosedJobsPage(ask({}))).items;
+    expect(row?.closedAt).toBeInstanceOf(Date);
+    expect(row?.paymentStatus).toBe("full_paid");
+  });
+
+  it("reads the same dates and letter choices as Confirmed, and the day it closed", async () => {
+    expect(await closed({ confirmedFrom: ago(10) })).toEqual(["c1"]);
+    expect(await closed({ confirmedTo: ago(10) })).toEqual([]);
+    expect(await closed({ appointedFrom: ago(20) })).toEqual(["c1"]);
+    expect(await closed({ letter: "issued" })).toEqual(["c1"]);
+    expect(await closed({ letter: "not_issued" })).toEqual([]);
+    expect(await closed({ closedFrom: ago(5) })).toEqual(["c1"]);
+    expect(await closed({ closedTo: ago(5) })).toEqual([]);
+  });
+
+  it("counts days from the day the last payment closed it, not the day it was confirmed", async () => {
+    // Confirmed 3 days ago but closed 2 days ago.
+    expect(await closed({ daysInStage: 1 })).toEqual(["c1"]);
+    expect(await closed({ daysInStage: 3 })).toEqual([]);
+  });
+
+  it("narrows by the Tutor's gender", async () => {
+    expect(await closed({ tutorGender: "female" })).toEqual(["c1"]);
+    expect(await closed({ tutorGender: "male" })).toEqual([]);
   });
 });
 
@@ -197,19 +229,25 @@ describe("the Cancelled list", () => {
 });
 
 describe("the same choices on the Posted jobs board", () => {
-  const board = async (stage: "appointed" | "confirmed" | "cancelled", filters: AdminJobFilters) => {
+  const board = async (stage: "appointed" | "confirmed" | "closed" | "cancelled", filters: AdminJobFilters) => {
     const page = await listAdminPostedJobsPage({ query: "", stage, page: 1, pageSize: 100, postedBy: "all", filters: { guardian: tag, ...filters } });
     return { names: namesOf(page.items), counts: page.counts };
   };
 
   it("narrows the open stage with its own choices and leaves the other stages' counts alone", async () => {
-    const confirmedNow = await board("confirmed", { paymentStatuses: ["full_paid"] });
-    expect(confirmedNow.names).toEqual(["c1"]);
-    expect(confirmedNow.counts).toEqual({ pending: 0, live: 0, appointed: 2, confirmed: 1, cancelled: 3 });
+    const confirmedNow = await board("confirmed", { paymentStatuses: ["half_paid"] });
+    expect(confirmedNow.names).toEqual(["c2"]);
+    expect(confirmedNow.counts).toEqual({ pending: 0, live: 0, appointed: 2, confirmed: 1, closed: 1, cancelled: 3 });
+
+    const closedNow = await board("closed", { closedFrom: ago(5), letter: "issued" });
+    expect(closedNow.names).toEqual(["c1"]);
+    expect(closedNow.counts.closed).toBe(1);
+    expect(closedNow.counts.confirmed).toBe(1);
 
     const cancelledNow = await board("cancelled", { settlement: "refund" });
     expect(cancelledNow.names).toEqual(["x2"]);
-    expect(cancelledNow.counts.confirmed).toBe(2);
+    expect(cancelledNow.counts.confirmed).toBe(1);
+    expect(cancelledNow.counts.closed).toBe(1);
 
     const appointedNow = await board("appointed", { tutorGender: "female", appointedTo: ago(5) });
     expect(appointedNow.names).toEqual(["a1"]);

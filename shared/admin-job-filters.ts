@@ -16,7 +16,7 @@ import { cancellationReasonLabels, cancellationReasons } from "./platform-charge
 import { jobPaymentStatusLabels, jobPaymentStatusValues } from "./job-payment-status";
 import { parseSalaryAmount } from "./salary-amount";
 
-export type AdminJobStage = "pending" | "live" | "appointed" | "confirmed" | "cancelled";
+export type AdminJobStage = "pending" | "live" | "appointed" | "confirmed" | "closed" | "cancelled";
 
 export type AdminJobFilterState = {
   /** `yyyy-mm-dd`, as a date input gives it. */
@@ -60,14 +60,17 @@ export type AdminJobFilterState = {
   /** The day the Guardian kept the Tutor; Confirmed. */
   confirmedFrom: string;
   confirmedTo: string;
+  /** The day the last payment closed the tuition; Closed. */
+  closedFrom: string;
+  closedTo: string;
   /** The day the tuition was cancelled; Cancelled. */
   cancelledFrom: string;
   cancelledTo: string;
   /** The gender of the Tutor who holds the tuition. */
   tutorGender: "" | "male" | "female";
-  /** Confirmed and Cancelled: how much of the fee is paid. */
+  /** Confirmed and Cancelled: how much of the fee is paid. (A Closed tuition is always Full Paid.) */
   paymentStatuses: string[];
-  /** Confirmed: whether a Confirmation Letter has been issued. */
+  /** Confirmed and Closed: whether a Confirmation Letter has been issued. */
   letter: "" | "issued" | "not_issued";
   /** Cancelled: whether the Admin has settled what the Tutor owes or is owed. */
   settlement: "" | "not_settled" | "settled" | "refund";
@@ -107,6 +110,8 @@ export const DEFAULT_ADMIN_JOB_FILTERS: AdminJobFilterState = {
   appointedTo: "",
   confirmedFrom: "",
   confirmedTo: "",
+  closedFrom: "",
+  closedTo: "",
   cancelledFrom: "",
   cancelledTo: "",
   tutorGender: "",
@@ -131,6 +136,7 @@ export const STAGE_ONLY_FILTERS: Partial<Record<AdminJobStage, readonly FilterKe
   live: ["applicants"],
   appointed: ["appointedFrom", "appointedTo", "tutorGender"],
   confirmed: ["confirmedFrom", "confirmedTo", "appointedFrom", "appointedTo", "paymentStatuses", "letter", "tutorGender"],
+  closed: ["closedFrom", "closedTo", "confirmedFrom", "confirmedTo", "appointedFrom", "appointedTo", "letter", "tutorGender"],
   cancelled: ["cancelledFrom", "cancelledTo", "settlement", "refundDisposition", "settlementReasons", "cancelReason", "paymentStatuses", "tutorGender"],
 };
 
@@ -266,6 +272,8 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
   const appointedTo = endOfDay(filters.appointedTo);
   const confirmedFrom = startOfDay(filters.confirmedFrom);
   const confirmedTo = endOfDay(filters.confirmedTo);
+  const closedFrom = startOfDay(filters.closedFrom);
+  const closedTo = endOfDay(filters.closedTo);
   const cancelledFrom = startOfDay(filters.cancelledFrom);
   const cancelledTo = endOfDay(filters.cancelledTo);
   const salaryFrom = salaryOf(filters.salaryFrom);
@@ -301,6 +309,8 @@ export function buildAdminJobFilterInput(filters: AdminJobFilterState) {
     ...(appointedTo ? { appointedTo } : {}),
     ...(confirmedFrom ? { confirmedFrom } : {}),
     ...(confirmedTo ? { confirmedTo } : {}),
+    ...(closedFrom ? { closedFrom } : {}),
+    ...(closedTo ? { closedTo } : {}),
     ...(cancelledFrom ? { cancelledFrom } : {}),
     ...(cancelledTo ? { cancelledTo } : {}),
     ...(filters.tutorGender ? { tutorGender: filters.tutorGender } : {}),
@@ -319,6 +329,7 @@ const dateRanges = [
   ["postedFrom", "postedTo"],
   ["appointedFrom", "appointedTo"],
   ["confirmedFrom", "confirmedTo"],
+  ["closedFrom", "closedTo"],
   ["cancelledFrom", "cancelledTo"],
 ] as const;
 

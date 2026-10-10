@@ -2546,11 +2546,11 @@ export const appRouter = router({
     listPostedJobs: adminProcedure
       .input(z.object({
         query: z.string().trim().max(100).default(""),
-        stage: z.enum(["all", "pending", "live", "appointed", "confirmed", "cancelled"]).default("all"),
+        stage: z.enum(["all", "pending", "live", "appointed", "confirmed", "closed", "cancelled"]).default("all"),
         page: z.number().int().positive().default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
         postedBy: z.enum(["all", "admin"]).default("all"),
-        stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "cancelled"])).min(1).max(5).optional(),
+        stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "closed", "cancelled"])).min(1).max(6).optional(),
         filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
@@ -2576,6 +2576,15 @@ export const appRouter = router({
         filters: adminJobFiltersSchema.optional(),
       }))
       .query(({ input }) => db.listAdminConfirmedJobsPage(input)),
+    /** Tuitions in the Closed stage: Confirmed, with the fee Full Paid. */
+    listClosedJobs: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(100).default(""),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        filters: adminJobFiltersSchema.optional(),
+      }))
+      .query(({ input }) => db.listAdminClosedJobsPage(input)),
     // A tuition's Payment Status is worked out from these payments; it is never set by hand.
     listTuitionPayments: adminProcedure
       .input(z.object({ requestId: z.number().int().positive() }))

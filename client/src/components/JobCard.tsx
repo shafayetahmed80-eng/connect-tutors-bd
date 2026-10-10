@@ -20,7 +20,7 @@ export type JobCardData = {
   title: string;
   postedAt: string;
   statusLabel: string;
-  statusTone: "pending" | "live" | "appointed" | "confirmed" | "cancelled";
+  statusTone: "pending" | "live" | "appointed" | "confirmed" | "closed" | "cancelled";
   tuitionType: string;
   budgetAmount: number | null;
   subjects: unknown;
@@ -33,6 +33,7 @@ const statusToneClass: Record<JobCardData["statusTone"], string> = {
   live: "text-[#0f7048]",
   appointed: "text-j-accent",
   confirmed: "text-[#0f7048]",
+  closed: "text-[#4b5b6b]",
   cancelled: "text-[#8a94a0]",
 };
 

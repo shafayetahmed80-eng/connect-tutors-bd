@@ -51,12 +51,14 @@ function ConfirmationLetterCell({ requestId, confirmedAt, budgetAmount, letter }
     onSuccess: result => {
       if (result.letterId) setPreviewLetterId(result.letterId);
       void utils.admin.listConfirmedJobs.invalidate();
+      void utils.admin.listClosedJobs.invalidate();
     },
   });
   const issueLetter = trpc.admin.issueConfirmationLetter.useMutation({
     onSuccess: () => {
       setPreviewLetterId(null);
       void utils.admin.listConfirmedJobs.invalidate();
+      void utils.admin.listClosedJobs.invalidate();
     },
   });
 
@@ -100,16 +102,20 @@ function ConfirmationLetterCell({ requestId, confirmedAt, budgetAmount, letter }
  * the Tutor's profile, and the Actions menu removes the Tutor or cancels the
  * tuition.
  */
-export function AdminConfirmedJobsContent() {
+export function AdminConfirmedJobsContent({ stage = "confirmed" }: { /** Closed is the Confirmed tuitions whose fee is Full Paid; it reads the same way. */ stage?: "confirmed" | "closed" } = {}) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
-  const jobs = trpc.admin.listConfirmedJobs.useQuery({ query, page, pageSize, filters: filterPanel.input });
+  // One list per stage, never both: `stage` is fixed for as long as this is on screen.
+  const list = stage === "closed" ? trpc.admin.listClosedJobs : trpc.admin.listConfirmedJobs;
+  const jobs = list.useQuery({ query, page, pageSize, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
+  const word = stage === "closed" ? "closed" : "confirmed";
+  const Word = stage === "closed" ? "Closed" : "Confirmed";
 
   const [payingRequestId, setPayingRequestId] = useState<number | null>(null);
-  const rowActions = useAdminTuitionRowActions("confirmed");
+  const rowActions = useAdminTuitionRowActions(stage);
 
   type ConfirmedJob = (typeof items)[number];
   const columns: RecordColumn<ConfirmedJob>[] = [
@@ -127,6 +133,8 @@ export function AdminConfirmedJobsContent() {
     { key: "tutorPhone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{job.tutorPhone || notSet}</span> },
     { key: "appointedAt", label: "Appointed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.appointedAt) ?? notSet}</span> },
     { key: "confirmedAt", label: "Confirmed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.confirmedAt) ?? notSet}</span> },
+    // The day the last payment was made - when the tuition became Closed.
+    ...(stage === "closed" ? [{ key: "closedAt", label: "Closed", cellClassName: "whitespace-nowrap", cell: (job: ConfirmedJob) => <span className="text-j-ink-strong">{onDate(job.closedAt) ?? notSet}</span> } satisfies RecordColumn<ConfirmedJob>] : []),
     // The stored status follows the ledger, and the ledger's own reading is what a row shows.
     { key: "paymentStatus", label: "Payment Status", cell: job => <PaymentStatusPill status={job.charge?.status ?? job.paymentStatus} /> },
     // What the Tutor owes Connect Tutors, worked out from the rates the tuition
@@ -170,7 +178,7 @@ export function AdminConfirmedJobsContent() {
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <label className="relative block max-w-sm">
-      <span className="sr-only">Search confirmed jobs</span>
+      <span className="sr-only">Search {word} jobs</span>
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
       <input
         value={query}
@@ -182,26 +190,26 @@ export function AdminConfirmedJobsContent() {
 
     <AdminJobFilterBar
       filters={filterPanel}
-      stage="confirmed"
-      eyebrow="Confirmed Jobs"
+      stage={stage}
+      eyebrow={`${Word} Jobs`}
       count={jobs.data?.total}
       total={jobs.data?.total}
       loading={jobs.isLoading}
       searching={query.trim().length > 0}
-      idleCaption="currently confirmed"
-      matchingCaption="matching confirmed jobs"
-      panelLabel="Confirmed jobs filters"
+      idleCaption={`currently ${word}`}
+      matchingCaption={`matching ${word} jobs`}
+      panelLabel={`${Word} jobs filters`}
     />
 
-    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading confirmed jobs…</div> : null}
-    {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Confirmed jobs could not be loaded.</div> : null}
+    {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading {word} jobs…</div> : null}
+    {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{Word} jobs could not be loaded.</div> : null}
 
     {!jobs.isLoading && !jobs.isError ? <RecordTable
-      caption="Confirmed jobs, the Tutor confirmed on each, and its payment status"
+      caption={`${Word} jobs, the Tutor confirmed on each, and its payment status`}
       columns={columns}
       rows={items}
       rowKey={job => job.id}
-      empty={`No confirmed job${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}.`}
+      empty={`No ${word} job${query.trim() || filterPanel.activeCount > 0 ? " for this search" : ""}.`}
       tableClassName="min-w-[92rem]"
       animateEntrance
     /> : null}
@@ -210,7 +218,7 @@ export function AdminConfirmedJobsContent() {
       page={page}
       totalPages={jobs.data?.totalPages ?? 1}
       onPage={setPage}
-      label="Confirmed job pages"
+      label={`${Word} job pages`}
       pageSize={pageSize}
       pageSizeOptions={[20, 50, 100]}
       onPageSize={next => { setPageSize(next); setPage(1); }}
@@ -225,12 +233,14 @@ export function AdminConfirmedJobsContent() {
 
 const tabs = [
   { key: "confirmed", label: "Confirmed" },
+  { key: "closed", label: "Closed" },
   { key: "cancelled", label: "Cancelled" },
 ] as const;
 
 /**
- * Confirmed tuitions, and the ones cancelled after they were confirmed - where
- * an Admin settles what the Tutor owes or is owed back.
+ * Confirmed tuitions, the ones whose fee is paid in full (Closed), and the ones
+ * cancelled after they were confirmed - where an Admin settles what the Tutor
+ * owes or is owed back.
  */
 export default function AdminConfirmedJobs() {
   const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("confirmed");
@@ -249,7 +259,7 @@ export default function AdminConfirmedJobs() {
           {tab === item.key ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}
         </button>)}
       </div>
-      {tab === "confirmed" ? <AdminConfirmedJobsContent /> : <AdminCancelledChargesContent />}
+      {tab === "cancelled" ? <AdminCancelledChargesContent /> : <AdminConfirmedJobsContent key={tab} stage={tab} />}
     </div>
   </AdminWorkspaceLayout>;
 }

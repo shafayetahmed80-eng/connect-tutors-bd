@@ -121,6 +121,39 @@ describe("clearOtherStageFilters", () => {
   });
 });
 
+describe("the Closed stage's choices", () => {
+  const later = {
+    ...DEFAULT_ADMIN_JOB_FILTERS,
+    closedFrom: "2026-10-05", closedTo: "2026-10-09", confirmedFrom: "2026-10-02", appointedFrom: "2026-10-01",
+    tutorGender: "female" as const, letter: "issued" as const, paymentStatuses: ["half_paid"],
+  };
+
+  it("send the day it closed as a whole-day range", () => {
+    expect(buildAdminJobFilterInput({ ...DEFAULT_ADMIN_JOB_FILTERS, closedFrom: "2026-10-05", closedTo: "2026-10-09" })).toEqual({
+      closedFrom: new Date("2026-10-05T00:00:00"), closedTo: new Date("2026-10-09T23:59:59.999"),
+    });
+  });
+
+  it("keep the dates, the letter and the gender Confirmed has, but no Payment Status: a Closed tuition is always Full Paid", () => {
+    expect(clearOtherStageFilters(later, "closed")).toEqual({
+      ...DEFAULT_ADMIN_JOB_FILTERS,
+      closedFrom: "2026-10-05", closedTo: "2026-10-09", confirmedFrom: "2026-10-02", appointedFrom: "2026-10-01", tutorGender: "female", letter: "issued",
+    });
+  });
+
+  it("are dropped when the Admin moves to Confirmed, which has no closing day", () => {
+    const confirmed = clearOtherStageFilters(later, "confirmed");
+    expect(confirmed.closedFrom).toBe("");
+    expect(confirmed.closedTo).toBe("");
+    expect(confirmed.paymentStatuses).toEqual(["half_paid"]);
+  });
+
+  it("are checked for a range the wrong way round", () => {
+    expect(adminJobDatesOutOfOrder({ closedFrom: "2026-10-09", closedTo: "2026-10-01" })).toBe(true);
+    expect(adminJobDatesOutOfOrder({ closedFrom: "2026-10-01", closedTo: "2026-10-09" })).toBe(false);
+  });
+});
+
 describe("the two ranges", () => {
   it("say when the lowest is above the highest", () => {
     expect(adminJobDatesOutOfOrder({ postedFrom: "2026-10-09", postedTo: "2026-10-01" })).toBe(true);

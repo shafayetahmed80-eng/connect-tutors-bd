@@ -154,6 +154,16 @@ export function AdminJobFilterFields({ draft, setDraft, options, stage, showPost
       <FilterSelect label="Confirmation Letter" value={draft.letter} onChange={value => set({ letter: value as AdminJobFilterState["letter"] })} options={[...adminJobLetterOptions]} />
       {tutorGender}
     </> : null}
+    {stage === "closed" ? <>
+      <DateField label="Closed Date From" value={draft.closedFrom} max={draft.closedTo || undefined} onChange={closedFrom => set({ closedFrom })} />
+      <DateField label="Closed Date To" value={draft.closedTo} min={draft.closedFrom || undefined} onChange={closedTo => set({ closedTo })} />
+      <DateField label="Confirmed Date From" value={draft.confirmedFrom} max={draft.confirmedTo || undefined} onChange={confirmedFrom => set({ confirmedFrom })} />
+      <DateField label="Confirmed Date To" value={draft.confirmedTo} min={draft.confirmedFrom || undefined} onChange={confirmedTo => set({ confirmedTo })} />
+      <DateField label="Appointed Date From" value={draft.appointedFrom} max={draft.appointedTo || undefined} onChange={appointedFrom => set({ appointedFrom })} />
+      <DateField label="Appointed Date To" value={draft.appointedTo} min={draft.appointedFrom || undefined} onChange={appointedTo => set({ appointedTo })} />
+      <FilterSelect label="Confirmation Letter" value={draft.letter} onChange={value => set({ letter: value as AdminJobFilterState["letter"] })} options={[...adminJobLetterOptions]} />
+      {tutorGender}
+    </> : null}
     {stage === "cancelled" ? <>
       <DateField label="Cancelled Date From" value={draft.cancelledFrom} max={draft.cancelledTo || undefined} onChange={cancelledFrom => set({ cancelledFrom })} />
       <DateField label="Cancelled Date To" value={draft.cancelledTo} min={draft.cancelledFrom || undefined} onChange={cancelledTo => set({ cancelledTo })} />

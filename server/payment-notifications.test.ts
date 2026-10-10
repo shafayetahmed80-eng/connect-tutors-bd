@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  tuitionClosedTutorNotification,
   tuitionSettledTutorNotification,
   paymentRecordedTutorNotification,
   paymentRejectedTutorNotification,
@@ -25,6 +26,15 @@ describe("what a Tutor is told about a payment", () => {
     expect(paymentRejectedTutorNotification("6820", 1500)).toEqual({
       title: "6820-এর জন্য আপনার পেমেন্ট গ্রহণ করা হয়নি",
       message: "1,500 টাকা নিশ্চিত করা যায়নি। ট্রানজেকশন আইডি যাচাই করে আবার জানান।",
+    });
+  });
+});
+
+describe("what a Tutor is told when the last of the fee is in", () => {
+  it("says the payment is complete and the tuition is Closed", () => {
+    expect(tuitionClosedTutorNotification("6820")).toEqual({
+      title: "পেমেন্ট সম্পূর্ণ",
+      message: "Job ID 6820-এর পেমেন্ট সম্পূর্ণ হয়েছে। টিউশনটি এখন Closed।",
     });
   });
 });
