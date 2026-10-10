@@ -7,6 +7,7 @@ const securityDbMocks = vi.hoisted(() => ({
   getAdminTwoFactorSettings: vi.fn(),
   getGuardianContactForAdmin: vi.fn(),
   getOwnerAdminActivityReport: vi.fn(),
+  getOwnerMoneySummary: vi.fn(),
   listAuthEventsPage: vi.fn(),
   listPublishedTutorJobs: vi.fn(),
   countGuardianRequestActions: vi.fn(),
@@ -138,6 +139,25 @@ describe("Admin role and Owner authorization", () => {
 
     await expect(adminCaller.getActivityReport({ windowDays: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(securityDbMocks.getOwnerAdminActivityReport).not.toHaveBeenCalled();
+  });
+
+  it("returns the platform charge figures only to the Owner, over the window asked for", async () => {
+    securityDbMocks.getOwnerMoneySummary.mockResolvedValue({ windowDays: 90, collected: { amount: 1200, payments: 2 } });
+    const owner = createCaller().caller.admin as unknown as { getMoneySummary: (input?: { windowDays: 7 | 30 | 90 }) => Promise<unknown> };
+
+    await expect(owner.getMoneySummary({ windowDays: 90 })).resolves.toMatchObject({ windowDays: 90 });
+    expect(securityDbMocks.getOwnerMoneySummary).toHaveBeenCalledWith({ windowDays: 90 });
+
+    await owner.getMoneySummary({} as { windowDays: 7 | 30 | 90 });
+    expect(securityDbMocks.getOwnerMoneySummary).toHaveBeenLastCalledWith({ windowDays: 30 });
+  });
+
+  it("does not expose the platform charge figures to a non-Owner Admin", async () => {
+    const anotherAdmin = { ...adminUser, id: 73, openId: "admin:73", email: "admin@example.com" };
+    const adminCaller = createCaller(anotherAdmin).caller.admin as unknown as { getMoneySummary: (input: { windowDays: 7 | 30 | 90 }) => Promise<unknown> };
+
+    await expect(adminCaller.getMoneySummary({ windowDays: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(securityDbMocks.getOwnerMoneySummary).not.toHaveBeenCalled();
   });
 
   it("returns the paginated public auth-events log only to the Owner, forwarding normalized filters", async () => {
