@@ -305,6 +305,14 @@ bash ~/connecttutorsbd_app/update.sh
 bash ~/connecttutorsbd_app/update.sh --build-here
 ```
 
+**আপডেটের পর সাইট খারাপ হলে** আগের সাইটে ফেরা যায়। এটা শুধু সাইট ফেরায়, ডেটাবেসে হাত দেয় না, আর বলে দেয় ওই আপডেট ডেটাবেস বদলেছিল কিনা:
+
+```bash
+bash ~/connecttutorsbd_app/update.sh --rollback
+```
+
+সমাধান মার্জ না হওয়া পর্যন্ত `update.sh` আবার চালাবেন না। ডেটাবেসও পুরনো কপিতে ফেরাতে `bash ~/connecttutorsbd_app/scripts/restore-database.sh` (বিস্তারিত `PRODUCTION_DEPLOYMENT_BN.md`-এর ১৪–১৫ নম্বর অংশে)।
+
 ## নিরাপত্তার কয়েকটা কথা
 
 - `.env`-এর লেখা, ডেটাবেসের পাসওয়ার্ড, `JWT_SECRET`, SMS কী কাউকে পাঠাবেন না। কিছু আটকে গেলে আমাকে পাঠাবেন শুধু ত্রুটির বার্তা।
