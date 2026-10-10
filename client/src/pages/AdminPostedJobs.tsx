@@ -52,7 +52,9 @@ const stageCaptions: Record<StageKey, string> = {
  * filled in - so a tuition is written and corrected in one place.
  */
 export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" | "admin" } = {}) {
-  const [stage, setStage] = useState<StageKey>("pending");
+  // A tuition an Admin adds goes straight to the Job Board, so the Admin's own board has nothing Pending to show and opens on Live.
+  const visibleStages = postedBy === "admin" ? stages.filter(step => step.key !== "pending") : stages;
+  const [stage, setStage] = useState<StageKey>(postedBy === "admin" ? "live" : "pending");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -105,7 +107,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       <StatusTabRow
         label="Request stages"
         flush
-        items={stages.map(step => ({ ...step, count: counts?.[step.key] }))}
+        items={visibleStages.map(step => ({ ...step, count: counts?.[step.key] }))}
         selected={stage}
         onSelect={key => { if (key) changeStage(key); }}
       />

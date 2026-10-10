@@ -352,10 +352,23 @@ describe("Admin Posted jobs board", () => {
     const user = userEvent.setup();
     render(<AdminPostedJobsContent postedBy="admin" />);
 
-    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "pending", page: 1 });
-    await user.click(screen.getByRole("tab", { name: /Live/ }));
-    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "live" });
+    // Nothing an Admin adds is ever Pending, so this board opens on Live.
+    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "live", page: 1 });
+    expect(screen.getByRole("tab", { name: /Live/ }).getAttribute("aria-selected")).toBe("true");
+    await user.click(screen.getByRole("tab", { name: /Appointed/ }));
+    expect(mocks.lastInput).toMatchObject({ postedBy: "admin", stage: "appointed" });
     expect(screen.getByRole("button", { name: /Add Tuition/ })).toBeTruthy();
+  });
+
+  it("has no Pending tab on Admin Posted Jobs, and keeps it on the whole Posted jobs board", () => {
+    const names = () => screen.getAllByRole("tab").map(tab => tab.textContent?.replace(/\s*\d+\s*$/, "").trim());
+
+    const admin = render(<AdminPostedJobsContent postedBy="admin" />);
+    expect(names()).toEqual(["Live", "Appointed", "Confirmed", "Closed", "Cancelled"]);
+    admin.unmount();
+
+    render(<AdminPostedJobsContent />);
+    expect(names()).toEqual(["Pending", "Live", "Appointed", "Confirmed", "Closed", "Cancelled"]);
   });
 
   it("keeps the applied count off a tuition that is not live yet", () => {
@@ -502,6 +515,8 @@ describe("the filter card and panel", () => {
 
     expect(within(panel).queryByRole("combobox", { name: "Posted By" })).toBeNull();
     expect(mocks.optionsInput).toEqual({ postedBy: "admin" });
+    // Opens on Live, so none of Pending's own choices are offered.
+    expect(within(panel).queryByText("Moderation")).toBeNull();
   });
 
   it("says no tuition matches when the filters leave nothing", async () => {
