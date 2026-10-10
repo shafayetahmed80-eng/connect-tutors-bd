@@ -4,6 +4,8 @@ import {
   tuitionSettledTutorNotification,
   paymentRecordedTutorNotification,
   paymentRejectedTutorNotification,
+  paymentReminderAdminSummary,
+  paymentReminderTutorNotification,
   paymentVerifiedTutorNotification,
 } from "./payment-notifications";
 
@@ -60,5 +62,38 @@ describe("what a Tutor is told when a cancelled tuition is settled", () => {
   it("says when nothing more is due either way", () => {
     expect(tuitionSettledTutorNotification("6820", { refund: 0, due: 0, disposition: "none" }).message)
       .toBe("এই টিউশনের জন্য আর কিছু বাকি নেই।");
+  });
+});
+
+describe("what a Tutor is told when money is still owed", () => {
+  const lastDayOfWindow = new Date("2026-10-08T17:59:59Z"); // the last second of 8 October in Dhaka
+
+  it("says how long the reduced rate lasts and how much more it takes", () => {
+    expect(paymentReminderTutorNotification("window", "6820", 2500, lastDayOfWindow)).toEqual({
+      title: "6820: কম রেটে চার্জ দেওয়ার সময় শেষ হচ্ছে",
+      message: "কম রেটের শেষ দিন ৮ অক্টোবর। ওই দিনের মধ্যে আরও 2,500 টাকা দিলে প্ল্যাটফর্ম চার্জ কম রেটে মিটবে।",
+    });
+  });
+
+  it("names the date the rest is due and the amount", () => {
+    expect(paymentReminderTutorNotification("second", "6820", 5000, lastDayOfWindow)).toEqual({
+      title: "6820: চার্জের শেষ তারিখ কাছে",
+      message: "শেষ তারিখ ৮ অক্টোবর। 5,000 টাকা মিটিয়ে দিন।",
+    });
+  });
+
+  it("says the date has passed without repeating it", () => {
+    expect(paymentReminderTutorNotification("overdue", "6820", 5000, null)).toEqual({
+      title: "6820: প্ল্যাটফর্ম চার্জ বাকি আছে",
+      message: "নির্ধারিত তারিখ পেরিয়ে গেছে, এখনো 5,000 টাকা বাকি। দয়া করে মিটিয়ে দিন।",
+    });
+  });
+
+  it("gives the Admins one line, counting only the kinds that went out", () => {
+    expect(paymentReminderAdminSummary({ window: 1, second: 0, overdue: 2 })).toEqual({
+      title: "Payment reminders sent",
+      body: "3 reminders went to Tutors: 1 reduced-rate window closing, 2 overdue.",
+    });
+    expect(paymentReminderAdminSummary({ window: 0, second: 1, overdue: 0 }).body).toBe("1 reminder went to Tutors: 1 due date near.");
   });
 });

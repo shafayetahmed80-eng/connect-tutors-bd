@@ -33,5 +33,8 @@ export const ENV = {
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   // Where the public site lives, for links printed on paper - the QR code on a
   // Confirmation Letter. No trailing slash.
+  // The secret the host's scheduler sends to run the daily payment reminders (scripts/run-payment-reminders.sh).
+  // With none set the address does not exist and no reminder is sent.
+  cronSecret: process.env.CRON_SECRET ?? "",
   publicSiteUrl: (process.env.PUBLIC_SITE_URL ?? "https://connecttutorsbd.com").replace(/\/+$/, ""),
 };

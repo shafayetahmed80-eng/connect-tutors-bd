@@ -156,7 +156,8 @@ import {
 } from "@shared/registration-location-selector";
 import type { JobPaymentStatus } from "@shared/job-payment-status";
 import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSummary, type CancellationReason, type ChargeTerms, type SettlementDisposition } from "@shared/platform-charge";
-import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionClosedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
+import { paymentReminderAdminSummary, paymentReminderTutorNotification, paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionClosedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
+import { dueReminders, paymentReminderKey, type PaymentReminderKind } from "@shared/payment-reminders";
 import { tutorRatedNotification } from "./tutor-rating-notification";
 import {
   buildTutorProfileSubmissionRefinement,
@@ -9793,6 +9794,96 @@ export async function getOwnerMoneySummary(input: { windowDays: 7 | 30 | 90; onl
     waiting: { amount: Number(waiting?.amount ?? 0), payments: Number(waiting?.payments ?? 0) },
     closed: { tuitions: Number(closed?.tuitions ?? 0) },
   };
+}
+
+/**
+ * The day's payment reminders: every Confirmed tuition with money still owed is
+ * checked against `dueReminders`, and each reminder that is due and has not
+ * been sent before goes to its Tutor as a notice and a phone push. The key on the
+ * notice (`paymentReminderKey`) is what makes a second run the same day, or an
+ * hourly schedule, send nothing twice. The Admins hear one line about how many went.
+ *
+ * `dryRun` only counts. `onlyRequestIds` narrows the run to those tuitions; the
+ * schedule never passes it, it lets a test read its own rows on a database others
+ * are writing to.
+ */
+export async function runPaymentReminders(input: { now?: Date; dryRun?: boolean; onlyRequestIds?: number[] } = {}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const now = input.now ?? new Date();
+
+  const rows = await database
+    .select({
+      id: tutorRequests.id,
+      tutorId: tutorRequests.tutorId,
+      confirmedAt: tutorRequests.appointmentConfirmedAt,
+      tuitionType: tutorRequests.tuitionType,
+      budgetAmount: tutorRequests.budgetAmount,
+      chargeTerms: tutorRequests.chargeTerms,
+    })
+    .from(tutorRequests)
+    .where(and(adminPostedJobStageCondition("confirmed"), isNotNull(tutorRequests.tutorId), ...(input.onlyRequestIds ? [inArray(tutorRequests.id, input.onlyRequestIds)] : [])));
+  const tuitions = rows.filter((row): row is typeof row & { tutorId: string } => row.tutorId !== null);
+  const counts: Record<PaymentReminderKind, number> = { window: 0, second: 0, overdue: 0 };
+  if (tuitions.length === 0) return { checked: 0, sent: 0, counts, dryRun: Boolean(input.dryRun) };
+
+  const charges = await getChargeSummaries(tuitions);
+  // Money the Tutor has reported and nobody has checked yet; it is not nagged for while it waits.
+  const waitingRows = await database
+    .select({ requestId: tuitionPayments.tutorRequestId, tutorId: tuitionPayments.tutorId, amount: tuitionPayments.amount })
+    .from(tuitionPayments)
+    .where(and(inArray(tuitionPayments.tutorRequestId, tuitions.map(row => row.id)), eq(tuitionPayments.status, "submitted")));
+
+  const due: Array<{ tutorId: string; requestId: number; key: string; kind: PaymentReminderKind; amount: number; deadline: Date | null }> = [];
+  for (const tuition of tuitions) {
+    const summary = charges.get(tuition.id);
+    if (!summary) continue;
+    const waiting = waitingRows
+      .filter(row => row.requestId === tuition.id && row.tutorId === tuition.tutorId)
+      .reduce((sum, row) => sum + row.amount, 0);
+    for (const reminder of dueReminders(summary, waiting, now)) {
+      due.push({ tutorId: tuition.tutorId, requestId: tuition.id, key: paymentReminderKey(reminder, tuition.id, tuition.tutorId), kind: reminder.kind, amount: reminder.amount, deadline: reminder.deadline });
+    }
+  }
+
+  const alreadySent = due.length === 0
+    ? []
+    : await database.select({ key: tutorNotifications.deduplicationKey }).from(tutorNotifications).where(inArray(tutorNotifications.deduplicationKey, due.map(reminder => reminder.key)));
+  const sentBefore = new Set(alreadySent.map(row => row.key));
+  const fresh = due.filter(reminder => !sentBefore.has(reminder.key));
+
+  if (!input.dryRun) {
+    for (const reminder of fresh) {
+      const notice = paymentReminderTutorNotification(reminder.kind, jobIdForRequest(reminder.requestId), reminder.amount, reminder.deadline);
+      await createTutorNotification(database, {
+        tutorId: reminder.tutorId,
+        type: "payment",
+        ...notice,
+        actionPath: "/tutor/dashboard/payment",
+        deduplicationKey: reminder.key,
+      });
+      await sendPushToTutor(reminder.tutorId, { title: notice.title, body: notice.message, url: "/tutor/dashboard/payment" }).catch(() => {});
+    }
+  }
+  for (const reminder of fresh) counts[reminder.kind] += 1;
+
+  if (!input.dryRun && fresh.length > 0) {
+    const summary = paymentReminderAdminSummary(counts);
+    await pushToAdminSubscriptions(database, { ...summary, url: "/admin/confirmed-jobs" }).catch(() => {});
+  }
+  return { checked: tuitions.length, sent: fresh.length, counts, dryRun: Boolean(input.dryRun) };
+}
+
+/** Every browser an Admin allowed alerts on (the Tutor chat alerts' list). */
+async function pushToAdminSubscriptions(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, payload: { title: string; body: string; url: string }) {
+  const subscriptions = await database.select().from(adminPushSubscriptions);
+  if (subscriptions.length === 0) return;
+  const results = await Promise.all(subscriptions.map(async subscription => ({
+    id: subscription.id,
+    result: await sendWebPushNotification(subscription, payload),
+  })));
+  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
+  if (goneIds.length > 0) await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
 }
 
 export type OwnerAdminActivityReportInput = {
