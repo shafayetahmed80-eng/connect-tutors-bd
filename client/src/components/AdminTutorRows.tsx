@@ -109,7 +109,7 @@ function Value({ value }: { value: string }) {
  * until an Admin asks for the sentences behind them.
  *
  * A full sentence per note - "Teaches Mathematics", "Based in Uttara" - reads
- * well one Tutor at a time on the Matching workspace's picker, but a whole
+ * well one Tutor at a time on the Tutor Matching picker, but a whole
  * ranked table of them at once is mostly noise: the count is the fact worth
  * scanning down a column, and the wording only matters for the Tutor an Admin
  * is actually weighing.

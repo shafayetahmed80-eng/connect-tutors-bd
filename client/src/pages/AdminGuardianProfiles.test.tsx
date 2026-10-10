@@ -122,6 +122,17 @@ describe("the card and filter panel over the Guardians", () => {
     expect(within(card).getByRole("button", { name: "Notify" })).toBeTruthy();
   });
 
+  it("keeps History and Notify named for a screen reader and a long press, since a phone shows only their icons", () => {
+    render(<AdminGuardianProfilesContent />);
+    for (const name of ["History", "Notify"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("title")).toBe(name);
+      expect(button.getAttribute("aria-label")).toBe(name);
+      expect(button.querySelector("span.max-sm\\:sr-only")?.textContent).toBe(name);
+      expect(button.className).toContain("max-sm:w-10");
+    }
+  });
+
   it("offers each box, and changes nothing until Apply", async () => {
     const user = userEvent.setup();
     render(<AdminGuardianProfilesContent />);

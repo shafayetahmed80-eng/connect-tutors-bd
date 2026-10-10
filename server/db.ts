@@ -49,8 +49,6 @@ import {
   accountChangeRequests,
   schoolColleges,
   adminLoginAuditLogs,
-  adminMatchingDefaultSavedViews,
-  adminMatchingSavedViews,
   adminNotificationBroadcasts,
   type AdminNotificationBroadcastAudience,
   adminTwoFactorRecoveryCodes,
@@ -110,7 +108,6 @@ import {
   tutorTeachingAreas,
   tutorRequestPublicationEvents,
   tutorRequestOperationEvents,
-  tutorRequestAssignmentNotes,
   tutorConfirmationLetterNotifications,
   tutors,
   tutorRequests,
@@ -120,7 +117,6 @@ import {
   type AdminAuditEvent,
   type AuthEventType,
   type GuardianRequestFollowUpKind,
-  type TutorRequestAssignmentNoteCategory,
   type TutorProfileStatus,
   type User,
   type UserRole,
@@ -192,11 +188,6 @@ import {
   transitionTutorInterest,
   type TutorJobInterestStatus,
 } from "./tutor-job-interest";
-import {
-  parseAdminMatchingSavedViewFilters,
-  sanitizeAdminMatchingSavedViewFilters,
-  type AdminMatchingSavedViewFilters,
-} from "@shared/admin-matching-saved-views";
 import { guardianVerificationNotice } from "./guardian-verification-notice";
 import { phoneCodeHashesMatch } from "./phone-verification";
 import { summariseTutorRatings } from "@shared/tutor-reviews";
@@ -1580,7 +1571,7 @@ function getInitials(name: string) {
     .join("") || "TU";
 }
 
-/** Approved-Tutor candidates for the Admin matching workspace's picker - safe, public-shaped fields only. */
+/** Approved-Tutor candidates for the Admin Tutor Matching picker - safe, public-shaped fields only. */
 function mapTutor(row: typeof tutors.$inferSelect, location?: typeof locations.$inferSelect) {
   return {
     id: row.id,
@@ -2598,10 +2589,8 @@ export type AdminPostedTuitionRequest = {
 /**
  * An Admin's edit of a posted tuition, from any stage.
  *
- * Deliberately not the Matching workspace's `edit` publication action: that
- * one runs only from `reviewing`, touches seven fields and clears the recorded
- * Guardian call. This is the whole record, from wherever the job has got to,
- * and it leaves the call alone.
+ * It is the whole record, from wherever the job has got to. It leaves an entry in
+ * the tuition's history (`admin_updated`), which the details dialog shows.
  *
  * A job already on the Job Board is re-projected in the same transaction, or
  * the board would keep showing what the tuition used to say.
@@ -2948,44 +2937,6 @@ export async function createGuardianRequestFollowUp(input: {
     deduplicationKey: `follow-up:${input.requestId}:${input.kind}:${input.message.trim().toLowerCase()}`,
   });
   return { created: result.created, notificationId: result.notificationId || null };
-}
-
-export async function addTutorRequestAssignmentNote(input: {
-  requestId: number;
-  adminUserId: number;
-  category: TutorRequestAssignmentNoteCategory;
-  body: string;
-}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const [request] = await database.select({ id: tutorRequests.id }).from(tutorRequests).where(eq(tutorRequests.id, input.requestId)).limit(1);
-  if (!request) return { created: false as const, id: null };
-  const result = await database.insert(tutorRequestAssignmentNotes).values({
-    tutorRequestId: input.requestId,
-    adminUserId: input.adminUserId,
-    category: input.category,
-    body: input.body.trim(),
-  });
-  await database.update(tutorRequests).set({ lastActivityAt: new Date() }).where(eq(tutorRequests.id, input.requestId));
-  return { created: true as const, id: Number(result[0].insertId) };
-}
-
-export async function listTutorRequestAssignmentNotes(input: { requestId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database
-    .select({
-      id: tutorRequestAssignmentNotes.id,
-      category: tutorRequestAssignmentNotes.category,
-      body: tutorRequestAssignmentNotes.body,
-      createdAt: tutorRequestAssignmentNotes.createdAt,
-      adminUserId: tutorRequestAssignmentNotes.adminUserId,
-      adminName: users.name,
-    })
-    .from(tutorRequestAssignmentNotes)
-    .leftJoin(users, eq(tutorRequestAssignmentNotes.adminUserId, users.id))
-    .where(eq(tutorRequestAssignmentNotes.tutorRequestId, input.requestId))
-    .orderBy(desc(tutorRequestAssignmentNotes.id));
 }
 
 type ConfirmationLetterSnapshot = Omit<ConfirmationLetterDocument, "letterNumber" | "version" | "issuedAt"> & {
@@ -3509,7 +3460,7 @@ export async function snapshotChargeTerms(tx: any, requestId: number) {
  * Confirms an appointment: the Guardian keeps the Tutor after the demo class.
  *
  * Confirmed is filled, so the tuition's Job Board listing closes here - from
- * Posted jobs and from the Matching workspace alike - and the Tutor is told
+ * Posted jobs and from Applied Tutors alike - and the Tutor is told
  * alongside the Guardian.
  */
 export async function confirmTutorRequestAppointment(input: {
@@ -3652,215 +3603,6 @@ export async function decideGuardianTutorRequestContactConsent(input: {
   return { saved: Boolean(result[0].affectedRows), decision: input.decision } as const;
 }
 
-export type AdminTutorRequestMatchingFilters = {
-  query: string;
-  status: "all" | "new" | "reviewing" | "matched" | "closed";
-  lifecycle: "all" | "pending" | "live" | "appointed" | "confirmed" | "cancelled";
-  tuitionType: "all" | "home" | "online" | "both" | "group" | "package";
-  preferredGender: "all" | "male" | "female" | "any";
-  contactConsent: "all" | "not_required" | "pending" | "approved" | "declined";
-  subject: string;
-  category: string;
-  location: string;
-  assignmentState: "all" | "assigned" | "unassigned";
-  appointmentState: "all" | "confirmed" | "pending";
-  cancellationState: "all" | "active" | "cancelled";
-  budgetMinimum?: number;
-  budgetMaximum?: number;
-  createdAfter?: Date;
-  createdBefore?: Date;
-  lastActivityAfter?: Date;
-  lastActivityBefore?: Date;
-  page: number;
-  pageSize: number;
-};
-
-export class AdminMatchingSavedViewNameConflictError extends Error {
-  constructor() {
-    super("ADMIN_MATCHING_SAVED_VIEW_NAME_CONFLICT");
-  }
-}
-
-/** Lists only the current Admin's personal filter presets, never matching results or private request data. */
-export async function listAdminMatchingSavedViews(input: { adminUserId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const rows = await database
-    .select({
-      id: adminMatchingSavedViews.id,
-      name: adminMatchingSavedViews.name,
-      filters: adminMatchingSavedViews.filters,
-      createdAt: adminMatchingSavedViews.createdAt,
-      updatedAt: adminMatchingSavedViews.updatedAt,
-      defaultSavedViewId: adminMatchingDefaultSavedViews.savedViewId,
-    })
-    .from(adminMatchingSavedViews)
-    .leftJoin(adminMatchingDefaultSavedViews, and(
-      eq(adminMatchingDefaultSavedViews.adminUserId, input.adminUserId),
-      eq(adminMatchingDefaultSavedViews.savedViewId, adminMatchingSavedViews.id),
-    ))
-    .where(eq(adminMatchingSavedViews.adminUserId, input.adminUserId))
-    .orderBy(desc(adminMatchingSavedViews.updatedAt), desc(adminMatchingSavedViews.id));
-
-  return rows.map(row => ({
-    id: row.id,
-    name: row.name,
-    filters: parseAdminMatchingSavedViewFilters(row.filters),
-    isDefault: row.defaultSavedViewId === row.id,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }));
-}
-
-/** Creates a personal Saved View after normalizing the strict filter allowlist. */
-export async function createAdminMatchingSavedView(input: {
-  adminUserId: number;
-  name: string;
-  filters: unknown;
-}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  try {
-    const result = await database.insert(adminMatchingSavedViews).values({
-      adminUserId: input.adminUserId,
-      name: input.name.trim(),
-      filters: JSON.stringify(sanitizeAdminMatchingSavedViewFilters(input.filters)),
-    });
-    return { created: true as const, id: Number(result[0].insertId) };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const code = typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
-      ? error.code
-      : "";
-    if (code === "ER_DUP_ENTRY" || /duplicate entry/i.test(message)) {
-      throw new AdminMatchingSavedViewNameConflictError();
-    }
-    throw error;
-  }
-}
-
-/** Renames only the calling Admin's personal Saved View; filters and matching data are untouched. */
-export async function renameAdminMatchingSavedView(input: {
-  adminUserId: number;
-  savedViewId: number;
-  name: string;
-}) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const name = input.name.trim();
-  try {
-    const result = await database
-      .update(adminMatchingSavedViews)
-      .set({ name, updatedAt: new Date() })
-      .where(and(
-        eq(adminMatchingSavedViews.id, input.savedViewId),
-        eq(adminMatchingSavedViews.adminUserId, input.adminUserId),
-      ));
-    if (!result[0].affectedRows) return { updated: false as const, savedViewId: null, name: null };
-    return { updated: true as const, savedViewId: input.savedViewId, name };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const code = typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
-      ? error.code
-      : "";
-    if (code === "ER_DUP_ENTRY" || /duplicate entry/i.test(message)) {
-      throw new AdminMatchingSavedViewNameConflictError();
-    }
-    throw error;
-  }
-}
-
-/** Deletes only a Saved View that belongs to the calling Admin. */
-export async function deleteAdminMatchingSavedView(input: { adminUserId: number; savedViewId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
-    await tx.delete(adminMatchingDefaultSavedViews).where(and(
-      eq(adminMatchingDefaultSavedViews.adminUserId, input.adminUserId),
-      eq(adminMatchingDefaultSavedViews.savedViewId, input.savedViewId),
-    ));
-    const result = await tx
-      .delete(adminMatchingSavedViews)
-      .where(and(
-        eq(adminMatchingSavedViews.id, input.savedViewId),
-        eq(adminMatchingSavedViews.adminUserId, input.adminUserId),
-      ));
-    return { deleted: Boolean(result[0].affectedRows) };
-  });
-}
-
-/** Sets a personal Default Saved View after proving the selected view belongs to the calling Admin. */
-export async function setAdminMatchingDefaultSavedView(input: { adminUserId: number; savedViewId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const ownedView = await database
-    .select({ id: adminMatchingSavedViews.id })
-    .from(adminMatchingSavedViews)
-    .where(and(
-      eq(adminMatchingSavedViews.id, input.savedViewId),
-      eq(adminMatchingSavedViews.adminUserId, input.adminUserId),
-    ))
-    .limit(1);
-  if (!ownedView[0]) return { updated: false as const, savedViewId: null };
-
-  await database.insert(adminMatchingDefaultSavedViews)
-    .values({ adminUserId: input.adminUserId, savedViewId: input.savedViewId })
-    .onDuplicateKeyUpdate({ set: { savedViewId: input.savedViewId, updatedAt: new Date() } });
-  return { updated: true as const, savedViewId: input.savedViewId };
-}
-
-/** Clears only the caller's personal Default Saved View pointer; Saved Views themselves remain untouched. */
-export async function clearAdminMatchingDefaultSavedView(input: { adminUserId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  await database.delete(adminMatchingDefaultSavedViews)
-    .where(eq(adminMatchingDefaultSavedViews.adminUserId, input.adminUserId));
-  return { updated: true as const };
-}
-
-function getAdminTutorRequestFilterConditions(filters: AdminTutorRequestMatchingFilters) {
-  const conditions: SQL[] = [];
-  if (filters.status !== "all") conditions.push(eq(tutorRequests.status, filters.status));
-  if (filters.lifecycle === "pending") conditions.push(and(eq(tutorRequests.status, "new"), eq(tutorRequests.publicationState, "submitted"), isNull(tutorRequests.tutorId))!);
-  if (filters.lifecycle === "live") conditions.push(and(inArray(tutorRequests.status, ["new", "reviewing"]), eq(tutorRequests.publicationState, "published"), isNull(tutorRequests.tutorId))!);
-  if (filters.lifecycle === "appointed") conditions.push(and(eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.tutorId), isNull(tutorRequests.appointmentConfirmedAt))!);
-  if (filters.lifecycle === "confirmed") conditions.push(and(eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.appointmentConfirmedAt))!);
-  if (filters.lifecycle === "cancelled") conditions.push(or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed"), isNotNull(tutorRequests.cancellationReason))!);
-  if (filters.tuitionType !== "all") conditions.push(eq(tutorRequests.tuitionType, filters.tuitionType));
-  if (filters.preferredGender !== "all") conditions.push(eq(tutorRequests.preferredGender, filters.preferredGender));
-  if (filters.contactConsent !== "all") conditions.push(eq(tutorRequests.contactConsent, filters.contactConsent));
-  if (filters.subject) conditions.push(like(tutorRequests.subjects, `%${filters.subject}%`));
-  if (filters.category) conditions.push(eq(tutorRequests.category, filters.category));
-  if (filters.location) conditions.push(or(like(tutorRequests.tuitionLocationLabel, `%${filters.location}%`), like(tutorRequests.locationText, `%${filters.location}%`))!);
-  if (filters.assignmentState === "assigned") conditions.push(isNotNull(tutorRequests.tutorId));
-  if (filters.assignmentState === "unassigned") conditions.push(isNull(tutorRequests.tutorId));
-  if (filters.appointmentState === "confirmed") conditions.push(isNotNull(tutorRequests.appointmentConfirmedAt));
-  if (filters.appointmentState === "pending") conditions.push(and(isNotNull(tutorRequests.tutorId), isNull(tutorRequests.appointmentConfirmedAt))!);
-  if (filters.cancellationState === "cancelled") conditions.push(or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed"), isNotNull(tutorRequests.cancellationReason))!);
-  if (filters.cancellationState === "active") conditions.push(and(inArray(tutorRequests.status, ["new", "reviewing", "matched"]), inArray(tutorRequests.publicationState, ["submitted", "reviewing", "changes_requested", "approved", "unpublished", "published"]), isNull(tutorRequests.cancellationReason))!);
-  // The filter still has two bounds - "between 5,000 and 8,000" - but a request
-  // now offers one figure rather than a range, so both bounds compare against
-  // the same column. They used to compare against opposite ends of the
-  // request's own range, which is what "overlaps this window" meant.
-  if (filters.budgetMinimum !== undefined) conditions.push(gte(tutorRequests.budgetAmount, filters.budgetMinimum));
-  if (filters.budgetMaximum !== undefined) conditions.push(lte(tutorRequests.budgetAmount, filters.budgetMaximum));
-  if (filters.createdAfter) conditions.push(gte(tutorRequests.createdAt, filters.createdAfter));
-  if (filters.createdBefore) conditions.push(lte(tutorRequests.createdAt, filters.createdBefore));
-  if (filters.lastActivityAfter) conditions.push(gte(tutorRequests.lastActivityAt, filters.lastActivityAfter));
-  if (filters.lastActivityBefore) conditions.push(lte(tutorRequests.lastActivityAt, filters.lastActivityBefore));
-  if (filters.query) {
-    const pattern = `%${filters.query}%`;
-    const searchCondition = or(
-      like(tutorRequests.category, pattern),
-      like(tutorRequests.classCourse, pattern),
-      like(tutorRequests.subjects, pattern),
-      like(tutorRequests.locationText, pattern),
-    );
-    if (searchCondition) conditions.push(searchCondition);
-  }
-  return conditions;
-}
-
 const adminTutorRequestFields = {
   id: tutorRequests.id,
   guardianUserId: tutorRequests.guardianUserId,
@@ -3889,83 +3631,12 @@ const adminTutorRequestFields = {
   locationText: tutorRequests.locationText,
   status: tutorRequests.status,
   publicationState: tutorRequests.publicationState,
-  guardianConfirmedAt: tutorRequests.guardianConfirmedAt,
   appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
   cancellationReason: tutorRequests.cancellationReason,
   contactConsent: tutorRequests.contactConsent,
   createdAt: tutorRequests.createdAt,
   lastActivityAt: tutorRequests.lastActivityAt,
 };
-
-/**
- * The matching queue reads two joined columns the shared projection cannot
- * carry. `adminTutorRequestFields` is also selected by queries that join
- * nothing, and a column from a table they never join is invalid SQL there -
- * which is exactly how the Admin Tutor review broke earlier.
- *
- * Both guardian joins are left joins on purpose: an inner join would drop a
- * request from the Admin queue entirely if its Guardian row were ever missing,
- * which is the worst possible way to hide work.
- */
-const adminMatchingRequestFields = {
-  ...adminTutorRequestFields,
-  guardianName: users.name,
-  guardianPhone: guardianProfiles.phone,
-};
-
-export async function listTutorRequestMatchingPage(filters: AdminTutorRequestMatchingFilters) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const conditions = getAdminTutorRequestFilterConditions(filters);
-  const offset = (filters.page - 1) * filters.pageSize;
-  const itemQuery = database
-    .select(adminMatchingRequestFields)
-    .from(tutorRequests)
-    .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
-    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId));
-  const items = conditions.length
-    ? await itemQuery
-      .where(and(...conditions))
-      .orderBy(asc(tutorRequests.createdAt))
-      .limit(filters.pageSize)
-      .offset(offset)
-    : await itemQuery
-    .orderBy(asc(tutorRequests.createdAt))
-    .limit(filters.pageSize)
-    .offset(offset);
-  const totalQuery = database
-    .select({ value: count() })
-    .from(tutorRequests);
-  const totals = conditions.length
-    ? await totalQuery.where(and(...conditions))
-    : await totalQuery;
-  const total = Number(totals[0]?.value ?? 0);
-  // Grouped in SQL rather than tallied from the page: the whole point is to
-  // say how much work sits outside the page being looked at. The filters
-  // apply, so the numbers describe the current search, not the whole table.
-  const stateQuery = database
-    .select({ state: tutorRequests.publicationState, value: count() })
-    .from(tutorRequests)
-    .groupBy(tutorRequests.publicationState);
-  const stateRows = conditions.length ? await stateQuery.where(and(...conditions)) : await stateQuery;
-  const publicationStateCounts = Object.fromEntries(
-    tutorRequestPublicationStateValues.map(state => [state, 0]),
-  ) as Record<TutorRequestPublicationState, number>;
-  for (const row of stateRows) {
-    if (row.state) publicationStateCounts[row.state] = Number(row.value);
-  }
-  // The same per-page lookup both Posted-jobs boards do, so a card can say how
-  // many Tutors applied without a second screen.
-  const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
-  return {
-    items: items.map(item => ({ ...item, appliedTutorCount: appliedByRequest.get(item.id) ?? 0 })),
-    total,
-    publicationStateCounts,
-    page: filters.page,
-    pageSize: filters.pageSize,
-    totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
-  };
-}
 
 export async function listTutorRequestsForAdmin() {
   const database = await getDb();
@@ -3993,17 +3664,6 @@ export async function updateTutorRequestStatus(input: {
     ));
   return { updated: Boolean(result[0].affectedRows), status: input.status } as const;
 }
-
-export type AdminTutorRequestPublicationEdit = {
-  category?: string;
-  classCourse?: string;
-  subjects?: string[];
-  daysPerWeek?: number;
-  preferredGender?: "male" | "female" | "any";
-  budgetAmount?: number;
-  /** Empty string clears the note rather than leaving the Guardian's. */
-  notes?: string;
-};
 
 /**
  * The Job Board's filters. Six of them take several values at once, because
@@ -4381,7 +4041,6 @@ type JobProjectionTransaction = Parameters<Parameters<NonNullable<Awaited<Return
 async function synchronizePublishedTutorJob(
   tx: JobProjectionTransaction,
   input: {
-    action: AdminRequestPublicationAction;
     request: {
       id: number;
       tuitionType: "home" | "online" | "both" | "group" | "package";
@@ -4402,10 +4061,6 @@ async function synchronizePublishedTutorJob(
     };
   },
 ): Promise<{ publicJobId?: string; createdNewJob?: boolean }> {
-  // `go_live` is `publish` with a shorter road to it, so the projection treats
-  // the two the same from here on.
-  const publishes = input.action === "publish" || input.action === "go_live";
-  if (!publishes && input.action !== "close") return {};
   const now = new Date();
   const [existingJob] = await tx
     .select({ id: tutorJobs.id, publicJobId: tutorJobs.publicJobId })
@@ -4414,7 +4069,7 @@ async function synchronizePublishedTutorJob(
     .limit(1)
     .for("update");
 
-  if (publishes) {
+  {
     // A job on the public board with no salary is the thing the single-amount
     // change was made to end, so a request that still carries none - the two
     // that predate it - cannot be published until its Guardian names one.
@@ -4451,16 +4106,6 @@ async function synchronizePublishedTutorJob(
       .where(eq(tutorJobs.id, existingJob.id));
     return { publicJobId: existingJob.publicJobId };
   }
-
-  if (!existingJob) return {};
-  await tx
-    .update(tutorJobs)
-    .set({
-      publicationStatus: "closed",
-      deactivatedAt: now,
-    })
-    .where(eq(tutorJobs.id, existingJob.id));
-  return { publicJobId: existingJob.publicJobId };
 }
 
 /**
@@ -4474,7 +4119,6 @@ export async function moderateTutorRequestPublication(input: {
   adminUserId: number;
   action: AdminRequestPublicationAction;
   reason?: string;
-  edit?: AdminTutorRequestPublicationEdit;
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -4486,7 +4130,6 @@ export async function moderateTutorRequestPublication(input: {
         id: tutorRequests.id,
         guardianUserId: tutorRequests.guardianUserId,
         publicationState: tutorRequests.publicationState,
-        guardianConfirmedAt: tutorRequests.guardianConfirmedAt,
         category: tutorRequests.category,
         classCourse: tutorRequests.classCourse,
         subjects: tutorRequests.subjects,
@@ -4514,77 +4157,40 @@ export async function moderateTutorRequestPublication(input: {
     const transition = validateAdminRequestPublicationAction({
       from: request.publicationState,
       action: input.action,
-      guardianConfirmed: Boolean(request.guardianConfirmedAt),
     });
     if (!transition.valid) return { updated: false as const, reason: transition.reason };
-    if (input.action === "edit" && !input.edit) return { updated: false as const, reason: "EDIT_REQUIRED" as const };
 
     const beforeSnapshot = buildSafeTutorRequestPublicationSnapshot(request);
-    const update: {
-      publicationState: typeof request.publicationState;
-      category?: string;
-      classCourse?: string;
-      subjects?: string;
-      daysPerWeek?: number;
-      preferredGender?: "male" | "female" | "any";
-      budgetAmount?: number | null;
-      notes?: string | null;
-      monthlyBudget?: number | null;
-      guardianConfirmedAt?: Date | null;
-      status?: "reviewing" | "closed";
-      contactConsent?: "not_required";
-      lastActivityAt?: Date;
-    } = { publicationState: transition.nextState, lastActivityAt: new Date() };
-    if (input.action === "verify") update.status = "reviewing";
-    if (input.action === "close") {
-      update.status = "closed";
-      update.contactConsent = "not_required";
-    }
-    if (input.action === "guardian_confirmed") update.guardianConfirmedAt = new Date();
-    if (input.action === "edit") {
-      const edit = input.edit!;
-      if (edit.category !== undefined) update.category = edit.category;
-      if (edit.classCourse !== undefined) update.classCourse = edit.classCourse;
-      if (edit.subjects !== undefined) update.subjects = JSON.stringify(edit.subjects);
-      if (edit.daysPerWeek !== undefined) update.daysPerWeek = edit.daysPerWeek;
-      if (edit.preferredGender !== undefined) update.preferredGender = edit.preferredGender;
-      if (edit.notes !== undefined) update.notes = resolvePublishedJobNote(request.notes, edit.notes);
-      if (edit.budgetAmount !== undefined) {
-        update.budgetAmount = edit.budgetAmount;
-        update.monthlyBudget = null;
-      }
-      update.guardianConfirmedAt = null;
-    }
+    const update = { publicationState: transition.nextState, lastActivityAt: new Date() };
     const afterSnapshot = buildSafeTutorRequestPublicationSnapshot({
       ...request,
-      category: update.category ?? request.category,
-      classCourse: update.classCourse ?? request.classCourse,
-      subjects: update.subjects ?? request.subjects,
-      daysPerWeek: update.daysPerWeek ?? request.daysPerWeek,
-      preferredGender: update.preferredGender ?? request.preferredGender,
-      budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
+      category: request.category,
+      classCourse: request.classCourse,
+      subjects: request.subjects,
+      daysPerWeek: request.daysPerWeek,
+      preferredGender: request.preferredGender,
+      budgetAmount: request.budgetAmount,
       tuitionLocationLabel: request.tuitionLocationLabel,
     });
     await tx.update(tutorRequests).set(update).where(eq(tutorRequests.id, request.id));
     const jobProjection = await synchronizePublishedTutorJob(tx, {
-      action: input.action,
       request: {
         id: request.id,
         tuitionType: request.tuitionType,
-        category: update.category ?? request.category,
-        classCourse: update.classCourse ?? request.classCourse,
-        subjects: update.subjects ?? request.subjects,
+        category: request.category,
+        classCourse: request.classCourse,
+        subjects: request.subjects,
         groupCapacity: request.groupCapacity,
         packageDurationMonths: request.packageDurationMonths,
         studentCount: request.studentCount,
         studentGender: request.studentGender,
-        daysPerWeek: update.daysPerWeek ?? request.daysPerWeek,
-        preferredGender: update.preferredGender ?? request.preferredGender,
+        daysPerWeek: request.daysPerWeek,
+        preferredGender: request.preferredGender,
         tuitionCityLocationId: request.tuitionCityLocationId,
         tuitionLocationId: request.tuitionLocationId,
         tuitionLocationLabel: request.tuitionLocationLabel,
-        budgetAmount: update.budgetAmount === undefined ? request.budgetAmount : update.budgetAmount,
-        notes: resolvePublishedJobNote(request.notes, input.edit?.notes),
+        budgetAmount: request.budgetAmount,
+        notes: resolvePublishedJobNote(request.notes, undefined),
       },
     });
     const result = await tx.insert(tutorRequestPublicationEvents).values({
@@ -4673,27 +4279,6 @@ export async function notifyTutorsOfNewTuition(tuition: NewTuitionAnnouncement) 
   return userIds.length;
 }
 
-/** Admin-visible history excludes identity and contact information by design. */
-export async function listTutorRequestPublicationEvents(requestId: number) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  return database
-    .select({
-      id: tutorRequestPublicationEvents.id,
-      adminUserId: tutorRequestPublicationEvents.adminUserId,
-      action: tutorRequestPublicationEvents.action,
-      previousState: tutorRequestPublicationEvents.previousState,
-      nextState: tutorRequestPublicationEvents.nextState,
-      reason: tutorRequestPublicationEvents.reason,
-      beforeSnapshot: tutorRequestPublicationEvents.beforeSnapshot,
-      afterSnapshot: tutorRequestPublicationEvents.afterSnapshot,
-      createdAt: tutorRequestPublicationEvents.createdAt,
-    })
-    .from(tutorRequestPublicationEvents)
-    .where(eq(tutorRequestPublicationEvents.tutorRequestId, requestId))
-    .orderBy(desc(tutorRequestPublicationEvents.createdAt));
-}
-
 /**
  * Everything done to one tuition, for the Admin reading its details: the moves on
  * the Job Board and the other changes made to the request, with who made each,
@@ -4746,95 +4331,6 @@ export async function listTuitionHistory(requestId: number): Promise<TuitionHist
       changedFields: parseChangedFields(row.changedFields),
     })),
   );
-}
-
-/**
- * Appoints a Tutor to a tuition that is not on the Job Board, from the Matching
- * workspace - any approved Tutor, whether or not they applied.
- *
- * It is the same appointment Applied Tutors makes, so it follows the same
- * rules: no contact-consent step (an Admin appointing on the Guardian's behalf
- * stands in for it), the Tutor is told the Guardian's name and number, the
- * Guardian is told a Tutor is on their request, and the history records it.
- * If the Tutor had applied to this tuition before, that application is marked
- * appointed too, so their row on Applied Tutors reads the same.
- */
-export async function assignTutorToRequest(input: { requestId: number; tutorId: string; adminUserId: number }) {
-  const database = await getDb();
-  if (!database) throw new Error("Database is not available");
-  const [tutor] = await database
-    .select({ id: tutors.id })
-    .from(tutors)
-    .where(and(eq(tutors.id, input.tutorId), eq(tutors.profileStatus, "approved")))
-    .limit(1);
-  if (!tutor) return { assigned: false as const, reason: "tutor-unavailable" as const };
-  return database.transaction(async tx => {
-    const [request] = await tx
-      .select({ id: tutorRequests.id, guardianUserId: tutorRequests.guardianUserId })
-      .from(tutorRequests)
-      .where(and(
-        eq(tutorRequests.id, input.requestId),
-        inArray(tutorRequests.status, ["new", "reviewing"]),
-        inArray(tutorRequests.publicationState, ["submitted", "reviewing", "changes_requested", "approved", "unpublished"]),
-      ))
-      .limit(1)
-      .for("update");
-    if (!request) return { assigned: false as const, reason: "request-unavailable" as const };
-
-    const [guardian] = await tx
-      .select({ name: users.name, phone: guardianProfiles.phone })
-      .from(users)
-      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
-      .where(eq(users.id, request.guardianUserId))
-      .limit(1);
-
-    const now = new Date();
-    await tx.update(tutorRequests)
-      .set({ tutorId: input.tutorId, status: "matched", contactConsent: "approved", appointedAt: now, lastActivityAt: now })
-      .where(eq(tutorRequests.id, request.id));
-    const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, request.id)).limit(1);
-    if (job) {
-      await tx.update(tutorJobInterests)
-        .set({ status: "matched", appointmentRequestedAt: null, ...tutorInterestStageStamps("matched") })
-        .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, input.tutorId), ne(tutorJobInterests.status, "withdrawn")));
-      // The appointment answers every request still waiting on this tuition.
-      await tx.update(tutorJobInterests)
-        .set({ appointmentRequestedAt: null })
-        .where(and(eq(tutorJobInterests.tutorJobId, job.id), isNotNull(tutorJobInterests.appointmentRequestedAt)));
-    }
-    await tx.insert(tutorRequestOperationEvents).values({
-      tutorRequestId: request.id,
-      guardianUserId: request.guardianUserId,
-      actorUserId: input.adminUserId,
-      action: "admin_appointed",
-      changedFields: JSON.stringify(["tutor_appointed", "manual_assignment"]),
-    });
-
-    const note = appointedTutorNotification({ jobId: jobIdForRequest(request.id), guardianName: guardian?.name ?? null, guardianPhone: guardian?.phone ?? null });
-    await createTutorNotification(tx, {
-      tutorId: input.tutorId,
-      type: "appointment",
-      title: note.title,
-      message: note.message,
-      actionPath: "/tutor/dashboard/status",
-      deduplicationKey: `appointment:${request.id}:assigned:${input.tutorId}`,
-    });
-    void sendPushToTutor(input.tutorId, { title: note.title, body: note.message, url: "/tutor/dashboard/status" }).catch(() => {});
-    const guardianNote = {
-      title: "আপনার রিকোয়েস্টে একজন টিউটর নিয়োগ পেয়েছেন",
-      message: "নিয়োগপ্রাপ্ত টিউটরের মোবাইল নম্বর এখন আপনার Applied Tutors তালিকায় আছে।",
-      actionPath: `/guardian/dashboard/applied-tutors/${request.id}`,
-    };
-    await tx.insert(guardianRequestNotifications).values({
-      guardianUserId: request.guardianUserId,
-      tutorRequestId: request.id,
-      type: "lifecycle",
-      ...guardianNote,
-      deduplicationKey: `lifecycle:${request.id}:appointed`,
-    }).onDuplicateKeyUpdate({ set: { ...guardianNote, readAt: null, createdAt: now } });
-    void sendPushToUser(request.guardianUserId, { title: guardianNote.title, body: guardianNote.message, url: guardianNote.actionPath }).catch(() => {});
-    return { assigned: true as const, contactConsent: "approved" as const };
-  });
 }
 
 export async function listTutorAssignedRequests(userId: number) {
@@ -7382,7 +6878,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .where(where);
   let total = Number(totals[0]?.value ?? 0);
 
-  // A Tutor appointed from the Matching workspace may never have applied. They
+  // A Tutor appointed by an Admin from Tutor Matching may never have applied. They
   // still hold the tuition, and Applied Tutors is where it is confirmed or
   // handed back, so they lead the first page as an appointed row of their own.
   if (job.appointedTutorId) {
@@ -7500,7 +6996,7 @@ export type AdminMatchingCandidateFilters = {
  * application on this job carries it (`interestId`, `applicationStatus`) so
  * their row reads exactly as it does on Applied Tutors.
  *
- * Ranking is the same arithmetic the Matching workspace's picker uses
+ * Ranking is the same arithmetic the Tutor Matching picker uses
  * (@shared/tutor-matching), run over the real Tutor Profile fields Applied
  * Tutors already reads rather than the old directory demo columns.
  */

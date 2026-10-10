@@ -1,4 +1,5 @@
 import ChipMultiSelect, { type ChipOption } from "@/components/ChipMultiSelect";
+import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 /**
@@ -102,12 +103,21 @@ export function DateField({ label, value, onChange, min, max }: { label: string;
   />;
 }
 
-/** A choice that reads as its own label until one is made. */
+/**
+ * A choice that reads as its own label until one is made.
+ *
+ * The browser's own arrow sits wherever the browser puts it, a little further
+ * right than the one in a chip box beside it; the arrow here is drawn at the
+ * chip box's own place so the two read as one set of fields.
+ */
 export function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: ChipOption[] }) {
-  return <select aria-label={label} value={value} onChange={event => onChange(event.target.value)} className={`${boxClass} ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}>
-    <option value="">{label}</option>
-    {options.map(option => <option key={option.id} value={option.id} className="text-j-ink">{option.label}</option>)}
-  </select>;
+  return <div className="relative">
+    <select aria-label={label} value={value} onChange={event => onChange(event.target.value)} className={`${boxClass} appearance-none pr-9 ${value ? "text-j-ink" : "text-[#8fa3b4]"}`}>
+      <option value="">{label}</option>
+      {options.map(option => <option key={option.id} value={option.id} className="text-j-ink">{option.label}</option>)}
+    </select>
+    <ChevronDown size={16} aria-hidden={true} className="pointer-events-none absolute right-3 top-3 text-[#8fa3b4]" />
+  </div>;
 }
 
 /** A line of text that reads as its own label until something is typed. */
@@ -141,7 +151,7 @@ export function FilterTextBox({ label, value, onChange, inputMode, suffix }: { l
  * `showCountry={false}` and City takes the space.
  */
 export function JobCoreFilterFields<T extends JobCoreFilters & { country?: string }>({
-  draft, setDraft, options, showCountry = true, locationLimit = JOB_FILTER_LOCATION_LIMIT, subjectLimit = JOB_FILTER_SUBJECT_LIMIT, children,
+  draft, setDraft, options, showCountry = true, locationLimit = JOB_FILTER_LOCATION_LIMIT, subjectLimit = JOB_FILTER_SUBJECT_LIMIT, pairOnPhone = false, children,
 }: {
   draft: T;
   setDraft: (next: T) => void;
@@ -149,6 +159,8 @@ export function JobCoreFilterFields<T extends JobCoreFilters & { country?: strin
   showCountry?: boolean;
   locationLimit?: number;
   subjectLimit?: number;
+  /** On a phone, two short boxes that sit side by side share a row (dates, salary), instead of one column of twenty. */
+  pairOnPhone?: boolean;
   children?: ReactNode;
 }) {
   const set = (change: Partial<T>) => setDraft(reconcileJobFilters({ ...draft, ...change }, options));
@@ -156,38 +168,40 @@ export function JobCoreFilterFields<T extends JobCoreFilters & { country?: strin
   const locationOptions = draft.cityId ? options.locationsByCity[draft.cityId] ?? [] : [];
   const classOptions = asChips(Array.from(new Set(draft.categories.flatMap(category => options.classesByCategory[category] ?? []))).sort());
   const subjectOptions = asChips(Array.from(new Set(draft.classCourses.flatMap(classCourse => options.subjectsByClass[classCourse] ?? []))).sort());
+  // The boxes that need the whole row on a phone when it holds two columns.
+  const full = pairOnPhone ? "max-sm:col-span-2" : "";
   const city = <FilterSelect label="City" value={draft.cityId} onChange={cityId => set({ cityId } as Partial<T>)} options={options.cities} />;
 
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  return <div className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-4 ${pairOnPhone ? "max-sm:grid-cols-2" : ""}`}>
     <DateField label="Posted Date From" value={draft.postedFrom} max={draft.postedTo || undefined} onChange={postedFrom => set({ postedFrom } as Partial<T>)} />
     <DateField label="Posted Date To" value={draft.postedTo} min={draft.postedFrom || undefined} onChange={postedTo => set({ postedTo } as Partial<T>)} />
-    <div className="lg:col-span-2">
+    <div className={`lg:col-span-2 ${full}`}>
       <ChipMultiSelect label="Tuition Type" options={asChips(options.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType)))} selectedIds={draft.tuitionTypes.map(type => formatJobBoardTuitionType(type as TuitionType))} onChange={labels => set({ tuitionTypes: options.tuitionTypes.filter(type => labels.includes(formatJobBoardTuitionType(type as TuitionType))) } as Partial<T>)} />
     </div>
 
     {showCountry ? <>
       <FilterSelect label="Country" value={draft.country ?? ""} onChange={country => set({ country } as Partial<T>)} options={asChips(options.countries ?? [])} />
       {city}
-    </> : <div className="lg:col-span-2">{city}</div>}
-    <div className="lg:col-span-2">
+    </> : <div className={`lg:col-span-2 ${full}`}>{city}</div>}
+    <div className={`lg:col-span-2 ${full}`}>
       <ChipMultiSelect label="Tutoring Days Per Week" options={options.daysPerWeek.map(days => ({ id: String(days), label: `${days} day${days === 1 ? "" : "s"}` }))} selectedIds={draft.daysPerWeek} onChange={daysPerWeek => set({ daysPerWeek } as Partial<T>)} />
     </div>
 
-    <div className="sm:col-span-2">
+    <div className={`sm:col-span-2 ${full}`}>
       <ChipMultiSelect label="Category" options={asChips(Object.keys(options.classesByCategory).sort())} selectedIds={draft.categories} onChange={categories => set({ categories } as Partial<T>)} />
     </div>
-    <div className="sm:col-span-2">
+    <div className={`sm:col-span-2 ${full}`}>
       <ChipMultiSelect label="Location" options={locationOptions} selectedIds={draft.locationIds} onChange={locationIds => set({ locationIds } as Partial<T>)} disabled={!draft.cityId} disabledPlaceholder="Location - select a City first" maxSelections={locationLimit} />
     </div>
 
-    <div className="sm:col-span-2">
+    <div className={`sm:col-span-2 ${full}`}>
       <FilterSelect label="Student Gender" value={draft.studentGender} onChange={value => set({ studentGender: value } as Partial<T>)} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }]} />
     </div>
-    <div className="sm:col-span-2">
+    <div className={`sm:col-span-2 ${full}`}>
       <ChipMultiSelect label="Class" options={classOptions} selectedIds={draft.classCourses} onChange={classCourses => set({ classCourses } as Partial<T>)} disabled={draft.categories.length === 0} disabledPlaceholder="Class - select a Category first" />
     </div>
 
-    <div className="sm:col-span-2">
+    <div className={`sm:col-span-2 ${full}`}>
       <ChipMultiSelect label="Subject" options={subjectOptions} selectedIds={draft.subjects} onChange={subjects => set({ subjects } as Partial<T>)} disabled={draft.classCourses.length === 0} disabledPlaceholder="Subject - select a Class first" maxSelections={subjectLimit} />
     </div>
     <FilterSelect label="Tutor Gender" value={draft.preferredTutorGender} onChange={value => set({ preferredTutorGender: value } as Partial<T>)} options={[{ id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "any", label: "Any" }]} />

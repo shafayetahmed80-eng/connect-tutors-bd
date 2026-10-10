@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, ClipboardList, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { CircleCheckBig, CircleX, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -75,7 +75,6 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.appoint },
     { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.confirm },
     { icon: CircleX, label: "Cancel Requests", path: "/admin/guardian-requests/cancel", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.cancel },
-    { icon: ClipboardList, label: "Matching workspace", path: "/admin/matching", sectionLabel: "Operations" },
     ...(isOwner ? dynamicSectionItems : []),
     ...(isOwner
       ? [

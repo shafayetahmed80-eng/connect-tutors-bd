@@ -6,7 +6,7 @@ import { ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS } from "./AdminWorkspaceLayout";
 describe("Admin workspace navigation", () => {
   it("gives every verified Admin the operational monitoring sections", () => {
     const paths = buildAdminWorkspaceNavigation(false).map(item => item.path);
-    expect(paths).toEqual(expect.arrayContaining(["/admin/dashboard", "/admin/tutor-profiles", "/admin/guardians", "/admin/matching"]));
+    expect(paths).toEqual(expect.arrayContaining(["/admin/dashboard", "/admin/tutor-profiles", "/admin/guardians", "/admin/posted-jobs"]));
     expect(paths).not.toContain("/admin/security");
     // Tutor management was replaced by Tutor Profiles; /admin/tutors only redirects now.
     expect(paths).not.toContain("/admin/tutors");
@@ -31,7 +31,6 @@ describe("Admin workspace navigation", () => {
       "Appoint Requests",
       "Confirm Requests",
       "Cancel Requests",
-      "Matching workspace",
     ]);
 
     const ownerItems = buildAdminWorkspaceNavigation(true);

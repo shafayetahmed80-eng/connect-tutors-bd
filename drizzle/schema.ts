@@ -137,14 +137,6 @@ export const guardianRequestFollowUpKindValues = [
 ] as const;
 export type GuardianRequestFollowUpKind = (typeof guardianRequestFollowUpKindValues)[number];
 
-export const tutorRequestAssignmentNoteCategoryValues = [
-  "matching",
-  "guardian_contact",
-  "tutor_follow_up",
-  "internal_risk",
-] as const;
-export type TutorRequestAssignmentNoteCategory = (typeof tutorRequestAssignmentNoteCategoryValues)[number];
-
 export const confirmationLetterStatusValues = ["draft", "issued", "superseded"] as const;
 export type ConfirmationLetterStatus = (typeof confirmationLetterStatusValues)[number];
 
@@ -1254,7 +1246,6 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   publicationState: mysqlEnum("publicationState", tutorRequestPublicationStateValues)
     .default("submitted")
     .notNull(),
-  guardianConfirmedAt: timestamp("guardianConfirmedAt"),
   /** Recorded only when an Admin finalizes the Guardian and assigned Tutor appointment. */
   appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
   /** When a Tutor was Appointed to it; cleared if the tuition goes back to Live. */
@@ -1849,67 +1840,6 @@ export const guardianTuitionRequests = mysqlTable(
     foreignKey({ columns: [table.tutorRequestId], foreignColumns: [tutorRequests.id], name: "gtr_request_fk" }),
     foreignKey({ columns: [table.guardianUserId], foreignColumns: [users.id], name: "gtr_guardian_fk" }),
     index("guardian_tuition_requests_request_status_idx").on(table.tutorRequestId, table.status),
-  ]
-);
-
-/** Append-only Admin-only matching context. Corrections are recorded as a new note. */
-export const tutorRequestAssignmentNotes = mysqlTable(
-  "tutor_request_assignment_notes",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    tutorRequestId: int("tutorRequestId").notNull(),
-    adminUserId: int("adminUserId").notNull(),
-    category: mysqlEnum("category", tutorRequestAssignmentNoteCategoryValues).notNull(),
-    body: varchar("body", { length: 1000 }).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [
-    foreignKey({ columns: [table.tutorRequestId], foreignColumns: [tutorRequests.id], name: "tran_request_fk" }),
-    foreignKey({ columns: [table.adminUserId], foreignColumns: [users.id], name: "tran_admin_fk" }),
-    index("tutor_request_assignment_notes_request_created_idx").on(table.tutorRequestId, table.createdAt),
-    index("tutor_request_assignment_notes_admin_created_idx").on(table.adminUserId, table.createdAt),
-  ]
-);
-
-/**
- * Private, personal Admin Matching filter presets. This record deliberately
- * stores only a validated filter configuration; it never stores matched
- * request, Guardian, Tutor, contact, address, or note data.
- */
-export const adminMatchingSavedViews = mysqlTable(
-  "admin_matching_saved_views",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    adminUserId: int("adminUserId").notNull(),
-    name: varchar("name", { length: 80 }).notNull(),
-    filters: text("filters").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [
-    foreignKey({ columns: [table.adminUserId], foreignColumns: [users.id], name: "amsv_admin_fk" }),
-    uniqueIndex("admin_matching_saved_views_owner_name_unique").on(table.adminUserId, table.name),
-    index("admin_matching_saved_views_owner_updated_idx").on(table.adminUserId, table.updatedAt),
-  ]
-);
-
-/**
- * Private per-Admin pointer to one Saved View. This relationship stores only
- * ownership metadata and never saves request, Guardian, Tutor, contact,
- * address, note, or matching-result data.
- */
-export const adminMatchingDefaultSavedViews = mysqlTable(
-  "admin_matching_default_saved_views",
-  {
-    adminUserId: int("adminUserId").primaryKey(),
-    savedViewId: int("savedViewId").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [
-    foreignKey({ columns: [table.adminUserId], foreignColumns: [users.id], name: "amdsv_admin_fk" }),
-    foreignKey({ columns: [table.savedViewId], foreignColumns: [adminMatchingSavedViews.id], name: "amdsv_view_fk" }),
-    uniqueIndex("amdsv_saved_view_unique").on(table.savedViewId),
   ]
 );
 

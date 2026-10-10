@@ -118,7 +118,6 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/guardian-requests/appoint", "Appoint Requests"],
       ["/admin/guardian-requests/confirm", "Confirm Requests"],
       ["/admin/guardian-requests/cancel", "Cancel Requests"],
-      ["/admin/matching", "Matching workspace"],
       ["/admin/dynamic", "Section guide"],
       ["/admin/dynamic/tutor-profile", "Tutor Profile"],
       ["/admin/dynamic/guardian-profile", "Guardian Profile"],

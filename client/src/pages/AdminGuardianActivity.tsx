@@ -31,7 +31,7 @@ const initialFilters: GuardianFilters = { query: "", status: "all", contactConse
 export const guardianActionPresets = [
   { id: "new", label: "Review new requests", status: "new", contactConsent: "all" },
   { id: "consent", label: "Resolve consent decisions", status: "all", contactConsent: "pending" },
-  { id: "matching", label: "Open matching workspace", href: "/admin/matching" },
+  { id: "matching", label: "Open Posted jobs", href: "/admin/posted-jobs" },
 ] as const;
 
 function formatSubjects(value: string) {

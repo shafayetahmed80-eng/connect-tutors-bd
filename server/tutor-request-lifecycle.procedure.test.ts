@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const lifecycleDbMocks = vi.hoisted(() => ({
-  addTutorRequestAssignmentNote: vi.fn(),
   cancelTutorRequest: vi.fn(),
   confirmTutorRequestAppointment: vi.fn(),
-  createAdminMatchingSavedView: vi.fn(),
-  clearAdminMatchingDefaultSavedView: vi.fn(),
   createConfirmationLetterDraft: vi.fn(),
   createGuardianRequestFollowUp: vi.fn(),
   getConfirmationLetterRecipientFile: vi.fn(),
@@ -17,27 +14,19 @@ const lifecycleDbMocks = vi.hoisted(() => ({
   verifyConfirmationLetter: vi.fn(),
   listConfirmationLettersForGuardian: vi.fn(),
   listConfirmationLettersForTutor: vi.fn(),
-  listAdminMatchingSavedViews: vi.fn(),
   listGuardianNotifications: vi.fn(),
-  listTutorRequestAssignmentNotes: vi.fn(),
   markAllGuardianNotificationsRead: vi.fn(),
   markGuardianNotificationRead: vi.fn(),
-  renameAdminMatchingSavedView: vi.fn(),
   renewTutorPortalSession: vi.fn(),
   updateGuardianTutorRequest: vi.fn(),
-  deleteAdminMatchingSavedView: vi.fn(),
-  setAdminMatchingDefaultSavedView: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
   return {
     ...actual,
-    addTutorRequestAssignmentNote: lifecycleDbMocks.addTutorRequestAssignmentNote,
     cancelTutorRequest: lifecycleDbMocks.cancelTutorRequest,
     confirmTutorRequestAppointment: lifecycleDbMocks.confirmTutorRequestAppointment,
-    createAdminMatchingSavedView: lifecycleDbMocks.createAdminMatchingSavedView,
-    clearAdminMatchingDefaultSavedView: lifecycleDbMocks.clearAdminMatchingDefaultSavedView,
     createConfirmationLetterDraft: lifecycleDbMocks.createConfirmationLetterDraft,
     createGuardianRequestFollowUp: lifecycleDbMocks.createGuardianRequestFollowUp,
     getConfirmationLetterRecipientFile: lifecycleDbMocks.getConfirmationLetterRecipientFile,
@@ -49,21 +38,15 @@ vi.mock("./db", async importOriginal => {
     verifyConfirmationLetter: lifecycleDbMocks.verifyConfirmationLetter,
     listConfirmationLettersForGuardian: lifecycleDbMocks.listConfirmationLettersForGuardian,
     listConfirmationLettersForTutor: lifecycleDbMocks.listConfirmationLettersForTutor,
-    listAdminMatchingSavedViews: lifecycleDbMocks.listAdminMatchingSavedViews,
     listGuardianNotifications: lifecycleDbMocks.listGuardianNotifications,
-    listTutorRequestAssignmentNotes: lifecycleDbMocks.listTutorRequestAssignmentNotes,
     markAllGuardianNotificationsRead: lifecycleDbMocks.markAllGuardianNotificationsRead,
     markGuardianNotificationRead: lifecycleDbMocks.markGuardianNotificationRead,
-    renameAdminMatchingSavedView: lifecycleDbMocks.renameAdminMatchingSavedView,
     renewTutorPortalSession: lifecycleDbMocks.renewTutorPortalSession,
     updateGuardianTutorRequest: lifecycleDbMocks.updateGuardianTutorRequest,
-    deleteAdminMatchingSavedView: lifecycleDbMocks.deleteAdminMatchingSavedView,
-    setAdminMatchingDefaultSavedView: lifecycleDbMocks.setAdminMatchingDefaultSavedView,
   };
 });
 
 import { appRouter } from "./routers";
-import { AdminMatchingSavedViewNameConflictError } from "./db";
 
 const baseContext = {
   req: { protocol: "https", headers: { host: "connecttutor.example" } } as any,
@@ -175,113 +158,18 @@ describe("approved Guardian request lifecycle procedures", () => {
     await expect((adminCaller() as any).guardianNotifications.mine({ limit: 20 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("keeps categorised assignment notes and Guardian follow-up messages Admin-only", async () => {
-    lifecycleDbMocks.addTutorRequestAssignmentNote.mockResolvedValueOnce({ created: true, id: 22 });
-    lifecycleDbMocks.listTutorRequestAssignmentNotes.mockResolvedValueOnce([{ id: 22, category: "matching", body: "Shortlist the verified Tutor." }]);
+  it("keeps Guardian follow-up messages Admin-only", async () => {
     lifecycleDbMocks.createGuardianRequestFollowUp.mockResolvedValueOnce({ created: true, notificationId: 9 });
 
-    await expect((adminCaller().admin as any).addTutorRequestAssignmentNote({
-      requestId: 19,
-      category: "matching",
-      body: "Shortlist the verified Tutor.",
-    })).resolves.toEqual({ created: true, id: 22 });
-    await expect((adminCaller().admin as any).listTutorRequestAssignmentNotes({ requestId: 19 }))
-      .resolves.toEqual([{ id: 22, category: "matching", body: "Shortlist the verified Tutor." }]);
     await expect((adminCaller().admin as any).createGuardianRequestFollowUp({
       requestId: 19,
       kind: "availability_confirmation",
       message: "Please confirm the preferred start date.",
     })).resolves.toEqual({ created: true, notificationId: 9 });
 
-    expect(lifecycleDbMocks.addTutorRequestAssignmentNote).toHaveBeenCalledWith(expect.objectContaining({ requestId: 19, adminUserId: 901, category: "matching" }));
     expect(lifecycleDbMocks.createGuardianRequestFollowUp).toHaveBeenCalledWith(expect.objectContaining({ requestId: 19, adminUserId: 901, kind: "availability_confirmation" }));
-    await expect((guardianCaller() as any).admin.addTutorRequestAssignmentNote({ requestId: 19, category: "matching", body: "Private note" }))
+    await expect((guardianCaller() as any).admin.createGuardianRequestFollowUp({ requestId: 19, kind: "availability_confirmation", message: "Private message" }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("keeps matching Saved Views private to the Admin who created them", async () => {
-    const savedFilters = {
-      lifecycle: "pending" as const,
-      assignmentState: "unassigned" as const,
-      location: "Mirpur",
-      pageSize: 20,
-    };
-    lifecycleDbMocks.listAdminMatchingSavedViews.mockResolvedValueOnce([{ id: 41, name: "Pending Mirpur", filters: savedFilters }]);
-    lifecycleDbMocks.createAdminMatchingSavedView.mockResolvedValueOnce({ created: true, id: 41 });
-    lifecycleDbMocks.deleteAdminMatchingSavedView.mockResolvedValueOnce({ deleted: true });
-
-    await expect((adminCaller().admin as any).listMatchingSavedViews())
-      .resolves.toEqual([{ id: 41, name: "Pending Mirpur", filters: savedFilters }]);
-    await expect((adminCaller().admin as any).createMatchingSavedView({ name: "Pending Mirpur", filters: savedFilters }))
-      .resolves.toEqual({ created: true, id: 41 });
-    await expect((adminCaller().admin as any).deleteMatchingSavedView({ savedViewId: 41 }))
-      .resolves.toEqual({ deleted: true });
-
-    expect(lifecycleDbMocks.listAdminMatchingSavedViews).toHaveBeenCalledWith({ adminUserId: 901 });
-    expect(lifecycleDbMocks.createAdminMatchingSavedView).toHaveBeenCalledWith(expect.objectContaining({ adminUserId: 901, name: "Pending Mirpur", filters: savedFilters }));
-    expect(lifecycleDbMocks.deleteAdminMatchingSavedView).toHaveBeenCalledWith({ adminUserId: 901, savedViewId: 41 });
-    await expect((guardianCaller() as any).admin.listMatchingSavedViews()).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect((guardianCaller() as any).admin.createMatchingSavedView({ name: "Private", filters: savedFilters })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect((guardianCaller() as any).admin.deleteMatchingSavedView({ savedViewId: 41 })).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("rejects duplicate, unavailable, and invalid Admin Saved View actions without leaking ownership", async () => {
-    const savedFilters = { lifecycle: "pending" as const, pageSize: 20 };
-    lifecycleDbMocks.createAdminMatchingSavedView.mockRejectedValueOnce(new AdminMatchingSavedViewNameConflictError());
-    lifecycleDbMocks.deleteAdminMatchingSavedView.mockResolvedValueOnce({ deleted: false });
-
-    await expect((adminCaller().admin as any).createMatchingSavedView({ name: "Pending", filters: savedFilters }))
-      .rejects.toMatchObject({ code: "CONFLICT" });
-    await expect((adminCaller().admin as any).deleteMatchingSavedView({ savedViewId: 987 }))
-      .rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect((adminCaller().admin as any).createMatchingSavedView({ name: "Invalid", filters: { lifecycle: "not-a-state" } }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
-
-  it("allows a 2FA-verified Admin to set or clear only their personal Default Saved View", async () => {
-    lifecycleDbMocks.setAdminMatchingDefaultSavedView.mockResolvedValueOnce({ updated: true, savedViewId: 41 });
-    lifecycleDbMocks.clearAdminMatchingDefaultSavedView.mockResolvedValueOnce({ updated: true });
-
-    await expect((adminCaller().admin as any).setMatchingDefaultSavedView({ savedViewId: 41 }))
-      .resolves.toEqual({ updated: true, savedViewId: 41 });
-    await expect((adminCaller().admin as any).clearMatchingDefaultSavedView())
-      .resolves.toEqual({ updated: true });
-
-    expect(lifecycleDbMocks.setAdminMatchingDefaultSavedView).toHaveBeenCalledWith({ adminUserId: 901, savedViewId: 41 });
-    expect(lifecycleDbMocks.clearAdminMatchingDefaultSavedView).toHaveBeenCalledWith({ adminUserId: 901 });
-    await expect((guardianCaller() as any).admin.setMatchingDefaultSavedView({ savedViewId: 41 })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect((tutorCaller() as any).admin.clearMatchingDefaultSavedView()).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("does not disclose another Admin's Saved View through Default View selection", async () => {
-    lifecycleDbMocks.setAdminMatchingDefaultSavedView.mockResolvedValueOnce({ updated: false, savedViewId: null });
-
-    await expect((adminCaller().admin as any).setMatchingDefaultSavedView({ savedViewId: 999 }))
-      .rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
-
-  it("allows a 2FA-verified Admin to rename only their own Saved View", async () => {
-    lifecycleDbMocks.renameAdminMatchingSavedView.mockResolvedValueOnce({ updated: true, savedViewId: 41, name: "Daily pending queue" });
-
-    await expect((adminCaller().admin as any).renameMatchingSavedView({ savedViewId: 41, name: "Daily pending queue" }))
-      .resolves.toEqual({ updated: true, savedViewId: 41, name: "Daily pending queue" });
-
-    expect(lifecycleDbMocks.renameAdminMatchingSavedView)
-      .toHaveBeenCalledWith({ adminUserId: 901, savedViewId: 41, name: "Daily pending queue" });
-    await expect((guardianCaller() as any).admin.renameMatchingSavedView({ savedViewId: 41, name: "Private" }))
-      .rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("rejects duplicate, missing, and invalid Saved View rename requests without leaking ownership", async () => {
-    lifecycleDbMocks.renameAdminMatchingSavedView.mockRejectedValueOnce(new AdminMatchingSavedViewNameConflictError());
-    lifecycleDbMocks.renameAdminMatchingSavedView.mockResolvedValueOnce({ updated: false, savedViewId: null, name: null });
-
-    await expect((adminCaller().admin as any).renameMatchingSavedView({ savedViewId: 41, name: "Existing name" }))
-      .rejects.toMatchObject({ code: "CONFLICT" });
-    await expect((adminCaller().admin as any).renameMatchingSavedView({ savedViewId: 999, name: "Unavailable" }))
-      .rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect((adminCaller().admin as any).renameMatchingSavedView({ savedViewId: 41, name: "" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("allows only an Admin to draft and issue a confirmed-match confirmation letter", async () => {

@@ -10,57 +10,36 @@ export const ADMIN_REQUEST_PUBLICATION_STATES = [
 
 export type AdminRequestPublicationState = (typeof ADMIN_REQUEST_PUBLICATION_STATES)[number];
 
-export const ADMIN_REQUEST_PUBLICATION_ACTIONS = [
-  "verify",
-  "edit",
-  "guardian_confirmed",
-  "request_changes",
-  "approve",
-  "publish",
-  "go_live",
-  "close",
-] as const;
+/**
+ * The one publication move an Admin makes: taking a tuition Live, from the Posted
+ * jobs board, in a single click from wherever the request had got to.
+ *
+ * It used to be the last step of a review chain on the Matching workspace -
+ * verify, record a Guardian call, approve, publish - which is gone. Old tuitions
+ * still carry those steps in their history, so the labels for them live in
+ * `@shared/tuition-history`; they are no longer actions anyone can take.
+ */
+export const ADMIN_REQUEST_PUBLICATION_ACTIONS = ["go_live"] as const;
 
 export type AdminRequestPublicationAction = (typeof ADMIN_REQUEST_PUBLICATION_ACTIONS)[number];
 
 type PublicationValidationInput = {
   from: AdminRequestPublicationState;
   action: AdminRequestPublicationAction;
-  guardianConfirmed: boolean;
 };
 
 type PublicationValidationResult =
   | { valid: true; nextState: AdminRequestPublicationState }
-  | { valid: false; reason: "INVALID_TRANSITION" | "GUARDIAN_CONFIRMATION_REQUIRED" };
+  | { valid: false; reason: "INVALID_TRANSITION" };
 
 const transitions: Record<AdminRequestPublicationAction, Partial<Record<AdminRequestPublicationState, AdminRequestPublicationState>>> = {
-  verify: { submitted: "reviewing", changes_requested: "reviewing" },
-  edit: { reviewing: "reviewing" },
-  guardian_confirmed: { reviewing: "reviewing" },
-  request_changes: { reviewing: "changes_requested" },
-  approve: { reviewing: "approved" },
-  publish: { approved: "published", unpublished: "published" },
-  // The Posted jobs board takes a job Live in one click, from wherever the
-  // request had got to. Same destination as `publish`, no review path in front
-  // of it - which is why it is a separate action rather than a wider `publish`.
   go_live: { submitted: "published", reviewing: "published", changes_requested: "published", approved: "published", unpublished: "published" },
-  close: { submitted: "closed", reviewing: "closed", changes_requested: "closed", approved: "closed", unpublished: "closed", published: "closed" },
 };
 
-/**
- * Publishing policy: an Admin must record a completed Guardian call before
- * `approve` or `publish`. This preserves the user-approved manual process of
- * the Matching workspace. `go_live` is deliberately outside that gate: it is
- * the Posted jobs board button, where the Admin is taking the job live as a
- * single deliberate act rather than at the end of a review.
- */
 export function validateAdminRequestPublicationAction(input: PublicationValidationInput): PublicationValidationResult {
   // An action this build no longer knows (a retired one from a stale page) is no transition, not a crash.
   const nextState = transitions[input.action]?.[input.from];
   if (!nextState) return { valid: false, reason: "INVALID_TRANSITION" };
-  if ((input.action === "approve" || input.action === "publish") && !input.guardianConfirmed) {
-    return { valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" };
-  }
   return { valid: true, nextState };
 }
 

@@ -71,23 +71,23 @@ export function AdminTutorFilterFields({ draft, setDraft, options }: {
   };
   const areas = draft.cityId ? options.locationsByCity[draft.cityId] ?? [] : [];
 
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
     <FilterSelect label="Verification" value={draft.verified} onChange={value => set({ verified: value as AdminTutorFilterState["verified"] })} options={[...adminTutorVerifiedOptions]} />
     <FilterSelect label="Tuition Type" value={draft.tuitionType} onChange={value => set({ tuitionType: value as AdminTutorFilterState["tuitionType"] })} options={[...adminTutorTuitionTypeOptions]} />
     <FilterSelect label="Gender" value={draft.gender} onChange={value => set({ gender: value as AdminTutorFilterState["gender"] })} options={[...adminTutorGenderOptions]} />
     <FilterSelect label="City" value={draft.cityId} onChange={cityId => set({ cityId })} options={options.cities} />
 
-    <div className="sm:col-span-2">
+    <div className="col-span-2">
       <ChipMultiSelect label="Location" options={areas} selectedIds={draft.locationIds} onChange={locationIds => set({ locationIds })} disabled={!draft.cityId} disabledPlaceholder="Location - select a City first" maxSelections={ADMIN_TUTOR_LOCATION_LIMIT} />
     </div>
-    <div className="sm:col-span-2">
+    <div className="col-span-2">
       <ChipMultiSelect label="Subject" options={options.subjects.map(subject => ({ id: subject, label: subject }))} selectedIds={draft.subjects} onChange={subjects => set({ subjects })} maxSelections={ADMIN_TUTOR_SUBJECT_LIMIT} />
     </div>
 
-    <FilterTextBox label="Experience From" value={draft.experienceFrom} onChange={experienceFrom => set({ experienceFrom })} inputMode="numeric" suffix="years" />
-    <FilterTextBox label="Experience To" value={draft.experienceTo} onChange={experienceTo => set({ experienceTo })} inputMode="numeric" suffix="years" />
-    <FilterTextBox label="Rating From" value={draft.ratingFrom} onChange={ratingFrom => set({ ratingFrom })} suffix="stars" />
-    <FilterTextBox label="Rating To" value={draft.ratingTo} onChange={ratingTo => set({ ratingTo })} suffix="stars" />
+    <div className="col-span-2 sm:col-span-1"><FilterTextBox label="Experience From" value={draft.experienceFrom} onChange={experienceFrom => set({ experienceFrom })} inputMode="numeric" suffix="years" /></div>
+    <div className="col-span-2 sm:col-span-1"><FilterTextBox label="Experience To" value={draft.experienceTo} onChange={experienceTo => set({ experienceTo })} inputMode="numeric" suffix="years" /></div>
+    <div className="col-span-2 sm:col-span-1"><FilterTextBox label="Rating From" value={draft.ratingFrom} onChange={ratingFrom => set({ ratingFrom })} suffix="stars" /></div>
+    <div className="col-span-2 sm:col-span-1"><FilterTextBox label="Rating To" value={draft.ratingTo} onChange={ratingTo => set({ ratingTo })} suffix="stars" /></div>
 
     <DateField label="Joined Date From" value={draft.joinedFrom} max={draft.joinedTo || undefined} onChange={joinedFrom => set({ joinedFrom })} />
     <DateField label="Joined Date To" value={draft.joinedTo} min={draft.joinedFrom || undefined} onChange={joinedTo => set({ joinedTo })} />

@@ -7,54 +7,25 @@ import {
 } from "./admin-request-publication";
 
 describe("Admin request publication workflow", () => {
-  it("requires review before approval, Guardian confirmation before approval, and approval before publication", () => {
-    expect(validateAdminRequestPublicationAction({ from: "submitted", action: "approve", guardianConfirmed: true })).toMatchObject({ valid: false });
-    expect(validateAdminRequestPublicationAction({ from: "reviewing", action: "approve", guardianConfirmed: false })).toMatchObject({ valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" });
-    expect(validateAdminRequestPublicationAction({ from: "reviewing", action: "approve", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "approved" });
-    expect(validateAdminRequestPublicationAction({ from: "approved", action: "publish", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "published" });
-  });
-
   it("lets the Posted jobs board go straight Live from anywhere before it", () => {
     // One click from the board, from wherever the request had got to.
     for (const from of ["submitted", "reviewing", "changes_requested", "approved", "unpublished"] as const) {
-      expect(validateAdminRequestPublicationAction({ from, action: "go_live", guardianConfirmed: false }))
+      expect(validateAdminRequestPublicationAction({ from, action: "go_live" }))
         .toMatchObject({ valid: true, nextState: "published" });
     }
   });
 
-  it("does not hold go_live behind the Guardian call that gates approve and publish", () => {
-    // The gate stays exactly where it was for the Matching workspace...
-    expect(validateAdminRequestPublicationAction({ from: "approved", action: "publish", guardianConfirmed: false }))
-      .toMatchObject({ valid: false, reason: "GUARDIAN_CONFIRMATION_REQUIRED" });
-    // ...and the board button is deliberately outside it.
-    expect(validateAdminRequestPublicationAction({ from: "approved", action: "go_live", guardianConfirmed: false }))
-      .toMatchObject({ valid: true, nextState: "published" });
-  });
-
   it("has nowhere left to go once a job is already live or closed", () => {
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "go_live", guardianConfirmed: true })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
-    expect(validateAdminRequestPublicationAction({ from: "closed", action: "go_live", guardianConfirmed: true })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
+    expect(validateAdminRequestPublicationAction({ from: "published", action: "go_live" })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
+    expect(validateAdminRequestPublicationAction({ from: "closed", action: "go_live" })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
   });
 
-  it("keeps close explicit and takes a Live job nowhere but to its end, while rejecting invalid transitions", () => {
-    // Only a tuition that left the board some other way can be published again; there is no Unpublish to take one off.
-    expect(validateAdminRequestPublicationAction({ from: "unpublished", action: "publish", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "published" });
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "publish", guardianConfirmed: true })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "verify", guardianConfirmed: false })).toMatchObject({ valid: false });
-    expect(validateAdminRequestPublicationAction({ from: "approved", action: "close", guardianConfirmed: true })).toMatchObject({ valid: true, nextState: "closed" });
-  });
-
-  it("has no extension, reconfirmation call or unpublish: a job on the board has no end date to move", () => {
-    expect(ADMIN_REQUEST_PUBLICATION_ACTIONS).not.toContain("extend_expiry");
-    expect(ADMIN_REQUEST_PUBLICATION_ACTIONS).not.toContain("guardian_reconfirmed");
-    expect(ADMIN_REQUEST_PUBLICATION_ACTIONS).not.toContain("unpublish");
-    // A retired action asked for anyway is no transition at all.
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "unpublish" as never, guardianConfirmed: true })).toMatchObject({ valid: false });
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "extend_expiry" as never, guardianConfirmed: true })).toMatchObject({ valid: false });
-  });
-
-  it("closes a Live job from the Matching workspace, the one way a Live job leaves the board before it is appointed", () => {
-    expect(validateAdminRequestPublicationAction({ from: "published", action: "close", guardianConfirmed: false })).toMatchObject({ valid: true, nextState: "closed" });
+  it("has only the one move: no review chain, no Guardian-call gate, no extension, no unpublish", () => {
+    expect(ADMIN_REQUEST_PUBLICATION_ACTIONS).toEqual(["go_live"]);
+    // A retired action asked for anyway - from a page opened before the update - is no transition at all.
+    for (const action of ["verify", "edit", "guardian_confirmed", "request_changes", "approve", "publish", "close", "unpublish", "extend_expiry"]) {
+      expect(validateAdminRequestPublicationAction({ from: "reviewing", action: action as never })).toMatchObject({ valid: false, reason: "INVALID_TRANSITION" });
+    }
   });
 
   it("creates a deliberately safe before/after snapshot without contacts, student identity, notes, or raw address", () => {
