@@ -10,6 +10,7 @@ const good = {
   otpDevLog: false,
   vapidPublicKey: "public-key",
   vapidPrivateKey: "private-key",
+  cronSecret: "c".repeat(48),
 };
 
 describe("production settings check", () => {
@@ -31,5 +32,14 @@ describe("production settings check", () => {
     expect(result.warnings.join(" ")).toContain("OWNER_OPEN_ID");
     expect(result.warnings.join(" ")).toContain("SMS_API_KEY");
     expect(result.warnings.join(" ")).toContain("OTP_DEV_LOG");
+  });
+
+  it("starts but warns when the secret for the daily payment reminders is missing or too short", () => {
+    for (const cronSecret of ["", "too-short"]) {
+      const result = productionSettingsProblems({ ...good, cronSecret });
+      expect(result.fatal).toEqual([]);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("CRON_SECRET");
+    }
   });
 });

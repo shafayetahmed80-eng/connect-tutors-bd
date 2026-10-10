@@ -19,6 +19,7 @@ import { attachChatWebSocketServer } from "../chat-ws";
 import { getTutorAccountStatusByUserId, getTutorProfileByUserId, renewTutorPortalSession } from "../db";
 import { loginTwoFactorCleared } from "../login-two-factor";
 import { registerSiteDiscoveryRoutes } from "../site-discovery-routes";
+import { registerCronRoutes } from "../cron-routes";
 import { ENV } from "./env";
 import { productionSettingsProblems } from "./production-check";
 
@@ -62,6 +63,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerSiteDiscoveryRoutes(app);
+  registerCronRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerGuardianProfilePhotoRoute(app);
