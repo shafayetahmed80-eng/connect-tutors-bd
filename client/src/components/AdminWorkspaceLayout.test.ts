@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAdminWorkspaceNavigation, getAdminWorkspaceDisplayState } from "./AdminWorkspaceLayout";
-import { groupNavigationRows } from "./DashboardLayout";
+import { groupNavigationRows, visibleNavigationItems } from "./DashboardLayout";
 import { ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS } from "./AdminWorkspaceLayout";
 
 describe("Admin workspace navigation", () => {
@@ -181,5 +181,23 @@ describe("Sign Out in the sidebar", () => {
       expect(items.filter(item => item.action === "signout"), `isOwner=${isOwner}`).toHaveLength(1);
       expect(items[items.length - 1].label, `isOwner=${isOwner}`).toBe("Sign Out");
     }
+  });
+});
+
+describe("Install app in the Admin sidebar", () => {
+  it("sits in the Account section between Settings and Sign Out, as a row that installs rather than navigates", () => {
+    for (const isOwner of [true, false]) {
+      const account = buildAdminWorkspaceNavigation(isOwner).filter(item => item.sectionLabel === "Account");
+
+      expect(account.map(item => item.label), `isOwner=${isOwner}`).toEqual(["Settings", "Install app", "Sign Out"]);
+      expect(account[1], `isOwner=${isOwner}`).toMatchObject({ path: "/admin/install", action: "install" });
+    }
+  });
+
+  it("is left out until the browser has offered to install the app", () => {
+    const items = buildAdminWorkspaceNavigation(false);
+
+    expect(visibleNavigationItems(items, false).map(item => item.label)).not.toContain("Install app");
+    expect(visibleNavigationItems(items, true).map(item => item.label)).toContain("Install app");
   });
 });
