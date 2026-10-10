@@ -9590,6 +9590,73 @@ export async function getAdminMonitoringOverview() {
   };
 }
 
+/**
+ * Where the platform charge stands, for the Owner: what came in over the last
+ * `windowDays`, what is still owed now, what is waiting on an Admin to verify, and
+ * how many tuitions were paid off in the window.
+ *
+ * "Came in" is verified money by the day it was paid, and leaves credit out: credit
+ * is money a Tutor was already owed moving to another tuition, not new money.
+ * "Still owed" is the balance on every Confirmed tuition that is not yet Full Paid,
+ * read the way each row's own Balance column is. "Still owed" and "waiting" are as of
+ * now, not the window.
+ *
+ * `onlyRequestIds` narrows every figure to those tuitions. The Owner's report never
+ * passes it; it lets a test read its own rows on a database others are writing to.
+ */
+export async function getOwnerMoneySummary(input: { windowDays: 7 | 30 | 90; onlyRequestIds?: number[] }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const since = new Date(Date.now() - input.windowDays * 24 * 60 * 60 * 1000);
+  const onlyPayments = input.onlyRequestIds ? [inArray(tuitionPayments.tutorRequestId, input.onlyRequestIds)] : [];
+  const onlyRequests = input.onlyRequestIds ? [inArray(tutorRequests.id, input.onlyRequestIds)] : [];
+
+  const [[collected], [waiting], [closed], confirmed] = await Promise.all([
+    database
+      .select({ amount: sql<string>`coalesce(sum(${tuitionPayments.amount}), 0)`, payments: count() })
+      .from(tuitionPayments)
+      .where(and(eq(tuitionPayments.status, "verified"), ne(tuitionPayments.method, "credit"), gte(tuitionPayments.paidAt, since), ...onlyPayments)),
+    database
+      .select({ amount: sql<string>`coalesce(sum(${tuitionPayments.amount}), 0)`, payments: count() })
+      .from(tuitionPayments)
+      .where(and(eq(tuitionPayments.status, "submitted"), ...onlyPayments)),
+    database
+      .select({ tuitions: count() })
+      .from(tutorRequests)
+      .where(and(adminPostedJobStageCondition("closed"), gte(tutorRequests.paymentCompletedAt, since), ...onlyRequests)),
+    database
+      .select({
+        id: tutorRequests.id,
+        tutorId: tutorRequests.tutorId,
+        confirmedAt: tutorRequests.appointmentConfirmedAt,
+        tuitionType: tutorRequests.tuitionType,
+        budgetAmount: tutorRequests.budgetAmount,
+        chargeTerms: tutorRequests.chargeTerms,
+      })
+      .from(tutorRequests)
+      .where(and(adminPostedJobStageCondition("confirmed"), ...onlyRequests)),
+  ]);
+
+  const charges = await getChargeSummaries(confirmed.filter((row): row is typeof row & { tutorId: string } => row.tutorId !== null));
+  let owedAmount = 0;
+  let owingTuitions = 0;
+  Array.from(charges.values()).forEach(summary => {
+    if (summary.balance > 0) {
+      owedAmount += summary.balance;
+      owingTuitions += 1;
+    }
+  });
+
+  return {
+    windowDays: input.windowDays,
+    generatedAt: new Date(),
+    collected: { amount: Number(collected?.amount ?? 0), payments: Number(collected?.payments ?? 0) },
+    stillDue: { amount: owedAmount, tuitions: owingTuitions },
+    waiting: { amount: Number(waiting?.amount ?? 0), payments: Number(waiting?.payments ?? 0) },
+    closed: { tuitions: Number(closed?.tuitions ?? 0) },
+  };
+}
+
 export type OwnerAdminActivityReportInput = {
   windowDays: 7 | 30 | 90;
 };

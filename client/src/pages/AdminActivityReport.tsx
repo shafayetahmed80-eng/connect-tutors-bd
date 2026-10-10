@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, CheckCircle2, ClipboardCheck, ContactRound, ShieldCheck, UsersRound, XCircle } from "lucide-react";
+import { Archive, BarChart3, CheckCircle2, ClipboardCheck, ContactRound, Hourglass, ShieldCheck, UsersRound, Wallet, XCircle } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 
@@ -47,6 +47,40 @@ type OwnerActivityReport = {
   }>;
 };
 
+export type OwnerMoneySummary = {
+  windowDays: 7 | 30 | 90;
+  collected: { amount: number; payments: number };
+  stillDue: { amount: number; tuitions: number };
+  waiting: { amount: number; payments: number };
+  closed: { tuitions: number };
+};
+
+const taka = (amount: number) => `${amount.toLocaleString("en-US")} Taka`;
+const plural = (count: number, one: string, many: string) => `${count.toLocaleString("en-US")} ${count === 1 ? one : many}`;
+
+/**
+ * The platform charge in money terms: what came in over the chosen window, what
+ * is still owed on Confirmed tuitions, what is waiting for an Admin to verify, and
+ * how many tuitions were paid off. The first and last follow the window; the two
+ * in the middle are as of now.
+ */
+export function MoneyCards({ money }: { money: OwnerMoneySummary }) {
+  const cards = [
+    { label: "Received", value: taka(money.collected.amount), detail: `${plural(money.collected.payments, "verified payment", "verified payments")} in the last ${money.windowDays} days`, icon: Wallet, tone: "bg-emerald-50 text-emerald-900 ring-emerald-200" },
+    { label: "Still due", value: taka(money.stillDue.amount), detail: `on ${plural(money.stillDue.tuitions, "Confirmed tuition", "Confirmed tuitions")}, as of now`, icon: Hourglass, tone: "bg-amber-50 text-amber-900 ring-amber-200" },
+    { label: "Waiting for verification", value: taka(money.waiting.amount), detail: `${plural(money.waiting.payments, "payment", "payments")} reported by Tutors, as of now`, icon: ClipboardCheck, tone: "bg-sky-50 text-sky-900 ring-sky-200" },
+    { label: "Closed", value: money.closed.tuitions.toLocaleString("en-US"), detail: `${money.closed.tuitions === 1 ? "tuition" : "tuitions"} paid in full in the last ${money.windowDays} days`, icon: Archive, tone: "bg-violet-50 text-violet-900 ring-violet-200" },
+  ];
+  return <section aria-label="Platform charge" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {cards.map(card => { const Icon = card.icon; return <article key={card.label} className={`rounded-xl p-5 ring-1 shadow-sm ${card.tone}`}>
+      <Icon className="h-5 w-5" aria-hidden={true} />
+      <p className="mt-5 text-3xl font-bold tabular-nums">{card.value}</p>
+      <h2 className="mt-1 text-sm font-bold">{card.label}</h2>
+      <p className="mt-2 text-xs leading-5 opacity-75">{card.detail}</p>
+    </article>; })}
+  </section>;
+}
+
 function formatDate(value: Date | null | undefined) {
   return value ? new Date(value).toLocaleString() : "No recorded activity";
 }
@@ -66,6 +100,10 @@ function OwnerReportContent() {
     enabled: Boolean(workspaceAccess.data?.isOwner),
     retry: false,
   });
+  const money = trpc.admin.getMoneySummary.useQuery({ windowDays }, {
+    enabled: Boolean(workspaceAccess.data?.isOwner),
+    retry: false,
+  });
 
   if (loading || (isAdmin && workspaceAccess.isLoading)) {
     return <div className="flex min-h-[58vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Verifying Owner access…</div>;
@@ -79,6 +117,12 @@ function OwnerReportContent() {
       <section className="rounded-xl bg-[linear-gradient(125deg,#172554,#115e9d_58%,#38bdf8)] p-6 text-white shadow-[0_18px_42px_rgba(20,83,133,0.2)] sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-100">Owner reporting</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.035em]">Admin activity summary</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100">Review aggregate sign-in security, Tutor moderation, and logged Guardian contact access. This report never displays Guardian contact details or credential material.</p></div><div className="flex flex-wrap gap-2">{windows.map(option => <button type="button" key={option.value} onClick={() => setWindowDays(option.value)} className={`rounded-xl px-3 py-2 text-sm font-bold ring-1 transition ${windowDays === option.value ? "bg-white text-[#0f4d7f] ring-white" : "bg-[#062946]/25 text-white ring-white/25 hover:bg-white/15"}`}>{option.label}</button>)}</div></div>
       </section>
+
+      {money.data
+        ? <MoneyCards money={money.data as OwnerMoneySummary} />
+        : money.isError
+          ? <section role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">The platform charge summary could not be loaded.</section>
+          : null}
 
       {report.isLoading ? <div className="flex min-h-[34vh] items-center justify-center text-j-ink-soft"><LoadingCradle className="mr-2" /> Preparing the activity report…</div> : report.isError || !report.data ? <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">The Owner activity report could not be loaded. Please refresh and try again.</section> : <ReportData data={report.data as OwnerActivityReport} />}
     </main>

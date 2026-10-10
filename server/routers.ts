@@ -2349,6 +2349,10 @@ export const appRouter = router({
     getActivityReport: ownerAdminProcedure
       .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30) }))
       .query(({ input }) => db.getOwnerAdminActivityReport(input)),
+    /** The platform charge in money terms, for the Owner's report. */
+    getMoneySummary: ownerAdminProcedure
+      .input(z.object({ windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30) }))
+      .query(({ input }) => db.getOwnerMoneySummary(input)),
     getMonitoringOverview: adminProcedure.query(() => db.getAdminMonitoringOverview()),
     listTutorDirectory: adminProcedure
       .input(adminTutorDirectoryInputSchema)
