@@ -79,6 +79,7 @@ const applicationStageStyles: Record<TutorApplicationStage, string> = {
   shortlisted: "bg-violet-50 text-violet-800",
   appointed: "bg-emerald-50 text-emerald-800",
   confirmed: "bg-indigo-50 text-indigo-800",
+  closed: "bg-teal-50 text-teal-800",
   cancelled: "bg-slate-100 text-slate-600",
 };
 

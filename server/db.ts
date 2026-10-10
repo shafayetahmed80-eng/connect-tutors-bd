@@ -2720,6 +2720,8 @@ export async function listGuardianTutorRequests(userId: number) {
       tutorId: tutorRequests.tutorId,
       contactConsent: tutorRequests.contactConsent,
       appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      // A Confirmed tuition whose fee is Full Paid reads as Closed on the page.
+      paymentStatus: tutorRequests.paymentStatus,
       cancellationReason: tutorRequests.cancellationReason,
       createdAt: tutorRequests.createdAt,
     })
@@ -3933,6 +3935,8 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       appointedAt: tutorRequests.appointedAt,
       tuitionCancelledAt: tutorRequests.cancelledAt,
       paymentStatus: tutorRequests.paymentStatus,
+      // The day the last payment made the fee Full Paid: when a Confirmed tuition became Closed.
+      paymentCompletedAt: tutorRequests.paymentCompletedAt,
       publicJobId: tutorJobs.publicJobId,
       tuitionType: tutorJobs.tuitionType,
       category: tutorJobs.category,
@@ -5914,13 +5918,16 @@ export function tutorJobStageCondition(stage: TutorApplicationStage): SQL {
   const confirmedAt = q(tutorRequests, tutorRequests.appointmentConfirmedAt);
   const tuitionStatus = q(tutorRequests, tutorRequests.status);
   const publicationState = q(tutorRequests, tutorRequests.publicationState);
+  const paymentStatus = q(tutorRequests, tutorRequests.paymentStatus);
   // A cancelled tuition ends every application on it, whatever the interest says.
   const tuitionOpen = `${tuitionStatus} <> 'closed' and ${publicationState} <> 'closed'`;
   const rule: Record<TutorApplicationStage, string> = {
     applied: `${status} = 'interested' and ${tuitionOpen}`,
     shortlisted: `${status} = 'shortlisted' and ${tuitionOpen}`,
     appointed: `${status} = 'matched' and ${confirmedAt} is null and ${tuitionOpen}`,
-    confirmed: `${status} = 'matched' and ${confirmedAt} is not null and ${tuitionOpen}`,
+    // Confirmed with the fee Full Paid is Closed; every other Confirmed tuition stays Confirmed.
+    confirmed: `${status} = 'matched' and ${confirmedAt} is not null and ${paymentStatus} <> 'full_paid' and ${tuitionOpen}`,
+    closed: `${status} = 'matched' and ${confirmedAt} is not null and ${paymentStatus} = 'full_paid' and ${tuitionOpen}`,
     cancelled: `(${status} in ('declined', 'withdrawn') or ${tuitionStatus} = 'closed' or ${publicationState} = 'closed')`,
   };
   const from = `\`${getTableName(tutorJobInterests)}\``
@@ -6823,6 +6830,8 @@ async function getAppliedJobHeader(database: NonNullable<Awaited<ReturnType<type
       status: tutorRequests.status,
       publicationState: tutorRequests.publicationState,
       appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      // A Confirmed tuition whose fee is Full Paid reads as Closed on the page.
+      paymentStatus: tutorRequests.paymentStatus,
       cancellationReason: tutorRequests.cancellationReason,
     })
     .from(tutorRequests)
@@ -8793,10 +8802,11 @@ async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId:
         tutorId: request.tutorId,
         type: "payment",
         ...closedNote,
-        actionPath: "/tutor/dashboard/status",
+        // Opens the Status tab on the Closed stage, where the tuition now is.
+        actionPath: "/tutor/dashboard/status?stage=closed",
         deduplicationKey: `closed:${request.id}:${request.tutorId}`,
       });
-      void sendPushToTutor(request.tutorId, { title: closedNote.title, body: closedNote.message, url: "/tutor/dashboard/status" }).catch(() => {});
+      void sendPushToTutor(request.tutorId, { title: closedNote.title, body: closedNote.message, url: "/tutor/dashboard/status?stage=closed" }).catch(() => {});
     }
   }
   return summary;

@@ -70,7 +70,7 @@ const mocks = vi.hoisted(() => ({
     totalPages: 1,
     counts: {
       profileStatus: { all: 42, pending: 6, changes_requested: 3, approved: 28, suspended: 1, draft: 4 },
-      jobStage: { applied: 30, shortlisted: 12, appointed: 5, confirmed: 3, cancelled: 2 },
+      jobStage: { applied: 30, shortlisted: 12, appointed: 5, confirmed: 3, closed: 4, cancelled: 2 },
     },
   },
 }));
@@ -190,13 +190,13 @@ describe("Admin Tutor Profiles list", () => {
 
     const jobRow = screen.getByRole("group", { name: "Job status" });
     expect(within(jobRow).getAllByRole("button").map(button => button.textContent)).toEqual([
-      "Applied Jobs 30", "Shortlisted Jobs 12", "Appointed Jobs 05", "Confirmed Jobs 03", "Cancelled Jobs 02",
+      "Applied Jobs 30", "Shortlisted Jobs 12", "Appointed Jobs 05", "Confirmed Jobs 03", "Closed Jobs 04", "Cancelled Jobs 02",
     ]);
     expect(mocks.lastInput).toMatchObject({ jobStage: "all" });
     // On a phone both rows stay one line, and the job row drops "Jobs".
     expect(jobRow.className).toContain("flex-nowrap");
     expect(screen.getByRole("tablist", { name: "Profile status" }).className).toContain("flex-nowrap");
-    expect(within(jobRow).getAllByRole("button").map(button => button.querySelector(".hidden.sm\\:inline")?.textContent)).toEqual(Array(5).fill("Jobs"));
+    expect(within(jobRow).getAllByRole("button").map(button => button.querySelector(".hidden.sm\\:inline")?.textContent)).toEqual(Array(6).fill("Jobs"));
 
     fireEvent.click(within(jobRow).getByRole("button", { name: /Confirmed Jobs/ }));
     expect(mocks.lastInput).toMatchObject({ jobStage: "confirmed", page: 1 });

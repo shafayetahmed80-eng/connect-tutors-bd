@@ -119,7 +119,7 @@ describe("Tutor Dashboard dirty Profile navigation", () => {
 
     expect(screen.getAllByText("Test Tutor").length).toBeGreaterThan(0);
     const stages = screen.getByRole("navigation", { name: "Application stages" });
-    expect(stages.querySelectorAll("a")).toHaveLength(5);
+    expect(stages.querySelectorAll("a")).toHaveLength(6);
     expect(stages.querySelector("a")?.getAttribute("href")).toBe("/tutor/dashboard/status?stage=applied");
     expect(screen.getAllByText("Tutor ID preparing").length).toBeGreaterThan(0);
     expect(screen.queryByText("Profile status")).toBeNull();

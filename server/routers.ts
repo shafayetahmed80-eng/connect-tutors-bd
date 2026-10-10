@@ -382,7 +382,7 @@ const publishedTutorJobBoardInputSchema = z.object({
 const adminTutorDirectoryInputSchema = z.object({
   query: z.string().trim().max(100).default(""),
   profileStatus: z.enum(["all", "draft", "pending", "changes_requested", "approved", "suspended"]).default("all"),
-  jobStage: z.enum(["all", "applied", "shortlisted", "appointed", "confirmed", "cancelled"]).default("all"),
+  jobStage: z.enum(["all", "applied", "shortlisted", "appointed", "confirmed", "closed", "cancelled"]).default("all"),
   verified: z.enum(["all", "verified", "unverified"]).default("all"),
   location: z.string().trim().max(160).default(""),
   subject: z.string().trim().max(100).default(""),

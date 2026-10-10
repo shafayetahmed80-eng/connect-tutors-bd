@@ -55,6 +55,6 @@ describe("what an Admin can do from Applied Tutors", () => {
 
   it("names the buttons and the row stages", () => {
     expect(applicantActionLabels.unshortlist).toBe("Remove from shortlist");
-    expect(Object.values(applicantStageLabels)).toEqual(["Applied", "Shortlisted", "Appointed", "Confirmed", "Cancelled"]);
+    expect(Object.values(applicantStageLabels)).toEqual(["Applied", "Shortlisted", "Appointed", "Confirmed", "Closed", "Cancelled"]);
   });
 });

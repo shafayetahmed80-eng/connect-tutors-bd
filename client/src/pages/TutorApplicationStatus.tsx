@@ -33,6 +33,8 @@ type ApplicationRow = {
   endedAt: string | Date | null;
   tuitionCancelledAt: string | Date | null;
   paymentStatus: JobPaymentStatus;
+  /** The day the last payment made the fee Full Paid; set once the tuition is Closed. */
+  paymentCompletedAt?: string | Date | null;
 };
 
 function formatDate(value: string | Date) {
@@ -63,6 +65,11 @@ function stageColumns(stage: TutorApplicationStage): RecordColumn<ApplicationRow
       key: "paymentStatus", label: "Payment Status", cellClassName: "whitespace-nowrap",
       cell: application => <PaymentStatusPill status={application.paymentStatus} />,
     },
+  ];
+  // Paid in full: when it was confirmed and the day the last of the fee came in. The status is always Full Paid, so it is not repeated.
+  if (stage === "closed") return [
+    { key: "confirmedAt", label: "Confirmation Date", cellClassName: "whitespace-nowrap", cell: application => <StageDate value={application.appointmentConfirmedAt} /> },
+    { key: "closedAt", label: "Closed", cellClassName: "whitespace-nowrap", cell: application => <StageDate value={application.paymentCompletedAt ?? null} /> },
   ];
   if (stage === "cancelled") return [{ key: "cancelledAt", label: "Cancelled", cellClassName: "whitespace-nowrap", cell: application => <StageDate value={application.endedAt ?? application.tuitionCancelledAt} /> }];
   return [];

@@ -63,11 +63,12 @@ export const applicantActionLabels: Record<ApplicantAction, string> = {
   remove_confirmed: "Remove Tutor",
 };
 
-/** An application's stage as its row names it: the Tutor's own five, without "Jobs". */
+/** An application's stage as its row names it: the Tutor's own six, without "Jobs". */
 export const applicantStageLabels: Record<TutorApplicationStage, string> = {
   applied: "Applied",
   shortlisted: "Shortlisted",
   appointed: "Appointed",
   confirmed: "Confirmed",
+  closed: "Closed",
   cancelled: "Cancelled",
 };

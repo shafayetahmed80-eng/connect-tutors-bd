@@ -34,8 +34,13 @@ describe("the job-stage subquery", () => {
     expect(compile("cancelled")).toContain("`tutor_job_interests`.`status` in ('declined', 'withdrawn')");
   });
 
+  it("splits Confirmed from Closed by the Payment Status, so a paid-up tuition is in exactly one of them", () => {
+    expect(compile("confirmed")).toContain("`tutor_requests`.`appointmentConfirmedAt` is not null and `tutor_requests`.`paymentStatus` <> 'full_paid'");
+    expect(compile("closed")).toContain("`tutor_requests`.`appointmentConfirmedAt` is not null and `tutor_requests`.`paymentStatus` = 'full_paid'");
+  });
+
   it("ends every application on a cancelled tuition, as the Status tab does", () => {
-    for (const key of ["applied", "shortlisted", "appointed", "confirmed"] as const) {
+    for (const key of ["applied", "shortlisted", "appointed", "confirmed", "closed"] as const) {
       expect(compile(key), key).toContain("and `tutor_requests`.`status` <> 'closed' and `tutor_requests`.`publicationState` <> 'closed'");
     }
     expect(compile("cancelled")).toContain("(`tutor_job_interests`.`status` in ('declined', 'withdrawn') or `tutor_requests`.`status` = 'closed' or `tutor_requests`.`publicationState` = 'closed')");

@@ -118,7 +118,7 @@ describe("a Confirmed tuition closes when its fee is paid in full", () => {
 
     const db = await database();
     const [note] = await db.select().from(tutorNotifications).where(and(eq(tutorNotifications.tutorId, tutorId), eq(tutorNotifications.deduplicationKey, `closed:${requestId}:${tutorId}`)));
-    expect(note).toMatchObject({ type: "payment", actionPath: "/tutor/dashboard/status", title: "পেমেন্ট সম্পূর্ণ" });
+    expect(note).toMatchObject({ type: "payment", actionPath: "/tutor/dashboard/status?stage=closed", title: "পেমেন্ট সম্পূর্ণ" });
     expect(note?.message).toContain("Closed");
   });
 
