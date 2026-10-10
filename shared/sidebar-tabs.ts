@@ -140,6 +140,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/reports", "Admin activity report"],
       ["/admin/security", "Admin security"],
       ["/admin/settings", "Settings"],
+      ["/admin/install", "Install app"],
       ["/admin/sign-out", "Sign Out"],
     ],
   },
