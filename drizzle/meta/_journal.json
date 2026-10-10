@@ -813,6 +813,13 @@
       "when": 1794500000000,
       "tag": "0115_tuition_closed_stage",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "5",
+      "when": 1794600000000,
+      "tag": "0116_tuition_history_closed",
+      "breakpoints": true
     }
   ]
 }

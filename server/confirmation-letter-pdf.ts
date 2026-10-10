@@ -15,17 +15,17 @@ const require = createRequire(import.meta.url);
  * Bengali - a Tutor's name, a subject - because pdfkit has no font fallback:
  * without it those letters print as empty boxes.
  */
-const fontFiles = {
+export const fontFiles = {
   Regular: require.resolve("@fontsource/manrope/files/manrope-latin-500-normal.woff"),
   Bold: require.resolve("@fontsource/manrope/files/manrope-latin-700-normal.woff"),
   Heavy: require.resolve("@fontsource/manrope/files/manrope-latin-800-normal.woff"),
   Bengali: require.resolve("@fontsource/noto-sans-bengali/files/noto-sans-bengali-bengali-400-normal.woff"),
   BengaliBold: require.resolve("@fontsource/noto-sans-bengali/files/noto-sans-bengali-bengali-700-normal.woff"),
 } as const;
-type LatinFont = "Regular" | "Bold" | "Heavy";
+export type LatinFont = "Regular" | "Bold" | "Heavy";
 
 const MANROPE_CAP_HEIGHT = 0.72;
-const SITE_ADDRESS = "connecttutorsbd.com";
+export const SITE_ADDRESS = "connecttutorsbd.com";
 
 /**
  * The letter reads as a keepsake certificate: warm parchment, a maroon-and-
@@ -33,7 +33,7 @@ const SITE_ADDRESS = "connecttutorsbd.com";
  * palette, kept apart so the logo and seal always read as the real Connect
  * Tutors mark no matter how the letter's own colours move around them.
  */
-const colour = {
+export const colour = {
   ink: "#2B1B10",
   body: "#3B2A1C",
   muted: "#6E5A44",
@@ -48,7 +48,7 @@ const colour = {
   parchment: "#F4E9CC",
   parchmentEdge: "#E7D3A2",
 };
-const brand = { blue: "#0B5FA8", saffron: "#D99624" };
+export const brand = { blue: "#0B5FA8", saffron: "#D99624" };
 
 export type ConfirmationLetterDocument = {
   letterNumber: string;
@@ -164,7 +164,7 @@ export function splitScriptRuns(text: string) {
 }
 
 /** Left-aligned text at a point, each script in its own font. */
-function writeValue(document: PDFKit.PDFDocument, text: string, font: LatinFont, x: number, y: number, width: number) {
+export function writeValue(document: PDFKit.PDFDocument, text: string, font: LatinFont, x: number, y: number, width: number) {
   const runs = splitScriptRuns(text);
   runs.forEach((run, index) => {
     const options = { width, lineGap: 2, continued: index < runs.length - 1 };
@@ -179,7 +179,7 @@ function writeValue(document: PDFKit.PDFDocument, text: string, font: LatinFont,
  * four balls at rest, the saffron one lifted -22 degrees about its pivot, and
  * the bar painted last so every string hangs from under it.
  */
-function drawCradle(document: PDFKit.PDFDocument, originX: number, originY: number, unit: number, stringWidth = 1.3) {
+export function drawCradle(document: PDFKit.PDFDocument, originX: number, originY: number, unit: number, stringWidth = 1.3) {
   document.save().translate(originX, originY).scale(unit);
   document.lineWidth(stringWidth).strokeColor(brand.blue).fillColor(brand.blue);
   for (const x of [5.6, 12.8, 20, 27.2]) document.moveTo(x, 11).lineTo(x, 35).stroke();
@@ -198,7 +198,7 @@ function drawCradle(document: PDFKit.PDFDocument, originX: number, originY: numb
  * measure taken from the wordmark's size as in the site header, the mark's
  * middle on the middle of the capitals. Returns the lockup's height.
  */
-function drawLogo(document: PDFKit.PDFDocument, left: number, top: number) {
+export function drawLogo(document: PDFKit.PDFDocument, left: number, top: number) {
   const size = 19;
   const characterSpacing = -0.03 * size;
   document.font("Heavy").fontSize(size);
@@ -220,13 +220,13 @@ function drawLogo(document: PDFKit.PDFDocument, left: number, top: number) {
 const LABEL_SHARE = 0.34;
 
 /** How tall each row's value runs once it wraps in its column. */
-function measureRows(document: PDFKit.PDFDocument, rows: readonly LetterRow[], width: number) {
+export function measureRows(document: PDFKit.PDFDocument, rows: readonly LetterRow[], width: number) {
   document.font("Bold").fontSize(10);
   return rows.map(([, value]) => Math.max(12, document.heightOfString(value, { width: width * (1 - LABEL_SHARE), lineGap: 2 })));
 }
 
 /** Label/value rows between hairlines; a long value wraps inside its own column. */
-function drawRows(document: PDFKit.PDFDocument, rows: readonly LetterRow[], left: number, width: number, top: number, padding: number) {
+export function drawRows(document: PDFKit.PDFDocument, rows: readonly LetterRow[], left: number, width: number, top: number, padding: number) {
   const labelWidth = width * LABEL_SHARE;
   const valueWidth = width - labelWidth;
   const heights = measureRows(document, rows, width);
@@ -261,7 +261,7 @@ function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number, y: nu
   document.fill().restore();
 }
 
-function sectionLabel(document: PDFKit.PDFDocument, text: string, left: number, top: number) {
+export function sectionLabel(document: PDFKit.PDFDocument, text: string, left: number, top: number) {
   document.font("Heavy").fontSize(7.5).fillColor(colour.accent).text(text.toUpperCase(), left, top, { characterSpacing: 1.1, lineBreak: false });
   return top + 15;
 }

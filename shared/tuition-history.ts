@@ -46,6 +46,7 @@ const actionLabels: Record<string, string> = {
   admin_declined_appointment: "Appointment request declined",
   admin_reopened: "Sent back to Live",
   admin_payment_status_changed: "Payment status changed",
+  tuition_closed: "Closed - fee paid in full",
 };
 
 /** A readable name for an action; an action this build does not know is shown as its own words. */
