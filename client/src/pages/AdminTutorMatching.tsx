@@ -88,6 +88,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
     void utils.admin.listPostedJobs.invalidate();
     void utils.admin.listAppointedJobs.invalidate();
     void utils.admin.listConfirmedJobs.invalidate();
+    void utils.admin.listClosedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
   };

@@ -8,6 +8,7 @@ import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TuitionStatusPill from "@/components/TuitionStatusPill";
+import { getAdminTuitionStage } from "@/lib/adminTuitionStage";
 import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
 import { countActiveFilters } from "@/components/activeFilterCount";
 import { TutorListPager } from "@/components/TutorListPager";
@@ -51,6 +52,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     // A move here changes the Appointed and Confirmed lists and the Tutor's own job stages too.
     void utils.admin.listAppointedJobs.invalidate();
     void utils.admin.listConfirmedJobs.invalidate();
+    void utils.admin.listClosedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
     // A move answers any request waiting on the tuition, which the sidebar counts.
@@ -241,8 +243,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 }
 
 /** A tuition's stage, named by the same rule as the Posted jobs cards. */
-export function TuitionStatus({ job }: { job: Parameters<typeof getGuardianRequestLifecycle>[0] }) {
-  const lifecycle = getGuardianRequestLifecycle(job);
+export function TuitionStatus({ job }: { job: Parameters<typeof getGuardianRequestLifecycle>[0] & { paymentStatus?: string | null } }) {
+  const lifecycle = getAdminTuitionStage(job);
   return <TuitionStatusPill stage={lifecycle.key} label={lifecycle.label} />;
 }
 

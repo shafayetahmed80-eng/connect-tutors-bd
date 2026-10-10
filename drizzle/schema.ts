@@ -1261,6 +1261,11 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   chargeTerms: text("chargeTerms"),
   /** How much of a Confirmed tuition's fee has been paid; values repeat `@shared/job-payment-status`. */
   paymentStatus: mysqlEnum("paymentStatus", ["full_due", "half_paid", "partial_paid", "full_paid"]).default("full_due").notNull(),
+  /**
+   * The day the last payment that made the fee Full Paid was made: when a Confirmed
+   * tuition became Closed. Set and cleared with the Payment Status, never typed.
+   */
+  paymentCompletedAt: timestamp("paymentCompletedAt"),
   /** Private operational reason recorded by an Admin when closing a request. */
   cancellationReason: varchar("cancellationReason", { length: 280 }),
   /**

@@ -28,6 +28,14 @@ export function paymentRejectedTutorNotification(jobId: string, amount: number) 
   };
 }
 
+/** The last of the fee is in: the tuition has moved to Closed. */
+export function tuitionClosedTutorNotification(jobId: string) {
+  return {
+    title: "পেমেন্ট সম্পূর্ণ",
+    message: `Job ID ${jobId}-এর পেমেন্ট সম্পূর্ণ হয়েছে। টিউশনটি এখন Closed।`,
+  };
+}
+
 /**
  * A tuition that was cancelled has been settled: what comes back, what is still
  * due, or that nothing more is. The Admin's grounds are theirs and stay out.

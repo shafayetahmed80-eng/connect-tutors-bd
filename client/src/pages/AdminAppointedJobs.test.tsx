@@ -49,7 +49,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       admin: {
         listAppliedTutors: invalidator("listAppliedTutors"), listPostedJobs: invalidator("listPostedJobs"), listAppointedJobs: invalidator("listAppointedJobs"),
-        listConfirmedJobs: invalidator("listConfirmedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
+        listConfirmedJobs: invalidator("listConfirmedJobs"), listClosedJobs: invalidator("listClosedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
         listTutorDirectory: invalidator("listTutorDirectory"), listTutorApplications: invalidator("listTutorApplications"),
         guardianRequestCounts: invalidator("guardianRequestCounts"),
       },
@@ -182,7 +182,7 @@ describe("the next move, from the row", () => {
 
     // The tuition leaves this list for Confirmed Jobs, so the answer refreshes both.
     (mocks.confirm.mock.calls[0][1] as { onSuccess: () => void }).onSuccess();
-    expect(mocks.invalidated).toEqual(expect.arrayContaining(["listAppointedJobs", "listConfirmedJobs", "listAppliedTutors"]));
+    expect(mocks.invalidated).toEqual(expect.arrayContaining(["listAppointedJobs", "listConfirmedJobs", "listClosedJobs", "listAppliedTutors"]));
     // The sidebar's counts follow the move.
     expect(mocks.invalidated).toContain("guardianRequestCounts");
   });

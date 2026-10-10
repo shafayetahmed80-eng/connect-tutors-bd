@@ -52,6 +52,7 @@ const mocks = vi.hoisted(() => ({
         publicationState: "submitted",
         tutorId: null,
         appointmentConfirmedAt: null,
+        paymentStatus: "full_due",
         cancellationReason: null,
         contactConsent: "not_required",
         createdAt: new Date("2026-09-06T00:00:00.000Z"),
@@ -59,7 +60,7 @@ const mocks = vi.hoisted(() => ({
         guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
       },
     ],
-    counts: { pending: 4, live: 9, appointed: 0, confirmed: 0, cancelled: 0 },
+    counts: { pending: 4, live: 9, appointed: 0, confirmed: 3, closed: 2, cancelled: 0 },
     total: 4,
     page: 1,
     pageSize: 12,
@@ -98,7 +99,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       admin: {
         listPostedJobs: { invalidate: vi.fn() }, listAppliedTutors: { invalidate: vi.fn() }, listAppointedJobs: { invalidate: vi.fn() },
-        listConfirmedJobs: { invalidate: vi.fn() }, listTutorDirectory: { invalidate: vi.fn() }, listTutorApplications: { invalidate: vi.fn() },
+        listConfirmedJobs: { invalidate: vi.fn() }, listClosedJobs: { invalidate: vi.fn() }, listTutorDirectory: { invalidate: vi.fn() }, listTutorApplications: { invalidate: vi.fn() },
       },
     }),
   },
@@ -110,22 +111,42 @@ import { AdminPostedJobsContent } from "./AdminPostedJobs";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, appointmentRequested: false, postedByAdmin: 0, guardianRequest: null });
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, paymentStatus: "full_due", appointmentRequested: false, postedByAdmin: 0, guardianRequest: null });
 });
 
 describe("Admin Posted jobs board", () => {
-  it("mirrors the Guardian's five stages with counts across every Guardian", () => {
+  it("shows the Guardian's five stages and Closed, with counts across every Guardian", () => {
     render(<AdminPostedJobsContent />);
 
-    for (const label of ["Pending", "Live", "Appointed", "Confirmed", "Cancelled"]) {
-      expect(screen.getByRole("tab", { name: new RegExp(label) })).toBeTruthy();
-    }
+    expect(screen.getAllByRole("tab").map(tab => tab.textContent?.replace(/\s*\d+\s*$/, "").trim())).toEqual(["Pending", "Live", "Appointed", "Confirmed", "Closed", "Cancelled"]);
+    expect(screen.getByRole("tab", { name: /Closed/ }).textContent).toContain("02");
+    expect(screen.getByRole("tab", { name: /Confirmed/ }).textContent).toContain("03");
     // Zero-padded, exactly like the Guardian tab.
     expect(screen.getByRole("tab", { name: /Pending/ }).textContent).toContain("04");
     expect(screen.getByRole("tab", { name: /Live/ }).textContent).toContain("09");
     expect(screen.getByRole("button", { name: /Add Tuition/ })).toBeTruthy();
     // On a phone the five stages keep one line.
     expect(screen.getByRole("tablist", { name: "Request stages" }).className).toContain("flex-nowrap");
+  });
+
+  it("reads a Confirmed tuition whose fee is Full Paid as Closed on its card", async () => {
+    const user = userEvent.setup();
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175", appointmentConfirmedAt: new Date("2026-09-14T09:00:00.000Z"), paymentStatus: "full_paid" });
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("tab", { name: /Closed/ }));
+    expect(mocks.lastInput).toMatchObject({ stage: "closed" });
+    const card = screen.getAllByRole("button", { name: /Job ID/ })[0]!;
+    expect(within(card).getByText("Closed")).toBeTruthy();
+    expect(within(card).queryByText("Confirmed")).toBeNull();
+  });
+
+  it("keeps a Confirmed tuition that is not yet paid up as Confirmed", () => {
+    Object.assign(mocks.data.items[0], { publicationState: "published", status: "matched", tutorId: "tutor-175", appointmentConfirmedAt: new Date("2026-09-14T09:00:00.000Z"), paymentStatus: "half_paid" });
+    render(<AdminPostedJobsContent />);
+
+    const card = screen.getAllByRole("button", { name: /Job ID/ })[0]!;
+    expect(within(card).getByText("Confirmed")).toBeTruthy();
   });
 
   it("asks the server for the chosen stage and the typed search", async () => {

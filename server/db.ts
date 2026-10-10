@@ -155,7 +155,7 @@ import {
 } from "@shared/registration-location-selector";
 import type { JobPaymentStatus } from "@shared/job-payment-status";
 import { buildChargeTerms, chargeKindForTuitionType, chargeSettlement, chargeSummary, type CancellationReason, type ChargeTerms, type SettlementDisposition } from "@shared/platform-charge";
-import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
+import { paymentRecordedTutorNotification, paymentRejectedTutorNotification, paymentVerifiedTutorNotification, tuitionClosedTutorNotification, tuitionSettledTutorNotification } from "./payment-notifications";
 import { tutorRatedNotification } from "./tutor-rating-notification";
 import {
   buildTutorProfileSubmissionRefinement,
@@ -3434,7 +3434,8 @@ async function refreshTutorVerification(tx: any, tutorId: string) {
   const [confirmed] = await tx
     .select({ id: tutorRequests.id })
     .from(tutorRequests)
-    .where(and(eq(tutorRequests.tutorId, tutorId), adminPostedJobStageCondition("confirmed")))
+    // A Closed tuition is still a Confirmed one in this sense: paying the fee does not take the badge away.
+    .where(and(eq(tutorRequests.tutorId, tutorId), heldConfirmedCondition()))
     .limit(1);
   await tx.update(tutors).set({ verified: confirmed ? 1 : 0 }).where(eq(tutors.id, tutorId));
 }
@@ -4706,7 +4707,7 @@ export async function getAccountChangeContextByUserId(userId: number): Promise<A
  * Guardian owns, or one a Tutor holds. An Admin holds none.
  */
 async function accountHasLiveTuition(executor: any, role: AccountChangeRole, userId: number) {
-  const heldStages = or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed"))!;
+  const heldStages = or(adminPostedJobStageCondition("appointed"), heldConfirmedCondition())!;
   if (role === "guardian") {
     const [live] = await executor.select({ id: tutorRequests.id }).from(tutorRequests)
       .where(and(eq(tutorRequests.guardianUserId, userId), heldStages)).limit(1);
@@ -5345,7 +5346,7 @@ export async function countGuardianRequestActions() {
     })
     .from(tutorRequests)
     .where(and(
-      or(adminPostedJobStageCondition("appointed"), adminPostedJobStageCondition("confirmed")),
+      or(adminPostedJobStageCondition("appointed"), heldConfirmedCondition()),
       inArray(tutorRequests.id, database.select({ id: guardianTuitionRequests.tutorRequestId }).from(guardianTuitionRequests).where(eq(guardianTuitionRequests.status, "pending"))),
     ));
   const answerable = await getWaitingGuardianTuitionRequests(heldTuitions);
@@ -7193,13 +7194,13 @@ export async function listAdminGuardianRequestPage(filters: AdminGuardianRequest
 
 export type AdminPostedJobFilters = {
   query: string;
-  stage: "all" | GuardianRequestLifecycle;
+  stage: "all" | AdminTuitionStage;
   page: number;
   pageSize: number;
   /** "admin" is the Admin Posted Jobs board: only tuitions an Admin added. */
   postedBy: "all" | "admin";
-  /** Several stages at once, in place of `stage` - Applied Tutors lists Live, Appointed and Confirmed together. */
-  stages?: GuardianRequestLifecycle[];
+  /** Several stages at once, in place of `stage` - Applied Tutors lists Live, Appointed and Confirmed together (a Closed tuition is still a Confirmed one there). */
+  stages?: AdminTuitionStage[];
   /** The Admin's filter panel; narrows the cards and every stage's count. */
   filters?: AdminJobFilters;
 };
@@ -7210,18 +7211,37 @@ export type AdminPostedJobFilters = {
  * same column predicates `getGuardianRequestLifecycle` reads - keep the two in
  * step or a card will sit under a tab its own badge disagrees with.
  */
-function adminPostedJobStageCondition(stage: GuardianRequestLifecycle): SQL {
+function adminPostedJobStageCondition(stage: AdminTuitionStage): SQL {
   const cancelled = or(eq(tutorRequests.status, "closed"), eq(tutorRequests.publicationState, "closed"))!;
   const live = and(ne(tutorRequests.status, "closed"), ne(tutorRequests.publicationState, "closed"))!;
   const unconfirmed = isNull(tutorRequests.appointmentConfirmedAt);
   const notAppointed = or(ne(tutorRequests.status, "matched"), isNull(tutorRequests.tutorId))!;
   switch (stage) {
     case "cancelled": return cancelled;
-    case "confirmed": return and(live, isNotNull(tutorRequests.appointmentConfirmedAt))!;
+    // Closed is a Confirmed tuition whose fee is Full Paid; Confirmed is the rest of them.
+    case "closed": return and(heldConfirmedCondition(), eq(tutorRequests.paymentStatus, "full_paid"))!;
+    case "confirmed": return and(heldConfirmedCondition(), ne(tutorRequests.paymentStatus, "full_paid"))!;
     case "appointed": return and(live, unconfirmed, eq(tutorRequests.status, "matched"), isNotNull(tutorRequests.tutorId))!;
     case "live": return and(live, unconfirmed, notAppointed, eq(tutorRequests.publicationState, "published"))!;
     default: return and(live, unconfirmed, notAppointed, ne(tutorRequests.publicationState, "published"))!;
   }
+}
+
+/** The stages an Admin's lists read: the Guardian's five, and Closed, which is Confirmed once the fee is Full Paid. */
+type AdminTuitionStage = GuardianRequestLifecycle | "closed";
+
+/**
+ * Confirmed in the Guardian's sense, Closed included: the Tutor has the tuition
+ * and the Guardian kept them. The Verified badge, the payments ledger and the
+ * checks on who holds a tuition all mean this, not the Admin's narrower
+ * "Confirmed" tab, so a tuition does not stop counting when its fee is paid.
+ */
+function heldConfirmedCondition(): SQL {
+  return and(
+    ne(tutorRequests.status, "closed"),
+    ne(tutorRequests.publicationState, "closed"),
+    isNotNull(tutorRequests.appointmentConfirmedAt),
+  )!;
 }
 
 /**
@@ -7230,10 +7250,11 @@ function adminPostedJobStageCondition(stage: GuardianRequestLifecycle): SQL {
  * Each stage counts from its own date. Pending and Live both count from when
  * the Guardian posted it, since a Live tuition has no date of its own.
  */
-function adminJobEnteredStageBefore(stage: GuardianRequestLifecycle, days: number): SQL {
+function adminJobEnteredStageBefore(stage: AdminTuitionStage, days: number): SQL {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const enteredAt = stage === "appointed" ? tutorRequests.appointedAt
     : stage === "confirmed" ? tutorRequests.appointmentConfirmedAt
+    : stage === "closed" ? tutorRequests.paymentCompletedAt
     : stage === "cancelled" ? tutorRequests.cancelledAt
     : tutorRequests.createdAt;
   return lte(enteredAt, cutoff);
@@ -7249,7 +7270,7 @@ function adminJobEnteredStageBefore(stage: GuardianRequestLifecycle, days: numbe
  */
 function adminJobWaitingRequestCondition(kind: NonNullable<AdminJobFilters["waitingRequest"]>): SQL {
   const appointed = adminPostedJobStageCondition("appointed");
-  const confirmed = adminPostedJobStageCondition("confirmed");
+  const confirmed = heldConfirmedCondition();
   const cancelled = adminPostedJobStageCondition("cancelled");
   const ofKind = kind === "any" ? sql`true` : sql`${guardianTuitionRequests.type} = ${kind}`;
   return sql`exists (select 1 from ${guardianTuitionRequests} where ${guardianTuitionRequests.tutorRequestId} = ${tutorRequests.id} and ${guardianTuitionRequests.status} = 'pending' and ${ofKind} and (
@@ -7323,21 +7344,25 @@ function adminJobFilterConditions(filters: AdminJobFilters | undefined): SQL[] {
 }
 
 /** The filters that mean something in one stage only; they narrow that stage and no other. */
-function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: AdminJobFilters | undefined): SQL[] {
+function adminJobStageOnlyConditions(stage: AdminTuitionStage, filters: AdminJobFilters | undefined): SQL[] {
   if (!filters) return [];
   const conditions: SQL[] = [];
   if (stage === "pending" && filters.publicationStates?.length) conditions.push(inArray(tutorRequests.publicationState, filters.publicationStates));
   if (stage === "live") conditions.push(...adminJobApplicantConditions(filters));
   // The stages after Live are about a Tutor, a date and money.
-  if (stage === "appointed" || stage === "confirmed") {
+  if (stage === "appointed" || stage === "confirmed" || stage === "closed") {
     if (filters.appointedFrom) conditions.push(gte(tutorRequests.appointedAt, filters.appointedFrom));
     if (filters.appointedTo) conditions.push(lte(tutorRequests.appointedAt, filters.appointedTo));
   }
-  if (stage === "confirmed") {
+  if (stage === "closed") {
+    if (filters.closedFrom) conditions.push(gte(tutorRequests.paymentCompletedAt, filters.closedFrom));
+    if (filters.closedTo) conditions.push(lte(tutorRequests.paymentCompletedAt, filters.closedTo));
+  }
+  if (stage === "confirmed" || stage === "closed") {
     if (filters.confirmedFrom) conditions.push(gte(tutorRequests.appointmentConfirmedAt, filters.confirmedFrom));
     if (filters.confirmedTo) conditions.push(lte(tutorRequests.appointmentConfirmedAt, filters.confirmedTo));
     // The stored Payment Status is the ledger's own reading (`syncChargeStatus` is the only thing that writes it), the one a row's pill shows.
-    if (filters.paymentStatuses?.length) conditions.push(inArray(tutorRequests.paymentStatus, filters.paymentStatuses));
+    if (stage === "confirmed" && filters.paymentStatuses?.length) conditions.push(inArray(tutorRequests.paymentStatus, filters.paymentStatuses));
     // A row offers "View letter" once one is issued and "Issue letter" otherwise - a draft is not yet a letter.
     if (filters.letter) {
       const issued = sql`exists (select 1 from ${confirmationLetters} where ${confirmationLetters.tutorRequestId} = ${tutorRequests.id} and ${confirmationLetters.status} = 'issued')`;
@@ -7357,7 +7382,7 @@ function adminJobStageOnlyConditions(stage: GuardianRequestLifecycle, filters: A
     if (filters.settlementReasons?.length) conditions.push(settled(inArray(tuitionSettlements.reason, filters.settlementReasons)));
   }
   // Whose Tutor holds it; a pending or live tuition has none.
-  if (filters.tutorGender && (stage === "appointed" || stage === "confirmed" || stage === "cancelled")) {
+  if (filters.tutorGender && (stage === "appointed" || stage === "confirmed" || stage === "closed" || stage === "cancelled")) {
     conditions.push(sql`exists (select 1 from ${tutors} where ${tutors.id} = ${tutorRequests.tutorId} and ${tutors.gender} = ${filters.tutorGender})`);
   }
   return conditions;
@@ -7381,6 +7406,8 @@ const adminPostedJobFields = {
   daysPerWeek: tutorRequests.daysPerWeek,
   preferredGender: tutorRequests.preferredGender,
   studentGender: tutorRequests.studentGender,
+  // A Confirmed tuition whose fee is Full Paid is read as Closed.
+  paymentStatus: tutorRequests.paymentStatus,
   // The two ids the Edit form re-selects from: a label alone cannot fill a
   // location picker back in.
   tuitionCityLocationId: tutorRequests.tuitionCityLocationId,
@@ -8418,7 +8445,7 @@ async function reopenHeldTuitionByAdmin(input: { requestId: number; adminUserId:
     await tx.update(tutorRequests)
       .set({
         tutorId: null, status: "reviewing", contactConsent: "not_required", appointedAt: null, lastActivityAt: now,
-        ...(confirmed ? { appointmentConfirmedAt: null, paymentStatus: "full_due" as const, chargeTerms: null } : {}),
+        ...(confirmed ? { appointmentConfirmedAt: null, paymentStatus: "full_due" as const, paymentCompletedAt: null, chargeTerms: null } : {}),
       })
       .where(eq(tutorRequests.id, request.id));
     const changedFields = confirmed ? ["tutor_removed", "confirmation_removed", "live_again"] : ["tutor_removed", "live_again"];
@@ -8489,7 +8516,7 @@ export type AdminAppointedJobFilters = { query: string; page: number; pageSize: 
  * and a tuition that is confirmed leaves Appointed Jobs for Confirmed Jobs
  * with nothing to move it. Newest first, by the stage's own date.
  */
-async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filters: AdminAppointedJobFilters) {
+async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed" | "closed", filters: AdminAppointedJobFilters) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const search = filters.query.trim();
@@ -8526,6 +8553,7 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
       appointedAt: tutorRequests.appointedAt,
       confirmedAt: tutorRequests.appointmentConfirmedAt,
       paymentStatus: tutorRequests.paymentStatus,
+      closedAt: tutorRequests.paymentCompletedAt,
       tuitionType: tutorRequests.tuitionType,
       chargeTerms: tutorRequests.chargeTerms,
       // The internal key addresses the profile page; the Tutor ID people see is the number.
@@ -8541,7 +8569,7 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
     .leftJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(where)
-    .orderBy(desc(stage === "confirmed" ? tutorRequests.appointmentConfirmedAt : tutorRequests.appointedAt), desc(tutorRequests.id))
+    .orderBy(desc(stage === "closed" ? tutorRequests.paymentCompletedAt : stage === "confirmed" ? tutorRequests.appointmentConfirmedAt : tutorRequests.appointedAt), desc(tutorRequests.id))
     .limit(filters.pageSize)
     .offset(offset);
   const [totals] = await database
@@ -8556,10 +8584,11 @@ async function listAdminTutorHeldJobsPage(stage: "appointed" | "confirmed", filt
   // A Guardian's waiting Confirm, Remove or Cancel request is marked on the row.
   const guardianRequests = await getWaitingGuardianTuitionRequests(items.map(item => ({ ...item, appointmentConfirmedAt: item.confirmedAt })));
 
-  const charges = stage === "confirmed" ? await getChargeSummaries(items) : new Map<number, ReturnType<typeof chargeSummary>>();
-  // Only a Confirmed tuition can carry a Confirmation Letter - Appointed jobs
+  const confirmedOrClosed = stage === "confirmed" || stage === "closed";
+  const charges = confirmedOrClosed ? await getChargeSummaries(items) : new Map<number, ReturnType<typeof chargeSummary>>();
+  // Only a Confirmed (or Closed) tuition can carry a Confirmation Letter - Appointed jobs
   // never reach `createConfirmationLetterDraft`'s eligibility check.
-  const letters = stage === "confirmed" ? await getConfirmationLetterSummaries(items) : new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
+  const letters = confirmedOrClosed ? await getConfirmationLetterSummaries(items) : new Map<number, { id: number; letterNumber: string; status: "draft" | "issued" }>();
 
   return {
     // The terms stay on the server: the row carries what they work out to.
@@ -8634,6 +8663,11 @@ export function listAdminConfirmedJobsPage(filters: AdminAppointedJobFilters) {
   return listAdminTutorHeldJobsPage("confirmed", filters);
 }
 
+/** Tuitions in the Closed stage: Confirmed, and the fee Full Paid. Each with its Tutor, dates and payment. */
+export function listAdminClosedJobsPage(filters: AdminAppointedJobFilters) {
+  return listAdminTutorHeldJobsPage("closed", filters);
+}
+
 /** The charge terms a tuition is on: the ones kept at confirmation, else today's rates for one confirmed before they were kept. */
 function chargeTermsFor(row: { chargeTerms: string | null; tuitionType: string; budgetAmount: number | null }, limits: Record<string, number>): ChargeTerms | null {
   if (row.chargeTerms) return JSON.parse(row.chargeTerms) as ChargeTerms;
@@ -8649,6 +8683,10 @@ type ChargeRequestRow = {
   budgetAmount: number | null;
   chargeTerms: string | null;
   paymentStatus: JobPaymentStatus;
+  /** When it became Full Paid, as stored; `syncChargeStatus` keeps it in step with the status. */
+  paymentCompletedAt?: Date | null;
+  /** True for a tuition that was cancelled after it was confirmed. */
+  cancelled?: boolean;
   /** What a cancelled tuition was settled at; null while it is still Confirmed. */
   settledOwed: number | null;
 };
@@ -8680,18 +8718,19 @@ async function loadChargeRequest(tx: any, requestId: number): Promise<ChargeRequ
       budgetAmount: tutorRequests.budgetAmount,
       chargeTerms: tutorRequests.chargeTerms,
       paymentStatus: tutorRequests.paymentStatus,
+      paymentCompletedAt: tutorRequests.paymentCompletedAt,
       settledOwed: tuitionSettlements.retained,
       closed: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
     })
     .from(tutorRequests)
     .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
-    .where(and(eq(tutorRequests.id, requestId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
+    .where(and(eq(tutorRequests.id, requestId), or(heldConfirmedCondition(), cancelledChargeCondition())))
     .limit(1)
     .for("update");
   if (!row) return undefined;
   if (Number(row.closed) && row.settledOwed === null) return undefined;
-  const { closed: _closed, ...request } = row;
-  return request;
+  const { closed, ...request } = row;
+  return { ...request, cancelled: Boolean(Number(closed)) };
 }
 
 /** What a Tutor has been given credit for by cancelled tuitions, less what an Admin has since applied to their other tuitions. */
@@ -8727,9 +8766,19 @@ const sumAmounts = (rows: ReadonlyArray<{ amount: number }>) => rows.reduce((sum
 async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId: number) {
   const terms = chargeTermsFor(request, (await getSiteLimits()) as Record<string, number>);
   if (!terms || !request.confirmedAt) return null;
-  const summary = chargeSummary(terms, request.confirmedAt, await verifiedChargePayments(tx, request), settledOptions(request));
-  if (summary.status !== request.paymentStatus) {
-    await tx.update(tutorRequests).set({ paymentStatus: summary.status, lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
+  const payments = await verifiedChargePayments(tx, request);
+  const summary = chargeSummary(terms, request.confirmedAt, payments, settledOptions(request));
+  // Full Paid is what closes a Confirmed tuition, and the day of the payment that did it is the day it closed.
+  // Leaving Full Paid (a payment taken back) opens it again, so the day goes with it.
+  const closedAt = summary.status === "full_paid"
+    ? payments.reduce<Date | null>((latest, payment) => (!latest || payment.paidAt > latest ? payment.paidAt : latest), null) ?? request.confirmedAt
+    : null;
+  const statusChanged = summary.status !== request.paymentStatus;
+  const closedAtChanged = (closedAt?.getTime() ?? null) !== (request.paymentCompletedAt?.getTime() ?? null);
+  if (statusChanged || closedAtChanged) {
+    await tx.update(tutorRequests).set({ paymentStatus: summary.status, paymentCompletedAt: closedAt, lastActivityAt: new Date() }).where(eq(tutorRequests.id, request.id));
+  }
+  if (statusChanged) {
     await tx.insert(tutorRequestOperationEvents).values({
       tutorRequestId: request.id,
       guardianUserId: request.guardianUserId,
@@ -8737,6 +8786,18 @@ async function syncChargeStatus(tx: any, request: ChargeRequestRow, adminUserId:
       action: "admin_payment_status_changed",
       changedFields: JSON.stringify(["payment_status"]),
     });
+    // The last payment landing is the Tutor's news: their tuition has moved to Closed. A tuition that was cancelled has no such news.
+    if (summary.status === "full_paid" && !request.cancelled && request.tutorId) {
+      const closedNote = tuitionClosedTutorNotification(jobIdForRequest(request.id));
+      await createTutorNotification(tx, {
+        tutorId: request.tutorId,
+        type: "payment",
+        ...closedNote,
+        actionPath: "/tutor/dashboard/status",
+        deduplicationKey: `closed:${request.id}:${request.tutorId}`,
+      });
+      void sendPushToTutor(request.tutorId, { title: closedNote.title, body: closedNote.message, url: "/tutor/dashboard/status" }).catch(() => {});
+    }
   }
   return summary;
 }
@@ -8783,7 +8844,7 @@ export async function getTuitionPaymentLedger(requestId: number) {
     })
     .from(tutorRequests)
     .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
-    .where(and(eq(tutorRequests.id, requestId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
+    .where(and(eq(tutorRequests.id, requestId), or(heldConfirmedCondition(), cancelledChargeCondition())))
     .limit(1);
   if (!row || (Number(row.closed) && row.settledOwed === null)) return null;
   const request = row;
@@ -8977,7 +9038,7 @@ export async function getTutorChargeOverview(tutorId: string) {
     })
     .from(tutorRequests)
     .leftJoin(tuitionSettlements, eq(tuitionSettlements.tutorRequestId, tutorRequests.id))
-    .where(and(eq(tutorRequests.tutorId, tutorId), or(adminPostedJobStageCondition("confirmed"), cancelledChargeCondition())))
+    .where(and(eq(tutorRequests.tutorId, tutorId), or(heldConfirmedCondition(), cancelledChargeCondition())))
     .orderBy(desc(tutorRequests.appointmentConfirmedAt), desc(tutorRequests.id));
   // A tuition that was cancelled shows once an Admin has settled it: until then there is no figure to show.
   const visible = requests.filter(request => !Number(request.closed) || request.settledOwed !== null);
@@ -9329,7 +9390,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
   // The one stage the list is open on, if it is open on one. The filters that
   // only mean something there narrow that stage's count and no other.
   const openStage = !filters.stages?.length && filters.stage !== "all" ? filters.stage : undefined;
-  const stageCondition = (stage: GuardianRequestLifecycle) => and(
+  const stageCondition = (stage: AdminTuitionStage) => and(
     adminPostedJobStageCondition(stage),
     ...(filters.filters?.daysInStage ? [adminJobEnteredStageBefore(stage, filters.filters.daysInStage)] : []),
     ...(stage === openStage ? adminJobStageOnlyConditions(stage, filters.filters) : []),
@@ -9345,24 +9406,28 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       live: sql<string>`coalesce(sum(case when ${stageCondition("live")} then 1 else 0 end), 0)`,
       appointed: sql<string>`coalesce(sum(case when ${stageCondition("appointed")} then 1 else 0 end), 0)`,
       confirmed: sql<string>`coalesce(sum(case when ${stageCondition("confirmed")} then 1 else 0 end), 0)`,
+      closed: sql<string>`coalesce(sum(case when ${stageCondition("closed")} then 1 else 0 end), 0)`,
       cancelled: sql<string>`coalesce(sum(case when ${stageCondition("cancelled")} then 1 else 0 end), 0)`,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .where(scope);
-  const counts: Record<GuardianRequestLifecycle, number> = {
+  const counts: Record<AdminTuitionStage, number> = {
     pending: Number(countRow?.pending ?? 0),
     live: Number(countRow?.live ?? 0),
     appointed: Number(countRow?.appointed ?? 0),
     confirmed: Number(countRow?.confirmed ?? 0),
+    closed: Number(countRow?.closed ?? 0),
     cancelled: Number(countRow?.cancelled ?? 0),
   };
 
+  // Applied Tutors asks for Confirmed and means every Confirmed tuition, the Closed ones too.
+  const listedStages = filters.stages?.flatMap((stage): AdminTuitionStage[] => (stage === "confirmed" ? ["confirmed", "closed"] : [stage]));
   const conditions = [
     ...(scope ? [scope] : []),
-    ...(filters.stages?.length
-      ? [or(...filters.stages.map(stageCondition))!]
+    ...(listedStages?.length
+      ? [or(...listedStages.map(stageCondition))!]
       : filters.stage === "all" ? [] : [stageCondition(filters.stage)]),
   ];
   const where = conditions.length ? and(...conditions) : undefined;

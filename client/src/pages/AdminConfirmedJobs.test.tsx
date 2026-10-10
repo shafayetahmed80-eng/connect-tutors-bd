@@ -6,6 +6,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  lastClosedInput: null as unknown,
+  // A paid-up tuition, on the Closed tab: the day it closed is its own column.
+  closedData: {
+    items: [
+      {
+        id: 33, postedByAdmin: 0, classCourse: "Class 6", subjects: JSON.stringify(["Math"]),
+        tuitionLocationLabel: "Uttara, Dhaka", locationText: "Uttara", budgetAmount: 5000 as number | null, daysPerWeek: 3,
+        appointedAt: new Date("2026-08-01T08:00:00.000Z"), confirmedAt: new Date("2026-08-05T08:30:00.000Z"), closedAt: new Date("2026-08-20T08:30:00.000Z"),
+        paymentStatus: "full_paid",
+        charge: { owed: 3000, paid: 3000, balance: 0, status: "full_paid" } as { owed: number; paid: number; balance: number; status: string } | null,
+        tutorId: "tutor-90", tutorNumber: 901 as number | null, tutorName: "Rafiq Hasan", tutorPhone: "+8801722222222" as string | null,
+        confirmationLetter: null as { id: number; letterNumber: string; status: "draft" | "issued" } | null,
+        guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
+      },
+    ],
+    total: 1, page: 1, pageSize: 20, totalPages: 1,
+  },
   optionsInput: null as unknown,
   optionsEnabled: undefined as boolean | undefined,
   options: {
@@ -68,7 +85,7 @@ vi.mock("@/lib/trpc", () => ({
       return {
         admin: {
           listAppliedTutors: invalidator("listAppliedTutors"), listPostedJobs: invalidator("listPostedJobs"), listAppointedJobs: invalidator("listAppointedJobs"),
-          listConfirmedJobs: invalidator("listConfirmedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
+          listConfirmedJobs: invalidator("listConfirmedJobs"), listClosedJobs: invalidator("listClosedJobs"), listCancelledCharges: invalidator("listCancelledCharges"),
           listTutorDirectory: invalidator("listTutorDirectory"), listTutorApplications: invalidator("listTutorApplications"),
           guardianRequestCounts: invalidator("guardianRequestCounts"),
         },
@@ -92,6 +109,12 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
           return { data: mocks.data, isLoading: false, isError: false };
+        },
+      },
+      listClosedJobs: {
+        useQuery: (input: unknown) => {
+          mocks.lastClosedInput = input;
+          return { data: mocks.closedData, isLoading: false, isError: false };
         },
       },
       createConfirmationLetterDraft: {
@@ -393,19 +416,44 @@ describe("the next move, from the row", () => {
   });
 });
 
-describe("the Confirmed Jobs page's two tabs", () => {
-  it("opens on Confirmed, and moves to the tuitions that were cancelled afterwards", () => {
+describe("the Confirmed Jobs page's three tabs", () => {
+  it("opens on Confirmed, then Closed (paid in full), then the tuitions that were cancelled afterwards", () => {
     render(<AdminConfirmedJobs />);
 
-    expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Confirmed", "Cancelled"]);
+    expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Confirmed", "Closed", "Cancelled"]);
     expect(screen.getByRole("tab", { name: "Confirmed" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByText("Cancelled charges")).toBeNull();
     expect(screen.getAllByRole("columnheader").length).toBeGreaterThan(0);
+    // The Confirmed list has no Closed column; a tuition is not closed yet.
+    expect(screen.queryByRole("columnheader", { name: "Closed" })).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Cancelled" }));
     expect(screen.getByRole("tab", { name: "Cancelled" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("Cancelled charges")).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "Payment Status" })).toBeNull();
+  });
+
+  it("shows the paid-up tuitions on the Closed tab, with the day each one closed", () => {
+    render(<AdminConfirmedJobs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
+
+    expect(screen.getByRole("tab", { name: "Closed" }).getAttribute("aria-selected")).toBe("true");
+    const header = screen.getAllByRole("columnheader").map(cell => cell.textContent?.trim());
+    expect(header).toContain("Closed");
+    expect(screen.getByText("Rafiq Hasan")).toBeTruthy();
+    expect(screen.getByText("20 Aug 2026")).toBeTruthy();
+    // Not the Confirmed list's tuitions.
+    expect(screen.queryByText("Tania Sultana")).toBeNull();
+    expect(within(screen.getByRole("banner")).getByText("Closed Jobs")).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("currently closed")).toBeTruthy();
+    expect(mocks.lastClosedInput).toMatchObject({ page: 1 });
+  });
+
+  it("offers the same Actions on a Closed tuition: it can still be cancelled or its Tutor removed", () => {
+    render(<AdminConfirmedJobsContent stage="closed" />);
+
+    expect(within(openMenu(0)).getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Remove Tutor", "Cancel Tuition"]);
   });
 });
 

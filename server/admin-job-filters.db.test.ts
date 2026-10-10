@@ -152,7 +152,7 @@ async function readApplied(filters: AdminJobFilters, stages: Array<"live" | "app
 describe("the Admin's job filters", () => {
   it("counts each stage in SQL, the way the stages were always counted", async () => {
     const { counts, total } = await read({});
-    expect(counts).toEqual({ pending: 2, live: 2, appointed: 2, confirmed: 1, cancelled: 1 });
+    expect(counts).toEqual({ pending: 2, live: 2, appointed: 2, confirmed: 1, closed: 0, cancelled: 1 });
     expect(total).toBe(8);
   });
 
@@ -229,7 +229,7 @@ describe("the Admin's job filters", () => {
 
   it("lets the tab counts follow the filters, so a tab never says more than it opens on", async () => {
     const { counts } = await read({ tuitionTypes: ["online"] });
-    expect(counts).toEqual({ pending: 1, live: 0, appointed: 0, confirmed: 0, cancelled: 0 });
+    expect(counts).toEqual({ pending: 1, live: 0, appointed: 0, confirmed: 0, closed: 0, cancelled: 0 });
   });
 
   it("narrows only the open stage with a filter that means something there alone", async () => {

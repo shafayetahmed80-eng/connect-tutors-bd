@@ -32,7 +32,7 @@ export type AdminGuardianRequestFilterState = {
   requestType: "" | "remove_tutor" | "cancel_tuition";
   postedBy: "" | "guardian" | "admin";
   /** The stage the tuition is in now. */
-  tuitionStage: "" | "live" | "appointed" | "confirmed" | "cancelled";
+  tuitionStage: "" | "live" | "appointed" | "confirmed" | "closed" | "cancelled";
 };
 
 export const DEFAULT_ADMIN_GUARDIAN_REQUEST_FILTERS: AdminGuardianRequestFilterState = {
@@ -57,6 +57,7 @@ export const adminRequestTuitionStageOptions = [
   { id: "live", label: "Live" },
   { id: "appointed", label: "Appointed" },
   { id: "confirmed", label: "Confirmed" },
+  { id: "closed", label: "Closed" },
   { id: "cancelled", label: "Cancelled" },
 ] as const;
 

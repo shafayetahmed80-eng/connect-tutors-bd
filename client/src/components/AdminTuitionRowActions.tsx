@@ -43,13 +43,16 @@ const isHeldMove = (action: string): action is HeldMove =>
  *
  * `renderMenu` is the row's control; `dialogs` goes once on the page.
  */
-export function useAdminTuitionRowActions(stage: "appointed" | "confirmed") {
+export function useAdminTuitionRowActions(listedStage: "appointed" | "confirmed" | "closed") {
+  // A Closed tuition is a Confirmed one that is paid up: the same moves are open on it.
+  const stage = listedStage === "closed" ? "confirmed" : listedStage;
   const utils = trpc.useUtils();
   const refresh = () => {
     void utils.admin.listAppliedTutors.invalidate();
     void utils.admin.listPostedJobs.invalidate();
     void utils.admin.listAppointedJobs.invalidate();
     void utils.admin.listConfirmedJobs.invalidate();
+    void utils.admin.listClosedJobs.invalidate();
     void utils.admin.listCancelledCharges.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();

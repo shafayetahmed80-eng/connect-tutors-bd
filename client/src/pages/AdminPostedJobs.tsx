@@ -9,6 +9,7 @@ import StatusTabRow from "@/components/StatusTabRow";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import JobCard, { DetailsAction } from "@/components/JobCard";
 import JobDetailsModal, { JobDetailRow } from "@/components/JobDetailsModal";
+import { getAdminTuitionStage } from "@/lib/adminTuitionStage";
 import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
 import { formatPostedDate } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
@@ -21,11 +22,11 @@ import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type StageKey = "pending" | "live" | "appointed" | "confirmed" | "cancelled";
+type StageKey = "pending" | "live" | "appointed" | "confirmed" | "closed" | "cancelled";
 
 const stages: Array<{ key: StageKey; label: string }> = [
   { key: "pending", label: "Pending" }, { key: "live", label: "Live" }, { key: "appointed", label: "Appointed" },
-  { key: "confirmed", label: "Confirmed" }, { key: "cancelled", label: "Cancelled" },
+  { key: "confirmed", label: "Confirmed" }, { key: "closed", label: "Closed" }, { key: "cancelled", label: "Cancelled" },
 ];
 
 /** The line under the count: where the list stands when nothing narrows it. */
@@ -34,6 +35,7 @@ const stageCaptions: Record<StageKey, string> = {
   live: "currently live",
   appointed: "currently appointed",
   confirmed: "currently confirmed",
+  closed: "closed in total",
   cancelled: "cancelled in total",
 };
 
@@ -150,7 +152,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
     {items.length > 0
       ? <div className="grid items-stretch gap-3.5 lg:grid-cols-2">
           {items.map(job => {
-            const lifecycle = getGuardianRequestLifecycle(job);
+            const lifecycle = getAdminTuitionStage(job);
             return <JobCard
               key={job.id}
               job={{
@@ -195,8 +197,8 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         jobId: jobIdForRequest(openJob.id),
         title: buildJobTitle({ category: openJob.category, classCourse: openJob.classCourse, studentCount: openJob.studentCount ?? 1, daysPerWeek: openJob.daysPerWeek }),
         postedAt: formatPostedDate(openJob.createdAt),
-        statusLabel: getGuardianRequestLifecycle(openJob).label,
-        statusTone: getGuardianRequestLifecycle(openJob).key,
+        statusLabel: getAdminTuitionStage(openJob).label,
+        statusTone: getAdminTuitionStage(openJob).key,
         tuitionType: openJob.tuitionType,
         budgetAmount: openJob.budgetAmount,
         subjects: openJob.subjects,

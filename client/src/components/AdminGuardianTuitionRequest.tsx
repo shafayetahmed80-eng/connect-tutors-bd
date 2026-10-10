@@ -24,6 +24,7 @@ export function useAdminGuardianTuitionRequest(onApproved?: () => void) {
     void utils.admin.listPostedJobs.invalidate();
     void utils.admin.listAppointedJobs.invalidate();
     void utils.admin.listConfirmedJobs.invalidate();
+    void utils.admin.listClosedJobs.invalidate();
     void utils.admin.listTutorDirectory.invalidate();
     void utils.admin.listTutorApplications.invalidate();
     // The sidebar's counts beside Appointed Jobs, Confirmed Jobs and Guardian Requests.

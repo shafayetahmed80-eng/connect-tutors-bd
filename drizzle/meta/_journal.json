@@ -806,6 +806,13 @@
       "when": 1794400000000,
       "tag": "0114_remove_matching_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "5",
+      "when": 1794500000000,
+      "tag": "0115_tuition_closed_stage",
+      "breakpoints": true
     }
   ]
 }
