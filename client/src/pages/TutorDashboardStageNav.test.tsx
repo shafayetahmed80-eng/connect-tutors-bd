@@ -26,6 +26,8 @@ describe("the Dashboard's stage buttons", () => {
       { status: "shortlisted" },
       { status: "matched", appointmentConfirmedAt: null },
       { status: "matched", appointmentConfirmedAt: "2026-09-12T00:00:00.000Z" },
+      // Paid in full: Closed, not Confirmed.
+      { status: "matched", appointmentConfirmedAt: "2026-09-12T00:00:00.000Z", paymentStatus: "full_paid" },
       { status: "withdrawn" },
       { status: "declined" },
     ];
@@ -33,18 +35,20 @@ describe("the Dashboard's stage buttons", () => {
 
     const links = screen.getAllByRole("link");
     expect(links.map(link => link.getAttribute("aria-label"))).toEqual([
-      "Applied Jobs: 2", "Shortlisted Jobs: 1", "Appointed Jobs: 1", "Confirmed Jobs: 1", "Cancelled Jobs: 2",
+      "Applied Jobs: 2", "Shortlisted Jobs: 1", "Appointed Jobs: 1", "Confirmed Jobs: 1", "Closed Jobs: 1", "Cancelled Jobs: 2",
     ]);
     // Icon on the left, the count on its right, the label beneath - zero-padded like the tab.
-    expect(links[4].textContent).toBe("02Cancelled Jobs");
-    // One row of five at every width, and on a phone the label drops "Jobs".
-    expect(screen.getByRole("navigation", { name: "Application stages" }).className).toContain("grid-cols-5");
-    expect(links[4].querySelector(".hidden.sm\\:inline")?.textContent).toBe(" Jobs");
+    expect(links[5].textContent).toBe("02Cancelled Jobs");
+    expect(links[4].textContent).toBe("01Closed Jobs");
+    // One row of six at every width, and on a phone the label drops "Jobs".
+    expect(screen.getByRole("navigation", { name: "Application stages" }).className).toContain("grid-cols-6");
+    expect(links[5].querySelector(".hidden.sm\\:inline")?.textContent).toBe(" Jobs");
     expect(links.map(link => link.getAttribute("href"))).toEqual([
       "/tutor/dashboard/status?stage=applied",
       "/tutor/dashboard/status?stage=shortlisted",
       "/tutor/dashboard/status?stage=appointed",
       "/tutor/dashboard/status?stage=confirmed",
+      "/tutor/dashboard/status?stage=closed",
       "/tutor/dashboard/status?stage=cancelled",
     ]);
   });

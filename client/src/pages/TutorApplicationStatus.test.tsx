@@ -25,17 +25,18 @@ const job = (over: Record<string, unknown>) => ({
 afterEach(() => { cleanup(); window.innerWidth = 1024; applications.current = []; applications.isLoading = false; applications.isError = false; window.history.replaceState(null, "", "/"); });
 
 describe("the Tutor's Status tab", () => {
-  it("names all five stages and counts each, zero-padded like the Guardian's", () => {
+  it("names all six stages and counts each, zero-padded like the Guardian's", () => {
     applications.current = [
       job({ interestId: 1 }),
       job({ interestId: 2 }),
       job({ interestId: 3, status: "shortlisted" }),
       job({ interestId: 4, status: "matched", appointmentConfirmedAt: "2026-09-02T00:00:00.000Z" }),
+      job({ interestId: 5, status: "matched", appointmentConfirmedAt: "2026-09-02T00:00:00.000Z", paymentStatus: "full_paid" }),
     ];
     render(<TutorApplicationStatus />);
 
     expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual([
-      "Applied Jobs 02", "Shortlisted Jobs 01", "Appointed Jobs 00", "Confirmed Jobs 01", "Cancelled Jobs 00",
+      "Applied Jobs 02", "Shortlisted Jobs 01", "Appointed Jobs 00", "Confirmed Jobs 01", "Closed Jobs 01", "Cancelled Jobs 00",
     ]);
     // On a phone the row stays one line and drops "Jobs".
     expect(screen.getByRole("tablist", { name: "Application stages" }).className).toContain("flex-nowrap");
@@ -133,6 +134,40 @@ describe("the Tutor's Status tab", () => {
     expect(screen.queryByRole("columnheader", { name: "Payment Status" })).toBeNull();
     expect(screen.getByRole("columnheader", { name: "Cancelled" })).toBeTruthy();
     expect(screen.getByText(/06 Sept? 2026/)).toBeTruthy();
+  });
+
+  it("moves a tuition from Confirmed to Closed once the fee is paid in full, with the day it closed", async () => {
+    const user = userEvent.setup({ document: window.document });
+    applications.current = [
+      job({ interestId: 1, publicJobId: "CT-J-OPEN", status: "matched", appointmentConfirmedAt: "2026-09-05T00:00:00.000Z", paymentStatus: "half_paid" }),
+      job({
+        interestId: 2, publicJobId: "CT-J-PAID", status: "matched", appointmentConfirmedAt: "2026-09-05T00:00:00.000Z",
+        paymentStatus: "full_paid", paymentCompletedAt: "2026-09-20T00:00:00.000Z",
+      }),
+    ];
+    render(<TutorApplicationStatus />);
+
+    await user.click(screen.getByRole("tab", { name: /Confirmed Jobs/ }));
+    expect(screen.getByText(/CT-J-OPEN/)).toBeTruthy();
+    expect(screen.queryByText(/CT-J-PAID/)).toBeNull();
+
+    await user.click(screen.getByRole("tab", { name: /Closed Jobs/ }));
+    expect(screen.getByText(/CT-J-PAID/)).toBeTruthy();
+    expect(screen.queryByText(/CT-J-OPEN/)).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Confirmation Date" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Closed" })).toBeTruthy();
+    expect(screen.getByText(/20 Sept? 2026/)).toBeTruthy();
+    // Paid in full is what Closed means, so the status is not repeated.
+    expect(screen.queryByRole("columnheader", { name: "Payment Status" })).toBeNull();
+  });
+
+  it("opens on Closed when a notice sends the Tutor there", () => {
+    window.history.replaceState(null, "", "/tutor/dashboard/status?stage=closed");
+    applications.current = [job({ interestId: 2, publicJobId: "CT-J-PAID", status: "matched", appointmentConfirmedAt: "2026-09-05T00:00:00.000Z", paymentStatus: "full_paid" })];
+    render(<TutorApplicationStatus />);
+
+    expect(screen.getByRole("tab", { name: /Closed Jobs/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/CT-J-PAID/)).toBeTruthy();
   });
 
   it("falls back to the tuition's own cancellation date when the application itself never ended", async () => {

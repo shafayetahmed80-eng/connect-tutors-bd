@@ -8,7 +8,7 @@ import {
   type TutorApplicationRecord,
   type TutorApplicationStage,
 } from "@shared/tutor-application-stages";
-import { BadgeCheck, CalendarCheck2, ChevronRight, CircleX, ListChecks, Send, type LucideIcon } from "lucide-react";
+import { Archive, BadgeCheck, CalendarCheck2, ChevronRight, CircleX, ListChecks, Send, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 
 const stageIcon: Record<TutorApplicationStage, LucideIcon> = {
@@ -16,6 +16,7 @@ const stageIcon: Record<TutorApplicationStage, LucideIcon> = {
   shortlisted: ListChecks,
   appointed: CalendarCheck2,
   confirmed: BadgeCheck,
+  closed: Archive,
   cancelled: CircleX,
 };
 
@@ -24,13 +25,13 @@ export function tutorStatusStagePath(stage: TutorApplicationStage) {
 }
 
 /**
- * The five buttons themselves, given their counts (or null while loading).
+ * The six buttons themselves, given their counts (or null while loading).
  *
  * They are one strip in the Tutor sidebar's colours, attached to one another,
- * and they follow the colours the Owner sets for that sidebar. One row of five
+ * and they follow the colours the Owner sets for that sidebar. One row of six
  * at every width. On a phone each button is centred and
  * small, and its label drops the word "Jobs" - "Applied", "Shortlisted" - so
- * the five fit a 360px screen; from `sm` the icon and count spread apart and
+ * the six fit a 360px screen; from `sm` the icon and count spread apart and
  * the full label returns, and from `lg` the button takes its full size.
  */
 export function TutorStageButtons({ counts }: { counts: Record<TutorApplicationStage, number> | null }) {
@@ -40,7 +41,7 @@ export function TutorStageButtons({ counts }: { counts: Record<TutorApplicationS
     pill: useSiteContentColour(sidebarColourSlotId("tutor", "pill")),
     pillText: useSiteContentColour(sidebarColourSlotId("tutor", "pill-text")),
   });
-  return <nav aria-label="Application stages" style={colours} className="sb-strip grid grid-cols-5 overflow-hidden rounded-xl lg:rounded-2xl">
+  return <nav aria-label="Application stages" style={colours} className="sb-strip grid grid-cols-6 overflow-hidden rounded-xl lg:rounded-2xl">
     {tutorApplicationStages.map(stage => {
       const Icon = stageIcon[stage.key];
       const shortLabel = stage.label.replace(/\s*Jobs$/, "");
@@ -48,7 +49,7 @@ export function TutorStageButtons({ counts }: { counts: Record<TutorApplicationS
         key={stage.key}
         href={tutorStatusStagePath(stage.key)}
         aria-label={`${stage.label}: ${counts ? counts[stage.key] : "loading"}`}
-        className="sb-strip-item group flex min-w-0 flex-col items-center gap-1.5 px-0.5 py-2.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white motion-reduce:transition-none sm:items-stretch sm:gap-2.5 sm:px-3 sm:py-3 sm:text-left lg:gap-3 lg:p-4"
+        className="sb-strip-item group flex min-w-0 flex-col items-center gap-1.5 px-0.5 max-[359px]:px-0 py-2.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white motion-reduce:transition-none sm:items-stretch sm:gap-2.5 sm:px-3 sm:py-3 sm:text-left lg:gap-3 lg:p-4"
       >
         <span className="flex w-full items-center justify-center gap-1 sm:justify-between sm:gap-2">
           <span className="sb-strip-tile grid size-6 shrink-0 place-items-center rounded-md transition-transform duration-300 ease-[cubic-bezier(.22,.61,.36,1)] group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 sm:size-8 sm:rounded-lg lg:size-10 lg:rounded-xl">

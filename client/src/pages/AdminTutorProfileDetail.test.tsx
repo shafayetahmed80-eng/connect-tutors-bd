@@ -122,7 +122,7 @@ describe("Admin Tutor profile detail", () => {
 
     const row = screen.getByRole("group", { name: "Job status" });
     expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual([
-      "Applied Jobs 01", "Shortlisted Jobs 00", "Appointed Jobs 00", "Confirmed Jobs 01", "Cancelled Jobs 00",
+      "Applied Jobs 01", "Shortlisted Jobs 00", "Appointed Jobs 00", "Confirmed Jobs 01", "Closed Jobs 00", "Cancelled Jobs 00",
     ]);
     // First on the page, under the workspace header; one line on a phone.
     expect(row.compareDocumentPosition(screen.getByRole("link", { name: /Back to Tutor Profiles/i })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

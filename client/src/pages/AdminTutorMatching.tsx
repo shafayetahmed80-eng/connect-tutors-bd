@@ -235,6 +235,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
               ? getTutorApplicationStage({
                   status: row.applicationStatus ?? "matched",
                   appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
+                  paymentStatus: job?.paymentStatus ?? null,
                   tuitionCancelled: lifecycleStage === "cancelled",
                 })
               : undefined,

@@ -180,6 +180,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
             applicationStage: getTutorApplicationStage({
               status: row.applicationStatus,
               appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
+              paymentStatus: job?.paymentStatus ?? null,
               tuitionCancelled: tuitionStage === "cancelled",
             }),
           }))}
