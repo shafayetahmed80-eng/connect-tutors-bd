@@ -110,6 +110,7 @@ import {
   tutorRequestOperationEvents,
   tutorConfirmationLetterNotifications,
   tutors,
+  tutorRequestLearningNeeds,
   tutorRequests,
   universities,
   users,
@@ -129,6 +130,8 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
+import { learningNeedMatchCondition, replaceRequestLearningNeeds } from "./request-learning-needs";
+import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
 import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
 import {
@@ -2512,6 +2515,8 @@ export async function createAdminPostedTuition(input: {
   request: AdminPostedTuitionRequest;
   /** The id behind the Job ID the Admin chose. Absent, the table picks the next one. */
   requestId?: number;
+  /** What it asks to have taught. Absent, the one curriculum and class on `request`. */
+  learningNeeds?: LearningNeed[];
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -2532,7 +2537,9 @@ export async function createAdminPostedTuition(input: {
         guardianUserId,
         postedByAdmin: 1,
       });
-      return Number(created[0].insertId);
+      const createdId = Number(created[0].insertId);
+      await replaceRequestLearningNeeds(tx, createdId, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
+      return createdId;
     });
   } catch (error) {
     // A Guardian's request can take the id between the check and the write.
@@ -2606,6 +2613,8 @@ export async function updateAdminPostedTuition(input: {
   // written on every edit, and the Job Board projection below needs the
   // required ones to actually be there.
   request: AdminPostedTuitionRequest;
+  /** What it asks to have taught. Absent, the one curriculum and class on `request`. */
+  learningNeeds?: LearningNeed[];
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -2628,6 +2637,7 @@ export async function updateAdminPostedTuition(input: {
     await tx.update(tutorRequests)
       .set({ ...input.request, lastActivityAt: new Date() })
       .where(eq(tutorRequests.id, existing.id));
+    await replaceRequestLearningNeeds(tx, existing.id, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
 
     const adminPosted = existing.openId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX);
     if (input.guardian && adminPosted) {
@@ -2683,11 +2693,16 @@ export async function updateAdminPostedTuition(input: {
     return { updated: true as const, guardianEdited: Boolean(input.guardian && adminPosted) };
   });
 }
-export async function createTutorRequest(request: InsertTutorRequest) {
+export async function createTutorRequest(request: InsertTutorRequest, learningNeeds?: LearningNeed[]) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
-  const result = await db.insert(tutorRequests).values(request);
-  return { id: Number(result[0].insertId) };
+  return db.transaction(async tx => {
+    const result = await tx.insert(tutorRequests).values(request);
+    const id = Number(result[0].insertId);
+    // The request's own category / classCourse / subjects are the summary of the list; the rows are the list.
+    await replaceRequestLearningNeeds(tx, id, learningNeeds ?? learningNeedsFromLegacy(request));
+    return { id };
+  });
 }
 
 /** Returns only a Guardian's own request data; no account contact information is joined. */
@@ -3373,6 +3388,8 @@ export async function updateGuardianTutorRequest(input: {
   notes: string | null;
   monthlyBudget: number | null;
   locationText: string;
+  /** What it asks to have taught. Absent, the one curriculum and class above. */
+  learningNeeds?: LearningNeed[];
 }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -3415,6 +3432,7 @@ export async function updateGuardianTutorRequest(input: {
       locationText: input.locationText,
       lastActivityAt: new Date(),
     }).where(eq(tutorRequests.id, request.id));
+    await replaceRequestLearningNeeds(tx, request.id, input.learningNeeds ?? learningNeedsFromLegacy(input));
     await tx.insert(tutorRequestOperationEvents).values({
       tutorRequestId: request.id,
       guardianUserId: input.guardianUserId,
@@ -3702,15 +3720,10 @@ function activePublishedTutorJobConditions(input: PublishedTutorJobListInput) {
   if (input.locationIds?.length) conditions.push(inArray(tutorJobs.locationId, input.locationIds));
   if (input.tuitionTypes?.length) conditions.push(inArray(tutorJobs.tuitionType, input.tuitionTypes));
   if (input.daysPerWeek?.length) conditions.push(inArray(tutorJobs.daysPerWeek, input.daysPerWeek));
-  if (input.categories?.length) conditions.push(inArray(tutorJobs.category, input.categories));
-  if (input.classCourses?.length) conditions.push(inArray(tutorJobs.classCourse, input.classCourses));
-  // `subjects` is a JSON array in one column, so each chosen subject is a
-  // separate LIKE and any one of them may match - the same OR the other
-  // multi-value filters get from IN.
-  if (input.subjects?.length) {
-    const anySubject = or(...input.subjects.map(subject => like(tutorJobs.subjects, `%\"${subject}\"%`)));
-    if (anySubject) conditions.push(anySubject);
-  }
+  // A request may ask for several curricula and classes, so these three read its rows: a job matches
+  // when one curriculum-and-class it asks for matches everything chosen.
+  const needMatch = learningNeedMatchCondition(tutorJobs.tutorRequestId, input);
+  if (needMatch) conditions.push(needMatch);
   if (input.studentGender) conditions.push(eq(tutorJobs.studentGender, input.studentGender));
   if (input.preferredTutorGender) conditions.push(eq(tutorJobs.preferredTutorGender, input.preferredTutorGender));
   if (input.jobId) conditions.push(eq(tutorJobs.publicJobId, input.jobId));
@@ -3744,13 +3757,15 @@ export async function getJobBoardFilterOptions() {
       locationLabel: tutorJobs.locationLabel,
       tuitionType: tutorJobs.tuitionType,
       daysPerWeek: tutorJobs.daysPerWeek,
-      category: tutorJobs.category,
-      classCourse: tutorJobs.classCourse,
-      subjects: tutorJobs.subjects,
+      category: tutorRequestLearningNeeds.category,
+      classCourse: tutorRequestLearningNeeds.classCourse,
+      subjects: tutorRequestLearningNeeds.subjects,
       studentGender: tutorJobs.studentGender,
       preferredTutorGender: tutorJobs.preferredTutorGender,
     })
     .from(tutorJobs)
+    // One row per curriculum-and-class a job asks for, so a job for two curricula offers both.
+    .innerJoin(tutorRequestLearningNeeds, eq(tutorRequestLearningNeeds.tutorRequestId, tutorJobs.tutorRequestId))
     .where(live);
 
   const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
@@ -7326,14 +7341,9 @@ function adminJobFilterConditions(filters: AdminJobFilters | undefined): SQL[] {
   if (filters.locationIds?.length) conditions.push(inArray(tutorRequests.tuitionLocationId, filters.locationIds));
   if (filters.tuitionTypes?.length) conditions.push(inArray(tutorRequests.tuitionType, filters.tuitionTypes));
   if (filters.daysPerWeek?.length) conditions.push(inArray(tutorRequests.daysPerWeek, filters.daysPerWeek));
-  if (filters.categories?.length) conditions.push(inArray(tutorRequests.category, filters.categories));
-  if (filters.classCourses?.length) conditions.push(inArray(tutorRequests.classCourse, filters.classCourses));
-  // `subjects` is a JSON array in one column, so each chosen subject is a
-  // separate LIKE and any one of them may match - as on the Job Board.
-  if (filters.subjects?.length) {
-    const anySubject = or(...filters.subjects.map(subject => like(tutorRequests.subjects, `%"${subject}"%`)));
-    if (anySubject) conditions.push(anySubject);
-  }
+  // The same rows the Job Board's filters read: a tuition matches when one curriculum-and-class it asks for does.
+  const needMatch = learningNeedMatchCondition(tutorRequests.id, filters);
+  if (needMatch) conditions.push(needMatch);
   if (filters.studentGender) conditions.push(eq(tutorRequests.studentGender, filters.studentGender));
   if (filters.preferredTutorGender) conditions.push(eq(tutorRequests.preferredGender, filters.preferredTutorGender));
   if (filters.jobId) {
@@ -9647,11 +9657,12 @@ export async function getAdminJobFilterOptions(input: { postedBy: "all" | "admin
       locationLabel: tutorRequests.tuitionLocationLabel,
       tuitionType: tutorRequests.tuitionType,
       daysPerWeek: tutorRequests.daysPerWeek,
-      category: tutorRequests.category,
-      classCourse: tutorRequests.classCourse,
-      subjects: tutorRequests.subjects,
+      category: tutorRequestLearningNeeds.category,
+      classCourse: tutorRequestLearningNeeds.classCourse,
+      subjects: tutorRequestLearningNeeds.subjects,
     })
     .from(tutorRequests)
+    .innerJoin(tutorRequestLearningNeeds, eq(tutorRequestLearningNeeds.tutorRequestId, tutorRequests.id))
     .where(input.postedBy === "admin" ? eq(tutorRequests.postedByAdmin, 1) : undefined);
 
   const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
