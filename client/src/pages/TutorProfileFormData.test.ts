@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
-import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
+import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
+import { resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorProfileDraftSchema } from "../../../server/tutor-profile.validation";
 
 const onboardingFallback = {
@@ -193,6 +194,33 @@ describe("Tutor Profile form hydration", () => {
       primarySubjectIds: "Select at least one primary subject.",
       feeMin: "Enter a minimum monthly fee.",
     });
+  });
+
+  it("does not ask for a detail the Owner has switched off or made optional, and counts it out of the total", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const setting = (fieldId: string, change: { enabled?: number; required?: number }) => ({ fieldId, label: null, section: null, subGroup: null, sortOrder: null, enabled: null, required: null, ...change });
+    const config = resolveTutorProfileFieldConfig([setting("classLevelIds", { enabled: 0 }), setting("feeMax", { required: 0 }), setting("tuitionType", { required: 0 })]);
+
+    const asked = getTutorProfileSubmissionErrors(state);
+    const askedWithSettings = getTutorProfileSubmissionErrors(state, config);
+    expect(asked).toHaveProperty("classLevelIds");
+    expect(asked).toHaveProperty("feeMax");
+    expect(asked).toHaveProperty("tuitionTypes");
+    for (const key of ["classLevelIds", "feeMax", "tuitionTypes"]) expect(askedWithSettings).not.toHaveProperty(key);
+    // The rest are still asked for.
+    expect(askedWithSettings).toHaveProperty("feeMin");
+    expect(askedWithSettings).toHaveProperty("primarySubjectIds");
+
+    expect(getTutorProfileCompletionSummary(state, config).totalRequired).toBe(getTutorProfileCompletionSummary(state).totalRequired - 3);
+  });
+
+  it("names the details a submission is missing, in the order they are checked, using the wording the Owner set", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections, feeMin: "", feeMax: "" };
+    const names = describeMissingDetails(getTutorProfileSubmissionErrors(state), (registryId, fallback) => registryId === "feeMin" ? "Lowest monthly fee" : fallback);
+
+    expect(names).toEqual(expect.arrayContaining(["Class / Level", "Curriculum", "Lowest monthly fee", "Maximum Monthly Fee"]));
+    expect(names.indexOf("Class / Level")).toBeLessThan(names.indexOf("Lowest monthly fee"));
+    expect(describeMissingDetails({})).toEqual([]);
   });
 
   it("uses concise English-only field labels", () => {
