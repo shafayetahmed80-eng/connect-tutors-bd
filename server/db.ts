@@ -133,7 +133,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
-import { attachLearningNeeds, learningNeedMatchCondition, replaceRequestLearningNeeds } from "./request-learning-needs";
+import { attachLearningNeeds, learningNeedMatchCondition, readRequestLearningNeeds, replaceRequestLearningNeeds } from "./request-learning-needs";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
 import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
@@ -4242,12 +4242,13 @@ export async function moderateTutorRequestPublication(input: {
       void sendPushToUser(request.guardianUserId, { title: "আপনার টিউটর রিকোয়েস্ট এখন লাইভ", body: "আপনার রিকোয়েস্ট প্রকাশিত হয়েছে এবং ম্যাচিং প্রক্রিয়ার জন্য উন্মুক্ত।", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
     }
     if (transition.nextState === "published" && jobProjection.createdNewJob && jobProjection.publicJobId) {
+      const learningNeeds = (await readRequestLearningNeeds(tx, [request.id])).get(request.id);
       newTuitions.push({
         publicJobId: jobProjection.publicJobId,
         tuitionType: request.tuitionType,
         locationId: request.tuitionLocationId,
         preferredGender: request.preferredGender,
-        notice: { category: request.category, classCourse: request.classCourse, locationLabel: request.tuitionLocationLabel, budgetAmount: request.budgetAmount },
+        notice: { category: request.category, classCourse: request.classCourse, locationLabel: request.tuitionLocationLabel, budgetAmount: request.budgetAmount, learningNeeds },
       });
     }
     return {
@@ -4270,7 +4271,7 @@ export type NewTuitionAnnouncement = {
   /** Who the Guardian asked for. A Tutor of the other gender is not told; absent, or "any", tells both. */
   preferredGender?: "male" | "female" | "any";
   /** What the bell notice says. Absent, only the phone alert goes out. */
-  notice?: { category: string; classCourse: string; locationLabel: string | null; budgetAmount: number | null };
+  notice?: { category: string; classCourse: string; locationLabel: string | null; budgetAmount: number | null; learningNeeds?: LearningNeed[] };
 };
 
 /**

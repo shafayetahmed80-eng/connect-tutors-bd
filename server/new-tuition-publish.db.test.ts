@@ -133,7 +133,8 @@ describe("a tuition going live, through the real publishing path", () => {
       expect(notice).toMatchObject({
         type: "new_tuition",
         title: `নতুন টিউশন জব — ${6799 + posted.id}`,
-        message: "Class 5 · bangla-medium · Test area · 5,000 Taka",
+        // The request's own list, as the real path reads it: the curriculum, its class and that class's subject.
+        message: "bangla-medium: Class 5 (Math) · Test area · 5,000 Taka",
         actionPath: `/tutor/dashboard/jobs?returnTo=${encodeURIComponent(`/job-board?job=${6799 + posted.id}`)}`,
         readAt: null,
       });
