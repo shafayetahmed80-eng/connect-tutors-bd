@@ -1,12 +1,13 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
+import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
-import { academicEducationLevels, educationRecordFieldApplies, historyQualificationLevels, isSchoolQualification, qualificationCurricula, schoolSubjectGroups } from "@shared/tutor-education";
+import { academicEducationLevels, degreeTitleSuggestions, educationRecordFieldApplies, historyLevelsLeft, historyQualificationLevels, isSchoolQualification, qualificationCurricula, schoolSubjectGroups } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
   TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
@@ -20,7 +21,7 @@ import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
-import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
+import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
 import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
@@ -209,6 +210,9 @@ function getProfileDraftFingerprint(state: TeachingProfileState) {
 /** The suggestion lists behind a qualification's Institute Name and Subject / Group. */
 const QUALIFICATION_INSTITUTE_LIST_ID = "qualification-institute-names";
 const QUALIFICATION_DEPARTMENT_LIST_ID = "qualification-department-names";
+/** The degree names suggested in a Degree / Exam Title box: one list for the University Section, one per level for a qualification. */
+const UNIVERSITY_DEGREE_LIST_ID = "university-degree-titles";
+const qualificationDegreeListId = (level: string) => `qualification-degree-titles-${level || "any"}`;
 
 function CatalogSearchField({
   label,
@@ -615,6 +619,8 @@ function TutorProfileWorkspaceBody({
     return next;
   });
   const addEducationRecord = () => {
+    // Honours and Masters are each taken once; with both taken there is nothing to add.
+    if (historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel)).length === 0) return;
     const newIndex = form.educationRecords.length;
     setForm(current => ({ ...current, educationRecords: [...current.educationRecords, emptyEducationRecord()] }));
     setOpenQualificationIndices(current => {
@@ -641,7 +647,7 @@ function TutorProfileWorkspaceBody({
 
   const previewPayload = createProfileDraftPayload(form);
   const groupedClassLevels = useMemo(() => getGroupedClassLevelSelector(classLevels.data ?? [], form.classLevelIds), [classLevels.data, form.classLevelIds]);
-  const completionSummary = getTutorProfileCompletionSummary(form);
+  const completionSummary = getTutorProfileCompletionSummary(form, fieldConfig);
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId || uploadingDocumentType !== null;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
@@ -904,7 +910,7 @@ function TutorProfileWorkspaceBody({
   };
 
   const submitForReview = async () => {
-    const submissionErrors = getTutorProfileSubmissionErrors(form);
+    const submissionErrors = getTutorProfileSubmissionErrors(form, fieldConfig);
     if (Object.keys(submissionErrors).length > 0) {
       setFieldErrors(submissionErrors);
       const target = firstErroredSection(submissionErrors);
@@ -912,9 +918,10 @@ function TutorProfileWorkspaceBody({
         setActiveTab(target);
         openSectionEditor(target);
       }
-      setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review." });
+      setFeedback({ type: "error", message: "Complete the highlighted details before submitting for review.", details: describeMissingDetails(submissionErrors, fieldLabel) });
       window.requestAnimationFrame(() => {
-        const firstInvalidField = document.querySelector<HTMLElement>("[aria-invalid='true']");
+        // The popup the errors sent the Tutor to, not the page behind it.
+        const firstInvalidField = (document.querySelector("[role='dialog']") ?? document).querySelector<HTMLElement>("[aria-invalid='true']");
         firstInvalidField?.scrollIntoView?.({ behavior: "smooth", block: "center" });
         firstInvalidField?.focus({ preventScroll: true });
       });
@@ -1121,7 +1128,10 @@ function TutorProfileWorkspaceBody({
       case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-tp-danger" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;
       case "universityId": return <CatalogSearchField label={fieldLabel(fieldId, "Institute")} query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.universityId} />;
       case "facultyDepartmentId": return <CatalogSearchField label={fieldLabel(fieldId, "Department / Subject")} query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required error={fieldErrors.facultyDepartmentId} />;
-      case "degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/BA" error={fieldErrors.degreeExamTitle} />;
+      case "degreeExamTitle": return <>
+        <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker list={UNIVERSITY_DEGREE_LIST_ID} autoComplete="off" value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/MSc" error={fieldErrors.degreeExamTitle} />
+        <datalist id={UNIVERSITY_DEGREE_LIST_ID}>{degreeTitleSuggestions(form.highestEducation).map(title => <option key={title} value={title} />)}</datalist>
+      </>;
       case "resultGpa": return <FormInput label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)} value={form.resultGpa} onChange={event => update("resultGpa", event.target.value)} placeholder="Ex-4.00" />;
       case "deptId": return <FormInput label={fieldLabel(fieldId, `${tutorProfileCopy.fields.deptId}`)} value={form.deptId} onChange={event => update("deptId", event.target.value)} placeholder="Ex-13104096" />;
       // Study status decides which half of the study timeline the Tutor fills in.
@@ -1157,7 +1167,7 @@ function TutorProfileWorkspaceBody({
       case "preferredTimeSlots": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.timeSlots)} required options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />;
       case "currentCityId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentCity)} query={currentCityQuery} onQueryChange={setCurrentCityQuery} options={currentCityOptions} selectedId={form.currentCityId} onSelectedIdChange={handleCurrentCityChange} required error={fieldErrors.currentCityId} />;
       case "currentLocationId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentLocation)} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} disabled={!form.currentCityId} required error={fieldErrors.currentLocationId} />;
-      case "teachingAreaIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingAreas)} required options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />;
+      case "teachingAreaIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingAreas)} required={!offersOnlineTuitionOnly(form)} options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />;
       case "feeMin": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMin)} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />;
       case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
       case "travelDistanceKm": return <FormInput label={fieldLabel(fieldId, "Travel Distance (km)")} placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
@@ -1202,13 +1212,15 @@ function TutorProfileWorkspaceBody({
     // The two school sections are always required; a degree added under "Add
     // another qualification" only once an Owner makes the history required.
     const marked = school || historyRequired;
+    // A level another qualification already holds is not offered again.
+    const levelsLeft = historyLevelsLeft(form.educationRecords.filter((_, otherIndex) => otherIndex !== index).map(other => other.qualificationLevel));
     switch (fieldId) {
-      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker={marked} options={historyQualificationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
+      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker={marked} options={historyQualificationLevels.filter(level => level === record.qualificationLevel || levelsLeft.includes(level))} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
       // A school or college is chosen from the list, or created for this Tutor alone.
       case "educationRecords.instituteName": return school
         ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required={marked} value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
         : <FormInput label={fieldLabel(fieldId, "Institute Name")} required={marked} list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
-      case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required={marked} value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
+      case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required={marked} list={school ? undefined : qualificationDegreeListId(record.qualificationLevel)} autoComplete="off" value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder={school ? "Ex- SSC/HSC" : "Ex- BSc/MSc"} />;
       // A board exam is sat under one of three groups. A degree's subject is
       // whatever the department is called: the department list is offered as
       // suggestions, and a name that is not on it can still be typed.
@@ -1253,6 +1265,7 @@ function TutorProfileWorkspaceBody({
     <h3 className="font-bold text-tp-value"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" />{historyRequired ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</h3>
     <datalist id={QUALIFICATION_INSTITUTE_LIST_ID}>{(institutePicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
     <datalist id={QUALIFICATION_DEPARTMENT_LIST_ID}>{(departmentPicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
+    {["", ...historyQualificationLevels].map(level => <datalist key={level || "any"} id={qualificationDegreeListId(level)}>{degreeTitleSuggestions(level).map(title => <option key={title} value={title} />)}</datalist>)}
     {form.educationRecords.map((record, index) => ({ record, index }))
       // Secondary and Higher Secondary have sections of their own above.
       .filter(({ record }) => !isSchoolQualification(record.qualificationLevel))
@@ -1278,7 +1291,9 @@ function TutorProfileWorkspaceBody({
         </div> : null}
       </div>;
     })}
-    <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-tp-accent-soft text-tp-accent"><Plus size={16} /> Add another qualification</Button>
+    {historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel)).length > 0
+      ? <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-tp-accent-soft text-tp-accent"><Plus size={16} /> Add another qualification</Button>
+      : null}
   </div>;
 
   /**

@@ -65,6 +65,29 @@ export const fixedSchoolRecords = [
 export const historyQualificationLevels = ["Honours", "Masters"] as const;
 
 /**
+ * The history holds each level at most once - one Honours and one Masters - so
+ * a level another qualification has already taken is not offered again, and
+ * once both are taken there is nothing left to add.
+ */
+export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | undefined>) {
+  return historyQualificationLevels.filter(level => !takenLevels.includes(level));
+}
+
+/**
+ * Degree names offered as suggestions in a degree's Degree / Exam Title box.
+ * Only suggestions: a title that is not here is typed as usual. A record whose
+ * level is not chosen yet is offered both lists.
+ */
+export const honoursDegreeTitles = ["BSc", "BA", "BBA", "BCom", "BSS", "BEd", "LLB", "BPharm", "BSc (Engineering)", "MBBS", "BDS"] as const;
+export const mastersDegreeTitles = ["MSc", "MA", "MBA", "MCom", "MSS", "MEd", "LLM", "MPhil"] as const;
+
+export function degreeTitleSuggestions(level: string | null | undefined): readonly string[] {
+  if (level === "Honours") return honoursDegreeTitles;
+  if (level === "Masters") return mastersDegreeTitles;
+  return [...honoursDegreeTitles, ...mastersDegreeTitles];
+}
+
+/**
  * Narrows a stored value to one of `options`, or to `""` when it predates the
  * list (or was never set). Lets the form hydrate legacy free-text answers
  * without crashing: the Tutor simply re-picks from the dropdown.

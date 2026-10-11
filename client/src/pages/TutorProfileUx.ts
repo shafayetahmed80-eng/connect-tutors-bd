@@ -1,4 +1,5 @@
 import { isStudyYear } from "@shared/tutor-education";
+import type { ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
@@ -94,6 +95,34 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   feeMax: tutorProfileCopy.fields.feeMax,
 };
 
+/** The registry id behind a submission check, where it is not the check's own key. */
+const registryIdByErrorKey: Partial<Record<TutorProfileSubmissionErrorKey, string>> = { tuitionTypes: "tuitionType" };
+
+export function registryIdForErrorKey(key: TutorProfileSubmissionErrorKey): string {
+  return registryIdByErrorKey[key] ?? key;
+}
+
+/**
+ * Whether the Owner's field settings still ask for this detail. A field the
+ * Owner has switched off or made optional is not asked for here either - the
+ * server already judges the submission by those settings, so a check that
+ * ignored them would turn a Tutor back from a profile the server would accept,
+ * over a box the form no longer shows. Without settings every detail is asked for.
+ */
+function isDetailRequired(config: ResolvedTutorProfileFieldConfig | undefined, key: TutorProfileSubmissionErrorKey): boolean {
+  const field = config?.byId.get(registryIdForErrorKey(key));
+  if (!field || !field.requiredConfigurable) return true;
+  return field.enabled && field.required;
+}
+
+/** The names of the details an incomplete submission is missing, in the order the checks run. */
+export function describeMissingDetails(
+  errors: TutorProfileSubmissionErrors,
+  labelFor: (registryId: string, fallback: string) => string = (_registryId, fallback) => fallback,
+): string[] {
+  return (Object.keys(errors) as TutorProfileSubmissionErrorKey[]).map(key => labelFor(registryIdForErrorKey(key), completionFieldLabels[key] ?? "Required detail"));
+}
+
 function isCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
@@ -105,7 +134,7 @@ function requiredSelection(errors: TutorProfileSubmissionErrors, key: TutorProfi
 }
 
 /** Shows immediate client-side guidance for predictable submission requirements. */
-export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPreview): TutorProfileSubmissionErrors {
+export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig): TutorProfileSubmissionErrors {
   const errors: TutorProfileSubmissionErrors = {};
   const feeMin = form.feeMin.trim() ? Number(form.feeMin) : undefined;
   const feeMax = form.feeMax.trim() ? Number(form.feeMax) : undefined;
@@ -144,21 +173,32 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
   else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
 
+  for (const key of Object.keys(errors) as TutorProfileSubmissionErrorKey[]) {
+    if (!isDetailRequired(config, key)) delete errors[key];
+  }
   return errors;
 }
 
+/** The checks that apply to every Tutor, before the two that depend on other answers. */
+const unconditionalChecks: TutorProfileSubmissionErrorKey[] = [
+  "profilePhotoUrl", "name", "dateOfBirth", "headline", "phone", "contactEmail", "currentCityId", "currentLocationId",
+  "universityId", "facultyDepartmentId", "degreeExamTitle", "studyStatus", "primarySubjectIds", "classLevelIds",
+  "curriculumIds", "teachingExperienceYears", "tuitionTypes", "preferredStudentGender", "preferredTeachingDays",
+  "preferredTimeSlots", "feeMin", "feeMax",
+];
+
 /** Creates a concise client-side completion cue; the server remains authoritative. */
-export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPreview): TutorProfileCompletionSummary {
-  const errors = getTutorProfileSubmissionErrors(form);
+export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig): TutorProfileCompletionSummary {
+  const errors = getTutorProfileSubmissionErrors(form, config);
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
-  // 22 unconditional checks in getTutorProfileSubmissionErrors, plus the two
+  // The unconditional checks the Owner's settings still ask for, plus the two
   // gated ones: the study timeline only applies once a study status is chosen,
   // and Teaching Areas does not apply to a Tutor who offers only online tuition.
-  const totalRequired = 22
+  const totalRequired = unconditionalChecks.filter(key => isDetailRequired(config, key)).length
     + (form.studyStatus ? 1 : 0)
-    + (offersOnlineTuitionOnly(form) ? 0 : 1);
+    + (offersOnlineTuitionOnly(form) || !isDetailRequired(config, "teachingAreaIds") ? 0 : 1);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);
 
