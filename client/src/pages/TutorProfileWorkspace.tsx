@@ -310,8 +310,10 @@ function FormInput({ label, hint, error, required = false, showRequiredMarker = 
  * local digits, because the server accepts only the international form and a
  * plain box invited `01712345678` - which it rejects, failing the whole save.
  */
-function FormPhoneInput({ label, error, required = false, showRequiredMarker = required, value, onChange }: {
+function FormPhoneInput({ label, error, required = false, showRequiredMarker = required, value, onChange, autoComplete = "tel-national" }: {
   label: string;
+  /** "off" for a number that is not the Tutor's own (a parent, an emergency contact). */
+  autoComplete?: "tel-national" | "off";
   error?: string;
   required?: boolean;
   showRequiredMarker?: boolean;
@@ -325,7 +327,7 @@ function FormPhoneInput({ label, error, required = false, showRequiredMarker = r
       <input
         type="tel"
         inputMode="numeric"
-        autoComplete="tel-national"
+        autoComplete={autoComplete}
         maxLength={10}
         placeholder="1XXXXXXXXX"
         required={required}
@@ -365,7 +367,7 @@ function FormTextArea({ label, hint, error, required = false, showRequiredMarker
       <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
       {maxLength ? <CharacterRemaining value={value ?? ""} maxLength={maxLength} /> : null}
     </span>
-    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} resize-y ${error ? "border-tp-danger" : ""}`} />
+    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} !h-auto resize-y ${error ? "border-tp-danger" : ""}`} />
     {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}
     {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
@@ -1096,26 +1098,26 @@ function TutorProfileWorkspaceBody({
         ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required readOnly value={form.name} className="bg-j-surface-muted text-tp-value" />
         : <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />;
       case "gender": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.gender)}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.gender)} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-tp-danger" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>;
-      case "dateOfBirth": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)} showRequiredMarker type="date" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />;
+      case "dateOfBirth": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)} showRequiredMarker type="date" name="bday" autoComplete="bday" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />;
       case "headline": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.headline)} showRequiredMarker value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />;
       case "phone": return phoneLocked
         ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required readOnly value={form.phone} className="bg-j-surface-muted text-tp-value" />
         : <FormPhoneInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
-      case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required type="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
+      case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required type="email" name="email" autoComplete="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
       case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}<span aria-hidden="true" className="text-tp-danger"> *</span></span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
       case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
-      case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />;
+      case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required name="street-address" autoComplete="street-address" value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={phoneErrors.additionalPhone} />;
-      case "privateDetails.socialProfileLinks": return <FormInput label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;
+      case "privateDetails.socialProfileLinks": return <FormInput label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" name="url" autoComplete="url" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;
 
-      case "privateDetails.fatherName": return <FormInput label={fieldLabel(fieldId, "Father’s Name")} placeholder="Ex- Abdul Karim" required value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />;
-      case "privateDetails.fatherPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Father’s Phone Number")} required value={form.privateDetails.fatherPhone} onChange={value => updatePrivateDetail("fatherPhone", value)} error={phoneErrors.fatherPhone} />;
-      case "privateDetails.motherName": return <FormInput label={fieldLabel(fieldId, "Mother’s Name")} placeholder="Ex- Abdul Karim" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />;
-      case "privateDetails.motherPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Mother’s Phone Number")} value={form.privateDetails.motherPhone} onChange={value => updatePrivateDetail("motherPhone", value)} error={phoneErrors.motherPhone} />;
-      case "privateDetails.emergencyContactName": return <FormInput label={fieldLabel(fieldId, "Emergency Contact Name")} placeholder="Ex- Rahima Begum" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />;
-      case "privateDetails.emergencyContactRelation": return <FormInput label={fieldLabel(fieldId, "Emergency Contact Relation")} placeholder="Ex- Uncle" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />;
-      case "privateDetails.emergencyContactPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Emergency Contact Phone")} value={form.privateDetails.emergencyContactPhone} onChange={value => updatePrivateDetail("emergencyContactPhone", value)} error={phoneErrors.emergencyContactPhone} />;
-      case "privateDetails.emergencyContactAddress": return <FormTextArea label={fieldLabel(fieldId, "Emergency Contact Address")} rows={2} value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />;
+      case "privateDetails.fatherName": return <FormInput label={fieldLabel(fieldId, "Father’s Name")} placeholder="Ex- Abdul Karim" required autoComplete="off" value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />;
+      case "privateDetails.fatherPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Father’s Phone Number")} required autoComplete="off" value={form.privateDetails.fatherPhone} onChange={value => updatePrivateDetail("fatherPhone", value)} error={phoneErrors.fatherPhone} />;
+      case "privateDetails.motherName": return <FormInput label={fieldLabel(fieldId, "Mother’s Name")} placeholder="Ex- Abdul Karim" autoComplete="off" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />;
+      case "privateDetails.motherPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Mother’s Phone Number")} autoComplete="off" value={form.privateDetails.motherPhone} onChange={value => updatePrivateDetail("motherPhone", value)} error={phoneErrors.motherPhone} />;
+      case "privateDetails.emergencyContactName": return <FormInput label={fieldLabel(fieldId, "Emergency Contact Name")} placeholder="Ex- Rahima Begum" autoComplete="off" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} />;
+      case "privateDetails.emergencyContactRelation": return <FormInput label={fieldLabel(fieldId, "Emergency Contact Relation")} placeholder="Ex- Uncle" autoComplete="off" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} />;
+      case "privateDetails.emergencyContactPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Emergency Contact Phone")} autoComplete="off" value={form.privateDetails.emergencyContactPhone} onChange={value => updatePrivateDetail("emergencyContactPhone", value)} error={phoneErrors.emergencyContactPhone} />;
+      case "privateDetails.emergencyContactAddress": return <FormTextArea label={fieldLabel(fieldId, "Emergency Contact Address")} rows={2} autoComplete="off" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />;
 
       case "highestEducation": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />;
       case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}<span aria-hidden="true" className={tp.requiredMark}> *</span></span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-tp-danger" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;

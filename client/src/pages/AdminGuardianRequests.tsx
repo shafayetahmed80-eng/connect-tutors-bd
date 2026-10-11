@@ -8,6 +8,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
 import { LoadingCradle } from "@/components/BrandMark";
+import RecentSearches from "@/components/RecentSearches";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -151,16 +152,18 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
       ? <StatusTabRow label="Request status" items={statusTabs.map(tab => ({ ...tab, count: list.data?.counts[tab.key] }))} selected={status} onSelect={key => { setStatus(key ?? "pending"); setPage(1); }} />
       : null}
 
-    <label className="relative block max-w-sm">
-      <span className="sr-only">Search requests</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input
-        value={query}
-        onChange={event => { setQuery(event.target.value); setPage(1); }}
-        placeholder="Search Job ID, Guardian or Tutor"
-        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-      />
-    </label>
+    <RecentSearches page="guardian-requests" value={query} onPick={term => { setQuery(term); setPage(1); }} className="max-w-sm">
+      <label className="relative block">
+        <span className="sr-only">Search requests</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+        <input
+          value={query}
+          onChange={event => { setQuery(event.target.value); setPage(1); }}
+          placeholder="Search Job ID, Guardian or Tutor"
+          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+        />
+      </label>
+    </RecentSearches>
 
     <AdminRequestFilterBar
       filters={panel}

@@ -19,6 +19,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { AlignLeft, FilePenLine, MapPin, Phone, Plus, RadioTower, RefreshCcw, School, Search, UserRound } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -112,16 +113,18 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         onSelect={key => { if (key) changeStage(key); }}
       />
       <div className="flex flex-wrap items-center gap-2 sm:mb-2">
-        <label className="relative">
-          <span className="sr-only">Search posted jobs</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-          <input
-            value={query}
-            onChange={event => { setQuery(event.target.value); setPage(1); }}
-            placeholder="Search subject, class, location or Guardian"
-            className="h-11 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-          />
-        </label>
+        <RecentSearches page="posted-jobs" value={query} onPick={term => { setQuery(term); setPage(1); }}>
+          <label className="relative">
+            <span className="sr-only">Search posted jobs</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+            <input
+              value={query}
+              onChange={event => { setQuery(event.target.value); setPage(1); }}
+              placeholder="Search subject, class, location or Guardian"
+              className="h-11 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+            />
+          </label>
+        </RecentSearches>
       </div>
     </div>
 

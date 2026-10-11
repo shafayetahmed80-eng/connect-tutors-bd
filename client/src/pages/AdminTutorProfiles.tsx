@@ -12,6 +12,7 @@ import type { AdminTutorFilterInput } from "@shared/admin-tutor-filters";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
 import { History, Megaphone, Search } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -56,11 +57,13 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
   showProfileStatus?: boolean;
 }) {
   return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <label className="relative sm:col-span-2">
-      <span className="sr-only">Search Tutors</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-    </label>
+    <RecentSearches page="applied-tutor-candidates" value={filters.query} onPick={term => onChange({ query: term })} className="sm:col-span-2">
+      <label className="relative block">
+        <span className="sr-only">Search Tutors</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+        <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </label>
+    </RecentSearches>
     {showProfileStatus ? <select value={filters.profileStatus} onChange={event => onChange({ profileStatus: event.target.value as ProfileStatus })} aria-label="Profile status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All profile statuses</option><option value="pending">Pending review</option><option value="changes_requested">Changes requested</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="draft">Draft</option></select> : null}
     <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
     <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
@@ -118,16 +121,18 @@ export function AdminTutorProfilesContent() {
       />
     </div>
 
-    <label className="relative block max-w-sm">
-      <span className="sr-only">Search Tutors</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input
-        value={query}
-        onChange={event => choose(() => setQuery(event.target.value))}
-        placeholder="Search Tutor name, ID, institution or headline"
-        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-      />
-    </label>
+    <RecentSearches page="tutor-profiles" value={query} onPick={term => choose(() => setQuery(term))} className="max-w-sm">
+      <label className="relative block">
+        <span className="sr-only">Search Tutors</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+        <input
+          value={query}
+          onChange={event => choose(() => setQuery(event.target.value))}
+          placeholder="Search Tutor name, ID, institution or headline"
+          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+        />
+      </label>
+    </RecentSearches>
 
     {/* Sends to exactly who the two tab rows, the search and the Filter panel are
         currently showing - or, when an Admin ticks specific rows below,

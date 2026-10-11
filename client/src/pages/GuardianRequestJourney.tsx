@@ -876,7 +876,7 @@ export function RequestStage(props: RequestStageProps) {
           </div>
           <SelectField label="Student gender" slotId="request-tutor.field.studentGender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} />
           <div className={fieldGridWide}>
-            <TextAreaField label="Address Details" slotId="request-tutor.field.addressDetails" labelIcon={<RecordIcon name="location" size={15} />} id="address-details" optional value={input.addressDetails} onChange={props.onSetAddressDetails} maxLength={160} />
+            <TextAreaField label="Address Details" slotId="request-tutor.field.addressDetails" labelIcon={<RecordIcon name="location" size={15} />} id="address-details" name="street-address" autoComplete="street-address" optional value={input.addressDetails} onChange={props.onSetAddressDetails} maxLength={160} />
           </div>
         </div>
       </fieldset>
@@ -1011,13 +1011,13 @@ function NumberField({ label, slotId, labelIcon, id, value, onChange, min, max }
   </label>;
 }
 
-function TextAreaField({ label, slotId, labelIcon, id, value, onChange, maxLength, optional, minHeight = "min-h-24" }: { label: string; slotId?: string; labelIcon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; maxLength?: number; optional?: boolean; minHeight?: string }) {
+function TextAreaField({ label, slotId, labelIcon, id, value, onChange, maxLength, optional, minHeight = "min-h-24", name, autoComplete }: { label: string; slotId?: string; labelIcon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; maxLength?: number; optional?: boolean; minHeight?: string; name?: string; autoComplete?: string }) {
   return <label className="block">
     <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <FieldLabelText label={label} slotId={slotId} labelIcon={labelIcon} optional={optional} />
       {maxLength ? <CharacterRemaining value={value} maxLength={maxLength} /> : null}
     </span>
-    <textarea id={id} className={`${filledArea} mt-2 ${minHeight}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength={maxLength} />
+    <textarea id={id} name={name} autoComplete={autoComplete} className={`${filledArea} mt-2 ${minHeight}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength={maxLength} />
   </label>;
 }
 

@@ -184,6 +184,34 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).queryByDisplayValue("Discarded headline")).toBeNull();
   });
 
+  it("lets the browser offer the Tutor's own details, and keeps it off for a parent's or an emergency contact's", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    const tokenOf = (dialog: HTMLElement, label: RegExp) => {
+      const field = Array.from(dialog.querySelectorAll("label")).find(item => label.test(item.textContent ?? ""))?.querySelector("input, textarea");
+      expect(field, String(label)).toBeTruthy();
+      return field!.getAttribute("autocomplete");
+    };
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    let dialog = screen.getByRole("dialog");
+    expect(tokenOf(dialog, /birth/i)).toBe("bday");
+    expect(tokenOf(dialog, /^email/i)).toBe("email");
+    expect(tokenOf(dialog, /Permanent Address/i)).toBe("street-address");
+    expect(tokenOf(dialog, /Social Profile Links/i)).toBe("url");
+    // The Tutor's own number keeps the national-number token.
+    expect(tokenOf(dialog, /Additional Phone/i)).toBe("tel-national");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    dialog = screen.getByRole("dialog");
+    // Someone else's name or number must not be filled with the Tutor's own.
+    for (const label of [/Father’s Name/i, /Father’s Phone/i, /Mother’s Name/i, /Mother’s Phone/i, /Emergency Contact Name/i, /Emergency Contact Phone/i]) {
+      expect(tokenOf(dialog, label), String(label)).toBe("off");
+    }
+  });
+
   it("asks for no National ID at all while encrypted storage is not in place", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

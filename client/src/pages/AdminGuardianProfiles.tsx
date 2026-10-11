@@ -16,6 +16,7 @@ import { formatRequestSource } from "@shared/request-source";
 import { History, Megaphone, Search, ShieldCheck } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import BackLink from "@/components/BackLink";
+import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
@@ -121,12 +122,14 @@ export function AdminGuardianProfilesContent() {
   return <div className="space-y-4">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:border-b sm:border-[#dce9f1]">
       <StatusTabRow label="Verification" flush items={verificationTabs.map(tab => ({ ...tab, count: counts?.[tab.key] }))} selected={verification} onSelect={key => { setVerification(key ?? "all"); setPage(1); }} />
-      <label className="relative pb-2 sm:w-80">
-        <span className="sr-only">Search Guardians</span>
-        <Search className="pointer-events-none absolute left-3 top-[calc(50%-4px)] h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="Search name, Guardian ID, mobile or email"
-          className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-      </label>
+      <RecentSearches page="guardian-profiles" value={query} onPick={term => { setQuery(term); setPage(1); }} className="sm:w-80">
+        <label className="relative block pb-2">
+          <span className="sr-only">Search Guardians</span>
+          <Search className="pointer-events-none absolute left-3 top-[calc(50%-4px)] h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+          <input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="Search name, Guardian ID, mobile or email"
+            className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        </label>
+      </RecentSearches>
     </div>
 
     {/* Sends to exactly who the verification tabs, the search and the Filter panel

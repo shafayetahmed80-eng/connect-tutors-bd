@@ -1,3 +1,5 @@
+import { afterEach } from "vitest";
+
 // Runs before every test file, in whatever environment that file declares.
 //
 // jsdom ships neither `ResizeObserver` nor a working `scrollIntoView`, and
@@ -11,6 +13,12 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
+}
+
+// A test that types into a search box leaves "recent searches" in storage, and the next
+// test in the same file would meet them as suggestions. Start every test with none.
+if (typeof window !== "undefined") {
+  afterEach(() => { try { window.localStorage.clear(); } catch { /* no storage in this environment */ } });
 }
 
 if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {

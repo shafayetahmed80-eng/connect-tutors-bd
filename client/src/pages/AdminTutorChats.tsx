@@ -4,6 +4,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import RecentSearches from "@/components/RecentSearches";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
@@ -242,16 +243,18 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
       <button type="button" onClick={() => onArchivedChange(true)} aria-current={archived ? "true" : undefined} className={`flex-1 border-b-2 py-2 text-xs font-bold ${archived ? "border-j-accent text-j-accent" : "border-transparent text-j-ink-soft"}`}>Archived</button>
     </div>
     <div className="flex items-center gap-2 border-b border-[#dce9f1] p-3">
-      <label className="relative block min-w-0 flex-1">
-        <span className="sr-only">Search Tutor chats</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input
-          value={query}
-          onChange={event => onQueryChange(event.target.value)}
-          placeholder="Search Tutor name or ID"
-          className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-        />
-      </label>
+      <RecentSearches page="tutor-chats" value={query} onPick={term => onQueryChange(term)} className="min-w-0 flex-1">
+        <label className="relative block">
+          <span className="sr-only">Search Tutor chats</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+          <input
+            value={query}
+            onChange={event => onQueryChange(event.target.value)}
+            placeholder="Search Tutor name or ID"
+            className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
+      </RecentSearches>
       <label className="relative shrink-0">
         <span className="sr-only">Sort conversations</span>
         <select

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -30,6 +31,23 @@ afterEach(() => {
 });
 
 describe("Sent notifications history search", () => {
+  it("offers the searches made here before, and picking one searches again", async () => {
+    const user = userEvent.setup({ document: window.document });
+    const { unmount } = render(<NotificationHistoryModal audience="tutor" onClose={vi.fn()} />);
+    const search = screen.getByPlaceholderText("Search by title or message");
+
+    await user.click(search);
+    await user.type(search, "maintenance");
+    await user.keyboard("{Enter}");
+    unmount();
+
+    render(<NotificationHistoryModal audience="tutor" onClose={vi.fn()} />);
+    await user.click(screen.getByPlaceholderText("Search by title or message"));
+    await user.click(screen.getByRole("button", { name: "maintenance" }));
+
+    expect(state.lastInput).toEqual({ audience: "tutor", query: "maintenance", page: 1, pageSize: 20 });
+  });
+
   it("starts with no search, then sends what was typed to the query", () => {
     render(<NotificationHistoryModal audience="tutor" onClose={vi.fn()} />);
 
