@@ -64,7 +64,7 @@ function PushPermissionPromptDialog() {
     }
   };
 
-  return <Modal size="sm" onClose={notNow}>
+  return <Modal size="dialog" onClose={notNow}>
     <ModalHeader title="নোটিফিকেশন চালু করবেন?" />
     <ModalBody>
       <div className="flex items-start gap-3">

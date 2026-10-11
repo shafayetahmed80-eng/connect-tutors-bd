@@ -54,7 +54,7 @@ export function TutorProfilePhotoEditor({ imageUrl, isSubmitting = false, onCanc
   };
 
   return (
-    <Modal size="md" onClose={onCancel} busy={isSubmitting} panelTestId="tutor-profile-photo-editor-panel">
+    <Modal size="panel" onClose={onCancel} busy={isSubmitting} panelTestId="tutor-profile-photo-editor-panel">
       <ModalHeader title="Crop photo" meta="Keep your face within the frame. This will be a square profile photo." />
       <ModalBody className="space-y-3 !px-0 !py-0">
         <div data-testid="tutor-profile-photo-editor-crop-stage" className={tutorProfileResponsiveClasses.photoEditorCropStage}>

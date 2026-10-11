@@ -101,7 +101,7 @@ export function GuardianVerificationModal({ guardianUserId, onClose }: { guardia
   const rejectionInvalid = status === "rejected" && reason.trim().length < 3;
 
   return (
-    <Modal size="md" onClose={onClose} busy={save.isPending}>
+    <Modal size="panel" onClose={onClose} busy={save.isPending}>
       <ModalHeader title="Guardian verification" eyebrow="Identity check" />
       <ModalBody className="space-y-4">
         {profileQuery.isLoading ? (
@@ -216,7 +216,7 @@ export function GuardianActivityContent() {
       onPageSize={next => updateFilter({ pageSize: next })}
       totalItems={requests.data?.total}
     />
-    {contactRequestId !== null ? <Modal size="sm" onClose={() => setContactRequestId(null)}>
+    {contactRequestId !== null ? <Modal size="dialog" onClose={() => setContactRequestId(null)}>
       <ModalHeader title={`Guardian contact · Job ID ${jobIdForRequest(contactRequestId)}`} />
       <ModalBody className="space-y-4">
         <div className="flex items-start gap-3">

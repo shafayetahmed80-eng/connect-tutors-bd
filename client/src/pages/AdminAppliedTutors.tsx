@@ -201,7 +201,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
 
     <TutorListPager page={filters.page} totalPages={applied.data?.totalPages ?? 1} onPage={next => updateFilter({ page: next })} label="Applied Tutor pages" />
 
-    {approving ? <Modal size="sm" onClose={() => setApproving(null)} busy={approve.isPending}>
+    {approving ? <Modal size="dialog" onClose={() => setApproving(null)} busy={approve.isPending}>
       <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>

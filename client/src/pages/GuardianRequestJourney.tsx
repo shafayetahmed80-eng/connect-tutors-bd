@@ -832,7 +832,7 @@ export function RequestStage(props: RequestStageProps) {
         own heading says where you are, and on a phone three named cards took
         the screen the form needed. The rail and the steps still ahead are
         drawn in translucent deep blue rather than a pale grey, so they hold
-        on the Hire a tutor sheet's blue water as well as on a white page. */}
+        on a white page and on a tinted one alike. */}
     <ol className="mt-7 flex items-center gap-2.5" aria-label="Tutor request details progress">{requestSteps.map((label, index) => {
       const number = index + 1;
       const isActive = props.step === number;

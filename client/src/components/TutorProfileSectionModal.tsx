@@ -27,7 +27,7 @@ function photoCropperIsOpen(): boolean {
  */
 export function TutorProfileSectionModal({ title, submitting = false, notice, onClose, onSubmit, children }: TutorProfileSectionModalProps) {
   return (
-    <Modal size="md" onClose={onClose} busy={submitting} isSuspended={photoCropperIsOpen} decor="water-wide">
+    <Modal size="panel" onClose={onClose} busy={submitting} isSuspended={photoCropperIsOpen}>
       <ModalHeader title={title} eyebrow="Edit section" srPrefix="Edit" />
       <ModalBody className="space-y-3.5">
         {notice ? <div role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-tp-danger-ink" : "border-j-ok-border bg-j-ok-wash text-j-ok"}`}>

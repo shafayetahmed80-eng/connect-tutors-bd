@@ -438,7 +438,7 @@ export function AdminProfileContent() {
     <TwoFactorSmsBackupCard />
 
     {editingTab === "personal" && form ? (
-      <Modal size="md" onClose={closeEditor} busy={updateMutation.isPending}>
+      <Modal size="panel" onClose={closeEditor} busy={updateMutation.isPending}>
         <ModalHeader title="Personal Information" eyebrow="Edit section" srPrefix="Edit" />
         <ModalBody className="space-y-3.5">
           <div className="grid gap-3.5 sm:grid-cols-2">
@@ -485,7 +485,7 @@ export function AdminProfileContent() {
     ) : null}
 
     {editingTab === "emergency" && form ? (
-      <Modal size="md" onClose={closeEditor} busy={updateMutation.isPending}>
+      <Modal size="panel" onClose={closeEditor} busy={updateMutation.isPending}>
         <ModalHeader title="Emergency Contact" eyebrow="Edit section" srPrefix="Edit" />
         <ModalBody className="space-y-3.5">
           <div className="grid gap-3.5 sm:grid-cols-2">

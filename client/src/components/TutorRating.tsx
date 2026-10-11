@@ -58,7 +58,7 @@ export function RateTutorDialog({ requestId, jobId, existing, onClose }: {
     onError: error => toast.error(error.message),
   });
 
-  return <Modal size="sm" onClose={onClose} busy={save.isPending}>
+  return <Modal size="dialog" onClose={onClose} busy={save.isPending}>
     <ModalHeader title={existing ? "Change your rating" : "Rate the Tutor"} meta={`Job ID ${jobId}`} />
     <ModalBody>
       <p className="text-sm font-bold text-j-ink-strong">Rating<span className={requiredMark}> *</span></p>

@@ -186,7 +186,7 @@ function ChatNotesModal({ tutorId, onClose }: { tutorId: string; onClose: () => 
     add.mutate({ tutorId, body: trimmed });
   };
 
-  return <Modal size="sm" onClose={onClose}>
+  return <Modal size="dialog" onClose={onClose}>
     <ModalHeader title="Private notes" meta="Only Admins see this - never the Tutor." />
     <ModalBody className="space-y-3">
       {notesQuery.isLoading ? <p className="text-sm text-j-ink-muted">Loading…</p> : null}

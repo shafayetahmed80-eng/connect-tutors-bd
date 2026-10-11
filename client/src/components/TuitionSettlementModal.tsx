@@ -59,7 +59,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
   const due = Math.max(0, keep - paid);
   const usesReceived = data?.phase === "unpaid_first_month" || (data?.phase === "first_month" && paid === 0);
 
-  return <Modal size="lg" onClose={onClose} busy={save.isPending}>
+  return <Modal size="panel" onClose={onClose} busy={save.isPending}>
     <ModalHeader title={`Settle · Job ID ${jobIdForRequest(requestId)}`} />
     <ModalBody>
       {preview.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{preview.error.message}</p> : null}

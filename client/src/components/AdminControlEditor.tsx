@@ -151,7 +151,7 @@ function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememb
         className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:text-j-ink-strong"
       >Reset trusted browsers</button>
     </div>
-    {confirmingReset ? <Modal size="sm" onClose={() => setConfirmingReset(false)} busy={resetTrust.isPending}>
+    {confirmingReset ? <Modal size="dialog" onClose={() => setConfirmingReset(false)} busy={resetTrust.isPending}>
       <ModalHeader title="Reset trusted browsers?" />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">Every Tutor and Guardian will be asked for a sign-in code again the next time they open their panel.</p>
@@ -294,7 +294,7 @@ export default function AdminControlEditor() {
       <SiteLimitEditor groups={["Platform charge"]} />
     </section>
 
-    {confirming ? <Modal size="sm" onClose={() => setConfirming(false)} busy={setVisibility.isPending}>
+    {confirming ? <Modal size="dialog" onClose={() => setConfirming(false)} busy={setVisibility.isPending}>
       <ModalHeader title="Show Guardians shortlisted Tutors only?" />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">

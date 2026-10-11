@@ -235,7 +235,7 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
     : { ...filters, title: title.trim(), message: message.trim() });
 
   if (confirming) {
-    return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+    return <Modal size="dialog" onClose={onClose} busy={notify.isPending}>
       <ModalHeader title="Send this to Tutors?" meta={recipientLine} />
       <ModalBody className="space-y-3">
         <p className="text-sm leading-6 text-j-ink-soft">This is exactly what every recipient will see in their Notifications tab. It cannot be recalled once sent.</p>
@@ -256,7 +256,7 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
     </Modal>;
   }
 
-  return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+  return <Modal size="dialog" onClose={onClose} busy={notify.isPending}>
     <ModalHeader title="Notify these Tutors" meta={recipientLine} />
     <ModalBody className="space-y-4">
       <div>

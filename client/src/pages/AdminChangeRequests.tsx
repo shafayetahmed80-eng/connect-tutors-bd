@@ -103,7 +103,7 @@ function outcomeText(row: ChangeRequestRow) {
 
 function ApproveDialog({ row, busy, onClose, onApprove }: { row: ChangeRequestRow; busy: boolean; onClose: () => void; onApprove: () => void }) {
   const closing = row.type === "close_account";
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title={`Approve ${accountChangeTypeLabels[row.type].toLowerCase()}?`} meta={`${roleLabels[row.role]} · ${row.accountName ?? "Unnamed account"}`} />
     <ModalBody className="space-y-3">
       <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3 text-sm">
@@ -124,7 +124,7 @@ function ApproveDialog({ row, busy, onClose, onApprove }: { row: ChangeRequestRo
 function DeclineDialog({ row, busy, onClose, onDecline }: { row: ChangeRequestRow; busy: boolean; onClose: () => void; onDecline: (reason: string) => void }) {
   const [reason, setReason] = useState("");
   const ready = reason.trim().length >= ACCOUNT_CHANGE_REASON_MIN;
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title={`Decline ${accountChangeTypeLabels[row.type].toLowerCase()}?`} meta={`${roleLabels[row.role]} · ${row.accountName ?? "Unnamed account"}`} />
     <ModalBody className="space-y-2">
       <label htmlFor="decline-reason" className="text-sm font-bold text-j-ink">Reason <span className="text-red-600">*</span></label>
