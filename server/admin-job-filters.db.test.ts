@@ -5,6 +5,8 @@ import { guardianProfiles, guardianTuitionRequests, locations, tutorJobInterests
 import { jobIdForRequest } from "@shared/job-id";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { getAdminJobFilterOptions, getDb, listAdminPostedJobsPage } from "./db";
+import { learningNeedsFromLegacy } from "@shared/learning-needs";
+import { replaceRequestLearningNeeds } from "./request-learning-needs";
 
 // Both Tutors are seeded by scripts/seed-dev-discovery-fixtures.mjs. Every row
 // this test makes is removed afterwards, by id. The Guardians' names carry a
@@ -48,12 +50,15 @@ type Made = Partial<typeof tutorRequests.$inferInsert>;
 
 async function makeRequest(name: string, guardianUserId: number, over: Made) {
   const db = await database();
-  const [made] = await db.insert(tutorRequests).values({
-    guardianUserId, tuitionType: "home", category: "Bangla Medium", classCourse: "Class 5", subjects: JSON.stringify(["Math"]),
+  const values = {
+    guardianUserId, tuitionType: "home" as const, category: "Bangla Medium", classCourse: "Class 5", subjects: JSON.stringify(["Math"]),
     daysPerWeek: 3, locationText: "Dhaka", ...over,
-  });
+  };
+  const [made] = await db.insert(tutorRequests).values(values);
   key[name] = Number(made.insertId);
   requestIds.push(key[name]);
+  // What a request asks to have taught is read from its own rows, as the app writes them.
+  await replaceRequestLearningNeeds(db, key[name], learningNeedsFromLegacy(values));
   return key[name];
 }
 
@@ -172,6 +177,39 @@ describe("the Admin's job filters", () => {
   it("finds a subject inside the JSON list, and any one of several", async () => {
     expect((await read({ subjects: ["English"] }, "pending")).names).toEqual(["p1"]);
     expect((await read({ subjects: ["Physics", "Bangla"] })).names).toEqual(["l2", "p2"]);
+  });
+
+  it("reads a tuition that asks for several curricula and classes by each pair it asks for", async () => {
+    const db = await database();
+    const id = await makeRequest("m1", userIds[0]!, {
+      category: "English Version, Bangla Medium", classCourse: "Class 5, Class 6, Class 8", subjects: JSON.stringify(["Math", "English", "Physics"]),
+      publicationState: "submitted", createdAt: ago(1),
+    });
+    await replaceRequestLearningNeeds(db, id, [
+      { category: "English Version", classes: [{ classCourse: "Class 5", subjects: ["Math", "English"] }, { classCourse: "Class 6", subjects: ["Math"] }] },
+      { category: "Bangla Medium", classes: [{ classCourse: "Class 8", subjects: ["Physics"] }] },
+    ]);
+    try {
+      // Either curriculum finds it, and so does any class in either.
+      expect((await read({ categories: ["Bangla Medium"] })).names).toContain("m1");
+      expect((await read({ categories: ["English Version"] })).names).toContain("m1");
+      expect((await read({ classCourses: ["Class 6"] })).names).toContain("m1");
+      // A curriculum and a class chosen together must be a pair the tuition asks for.
+      expect((await read({ categories: ["Bangla Medium"], classCourses: ["Class 8"] })).names).toContain("m1");
+      expect((await read({ categories: ["English Version"], classCourses: ["Class 8"] })).names).not.toContain("m1");
+      // A subject belongs to the class it was chosen for.
+      expect((await read({ subjects: ["Physics"] })).names).toContain("m1");
+      expect((await read({ categories: ["English Version"], subjects: ["Physics"] })).names).not.toContain("m1");
+      expect((await read({ categories: ["English Version"], classCourses: ["Class 5"], subjects: ["English"] })).names).toContain("m1");
+      // The panel offers both curricula, each with its own classes, and each class with its subjects.
+      const options = await getAdminJobFilterOptions({ postedBy: "all" });
+      expect(options.classesByCategory["English Version"]).toEqual(expect.arrayContaining(["Class 5", "Class 6"]));
+      expect(options.classesByCategory["Bangla Medium"]).toEqual(expect.arrayContaining(["Class 8"]));
+      expect(options.subjectsByClass["Class 5"]).toEqual(expect.arrayContaining(["Math", "English"]));
+    } finally {
+      await db.delete(tutorRequests).where(eq(tutorRequests.id, id));
+      delete key.m1;
+    }
   });
 
   it("finds a tuition by its Job ID, and nothing by a number that is not one", async () => {

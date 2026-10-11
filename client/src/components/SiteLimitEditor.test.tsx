@@ -38,13 +38,13 @@ afterEach(cleanup);
 describe("site limit editor", () => {
   it("shows each limit at its shipped value when nothing is stored", () => {
     render(<SiteLimitEditor />);
-    expect((screen.getByLabelText("Subjects per request") as HTMLInputElement).value).toBe(String(subjects.value));
+    expect((screen.getByLabelText("Subjects per class") as HTMLInputElement).value).toBe(String(subjects.value));
   });
 
   it("keeps a request's subjects and a Tutor's as separate rows", () => {
     // They count the same kind of thing and are not the same number.
     render(<SiteLimitEditor />);
-    expect((screen.getByLabelText("Subjects per request") as HTMLInputElement).value).toBe("12");
+    expect((screen.getByLabelText("Subjects per class") as HTMLInputElement).value).toBe("12");
     expect((screen.getByLabelText("Subjects per Tutor") as HTMLInputElement).value).toBe("8");
   });
 
@@ -58,7 +58,7 @@ describe("site limit editor", () => {
 
   it("saves the number that was typed", async () => {
     render(<SiteLimitEditor />);
-    fireEvent.change(screen.getByLabelText("Subjects per request"), { target: { value: "6" } });
+    fireEvent.change(screen.getByLabelText("Subjects per class"), { target: { value: "6" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
 
     await vi.waitFor(() => expect(state.save).toHaveBeenCalledWith({ limitId: "request.subjects", value: 6 }));
@@ -66,7 +66,7 @@ describe("site limit editor", () => {
 
   it("will not save a number outside the range", () => {
     render(<SiteLimitEditor />);
-    const input = screen.getByLabelText("Subjects per request");
+    const input = screen.getByLabelText("Subjects per class");
     fireEvent.change(input, { target: { value: String(subjects.max + 1) } });
 
     // The server would refuse it; there is no reason to make the round trip.
@@ -82,7 +82,7 @@ describe("site limit editor", () => {
     state.rows = [{ limitId: "request.subjects", value: 4 }];
     render(<SiteLimitEditor />);
 
-    expect((screen.getByLabelText("Subjects per request") as HTMLInputElement).value).toBe("4");
+    expect((screen.getByLabelText("Subjects per class") as HTMLInputElement).value).toBe("4");
     expect(screen.getByText(/ships as 12/)).toBeTruthy();
   });
 
@@ -90,23 +90,23 @@ describe("site limit editor", () => {
     state.rows = [{ limitId: "request.subjects", value: 4 }];
     render(<SiteLimitEditor />);
 
-    expect(screen.getByLabelText("Reset Subjects per request")).toHaveProperty("disabled", false);
+    expect(screen.getByLabelText("Reset Subjects per class")).toHaveProperty("disabled", false);
     expect(screen.getByLabelText("Reset Languages per request")).toHaveProperty("disabled", true);
   });
 
   it("resets one limit without touching the others", async () => {
     state.rows = [{ limitId: "request.subjects", value: 4 }];
     render(<SiteLimitEditor />);
-    fireEvent.click(screen.getByLabelText("Reset Subjects per request"));
+    fireEvent.click(screen.getByLabelText("Reset Subjects per class"));
 
     await vi.waitFor(() => expect(state.reset).toHaveBeenCalledWith({ limitId: "request.subjects" }));
     expect(state.reset).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces a rejected save instead of pretending it worked", async () => {
-    state.save.mockRejectedValue(new Error("Subjects per request must be between 1 and 20 subjects."));
+    state.save.mockRejectedValue(new Error("Subjects per class must be between 1 and 20 subjects."));
     render(<SiteLimitEditor />);
-    fireEvent.change(screen.getByLabelText("Subjects per request"), { target: { value: "6" } });
+    fireEvent.change(screen.getByLabelText("Subjects per class"), { target: { value: "6" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
 
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toContain("must be between 1 and 20"));

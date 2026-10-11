@@ -1199,7 +1199,8 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   tuitionType: mysqlEnum("tuitionType", ["home", "online", "both", "group", "package"]).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
   curriculumType: varchar("curriculumType", { length: 32 }),
-  classCourse: varchar("classCourse", { length: 120 }).notNull(),
+  // Up to six classes named in one line (see shared/learning-needs).
+  classCourse: varchar("classCourse", { length: 500 }).notNull(),
   subjects: text("subjects").notNull(),
   /** Group-only maximum student capacity; null for every other request type and legacy rows. */
   groupCapacity: int("groupCapacity"),
@@ -1303,7 +1304,8 @@ export const tutorJobs = mysqlTable("tutor_jobs", {
     .notNull(),
   tuitionType: mysqlEnum("tuitionType", ["home", "online", "both", "group", "package"]).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
-  classCourse: varchar("classCourse", { length: 120 }).notNull(),
+  // Up to six classes named in one line (see shared/learning-needs).
+  classCourse: varchar("classCourse", { length: 500 }).notNull(),
   subjects: text("subjects").notNull(),
   studentCount: int("studentCount").default(1).notNull(),
   studentGender: mysqlEnum("studentGender", ["male", "female", "any"]),
@@ -1529,6 +1531,34 @@ export const tutorRequestPublicationEvents = mysqlTable(
   table => [
     index("tutor_request_publication_events_request_created_idx").on(table.tutorRequestId, table.createdAt),
     index("tutor_request_publication_events_admin_created_idx").on(table.adminUserId, table.createdAt),
+  ]
+);
+
+/**
+ * What a request asks to have taught, one row per curriculum-and-class.
+ *
+ * The request's own category / classCourse / subjects columns hold a one-line
+ * summary of these rows (for cards, titles, search and letters); these rows are
+ * the exact pairs, which the filters and the Job Board's options read, and each
+ * class keeps the subjects chosen for it. Every request has at least one.
+ */
+export const tutorRequestLearningNeeds = mysqlTable(
+  "tutor_request_learning_needs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tutorRequestId: int("tutorRequestId").notNull(),
+    category: varchar("category", { length: 120 }).notNull(),
+    /** English Medium only: British, Cambridge or Ed-excel. */
+    curriculumType: varchar("curriculumType", { length: 32 }),
+    classCourse: varchar("classCourse", { length: 120 }).notNull(),
+    /** A JSON array of the subject names wanted in this class. */
+    subjects: text("subjects").notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.tutorRequestId], foreignColumns: [tutorRequests.id], name: "trln_request_fk" }).onDelete("cascade"),
+    index("tutor_request_learning_needs_request_idx").on(table.tutorRequestId, table.sortOrder),
+    index("tutor_request_learning_needs_pair_idx").on(table.category, table.classCourse),
   ]
 );
 
