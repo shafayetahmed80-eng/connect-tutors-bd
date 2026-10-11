@@ -175,7 +175,7 @@ export function VerificationRequest({ changes, verified, nidReady }: { changes: 
       type="button"
       disabled={changes.busy || !nidReady}
       onClick={() => changes.request.mutate({ type: "verification" })}
-      className="h-12 w-full rounded-xl bg-gradient-to-r from-[#5aa0d8] to-[#0f6fc2] text-base font-semibold text-white shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+      className="h-11 w-full rounded-xl bg-gradient-to-r from-[#5aa0d8] to-[#0f6fc2] text-base font-semibold text-white shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
     >{changes.request.isPending ? "Sending…" : "Request to Verify"}</button>
   </div>;
 }

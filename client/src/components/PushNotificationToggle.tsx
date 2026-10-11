@@ -89,11 +89,11 @@ export function PushNotificationToggle() {
         </p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setShowExplainer(false)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">বাতিল</button>
+        <button type="button" onClick={() => setShowExplainer(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">বাতিল</button>
         <button
           type="button"
           onClick={() => { setShowExplainer(false); void enable(); }}
-          className="h-10 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a]"
+          className="h-11 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a]"
         >চালিয়ে যান</button>
       </ModalFooter>
     </Modal> : null}

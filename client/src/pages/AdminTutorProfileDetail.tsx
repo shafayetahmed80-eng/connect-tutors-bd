@@ -175,7 +175,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
         <ArrowLeft size={15} /> Back to Tutor Profiles
       </Link>
-      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
         <MessageCircle size={15} /> Message
       </Link>
     </div>
@@ -215,7 +215,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
           {profile.contactEmail ? <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5"><Mail size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} /><span className="truncate">{profile.contactEmail}</span></span> : null}
         </div>
         {decisions.length > 0
-          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="col-span-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:w-auto">
+          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:w-auto">
               <UserRoundCog size={16} /> Review &amp; moderate
             </button>
           : <p className="col-span-2 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:max-w-[16rem]">No Admin status action is currently available for this profile.</p>}

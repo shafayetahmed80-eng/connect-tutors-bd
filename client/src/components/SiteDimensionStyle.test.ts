@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultSiteLimits, findSiteLimit, siteLimits } from "@shared/site-limits";
+import { CONTROL_HEIGHT_PX, defaultSiteLimits, findSiteLimit, siteLimits } from "@shared/site-limits";
 import { buildSiteDimensionCss } from "./SiteDimensionStyle";
 
 /** Every dimension the Owner is offered on Admin > Modals. */
@@ -99,6 +99,31 @@ describe("the size an Owner sets for buttons", () => {
     expect(css).toContain(`height: 52px`);
   });
 });
+describe("the one height of a field and a button", () => {
+  const heightIds = ["modal.fieldHeight.profile", "modal.fieldHeight.profilePhone", "modal.fieldHeight.journey", "button.height", "journeyButton.height"];
+
+  it("ships every height dial at the Owner's single number, so a fresh site is uniform", () => {
+    expect(CONTROL_HEIGHT_PX).toBe(44);
+    for (const id of heightIds) {
+      expect(findSiteLimit(id)!.value, id).toBe(CONTROL_HEIGHT_PX);
+    }
+  });
+
+  it("keeps each of the five editable on its own, so one place can still be moved", () => {
+    for (const id of heightIds) {
+      const meta = findSiteLimit(id)!;
+      expect(meta.min, id).toBeLessThanOrEqual(CONTROL_HEIGHT_PX);
+      expect(meta.max, id).toBeGreaterThanOrEqual(CONTROL_HEIGHT_PX);
+    }
+  });
+
+  it("writes that number into the shared button, the journey button and both field boxes", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    expect(css).toContain(`height: ${CONTROL_HEIGHT_PX}px; padding-left`);
+    expect(css).toContain(`.modal-field-journey { height: ${CONTROL_HEIGHT_PX}px; }`);
+    expect(css).toContain(`.modal-field-profile { height: ${CONTROL_HEIGHT_PX}px; }`);
+  });
+});
 describe("the dialog sizes an Owner sets", () => {
   it("reaches the stylesheet, every one of them", () => {
     // A number offered in the Admin panel that no rule reads would be a dial
@@ -139,8 +164,10 @@ describe("the dialog sizes an Owner sets", () => {
   it("gives the profile editor's boxes their own height on a phone, 44px unless the Owner moves it", () => {
     const shipped = buildSiteDimensionCss(defaultSiteLimits());
     expect(shipped).toContain("@media (max-width: 639px) { .modal-field-profile { height: 44px; } }");
-    expect(shipped).toContain(".modal-field-profile { height: 30px; }");
+    expect(shipped).toContain(".modal-field-profile { height: 44px; }");
     expect(shipped).toContain("--profile-field-height-phone: 44px;");
+    // The floor a chip picker takes follows the same two numbers, above a phone and on it.
+    expect(shipped).toContain("--profile-field-height: 44px;");
 
     const moved = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.fieldHeight.profilePhone": 48 });
     expect(moved).toContain("@media (max-width: 639px) { .modal-field-profile { height: 48px; } }");

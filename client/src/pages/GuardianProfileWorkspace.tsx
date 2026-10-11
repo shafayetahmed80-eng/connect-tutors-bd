@@ -76,7 +76,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">{label}{children}</label>;
 }
 
-const inputClass = "rounded-xl border border-j-field-border bg-white px-3 py-2.5 text-sm font-medium text-j-ink outline-none ring-[#1677c8] focus:ring-2";
+const inputClass = "modal-field-profile rounded-xl border border-j-field-border bg-white px-3 text-sm font-medium text-j-ink outline-none ring-[#1677c8] focus:ring-2";
+/** The address box grows with what is typed, so it keeps padding rather than a fixed height. */
+const areaClass = "rounded-xl border border-j-field-border bg-white px-3 py-2.5 text-sm font-medium text-j-ink outline-none ring-[#1677c8] focus:ring-2";
 
 export default function GuardianProfileWorkspace() {
   const utils = trpc.useUtils();
@@ -342,7 +344,7 @@ export default function GuardianProfileWorkspace() {
               <Field label="Profession"><input value={form.profession} maxLength={120} onChange={event => set({ profession: event.target.value })} className={inputClass} placeholder="Ex. Banker" /></Field>
               <Field label="Social profile links"><input value={form.socialLinks} maxLength={500} onChange={event => set({ socialLinks: event.target.value })} className={inputClass} placeholder="Facebook / LinkedIn URL" /></Field>
             </div>
-            <Field label="Address details"><textarea value={form.addressDetails} maxLength={255} rows={2} onChange={event => set({ addressDetails: event.target.value })} className={inputClass} placeholder="House, road, area" /></Field>
+            <Field label="Address details"><textarea value={form.addressDetails} maxLength={255} rows={2} onChange={event => set({ addressDetails: event.target.value })} className={areaClass} placeholder="House, road, area" /></Field>
             <div className="grid gap-3 sm:grid-cols-2">
               {(["front", "back"] as const).map(side => {
                 const url = nidUrls[side];

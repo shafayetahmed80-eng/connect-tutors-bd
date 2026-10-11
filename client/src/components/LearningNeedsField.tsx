@@ -42,7 +42,7 @@ const dense = {
   block: "rounded-lg border border-j-border bg-j-surface-sunken/50 p-2.5",
   stack: "space-y-2.5",
   label: "block text-[11px] font-semibold leading-tight text-j-ink-soft",
-  select: "mt-1 h-8 w-full rounded-lg border border-j-field-border bg-white px-2 text-[11px] text-j-ink outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100",
+  select: "mt-1 h-11 w-full rounded-lg border border-j-field-border bg-white px-2 text-[11px] text-j-ink outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100",
   count: "rounded-full px-2 py-0.5 text-[10px] font-extrabold",
   chip: "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition",
   icon: 12,

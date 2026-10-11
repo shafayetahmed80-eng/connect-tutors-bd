@@ -32,8 +32,8 @@ export function RegistrationFieldError({ id, message, action, children }: { id: 
 export function GenderField({ id, name, label, value, onSelect, invalid, describedBy }: { id?: string; name: string; label: string; value: "" | RegistrationGender; onSelect: (value: RegistrationGender) => void; invalid?: boolean; describedBy?: string }) {
   return <fieldset id={id} aria-describedby={describedBy}>
     <legend className={fieldLabel}>{label}<RequiredMark /></legend>
-    <div className={`mt-2 inline-flex rounded-xl bg-j-surface-muted p-1 ${invalid ? "ring-1 ring-j-err" : ""}`}>
-      {(["male", "female"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-lg px-5 py-2.5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${value === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-j-ink-muted hover:text-j-ink-soft"}`}>
+    <div className={`modal-field-journey mt-2 inline-flex rounded-xl bg-j-surface-muted p-1 ${invalid ? "ring-1 ring-j-err" : ""}`}>
+      {(["male", "female"] as const).map((option) => <label key={option} className={`flex cursor-pointer items-center rounded-lg px-5 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-j-accent/50 ${value === option ? "bg-white text-j-accent shadow-[0_2px_6px_rgba(30,74,110,.12)]" : "text-j-ink-muted hover:text-j-ink-soft"}`}>
         <input type="radio" name={name} className="sr-only" checked={value === option} onChange={() => onSelect(option)} />{option === "male" ? "Male" : "Female"}
       </label>)}
     </div>
@@ -44,11 +44,11 @@ export function GenderField({ id, name, label, value, onSelect, invalid, describ
 export function PhoneField({ id, label, value, onChange, invalid, describedBy, placeholder, readOnly }: { id: string; label: string; value: string; onChange?: (value: string) => void; invalid?: boolean; describedBy?: string; placeholder?: string; readOnly?: boolean }) {
   return <label className="block" htmlFor={id}>
     <span className={fieldLabel}>{label}<RequiredMark /></span>
-    <span className={`input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border transition ${readOnly ? "bg-j-surface-muted" : "bg-j-surface-sunken focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12"}`}>
+    <span className={`modal-field-journey input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border transition ${readOnly ? "bg-j-surface-muted" : "bg-j-surface-sunken focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12"}`}>
       <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-bold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
       {readOnly
-        ? <input id={id} readOnly aria-readonly="true" aria-invalid={invalid} aria-describedby={describedBy} tabIndex={-1} value={value} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 py-3 text-j-ink-soft outline-none" />
-        : <input id={id} required value={value} onChange={(event) => onChange?.(event.target.value)} aria-invalid={invalid} aria-describedby={describedBy} className="min-w-0 flex-1 bg-transparent px-3.5 py-3 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder={placeholder} inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" />}
+        ? <input id={id} readOnly aria-readonly="true" aria-invalid={invalid} aria-describedby={describedBy} tabIndex={-1} value={value} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 text-j-ink-soft outline-none" />
+        : <input id={id} required value={value} onChange={(event) => onChange?.(event.target.value)} aria-invalid={invalid} aria-describedby={describedBy} className="min-w-0 flex-1 bg-transparent px-3.5 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder={placeholder} inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" />}
     </span>
   </label>;
 }

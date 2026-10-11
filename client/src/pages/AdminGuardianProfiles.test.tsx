@@ -129,7 +129,7 @@ describe("the card and filter panel over the Guardians", () => {
       expect(button.getAttribute("title")).toBe(name);
       expect(button.getAttribute("aria-label")).toBe(name);
       expect(button.querySelector("span.max-sm\\:sr-only")?.textContent).toBe(name);
-      expect(button.className).toContain("max-sm:w-10");
+      expect(button.className).toContain("max-sm:w-11");
     }
   });
 

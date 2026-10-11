@@ -231,7 +231,7 @@ describe("the card and filter panel over the Tutors", () => {
       expect(button.getAttribute("aria-label")).toBe(name);
       // The word stays in the page for the desktop; a phone hides it and keeps the square icon.
       expect(button.querySelector("span.max-sm\\:sr-only")?.textContent).toBe(name);
-      expect(button.className).toContain("max-sm:w-10");
+      expect(button.className).toContain("max-sm:w-11");
     }
   });
 

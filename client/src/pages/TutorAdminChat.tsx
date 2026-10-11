@@ -158,7 +158,7 @@ export function TutorAdminChatPanel() {
     <label className="relative block border-b border-[#dce9f1] p-3">
       <span className="sr-only">Search this conversation</span>
       <Search className="pointer-events-none absolute left-6 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
-      <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-8 w-full rounded-lg border border-j-border bg-white pl-8 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-11 w-full rounded-lg border border-j-border bg-white pl-8 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
     </label>
 
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -208,13 +208,13 @@ export function TutorAdminChatPanel() {
             : null}
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
               <Paperclip className="size-4" />
             </button>
             {voiceRecorder.supported
               ? <>
                   {voiceRecorder.recording
-                    ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
+                    ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
                         <X className="size-4" />
                       </button>
                     : null}
@@ -223,7 +223,7 @@ export function TutorAdminChatPanel() {
                     onClick={handleMic}
                     disabled={uploadProgress !== null}
                     aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
-                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
                   >
                     {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
                   </button>
@@ -238,7 +238,7 @@ export function TutorAdminChatPanel() {
               placeholder="Write a message…"
               className="min-h-9 flex-1 resize-none"
             />
-            <Button type="submit" size="icon" aria-label="Send message" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-10 w-10 shrink-0 rounded-xl">
+            <Button type="submit" size="icon" aria-label="Send message" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-11 w-11 shrink-0 rounded-xl">
               <Send className="size-4" />
             </Button>
           </form>

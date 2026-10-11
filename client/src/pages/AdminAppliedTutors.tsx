@@ -150,7 +150,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         : tuitionStage && canCancelTuition(tuitionStage) ? <button
         type="button"
         onClick={() => setCancelling(true)}
-        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
       >
         <CircleX className="h-4 w-4" /> Cancel Tuition
       </button> : null}
@@ -159,7 +159,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         type="button"
         onClick={() => setFiltersOpen(open => !open)}
         aria-expanded={filtersOpen}
-        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-j-border px-3.5 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-j-border px-3.5 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
       >
         <SlidersHorizontal className="h-4 w-4" /> Filter
         {activeFilterCount ? <span className="rounded-full bg-[#eaf4fd] px-1.5 text-2xs tabular-nums text-[#1267c8]">{activeFilterCount}</span> : null}
@@ -208,8 +208,8 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setApproving(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
+        <button type="button" onClick={() => setApproving(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
       </ModalFooter>
     </Modal> : null}
 

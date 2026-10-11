@@ -62,12 +62,12 @@ export function GuardianTuitionRequestDialog({ type, jobId, tutorLabel, busy, on
       </label>
     </ModalBody> : null}
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
       <button
         type="button"
         disabled={busy || !ready}
         onClick={() => onSend(needsReason ? reason.trim() : undefined)}
-        className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${type === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-red-600 hover:bg-red-700"}`}
+        className={`h-11 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${type === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-red-600 hover:bg-red-700"}`}
       >{busy ? "Sending…" : "Send request"}</button>
     </ModalFooter>
   </Modal>;

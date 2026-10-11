@@ -99,12 +99,12 @@ export function ApproveGuardianTuitionRequestDialog({ request, jobId, tutorName,
       <p className="text-sm leading-6 text-j-ink-soft">{outcome}</p>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
       <button
         type="button"
         disabled={busy}
         onClick={onApprove}
-        className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${request.type === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-red-600 hover:bg-red-700"}`}
+        className={`h-11 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${request.type === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-red-600 hover:bg-red-700"}`}
       >{busy ? "Approving…" : "Approve"}</button>
     </ModalFooter>
   </Modal>;
