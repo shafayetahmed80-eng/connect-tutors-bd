@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   guardianProfiles,
@@ -9,8 +9,10 @@ import {
   tutorAdminChatMessages,
   tutorAdminChatThreads,
   tutorJobs,
+  tutorNotifications,
   tutorRequestPublicationEvents,
   tutorRequests,
+  tutorTeachingAreas,
   tutors,
   users,
 } from "../drizzle/schema";
@@ -34,6 +36,7 @@ import { createAdminPostedTuition, getDb, moderateTutorRequestPublication, sendT
 const tag = randomBytes(3).toString("hex");
 const made = { userIds: [] as number[], tutorIds: [] as string[], requestIds: [] as number[] };
 let area = "";
+let otherArea = "";
 let city = "";
 let adminUserId = 0;
 let tutorUserId = 0;
@@ -43,10 +46,16 @@ const alertsForMyTutor = () => sent.calls.filter(call => call.endpoint === endpo
 
 beforeAll(async () => {
   const database = (await getDb())!;
-  const [row] = await database.select({ id: locations.id, parentId: locations.parentId }).from(locations).where(eq(locations.type, "area")).limit(1);
-  if (!row?.parentId) throw new Error("These tests need an area with a city in the locations table");
-  area = row.id;
-  city = row.parentId;
+  const occupied = new Set([
+    ...(await database.select({ id: tutors.locationId }).from(tutors)).map(row => row.id),
+    ...(await database.select({ id: tutorTeachingAreas.locationId }).from(tutorTeachingAreas)).map(row => row.id),
+  ]);
+  const free = (await database.select({ id: locations.id, parentId: locations.parentId }).from(locations).where(eq(locations.type, "area")).orderBy(desc(locations.id)))
+    .filter(row => row.parentId && !occupied.has(row.id));
+  if (free.length < 2) throw new Error("These tests need two areas with a city and no Tutor in them in the locations table");
+  area = free[0]!.id;
+  city = free[0]!.parentId!;
+  otherArea = free[1]!.id;
 
   const [admin] = await database.insert(users).values({ openId: `test:publish:${tag}:admin`, name: "Publish Admin", role: "admin", loginMethod: "password" });
   adminUserId = Number(admin.insertId);
@@ -79,6 +88,7 @@ afterAll(async () => {
     const threadIds = (await database.select({ id: tutorAdminChatThreads.id }).from(tutorAdminChatThreads).where(inArray(tutorAdminChatThreads.tutorId, made.tutorIds))).map(row => row.id);
     if (threadIds.length) await database.delete(tutorAdminChatMessages).where(inArray(tutorAdminChatMessages.threadId, threadIds));
     await database.delete(tutorAdminChatThreads).where(inArray(tutorAdminChatThreads.tutorId, made.tutorIds));
+    await database.delete(tutorNotifications).where(inArray(tutorNotifications.tutorId, made.tutorIds));
     await database.delete(tutors).where(inArray(tutors.id, made.tutorIds));
   }
   if (made.userIds.length) await database.delete(users).where(inArray(users.id, made.userIds));
@@ -113,6 +123,25 @@ describe("a tuition going live, through the real publishing path", () => {
     expect(call!.payload.url).toBe(`/tutor/dashboard/jobs?returnTo=${encodeURIComponent(`/job-board?job=${6799 + posted.id}`)}`);
   });
 
+  it("puts that tuition in the Tutor's bell too, with the line a Job Board card carries", async () => {
+    const database = (await getDb())!;
+    const posted = await postTuition(area, "home");
+
+    // The bell notice is written before the phone alert, after the transaction, without being waited for.
+    await vi.waitFor(async () => {
+      const [notice] = await database.select().from(tutorNotifications).where(eq(tutorNotifications.tutorId, made.tutorIds[0]!));
+      expect(notice).toMatchObject({
+        type: "new_tuition",
+        title: `নতুন টিউশন জব — ${6799 + posted.id}`,
+        message: "Class 5 · bangla-medium · Test area · 5,000 Taka",
+        actionPath: `/tutor/dashboard/jobs?returnTo=${encodeURIComponent(`/job-board?job=${6799 + posted.id}`)}`,
+        readAt: null,
+      });
+    });
+    // The phone alert follows the notice; waiting for it keeps it out of the next test's count.
+    await vi.waitFor(() => expect(alertsForMyTutor()).toHaveLength(1));
+  });
+
   it("does not alert again when the same tuition is published again", async () => {
     const posted = await postTuition(area, "home");
     await vi.waitFor(() => expect(alertsForMyTutor()).toHaveLength(1));
@@ -123,12 +152,9 @@ describe("a tuition going live, through the real publishing path", () => {
   });
 
   it("does not alert a Tutor for a tuition in an area they have nothing to do with", async () => {
-    const database = (await getDb())!;
-    const [other] = await database.select({ id: locations.id }).from(locations).where(eq(locations.type, "area")).limit(50);
-    const elsewhere = (await database.select({ id: locations.id }).from(locations).where(eq(locations.type, "area")).limit(50)).find(row => row.id !== area)?.id ?? other!.id;
-    expect(elsewhere).not.toBe(area);
+    expect(otherArea).not.toBe(area);
 
-    await postTuition(elsewhere, "home");
+    await postTuition(otherArea, "home");
     await new Promise(resolve => setTimeout(resolve, 400));
     expect(alertsForMyTutor()).toHaveLength(0);
   });

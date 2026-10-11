@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildTutorApplyJobBoardPath, buildTutorApplyReturnPath } from "../client/src/lib/tutorApplyReturn";
-import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionPushUrl, withPushGrouping } from "./push-messages";
+import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionNotice, newTuitionPushUrl, withPushGrouping } from "./push-messages";
 
 describe("the new tuition phone alert", () => {
   it("says what the Owner asked for, in Bangla: a heading and one line", () => {
@@ -11,6 +11,38 @@ describe("the new tuition phone alert", () => {
     const returnPath = buildTutorApplyReturnPath("6800");
     expect(newTuitionPushUrl("6800")).toBe(buildTutorApplyJobBoardPath(returnPath));
     expect(newTuitionPushUrl("6800")).toBe("/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6800");
+  });
+});
+
+describe("the new tuition bell notice", () => {
+  const job = { publicJobId: "6858", category: "Bangla Medium", classCourse: "Class 5", tuitionType: "home" as const, locationLabel: "Mirpur 10, Dhaka", budgetAmount: 9000 };
+
+  it("carries the phone alert's heading with the Job ID, and the Job Board card's line: class, curriculum, place, salary", () => {
+    expect(newTuitionNotice(job)).toEqual({
+      title: `${NEW_TUITION_PUSH.title} — 6858`,
+      message: "Class 5 · Bangla Medium · Mirpur 10, Dhaka · 9,000 Taka",
+    });
+  });
+
+  it("reads Online for an online tuition, whatever place the Guardian's own profile holds", () => {
+    expect(newTuitionNotice({ ...job, tuitionType: "online", locationLabel: "Mirpur 10, Dhaka" }).message).toBe("Class 5 · Bangla Medium · Online · 9,000 Taka");
+  });
+
+  it("leaves out what is not known rather than printing a gap - no salary, no place", () => {
+    expect(newTuitionNotice({ ...job, budgetAmount: null }).message).toBe("Class 5 · Bangla Medium · Mirpur 10, Dhaka");
+    expect(newTuitionNotice({ ...job, budgetAmount: 0, locationLabel: null }).message).toBe("Class 5 · Bangla Medium");
+  });
+
+  it("names every curriculum and class of a request that has several, and cuts a line that would not fit", () => {
+    expect(newTuitionNotice({ ...job, category: "Bangla Medium, English Medium", classCourse: "Class 5, Class 6, Standard 3" }).message)
+      .toBe("Class 5, Class 6, Standard 3 · Bangla Medium, English Medium · Mirpur 10, Dhaka · 9,000 Taka");
+    const long = newTuitionNotice({ ...job, classCourse: "Class 5, ".repeat(80) }).message;
+    expect(Array.from(long).length).toBeLessThanOrEqual(340);
+    expect(long.endsWith("…")).toBe(true);
+  });
+
+  it("is never longer than the notice column holds", () => {
+    expect(Array.from(newTuitionNotice({ ...job, category: "ক".repeat(900) }).message).length).toBeLessThanOrEqual(360);
   });
 });
 

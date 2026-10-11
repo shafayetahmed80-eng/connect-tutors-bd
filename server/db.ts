@@ -16,13 +16,16 @@ import { alias } from "drizzle-orm/mysql-core";
 import { normalizeSchoolName, SCHOOL_CREATE_LIMIT_PER_TUTOR, SCHOOL_SEARCH_LIMIT, tidySchoolName } from "@shared/school-colleges";
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
+  DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
+  NEW_TUITION_TUTOR_ALERTS_ENABLED_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID,
   guardianApplicantVisibilityFromStored,
+  newTuitionTutorAlertsEnabledFromStored,
   storedGuardianApplicantVisibility,
   tutorGuardianLoginOtpDaysFromStored,
   tutorGuardianLoginOtpEnabledFromStored,
@@ -125,7 +128,7 @@ import {
 } from "../drizzle/schema";
 import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
 import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
-import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionPushUrl } from "@shared/push-messages";
+import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionNotice, newTuitionPushUrl } from "@shared/push-messages";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
@@ -4239,7 +4242,13 @@ export async function moderateTutorRequestPublication(input: {
       void sendPushToUser(request.guardianUserId, { title: "আপনার টিউটর রিকোয়েস্ট এখন লাইভ", body: "আপনার রিকোয়েস্ট প্রকাশিত হয়েছে এবং ম্যাচিং প্রক্রিয়ার জন্য উন্মুক্ত।", url: `/guardian/dashboard/posted-jobs/${request.id}` }).catch(() => {});
     }
     if (transition.nextState === "published" && jobProjection.createdNewJob && jobProjection.publicJobId) {
-      newTuitions.push({ publicJobId: jobProjection.publicJobId, tuitionType: request.tuitionType, locationId: request.tuitionLocationId });
+      newTuitions.push({
+        publicJobId: jobProjection.publicJobId,
+        tuitionType: request.tuitionType,
+        locationId: request.tuitionLocationId,
+        preferredGender: request.preferredGender,
+        notice: { category: request.category, classCourse: request.classCourse, locationLabel: request.tuitionLocationLabel, budgetAmount: request.budgetAmount },
+      });
     }
     return {
       updated: true as const,
@@ -4258,18 +4267,29 @@ export type NewTuitionAnnouncement = {
   tuitionType: "home" | "online" | "both" | "group" | "package";
   /** The area the tuition is in; null for one with no place, which is how an online tuition arrives. */
   locationId: string | null;
+  /** Who the Guardian asked for. A Tutor of the other gender is not told; absent, or "any", tells both. */
+  preferredGender?: "male" | "female" | "any";
+  /** What the bell notice says. Absent, only the phone alert goes out. */
+  notice?: { category: string; classCourse: string; locationLabel: string | null; budgetAmount: number | null };
 };
 
 /**
- * Approved, active Tutors a new tuition fits, by place alone.
+ * Approved, active Tutors a new tuition fits, by place and by who the Guardian asked for.
  *
  * A tuition with an area reaches a Tutor whose Current Location or any
  * Preferred area is that area. An online one (or one a Guardian would take
  * either way) also reaches every Tutor who teaches online, wherever they are:
  * online has no place to teach in, so a Tutor who teaches only online may have
  * no area at all. Anything else with no area has no place to match, so nobody.
+ *
+ * A Guardian who asked for a woman or a man is not answered by the other, so
+ * that Tutor is left out; "any" leaves nobody out.
+ *
+ * Class and subject are not part of this: the Tutor Profile and the Guardian's
+ * request name them from two different lists, so there is nothing reliable to
+ * compare yet.
  */
-export async function listTutorUserIdsForNewTuition(input: Pick<NewTuitionAnnouncement, "tuitionType" | "locationId">) {
+export async function listTutorsForNewTuition(input: Pick<NewTuitionAnnouncement, "tuitionType" | "locationId" | "preferredGender">) {
   const database = await getDb();
   if (!database) return [];
   const locationId = input.locationId?.trim();
@@ -4284,22 +4304,65 @@ export async function listTutorUserIdsForNewTuition(input: Pick<NewTuitionAnnoun
     : undefined;
   const placeCondition = areaCondition && onlineCondition ? or(areaCondition, onlineCondition) : areaCondition ?? onlineCondition;
   if (!placeCondition) return [];
+  const genderCondition = input.preferredGender && input.preferredGender !== "any" ? eq(tutors.gender, input.preferredGender) : undefined;
   const rows = await database
-    .selectDistinct({ userId: tutors.userId })
+    .selectDistinct({ tutorId: tutors.id, userId: tutors.userId })
     .from(tutors)
     .innerJoin(users, eq(users.id, tutors.userId))
-    .where(and(eq(tutors.profileStatus, "approved"), eq(users.accountStatus, "active"), isNotNull(tutors.userId), placeCondition));
-  return rows.map(row => row.userId).filter((userId): userId is number => userId !== null);
+    .where(and(eq(tutors.profileStatus, "approved"), eq(users.accountStatus, "active"), isNotNull(tutors.userId), placeCondition, genderCondition));
+  return rows.flatMap(row => row.userId === null ? [] : [{ tutorId: row.tutorId, userId: row.userId }]);
 }
 
-/** Phone alert to every Tutor the new tuition fits. Sent in small batches so a busy morning does not open hundreds of connections at once. */
-export async function notifyTutorsOfNewTuition(tuition: NewTuitionAnnouncement) {
-  const userIds = await listTutorUserIdsForNewTuition(tuition);
-  const payload = { title: NEW_TUITION_PUSH.title, body: NEW_TUITION_PUSH.body, url: newTuitionPushUrl(tuition.publicJobId) };
-  for (let start = 0; start < userIds.length; start += 25) {
-    await Promise.all(userIds.slice(start, start + 25).map(userId => sendPushToUser(userId, payload).catch(() => {})));
+/** The same Tutors by their account, for the phone alert. */
+export async function listTutorUserIdsForNewTuition(input: Pick<NewTuitionAnnouncement, "tuitionType" | "locationId" | "preferredGender">) {
+  return (await listTutorsForNewTuition(input)).map(row => row.userId);
+}
+
+const NEW_TUITION_NOTICE_CHUNK = 200;
+
+/**
+ * Puts the new tuition in each Tutor's bell. One notice per Tutor, replaced by
+ * the next new tuition rather than added to: the inbox shows the latest twenty
+ * and cannot page on, so a notice for every job would soon bury a payment or an
+ * appointment under a busy morning's worth. The Job Board is where the rest are.
+ *
+ * Deleted and written again rather than updated in place, because the inbox is
+ * ordered by id and an updated row would keep its old place in the list.
+ */
+async function recordNewTuitionNotices(tutorIds: string[], tuition: NewTuitionAnnouncement & { notice: NonNullable<NewTuitionAnnouncement["notice"]> }) {
+  const database = await getDb();
+  if (!database || tutorIds.length === 0) return;
+  const note = newTuitionNotice({ publicJobId: tuition.publicJobId, tuitionType: tuition.tuitionType, ...tuition.notice });
+  const actionPath = newTuitionPushUrl(tuition.publicJobId);
+  for (let start = 0; start < tutorIds.length; start += NEW_TUITION_NOTICE_CHUNK) {
+    const chunk = tutorIds.slice(start, start + NEW_TUITION_NOTICE_CHUNK);
+    await database.transaction(async tx => {
+      await tx.delete(tutorNotifications).where(inArray(tutorNotifications.deduplicationKey, chunk.map(tutorId => `new-tuition:${tutorId}`)));
+      await tx.insert(tutorNotifications)
+        .values(chunk.map(tutorId => ({ tutorId, type: "new_tuition" as const, ...note, actionPath, deduplicationKey: `new-tuition:${tutorId}` })))
+        .onDuplicateKeyUpdate({ set: { ...note, actionPath, readAt: null, createdAt: new Date() } });
+    });
   }
-  return userIds.length;
+}
+
+/**
+ * Tells every Tutor the new tuition fits - a notice in their bell and a phone
+ * alert - unless the Owner has switched the alerts off. The phone alert goes out
+ * in small batches so a busy morning does not open hundreds of connections at once.
+ */
+export async function notifyTutorsOfNewTuition(tuition: NewTuitionAnnouncement) {
+  if (!(await getNewTuitionTutorAlertsEnabled())) return 0;
+  const audience = await listTutorsForNewTuition(tuition);
+  if (tuition.notice) {
+    // The bell and the phone are separate: a notice that fails is logged and must not stop the alert.
+    await recordNewTuitionNotices(audience.map(row => row.tutorId), { ...tuition, notice: tuition.notice })
+      .catch(error => console.error("[new-tuition] Could not write the bell notices:", error));
+  }
+  const payload = { title: NEW_TUITION_PUSH.title, body: NEW_TUITION_PUSH.body, url: newTuitionPushUrl(tuition.publicJobId) };
+  for (let start = 0; start < audience.length; start += 25) {
+    await Promise.all(audience.slice(start, start + 25).map(row => sendPushToUser(row.userId, payload).catch(() => {})));
+  }
+  return audience.length;
 }
 
 /**
@@ -7549,7 +7612,31 @@ export async function getAdminControl() {
     .from(tutorJobInterests)
     .where(and(...appointmentRequestOutsideShortlistConditions()));
   const tutorGuardianLoginOtp = await getTutorGuardianLoginOtpSettings({ fresh: true });
-  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp };
+  const newTuitionTutorAlerts = { enabled: await getNewTuitionTutorAlertsEnabled({ fresh: true }) };
+  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp, newTuitionTutorAlerts };
+}
+
+let newTuitionTutorAlertsCache: { enabled: boolean; readAt: number } | null = null;
+
+/** Whether a new tuition alerts the Tutors it fits. On when the Owner has never chosen, so a database without the row keeps today's alert. */
+export async function getNewTuitionTutorAlertsEnabled(options: { fresh?: boolean } = {}) {
+  if (!options.fresh && newTuitionTutorAlertsCache && Date.now() - newTuitionTutorAlertsCache.readAt < SITE_LIMIT_CACHE_MS) return newTuitionTutorAlertsCache.enabled;
+  const database = await getDb();
+  if (!database) return DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED;
+  const [row] = await database
+    .select({ value: siteLimitsTable.value })
+    .from(siteLimitsTable)
+    .where(eq(siteLimitsTable.limitId, NEW_TUITION_TUTOR_ALERTS_ENABLED_ID))
+    .limit(1);
+  const enabled = newTuitionTutorAlertsEnabledFromStored(row ? Number(row.value) : undefined);
+  newTuitionTutorAlertsCache = { enabled, readAt: Date.now() };
+  return enabled;
+}
+
+export async function setNewTuitionTutorAlertsEnabled(enabled: boolean) {
+  await upsertSiteLimit(NEW_TUITION_TUTOR_ALERTS_ENABLED_ID, enabled ? 1 : 0);
+  newTuitionTutorAlertsCache = null;
+  return { enabled };
 }
 
 let tutorGuardianLoginOtpCache: { enabled: boolean; rememberDays: number; epoch: number; readAt: number } | null = null;

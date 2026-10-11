@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ getAdminControl: vi.fn(), setGuardianApplicantVisibility: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ getAdminControl: vi.fn(), setGuardianApplicantVisibility: vi.fn(), setNewTuitionTutorAlertsEnabled: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -41,6 +41,17 @@ describe("adminControl", () => {
   it("refuses an unknown choice", async () => {
     await expect(createCaller().adminControl.setGuardianApplicantVisibility({ visibility: "everyone" } as never)).rejects.toThrow();
     expect(dbMocks.setGuardianApplicantVisibility).not.toHaveBeenCalled();
+  });
+
+  it("lets the Owner switch the new tuition alerts on or off, and nobody else", async () => {
+    dbMocks.setNewTuitionTutorAlertsEnabled.mockResolvedValue({ enabled: false });
+
+    await expect(createCaller().adminControl.setNewTuitionTutorAlertsEnabled({ enabled: false })).resolves.toEqual({ enabled: false });
+    expect(dbMocks.setNewTuitionTutorAlertsEnabled).toHaveBeenCalledWith(false);
+    await expect(createCaller().adminControl.setNewTuitionTutorAlertsEnabled({ enabled: "no" } as never)).rejects.toThrow();
+    await expect(createCaller({ ...owner, openId: "another-admin" }).adminControl.setNewTuitionTutorAlertsEnabled({ enabled: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller({ ...owner, role: "guardian" as const }).adminControl.setNewTuitionTutorAlertsEnabled({ enabled: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.setNewTuitionTutorAlertsEnabled).toHaveBeenCalledTimes(1);
   });
 
   it("is the Owner's alone - not another Admin's, and not a Guardian's", async () => {
