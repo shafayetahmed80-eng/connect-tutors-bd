@@ -1,4 +1,5 @@
 import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
+import RecentSearches from "@/components/RecentSearches";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Search } from "lucide-react";
 import { useState } from "react";
@@ -22,12 +23,14 @@ export function NotificationHistoryModal({ audience, onClose }: { audience: "tut
   return <Modal size="md" onClose={onClose}>
     <ModalHeader title="Sent notifications" meta={audience === "tutor" ? "Broadcasts sent to the Tutor directory" : "Broadcasts sent to the Guardian directory"} />
     <ModalBody className="space-y-3">
-      <label className="relative block">
-        <span className="sr-only">Search sent notifications</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by title or message"
-          className="h-11 w-full rounded-xl border border-j-border bg-white pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-      </label>
+      <RecentSearches page="notification-history" value={query} onPick={term => setQuery(term)}>
+        <label className="relative block">
+          <span className="sr-only">Search sent notifications</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by title or message"
+            className="h-11 w-full rounded-xl border border-j-border bg-white pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        </label>
+      </RecentSearches>
       {history.isLoading ? <div className="flex min-h-32 items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…</div> : null}
       {history.isError ? <p className="text-sm text-red-800">History could not be loaded.</p> : null}
       {!history.isLoading && !history.isError && items.length === 0

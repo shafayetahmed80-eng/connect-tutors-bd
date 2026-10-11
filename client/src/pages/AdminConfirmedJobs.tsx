@@ -15,6 +15,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { ChevronRight, FileText, Search, Wallet } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -177,16 +178,18 @@ export function AdminConfirmedJobsContent({ stage = "confirmed" }: { /** Closed 
   ];
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <label className="relative block max-w-sm">
-      <span className="sr-only">Search {word} jobs</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-      <input
-        value={query}
-        onChange={event => { setQuery(event.target.value); setPage(1); }}
-        placeholder="Search class, subject, location or Tutor"
-        className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-      />
-    </label>
+    <RecentSearches page="confirmed-jobs" value={query} onPick={term => { setQuery(term); setPage(1); }} className="max-w-sm">
+      <label className="relative block">
+        <span className="sr-only">Search {word} jobs</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
+        <input
+          value={query}
+          onChange={event => { setQuery(event.target.value); setPage(1); }}
+          placeholder="Search class, subject, location or Tutor"
+          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+        />
+      </label>
+    </RecentSearches>
 
     <AdminJobFilterBar
       filters={filterPanel}

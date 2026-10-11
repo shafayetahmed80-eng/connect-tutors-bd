@@ -322,7 +322,7 @@ function TwoFactorSmsBackupCard() {
 
       {editing && !sentPhone ? (
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <Field label="Mobile number"><input value={phone} onChange={event => setPhone(event.target.value)} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
+          <Field label="Mobile number"><input name="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
           <Button type="button" disabled={startSetup.isPending || !/^\+8801[3-9]\d{8}$/.test(phone)} onClick={() => void send()} className="h-11 rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{startSetup.isPending ? "Sending…" : "Send code"}</Button>
           <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
         </div>
@@ -445,7 +445,7 @@ export function AdminProfileContent() {
             {/* Another Admin asks for a new name or mobile from Settings; only the Owner changes theirs here. */}
             {profile.isOwner ? <>
               <Field label="Name"><input value={form.name} maxLength={ADMIN_PROFILE_LIMITS.name} onChange={event => set({ name: event.target.value })} className={inputClass} /></Field>
-              <Field label="Mobile"><input value={form.phone} maxLength={ADMIN_PROFILE_LIMITS.phone} inputMode="tel" onChange={event => set({ phone: event.target.value })} className={inputClass} /></Field>
+              <Field label="Mobile"><input name="tel" autoComplete="tel" value={form.phone} maxLength={ADMIN_PROFILE_LIMITS.phone} inputMode="tel" onChange={event => set({ phone: event.target.value })} className={inputClass} /></Field>
             </> : null}
             <Field label="Additional phone"><input value={form.additionalPhone} maxLength={ADMIN_PROFILE_LIMITS.additionalPhone} inputMode="tel" onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} /></Field>
             <Field label="Gender"><select value={form.gender} onChange={event => set({ gender: event.target.value as AdminForm["gender"] })} className={inputClass}><option value="">Not set</option><option value="female">Female</option><option value="male">Male</option></select></Field>

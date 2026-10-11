@@ -81,6 +81,31 @@ describe("GuardianProfileWorkspace", () => {
     expect(screen.getByText("NID name does not match the profile name.")).toBeTruthy();
   });
 
+  it("lets the browser offer the Guardian's own details, and keeps it off for the emergency contact's", async () => {
+    const user = userEvent.setup();
+    render(<GuardianProfileWorkspace />);
+
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    let dialog = screen.getByRole("dialog");
+    const token = (label: string) => within(dialog).getByLabelText(label).getAttribute("autocomplete");
+    expect(token("Additional phone")).toBe("tel");
+    expect(token("Profession")).toBe("organization-title");
+    expect(token("Social profile links")).toBe("url");
+    expect(token("Address details")).toBe("street-address");
+    // The address box grows with what is typed; it does not take the one-line field height.
+    expect(within(dialog).getByLabelText("Address details").className).not.toContain("modal-field-profile");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("tab", { name: "Emergency Contact" }));
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    dialog = screen.getByRole("dialog");
+    // Someone else's details: the browser must not fill them with the Guardian's own.
+    for (const label of ["Contact name", "Contact number", "Relation", "Contact profession", "Contact address"]) {
+      expect(token(label), label).toBe("off");
+    }
+    expect(within(dialog).getByLabelText("Contact address").className).not.toContain("modal-field-profile");
+  });
+
   it("saves the edited Personal section through update, keeping the registration name", async () => {
     const user = userEvent.setup();
     render(<GuardianProfileWorkspace />);

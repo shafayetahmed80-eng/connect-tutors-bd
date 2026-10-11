@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
 import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -157,6 +158,8 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
   const isAdmin = user?.role === "admin";
+  // Recent searches name people, so they are kept per Admin on this device.
+  useEffect(() => { setRecentSearchScope(user?.id); }, [user?.id]);
   const workspaceAccess = trpc.admin.getWorkspaceAccess.useQuery(undefined, {
     ...ADMIN_WORKSPACE_OWNER_QUERY_OPTIONS,
     enabled: isAdmin,

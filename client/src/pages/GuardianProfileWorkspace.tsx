@@ -336,15 +336,15 @@ export default function GuardianProfileWorkspace() {
           <ModalBody className="space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
               <Field label="Gender"><select value={form.gender} onChange={event => set({ gender: event.target.value as "male" | "female" })} className={inputClass}><option value="female">Female</option><option value="male">Male</option></select></Field>
-              <Field label="Additional phone"><input value={form.additionalPhone} maxLength={16} onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} /></Field>
+              <Field label="Additional phone"><input name="tel" autoComplete="tel" value={form.additionalPhone} maxLength={16} onChange={event => set({ additionalPhone: event.target.value })} className={inputClass} /></Field>
               <Field label="Religion"><select value={form.religion} onChange={event => set({ religion: event.target.value })} className={inputClass}><option value="">Not set</option>{guardianReligionOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
               <Field label="Nationality"><select value={form.nationality || "Bangladeshi"} onChange={event => set({ nationality: event.target.value })} className={inputClass}>{guardianNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></Field>
               <Field label="City"><select value={form.cityLocationId} onChange={event => set({ cityLocationId: event.target.value, locationId: "" })} className={inputClass}><option value="">Select city</option>{cities.map(city => <option key={city.id} value={city.id}>{city.label}</option>)}</select></Field>
               <Field label="Location"><select value={form.locationId} disabled={!form.cityLocationId} onChange={event => set({ locationId: event.target.value })} className={`${inputClass} disabled:bg-j-surface-muted`}><option value="">Select location</option>{areas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></Field>
-              <Field label="Profession"><input value={form.profession} maxLength={120} onChange={event => set({ profession: event.target.value })} className={inputClass} placeholder="Ex. Banker" /></Field>
-              <Field label="Social profile links"><input value={form.socialLinks} maxLength={500} onChange={event => set({ socialLinks: event.target.value })} className={inputClass} placeholder="Facebook / LinkedIn URL" /></Field>
+              <Field label="Profession"><input name="organization-title" autoComplete="organization-title" value={form.profession} maxLength={120} onChange={event => set({ profession: event.target.value })} className={inputClass} placeholder="Ex. Banker" /></Field>
+              <Field label="Social profile links"><input name="url" autoComplete="url" type="url" value={form.socialLinks} maxLength={500} onChange={event => set({ socialLinks: event.target.value })} className={inputClass} placeholder="Facebook / LinkedIn URL" /></Field>
             </div>
-            <Field label="Address details"><textarea value={form.addressDetails} maxLength={255} rows={2} onChange={event => set({ addressDetails: event.target.value })} className={areaClass} placeholder="House, road, area" /></Field>
+            <Field label="Address details"><textarea name="street-address" autoComplete="street-address" value={form.addressDetails} maxLength={255} rows={2} onChange={event => set({ addressDetails: event.target.value })} className={areaClass} placeholder="House, road, area" /></Field>
             <div className="grid gap-3 sm:grid-cols-2">
               {(["front", "back"] as const).map(side => {
                 const url = nidUrls[side];
@@ -377,13 +377,13 @@ export default function GuardianProfileWorkspace() {
           <ModalHeader title="Emergency Contact" eyebrow="Edit section" srPrefix="Edit" />
           <ModalBody className="space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
-              <Field label="Contact name"><input value={form.emergencyContactName} maxLength={120} onChange={event => set({ emergencyContactName: event.target.value })} className={inputClass} /></Field>
-              <Field label="Contact number"><input value={form.emergencyContactPhone} maxLength={16} onChange={event => set({ emergencyContactPhone: event.target.value })} className={inputClass} /></Field>
-              <Field label="Relation"><input value={form.emergencyContactRelation} maxLength={60} onChange={event => set({ emergencyContactRelation: event.target.value })} className={inputClass} placeholder="Ex. Brother" /></Field>
-              <Field label="Contact profession"><input value={form.emergencyContactProfession} maxLength={120} onChange={event => set({ emergencyContactProfession: event.target.value })} className={inputClass} /></Field>
+              <Field label="Contact name"><input autoComplete="off" value={form.emergencyContactName} maxLength={120} onChange={event => set({ emergencyContactName: event.target.value })} className={inputClass} /></Field>
+              <Field label="Contact number"><input autoComplete="off" value={form.emergencyContactPhone} maxLength={16} onChange={event => set({ emergencyContactPhone: event.target.value })} className={inputClass} /></Field>
+              <Field label="Relation"><input autoComplete="off" value={form.emergencyContactRelation} maxLength={60} onChange={event => set({ emergencyContactRelation: event.target.value })} className={inputClass} placeholder="Ex. Brother" /></Field>
+              <Field label="Contact profession"><input autoComplete="off" value={form.emergencyContactProfession} maxLength={120} onChange={event => set({ emergencyContactProfession: event.target.value })} className={inputClass} /></Field>
               <Field label="How did you hear about us"><select value={form.heardAboutUs} onChange={event => set({ heardAboutUs: event.target.value })} className={inputClass}><option value="">Not set</option>{guardianHeardAboutUsValues.map(value => <option key={value} value={value}>{formatRequestSource(value)}</option>)}</select></Field>
             </div>
-            <Field label="Contact address"><textarea value={form.emergencyContactAddress} maxLength={255} rows={2} onChange={event => set({ emergencyContactAddress: event.target.value })} className={inputClass} /></Field>
+            <Field label="Contact address"><textarea autoComplete="off" value={form.emergencyContactAddress} maxLength={255} rows={2} onChange={event => set({ emergencyContactAddress: event.target.value })} className={areaClass} /></Field>
           </ModalBody>
           <ModalFooter>
             <Button type="button" variant="outline" disabled={updateMutation.isPending} onClick={() => setEditingTab(null)} className="rounded-xl">Cancel</Button>
