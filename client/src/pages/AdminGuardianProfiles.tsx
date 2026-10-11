@@ -125,7 +125,7 @@ export function AdminGuardianProfilesContent() {
         <span className="sr-only">Search Guardians</span>
         <Search className="pointer-events-none absolute left-3 top-[calc(50%-4px)] h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
         <input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="Search name, Guardian ID, mobile or email"
-          className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
     </div>
 
@@ -140,7 +140,7 @@ export function AdminGuardianProfilesContent() {
         ? <><span className="font-bold text-j-ink">{selectedIds.size}</span> selected. <button type="button" onClick={() => setSelectedIds(new Set())} className="font-bold text-j-accent hover:underline">Clear selection</button></>
         : narrowed ? "matching guardians" : "guardian profiles"}
       actions={<>
-        <button type="button" onClick={() => setHistoryOpen(true)} aria-label="History" title="History" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken max-sm:w-10 max-sm:justify-center max-sm:px-0">
+        <button type="button" onClick={() => setHistoryOpen(true)} aria-label="History" title="History" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken max-sm:w-11 max-sm:justify-center max-sm:px-0">
           <History className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">History</span>
         </button>
         <button
@@ -149,7 +149,7 @@ export function AdminGuardianProfilesContent() {
           disabled={matchCount === 0 && selectedIds.size === 0}
           aria-label="Notify"
           title="Notify"
-          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-10 max-sm:justify-center max-sm:px-0"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-11 max-sm:justify-center max-sm:px-0"
         >
           <Megaphone className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">Notify</span>
         </button>
@@ -238,12 +238,12 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
         </div>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
         <button
           type="button"
           disabled={notify.isPending}
           onClick={send}
-          className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
         >{notify.isPending ? "Sending…" : `Confirm & send to ${recipientCount}`}</button>
       </ModalFooter>
     </Modal>;
@@ -255,7 +255,7 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
       <div>
         <label htmlFor="notify-guardians-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
         <input id="notify-guardians-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </div>
       <div>
         <div className="flex items-center justify-between gap-3">
@@ -267,12 +267,12 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
       <button
         type="button"
         disabled={!ready}
         onClick={() => setConfirming(true)}
-        className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
       >Review &amp; send to {recipientCount}</button>
     </ModalFooter>
   </Modal>;
@@ -304,7 +304,7 @@ export function AdminGuardianProfileDetailContent({ userId }: { userId: number }
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <GuardianVerificationBadge status={profile.verificationStatus} rejectionReason={profile.verificationRejectionReason} />
-            <button type="button" onClick={() => setVerifying(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"><ShieldCheck size={15} /> Verify Guardian</button>
+            <button type="button" onClick={() => setVerifying(true)} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"><ShieldCheck size={15} /> Verify Guardian</button>
           </div>
         </div>
         <div className="mt-4 grid gap-x-8 sm:grid-cols-2">

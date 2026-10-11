@@ -119,7 +119,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
             value={query}
             onChange={event => { setQuery(event.target.value); setPage(1); }}
             placeholder="Search subject, class, location or Guardian"
-            className="h-10 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+            className="h-11 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
           />
         </label>
       </div>
@@ -137,7 +137,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       matchingCaption={`matching ${stageLabel.toLowerCase()} jobs`}
       panelLabel="Posted jobs filters"
       postedBy={postedBy}
-      actions={<button type="button" onClick={() => setAdding(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
+      actions={<button type="button" onClick={() => setAdding(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
         <Plus size={16} /> Add Tuition
       </button>}
     />

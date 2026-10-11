@@ -19,7 +19,7 @@ const phaseLabels = {
   later: "Ended after two months",
 } as const;
 
-const fieldClass = "h-10 w-full rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const fieldClass = "h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const labelClass = "mb-1 block text-2xs font-bold uppercase tracking-wide text-j-ink-muted";
 
 export type ExistingSettlement = { reason: CancellationReason; retained: number; disposition: SettlementDisposition };
@@ -118,7 +118,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
       </div> : null}
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} disabled={save.isPending} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">Cancel</button>
+      <button type="button" onClick={onClose} disabled={save.isPending} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">Cancel</button>
       <button
         type="button"
         disabled={!data || save.isPending}
@@ -130,7 +130,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
           disposition: refund > 0 ? disposition : "none",
           note: note.trim() || null,
         })}
-        className="h-10 rounded-xl bg-j-accent px-5 text-sm font-bold text-white disabled:opacity-40"
+        className="h-11 rounded-xl bg-j-accent px-5 text-sm font-bold text-white disabled:opacity-40"
       >{save.isPending ? "Saving…" : "Save settlement"}</button>
     </ModalFooter>
   </Modal>;

@@ -21,7 +21,7 @@ export function AdminPasswordResetLink({ userId, phone }: { userId: number; phon
   return <section aria-labelledby={`password-reset-${userId}`} className="rounded-xl border border-j-border bg-white p-5 shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h3 id={`password-reset-${userId}`} className="font-bold tracking-[-0.02em] text-j-ink">Password reset</h3>
-      <button type="button" disabled={create.isPending} onClick={() => { setCopied(false); create.mutate({ userId }); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong transition hover:border-j-accent hover:text-j-accent disabled:opacity-60">
+      <button type="button" disabled={create.isPending} onClick={() => { setCopied(false); create.mutate({ userId }); }} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong transition hover:border-j-accent hover:text-j-accent disabled:opacity-60">
         {create.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <KeyRound size={15} aria-hidden="true" />}
         {issued ? "Create a new link" : "Create reset link"}
       </button>
@@ -31,10 +31,10 @@ export function AdminPasswordResetLink({ userId, phone }: { userId: number; phon
       <p className="break-all text-sm font-medium text-j-ink">{issued.link}</p>
       <p className="mt-1 text-xs text-j-ink-muted">Expires {formatExpiry(issued.expiresAt)}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={() => { void navigator.clipboard?.writeText(issued.link).then(() => setCopied(true)).catch(() => undefined); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong">
+        <button type="button" onClick={() => { void navigator.clipboard?.writeText(issued.link).then(() => setCopied(true)).catch(() => undefined); }} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong">
           <ClipboardCopy size={15} aria-hidden="true" />{copied ? "Copied" : "Copy link"}
         </button>
-        {whatsappNumber ? <a href={whatsappHref(whatsappNumber, message)} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong">
+        {whatsappNumber ? <a href={whatsappHref(whatsappNumber, message)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-j-border bg-white px-3 text-sm font-bold text-j-ink-strong">
           <MessageCircle size={15} aria-hidden="true" />Send on WhatsApp
         </a> : null}
       </div>

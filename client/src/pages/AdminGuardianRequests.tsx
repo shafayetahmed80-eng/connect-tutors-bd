@@ -196,8 +196,8 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setApproving(null)} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button type="button" disabled={appointApprove.isPending || !approving.interestId} onClick={() => { if (approving.interestId) appointApprove.mutate({ interestId: approving.interestId }); }} className="h-10 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{appointApprove.isPending ? "Approving…" : "Approve"}</button>
+        <button type="button" onClick={() => setApproving(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={appointApprove.isPending || !approving.interestId} onClick={() => { if (approving.interestId) appointApprove.mutate({ interestId: approving.interestId }); }} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{appointApprove.isPending ? "Approving…" : "Approve"}</button>
       </ModalFooter>
     </Modal> : null}
 

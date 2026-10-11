@@ -141,7 +141,7 @@ function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
   };
 
   return <div className="relative">
-    <button type="button" onClick={() => setOpen(value => !value)} aria-label="Quick replies" aria-expanded={open} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
+    <button type="button" onClick={() => setOpen(value => !value)} aria-label="Quick replies" aria-expanded={open} className="grid h-11 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
       <ListPlus className="size-4" />
     </button>
     {open ? <div className="absolute bottom-12 left-0 z-10 w-72 rounded-xl border border-j-border bg-white p-2 shadow-lg">
@@ -160,7 +160,7 @@ function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
         </div>)}
       </div>
       {managing ? <form onSubmit={submitNew} className="mt-2 space-y-1.5 border-t border-j-border pt-2">
-        <input value={label} onChange={event => setLabel(event.target.value)} placeholder="Short label" maxLength={60} className="h-8 w-full rounded-lg border border-j-border px-2 text-xs outline-none focus:border-j-accent" />
+        <input value={label} onChange={event => setLabel(event.target.value)} placeholder="Short label" maxLength={60} className="h-11 w-full rounded-lg border border-j-border px-2 text-xs outline-none focus:border-j-accent" />
         <Textarea value={draftBody} onChange={event => setDraftBody(event.target.value)} placeholder="Reply text" rows={2} className="text-xs" />
         <Button type="submit" size="sm" disabled={!label.trim() || !draftBody.trim() || create.isPending} className="w-full">Add quick reply</Button>
       </form> : null}
@@ -249,7 +249,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
           value={query}
           onChange={event => onQueryChange(event.target.value)}
           placeholder="Search Tutor name or ID"
-          className="h-9 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-11 w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
       </label>
       <label className="relative shrink-0">
@@ -257,7 +257,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
         <select
           value={sortMode}
           onChange={event => setSortMode(event.target.value as ThreadSortMode)}
-          className="h-9 rounded-lg border border-j-border bg-white pl-2 pr-6 text-xs font-semibold text-j-ink-soft outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-11 rounded-lg border border-j-border bg-white pl-2 pr-6 text-xs font-semibold text-j-ink-soft outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         >
           <option value="recent">Recent</option>
           <option value="unread">Unread first</option>
@@ -433,7 +433,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         <label className="relative hidden shrink-0 sm:block">
           <span className="sr-only">Search this conversation</span>
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-8 w-32 rounded-lg border border-j-border bg-white pl-7 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-11 w-32 rounded-lg border border-j-border bg-white pl-7 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
         </label>
       </div>
     </header>
@@ -485,13 +485,13 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         : null}
       <form onSubmit={handleSubmit} className="flex items-end gap-1.5 p-3 sm:gap-2">
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
           <Paperclip className="size-4" />
         </button>
         {voiceRecorder.supported
           ? <>
               {voiceRecorder.recording
-                ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
+                ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
                     <X className="size-4" />
                   </button>
                 : null}
@@ -500,7 +500,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                 onClick={handleMic}
                 disabled={uploadProgress !== null}
                 aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
               >
                 {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
               </button>
@@ -516,7 +516,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
           placeholder="Reply as Admin…"
           className="min-h-9 flex-1 resize-none"
         />
-        <Button type="submit" size="icon" aria-label="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-10 w-10 shrink-0 rounded-xl">
+        <Button type="submit" size="icon" aria-label="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-11 w-10 shrink-0 rounded-xl">
           <Send className="size-4" />
         </Button>
       </form>

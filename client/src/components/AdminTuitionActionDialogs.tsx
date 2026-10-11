@@ -37,12 +37,12 @@ export function TutorMoveDialog({ move, tutorName, tutorNumber, jobId, busy, onC
             : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
       <button
         type="button"
         disabled={busy}
         onClick={onDecide}
-        className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${isRemoval(move) ? "bg-red-600 hover:bg-red-700" : move === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
+        className={`h-11 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${isRemoval(move) ? "bg-red-600 hover:bg-red-700" : move === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
       >{busy
         ? (move === "appoint" ? "Appointing…" : move === "confirm" ? "Confirming…" : "Removing…")
         : (move === "appoint" ? "Appoint" : move === "confirm" ? "Confirm" : "Remove Tutor")}</button>
@@ -77,12 +77,12 @@ export function CancelTuitionDialog({ jobId, guardianName, busy, onClose, onCanc
       </label>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
+      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
       <button
         type="button"
         disabled={busy || reason.trim().length < 3}
         onClick={() => onCancel(reason.trim())}
-        className="h-10 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+        className="h-11 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
       >{busy ? "Cancelling…" : "Cancel Tuition"}</button>
     </ModalFooter>
   </Modal>;

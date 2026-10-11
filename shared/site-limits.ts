@@ -18,6 +18,16 @@
  * length above the database column would fail on save rather than in
  * validation, which is a worse error in every way.
  */
+/**
+ * The one height a field or a button stands, wherever it is on the site: the
+ * Owner's rule of 2026-10-11. Every height dial below ships at this number, so
+ * a freshly installed site is already uniform, and each stays editable so the
+ * Owner can still move one place without moving the rest. Row actions inside a
+ * table or card, tab rows, pagers, the sidebar menu and icon-only buttons are
+ * deliberately smaller and are not this number.
+ */
+export const CONTROL_HEIGHT_PX = 44;
+
 export const siteLimitIds = [
   "request.subjects",
   "request.curricula",
@@ -290,7 +300,7 @@ export const siteLimits: SiteLimitMeta[] = [
     label: "Field height, Tutor profile editor",
     help: "Single-line inputs and dropdowns inside the profile section popup. Text boxes grow with what is typed and are not affected.",
     unit: "px",
-    value: 30,
+    value: CONTROL_HEIGHT_PX,
     min: 24,
     max: 64,
   },
@@ -300,7 +310,7 @@ export const siteLimits: SiteLimitMeta[] = [
     label: "Field height on a phone, Tutor profile editor",
     help: "The same boxes on a phone, where they are tapped rather than clicked. 44px is the smallest target a finger hits reliably; the height above still applies from 640px up.",
     unit: "px",
-    value: 44,
+    value: CONTROL_HEIGHT_PX,
     min: 24,
     max: 64,
   },
@@ -308,9 +318,9 @@ export const siteLimits: SiteLimitMeta[] = [
     id: "modal.fieldHeight.journey",
     group: "Modals",
     label: "Field height, Hire a tutor sheet",
-    help: "Single-line inputs and dropdowns in the Guardian journey. Shipped taller than the profile's, which is why both are listed.",
+    help: "Single-line inputs and dropdowns in the Guardian journey and the registration forms. Ships at the same height as every other field and button; it is listed on its own so it can be moved without moving the rest.",
     unit: "px",
-    value: 48,
+    value: CONTROL_HEIGHT_PX,
     min: 32,
     max: 72,
   },
@@ -420,7 +430,7 @@ export const siteLimits: SiteLimitMeta[] = [
     label: "Button height - shared button",
     help: "How tall that same ordinary button stands.",
     unit: "px",
-    value: 36,
+    value: CONTROL_HEIGHT_PX,
     min: 28,
     max: 56,
   },
@@ -448,9 +458,9 @@ export const siteLimits: SiteLimitMeta[] = [
     id: "journeyButton.height",
     group: "Button Section",
     label: "Button height - Guardian journey",
-    help: "How tall a journey button stands. Ships taller than the shared button above - a public form invites a bigger target than a dialog does.",
+    help: "How tall a journey or registration button stands. Ships at the same height as the shared button above and every field; it is listed on its own so a public form can be moved without moving the rest.",
     unit: "px",
-    value: 48,
+    value: CONTROL_HEIGHT_PX,
     min: 36,
     max: 72,
   },

@@ -26,7 +26,7 @@ export function NotificationHistoryModal({ audience, onClose }: { audience: "tut
         <span className="sr-only">Search sent notifications</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by title or message"
-          className="h-10 w-full rounded-xl border border-j-border bg-white pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          className="h-11 w-full rounded-xl border border-j-border bg-white pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
       {history.isLoading ? <div className="flex min-h-32 items-center justify-center text-j-ink-soft"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…</div> : null}
       {history.isError ? <p className="text-sm text-red-800">History could not be loaded.</p> : null}

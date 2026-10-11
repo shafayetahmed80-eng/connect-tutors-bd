@@ -163,10 +163,10 @@ export function GuardianVerificationModal({ guardianUserId, onClose }: { guardia
         )}
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={onClose} className="h-10 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Cancel</button>
+        <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Cancel</button>
         <button type="button" disabled={!profile || save.isPending || rejectionInvalid}
           onClick={() => save.mutate({ guardianUserId, status, reason: status === "rejected" ? reason.trim() : undefined })}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">
           <BadgeCheck size={16} /> {save.isPending ? "Saving…" : "Save verification"}
         </button>
       </ModalFooter>
