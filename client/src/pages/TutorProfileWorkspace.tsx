@@ -206,6 +206,10 @@ function getProfileDraftFingerprint(state: TeachingProfileState) {
   return JSON.stringify(editableFields);
 }
 
+/** The suggestion lists behind a qualification's Institute Name and Subject / Group. */
+const QUALIFICATION_INSTITUTE_LIST_ID = "qualification-institute-names";
+const QUALIFICATION_DEPARTMENT_LIST_ID = "qualification-department-names";
+
 function CatalogSearchField({
   label,
   query,
@@ -482,6 +486,8 @@ function TutorProfileWorkspaceBody({
   const universityId = Number(form.universityId);
   const universities = trpc.catalog.searchUniversities.useQuery({ query: universityQuery, limit: CATALOG_SEARCH_LIMIT });
   const facultyDepartments = trpc.catalog.searchFacultyDepartments.useQuery({ query: departmentQuery, limit: CATALOG_SEARCH_LIMIT });
+  const institutePicks = trpc.catalog.searchUniversities.useQuery({ query: "", limit: CATALOG_SEARCH_LIMIT });
+  const departmentPicks = trpc.catalog.searchFacultyDepartments.useQuery({ query: "", limit: CATALOG_SEARCH_LIMIT });
   const subjects = trpc.catalog.searchSubjects.useQuery({ query: "", limit: 50 });
   const classLevels = trpc.catalog.searchClassLevels.useQuery({ query: "", limit: 50 });
   const curricula = trpc.catalog.searchCurricula.useQuery({ query: "", limit: 50 });
@@ -1196,13 +1202,14 @@ function TutorProfileWorkspaceBody({
       // A school or college is chosen from the list, or created for this Tutor alone.
       case "educationRecords.instituteName": return school
         ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
-        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
+        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
       case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
-      // A board exam is sat under one of three groups; a degree's subject is
-      // whatever the department is called, so that one stays free text.
+      // A board exam is sat under one of three groups. A degree's subject is
+      // whatever the department is called: the department list is offered as
+      // suggestions, and a name that is not on it can still be typed.
       case "educationRecords.majorGroup": return school
         ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
-        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
+        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
       case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
       case "educationRecords.resultGpa": return <FormInput label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />;
       case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
@@ -1239,6 +1246,8 @@ function TutorProfileWorkspaceBody({
   /** The repeatable Qualification history block, drawn for the `educationRecords` field. */
   const renderQualificationHistory = (recordFields: readonly ResolvedTutorProfileField[]): React.ReactNode => <div className="space-y-3">
     <h3 className="font-bold text-tp-value"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-tp-danger">*</span></h3>
+    <datalist id={QUALIFICATION_INSTITUTE_LIST_ID}>{(institutePicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
+    <datalist id={QUALIFICATION_DEPARTMENT_LIST_ID}>{(departmentPicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
     {form.educationRecords.map((record, index) => ({ record, index }))
       // Secondary and Higher Secondary have sections of their own above.
       .filter(({ record }) => !isSchoolQualification(record.qualificationLevel))

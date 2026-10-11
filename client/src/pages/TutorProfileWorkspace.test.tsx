@@ -223,6 +223,32 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).getByDisplayValue("BSc Physics")).toBeTruthy();
   });
 
+  it("offers the institute and department lists as suggestions in a qualification, and still takes a name that is not on them", async () => {
+    const user = userEvent.setup({ document: window.document });
+    trpcMocks.searchUniversities.mockImplementation(() => ({ data: [{ id: 1, name: "University of Dhaka" }, { id: 2, name: "Jahangirnagar University" }] }));
+    trpcMocks.searchFacultyDepartments.mockImplementation(() => ({ data: [{ id: 1, name: "Physics" }, { id: 2, name: "Applied Mathematics" }] }));
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    const dialog = screen.getByRole("dialog");
+
+    // Each box is wired to a list that holds the catalog's names.
+    const institute = within(dialog).getByLabelText(/Institute Name/) as HTMLInputElement;
+    const subject = within(dialog).getByLabelText(/Subject.+Group/) as HTMLInputElement;
+    const namesIn = (input: HTMLInputElement) => Array.from(dialog.querySelectorAll(`datalist#${input.getAttribute("list")} option`)).map(option => (option as HTMLOptionElement).value);
+    expect(namesIn(institute)).toEqual(["University of Dhaka", "Jahangirnagar University"]);
+    expect(namesIn(subject)).toEqual(["Physics", "Applied Mathematics"]);
+
+    // A name from the list, and one that is not on it, are both kept.
+    await user.type(institute, "University of Oxford");
+    await user.type(subject, "Physics");
+    expect(institute.value).toBe("University of Oxford");
+    expect(subject.value).toBe("Physics");
+    trpcMocks.searchUniversities.mockImplementation(() => ({ data: [] }));
+    trpcMocks.searchFacultyDepartments.mockImplementation(() => ({ data: [] }));
+  });
+
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ universityIdDocumentStatus: "uploaded" }) }));
     const user = userEvent.setup({ document: window.document });
