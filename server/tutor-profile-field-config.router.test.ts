@@ -41,7 +41,7 @@ function createAdminCaller(user: typeof ownerUser | typeof nonOwnerAdminUser | n
   } as any);
 }
 
-const validChange = { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 as const, label: null };
+const validChange = { fieldId: "additionalSubjectIds", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 as const, label: null };
 
 describe("tutorProfileFieldConfig router", () => {
   beforeEach(() => {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { getDb, getTutorProfileFieldConfig, saveTutorProfileFieldOverrides } from "./db";
 import { tutorProfileFieldOverrides } from "../drizzle/schema";
 
-const testFieldId = "resultGpa";
+const testFieldId = "additionalSubjectIds";
 
 async function deleteTestOverride() {
   const database = await getDb();
@@ -26,8 +26,8 @@ describe("Tutor Profile field config, against the real database", () => {
     expect(resolved?.sortOrder).toBe(999);
     expect(resolved?.required).toBe(true);
     // Untouched axes keep the registry default.
-    expect(resolved?.section).toBe("c");
-    expect(resolved?.subGroup).toBe("c-university");
+    expect(resolved?.section).toBe("d");
+    expect(resolved?.subGroup).toBe("d-teaching");
   });
 
   it("upserts on a second save rather than duplicating the row", async () => {
