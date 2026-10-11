@@ -189,7 +189,7 @@ describe("Tutor Profile domain validation", () => {
     expect(withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema).safeParse({ headline: "Experienced Mathematics Tutor", surprise: 1 }).success).toBe(false);
   });
 
-  it("requires approved private identity/family information, one complete education record, and University ID upload before final review", () => {
+  it("requires approved private identity/family information, the two school records, and University ID upload before final review", () => {
     expect(tutorProfileSubmissionSchema.safeParse(approvedExpandedSubmission).success).toBe(true);
 
     const result = tutorProfileSubmissionSchema.safeParse({
@@ -207,9 +207,11 @@ describe("Tutor Profile domain validation", () => {
       const paths = result.error.issues.map(issue => issue.path.join("."));
       expect(paths).toEqual(expect.arrayContaining([
         "privateDetails.fatherPhone",
-        "educationRecords.2.studyEndYear",
         "universityIdDocumentStatus",
       ]));
+      // A degree added under "Add another qualification" is optional, so its
+      // missing end year is not among the things asked for.
+      expect(paths).not.toContain("educationRecords.2.studyEndYear");
     }
   });
 
@@ -299,7 +301,7 @@ describe("Tutor Profile domain validation", () => {
     expect(calculateTutorProfileCompletion(completeSubmission)).toBe(100);
   });
 
-  it("saves a half-typed degree as a draft, and asks for its end year only at submission", () => {
+  it("saves a half-typed degree as a draft, and does not hold submission to it while the history is optional", () => {
     // The University Section popup saves a draft on Submit. Demanding the end
     // year at draft level meant a degree whose dates had not been reached yet
     // could not be saved at all - the popup refused to close and said nothing
@@ -312,14 +314,10 @@ describe("Tutor Profile domain validation", () => {
 
     expect(tutorProfileDraftSchema.safeParse({ educationRecords: [halfTyped] }).success).toBe(true);
 
-    const submission = tutorProfileSubmissionSchema.safeParse({
+    expect(tutorProfileSubmissionSchema.safeParse({
       ...approvedExpandedSubmission,
       educationRecords: withDegreeRecord({ studyEndYear: undefined }),
-    });
-    expect(submission.success).toBe(false);
-    if (!submission.success) {
-      expect(submission.error.issues.map(issue => issue.path.join("."))).toContain("educationRecords.2.studyEndYear");
-    }
+    }).success).toBe(true);
   });
 
   it("never asks a board-exam record for an end year, at either level", () => {
@@ -435,6 +433,45 @@ describe("Tutor Profile field config drives submission requiredness", () => {
     ]);
     const { majorGroup: _majorGroup, ...degreeWithoutMajor } = honoursRecord;
     expect(majorGroupOptional.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, degreeWithoutMajor] }).success).toBe(true);
+  });
+});
+
+describe("Tutor Profile Qualification history is optional until an Owner requires it", () => {
+  const halfFilledDegree = { qualificationLevel: "Masters" as const, instituteName: "University of Dhaka", currentlyStudying: false };
+  const historyRequired = () => tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(resolveTutorProfileFieldConfig([
+    { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
+  ])));
+  const issuePaths = (result: { success: boolean; error?: { issues: Array<{ path: Array<string | number> }> } }) => result.error?.issues.map(issue => issue.path.join(".")) ?? [];
+
+  it("ships as optional", () => {
+    const history = defaultTutorProfileFieldConfig().byId.get("educationRecords");
+    expect(history?.required).toBe(false);
+  });
+
+  it("submits with no degree at all, and with a half-filled one", () => {
+    expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord] }).success).toBe(true);
+    expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, halfFilledDegree] }).success).toBe(true);
+  });
+
+  it("still holds Secondary and Higher Secondary to their fields", () => {
+    const { instituteName: _instituteName, ...sscWithoutInstitute } = sscRecord;
+    const result = tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscWithoutInstitute, hscRecord] });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain("educationRecords.0.instituteName");
+    expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [hscRecord] }).success).toBe(false);
+  });
+
+  it("asks for a degree, and for each one to be complete, once an Owner requires the history", () => {
+    const schema = historyRequired();
+    expect(schema.safeParse(approvedExpandedSubmission).success).toBe(true);
+
+    const none = schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord] });
+    expect(none.success).toBe(false);
+    expect(issuePaths(none)).toContain("educationRecords");
+
+    const half = schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, halfFilledDegree] });
+    expect(half.success).toBe(false);
+    expect(issuePaths(half)).toEqual(expect.arrayContaining(["educationRecords.2.degreeExamTitle", "educationRecords.2.studyEndYear"]));
   });
 });
 

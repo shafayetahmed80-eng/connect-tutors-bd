@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProfileDraftPayload, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
+import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
 import { getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
 import { tutorProfileDraftSchema } from "../../../server/tutor-profile.validation";
 
@@ -276,6 +276,19 @@ describe("Tutor Profile form hydration", () => {
       studyStartYear: 2020,
       studyEndYear: 2024,
     });
+  });
+
+  it("sends a qualification that has an institute but no level without a level, so the draft still saves", () => {
+    // A qualification added under "Add another qualification" is optional, so a
+    // Tutor may type one box and stop. The level goes as undefined, never "":
+    // the server's level list has no empty option and refused the whole save.
+    const form = hydrateTutorProfileForm({ ...serverProfile, educationRecords: [] } as never, onboardingFallback);
+    form.educationRecords.push({ ...emptyEducationRecord(), instituteName: "University of Oxford" });
+
+    const sent = createProfileDraftPayload(form).educationRecords.find(entry => entry.instituteName === "University of Oxford");
+    expect(sent).toBeDefined();
+    expect(sent?.qualificationLevel).toBeUndefined();
+    expect(tutorProfileDraftSchema.safeParse({ educationRecords: [sent] }).success).toBe(true);
   });
 
   it("always carries a Secondary and a Higher Secondary record, however the profile was saved", () => {
