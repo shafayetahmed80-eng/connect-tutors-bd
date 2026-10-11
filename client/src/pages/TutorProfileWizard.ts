@@ -48,6 +48,8 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   studyStatus: 1,
   yearSemester: 1,
   graduationYear: 1,
+  // Education is one check over every section of the tab.
+  educationRecords: 1,
   // Teaching expertise sits in step 2 with the rest of Tuition and location -
   // sending a Tutor to step 1 would open a popup these fields have left.
   primarySubjectIds: 2,
