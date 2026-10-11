@@ -34,6 +34,8 @@ const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভ�
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
 const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
 const GUARDIAN_DASHBOARD: AdminDynamicDestination = { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" };
+const GUARDIAN_POSTED_JOBS: AdminDynamicDestination = { label: "অভিভাবকের Posted jobs", path: "/guardian/dashboard/posted-jobs" };
+const ADMIN_POSTED_JOBS: AdminDynamicDestination = { label: "Admin-এর Posted jobs", path: "/admin/posted-jobs" };
 const TUTOR_NOTIFICATIONS: AdminDynamicDestination = { label: "টিউটরের Notifications পাতা", path: "/tutor/dashboard/notifications" };
 
 export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
@@ -126,6 +128,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     label: "Navigation & Sections",
     summary: "সাইডবারের সিলেক্টেড সারি, প্রোফাইলের দুই ধরনের ট্যাব বার, আর সেকশন/গ্রুপ কার্ড — এসবের কোণা কতটা গোল।",
     seeAt: [TUTOR_PROFILE, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
+  },
+  {
+    path: "/admin/dynamic/job-card",
+    label: "Job card",
+    summary: "জব কার্ডের লেখার সাইজ (শিরোনাম, ঘরের নাম ও মান, বোতাম) আর কার্ডে চাপ দিলে যে ডিটেইলস ডায়ালগ খোলে তার লেখার সাইজ — দুটো আলাদা সংখ্যা, ১০ থেকে ২০ পিক্সেল। একই কার্ড বলে জব বোর্ড, Admin-এর Posted jobs আর অভিভাবকের Posted jobs — তিন জায়গায় একসাথে বদলায়।",
+    seeAt: [JOB_BOARD, ADMIN_POSTED_JOBS, GUARDIAN_POSTED_JOBS],
   },
   {
     path: "/admin/dynamic/limits",

@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation"];
+const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation", "Job card"];
 
 /**
  * Owner-facing editor for the numbers that used to be literals in the code.
@@ -20,7 +20,7 @@ const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Mod
  * screen; below it the rows have the width to themselves.
  */
 export default function SiteLimitEditor({
-  groups = allGroups.filter(group => group !== "Modals" && group !== "Input Field Text" && group !== "Button Section" && group !== "Platform charge" && group !== "Navigation"),
+  groups = allGroups.filter(group => group !== "Modals" && group !== "Input Field Text" && group !== "Button Section" && group !== "Platform charge" && group !== "Navigation" && group !== "Job card"),
   aside,
 }: { groups?: SiteLimitGroup[]; aside?: (limits: SiteLimitValues) => ReactNode } = {}) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});

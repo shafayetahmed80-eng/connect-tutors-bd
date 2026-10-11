@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROL_HEIGHT_PX, defaultSiteLimits, findSiteLimit, siteLimits } from "@shared/site-limits";
+import { CONTROL_HEIGHT_PX, defaultSiteLimits, findSiteLimit, siteLimits, type SiteLimitId } from "@shared/site-limits";
 import { buildSiteDimensionCss, modalPanelHeight, modalShadow } from "./SiteDimensionStyle";
 
 /** Every dimension the Owner is offered on Admin > Modals. */
@@ -237,5 +237,68 @@ describe("what the Modals preview borrows from the stylesheet", () => {
     expect(modalPanelHeight(limits, 1200)).toBe(720);
     // The same rule the stylesheet writes.
     expect(buildSiteDimensionCss(limits)).toContain("height: min(86vh, 720px)");
+  });
+});
+
+describe("the lettering an Owner sets for job cards and the dialog they open", () => {
+  const css = (over: Partial<Record<SiteLimitId, number>> = {}) => buildSiteDimensionCss({ ...defaultSiteLimits(), ...over });
+  const jobLimitIds = siteLimits.filter(limit => limit.group === "Job card").map(limit => limit.id);
+  const job = `[data-modal-kind="job-details"]`;
+
+  it("offers two numbers, both between 10 and 20 pixels, and both reach the stylesheet", () => {
+    expect(jobLimitIds).toEqual(["jobCard.textSize", "jobDetails.textSize"]);
+    for (const id of jobLimitIds) {
+      const meta = findSiteLimit(id)!;
+      expect([meta.min, meta.max, meta.unit]).toEqual([10, 20, "px"]);
+      expect(css(), id).toContain(`${meta.value}${meta.unit}`);
+    }
+  });
+
+  it("ships a card one pixel above what it was - 15px title, 13px text, 12px badge", () => {
+    expect(css()).toContain(".job-card-title { font-size: 15px; }");
+    expect(css()).toContain(".job-card-text, .job-card-footer, .job-card-footer * { font-size: 13px; }");
+    expect(css()).toContain(".job-card-small { font-size: 12px; }");
+  });
+
+  it("keeps the title two pixels above the number and the badge one below, wherever it is set", () => {
+    const moved = css({ "jobCard.textSize": 18 });
+    expect(moved).toContain(".job-card-title { font-size: 20px; }");
+    expect(moved).toContain(".job-card-text, .job-card-footer, .job-card-footer * { font-size: 18px; }");
+    expect(moved).toContain(".job-card-small { font-size: 17px; }");
+  });
+
+  it("sizes the card's icons with its text, so they follow it rather than stay put", () => {
+    expect(css()).toContain(".job-card svg { width: 1.08em; height: 1.08em; }");
+  });
+
+  it("ships the dialog two pixels above what it was - 13px rows, 14px buttons, 18px title", () => {
+    expect(css()).toContain(`${job} [data-modal-title] { font-size: 18px; }`);
+    expect(css()).toContain(`${job} [data-modal-body] :is(p, span, a, strong, dt, dd, li, td, th), ${job} [data-modal-footer] :is(p, span) { font-size: 13px; }`);
+    expect(css()).toContain(`${job} [data-modal-footer] :is(button, a), ${job} [data-modal-footer] :is(button, a) * { font-size: 14px; }`);
+  });
+
+  it("moves the dialog's title five above the number and its buttons one above", () => {
+    const moved = css({ "jobDetails.textSize": 16 });
+    expect(moved).toContain(`${job} [data-modal-title] { font-size: 21px; }`);
+    expect(moved).toContain("font-size: 16px; }");
+    expect(moved).toContain(`${job} [data-modal-footer] :is(button, a), ${job} [data-modal-footer] :is(button, a) * { font-size: 17px; }`);
+  });
+
+  it("keeps the two numbers apart: the card's does not reach the dialog, nor the dialog's the card", () => {
+    const cardMoved = css({ "jobCard.textSize": 20 });
+    expect(cardMoved).toContain(`${job} [data-modal-title] { font-size: 18px; }`);
+    const detailsMoved = css({ "jobDetails.textSize": 20 });
+    expect(detailsMoved).toContain(".job-card-title { font-size: 15px; }");
+  });
+
+  it("addresses the job dialog alone, so no other dialog's lettering moves with it", () => {
+    for (const line of css({ "jobDetails.textSize": 19 }).split("\n")) {
+      if (/\[data-modal-(title|meta|body|footer)\]/.test(line)) expect(line, line).toContain(job);
+    }
+  });
+
+  it("puts a span inside a button at the button's size, not the row's", () => {
+    const sheet = css();
+    expect(sheet.indexOf(`${job} [data-modal-footer] :is(button, a) * `)).toBeGreaterThan(sheet.indexOf(`${job} [data-modal-footer] :is(p, span)`));
   });
 });

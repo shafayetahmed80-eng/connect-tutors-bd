@@ -3,7 +3,7 @@ import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationIt
 import { trpc } from "@/lib/trpc";
 import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -43,6 +43,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: Type, label: "Input Field Text", path: "/admin/dynamic/input-field-text", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: MousePointerClick, label: "Button Section", path: "/admin/dynamic/button-section", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: Squircle, label: "Navigation & Sections", path: "/admin/dynamic/navigation", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
+  { icon: LayoutPanelTop, label: "Job card", path: "/admin/dynamic/job-card", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
   { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
 ];

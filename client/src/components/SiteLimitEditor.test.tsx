@@ -113,6 +113,34 @@ describe("site limit editor", () => {
   });
 });
 
+describe("the Job card group", () => {
+  it("is left out of the general Limits page, which has its own page for it", () => {
+    render(<SiteLimitEditor />);
+    expect(screen.queryByLabelText("Job card text")).toBeNull();
+    expect(screen.queryByLabelText("Job details text")).toBeNull();
+  });
+
+  it("offers the card's number and the dialog's, each saved on its own, from 10 to 20 pixels", async () => {
+    render(<SiteLimitEditor groups={["Job card"]} />);
+
+    expect((screen.getByLabelText("Job card text") as HTMLInputElement).value).toBe("13");
+    expect((screen.getByLabelText("Job details text") as HTMLInputElement).value).toBe("13");
+    expect(screen.getAllByText("10–20 px")).toHaveLength(2);
+
+    fireEvent.change(screen.getByLabelText("Job card text"), { target: { value: "15" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
+    await vi.waitFor(() => expect(state.save).toHaveBeenCalledWith({ limitId: "jobCard.textSize", value: 15 }));
+  });
+
+  it("refuses 9 and 21", () => {
+    render(<SiteLimitEditor groups={["Job card"]} />);
+    for (const bad of ["9", "21"]) {
+      fireEvent.change(screen.getByLabelText("Job details text"), { target: { value: bad } });
+      expect((screen.getAllByRole("button", { name: "Save" })[1] as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+});
+
 describe("the drawing beside the rows", () => {
   const panelWidth = findSiteLimit("modal.width.panel")!;
   const drawing = (limits: { "modal.width.panel": number }) => <p data-testid="aside">{limits["modal.width.panel"]}</p>;
