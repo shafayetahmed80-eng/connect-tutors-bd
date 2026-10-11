@@ -41,7 +41,10 @@ describe("RecentSearches", () => {
     await user.click(box());
 
     const list = screen.getByRole("list", { name: "Recent searches" });
-    expect(within(list).getAllByRole("button").map(button => button.textContent)).toEqual(["Dhanmondi", "Physics", "Clear"]);
+    // Each search has its own button to pick it and one to forget it; Clear forgets the lot.
+    expect(within(list).getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+      "Dhanmondi", "Remove Dhanmondi from recent searches", "Physics", "Remove Physics from recent searches", "Clear",
+    ]);
   });
 
   it("fills the box with a picked search and closes", async () => {
@@ -87,6 +90,33 @@ describe("RecentSearches", () => {
 
     await user.clear(box());
     await user.type(box(), "Physics");
+    expect(screen.queryByRole("list", { name: "Recent searches" })).toBeNull();
+  });
+
+  it("forgets one search without touching the others, and keeps the box focused", async () => {
+    rememberRecentSearch("posted-jobs", "Physics");
+    rememberRecentSearch("posted-jobs", "Dhanmondi");
+    const user = userEvent.setup({ document: window.document });
+    render(<Box />);
+
+    await user.click(box());
+    await user.click(screen.getByRole("button", { name: "Remove Dhanmondi from recent searches" }));
+
+    expect(readRecentSearches("posted-jobs")).toEqual(["Physics"]);
+    expect(screen.queryByRole("button", { name: "Dhanmondi" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Physics" })).toBeTruthy();
+    expect(document.activeElement).toBe(box());
+  });
+
+  it("closes the menu when the last search is forgotten", async () => {
+    rememberRecentSearch("posted-jobs", "Physics");
+    const user = userEvent.setup({ document: window.document });
+    render(<Box />);
+
+    await user.click(box());
+    await user.click(screen.getByRole("button", { name: "Remove Physics from recent searches" }));
+
+    expect(readRecentSearches("posted-jobs")).toEqual([]);
     expect(screen.queryByRole("list", { name: "Recent searches" })).toBeNull();
   });
 

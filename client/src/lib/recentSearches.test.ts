@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearRecentSearches, readRecentSearches, rememberRecentSearch, RECENT_SEARCH_LIMIT, setRecentSearchScope } from "./recentSearches";
+import { clearRecentSearches, forgetRecentSearch, readRecentSearches, rememberRecentSearch, RECENT_SEARCH_LIMIT, setRecentSearchScope } from "./recentSearches";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -47,6 +47,21 @@ describe("recent searches", () => {
     expect(readRecentSearches("p")).toEqual([]);
     setRecentSearchScope(7);
     expect(readRecentSearches("p")).toEqual(["01712345678"]);
+  });
+
+  it("forgets one search, matching it by case and spacing, and leaves the rest in order", () => {
+    rememberRecentSearch("p", "Physics");
+    rememberRecentSearch("p", "Chemistry");
+    rememberRecentSearch("p", "Maths");
+    expect(forgetRecentSearch("p", " chemistry ")).toEqual(["Maths", "Physics"]);
+    expect(readRecentSearches("p")).toEqual(["Maths", "Physics"]);
+    expect(forgetRecentSearch("p", "never searched")).toEqual(["Maths", "Physics"]);
+  });
+
+  it("leaves no empty entry behind once the last search is forgotten", () => {
+    rememberRecentSearch("p", "Physics");
+    forgetRecentSearch("p", "Physics");
+    expect(window.localStorage.getItem("connect-tutors:recent-search:device:p")).toBeNull();
   });
 
   it("forgets everything for one list on Clear", () => {

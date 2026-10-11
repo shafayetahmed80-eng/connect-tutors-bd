@@ -42,6 +42,18 @@ export function rememberRecentSearch(page: string, term: string): string[] {
   return next;
 }
 
+/** Forgets one search and returns what is left. */
+export function forgetRecentSearch(page: string, term: string): string[] {
+  const left = readRecentSearches(page).filter(item => item.toLowerCase() !== term.trim().toLowerCase());
+  try {
+    if (left.length === 0) window.localStorage.removeItem(keyFor(page));
+    else window.localStorage.setItem(keyFor(page), JSON.stringify(left));
+  } catch {
+    // Nothing to forget if nothing could be kept.
+  }
+  return left;
+}
+
 export function clearRecentSearches(page: string) {
   try {
     window.localStorage.removeItem(keyFor(page));
