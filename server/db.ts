@@ -5954,6 +5954,15 @@ export function tutorJobStageCondition(stage: TutorApplicationStage): SQL {
   return sql`exists (select 1 from ${sql.raw(from)} where ${sql.raw(q(tutorJobInterests, tutorJobInterests.tutorId))} = ${outerId(tutors)} and ${sql.raw(rule[stage])})`;
 }
 
+/**
+ * Whether the Tutor picked a subject - primary or additional - whose catalog
+ * name satisfies `match`. The picks live in `tutor_subjects`; the
+ * `tutors.subjects` text column is older and nothing writes it any more.
+ */
+function tutorPickedSubject(match: SQL) {
+  return sql`${tutors.id} in (select ${tutorSubjects.tutorId} from ${tutorSubjects} inner join ${subjectsCatalog} on ${subjectsCatalog.id} = ${tutorSubjects.subjectId} where ${match})`;
+}
+
 function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   const conditions: SQL[] = [];
   if (filters.profileStatus !== "all") conditions.push(eq(tutors.profileStatus, filters.profileStatus));
@@ -5964,14 +5973,11 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
     conditions.push(sql`${tutors.id} in (select ${tutorTuitionModes.tutorId} from ${tutorTuitionModes} where ${tutorTuitionModes.mode} = ${filters.tuitionType})`);
   }
   if (filters.location) conditions.push(like(locations.label, `%${filters.location}%`));
-  if (filters.subject) conditions.push(like(tutors.subjects, `%${filters.subject}%`));
+  if (filters.subject) conditions.push(tutorPickedSubject(like(subjectsCatalog.name, `%${filters.subject}%`)));
   if (filters.cityId) conditions.push(eq(tutors.cityLocationId, filters.cityId));
   if (filters.locationIds?.length) conditions.push(inArray(tutors.locationId, filters.locationIds));
-  // `subjects` is a JSON array in one column, so each chosen subject is a separate LIKE and any one of them may match - as on the Job Board.
-  if (filters.subjects?.length) {
-    const anySubject = or(...filters.subjects.map(subject => like(tutors.subjects, `%"${subject}"%`)));
-    if (anySubject) conditions.push(anySubject);
-  }
+  // Any one of the chosen subjects may match, as on the Job Board - by the whole catalog name, not a piece of one.
+  if (filters.subjects?.length) conditions.push(tutorPickedSubject(inArray(subjectsCatalog.name, filters.subjects)));
   if (filters.gender) conditions.push(eq(tutors.gender, filters.gender));
   if (filters.experienceFrom !== undefined) conditions.push(gte(tutors.teachingExperienceYears, filters.experienceFrom));
   if (filters.experienceTo !== undefined) conditions.push(lte(tutors.teachingExperienceYears, filters.experienceTo));
@@ -5992,7 +5998,12 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   return conditions;
 }
 
-/** What both Admin Tutor reads share; joins `locations` and nothing else. */
+/**
+ * What both Admin Tutor reads share; joins `locations` and nothing else. What
+ * a Tutor teaches is not here - it is read from their selections by
+ * `loadTutorTeachingSelections`, not from the older `tutors.subjects` and
+ * `tutors.levels` text columns.
+ */
 const adminTutorRecordFields = {
   id: tutors.id,
   name: tutors.name,
@@ -6000,8 +6011,6 @@ const adminTutorRecordFields = {
   headline: tutors.headline,
   institution: tutors.institution,
   education: tutors.education,
-  subjects: tutors.subjects,
-  levels: tutors.levels,
   teachingExperienceYears: tutors.teachingExperienceYears,
   profileStatus: tutors.profileStatus,
   verified: tutors.verified,
@@ -6036,13 +6045,69 @@ function pickDirectoryInstitute(
   return named("Honours") ?? named("Masters");
 }
 
+type TutorTeachingSelections = { subjects: string[]; levels: string[]; curricula: string[] };
+
 /**
- * Fills in the two directory columns no single join can produce: the institute
- * (a priority pick across a Tutor's education records) and the City (a second
- * hop into the same `locations` table the row already joins for its area).
+ * What each Tutor said they teach, by the names the catalogs give those options
+ * today: subjects (the ones they lead with first), class levels and curricula.
  *
- * Two page-sized lookups rather than more joins, and shared so the directory
- * and the applied-Tutor list cannot render the same Tutor differently.
+ * Read from the three selection tables the Tutor Profile form writes. A renamed
+ * option reads by its new name, and an option the Owner has since hidden stays
+ * on the Tutors who picked it - it is still what they chose to teach.
+ */
+async function loadTutorTeachingSelections(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  tutorIds: string[],
+): Promise<Map<string, TutorTeachingSelections>> {
+  const byTutor = new Map<string, TutorTeachingSelections>();
+  if (tutorIds.length === 0) return byTutor;
+  const [subjectRows, levelRows, curriculumRows] = await Promise.all([
+    database
+      .select({ tutorId: tutorSubjects.tutorId, name: subjectsCatalog.name, sortOrder: subjectsCatalog.sortOrder, selectionType: tutorSubjects.selectionType })
+      .from(tutorSubjects)
+      .innerJoin(subjectsCatalog, eq(subjectsCatalog.id, tutorSubjects.subjectId))
+      .where(inArray(tutorSubjects.tutorId, tutorIds)),
+    database
+      .select({ tutorId: tutorClassLevels.tutorId, name: classLevels.name, sortOrder: classLevels.sortOrder })
+      .from(tutorClassLevels)
+      .innerJoin(classLevels, eq(classLevels.id, tutorClassLevels.classLevelId))
+      .where(inArray(tutorClassLevels.tutorId, tutorIds)),
+    database
+      .select({ tutorId: tutorCurricula.tutorId, name: curricula.name, sortOrder: curricula.sortOrder })
+      .from(tutorCurricula)
+      .innerJoin(curricula, eq(curricula.id, tutorCurricula.curriculumId))
+      .where(inArray(tutorCurricula.tutorId, tutorIds)),
+  ]);
+  const byCatalogOrder = (left: { sortOrder: number; name: string }, right: { sortOrder: number; name: string }) =>
+    left.sortOrder - right.sortOrder || left.name.localeCompare(right.name);
+  const entryOf = (tutorId: string) => {
+    const entry = byTutor.get(tutorId) ?? { subjects: [], levels: [], curricula: [] };
+    byTutor.set(tutorId, entry);
+    return entry;
+  };
+  const addOnce = (list: string[], name: string) => {
+    if (!list.includes(name)) list.push(name);
+  };
+  // A subject picked as both primary and additional is still one subject.
+  const ranked = [...subjectRows].sort((left, right) =>
+    Number(left.selectionType !== "primary") - Number(right.selectionType !== "primary") || byCatalogOrder(left, right));
+  for (const row of ranked) addOnce(entryOf(row.tutorId).subjects, row.name);
+  for (const row of [...levelRows].sort(byCatalogOrder)) addOnce(entryOf(row.tutorId).levels, row.name);
+  for (const row of [...curriculumRows].sort(byCatalogOrder)) addOnce(entryOf(row.tutorId).curricula, row.name);
+  return byTutor;
+}
+
+const noTeachingSelections: TutorTeachingSelections = { subjects: [], levels: [], curricula: [] };
+
+/**
+ * Fills in the directory columns no single join can produce: the institute
+ * (a priority pick across a Tutor's education records), the City (a second
+ * hop into the same `locations` table the row already joins for its area), and
+ * what the Tutor teaches (their real subject, class level and curriculum
+ * selections).
+ *
+ * Page-sized lookups rather than more joins, and shared so the directory, the
+ * applied-Tutor list and Tutor Matching cannot read the same Tutor differently.
  */
 async function enrichAdminTutorDirectoryRows<
   Row extends { id: string; cityLocationId: string | null; institution: string | null },
@@ -6052,7 +6117,7 @@ async function enrichAdminTutorDirectoryRows<
 ) {
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
-  const [educationRows, cityRows, modeRows] = await Promise.all([
+  const [educationRows, cityRows, modeRows, selectionsByTutor] = await Promise.all([
     tutorIds.length
       ? database
           .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
@@ -6065,6 +6130,7 @@ async function enrichAdminTutorDirectoryRows<
     tutorIds.length
       ? database.select({ tutorId: tutorTuitionModes.tutorId, mode: tutorTuitionModes.mode }).from(tutorTuitionModes).where(inArray(tutorTuitionModes.tutorId, tutorIds))
       : [],
+    loadTutorTeachingSelections(database, tutorIds),
   ]);
   const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
   for (const record of educationRows) {
@@ -6084,6 +6150,7 @@ async function enrichAdminTutorDirectoryRows<
     cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
     instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
     modes: modesByTutor.get(row.id) ?? [],
+    ...(selectionsByTutor.get(row.id) ?? noTeachingSelections),
   }));
 }
 /** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
@@ -6100,15 +6167,19 @@ export async function getAdminTutorFilterOptions() {
       cityLocationId: tutors.cityLocationId,
       locationId: tutors.locationId,
       locationLabel: locations.label,
-      subjects: tutors.subjects,
     })
     .from(tutors)
     .leftJoin(locations, eq(tutors.locationId, locations.id));
+  // The subjects Tutors have picked, by catalog name - not the older `tutors.subjects` text, which nothing fills in.
+  const subjectRows = await database
+    .selectDistinct({ name: subjectsCatalog.name })
+    .from(tutorSubjects)
+    .innerJoin(subjectsCatalog, eq(subjectsCatalog.id, tutorSubjects.subjectId));
   const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
   const cityRows = cityIds.length
     ? await database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
     : [];
-  return buildTutorFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)));
+  return buildTutorFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)), subjectRows.map(row => row.name));
 }
 
 export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFilters) {
@@ -7084,8 +7155,8 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
   const candidates: MatchingTutorOption[] = enriched.map(row => ({
     id: row.id,
     name: row.name,
-    subjects: parseJsonList(row.subjects),
-    levels: parseJsonList(row.levels),
+    subjects: row.subjects,
+    levels: row.levels,
     fee: row.monthlyFeeMin ?? row.fee ?? 0,
     gender: row.gender,
     modes: row.modes,
@@ -7144,7 +7215,10 @@ export async function getAdminTutorReview(tutorId: string) {
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .where(eq(tutors.id, tutorId))
     .limit(1);
-  return rows[0];
+  const [row] = rows;
+  if (!row) return undefined;
+  const selections = await loadTutorTeachingSelections(database, [row.id]);
+  return { ...row, ...(selections.get(row.id) ?? noTeachingSelections) };
 }
 
 export type AdminGuardianRequestFilters = {
