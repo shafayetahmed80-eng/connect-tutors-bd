@@ -14,13 +14,26 @@ import { defaultSiteLimits, type SiteLimitValues } from "@shared/site-limits";
  * The matching Tailwind classes are deliberately absent from the shell, so
  * nothing here is fighting a utility for the same property.
  */
+const ink = (percent: number) => `color-mix(in srgb, var(--j-ink) ${percent}%, transparent)`;
+
+/**
+ * The soft shadow a dialog carries. One dial keeps it in proportion: the offset
+ * and reach follow the blur, so the shipped 48 gives back exactly
+ * `0 24px 48px -24px`. The Modals preview draws with the same one.
+ */
+export function modalShadow(limits: SiteLimitValues): string {
+  const blur = limits["modal.shadowBlur"];
+  return `0 ${blur / 2}px ${blur}px -${blur / 2}px ${ink(limits["modal.shadowOpacity"])}`;
+}
+
+/** The height a panel stands on a window this tall: 86% of it, but never past the Owner's number. */
+export function modalPanelHeight(limits: SiteLimitValues, windowHeight: number): number {
+  return Math.min(windowHeight * 0.86, limits["modal.height.panel"]);
+}
+
 export function buildSiteDimensionCss(limits: SiteLimitValues): string {
   const radius = `${limits["modal.radius"]}px`;
   const motion = `${limits["modal.motionMs"]}ms`;
-  // One dial keeps the shadow in proportion: the offset and reach follow the
-  // blur, so the shipped 48 gives back exactly `0 24px 48px -24px`.
-  const blur = limits["modal.shadowBlur"];
-  const ink = (percent: number) => `color-mix(in srgb, var(--j-ink) ${percent}%, transparent)`;
 
   return [
     "[data-modal-backdrop] {",
@@ -29,7 +42,7 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     "}",
     "[data-modal-size] {",
     `  animation-duration: ${motion};`,
-    `  box-shadow: 0 ${blur / 2}px ${blur}px -${blur / 2}px ${ink(limits["modal.shadowOpacity"])};`,
+    `  box-shadow: ${modalShadow(limits)};`,
     // A sheet sits on the bottom edge of a phone, so only its top corners round.
     `  border-top-left-radius: ${radius};`,
     `  border-top-right-radius: ${radius};`,
