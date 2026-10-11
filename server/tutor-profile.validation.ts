@@ -324,14 +324,9 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
     }
 
     // The Qualification history - the degrees added under "Add another
-    // qualification" - is optional unless an Owner turns it on. Secondary and
-    // Higher Secondary live in the same list but are checked on their own below,
-    // so only the degrees count here.
-    const educationRecordsField = config.byId.get("educationRecords");
-    const historyRequired = Boolean(educationRecordsField?.enabled && educationRecordsField.required);
-    if (historyRequired && !value.educationRecords?.some(record => !isSchoolQualification(record.qualificationLevel))) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: "Add at least one qualification before profile submission." });
-    }
+    // qualification" - is never asked for, however it is filled in or left half
+    // done. Secondary and Higher Secondary live in the same list but are checked
+    // on their own below.
 
     // Secondary and Higher Secondary each have their own section, so each has
     // to actually be there - a Tutor cannot submit having filled only the
@@ -345,19 +340,6 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       }
     }
 
-    // The end year every finished degree needs once the history is required.
-    // Code-owned rather than config-driven, because it branches on
-    // `currentlyStudying`; school records are passed in a single year and have none.
-    value.educationRecords?.forEach((record, index) => {
-      if (!historyRequired || isSchoolQualification(record.qualificationLevel)) return;
-      if (record.currentlyStudying || record.studyEndYear !== undefined) return;
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["educationRecords", index, "studyEndYear"],
-        message: "Study end year is required unless Currently Studying is selected.",
-      });
-    });
-
     if (value.educationRecords?.length) {
       const requiredRecordFields = Array.from(config.byId.values()).filter(
         field => field.id.startsWith("educationRecords.") && field.requiredConfigurable && field.enabled && field.required,
@@ -365,9 +347,9 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       value.educationRecords.forEach((record, index) => {
         for (const field of requiredRecordFields) {
           const key = field.id.slice("educationRecords.".length) as keyof typeof record;
-          // A degree the Tutor added is held to these only once the history is
-          // required; the two school records always are.
-          if (!historyRequired && !isSchoolQualification(record.qualificationLevel)) continue;
+          // Only the two school records are held to these; a degree the Tutor
+          // added is never asked for anything.
+          if (!isSchoolQualification(record.qualificationLevel)) continue;
           // Only the fields this record's own level actually asks for. A school
           // record left without a study start year has not omitted anything.
           if (!educationRecordFieldApplies(field.id, record.qualificationLevel)) continue;

@@ -65,14 +65,15 @@ export const fixedSchoolRecords = [
 export const historyQualificationLevels = ["Honours", "Masters"] as const;
 
 /**
- * The University Section is the Tutor's own degree, the one they hold or are
- * reading now, so the history under it holds only the degrees before it: with
- * Masters there it can hold an Honours, with Honours there is nothing earlier
- * to add. Until the section says which, either may be added.
+ * The University Section is the Tutor's own degree, and what the history under
+ * it may add is the other one: with Masters there, an Honours; with Honours
+ * there, a Masters - but only once the Honours is behind them, because someone
+ * still reading for an Honours cannot have a Masters. Until the section says
+ * which level it holds, either may be added.
  */
-export function historyLevelsBefore(sectionLevel: string | null | undefined): readonly (typeof historyQualificationLevels)[number][] {
-  if (sectionLevel === "Honours") return [];
+export function historyLevelsOffered(sectionLevel: string | null | undefined, studyStatus?: string | null): readonly (typeof historyQualificationLevels)[number][] {
   if (sectionLevel === "Masters") return ["Honours"];
+  if (sectionLevel === "Honours") return studyStatus === "graduated" || studyStatus === "professional" ? ["Masters"] : [];
   return historyQualificationLevels;
 }
 
@@ -81,8 +82,8 @@ export function historyLevelsBefore(sectionLevel: string | null | undefined): re
  * qualification has already taken is not offered again, and once every level
  * is taken there is nothing left to add.
  */
-export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | undefined>, sectionLevel?: string | null) {
-  return historyLevelsBefore(sectionLevel).filter(level => !takenLevels.includes(level));
+export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | undefined>, sectionLevel?: string | null, studyStatus?: string | null) {
+  return historyLevelsOffered(sectionLevel, studyStatus).filter(level => !takenLevels.includes(level));
 }
 
 /**
