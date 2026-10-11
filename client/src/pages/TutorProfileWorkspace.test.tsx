@@ -12,6 +12,7 @@ const trpcMocks = vi.hoisted(() => ({
   searchRegistrationLocations: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
   searchUniversities: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
   searchFacultyDepartments: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
+  resolvedFields: vi.fn<(...args: any[]) => { data: any[] | undefined }>(() => ({ data: undefined })),
 }));
 
 vi.mock("@/lib/trpc", () => {
@@ -34,10 +35,13 @@ vi.mock("@/lib/trpc", () => {
       // The Owner-set caps the profile reads to bound its multi-selects.
       siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
       // No data means the shipped field defaults, which is what these tests expect.
-      tutorProfileFieldConfig: { resolved: { useQuery: () => ({ data: undefined }) } },
+      tutorProfileFieldConfig: { resolved: { useQuery: trpcMocks.resolvedFields } },
       catalog: {
         searchUniversities: { useQuery: trpcMocks.searchUniversities },
         searchFacultyDepartments: { useQuery: trpcMocks.searchFacultyDepartments },
+        // The Secondary and Higher Secondary sections pick a school from this list.
+        searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
+        createSchoolCollege: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
         searchSubjects: { useQuery: emptyQuery },
         searchClassLevels: { useQuery: emptyQuery },
         searchCurricula: { useQuery: emptyQuery },
@@ -60,6 +64,7 @@ vi.mock("@/components/TutorProfilePhotoEditor", () => ({
 
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { tutorProfileCopy } from "./TutorProfileUx";
+import { resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 
 const completeProfile = {
   tutorNumber: 1504,
@@ -247,6 +252,52 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(subject.value).toBe("Physics");
     trpcMocks.searchUniversities.mockImplementation(() => ({ data: [] }));
     trpcMocks.searchFacultyDepartments.mockImplementation(() => ({ data: [] }));
+  });
+
+  it("leaves a qualification added under Add another qualification optional, while Secondary stays required", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    let dialog = screen.getByRole("dialog");
+
+    // No red star and no required attribute on any box of the added qualification.
+    const historyHeading = within(dialog).getByRole("heading", { name: /Qualification history/i });
+    const history = within(historyHeading.parentElement as HTMLElement);
+    for (const name of [/Institute Name/, /Degree.+Exam Title/, /Subject.+Group/, /Curriculum/, /Study Start Year/, /Study End Year/, /Education level/i]) {
+      const box = history.getByLabelText(name) as HTMLInputElement;
+      expect(box.required).toBe(false);
+      expect(box.getAttribute("aria-required")).toBeNull();
+    }
+    expect(historyHeading.textContent).not.toContain("*");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    // Secondary has a section of its own and is still asked for.
+    await user.click(screen.getByRole("button", { name: "Edit Secondary" }));
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText(/Institute Name/).getAttribute("aria-required")).toBe("true");
+    expect((within(dialog).getByLabelText(/Passing Year/) as HTMLInputElement).required).toBe(true);
+  });
+
+  it("marks an added qualification as required once an Owner makes the Qualification History required", async () => {
+    const user = userEvent.setup({ document: window.document });
+    trpcMocks.resolvedFields.mockImplementation(() => ({
+      data: resolveTutorProfileFieldConfig([{ fieldId: "educationRecords", label: null, section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 }]).all as any[],
+    }));
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    const dialog = screen.getByRole("dialog");
+
+    const historyHeading = within(dialog).getByRole("heading", { name: /Qualification history/i });
+    const history = within(historyHeading.parentElement as HTMLElement);
+    for (const name of [/Institute Name/, /Degree.+Exam Title/, /Subject.+Group/, /Curriculum/, /Study Start Year/, /Education level/i]) {
+      expect((history.getByLabelText(name) as HTMLInputElement).getAttribute("aria-required")).toBe("true");
+    }
+    expect(historyHeading.textContent).toContain("*");
+    trpcMocks.resolvedFields.mockImplementation(() => ({ data: undefined }));
   });
 
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {

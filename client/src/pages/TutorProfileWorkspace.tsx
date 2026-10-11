@@ -1194,27 +1194,32 @@ function TutorProfileWorkspaceBody({
    * server validates by, so a Tutor is never asked for a field that will not be
    * checked, nor checked on one they were never asked.
    */
+  const historyField = fieldConfig.byId.get("educationRecords");
+  const historyRequired = Boolean(historyField?.enabled && historyField.required);
   const renderEducationRecordField = (fieldId: string, record: TeachingProfileState["educationRecords"][number], index: number): React.ReactNode => {
     if (!educationRecordFieldApplies(fieldId, record.qualificationLevel)) return null;
     const school = isSchoolQualification(record.qualificationLevel);
+    // The two school sections are always required; a degree added under "Add
+    // another qualification" only once an Owner makes the history required.
+    const marked = school || historyRequired;
     switch (fieldId) {
-      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker options={historyQualificationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
+      case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker={marked} options={historyQualificationLevels} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
       // A school or college is chosen from the list, or created for this Tutor alone.
       case "educationRecords.instituteName": return school
-        ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
-        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
-      case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
+        ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required={marked} value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
+        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required={marked} list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
+      case "educationRecords.degreeExamTitle": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required={marked} value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder="Ex- SSC/HSC" />;
       // A board exam is sat under one of three groups. A degree's subject is
       // whatever the department is called: the department list is offered as
       // suggestions, and a name that is not on it can still be typed.
       case "educationRecords.majorGroup": return school
-        ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
-        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
-      case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
+        ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker={marked} options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
+        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required={marked} list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
+      case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker={marked} options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
       case "educationRecords.resultGpa": return <FormInput label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />;
-      case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
+      case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required={marked} inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       // An ongoing qualification has no end year to give.
-      case "educationRecords.studyEndYear": return record.currentlyStudying ? null : <FormInput label={fieldLabel(fieldId, "Study End Year")} required inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
+      case "educationRecords.studyEndYear": return record.currentlyStudying ? null : <FormInput label={fieldLabel(fieldId, "Study End Year")} required={marked} inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       case "educationRecords.currentlyStudying": return <label className="flex items-center gap-2 self-end rounded-lg border border-tp-border px-3 py-2 text-sm font-medium text-tp-value"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />{fieldLabel(fieldId, "Currently studying")}</label>;
       case "educationRecords.instituteIdCardNumber": return <FormInput label={fieldLabel(fieldId, "Institute ID Card Number")} placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />;
       case "educationRecords.passingYear": return <FormInput label={fieldLabel(fieldId, "Passing Year")} required inputMode="numeric" maxLength={4} value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
@@ -1245,7 +1250,7 @@ function TutorProfileWorkspaceBody({
   };
   /** The repeatable Qualification history block, drawn for the `educationRecords` field. */
   const renderQualificationHistory = (recordFields: readonly ResolvedTutorProfileField[]): React.ReactNode => <div className="space-y-3">
-    <h3 className="font-bold text-tp-value"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" /> <span aria-hidden="true" className="text-tp-danger">*</span></h3>
+    <h3 className="font-bold text-tp-value"><SiteText slotId="tutor-profile.form.qualification-history" className="text-sm" />{historyRequired ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</h3>
     <datalist id={QUALIFICATION_INSTITUTE_LIST_ID}>{(institutePicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
     <datalist id={QUALIFICATION_DEPARTMENT_LIST_ID}>{(departmentPicks.data ?? []).map(option => <option key={option.id} value={option.name} />)}</datalist>
     {form.educationRecords.map((record, index) => ({ record, index }))
