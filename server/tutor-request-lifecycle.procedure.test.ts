@@ -89,10 +89,7 @@ function tutorCaller(userId = 88, portalToken?: string) {
 const pendingUpdate = {
   requestId: 19,
   tuitionType: "home" as const,
-  category: "Bangla Medium",
-  curriculumType: "",
-  classCourse: "Class 9",
-  subjects: ["English"],
+  learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 9", subjects: ["English"] }] }],
   daysPerWeek: 3,
   preferredGender: "any" as const,
   studentFirstName: "Rafi",
@@ -121,6 +118,40 @@ describe("approved Guardian request lifecycle procedures", () => {
     await expect((guardianCaller(77).tutorRequests as any).updatePending(pendingUpdate))
       .resolves.toEqual({ updated: true, lifecycle: "pending" });
     expect(lifecycleDbMocks.updateGuardianTutorRequest).toHaveBeenCalledWith(expect.objectContaining({ guardianUserId: 77, requestId: 19 }));
+  });
+
+  it("rewrites the whole list of curricula, classes and subjects on an edit, with the one-line summary beside it", async () => {
+    lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
+
+    await (guardianCaller(77).tutorRequests as any).updatePending({
+      ...pendingUpdate,
+      learningNeeds: [
+        { category: "Bangla Medium", classes: [{ classCourse: "Class 9", subjects: ["English"] }, { classCourse: "Class 10", subjects: ["Math"] }] },
+        { category: "English Version", classes: [{ classCourse: "Class 8", subjects: ["Science"] }] },
+      ],
+    });
+
+    expect(lifecycleDbMocks.updateGuardianTutorRequest).toHaveBeenCalledWith(expect.objectContaining({
+      category: "Bangla Medium, English Version",
+      classCourse: "Class 9, Class 10, Class 8",
+      learningNeeds: [
+        { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9", subjects: ["English"] }, { classCourse: "Class 10", subjects: ["Math"] }] },
+        { category: "English Version", curriculumType: null, classes: [{ classCourse: "Class 8", subjects: ["Science"] }] },
+      ],
+    }));
+  });
+
+  it("still takes an edit sent the way a page opened before the update sends it", async () => {
+    lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
+    const { learningNeeds: _needs, ...rest } = pendingUpdate;
+
+    await (guardianCaller(77).tutorRequests as any).updatePending({ ...rest, category: "Bangla Medium", curriculumType: "", classCourse: "Class 9", subjects: ["English"] });
+
+    expect(lifecycleDbMocks.updateGuardianTutorRequest).toHaveBeenCalledWith(expect.objectContaining({
+      category: "Bangla Medium",
+      classCourse: "Class 9",
+      learningNeeds: [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9", subjects: ["English"] }] }],
+    }));
   });
 
   it("reserves appointment confirmation and cancellation for an Admin, including a required cancellation reason", async () => {

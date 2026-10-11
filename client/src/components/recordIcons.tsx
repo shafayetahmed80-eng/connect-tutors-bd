@@ -5,6 +5,7 @@ import {
   Hash, Heart, House, IdCard, Landmark, Languages, Layers, Link2, Lock, Mail, MapPin, Megaphone,
   MessageSquare, Phone, School, Send, ShieldAlert, Sparkles, Target, UserRound, Users, Wallet,
 } from "lucide-react";
+import { guardianCurriculumCategories } from "../lib/guardianLearningCatalog";
 
 /**
  * One place to decide which icon a label gets.
@@ -141,6 +142,10 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
 };
 
 export function labelIconName(label: string): RecordIconName | null {
+  // The request summary labels a row with the curriculum itself - "Bangla Medium",
+  // or "English Medium (Cambridge)" - so the label is a name the catalogue owns,
+  // not a fixed phrase.
+  if (guardianCurriculumCategories.some(category => label === category || label.startsWith(`${category} (`))) return "category";
   return LABEL_ICONS[label] ?? null;
 }
 

@@ -8,8 +8,8 @@ import { buildGuardianRequestSummary } from "@/pages/guardian-request-summary";
 afterEach(cleanup);
 
 const emptyRequest = {
-  category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10",
-  selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "",
+  learningNeeds: [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9–10", subjects: ["Mathematics"] }] }],
+  tuitionType: "home", groupCapacity: "",
   packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "",
   daysPerWeek: "3", preferredGender: "any", salaryAmount: "5000",
   instituteName: "", heardAboutUs: "facebook",

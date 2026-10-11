@@ -38,9 +38,7 @@ const homeTuition = {
   tuitionCityLocationId: "dhaka-city",
   tuitionLocationId: "dhaka-shyamoli",
   studentCount: 1,
-  category: "Bangla Medium",
-  classCourse: "Class 4",
-  subjects: ["General Maths"],
+  learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }] }],
   daysPerWeek: 3,
   preferredGender: "female" as const,
   budgetAmount: 6500,
@@ -76,6 +74,66 @@ describe("admin.createPostedTuition", () => {
     });
   });
 
+  it("writes every curriculum, class and subject asked for, and a one-line summary of them for the tuition's own columns", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 16, live: true });
+
+    await createCaller().admin.createPostedTuition({
+      ...homeTuition,
+      learningNeeds: [
+        { category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }, { classCourse: "Class 5", subjects: ["General Maths", "Bangla"] }] },
+        { category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 9–10", subjects: ["English"] }] },
+      ],
+    });
+
+    const call = dbMocks.createAdminPostedTuition.mock.calls[0][0];
+    expect(call.learningNeeds).toEqual([
+      { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }, { classCourse: "Class 5", subjects: ["General Maths", "Bangla"] }] },
+      { category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 9–10", subjects: ["English"] }] },
+    ]);
+    expect(call.request).toMatchObject({
+      category: "Bangla Medium, English Medium",
+      curriculumType: "Cambridge",
+      classCourse: "Class 4, Class 5, Class 9–10",
+    });
+    expect(JSON.parse(call.request.subjects)).toEqual(["General Maths", "Bangla", "English"]);
+  });
+
+  it("still takes a tuition sent the way an older page sent it - one category, one class - as a list of one", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 17, live: true });
+    const { learningNeeds: _needs, ...rest } = homeTuition;
+
+    await createCaller().admin.createPostedTuition({ ...rest, category: "Bangla Medium", classCourse: "Class 4", subjects: ["General Maths"] } as never);
+
+    const call = dbMocks.createAdminPostedTuition.mock.calls[0][0];
+    expect(call.learningNeeds).toEqual([{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }] }]);
+    expect(call.request).toMatchObject({ category: "Bangla Medium", classCourse: "Class 4" });
+  });
+
+  it("holds a tuition to the Owner's numbers - curricula, classes in all, subjects in a class", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    const need = (category: string, classes: number, subjects = 1) => ({
+      category,
+      classes: Array.from({ length: classes }, (_, index) => ({ classCourse: `Class ${index + 1}`, subjects: Array.from({ length: subjects }, (_, n) => `Subject ${n + 1}`) })),
+    });
+
+    // Three curricula are allowed, a fourth is not.
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, learningNeeds: [need("A", 1), need("B", 1), need("C", 1), need("D", 1)] }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("at most 3") });
+    // Six classes in all are allowed, seven are not, however they are spread.
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, learningNeeds: [need("A", 4), need("B", 3)] }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("at most 6") });
+    // Twelve subjects in a class are allowed, thirteen are not.
+    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, learningNeeds: [need("A", 1, 13)] }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("at most 12") });
+    expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
+
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 18, live: true });
+    await createCaller().admin.createPostedTuition({ ...homeTuition, learningNeeds: [need("A", 2), need("B", 2), need("C", 2, 12)] });
+    expect(dbMocks.createAdminPostedTuition).toHaveBeenCalledTimes(1);
+  });
+
   it("asks for the Guardian's own City when the tuition is online and has none", async () => {
     const { tuitionCityLocationId: _city, tuitionLocationId: _location, ...rest } = homeTuition;
     await expect(createCaller().admin.createPostedTuition({ ...rest, tuitionType: "online" }))
@@ -95,11 +153,20 @@ describe("admin.createPostedTuition", () => {
     dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
 
     // English Medium without its Curriculum Type - the journey's own rule.
-    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, category: "English Medium" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
-    // No subject at all.
-    await expect(createCaller().admin.createPostedTuition({ ...homeTuition, subjects: [] }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(createCaller().admin.createPostedTuition({
+      ...homeTuition,
+      learningNeeds: [{ category: "English Medium", classes: [{ classCourse: "Class 4", subjects: ["English"] }] }],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    // No subject at all in a class.
+    await expect(createCaller().admin.createPostedTuition({
+      ...homeTuition,
+      learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: [] }] }],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    // The same curriculum twice.
+    await expect(createCaller().admin.createPostedTuition({
+      ...homeTuition,
+      learningNeeds: [homeTuition.learningNeeds[0], homeTuition.learningNeeds[0]],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
   });
 
@@ -162,11 +229,20 @@ describe("admin.updatePostedTuition", () => {
     dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
     dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: true, guardianEdited: true });
 
-    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, classCourse: "Class 6", budgetAmount: 8000 });
+    await createCaller().admin.updatePostedTuition({
+      ...homeTuition,
+      requestId: 14,
+      learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 6", subjects: ["General Maths"] }, { classCourse: "Class 7", subjects: ["Bangla"] }] }],
+      budgetAmount: 8000,
+    });
 
     const call = dbMocks.updateAdminPostedTuition.mock.calls[0][0];
     expect(call).toMatchObject({ adminUserId: 42, requestId: 14 });
-    expect(call.request).toMatchObject({ classCourse: "Class 6", budgetAmount: 8000, locationText: "Shyamoli, Dhaka" });
+    expect(call.request).toMatchObject({ classCourse: "Class 6, Class 7", budgetAmount: 8000, locationText: "Shyamoli, Dhaka" });
+    // The whole list goes in again: the rows under the tuition are replaced, not patched.
+    expect(call.learningNeeds).toEqual([
+      { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 6", subjects: ["General Maths"] }, { classCourse: "Class 7", subjects: ["Bangla"] }] },
+    ]);
     // The name and number travel; whether they are honoured is the server's
     // call, not the caller's - a Guardian who registered owns both.
     expect(call.guardian).toEqual({ name: "Off-site Guardian", phone: "+8801999888777" });
@@ -175,8 +251,11 @@ describe("admin.updatePostedTuition", () => {
   it("holds an edit to the same rules a new tuition is held to", async () => {
     dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
 
-    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, subjects: [] }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(createCaller().admin.updatePostedTuition({
+      ...homeTuition,
+      requestId: 14,
+      learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: [] }] }],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
   });
 

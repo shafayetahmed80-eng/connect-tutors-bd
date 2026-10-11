@@ -11,10 +11,7 @@ const validDraft = {
   version: GUARDIAN_REQUEST_DRAFT_VERSION,
   step: 2 as const,
   request: {
-    category: "English Medium",
-    curriculumType: "Cambridge",
-    classCourse: "Class 1–5",
-    selectedSubjects: ["English", "Mathematics"],
+    learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 1–5", subjects: ["English", "Mathematics"] }] }],
     tuitionType: "home" as const,
     groupCapacity: "",
     packageDurationMonths: "",
@@ -43,11 +40,33 @@ describe("Guardian private request draft contract", () => {
     expect(restored).toEqual(validDraft);
   });
 
-  it("restores legacy version-one drafts without a Curriculum Type as an empty value", () => {
-    const { curriculumType: _curriculumType, ...legacyRequest } = validDraft.request;
-    const restored = parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: legacyRequest }));
+  it("restores a version-one draft - one curriculum, one class, one list of subjects - as a list of one", () => {
+    const { learningNeeds: _needs, ...rest } = validDraft.request;
+    const legacy = { ...validDraft, version: 1, request: { ...rest, category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5", selectedSubjects: ["English", "Mathematics"] } };
 
-    expect(restored?.request.curriculumType).toBe("");
+    expect(parseGuardianRequestDraft(JSON.stringify(legacy))?.request.learningNeeds).toEqual(validDraft.request.learningNeeds);
+  });
+
+  it("restores a version-one draft without a Curriculum Type as a curriculum with none", () => {
+    const { learningNeeds: _needs, ...rest } = validDraft.request;
+    const legacy = { ...validDraft, version: 1, request: { ...rest, category: "Bangla Medium", classCourse: "Class 5", selectedSubjects: ["Mathematics"] } };
+
+    expect(parseGuardianRequestDraft(JSON.stringify(legacy))?.request.learningNeeds).toEqual([
+      { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 5", subjects: ["Mathematics"] }] },
+    ]);
+  });
+
+  it("keeps a half-made choice: a curriculum chosen, its classes not yet", () => {
+    const half = { ...validDraft, request: { ...validDraft.request, learningNeeds: [{ category: "Madrasa Medium", curriculumType: null, classes: [] }] } };
+
+    expect(parseGuardianRequestDraft(serializeGuardianRequestDraft(half))?.request.learningNeeds).toEqual(half.request.learningNeeds);
+  });
+
+  it("restores a version-one draft saved before anything was chosen as an empty list", () => {
+    const { learningNeeds: _needs, ...rest } = validDraft.request;
+    const legacy = { ...validDraft, version: 1, request: { ...rest, category: "", curriculumType: "", classCourse: "", selectedSubjects: [] } };
+
+    expect(parseGuardianRequestDraft(JSON.stringify(legacy))?.request.learningNeeds).toEqual([]);
   });
 
   it("preserves Group capacity and treats its absence in legacy drafts as empty", () => {
@@ -83,8 +102,9 @@ describe("Guardian private request draft contract", () => {
     expect(parseGuardianRequestDraft("not-json")).toBeNull();
     expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, version: 999 }))).toBeNull();
     expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, step: 4 }))).toBeNull();
-    expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, selectedSubjects: "English" } }))).toBeNull();
-    expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, curriculumType: 123 } }))).toBeNull();
+    expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, learningNeeds: "English" } }))).toBeNull();
+    expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, learningNeeds: [{ category: "A", curriculumType: 123, classes: [] }] } }))).toBeNull();
+    expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, learningNeeds: [{ category: "A", classes: [{ classCourse: "Class 5", subjects: "English" }] }] } }))).toBeNull();
     expect(parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: { ...validDraft.request, studentGender: "other" } }))).toBeNull();
   });
 
@@ -112,6 +132,6 @@ describe("Guardian private request draft contract", () => {
     expect(restored).not.toBeNull();
     expect(restored?.request.instituteName).toBe("");
     expect(restored?.request.heardAboutUs).toBe("");
-    expect(restored?.request.category).toBe(validDraft.request.category);
+    expect(restored?.request.learningNeeds).toEqual(validDraft.request.learningNeeds);
   });
 });

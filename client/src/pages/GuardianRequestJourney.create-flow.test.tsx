@@ -62,16 +62,29 @@ function selectFirstOption(label: string) {
   return option.value;
 }
 
+/** Opens a chip box and takes its first offer, so the catalogue can change without this test. */
+function chooseFirstChip(scope: HTMLElement | Document, label: RegExp) {
+  const box = within(scope as HTMLElement).getByRole("combobox", { name: label });
+  fireEvent.click(box);
+  // Only the open chip box has a listbox; the form's native selects have options of their own.
+  const option = within(within(scope as HTMLElement).getByRole("listbox")).getAllByRole("option")[0];
+  const choice = within(option).getByRole("button");
+  const name = choice.textContent?.trim() ?? "";
+  fireEvent.click(choice);
+  return name;
+}
+
 /** Fills the least a Guardian can answer and stops on step 2. */
 function fillThroughStepOne() {
   select("Tuition type", "online");
-  const category = selectFirstOption("Curriculum / category");
-  const classCourse = selectFirstOption("Class / level");
-  const subject = within(screen.getByRole("group", { name: "Subject selection" })).getAllByRole("button")[0];
+  const category = chooseFirstChip(document.body, /Curriculum \/ category/);
+  const curriculum = screen.getByRole("group", { name: category });
+  const classCourse = chooseFirstChip(curriculum, /Class \/ level/);
+  const subject = within(screen.getByRole("group", { name: `Subjects for ${classCourse}` })).getAllByRole("button")[0];
   const subjectName = subject.textContent?.trim() ?? "";
   fireEvent.click(subject);
   fireEvent.click(screen.getByRole("button", { name: "Continue to tuition preferences" }));
-  return { category, classCourse, subjects: [subjectName] };
+  return { learningNeeds: [{ category, classes: [{ classCourse, subjects: [subjectName] }] }] };
 }
 
 /** Answers every required step-2 field, leaving the submit ready to press. */
@@ -123,7 +136,9 @@ describe("GuardianRequestJourney create flow", () => {
 
     // Step 1 again, with the previous answers gone rather than carried over.
     expect(screen.getByRole("button", { name: "Continue to tuition preferences" })).not.toBeNull();
-    expect((screen.getByRole("combobox", { name: /Curriculum \/ category/ }) as HTMLSelectElement).value).toBe("");
+    // No curriculum is carried over: the field is empty, and no class or subject block remains.
+    expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+    expect(screen.queryByRole("group", { name: /^Subjects for / })).toBeNull();
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

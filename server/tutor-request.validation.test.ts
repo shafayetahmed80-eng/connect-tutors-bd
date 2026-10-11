@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { guardianRequestTuitionTypeSchema, tutorRequestInputSchema, tuitionTypeSchema } from "./routers";
+import { withLegacyLearningNeeds } from "./learning-needs-input";
 
 describe("tutor request validation", () => {
   const baseRequest = {
-    category: "English Medium",
-    curriculumType: "Cambridge",
-    classCourse: "Class 9–10",
-    subjects: ["English", "Mathematics"],
+    learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 9–10", subjects: ["English", "Mathematics"] }] }],
     daysPerWeek: 3,
     preferredGender: "any" as const,
     studentFirstName: "Rafi",
@@ -204,8 +202,7 @@ describe("tutor request validation", () => {
     expect(tutorRequestInputSchema.safeParse({
       ...baseRequest,
       tuitionType: "invalid",
-      category: "",
-      subjects: [],
+      learningNeeds: [{ category: "", classes: [{ classCourse: "Class 9–10", subjects: [] }] }],
       daysPerWeek: 0,
       budgetAmount: 12000,
       instituteName: "Dhaka College",
@@ -213,41 +210,49 @@ describe("tutor request validation", () => {
     }).success).toBe(false);
   });
 
+  const online = { tuitionType: "online" as const, studentCount: 1 };
+  const english = (curriculumType?: string) => [{ category: "English Medium", ...(curriculumType !== undefined ? { curriculumType } : {}), classes: [{ classCourse: "Class 9–10", subjects: ["English"] }] }];
+  const bangla = (curriculumType?: string) => [{ category: "Bangla Medium", ...(curriculumType !== undefined ? { curriculumType } : {}), classes: [{ classCourse: "Class 5", subjects: ["Bangla"] }] }];
+
   it("requires exactly one approved Curriculum Type for English Medium and excludes it for other categories", () => {
     for (const curriculumType of ["British", "Cambridge", "Ed-excel"] as const) {
-      expect(tutorRequestInputSchema.safeParse({
-        ...baseRequest,
-        curriculumType,
-        tuitionType: "online",
-        studentCount: 1,
-      }).success).toBe(true);
+      expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: english(curriculumType) }).success).toBe(true);
     }
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: english("") }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: english() }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: english("International Baccalaureate") }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: bangla("") }).success).toBe(true);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: bangla("Cambridge") }).success).toBe(false);
+  });
 
-    expect(tutorRequestInputSchema.safeParse({
-      ...baseRequest,
-      curriculumType: "",
-      tuitionType: "online",
-      studentCount: 1,
-    }).success).toBe(false);
-    expect(tutorRequestInputSchema.safeParse({
-      ...baseRequest,
-      curriculumType: "International Baccalaureate",
-      tuitionType: "online",
-      studentCount: 1,
-    }).success).toBe(false);
-    expect(tutorRequestInputSchema.safeParse({
-      ...baseRequest,
-      category: "Bangla Medium",
-      curriculumType: "",
-      tuitionType: "online",
-      studentCount: 1,
-    }).success).toBe(true);
-    expect(tutorRequestInputSchema.safeParse({
-      ...baseRequest,
-      category: "Bangla Medium",
-      curriculumType: "Cambridge",
-      tuitionType: "online",
-      studentCount: 1,
-    }).success).toBe(false);
+  it("takes several curricula, each with several classes and each class with its own subjects", () => {
+    const needs = [
+      { category: "English Version", classes: [{ classCourse: "Class 5", subjects: ["Math", "English"] }, { classCourse: "Class 6", subjects: ["Math"] }] },
+      ...english("Cambridge"),
+    ];
+
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: needs }).success).toBe(true);
+  });
+
+  it("asks for a class in every curriculum and a subject in every class", () => {
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: [{ category: "Bangla Medium", classes: [] }] }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 5", subjects: [] }] }] }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: [] }).success).toBe(false);
+  });
+
+  it("refuses a curriculum or a class chosen twice, and more than the ceilings the registry allows", () => {
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: [...bangla(), ...bangla()] }).success).toBe(false);
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 5", subjects: ["A"] }, { classCourse: "Class 5", subjects: ["B"] }] }] }).success).toBe(false);
+    const seven = ["A", "B", "C", "D", "E", "F", "G"].map(category => ({ category, classes: [{ classCourse: "Class 1", subjects: ["Math"] }] }));
+    expect(tutorRequestInputSchema.safeParse({ ...baseRequest, ...online, learningNeeds: seven }).success).toBe(false);
+  });
+
+  it("still takes the request in the shape it had before there were lists, as a list of one", () => {
+    const { learningNeeds: _needs, ...rest } = baseRequest;
+    const legacy = withLegacyLearningNeeds({ ...rest, ...online, category: "Bangla Medium", classCourse: "Class 5", subjects: ["Bangla"] });
+
+    const parsed = tutorRequestInputSchema.safeParse(legacy);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.learningNeeds).toEqual([{ category: "Bangla Medium", classes: [{ classCourse: "Class 5", subjects: ["Bangla"] }] }]);
   });
 });

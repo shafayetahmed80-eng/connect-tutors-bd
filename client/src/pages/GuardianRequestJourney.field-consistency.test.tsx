@@ -13,8 +13,8 @@ afterEach(cleanup);
 const props = {
   step: 1 as const,
   requestInput: {
-    category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5",
-    selectedSubjects: ["English"], tuitionType: "package" as const, groupCapacity: "",
+    learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 1–5", subjects: ["English"] }] }],
+    tuitionType: "package" as const, groupCapacity: "",
     packageDurationMonths: "6", studentCount: "2", studentGender: "" as const, addressDetails: "",
     tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4",
     preferredGender: "female" as const, instituteName: "", heardAboutUs: "facebook" as const,
@@ -26,9 +26,9 @@ const props = {
   tuitionCityLabel: "Dhaka",
   tuitionLocationLabel: "Mirpur 10",
   pending: false,
-  subjectLimit: 12,
-  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(),
-  onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(),
+  needsLimits: { maxCurricula: 3, maxClasses: 6, maxSubjectsPerClass: 12 },
+  onSetLearningNeeds: vi.fn(), onNeedsNotice: vi.fn(), onSetStudentGender: vi.fn(),
+  onSetAddressDetails: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(),
   onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(),
   onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(),
   onSetInstituteName: vi.fn(), onSetHeardAboutUs: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(),

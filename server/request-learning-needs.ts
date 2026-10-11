@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 import { tutorRequestLearningNeeds } from "../drizzle/schema";
-import { learningNeedRows, learningNeedsFromRows, parseSubjects, type LearningNeed } from "@shared/learning-needs";
+import { learningNeedRows, learningNeedsFromLegacy, learningNeedsFromRows, parseSubjects, type LearningNeed } from "@shared/learning-needs";
 
 /** Whatever carries `delete`, `insert` and `select`: the database, or a transaction on it. */
 type Executor = any;
@@ -77,4 +77,18 @@ export function learningNeedMatchCondition(
   }
   if (parts.length === 0) return undefined;
   return sql`exists (select 1 from ${tutorRequestLearningNeeds} where ${and(eq(tutorRequestLearningNeeds.tutorRequestId, requestIdColumn), ...parts)})`;
+}
+
+/**
+ * Each row with what its request asks to have taught. A request with no rows of
+ * its own - one written before they existed and not yet backfilled, or by a path
+ * that forgot - reads as its one curriculum and class, so a list never shows a
+ * tuition with nothing to teach.
+ */
+export async function attachLearningNeeds<Row extends { id: number; category: string; classCourse: string; subjects: string; curriculumType?: string | null }>(
+  executor: Executor,
+  rows: Row[],
+): Promise<Array<Row & { learningNeeds: LearningNeed[] }>> {
+  const byRequest = await readRequestLearningNeeds(executor, rows.map(row => row.id));
+  return rows.map(row => ({ ...row, learningNeeds: byRequest.get(row.id) ?? learningNeedsFromLegacy(row) }));
 }

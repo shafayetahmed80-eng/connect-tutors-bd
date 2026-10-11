@@ -1,6 +1,7 @@
 import { formatStudentGender, formatTuitionType, formatTutorPreference } from "@shared/job-card";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { formatSalaryAmount, parseSalaryAmount } from "@shared/salary-amount";
+import type { LearningNeed } from "@shared/learning-needs";
 
 /**
  * One reading of a tuition request, shared by the step 3 review and the page a
@@ -30,10 +31,7 @@ export type GuardianSummaryGroup = {
 };
 
 export type GuardianSummaryInput = {
-  category: string;
-  curriculumType: string;
-  classCourse: string;
-  selectedSubjects: string[];
+  learningNeeds: LearningNeed[];
   tuitionType: string;
   groupCapacity: string;
   packageDurationMonths: string;
@@ -54,6 +52,20 @@ function filled(label: string, value: string, optional = false): GuardianSummary
 
 function plural(count: string, singular: string) {
   return `${count} ${singular}${count === "1" ? "" : "s"}`;
+}
+
+/**
+ * One row per curriculum, naming the English Medium type beside it, with each
+ * class and the subjects chosen for that class ("Class 5: Math, English").
+ * Nothing chosen yet is one empty row, so the review says the question was asked.
+ */
+function learningNeedRows(needs: LearningNeed[]): GuardianSummaryRow[] {
+  if (needs.length === 0) return [{ label: "Curriculum / category", value: "Not set", empty: true }];
+  return needs.map(need => {
+    const label = need.curriculumType ? `${need.category} (${need.curriculumType})` : need.category;
+    const value = need.classes.map(item => `${item.classCourse}: ${item.subjects.join(", ") || "no subject yet"}`).join(" · ");
+    return value ? { label, value } : { label, value: "Not set", empty: true };
+  });
 }
 
 export function buildGuardianRequestSummary(
@@ -83,10 +95,7 @@ export function buildGuardianRequestSummary(
       step: 1,
       title: "Learning needs",
       rows: [
-        filled("Category", input.category),
-        filled("Curriculum Type", input.curriculumType),
-        filled("Class / level", input.classCourse),
-        filled("Subjects", input.selectedSubjects.join(", ")),
+        ...learningNeedRows(input.learningNeeds),
         filled("Student gender", input.studentGender ? formatStudentGender(input.studentGender) : "", true),
         filled("Address Details", input.addressDetails, true),
       ],

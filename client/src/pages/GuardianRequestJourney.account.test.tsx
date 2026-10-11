@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -46,14 +46,14 @@ function PasswordMatchHarness() {
 
 const requestStageProps = {
   step: 3 as const,
-  requestInput: { category: "English Medium", curriculumType: "Cambridge", classCourse: "Class 1–5", selectedSubjects: ["English", "Mathematics"], tuitionType: "home" as const, groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "" as const, addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", preferredGender: "female" as const, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" },
+  requestInput: { learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 1–5", subjects: ["English", "Mathematics"] }] }], tuitionType: "home" as const, groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "" as const, addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", preferredGender: "female" as const, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" },
   notes: "Weekday afternoons preferred.",
   cities: [{ id: "dhaka", label: "Dhaka" }],
   tuitionLocations: [{ id: "mirpur-10", label: "Mirpur 10" }],
   tuitionCityLabel: "Dhaka",
   tuitionLocationLabel: "Mirpur 10",
   pending: false,
-  onSetCategory: vi.fn(), onSetCurriculumType: vi.fn(), onSetClassCourse: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onToggleSubject: vi.fn(), subjectLimit: 12, onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(), onSetInstituteName: vi.fn(), onSetHeardAboutUs: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
+  needsLimits: { maxCurricula: 3, maxClasses: 6, maxSubjectsPerClass: 12 }, onSetLearningNeeds: vi.fn(), onNeedsNotice: vi.fn(), onSetStudentGender: vi.fn(), onSetAddressDetails: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(), onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(), onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(), onSetInstituteName: vi.fn(), onSetHeardAboutUs: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(), onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
 };
 
 describe("Guardian private-account presentation", () => {
@@ -159,7 +159,7 @@ describe("Guardian private-account presentation", () => {
     // The City and Location dropdowns show the choice themselves, so neither a
     // confirmation strip nor a "Change location" link earns its place below.
     const onSetTuitionLocation = vi.fn();
-    render(<RequestStage step={1} requestInput={{ category: "Bangla Medium", curriculumType: "", classCourse: "Class 9–10", selectedSubjects: ["Mathematics"], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} onSetCategory={vi.fn()} onSetCurriculumType={vi.fn()} onSetClassCourse={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onToggleSubject={vi.fn()} subjectLimit={12} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetInstituteName={vi.fn()} onSetHeardAboutUs={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
+    render(<RequestStage step={1} requestInput={{ learningNeeds: [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9–10", subjects: ["Mathematics"] }] }], tuitionType: "home", groupCapacity: "", packageDurationMonths: "", studentCount: "1", studentGender: "", addressDetails: "", tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "3", preferredGender: "any", instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "5,000" }} notes="" cities={[{ id: "dhaka", label: "Dhaka" }]} tuitionLocations={[{ id: "mirpur-10", label: "Mirpur 10" }]} tuitionCityLabel="Dhaka" tuitionLocationLabel="Mirpur 10" pending={false} needsLimits={{ maxCurricula: 3, maxClasses: 6, maxSubjectsPerClass: 12 }} onSetLearningNeeds={vi.fn()} onNeedsNotice={vi.fn()} onSetStudentGender={vi.fn()} onSetAddressDetails={vi.fn()} onSetTuitionType={vi.fn()} onSetGroupCapacity={vi.fn()} onSetPackageDurationMonths={vi.fn()} onSetStudentCount={vi.fn()} onSetTuitionCity={vi.fn()} onSetTuitionLocation={onSetTuitionLocation} onSetDays={vi.fn()} onSetPreferredGender={vi.fn()} onSetSalaryAmount={vi.fn()} onSetInstituteName={vi.fn()} onSetHeardAboutUs={vi.fn()} onSetNotes={vi.fn()} onBack={vi.fn()} onAdvance={vi.fn()} onSubmit={vi.fn()} />);
 
     // A closed combobox reads the chosen place back as its own value.
     const location = screen.getByRole("combobox", { name: /^Location/ }) as HTMLInputElement;
@@ -258,26 +258,28 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByRole("spinbutton", { name: /Maximum students/ })).not.toBeNull();
   });
 
-  it("shows the single-select Curriculum Type field only for English Medium", () => {
-    const onSetCurriculumType = vi.fn();
-    const { rerender } = render(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, category: "English Medium", curriculumType: "" }} onSetCurriculumType={onSetCurriculumType} />);
+  it("shows the single-select Curriculum Type field only for English Medium, inside that curriculum's own block", () => {
+    const onSetLearningNeeds = vi.fn();
+    const english = [{ category: "English Medium", curriculumType: null, classes: [{ classCourse: "Standard 1", subjects: ["English"] }] }];
+    const bangla = [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 1", subjects: ["English"] }] }];
+    const { rerender } = render(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, learningNeeds: english }} onSetLearningNeeds={onSetLearningNeeds} />);
 
-    const curriculumTypeSelect = screen.getByRole("combobox", { name: /Curriculum Type/ }) as HTMLSelectElement;
+    const curriculumTypeSelect = within(screen.getByRole("group", { name: "English Medium" })).getByRole("combobox", { name: /Curriculum Type/ }) as HTMLSelectElement;
     expect(Array.from(curriculumTypeSelect.options).map(option => option.value)).toEqual(["", "British", "Cambridge", "Ed-excel"]);
     fireEvent.change(curriculumTypeSelect, { target: { value: "British" } });
-    expect(onSetCurriculumType).toHaveBeenCalledWith("British");
+    expect(onSetLearningNeeds).toHaveBeenCalledWith([{ category: "English Medium", curriculumType: "British", classes: english[0].classes }]);
 
-    rerender(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, category: "Bangla Medium", curriculumType: "" }} onSetCurriculumType={onSetCurriculumType} />);
+    rerender(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, learningNeeds: bangla }} onSetLearningNeeds={onSetLearningNeeds} />);
     expect(screen.queryByRole("combobox", { name: /Curriculum Type/ })).toBeNull();
   });
 
   it("presents Learning needs as a clear, accessible selection workspace with selection feedback", () => {
-    render(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, category: "Bangla Medium", curriculumType: "", classCourse: "Class 1", selectedSubjects: ["English"] }} />);
+    render(<RequestStage {...requestStageProps} step={1} requestInput={{ ...requestStageProps.requestInput, learningNeeds: [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 1", subjects: ["English"] }] }] }} />);
 
     expect(screen.getByRole("list", { name: "Tutor request details progress" })).not.toBeNull();
     expect(screen.getByRole("group", { name: "Learning details" })).not.toBeNull();
-    expect(screen.getByRole("group", { name: "Subject selection" })).not.toBeNull();
-    expect(screen.getByRole("status", { name: "1 of 12 subjects selected" }).textContent).toContain("1 of 12 selected");
+    expect(screen.getByRole("group", { name: "Subjects for Class 1" })).not.toBeNull();
+    expect(screen.getByRole("status", { name: "1 of 12 subjects selected for Class 1" }).textContent).toContain("1 of 12 selected");
     expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Continue to tuition preferences" })).not.toBeNull();
   });
@@ -287,10 +289,10 @@ describe("Guardian private-account presentation", () => {
     render(<RequestStage {...requestStageProps} requestId={1} onPostAnother={onPostAnother} requestInput={{ ...requestStageProps.requestInput, studentGender: "female", addressDetails: "Opposite the community library" }} />);
 
     expect(screen.getByRole("heading", { name: "Learning needs" })).not.toBeNull();
-    expect(screen.getByText("Curriculum Type")).not.toBeNull();
-    expect(screen.getByText("Cambridge")).not.toBeNull();
+    // One row per curriculum, the English Medium type beside its name, each class with its own subjects.
+    expect(screen.getByText("English Medium (Cambridge)")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Tuition preferences" })).not.toBeNull();
-    expect(screen.getByText("English, Mathematics")).not.toBeNull();
+    expect(screen.getByText("Class 1–5: English, Mathematics")).not.toBeNull();
     expect(screen.getByText("Dhaka — Mirpur 10")).not.toBeNull();
     expect(screen.getByText("Weekday afternoons preferred.")).not.toBeNull();
     expect(screen.getByText("Student gender")).not.toBeNull();
@@ -331,7 +333,7 @@ describe("Guardian private-account presentation", () => {
     expect(screen.getByRole("heading", { name: "Thank you. Your request is now pending review." })).not.toBeNull();
     // Request 1 is Job 6800 - the same number the Guardian will see on the card.
     expect(screen.getByText("6800")).not.toBeNull();
-    expect(screen.getByText("Cambridge")).not.toBeNull();
+    expect(screen.getByText("English Medium (Cambridge)")).not.toBeNull();
     expect(screen.getByText("Facebook")).not.toBeNull();
     expect(screen.getByText("Evening slots preferred")).not.toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
