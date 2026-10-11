@@ -112,3 +112,54 @@ describe("site limit editor", () => {
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toContain("must be between 1 and 20"));
   });
 });
+
+describe("the drawing beside the rows", () => {
+  const panelWidth = findSiteLimit("modal.width.panel")!;
+  const drawing = (limits: { "modal.width.panel": number }) => <p data-testid="aside">{limits["modal.width.panel"]}</p>;
+
+  it("is left out unless the page asks for one", () => {
+    render(<SiteLimitEditor groups={["Modals"]} />);
+    expect(screen.queryByRole("complementary", { hidden: true })).toBeNull();
+  });
+
+  it("starts from the shipped number, or from the saved one", () => {
+    const { unmount } = render(<SiteLimitEditor groups={["Modals"]} aside={drawing} />);
+    expect(screen.getByTestId("aside").textContent).toBe(String(panelWidth.value));
+    unmount();
+
+    state.rows = [{ limitId: "modal.width.panel", value: 720 }];
+    render(<SiteLimitEditor groups={["Modals"]} aside={drawing} />);
+    expect(screen.getByTestId("aside").textContent).toBe("720");
+  });
+
+  it("follows what is typed, before anything is saved", () => {
+    render(<SiteLimitEditor groups={["Modals"]} aside={drawing} />);
+
+    fireEvent.change(screen.getByLabelText("Panel width"), { target: { value: "760" } });
+
+    expect(screen.getByTestId("aside").textContent).toBe("760");
+    expect(state.save).not.toHaveBeenCalled();
+  });
+
+  it("holds the last good number while what is typed is empty, fractional or out of range", () => {
+    render(<SiteLimitEditor groups={["Modals"]} aside={drawing} />);
+    const box = screen.getByLabelText("Panel width");
+    fireEvent.change(box, { target: { value: "760" } });
+
+    for (const bad of ["", "7", "7600", "700.5", "-3"]) {
+      fireEvent.change(box, { target: { value: bad } });
+      expect(screen.getByTestId("aside").textContent, `typed "${bad}"`).toBe(String(panelWidth.value));
+    }
+  });
+
+  it("goes back to the saved number when an edit is undone", () => {
+    state.rows = [{ limitId: "modal.width.panel", value: 720 }];
+    render(<SiteLimitEditor groups={["Modals"]} aside={drawing} />);
+    const box = screen.getByLabelText("Panel width");
+
+    fireEvent.change(box, { target: { value: "900" } });
+    expect(screen.getByTestId("aside").textContent).toBe("900");
+    fireEvent.change(box, { target: { value: "720" } });
+    expect(screen.getByTestId("aside").textContent).toBe("720");
+  });
+});

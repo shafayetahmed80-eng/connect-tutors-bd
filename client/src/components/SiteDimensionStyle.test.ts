@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTROL_HEIGHT_PX, defaultSiteLimits, findSiteLimit, siteLimits } from "@shared/site-limits";
-import { buildSiteDimensionCss } from "./SiteDimensionStyle";
+import { buildSiteDimensionCss, modalPanelHeight, modalShadow } from "./SiteDimensionStyle";
 
 /** Every dimension the Owner is offered on Admin > Modals. */
 const modalLimitIds = siteLimits.filter(limit => limit.group === "Modals").map(limit => limit.id);
@@ -221,5 +221,21 @@ describe("the dialog sizes an Owner sets", () => {
     expect(shipped).toContain("680px");
     expect(widened).toContain("900px");
     expect(widened).not.toContain("680px");
+  });
+});
+
+describe("what the Modals preview borrows from the stylesheet", () => {
+  it("draws the same shadow the stylesheet gives a dialog", () => {
+    const limits = { ...defaultSiteLimits(), "modal.shadowBlur": 80, "modal.shadowOpacity": 30 };
+    expect(buildSiteDimensionCss(limits)).toContain(`box-shadow: ${modalShadow(limits)};`);
+    expect(modalShadow(defaultSiteLimits())).toContain("0 24px 48px -24px");
+  });
+
+  it("stands a panel at 86% of the window, but never past the Owner's number", () => {
+    const limits = defaultSiteLimits();
+    expect(modalPanelHeight(limits, 768)).toBeCloseTo(660.48, 5);
+    expect(modalPanelHeight(limits, 1200)).toBe(720);
+    // The same rule the stylesheet writes.
+    expect(buildSiteDimensionCss(limits)).toContain("height: min(86vh, 720px)");
   });
 });

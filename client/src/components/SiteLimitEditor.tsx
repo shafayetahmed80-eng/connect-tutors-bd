@@ -1,8 +1,8 @@
 import { trpc } from "@/lib/trpc";
-import { siteLimits, type SiteLimitGroup, type SiteLimitId } from "@shared/site-limits";
+import { resolveSiteLimits, siteLimits, type SiteLimitGroup, type SiteLimitId, type SiteLimitValues } from "@shared/site-limits";
 import { RotateCcw } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation"];
 
@@ -13,8 +13,16 @@ const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Mod
  * arbitrary - a text length is capped by the column that stores it, and a
  * selection cap of zero would make a required field unfillable. Showing the
  * range turns a refusal into something the Owner can avoid.
+ *
+ * `aside` draws something beside the rows from the numbers as they are typed,
+ * before they are saved - a number only counts once it is a whole number inside
+ * its range, so half a keystroke never reaches the drawing. It is for a laptop
+ * screen; below it the rows have the width to themselves.
  */
-export default function SiteLimitEditor({ groups = allGroups.filter(group => group !== "Modals" && group !== "Input Field Text" && group !== "Button Section" && group !== "Platform charge" && group !== "Navigation") }: { groups?: SiteLimitGroup[] } = {}) {
+export default function SiteLimitEditor({
+  groups = allGroups.filter(group => group !== "Modals" && group !== "Input Field Text" && group !== "Button Section" && group !== "Platform charge" && group !== "Navigation"),
+  aside,
+}: { groups?: SiteLimitGroup[]; aside?: (limits: SiteLimitValues) => ReactNode } = {}) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<SiteLimitId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +45,16 @@ export default function SiteLimitEditor({ groups = allGroups.filter(group => gro
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on contents
   }, [savedKey]);
 
+  // What is saved, with whatever is typed and valid laid over it.
+  const live = useMemo(() => {
+    const rows: Array<{ limitId: string; value: number }> = [];
+    stored.forEach((value, limitId) => rows.push({ limitId, value }));
+    // What is typed lands after what is saved, and `resolveSiteLimits` drops a
+    // number that is not whole or not inside its range, leaving the saved one.
+    for (const [limitId, text] of Object.entries(drafts)) if (text.trim() !== "") rows.push({ limitId, value: Number(text) });
+    return resolveSiteLimits(rows);
+  }, [stored, drafts]);
+
   const run = async (id: SiteLimitId, action: () => Promise<unknown>, fallback: string) => {
     setBusy(id);
     setError(null);
@@ -51,7 +69,7 @@ export default function SiteLimitEditor({ groups = allGroups.filter(group => gro
     }
   };
 
-  return <div className="space-y-3">
+  const rows = <div className="space-y-3">
     <p className="text-xs leading-5 text-j-ink-soft">
       These numbers used to live in the code. Each one shows the range it may move between — a text length cannot go past the column that stores it, and a selection cap cannot reach zero without making a required field unfillable. A limit left at its shipped value stores nothing.
     </p>
@@ -112,5 +130,11 @@ export default function SiteLimitEditor({ groups = allGroups.filter(group => gro
           </div>
         </section>;
       })}
+  </div>;
+
+  if (!aside) return rows;
+  return <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start xl:gap-4">
+    {rows}
+    <aside className="hidden xl:sticky xl:top-4 xl:block">{aside(live)}</aside>
   </div>;
 }
