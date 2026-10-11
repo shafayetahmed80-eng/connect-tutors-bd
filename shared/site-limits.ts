@@ -118,11 +118,14 @@ export const siteLimitIds = [
   "nav.tabRadius",
   "nav.pillTabRadius",
   "nav.sectionRadius",
+  // The lettering of a job card and of the dialog it opens.
+  "jobCard.textSize",
+  "jobDetails.textSize",
 ] as const;
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation";
+export type SiteLimitGroup = "Selection" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation" | "Job card";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;
@@ -833,6 +836,26 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 24,
     min: 0,
     max: 40,
+  },
+  {
+    id: "jobCard.textSize",
+    group: "Job card",
+    label: "Job card text",
+    help: "The ordinary lettering on every job card - Job Board, Admin Posted jobs and the Guardian's Posted jobs: the details, their labels and the buttons. The title stands 2px above it and the New badge 1px below, so they keep their order whatever this says.",
+    unit: "px",
+    value: 13,
+    min: 10,
+    max: 20,
+  },
+  {
+    id: "jobDetails.textSize",
+    group: "Job card",
+    label: "Job details text",
+    help: "The lettering inside the dialog a job card opens: the rows, the line under the title and the notes. The title stands 5px above it and the buttons 1px above, so they keep their order.",
+    unit: "px",
+    value: 13,
+    min: 10,
+    max: 20,
   },
 ];
 

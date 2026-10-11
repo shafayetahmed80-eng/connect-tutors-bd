@@ -71,6 +71,7 @@ export function Modal({
   busy = false,
   isSuspended,
   panelTestId,
+  kind,
   children,
 }: {
   size?: ModalSize;
@@ -81,6 +82,8 @@ export function Modal({
   isSuspended?: () => boolean;
   /** `data-testid` for the panel — for a dialog another overlay looks up by test id. */
   panelTestId?: string;
+  /** Names what the dialog shows, as `data-modal-kind`, so the Owner's settings can address that one dialog (see `SiteDimensionStyle`). */
+  kind?: string;
   children: React.ReactNode;
 }) {
   const titleId = useId();
@@ -146,6 +149,7 @@ export function Modal({
           aria-labelledby={titleId}
           data-testid={panelTestId}
           data-modal-size={size}
+          data-modal-kind={kind}
           tabIndex={-1}
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
@@ -192,10 +196,10 @@ export function ModalHeader({
             from trimmed text nodes, so the prefix inside it would butt against
             the title with no gap. */}
         {/* Two lines on a phone, where a long title (a job's) has the whole sheet's width to itself; one line above it. */}
-        <h2 id={titleId} className={cn("line-clamp-2 break-words text-base sm:line-clamp-1", tp.heading, eyebrow && "mt-0.5")}>
+        <h2 id={titleId} data-modal-title="" className={cn("line-clamp-2 break-words text-base sm:line-clamp-1", tp.heading, eyebrow && "mt-0.5")}>
           {srPrefix ? <><span className="sr-only">{srPrefix}</span>{" "}</> : null}{title}
         </h2>
-        {meta ? <div className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
+        {meta ? <div data-modal-meta="" className="mt-1.5 text-2xs text-j-ink-muted">{meta}</div> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
@@ -219,7 +223,7 @@ export function ModalFooter({ children }: { children: React.ReactNode }) {
   // A footer control sized for a mouse is too small for a thumb: on a phone
   // every one of them clears 40px, whatever height the caller asked for.
   return (
-    <div className={cn("relative flex shrink-0 items-center justify-end gap-3 px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", modalBarClass("bottom"))}>
+    <div data-modal-footer="" className={cn("relative flex shrink-0 items-center justify-end gap-3 px-4 py-3 max-md:[&_a]:min-h-10 max-md:[&_button]:min-h-10 sm:px-5", modalBarClass("bottom"))}>
       {children}
     </div>
   );

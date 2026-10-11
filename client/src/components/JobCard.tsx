@@ -55,10 +55,10 @@ export function TutorPreferenceIcon({ preference, className }: { preference: str
 
 function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; label: string; value: string; muted?: boolean; wide?: boolean }) {
   return <div className={`min-w-0 ${wide ? "col-span-2" : ""}`}>
-    <p className="flex items-center gap-1 text-xs text-j-ink-muted"><span className="shrink-0 text-[#1677e8]">{icon}</span>{label}</p>
+    <p className="job-card-text flex items-center gap-1 text-j-ink-muted"><span className="shrink-0 text-[#1677e8]">{icon}</span>{label}</p>
     {/* Subjects and long place names wrap onto a second line rather than being
         cut; the grid stretches every card in the row to match. */}
-    <p className={`mt-0.5 break-words text-xs leading-[1.45] ${muted ? "italic text-j-ink-faint" : "text-[#173d60]"}`}>{value}</p>
+    <p className={`job-card-text mt-0.5 break-words leading-[1.45] ${muted ? "italic text-j-ink-faint" : "text-[#173d60]"}`}>{value}</p>
   </div>;
 }
 
@@ -79,14 +79,14 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
       // a border that warms rather than snapping to full accent blue, and a
       // shadow that is softer but spreads further. On a page of twenty cards
       // the old 3px snap read as the list twitching under the pointer.
-      className="flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="job-card flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
-        {isNew ? <span className="mt-px shrink-0 rounded-full bg-j-accent-wash px-2 py-0.5 text-2xs font-bold uppercase tracking-[0.06em] text-j-accent">New</span> : null}
+        <h3 className="job-card-title font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
+        {isNew ? <span className="job-card-small mt-px shrink-0 rounded-full bg-j-accent-wash px-2 py-0.5 font-bold uppercase tracking-[0.06em] text-j-accent">New</span> : null}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs tabular-nums text-j-ink-muted">
+      <div className="job-card-text mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 tabular-nums text-j-ink-muted">
         <span className="inline-flex items-center gap-1"><RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
         <span aria-hidden className="text-[#dce9f1]">|</span>
         <span className="inline-flex items-center gap-1"><RecordIcon name="posted" size={12} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
@@ -101,13 +101,13 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
         <Fact icon={<MapPin size={13} />} label="Location" value={place} wide />
       </div>
 
-      <p className="mt-2.5 flex items-center gap-1.5 text-xs text-j-ink-muted">
+      <p className="job-card-text mt-2.5 flex items-center gap-1.5 text-j-ink-muted">
         <TutorPreferenceIcon preference={job.preferredTutorGender} className={tutorPreferenceToneClass(job.preferredTutorGender)} />
         <span><strong className={`font-bold ${tutorPreferenceToneClass(job.preferredTutorGender)}`}>{formatTutorPreference(job.preferredTutorGender)}</strong> tutor preferred</span>
       </p>
 
       {/* Pushed to the foot so every card in a row ends level. */}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
+      <div className="job-card-footer mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
         {footerStart || mapUrl
           ? <span className="flex min-w-0 items-center gap-3">
               {footerStart}
@@ -117,7 +117,7 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
                     target="_blank"
                     rel="noreferrer"
                     onClick={event => event.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
+                    className="inline-flex items-center gap-1 font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
                   ><MapPin size={13} /> View on map</a>
                 : null}
             </span>
