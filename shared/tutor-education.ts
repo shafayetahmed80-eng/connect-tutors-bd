@@ -65,12 +65,25 @@ export const fixedSchoolRecords = [
 export const historyQualificationLevels = ["Honours", "Masters"] as const;
 
 /**
- * The history holds each level at most once - one Honours and one Masters - so
- * a level another qualification has already taken is not offered again, and
- * once both are taken there is nothing left to add.
+ * The University Section is the Tutor's own degree, and what the history under
+ * it may add is the other one: with Masters there, an Honours; with Honours
+ * there, a Masters - but only once the Honours is behind them, because someone
+ * still reading for an Honours cannot have a Masters. Until the section says
+ * which level it holds, either may be added.
  */
-export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | undefined>) {
-  return historyQualificationLevels.filter(level => !takenLevels.includes(level));
+export function historyLevelsOffered(sectionLevel: string | null | undefined, studyStatus?: string | null): readonly (typeof historyQualificationLevels)[number][] {
+  if (sectionLevel === "Masters") return ["Honours"];
+  if (sectionLevel === "Honours") return studyStatus === "graduated" || studyStatus === "professional" ? ["Masters"] : [];
+  return historyQualificationLevels;
+}
+
+/**
+ * Of those, the history holds each level at most once, so a level another
+ * qualification has already taken is not offered again, and once every level
+ * is taken there is nothing left to add.
+ */
+export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | undefined>, sectionLevel?: string | null, studyStatus?: string | null) {
+  return historyLevelsOffered(sectionLevel, studyStatus).filter(level => !takenLevels.includes(level));
 }
 
 /**

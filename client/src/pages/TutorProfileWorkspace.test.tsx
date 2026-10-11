@@ -308,54 +308,81 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect((within(dialog).getByLabelText(/Passing Year/) as HTMLInputElement).required).toBe(true);
   });
 
-  it("marks an added qualification as required once an Owner makes the Qualification History required", async () => {
+  it("never marks an added qualification as required, even when a stored setting asks for it", async () => {
     const user = userEvent.setup({ document: window.document });
     trpcMocks.resolvedFields.mockImplementation(() => ({
       data: resolveTutorProfileFieldConfig([{ fieldId: "educationRecords", label: null, section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 }]).all as any[],
     }));
-    render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] }} onboardingFallback={null} />);
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, highestEducation: "Masters", educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] } as never} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Education/ }));
     await user.click(screen.getByRole("button", { name: "Edit University Section" }));
     const dialog = screen.getByRole("dialog");
-
     const historyHeading = within(dialog).getByRole("heading", { name: /Qualification history/i });
     const history = within(historyHeading.parentElement as HTMLElement);
+
     for (const name of [/Institute Name/, /Degree.+Exam Title/, /Subject.+Group/, /Curriculum/, /Study Start Year/, /Education level/i]) {
-      expect((history.getByLabelText(name) as HTMLInputElement).getAttribute("aria-required")).toBe("true");
+      const box = history.getByLabelText(name) as HTMLInputElement;
+      expect(box.required).toBe(false);
+      expect(box.getAttribute("aria-required")).toBeNull();
     }
-    expect(historyHeading.textContent).toContain("*");
+    expect(historyHeading.textContent).not.toContain("*");
     trpcMocks.resolvedFields.mockImplementation(() => ({ data: undefined }));
   });
 
-  it("offers each qualification level once, and stops offering Add another qualification when both are taken", async () => {
+  it("offers the other degree beside the University Section's own, each once, and nothing while an Honours is still being read", async () => {
     const user = userEvent.setup({ document: window.document });
-    const openHistory = async (educationRecords: unknown[]) => {
-      render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords } as never} onboardingFallback={null} />);
+    const open = async (highestEducation: string | null, studyStatus: string | null, educationRecords: unknown[]) => {
+      render(<TutorProfileWorkspace profile={{ ...completeProfile, highestEducation, studyStatus, educationRecords } as never} onboardingFallback={null} />);
       await user.click(screen.getByRole("tab", { name: /Education/ }));
       await user.click(screen.getByRole("button", { name: "Edit University Section" }));
       const dialog = screen.getByRole("dialog");
-      return { dialog, history: within(within(dialog).getByRole("heading", { name: /Qualification history/i }).parentElement as HTMLElement) };
+      const heading = within(dialog).queryByRole("heading", { name: /Qualification history/i });
+      return { dialog, history: heading ? within(heading.parentElement as HTMLElement) : null };
     };
+    const levelsOf = (select: HTMLElement) => Array.from((select as HTMLSelectElement).options).map(option => option.value);
+    const BLANK = { qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" };
+    const HONOURS = { qualificationLevel: "Honours" as const, instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2016", studyEndYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" };
+    const MASTERS = { qualificationLevel: "Masters" as const, instituteName: "Dhaka University", degreeExamTitle: "MSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2020", studyEndYear: "2022", currentlyStudying: false, instituteIdCardNumber: "" };
 
-    // Honours is taken, so the new qualification can only be Masters - and there is still something to add.
-    const first = await openHistory([{ qualificationLevel: "Honours" as const, instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2016", studyEndYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" }, { qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }]);
-    const levels = Array.from((first.history.getByLabelText(/Education level/i) as HTMLSelectElement).options).map(option => option.value);
-    expect(levels).toEqual(["", "Masters"]);
-    expect(first.history.getByRole("button", { name: "Add another qualification" })).toBeTruthy();
+    // Masters in the section: the other degree is an Honours, and there is room for it.
+    const withMasters = await open("Masters", "graduated", [BLANK]);
+    expect(levelsOf(withMasters.history!.getByLabelText(/Education level/i))).toEqual(["", "Honours"]);
+    expect(withMasters.history!.getByRole("button", { name: "Add another qualification" })).toBeTruthy();
     cleanup();
 
-    // Both are taken: nothing is left to add.
-    const both = await openHistory([{ qualificationLevel: "Honours" as const, instituteName: "Dhaka University", degreeExamTitle: "BSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2016", studyEndYear: "2020", currentlyStudying: false, instituteIdCardNumber: "" }, { qualificationLevel: "Masters" as const, instituteName: "Dhaka University", degreeExamTitle: "MSc Physics", majorGroup: "Physics", resultGpa: "", curriculum: "English Version" as const, studyStartYear: "2020", studyEndYear: "2022", currentlyStudying: false, instituteIdCardNumber: "" }]);
-    expect(both.history.queryByRole("button", { name: "Add another qualification" })).toBeNull();
-    // A taken qualification still lists its own level, so it can be opened and edited.
-    await user.click(both.history.getByRole("button", { name: /Masters/ }));
-    expect(Array.from((both.history.getByLabelText(/Education level/i) as HTMLSelectElement).options).map(option => option.value)).toContain("Masters");
+    // Honours already added: nothing is left to add. The record still lists its own level, so it can be edited.
+    const taken = await open("Masters", "graduated", [HONOURS]);
+    expect(taken.history!.queryByRole("button", { name: "Add another qualification" })).toBeNull();
+    await user.click(taken.history!.getByRole("button", { name: /Honours/ }));
+    expect(levelsOf(taken.history!.getByLabelText(/Education level/i))).toContain("Honours");
+    cleanup();
+
+    // Honours finished: the other degree is a Masters.
+    const finished = await open("Honours", "graduated", [BLANK]);
+    expect(levelsOf(finished.history!.getByLabelText(/Education level/i))).toEqual(["", "Masters"]);
+    expect(finished.history!.getByRole("button", { name: "Add another qualification" })).toBeTruthy();
+    cleanup();
+
+    // Honours still being read: no one reading for an Honours has a Masters, so there is nothing to add and nothing is drawn.
+    const studying = await open("Honours", "studying", []);
+    expect(studying.history).toBeNull();
+    cleanup();
+
+    // A record saved before this rule is kept and can still be edited or removed, but nothing more is offered.
+    const legacy = await open("Honours", "studying", [MASTERS]);
+    expect(legacy.history).not.toBeNull();
+    expect(legacy.history!.queryByRole("button", { name: "Add another qualification" })).toBeNull();
+    cleanup();
+
+    // The section has not said which degree it holds: either may be added.
+    const unset = await open(null, null, [BLANK]);
+    expect(levelsOf(unset.history!.getByLabelText(/Education level/i))).toEqual(["", "Honours", "Masters"]);
   });
 
   it("suggests degree names that fit the level, shows BSc/MSc as the example, and still takes a title that is not listed", async () => {
     const user = userEvent.setup({ document: window.document });
-    render(<TutorProfileWorkspace profile={{ ...completeProfile, educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] } as never} onboardingFallback={null} />);
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, highestEducation: "Masters", educationRecords: [{ qualificationLevel: "" as const, instituteName: "", degreeExamTitle: "", majorGroup: "", resultGpa: "", curriculum: "" as const, studyStartYear: "", studyEndYear: "", currentlyStudying: false, instituteIdCardNumber: "" }] } as never} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Education/ }));
     await user.click(screen.getByRole("button", { name: "Edit University Section" }));
@@ -368,18 +395,18 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     // No level yet: both kinds are suggested.
     expect(namesIn(title)).toEqual(expect.arrayContaining(["BSc", "MSc"]));
 
-    fireEvent.change(history.getByLabelText(/Education level/i), { target: { value: "Masters" } });
-    expect(namesIn(title)).toContain("MSc");
-    expect(namesIn(title)).not.toContain("BSc");
+    fireEvent.change(history.getByLabelText(/Education level/i), { target: { value: "Honours" } });
+    expect(namesIn(title)).toContain("BSc");
+    expect(namesIn(title)).not.toContain("MSc");
 
     await user.type(title, "Diploma in Education");
     expect(title.value).toBe("Diploma in Education");
 
-    // The University Section's own title box follows its Education Level (Honours here).
+    // The University Section's own title box follows its Education Level (Masters here).
     const sectionTitle = within(dialog).getAllByLabelText(/Degree.+Exam Title/).find(box => box !== title) as HTMLInputElement;
     expect(sectionTitle.placeholder).toBe("Ex- BSc/MSc");
-    expect(namesIn(sectionTitle)).toContain("BSc");
-    expect(namesIn(sectionTitle)).not.toContain("MSc");
+    expect(namesIn(sectionTitle)).toContain("MSc");
+    expect(namesIn(sectionTitle)).not.toContain("BSc");
   });
 
   it("suggests board-exam names in Secondary and Higher Secondary, and still takes a title that is not listed", async () => {

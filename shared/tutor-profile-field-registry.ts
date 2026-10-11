@@ -15,8 +15,7 @@
  * for one field repeated across every education record, and
  * `supportingDocument.<type>` for one of the four optional certificate
  * uploads. `educationRecords` itself (no suffix) governs the repeatable block
- * as a whole - whether it renders at all, and whether the qualifications a
- * Tutor adds are required to be there and complete.
+ * as a whole - whether it renders at all. It is never required.
  */
 
 /**
@@ -129,10 +128,10 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "secondaryRecord", label: "Secondary", section: "c", subGroup: "c-secondary", panel: "secondary", sortOrder: 94, requiredByDefault: true, requiredConfigurable: true },
   { id: "higherSecondaryRecord", label: "Higher Secondary", section: "c", subGroup: "c-higher-secondary", panel: "higher-secondary", sortOrder: 92, requiredByDefault: true, requiredConfigurable: true },
   // The history is the degrees a Tutor chooses to add under "Add another
-  // qualification", so it is optional until an Owner says otherwise. Turned on,
-  // it asks for at least one of them and for each to be complete; Secondary and
-  // Higher Secondary are their own required sections either way.
-  { id: "educationRecords", label: "Qualification History", section: "c", subGroup: "c-university", panel: "qualifications", sortOrder: 100, requiredByDefault: false, requiredConfigurable: true },
+  // qualification". It is optional and no setting can make it otherwise, so it
+  // cannot be switched to required: a Tutor reading for an Honours has no
+  // Masters to give, and no one is owed one.
+  { id: "educationRecords", label: "Qualification History", section: "c", subGroup: "c-university", panel: "qualifications", sortOrder: 100, requiredByDefault: false, requiredConfigurable: false },
   { id: "educationRecords.qualificationLevel", label: "Qualification Level", section: "c", subGroup: "c-university", panel: "qualifications", sortOrder: 101, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.instituteName", label: "Institute Name", section: "c", subGroup: "c-university", panel: "qualifications", sortOrder: 102, requiredByDefault: true, requiredConfigurable: true },
   { id: "educationRecords.degreeExamTitle", label: "Degree / Exam Title (record)", section: "c", subGroup: "c-university", panel: "qualifications", sortOrder: 103, requiredByDefault: true, requiredConfigurable: true },

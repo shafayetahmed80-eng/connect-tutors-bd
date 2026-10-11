@@ -436,21 +436,32 @@ describe("Tutor Profile field config drives submission requiredness", () => {
   });
 });
 
-describe("Tutor Profile Qualification history is optional until an Owner requires it", () => {
+describe("Tutor Profile Qualification history is never required", () => {
   const halfFilledDegree = { qualificationLevel: "Masters" as const, instituteName: "University of Dhaka", currentlyStudying: false };
-  const historyRequired = () => tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(resolveTutorProfileFieldConfig([
-    { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
-  ])));
   const issuePaths = (result: { success: boolean; error?: { issues: Array<{ path: Array<string | number> }> } }) => result.error?.issues.map(issue => issue.path.join(".")) ?? [];
 
-  it("ships as optional", () => {
-    const history = defaultTutorProfileFieldConfig().byId.get("educationRecords");
-    expect(history?.required).toBe(false);
+  it("ships as optional, and no setting can make it required", () => {
+    expect(defaultTutorProfileFieldConfig().byId.get("educationRecords")?.required).toBe(false);
+    expect(defaultTutorProfileFieldConfig().byId.get("educationRecords")?.requiredConfigurable).toBe(false);
+
+    // A setting an Owner stored before this was so is ignored, not honoured.
+    const stored = resolveTutorProfileFieldConfig([
+      { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
+    ]);
+    expect(stored.byId.get("educationRecords")?.required).toBe(false);
   });
 
   it("submits with no degree at all, and with a half-filled one", () => {
     expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord] }).success).toBe(true);
     expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, halfFilledDegree] }).success).toBe(true);
+  });
+
+  it("submits the same whichever way the setting was stored", () => {
+    const schema = tutorProfileDraftSchema.superRefine(buildTutorProfileSubmissionRefinement(resolveTutorProfileFieldConfig([
+      { fieldId: "educationRecords", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
+    ])));
+    expect(schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord] }).success).toBe(true);
+    expect(schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, halfFilledDegree] }).success).toBe(true);
   });
 
   it("still holds Secondary and Higher Secondary to their fields", () => {
@@ -459,19 +470,6 @@ describe("Tutor Profile Qualification history is optional until an Owner require
     expect(result.success).toBe(false);
     expect(issuePaths(result)).toContain("educationRecords.0.instituteName");
     expect(tutorProfileSubmissionSchema.safeParse({ ...approvedExpandedSubmission, educationRecords: [hscRecord] }).success).toBe(false);
-  });
-
-  it("asks for a degree, and for each one to be complete, once an Owner requires the history", () => {
-    const schema = historyRequired();
-    expect(schema.safeParse(approvedExpandedSubmission).success).toBe(true);
-
-    const none = schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord] });
-    expect(none.success).toBe(false);
-    expect(issuePaths(none)).toContain("educationRecords");
-
-    const half = schema.safeParse({ ...approvedExpandedSubmission, educationRecords: [sscRecord, hscRecord, halfFilledDegree] });
-    expect(half.success).toBe(false);
-    expect(issuePaths(half)).toEqual(expect.arrayContaining(["educationRecords.2.degreeExamTitle", "educationRecords.2.studyEndYear"]));
   });
 });
 
