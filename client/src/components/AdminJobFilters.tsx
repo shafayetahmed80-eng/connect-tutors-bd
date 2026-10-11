@@ -1,5 +1,5 @@
 import ChipMultiSelect from "@/components/ChipMultiSelect";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { FilterPanelFrame, ListToolbarCard, SlidePanel } from "@/components/ListToolbar";
 import { DateField, EMPTY_JOB_FILTER_OPTIONS, FilterSelect, FilterTextBox, JobCoreFilterFields, type JobFilterOptions } from "@/components/JobFilterFields";
 import { trpc } from "@/lib/trpc";
 import {
@@ -223,7 +223,7 @@ export function AdminJobFilterBar({ filters, stage, eyebrow, count, total, loadi
       actions={actions}
     />
 
-    {filters.open ? <FilterPanelFrame
+    <SlidePanel open={filters.open}><FilterPanelFrame
       id="admin-job-filters"
       ariaLabel={panelLabel}
       total={total}
@@ -235,6 +235,6 @@ export function AdminJobFilterBar({ filters, stage, eyebrow, count, total, loadi
       alerts={filters.alerts}
     >
       <AdminJobFilterFields draft={filters.draft} setDraft={filters.setDraft} options={options} stage={stage} showPostedBy={postedBy === "all"} />
-    </FilterPanelFrame> : null}
+    </FilterPanelFrame></SlidePanel>
   </>;
 }

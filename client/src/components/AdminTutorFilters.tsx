@@ -1,6 +1,6 @@
 import ChipMultiSelect from "@/components/ChipMultiSelect";
 import { DateField, FilterSelect, FilterTextBox } from "@/components/JobFilterFields";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { FilterPanelFrame, ListToolbarCard, SlidePanel } from "@/components/ListToolbar";
 import { trpc } from "@/lib/trpc";
 import {
   ADMIN_TUTOR_LOCATION_LIMIT,
@@ -124,7 +124,7 @@ export function AdminTutorFilterBar({ filters, count, loading, caption, actions 
       actions={actions}
     />
 
-    {filters.open ? <FilterPanelFrame
+    <SlidePanel open={filters.open}><FilterPanelFrame
       id="admin-tutor-filters"
       ariaLabel="Tutor filters"
       total={count}
@@ -137,6 +137,6 @@ export function AdminTutorFilterBar({ filters, count, loading, caption, actions 
       alerts={filters.alerts}
     >
       <AdminTutorFilterFields draft={filters.draft} setDraft={filters.setDraft} options={options} />
-    </FilterPanelFrame> : null}
+    </FilterPanelFrame></SlidePanel>
   </>;
 }

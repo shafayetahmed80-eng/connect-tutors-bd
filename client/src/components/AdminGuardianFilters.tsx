@@ -1,5 +1,5 @@
 import { DateField, FilterSelect } from "@/components/JobFilterFields";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { FilterPanelFrame, ListToolbarCard, SlidePanel } from "@/components/ListToolbar";
 import {
   DEFAULT_ADMIN_GUARDIAN_FILTERS,
   adminGuardianAccountStatusOptions,
@@ -87,7 +87,7 @@ export function AdminGuardianFilterBar({ filters, count, loading, caption, actio
       actions={actions}
     />
 
-    {filters.open ? <FilterPanelFrame
+    <SlidePanel open={filters.open}><FilterPanelFrame
       id="admin-guardian-filters"
       ariaLabel="Guardian filters"
       total={count}
@@ -100,6 +100,6 @@ export function AdminGuardianFilterBar({ filters, count, loading, caption, actio
       alerts={filters.alerts}
     >
       <AdminGuardianFilterFields draft={filters.draft} setDraft={filters.setDraft} />
-    </FilterPanelFrame> : null}
+    </FilterPanelFrame></SlidePanel>
   </>;
 }
