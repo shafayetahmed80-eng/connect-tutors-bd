@@ -382,6 +382,55 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(namesIn(sectionTitle)).not.toContain("MSc");
   });
 
+  it("suggests board-exam names in Secondary and Higher Secondary, and still takes a title that is not listed", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+
+    for (const [section, expected, unexpected] of [["Edit Secondary", ["SSC", "Dakhil", "O Level"], "Alim"], ["Edit Higher Secondary", ["HSC", "Alim", "A Level"], "Dakhil"]] as const) {
+      await user.click(screen.getByRole("button", { name: section }));
+      const dialog = screen.getByRole("dialog");
+      const title = within(dialog).getByLabelText(/Degree.+Exam Title/) as HTMLInputElement;
+      const names = Array.from(dialog.querySelectorAll(`datalist#${title.getAttribute("list")} option`)).map(option => (option as HTMLOptionElement).value);
+      expect(names).toEqual(expect.arrayContaining([...expected]));
+      expect(names).not.toContain(unexpected);
+      await user.clear(title);
+      await user.type(title, "Technical Board Certificate");
+      expect(title.value).toBe("Technical Board Certificate");
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    }
+  });
+
+  it("draws each red star from the Owner's field settings, in both directions", async () => {
+    const user = userEvent.setup({ document: window.document });
+    const setting = (fieldId: string, required: number) => ({ fieldId, label: null, section: null, subGroup: null, sortOrder: null, enabled: null, required });
+    trpcMocks.resolvedFields.mockImplementation(() => ({
+      data: resolveTutorProfileFieldConfig([setting("classLevelIds", 0), setting("feeMax", 0), setting("degreeExamTitle", 0), setting("resultGpa", 1)]).all as any[],
+    }));
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    // Education: Result / GPA was optional and is now asked for; Degree / Exam Title was asked for and is not.
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    let dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText(/Result \/ GPA/).getAttribute("aria-required")).toBe("true");
+    expect(within(dialog).getByLabelText(/Result \/ GPA/).closest("label")?.textContent).toContain("*");
+    const sectionTitle = within(dialog).getAllByLabelText(/Degree.+Exam Title/)[0];
+    expect(sectionTitle.getAttribute("aria-required")).toBeNull();
+    expect(sectionTitle.closest("label")?.textContent).not.toContain("*");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    // Tuition: two details the Owner relaxed lose their stars, their neighbours keep them.
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("combobox", { name: /Class \/ Level/ }).getAttribute("aria-required")).toBeNull();
+    expect(within(dialog).getByRole("combobox", { name: /Curriculum/ }).getAttribute("aria-required")).toBe("true");
+    expect(within(dialog).getByLabelText(/Maximum Monthly Fee/).getAttribute("aria-required")).toBeNull();
+    expect(within(dialog).getByLabelText(/Minimum Monthly Fee/).getAttribute("aria-required")).toBe("true");
+    trpcMocks.resolvedFields.mockImplementation(() => ({ data: undefined }));
+  });
+
   it("names the missing details in the popup it opens when a profile is submitted incomplete", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={{ ...completeProfile, feeMin: null, classLevelIds: [] } as never} onboardingFallback={null} />);

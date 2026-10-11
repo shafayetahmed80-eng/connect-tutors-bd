@@ -74,14 +74,21 @@ export function historyLevelsLeft(takenLevels: ReadonlyArray<string | null | und
 }
 
 /**
- * Degree names offered as suggestions in a degree's Degree / Exam Title box.
- * Only suggestions: a title that is not here is typed as usual. A record whose
- * level is not chosen yet is offered both lists.
+ * Names offered as suggestions in a record's Degree / Exam Title box, by the
+ * record's level: a degree's for Honours and Masters, a board exam's for
+ * Secondary and Higher Secondary. Only suggestions: a title that is not here is
+ * typed as usual. A record whose level is not chosen yet is offered both degree lists.
  */
 export const honoursDegreeTitles = ["BSc", "BA", "BBA", "BCom", "BSS", "BEd", "LLB", "BPharm", "BSc (Engineering)", "MBBS", "BDS"] as const;
 export const mastersDegreeTitles = ["MSc", "MA", "MBA", "MCom", "MSS", "MEd", "LLM", "MPhil"] as const;
 
+/** The same for the two school sections, which sit a board exam of their own kind. */
+export const secondaryExamTitles = ["SSC", "Dakhil", "O Level", "SSC (Vocational)"] as const;
+export const higherSecondaryExamTitles = ["HSC", "Alim", "A Level", "HSC (Vocational)"] as const;
+
 export function degreeTitleSuggestions(level: string | null | undefined): readonly string[] {
+  if (level === "SSC") return secondaryExamTitles;
+  if (level === "HSC") return higherSecondaryExamTitles;
   if (level === "Honours") return honoursDegreeTitles;
   if (level === "Masters") return mastersDegreeTitles;
   return [...honoursDegreeTitles, ...mastersDegreeTitles];

@@ -26,6 +26,13 @@ describe("degreeTitleSuggestions", () => {
     expect(degreeTitleSuggestions("Masters")).not.toContain("BSc");
   });
 
+  it("suggests board exams for the two school sections", () => {
+    expect(degreeTitleSuggestions("SSC")).toEqual(expect.arrayContaining(["SSC", "Dakhil", "O Level"]));
+    expect(degreeTitleSuggestions("SSC")).not.toContain("HSC");
+    expect(degreeTitleSuggestions("HSC")).toEqual(expect.arrayContaining(["HSC", "Alim", "A Level"]));
+    expect(degreeTitleSuggestions("HSC")).not.toContain("BSc");
+  });
+
   it("suggests both until a level is chosen", () => {
     for (const level of ["", undefined, null]) {
       expect(degreeTitleSuggestions(level)).toEqual(expect.arrayContaining(["BSc", "MSc"]));
