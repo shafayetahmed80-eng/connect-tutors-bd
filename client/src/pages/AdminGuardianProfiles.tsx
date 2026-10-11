@@ -13,8 +13,9 @@ import { trpc } from "@/lib/trpc";
 import { GuardianActivityContent, GuardianVerificationModal } from "@/pages/AdminGuardianActivity";
 import type { AdminGuardianFilterInput } from "@shared/admin-guardian-filters";
 import { formatRequestSource } from "@shared/request-source";
-import { ArrowLeft, History, Megaphone, Search, ShieldCheck } from "lucide-react";
+import { History, Megaphone, Search, ShieldCheck } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import BackLink from "@/components/BackLink";
 import { useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
@@ -291,7 +292,7 @@ export function AdminGuardianProfileDetailContent({ userId }: { userId: number }
   const profile = profileQuery.data;
 
   return <div className="mx-auto w-full max-w-5xl space-y-5 pb-10">
-    <Link href="/admin/guardians" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline"><ArrowLeft size={15} /> Back to Guardian Profiles</Link>
+    <BackLink href="/admin/guardians">Back to Guardian Profiles</BackLink>
     {profileQuery.isLoading ? <div className="flex min-h-40 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading profile…</div> : null}
     {profileQuery.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error.message}</div> : null}
     {profile ? <>

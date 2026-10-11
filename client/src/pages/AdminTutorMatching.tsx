@@ -11,11 +11,12 @@ import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
 import { AdminAppliedTuitionsContent, TuitionStatus } from "./AdminAppliedTutors";
-import { ArrowLeft, CircleX, Search, SlidersHorizontal } from "lucide-react";
+import { CircleX, Search, SlidersHorizontal } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import BackLink from "@/components/BackLink";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Link, useRoute } from "wouter";
+import { useRoute } from "wouter";
 
 export type TutorMatchingFilters = {
   query: string;
@@ -181,9 +182,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
   });
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <Link href="/admin/tutor-matching" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Tutor Matching
-    </Link>
+    <BackLink href="/admin/tutor-matching">Back to Tutor Matching</BackLink>
 
     <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">

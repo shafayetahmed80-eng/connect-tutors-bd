@@ -19,8 +19,9 @@ import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, CircleX, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, CircleX, Search, SlidersHorizontal } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import BackLink from "@/components/BackLink";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
@@ -129,9 +130,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   });
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <Link href="/admin/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Posted jobs
-    </Link>
+    <BackLink href="/admin/posted-jobs">Back to Posted jobs</BackLink>
 
     <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">

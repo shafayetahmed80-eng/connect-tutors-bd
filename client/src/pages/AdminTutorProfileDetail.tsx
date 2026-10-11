@@ -10,11 +10,12 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
+import BackLink from "@/components/BackLink";
 
 const statusStyles: Record<string, string> = {
   draft: "bg-j-surface-muted text-j-ink-soft",
@@ -172,9 +173,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     <AdminTutorApplications tutorId={tutorId} />
 
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Link href="/admin/tutor-profiles" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-        <ArrowLeft size={15} /> Back to Tutor Profiles
-      </Link>
+      <BackLink href="/admin/tutor-profiles">Back to Tutor Profiles</BackLink>
       <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
         <MessageCircle size={15} /> Message
       </Link>
