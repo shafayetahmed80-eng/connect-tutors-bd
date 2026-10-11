@@ -103,9 +103,9 @@ export function TutorNotificationInbox() {
               </div>
               <p className="mt-1 text-sm leading-6 text-j-ink-soft">{notification.message}</p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                {destination ? <Link href={destination} className="text-xs font-bold text-j-accent hover:underline">Open</Link> : null}
+                {destination ? <Link href={destination} className="text-xs font-bold text-j-accent hover:underline max-sm:-mx-2 max-sm:inline-flex max-sm:min-h-10 max-sm:items-center max-sm:px-2">Open</Link> : null}
                 {unread
-                  ? <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate({ notificationId: notification.id })} className="text-xs font-semibold text-j-ink-muted hover:text-j-ink-soft disabled:opacity-50">Mark read</button>
+                  ? <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate({ notificationId: notification.id })} className="text-xs font-semibold text-j-ink-muted hover:text-j-ink-soft disabled:opacity-50 max-sm:-mx-2 max-sm:inline-flex max-sm:min-h-10 max-sm:items-center max-sm:px-2">Mark read</button>
                   : null}
               </div>
             </div>

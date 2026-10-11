@@ -9,8 +9,9 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import TuitionStatusPill from "@/components/TuitionStatusPill";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronRight, CircleX } from "lucide-react";
+import { ChevronRight, CircleX } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import BackLink from "@/components/BackLink";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -57,9 +58,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
   };
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
-    <Link href="/guardian/dashboard/posted-jobs" className="inline-flex items-center gap-1.5 text-sm font-bold text-j-accent hover:underline">
-      <ArrowLeft size={15} /> Back to Posted jobs
-    </Link>
+    <BackLink href="/guardian/dashboard/posted-jobs">Back to Posted jobs</BackLink>
 
     {/* A tuition that cannot be opened has no count - "Applied: 0" beside the error would be untrue. */}
     {!applied.isError ? <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm">

@@ -14,7 +14,9 @@ export type StatusTabItem<K extends string> = {
  * "All" of its own - choosing the chosen stage again clears it.
  *
  * On a phone every row stays one line: tight 10px text, so five stages fit a
- * 375px screen, and sideways scrolling for a row that still does not. From
+ * 375px screen, and sideways scrolling for a row that still does not. The text
+ * is small but the tab is not: it stands 40px tall there, which is the height
+ * of a finger, and takes the extra from its padding, not from a bigger label. From
  * `sm` up it wraps at its full size. The line under the tabs is drawn by the
  * inner row, not the scrolling box, so the chosen tab's underline is not
  * clipped by the scroll.
@@ -46,7 +48,7 @@ export default function StatusTabRow<K extends string>({ label, items, selected,
           type="button"
           {...(toggle ? { "aria-pressed": chosen } : { role: "tab", "aria-selected": chosen })}
           onClick={() => onSelect(toggle && chosen ? null : item.key)}
-          className={`relative shrink-0 whitespace-nowrap pb-2.5 pt-1.5 text-[10px] tracking-[-0.01em] sm:tracking-normal ${compact ? "sm:text-2xs" : "sm:text-xs"} font-semibold transition-colors ${chosen ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
+          className={`relative shrink-0 whitespace-nowrap pb-2.5 pt-1.5 max-sm:pb-3 max-sm:pt-3 text-[10px] tracking-[-0.01em] sm:tracking-normal ${compact ? "sm:text-2xs" : "sm:text-xs"} font-semibold transition-colors ${chosen ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
         >
           {item.label}{item.wideSuffix ? <> <span className="hidden sm:inline">{item.wideSuffix}</span></> : null} <span className={`tabular-nums sm:ml-1 ${chosen ? "text-[#1267c8]" : "text-j-ink-faint"}`}>{String(item.count ?? 0).padStart(2, "0")}</span>
           {chosen ? <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-[#1677e8]" /> : null}

@@ -29,7 +29,7 @@ export function AdminAdminProfilesContent() {
       key: "admin", label: "Admin", place: "head",
       cell: row => <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Link href={row.id === ownerId ? "/admin/profile" : `/admin/profile/${row.id}`} className="font-bold text-j-ink hover:text-j-accent hover:underline">{row.name?.trim() || row.email || "Admin account"}</Link>
+          <Link href={row.id === ownerId ? "/admin/profile" : `/admin/profile/${row.id}`} className="inline-flex items-center font-bold text-j-ink hover:text-j-accent hover:underline max-sm:min-h-10">{row.name?.trim() || row.email || "Admin account"}</Link>
           <span className="rounded-full bg-violet-50 px-2 py-0.5 text-2xs font-bold text-violet-800">{row.id === ownerId ? "Project Owner" : "Administrator"}</span>
         </div>
         {row.designation ? <p className="text-xs text-j-ink-soft">{row.designation}</p> : null}
