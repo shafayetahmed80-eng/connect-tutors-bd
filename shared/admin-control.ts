@@ -61,3 +61,18 @@ export function tutorGuardianLoginOtpDaysFromStored(value: number | null | undef
   if (value === null || value === undefined) return DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS;
   return Math.min(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX, Math.max(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN, Math.round(value)));
 }
+
+/**
+ * Whether a new tuition on the Job Board alerts the Tutors it fits - a notice in
+ * their bell and a phone alert. On until the Owner turns it off, because the
+ * phone alert was already going out before there was a switch for it.
+ */
+export const NEW_TUITION_TUTOR_ALERTS_ENABLED_ID = "control.newTuitionTutorAlerts";
+
+export const DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED = true;
+
+export function newTuitionTutorAlertsEnabledFromStored(value: number | null | undefined): boolean {
+  if (value === 0) return false;
+  if (value === 1) return true;
+  return DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED;
+}

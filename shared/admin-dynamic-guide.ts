@@ -34,6 +34,7 @@ const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভ�
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
 const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
 const GUARDIAN_DASHBOARD: AdminDynamicDestination = { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" };
+const TUTOR_NOTIFICATIONS: AdminDynamicDestination = { label: "টিউটরের Notifications পাতা", path: "/tutor/dashboard/notifications" };
 
 export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
@@ -135,8 +136,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/admin-control",
     label: "Admin Control",
-    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে।",
-    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT],
+    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে। আর নতুন টিউশন লাইভ হলে মানানসই টিউটরদের ঘণ্টায় নোটিশ ও ফোনে অ্যালার্ট যাবে কিনা, তার সুইচ।",
+    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT, TUTOR_NOTIFICATIONS],
   },
 ];
 

@@ -4,8 +4,9 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  data: { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 } } as { guardianApplicantVisibility: "all" | "shortlisted"; appointmentRequestsOutsideShortlist: number; tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number } },
+  data: { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 }, newTuitionTutorAlerts: { enabled: true } } as { guardianApplicantVisibility: "all" | "shortlisted"; appointmentRequestsOutsideShortlist: number; tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number }; newTuitionTutorAlerts?: { enabled: boolean } },
   mutate: vi.fn(),
+  setAlertsEnabled: vi.fn(),
   setOtpEnabled: vi.fn(),
   setOtpDays: vi.fn(),
   resetTrust: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("@/lib/trpc", () => ({
     adminControl: {
       get: { useQuery: () => ({ data: state.data, isLoading: false, isError: false }) },
       setGuardianApplicantVisibility: { useMutation: () => ({ mutate: state.mutate, isPending: false }) },
+      setNewTuitionTutorAlertsEnabled: { useMutation: () => ({ mutate: state.setAlertsEnabled, isPending: false }) },
       setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
       setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
       resetTutorGuardianLoginTrust: { useMutation: () => ({ mutate: state.resetTrust, isPending: false }) },
@@ -45,8 +47,35 @@ import AdminControlEditor from "./AdminControlEditor";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 } };
+  state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 }, newTuitionTutorAlerts: { enabled: true } };
   state.overrides = [];
+});
+
+describe("the new tuition alerts switch", () => {
+  const group = () => within(screen.getByRole("radiogroup", { name: "New tuition alerts to Tutors" }));
+
+  it("marks the switch in force", () => {
+    render(<AdminControlEditor />);
+
+    expect(group().getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+    expect(group().getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("turns the alerts off or on the moment it is picked, and does nothing for the choice already in force", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(group().getByRole("radio", { name: "On" }));
+    expect(state.setAlertsEnabled).not.toHaveBeenCalled();
+    fireEvent.click(group().getByRole("radio", { name: "Off" }));
+    expect(state.setAlertsEnabled).toHaveBeenCalledWith({ enabled: false });
+  });
+
+  it("reads On while the Owner has never chosen, because the phone alert was already going out", () => {
+    state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0 };
+    render(<AdminControlEditor />);
+
+    expect(group().getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+  });
 });
 
 describe("the sign-in code switch", () => {
@@ -62,9 +91,10 @@ describe("the sign-in code switch", () => {
   it("turns the code on or off the moment it is picked", () => {
     render(<AdminControlEditor />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "Off" }));
+    const group = within(screen.getByRole("radiogroup", { name: "Tutor and Guardian sign-in code" }));
+    fireEvent.click(group.getByRole("radio", { name: "Off" }));
     expect(state.setOtpEnabled).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("radio", { name: "On" }));
+    fireEvent.click(group.getByRole("radio", { name: "On" }));
     expect(state.setOtpEnabled).toHaveBeenCalledWith({ enabled: true });
   });
 

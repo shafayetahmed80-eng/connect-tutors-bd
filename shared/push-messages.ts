@@ -13,6 +13,33 @@ export const NEW_TUITION_PUSH = {
 
 const TUTOR_JOB_BOARD_PUSH_URL = "/tutor/dashboard/jobs";
 
+/** A notice's message column holds 360 characters; this leaves room for the part that is never cut. */
+const NEW_TUITION_NOTICE_MAX_CHARS = 340;
+
+/**
+ * The bell notice a Tutor finds when a new tuition goes live where they teach.
+ * The heading is the phone alert's, with the Job ID so a Tutor can tell one from
+ * the next; the line is what the Job Board card says - class, curriculum, place,
+ * salary - so the notice is enough to decide whether to open it.
+ */
+export function newTuitionNotice(input: {
+  publicJobId: string;
+  category: string;
+  classCourse: string;
+  tuitionType: "home" | "online" | "both" | "group" | "package";
+  locationLabel: string | null;
+  budgetAmount: number | null;
+}) {
+  const place = input.tuitionType === "online" ? "Online" : input.locationLabel?.trim() ?? "";
+  const salary = input.budgetAmount && input.budgetAmount > 0 ? `${input.budgetAmount.toLocaleString("en-US")} Taka` : "";
+  const line = [input.classCourse.trim(), input.category.trim(), place, salary].filter(Boolean).join(" · ");
+  const characters = Array.from(line);
+  return {
+    title: `${NEW_TUITION_PUSH.title} — ${input.publicJobId}`,
+    message: characters.length > NEW_TUITION_NOTICE_MAX_CHARS ? `${characters.slice(0, NEW_TUITION_NOTICE_MAX_CHARS - 1).join("").trimEnd()}…` : line,
+  };
+}
+
 /** Opens the Tutor panel Job Board with that tuition's details already open - the same link a sign-in return uses. */
 export function newTuitionPushUrl(publicJobId: string) {
   return `${TUTOR_JOB_BOARD_PUSH_URL}?returnTo=${encodeURIComponent(`/job-board?job=${publicJobId}`)}`;

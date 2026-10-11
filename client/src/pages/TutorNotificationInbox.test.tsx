@@ -25,6 +25,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
+import { newTuitionPushUrl } from "@shared/push-messages";
 
 const note = (over: Record<string, unknown> = {}) => ({
   id: 1,
@@ -123,6 +124,16 @@ describe("the Tutor's notification inbox", () => {
     state.isError = true;
     render(<TutorNotificationInbox />);
     expect(screen.getByRole("alert").textContent).toMatch(/could not be loaded/);
+  });
+
+  it("opens a new-tuition notice on the Job Board with that tuition's details already open", () => {
+    state.items = [note({ type: "new_tuition", title: "নতুন টিউশন জব — 6858", message: "Class 5 · Bangla Medium · Mirpur 10, Dhaka · 9,000 Taka", actionPath: newTuitionPushUrl("6858") })];
+    state.unread = 1;
+    render(<TutorNotificationInbox />);
+
+    expect(screen.getByRole("heading", { name: "নতুন টিউশন জব — 6858" })).toBeTruthy();
+    expect(screen.getByText("Class 5 · Bangla Medium · Mirpur 10, Dhaka · 9,000 Taka")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open" }).getAttribute("href")).toBe(newTuitionPushUrl("6858"));
   });
 
   it("shows an Admin's broadcast to the directory the same way as a lifecycle notice", () => {
