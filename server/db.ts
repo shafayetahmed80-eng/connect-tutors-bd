@@ -175,6 +175,7 @@ import {
   type TutorProfileDraftInput,
   type TutorProfileEditableDraftInput,
 } from "./tutor-profile.validation";
+import { pickDirectoryInstitute } from "./directory-institute";
 import { educationRecordFromRow } from "./tutor-profile-education-record";
 import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 import {
@@ -6086,18 +6087,6 @@ const adminTutorDirectoryFields = {
   // The Tutor ID people see. `tutors.id` is the internal key and is never shown.
   tutorNumber: tutorRegistrations.tutorNumber,
 };
-
-/**
- * The institute an Admin means when they say "প্রতিষ্ঠান": the one on the
- * Tutor's Honours record, falling back to Masters, and only then to the loose
- * `tutors.institution` text the older directory rows carry.
- */
-function pickDirectoryInstitute(
-  records: Array<{ qualificationLevel: string | null; instituteName: string | null }>,
-): string | null {
-  const named = (level: string) => records.find(record => record.qualificationLevel === level && record.instituteName?.trim())?.instituteName ?? null;
-  return named("Honours") ?? named("Masters");
-}
 
 /**
  * Fills in the two directory columns no single join can produce: the institute

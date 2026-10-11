@@ -119,6 +119,80 @@ export function asEducationOption<T extends string>(options: readonly T[], value
 /** Earliest study year a Tutor can claim; matches the legacy passing-year floor. */
 export const MIN_STUDY_YEAR = 1950;
 
+/**
+ * Whether the Education tab holds enough to apply with: any one of Secondary,
+ * Higher Secondary, the University Section or a degree added under it, filled
+ * in completely. Plenty of teachers are SSC-only, so no one section is owed;
+ * one that is started and left half done is simply not counted.
+ *
+ * Both the form and the server read this, so neither can turn back a Tutor the
+ * other would let through. `records` are the education records as the caller
+ * holds them (strings in the form, numbers on the server) and `university` is
+ * the University Section's own details; `isEnabled` says whether the Owner
+ * still shows a field, because a field switched off cannot be asked for.
+ */
+export type EducationSectionSource = {
+  records: ReadonlyArray<Record<string, unknown>>;
+  university: Record<string, unknown>;
+};
+
+export type EducationSectionState = { offered: boolean; complete: boolean };
+
+const hasValue = (value: unknown) => value !== undefined && value !== null && String(value).trim() !== "";
+const hasYear = (value: unknown) => hasValue(value) && isStudyYear(Number(value));
+
+export function educationSectionStatus(source: EducationSectionSource, isEnabled: (registryId: string) => boolean) {
+  const complete = (ids: ReadonlyArray<string>, has: (id: string) => boolean) => ids.every(id => !isEnabled(id) || has(id));
+  const recordOf = (level: string) => source.records.find(record => record.qualificationLevel === level);
+
+  const school = (level: "SSC" | "HSC", blockId: string): EducationSectionState => {
+    const record = recordOf(level);
+    const offered = isEnabled(blockId);
+    return {
+      offered,
+      complete: offered && Boolean(record) && complete(
+        ["educationRecords.instituteName", "educationRecords.degreeExamTitle", "educationRecords.majorGroup", "educationRecords.curriculum", "educationRecords.passingYear"],
+        id => {
+          const key = id.slice("educationRecords.".length);
+          return key === "passingYear" ? hasYear(record![key]) : hasValue(record![key]);
+        },
+      ),
+    };
+  };
+
+  const universityIds = ["universityId", "facultyDepartmentId", "degreeExamTitle", "studyStatus"] as const;
+  const timelineId = source.university.studyStatus === "studying" ? "yearSemester" : "graduationYear";
+  const universityOffered = [...universityIds, "yearSemester", "graduationYear"].some(isEnabled);
+  const university: EducationSectionState = {
+    offered: universityOffered,
+    complete: universityOffered && complete([...universityIds, timelineId], id => id === "graduationYear" ? hasYear(source.university[id]) : hasValue(source.university[id])),
+  };
+
+  const historyOffered = isEnabled("educationRecords");
+  const history: EducationSectionState = {
+    offered: historyOffered,
+    complete: historyOffered && source.records.some(record => {
+      if (record.qualificationLevel === "SSC" || record.qualificationLevel === "HSC") return false;
+      const ids = ["educationRecords.qualificationLevel", "educationRecords.instituteName", "educationRecords.degreeExamTitle", "educationRecords.majorGroup", "educationRecords.curriculum", "educationRecords.studyStartYear"];
+      const filled = complete(ids, id => {
+        const key = id.slice("educationRecords.".length);
+        return key === "studyStartYear" ? hasYear(record[key]) : hasValue(record[key]);
+      });
+      return filled && (record.currentlyStudying === true || hasYear(record.studyEndYear));
+    }),
+  };
+
+  const sections = { secondary: school("SSC", "secondaryRecord"), higherSecondary: school("HSC", "higherSecondaryRecord"), university, history };
+  const offered = Object.values(sections).filter(section => section.offered);
+  return {
+    ...sections,
+    /** False only when the Owner has switched every education section off: nothing is then asked for. */
+    applies: offered.length > 0,
+    /** At least one offered section is complete. */
+    met: offered.some(section => section.complete),
+  };
+}
+
 /** Allows in-progress degrees to name an expected end year a few intakes ahead. */
 export function maxStudyYear(now: Date = new Date()) {
   return now.getUTCFullYear() + 10;

@@ -1,4 +1,4 @@
-import { isStudyYear } from "@shared/tutor-education";
+import { educationSectionStatus } from "@shared/tutor-education";
 import type { ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
@@ -80,6 +80,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   facultyDepartmentId: tutorProfileCopy.fields.facultyDepartment,
   degreeExamTitle: tutorProfileCopy.fields.degreeExamTitle,
   studyStatus: tutorProfileCopy.fields.studyStatus,
+  educationRecords: "Education (at least one section)",
   yearSemester: tutorProfileCopy.fields.yearSemester,
   graduationYear: tutorProfileCopy.fields.graduationYear,
   primarySubjectIds: tutorProfileCopy.fields.primarySubjects,
@@ -96,7 +97,11 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
 };
 
 /** The registry id behind a submission check, where it is not the check's own key. */
-const registryIdByErrorKey: Partial<Record<TutorProfileSubmissionErrorKey, string>> = { tuitionTypes: "tuitionType" };
+const registryIdByErrorKey: Partial<Record<TutorProfileSubmissionErrorKey, string>> = {
+  tuitionTypes: "tuitionType",
+  // Education is one check over several sections, not the Qualification History field that shares its key.
+  educationRecords: "education",
+};
 
 export function registryIdForErrorKey(key: TutorProfileSubmissionErrorKey): string {
   return registryIdByErrorKey[key] ?? key;
@@ -151,16 +156,9 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
   // An online-only Tutor has no place to teach in, so Teaching Areas is theirs to leave empty.
   if (!offersOnlineTuitionOnly(form)) requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
-  if (!form.universityId) errors.universityId = "Select your institute.";
-  if (!form.facultyDepartmentId) errors.facultyDepartmentId = "Select your related department or subject.";
-  if (!form.degreeExamTitle.trim()) errors.degreeExamTitle = "Enter your degree or exam title.";
-  if (!form.studyStatus) errors.studyStatus = "Select your current study status.";
-  // Study status decides which half of the study timeline is required.
-  else if (form.studyStatus === "studying") {
-    if (!form.yearSemester.trim()) errors.yearSemester = "Enter your current year or semester.";
-  } else if (!isStudyYear(Number(form.graduationYear))) {
-    errors.graduationYear = "Enter your graduation year.";
-  }
+  // Education: any one section filled in completely is enough to apply - plenty of teachers are SSC-only.
+  const education = educationStatus(form, config);
+  if (education.applies && !education.met) errors.educationRecords = "Complete at least one education section: Secondary, Higher Secondary or University.";
   requiredSelection(errors, "primarySubjectIds", "Select at least one primary subject.", form.primarySubjectIds);
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
@@ -182,10 +180,17 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
 /** The checks that apply to every Tutor, before the two that depend on other answers. */
 const unconditionalChecks: TutorProfileSubmissionErrorKey[] = [
   "profilePhotoUrl", "name", "dateOfBirth", "headline", "phone", "contactEmail", "currentCityId", "currentLocationId",
-  "universityId", "facultyDepartmentId", "degreeExamTitle", "studyStatus", "primarySubjectIds", "classLevelIds",
-  "curriculumIds", "teachingExperienceYears", "tuitionTypes", "preferredStudentGender", "preferredTeachingDays",
-  "preferredTimeSlots", "feeMin", "feeMax",
+  "primarySubjectIds", "classLevelIds", "curriculumIds", "teachingExperienceYears", "tuitionTypes",
+  "preferredStudentGender", "preferredTeachingDays", "preferredTimeSlots", "feeMin", "feeMax",
 ];
+
+/** What the Education tab holds, section by section, as the form carries it. */
+export function educationStatus(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig) {
+  return educationSectionStatus(
+    { records: form.educationRecords as unknown as ReadonlyArray<Record<string, unknown>>, university: form as unknown as Record<string, unknown> },
+    id => config?.byId.get(id)?.enabled ?? true,
+  );
+}
 
 /** Creates a concise client-side completion cue; the server remains authoritative. */
 export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig): TutorProfileCompletionSummary {
@@ -194,10 +199,10 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;
   // The unconditional checks the Owner's settings still ask for, plus the two
-  // gated ones: the study timeline only applies once a study status is chosen,
-  // and Teaching Areas does not apply to a Tutor who offers only online tuition.
+  // gated ones: Education counts as one while the Owner shows any education
+  // section, and Teaching Areas does not apply to a Tutor who offers only online tuition.
   const totalRequired = unconditionalChecks.filter(key => isDetailRequired(config, key)).length
-    + (form.studyStatus ? 1 : 0)
+    + (educationStatus(form, config).applies ? 1 : 0)
     + (offersOnlineTuitionOnly(form) || !isDetailRequired(config, "teachingAreaIds") ? 0 : 1);
   const completedCount = totalRequired - missingCount;
   const completionPercentage = Math.round((completedCount / totalRequired) * 100);

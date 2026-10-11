@@ -432,19 +432,17 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     const user = userEvent.setup({ document: window.document });
     const setting = (fieldId: string, required: number) => ({ fieldId, label: null, section: null, subGroup: null, sortOrder: null, enabled: null, required });
     trpcMocks.resolvedFields.mockImplementation(() => ({
-      data: resolveTutorProfileFieldConfig([setting("classLevelIds", 0), setting("feeMax", 0), setting("degreeExamTitle", 0), setting("resultGpa", 1)]).all as any[],
+      data: resolveTutorProfileFieldConfig([setting("classLevelIds", 0), setting("feeMax", 0), setting("privateDetails.fatherName", 0), setting("privateDetails.motherName", 1)]).all as any[],
     }));
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
-    // Education: Result / GPA was optional and is now asked for; Degree / Exam Title was asked for and is not.
-    await user.click(screen.getByRole("tab", { name: /Education/ }));
-    await user.click(screen.getByRole("button", { name: "Edit University Section" }));
+    // Family: Mother's Name was optional and is now asked for; Father's Name was asked for and is not.
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
     let dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText(/Result \/ GPA/).getAttribute("aria-required")).toBe("true");
-    expect(within(dialog).getByLabelText(/Result \/ GPA/).closest("label")?.textContent).toContain("*");
-    const sectionTitle = within(dialog).getAllByLabelText(/Degree.+Exam Title/)[0];
-    expect(sectionTitle.getAttribute("aria-required")).toBeNull();
-    expect(sectionTitle.closest("label")?.textContent).not.toContain("*");
+    expect(within(dialog).getByLabelText(/Mother.s Name/).getAttribute("aria-required")).toBe("true");
+    expect(within(dialog).getByLabelText(/Mother.s Name/).closest("label")?.textContent).toContain("*");
+    expect(within(dialog).getByLabelText(/Father.s Name/).getAttribute("aria-required")).toBeNull();
+    expect(within(dialog).getByLabelText(/Father.s Name/).closest("label")?.textContent).not.toContain("*");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     // Tuition: two details the Owner relaxed lose their stars, their neighbours keep them.
@@ -456,6 +454,48 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).getByLabelText(/Maximum Monthly Fee/).getAttribute("aria-required")).toBeNull();
     expect(within(dialog).getByLabelText(/Minimum Monthly Fee/).getAttribute("aria-required")).toBe("true");
     trpcMocks.resolvedFields.mockImplementation(() => ({ data: undefined }));
+  });
+
+  const sscOnlyProfile = {
+    ...completeProfile,
+    universityId: null, facultyDepartmentId: null, degreeExamTitle: null, studyStatus: null, graduationYear: null, highestEducation: null,
+    educationRecords: [{ qualificationLevel: "SSC", instituteName: "Narandia High School", degreeExamTitle: "SSC", majorGroup: "Science", curriculum: "Bangla Version", passingYear: 2016, currentlyStudying: false }],
+  };
+
+  it("lets a Tutor with only an SSC record submit the profile for review", async () => {
+    trpcMocks.saveDraft.mockResolvedValue(undefined);
+    trpcMocks.submitProfile.mockResolvedValue(undefined);
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={sscOnlyProfile as never} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Submit profile for review" }));
+
+    await waitFor(() => expect(trpcMocks.submitProfile).toHaveBeenCalled());
+    expect(screen.queryByText("Complete the highlighted details before submitting for review.")).toBeNull();
+  });
+
+  it("asks for one education section, by name, when there is none", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...sscOnlyProfile, educationRecords: [] } as never} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Submit profile for review" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Complete the highlighted details before submitting for review.")).toBeTruthy();
+    expect(within(dialog).getAllByRole("listitem").map(item => item.textContent)).toContain("Education (at least one section)");
+    expect(trpcMocks.submitProfile).not.toHaveBeenCalled();
+  });
+
+  it("asks for the University ID card only once the University Section is filled in", async () => {
+    const user = userEvent.setup({ document: window.document });
+    for (const [profile, expected] of [[completeProfile, "true"], [sscOnlyProfile, null]] as const) {
+      render(<TutorProfileWorkspace profile={profile as never} onboardingFallback={null} />);
+      await user.click(screen.getByRole("tab", { name: /Credential/ }));
+      await user.click(screen.getByRole("button", { name: "Edit Documents" }));
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByLabelText("Upload University ID card").getAttribute("aria-required")).toBe(expected);
+      cleanup();
+    }
   });
 
   it("names the missing details in the popup it opens when a profile is submitted incomplete", async () => {

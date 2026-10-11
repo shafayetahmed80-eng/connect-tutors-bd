@@ -190,7 +190,7 @@ describe("Tutor Profile form hydration", () => {
       profilePhotoUrl: "Add a profile photo.",
       dateOfBirth: "Enter your date of birth.",
       headline: "Enter a headline with at least 10 characters.",
-      universityId: "Select your institute.",
+      educationRecords: expect.stringContaining("at least one education section"),
       primarySubjectIds: "Select at least one primary subject.",
       feeMin: "Enter a minimum monthly fee.",
     });
@@ -250,20 +250,39 @@ describe("Tutor Profile form hydration", () => {
     });
   });
 
-  it("asks only for the study-timeline field that matches the chosen study status", () => {
+  it("counts the University Section as filled in only with the timeline its study status asks for", () => {
+    // Nothing else on the Education tab is filled in, so the University Section decides.
+    const state = {
+      ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections,
+      universityId: "1", facultyDepartmentId: "11", degreeExamTitle: "BSc",
+    };
+
+    const studying = { ...state, studyStatus: "studying" as const, yearSemester: "", graduationYear: "" };
+    expect(getTutorProfileSubmissionErrors(studying)).toHaveProperty("educationRecords");
+    expect(getTutorProfileSubmissionErrors({ ...studying, yearSemester: "2nd Year/Semester" })).not.toHaveProperty("educationRecords");
+
+    // Graduated: the mirror image - the graduation year is what completes it, the year/semester is not asked for.
+    const graduated = { ...state, studyStatus: "graduated" as const, yearSemester: "", graduationYear: "" };
+    expect(getTutorProfileSubmissionErrors(graduated)).toHaveProperty("educationRecords");
+    expect(getTutorProfileSubmissionErrors({ ...graduated, graduationYear: "2022" })).not.toHaveProperty("educationRecords");
+  });
+
+  it("lets one filled-in section of any kind be enough, and does not count one that is half done", () => {
     const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const school = (level: "SSC" | "HSC", change: Record<string, string> = {}) => ({
+      ...emptyEducationRecord(), qualificationLevel: level, instituteName: "Dhaka College", degreeExamTitle: level, majorGroup: "Science",
+      curriculum: "Bangla Version" as const, passingYear: "2016", ...change,
+    });
+    const withRecords = (...records: ReturnType<typeof school>[]) => ({ ...state, educationRecords: records });
 
-    const studying = getTutorProfileSubmissionErrors({ ...state, studyStatus: "studying", yearSemester: "", graduationYear: "" });
-    expect(studying.yearSemester).toBe("Enter your current year or semester.");
-    expect(studying.graduationYear).toBeUndefined();
-
-    const graduated = getTutorProfileSubmissionErrors({ ...state, studyStatus: "graduated", yearSemester: "", graduationYear: "" });
-    expect(graduated.graduationYear).toBe("Enter your graduation year.");
-    expect(graduated.yearSemester).toBeUndefined();
-
-    // Filling the matching field clears it; the other one is never asked for.
-    expect(getTutorProfileSubmissionErrors({ ...state, studyStatus: "studying", yearSemester: "2nd Year/Semester" })).not.toHaveProperty("yearSemester");
-    expect(getTutorProfileSubmissionErrors({ ...state, studyStatus: "graduated", graduationYear: "2022" })).not.toHaveProperty("graduationYear");
+    expect(getTutorProfileSubmissionErrors(withRecords())).toHaveProperty("educationRecords");
+    // SSC alone is enough - plenty of teachers stopped there.
+    expect(getTutorProfileSubmissionErrors(withRecords(school("SSC")))).not.toHaveProperty("educationRecords");
+    expect(getTutorProfileSubmissionErrors(withRecords(school("HSC")))).not.toHaveProperty("educationRecords");
+    // Started and left half done: not counted...
+    expect(getTutorProfileSubmissionErrors(withRecords(school("SSC", { majorGroup: "" })))).toHaveProperty("educationRecords");
+    // ...and not held against a Tutor who has a whole one beside it.
+    expect(getTutorProfileSubmissionErrors(withRecords(school("SSC", { majorGroup: "" }), school("HSC")))).not.toHaveProperty("educationRecords");
   });
 
   it("normalizes a saved profile back into editable strings before the next draft payload", () => {
@@ -327,13 +346,19 @@ describe("Tutor Profile form hydration", () => {
     expect(form.educationRecords.map(record => record.qualificationLevel)).toEqual(["SSC", "HSC"]);
   });
 
-  it("counts the study timeline as one required detail only once a study status is chosen", () => {
+  it("counts Education as one required detail while any education section is shown, and as none once the Owner hides them all", () => {
     const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const setting = (fieldId: string) => ({ fieldId, label: null, section: null, subGroup: null, sortOrder: null, enabled: 0, required: null });
+    const allHidden = resolveTutorProfileFieldConfig([
+      "secondaryRecord", "higherSecondaryRecord", "educationRecords", "universityId", "facultyDepartmentId", "degreeExamTitle", "studyStatus", "yearSemester", "graduationYear",
+    ].map(setting));
 
-    const withoutStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "" });
-    const withStatus = getTutorProfileCompletionSummary({ ...state, studyStatus: "studying" });
-
-    expect(withStatus.totalRequired).toBe(withoutStatus.totalRequired + 1);
+    const shown = getTutorProfileCompletionSummary(state);
+    const hidden = getTutorProfileCompletionSummary(state, allHidden);
+    expect(shown.totalRequired).toBe(hidden.totalRequired + 1);
+    expect(getTutorProfileSubmissionErrors(state, allHidden)).not.toHaveProperty("educationRecords");
+    // Whatever the study status says, Education is still the one unit.
+    expect(getTutorProfileCompletionSummary({ ...state, studyStatus: "studying" }).totalRequired).toBe(shown.totalRequired);
   });
 
   it("asks for Teaching Areas from everyone except a Tutor who offers only online tuition", () => {

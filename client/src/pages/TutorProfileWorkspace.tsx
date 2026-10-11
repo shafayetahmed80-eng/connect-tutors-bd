@@ -21,7 +21,7 @@ import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
-import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
+import { describeMissingDetails, educationStatus, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
 import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
@@ -1156,7 +1156,8 @@ function TutorProfileWorkspaceBody({
         inputId="tutor-university-id-document"
         label={fieldLabel(fieldId, "University ID card")}
         uploadLabel="Upload Both Side"
-        required
+        // It belongs to the University Section, so only a Tutor who filled that in is asked for it.
+        required={isRequired(fieldId) && educationStatus(form, fieldConfig).university.complete}
         uploaded={form.universityIdDocumentStatus === "uploaded"}
         uploading={uploadingUniversityId}
         onSelectFile={file => void uploadUniversityIdDocument(file)}

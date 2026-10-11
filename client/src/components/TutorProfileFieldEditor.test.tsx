@@ -101,15 +101,15 @@ describe("Tutor Profile field editor", () => {
   });
 
   it("clears an override back to null when a toggle returns to the field's own default", async () => {
-    mocks.rows = [{ fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1, label: null, guardianVisible: null }];
+    mocks.rows = [{ fieldId: "additionalSubjectIds", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1, label: null, guardianVisible: null }];
     render(<TutorProfileFieldEditor />);
 
-    // resultGpa defaults to optional; the stored row already flipped it required.
-    fireEvent.click(screen.getByLabelText("Make optional Result / GPA"));
+    // Additional Subjects defaults to optional; the stored row already flipped it required.
+    fireEvent.click(screen.getByLabelText("Make optional Additional Subjects"));
     fireEvent.click(screen.getByRole("button", { name: "Save 1 change" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith([
-      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null },
+      { fieldId: "additionalSubjectIds", section: null, subGroup: null, sortOrder: null, enabled: null, required: null, label: null, guardianVisible: null },
     ]));
   });
 
