@@ -1,6 +1,6 @@
-import { History } from "lucide-react";
+import { History, X } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { clearRecentSearches, readRecentSearches, rememberRecentSearch } from "@/lib/recentSearches";
+import { clearRecentSearches, forgetRecentSearch, readRecentSearches, rememberRecentSearch } from "@/lib/recentSearches";
 
 /**
  * Wraps a search box and offers what was searched here before, under it.
@@ -27,6 +27,13 @@ export default function RecentSearches({ page, value, onPick, className = "", ch
 
   const typed = value.trim().toLowerCase();
   const shown = items.filter(item => item.toLowerCase() !== typed && (!typed || item.toLowerCase().includes(typed)));
+
+  // One search forgotten. Focus goes back to the box, so a keyboard user who pressed the X
+  // on a row that has just left the page is not dropped on the document.
+  const forget = (term: string) => {
+    setItems(forgetRecentSearch(page, term));
+    rootRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+  };
 
   const pick = (term: string) => {
     onPick(term);
@@ -82,9 +89,12 @@ export default function RecentSearches({ page, value, onPick, className = "", ch
       onMouseDown={event => event.preventDefault()}
       className="absolute left-0 top-full z-30 mt-1 w-full min-w-[15rem] overflow-hidden rounded-xl border border-j-border bg-white p-1 shadow-lg"
     >
-      {shown.map(term => <li key={term}>
-        <button type="button" onClick={() => pick(term)} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm text-j-ink hover:bg-j-surface-sunken focus-visible:bg-j-surface-sunken focus-visible:outline-none">
+      {shown.map(term => <li key={term} className="flex items-center rounded-lg hover:bg-j-surface-sunken focus-within:bg-j-surface-sunken">
+        <button type="button" onClick={() => pick(term)} className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 text-left text-sm text-j-ink focus-visible:outline-none">
           <History aria-hidden="true" className="size-3.5 shrink-0 text-j-ink-faint" /><span className="truncate">{term}</span>
+        </button>
+        <button type="button" aria-label={`Remove ${term} from recent searches`} onClick={() => forget(term)} className="mr-1 grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-faint hover:bg-white hover:text-j-ink focus-visible:bg-white focus-visible:text-j-ink focus-visible:outline-none">
+          <X aria-hidden="true" className="size-3.5" />
         </button>
       </li>)}
       <li className="border-t border-j-border pt-1">
