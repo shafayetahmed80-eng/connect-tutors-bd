@@ -80,7 +80,7 @@ export function PushNotificationToggle() {
       </div>
       <Switch checked={subscribed} disabled={busy} onCheckedChange={onToggle} aria-label="Push notifications for this browser" />
     </div>
-    {showExplainer ? <Modal size="sm" onClose={() => setShowExplainer(false)}>
+    {showExplainer ? <Modal size="dialog" onClose={() => setShowExplainer(false)}>
       <ModalHeader title="নোটিফিকেশন চালু করবেন?" />
       <ModalBody>
         <p className="text-sm text-j-ink-soft">

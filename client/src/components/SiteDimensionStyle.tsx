@@ -35,10 +35,11 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     `  border-top-right-radius: ${radius};`,
     "}",
     "@media (min-width: 640px) {",
-    `  [data-modal-size] { border-radius: ${radius}; max-height: min(92vh, ${limits["modal.maxHeight"]}px); }`,
-    `  [data-modal-size="sm"] { max-width: ${limits["modal.width.sm"]}px; }`,
-    `  [data-modal-size="md"] { max-width: ${limits["modal.width.md"]}px; }`,
-    `  [data-modal-size="lg"] { max-width: ${limits["modal.width.lg"]}px; }`,
+    `  [data-modal-size] { border-radius: ${radius}; max-height: min(92vh, ${limits["modal.height.panel"]}px); }`,
+    // A dialog is as tall as what it says. A panel stands one height whatever it
+    // holds, so a short form and a long one line up when they are opened in turn.
+    `  [data-modal-size="dialog"] { max-width: ${limits["modal.width.dialog"]}px; }`,
+    `  [data-modal-size="panel"] { max-width: ${limits["modal.width.panel"]}px; height: min(86vh, ${limits["modal.height.panel"]}px); }`,
     "}",
     // Single-line controls only. A text box grows with what is typed and keeps
     // its own class, so it is not matched here.

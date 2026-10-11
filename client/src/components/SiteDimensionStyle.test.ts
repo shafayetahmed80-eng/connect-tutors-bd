@@ -135,7 +135,7 @@ describe("the dialog sizes an Owner sets", () => {
       // entrance, a bare percentage inside color-mix for the two opacities.
       expect(css, id).toContain(`${meta.value}${meta.unit}`);
     }
-    expect(modalLimitIds).toHaveLength(12);
+    expect(modalLimitIds).toHaveLength(11);
   });
 
   it("writes the widths inside a media query, because a phone ignores them", () => {
@@ -143,13 +143,27 @@ describe("the dialog sizes an Owner sets", () => {
     const [beforeQuery, insideQuery] = css.split("@media (min-width: 640px) {");
 
     expect(beforeQuery).not.toContain("max-width");
-    for (const size of ["sm", "md", "lg"]) {
+    for (const size of ["dialog", "panel"]) {
       expect(insideQuery).toContain(`[data-modal-size="${size}"]`);
     }
   });
 
-  it("caps a dialog by the shorter of the window and the Owner's number", () => {
-    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.maxHeight": 900 });
+  it("ships a dialog 440 wide and a panel 680 wide and 720 tall", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    expect(css).toContain('[data-modal-size="dialog"] { max-width: 440px; }');
+    expect(css).toContain('[data-modal-size="panel"] { max-width: 680px; height: min(86vh, 720px); }');
+  });
+
+  it("stands every panel one height, so a short form and a long one line up", () => {
+    // A height, not a cap: a cap lets a small panel shrink-wrap its content and
+    // sit beside a tall one as a different rectangle.
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.height.panel": 640 });
+    expect(css).toContain('[data-modal-size="panel"] { max-width: 680px; height: min(86vh, 640px); }');
+    expect(css).not.toContain('[data-modal-size="dialog"] { max-width: 440px; height');
+  });
+
+  it("caps a dialog by the shorter of the window and the panel height", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.height.panel": 900 });
     expect(css).toContain("max-height: min(92vh, 900px)");
   });
 
@@ -202,10 +216,10 @@ describe("the dialog sizes an Owner sets", () => {
   });
   it("moves when the stored numbers move", () => {
     const shipped = buildSiteDimensionCss(defaultSiteLimits());
-    const widened = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.width.lg": 900 });
+    const widened = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.width.panel": 900 });
 
-    expect(shipped).toContain("760px");
+    expect(shipped).toContain("680px");
     expect(widened).toContain("900px");
-    expect(widened).not.toContain("760px");
+    expect(widened).not.toContain("680px");
   });
 });

@@ -256,7 +256,7 @@ export const JOB_BOARD_DISCLOSURE_NOTICE = "Only Student Gender may be shown. St
  * so, since the Tutor's own gender is fixed and cannot be changed to fit it.
  */
 function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mismatchNote: string | null; busy: boolean; onConfirm: () => void; onClose: () => void }) {
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title="Apply for this tuition?" />
     <ModalBody>
       <div className="flex items-start gap-3">
@@ -276,7 +276,7 @@ function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mism
 
 /** What follows a successful application: not a promise of a match, only that it was sent and what happens next. */
 function JobBoardApplySuccess({ onClose }: { onClose: () => void }) {
-  return <Modal size="sm" onClose={onClose}>
+  return <Modal size="dialog" onClose={onClose}>
     <ModalHeader title="Application sent" />
     <ModalBody>
       <div className="flex flex-col items-center py-2 text-center">

@@ -275,7 +275,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       }}
     /> : null}
 
-    {statusJob && getGuardianRequestLifecycle(statusJob).key === "pending" ? <Modal size="sm" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
+    {statusJob && getGuardianRequestLifecycle(statusJob).key === "pending" ? <Modal size="dialog" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
       <ModalHeader title={`Change status of Job ID ${jobIdForRequest(statusJob.id)}`} />
       <ModalBody>
         <button

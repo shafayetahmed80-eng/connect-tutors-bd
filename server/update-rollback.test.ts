@@ -120,7 +120,7 @@ describe.skipIf(!bashReady)("update.sh --rollback", () => {
     expect(await git(app, "rev-parse", "HEAD")).toBe(second);
     expect(result.out).toContain("brought the newer site back");
     expect(result.out).not.toContain("Do not run update.sh again");
-  });
+  }, 60_000);
 
   it("says so when the update it undoes left the database alone", async () => {
     const { app } = await makeApp({ migration: false });

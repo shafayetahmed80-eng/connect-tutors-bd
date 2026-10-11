@@ -3,7 +3,7 @@ import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 
 /**
  * The shell the Hire a tutor journey lives in — a thin caller of the shared
- * `<Modal>` at its widest tier.
+ * `<Modal>` as a panel.
  *
  * It carries a header and a scrolling body and nothing else: the journey brings
  * its own step tracker and its own Back / Continue / Send request row, so a
@@ -24,7 +24,7 @@ export function GuardianHireSheet({
   children: React.ReactNode;
 }) {
   return (
-    <Modal size="lg" onClose={onClose} decor="water">
+    <Modal size="panel" onClose={onClose}>
       <ModalHeader title={title} />
       <ModalBody>{children}</ModalBody>
     </Modal>

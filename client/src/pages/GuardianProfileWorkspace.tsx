@@ -331,7 +331,7 @@ export default function GuardianProfileWorkspace() {
       </div>
 
       {editingTab === "personal" ? (
-        <Modal size="md" onClose={() => setEditingTab(null)} busy={updateMutation.isPending}>
+        <Modal size="panel" onClose={() => setEditingTab(null)} busy={updateMutation.isPending}>
           <ModalHeader title="Personal Information" eyebrow="Edit section" srPrefix="Edit" />
           <ModalBody className="space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
@@ -373,7 +373,7 @@ export default function GuardianProfileWorkspace() {
       ) : null}
 
       {editingTab === "emergency" ? (
-        <Modal size="md" onClose={() => setEditingTab(null)} busy={updateMutation.isPending}>
+        <Modal size="panel" onClose={() => setEditingTab(null)} busy={updateMutation.isPending}>
           <ModalHeader title="Emergency Contact" eyebrow="Edit section" srPrefix="Edit" />
           <ModalBody className="space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">

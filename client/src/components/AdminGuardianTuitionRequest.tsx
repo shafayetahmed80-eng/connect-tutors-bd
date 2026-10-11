@@ -89,7 +89,7 @@ export function ApproveGuardianTuitionRequestDialog({ request, jobId, tutorName,
         : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."
       : "The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.";
 
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title={title} meta={`${tuitionRequestWaitingLabels[request.type]} · Job ID ${jobId}`} />
     <ModalBody className="space-y-3">
       {request.reason ? <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">

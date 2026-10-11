@@ -243,7 +243,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       <TutorProfileSummaryView sections={sections} />
     </SiteContentProvider>
 
-    {moderating ? <Modal size="md" onClose={() => setModerating(false)} busy={moderation.isPending}>
+    {moderating ? <Modal size="dialog" onClose={() => setModerating(false)} busy={moderation.isPending}>
       <ModalHeader title={`Moderate ${profile.name}`} />
       <ModalBody className="space-y-4">
         <div className="flex items-start gap-3">

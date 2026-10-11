@@ -235,7 +235,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     {post.isPending ? (editing ? "Updating…" : "Posting…") : editing ? "Update" : "Post"}
   </button>;
 
-  return <Modal size="lg" onClose={onClose} busy={post.isPending}>
+  return <Modal size="panel" onClose={onClose} busy={post.isPending}>
     {/* On a laptop the Post button sits in the header, top right. On a phone
         the header has no room for it, so it moves to the foot instead. */}
     <ModalHeader title={editing ? `Edit Job ID ${jobIdForRequest(draft.requestId)}` : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />

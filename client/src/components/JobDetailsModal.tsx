@@ -88,7 +88,7 @@ export default function JobDetailsModal({
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
   return (
-    <Modal size="md" onClose={onClose}>
+    <Modal size="panel" onClose={onClose}>
       <ModalHeader
         title={job.title}
         meta={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 tabular-nums">

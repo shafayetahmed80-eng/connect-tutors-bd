@@ -92,21 +92,27 @@ describe("Modal", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("names its width tier for the stylesheet, and defaults to md", () => {
-    // The pixel widths are the Owner's, set in Admin > Modals and applied by
-    // SiteDimensionStyle against this tag — a media query cannot live in an
-    // inline style, and a dialog is a full-width sheet on a phone regardless.
+  it("names its size for the stylesheet, and is a panel unless it says it is a dialog", () => {
+    // The pixel widths and the panel height are the Owner's, set in Admin >
+    // Modals and applied by SiteDimensionStyle against this tag — a media query
+    // cannot live in an inline style, and either is a full-width sheet on a phone.
     const { rerender } = render(
       <Modal onClose={vi.fn()}><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>,
     );
     const panel = () => screen.getByRole("dialog");
-    expect(panel().getAttribute("data-modal-size")).toBe("md");
+    expect(panel().getAttribute("data-modal-size")).toBe("panel");
 
-    rerender(<Modal onClose={vi.fn()} size="sm"><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
-    expect(panel().getAttribute("data-modal-size")).toBe("sm");
+    rerender(<Modal onClose={vi.fn()} size="dialog"><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
+    expect(panel().getAttribute("data-modal-size")).toBe("dialog");
+  });
 
-    rerender(<Modal onClose={vi.fn()} size="lg"><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
-    expect(panel().getAttribute("data-modal-size")).toBe("lg");
+  it("stops at 92% of the visible window on a phone, not of the largest one the browser could show", () => {
+    // `vh` is the window with the browser's bars tucked away; with the address
+    // bar showing, a sheet 92vh tall runs under it and its footer is out of reach.
+    renderModal();
+
+    expect(screen.getByRole("dialog").className).toContain("max-h-[92dvh]");
+    expect(screen.getByRole("dialog").className).not.toContain("92vh");
   });
 
   it("dresses the panel as warm paper — no gradient, colour ring, glow, or blur", () => {
@@ -129,7 +135,7 @@ describe("Modal", () => {
     const dialog = screen.getByRole("dialog");
     const backdrop = dialog.parentElement!;
 
-    expect(dialog.getAttribute("data-modal-size")).toBe("md");
+    expect(dialog.getAttribute("data-modal-size")).toBe("panel");
     expect(backdrop.hasAttribute("data-modal-backdrop")).toBe(true);
 
     for (const owned of [/rounded-/, /shadow-/, /duration-/, /max-w-/]) {
@@ -155,15 +161,32 @@ describe("Modal", () => {
   });
 });
 
-describe("the water backdrop", () => {
-  it("can be kept to laptops, so a long form on a phone stays plain white", () => {
-    const { container, rerender } = render(<Modal onClose={() => {}} decor="water-wide"><ModalHeader title="Edit" /></Modal>);
-    const sketch = () => document.querySelector("[role=dialog] > span[aria-hidden=true]") as HTMLElement | null;
-    expect(sketch()?.className).toContain("max-sm:hidden");
-    expect(screen.getByRole("heading", { name: "Edit" }).className).toContain("sm:text-[#0f4c81]");
+describe("the plain surface", () => {
+  it("draws nothing behind the body, on a laptop or a phone: no water, no rings", () => {
+    render(<Modal onClose={() => {}}><ModalHeader title="Edit" /><ModalBody>x</ModalBody><ModalFooter>f</ModalFooter></Modal>);
+    const dialog = screen.getByRole("dialog");
 
-    rerender(<Modal onClose={() => {}} decor="water"><ModalHeader title="Edit" /></Modal>);
-    expect(sketch()?.className).not.toContain("max-sm:hidden");
-    void container;
+    expect(Array.from(dialog.querySelectorAll("svg")).filter(svg => !svg.closest("button"))).toHaveLength(0);
+    expect(dialog.querySelector("[aria-hidden=true].absolute")).toBeNull();
+    expect(document.querySelector("[data-modal-body]")?.className).toContain("bg-background");
+  });
+
+  it("keeps the header and footer as white bands on a laptop and ash on a phone, closed off by a hairline", () => {
+    render(<Modal onClose={() => {}}><ModalHeader title="Edit" /><ModalBody>x</ModalBody><ModalFooter>f</ModalFooter></Modal>);
+    const header = screen.getByRole("heading", { name: "Edit" }).closest("div[class*=border-b]") as HTMLElement;
+    const footer = screen.getByText("f").closest("div[class*=border-t]") as HTMLElement;
+
+    for (const band of [header, footer]) {
+      expect(band.className).toContain("bg-white");
+      expect(band.className).toContain("max-sm:bg-[#eef2f5]");
+    }
+  });
+
+  it("lets a long title run to two lines on a phone and keeps one line above it", () => {
+    render(<Modal onClose={() => {}}><ModalHeader title="Need English Medium Tutor for O Level Student - 4 Days / Week" /></Modal>);
+    const title = screen.getByRole("heading");
+
+    expect(title.className).toContain("line-clamp-2");
+    expect(title.className).toContain("sm:line-clamp-1");
   });
 });

@@ -231,7 +231,7 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
     : { ...filters, title: title.trim(), message: message.trim() });
 
   if (confirming) {
-    return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+    return <Modal size="dialog" onClose={onClose} busy={notify.isPending}>
       <ModalHeader title="Send this to Guardians?" meta={recipientLine} />
       <ModalBody className="space-y-3">
         <p className="text-sm leading-6 text-j-ink-soft">This is exactly what every recipient will see in their Notifications tab. It cannot be recalled once sent.</p>
@@ -252,7 +252,7 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
     </Modal>;
   }
 
-  return <Modal size="sm" onClose={onClose} busy={notify.isPending}>
+  return <Modal size="dialog" onClose={onClose} busy={notify.isPending}>
     <ModalHeader title="Notify these Guardians" meta={recipientLine} />
     <ModalBody className="space-y-4">
       <div>

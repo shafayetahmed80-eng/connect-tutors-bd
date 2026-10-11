@@ -47,7 +47,7 @@ export function GuardianTuitionRequestDialog({ type, jobId, tutorLabel, busy, on
       ? `Ask to remove ${tutorLabel ?? "the Tutor"}?`
       : `Ask to cancel Job ID ${jobId}?`;
 
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title={title} meta={type === "cancel_tuition" ? undefined : `Job ID ${jobId}`} />
     {needsReason ? <ModalBody>
       <label className="block text-sm font-bold text-j-ink-strong">

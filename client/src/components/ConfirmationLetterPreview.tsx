@@ -50,7 +50,7 @@ function LetterPdfModal({ title, meta, label, file, onClose, busy, notice, actio
   const loading = file.isLoading || (bytes !== null && drawing === "waiting");
   const ready = bytes && file.data ? { bytes, fileName: file.data.fileName } : null;
 
-  return <Modal size="lg" onClose={onClose} busy={busy}>
+  return <Modal size="panel" onClose={onClose} busy={busy}>
     <ModalHeader title={title} meta={meta} />
     <ModalBody className="bg-j-surface-sunken">
       {notice}

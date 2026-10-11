@@ -193,7 +193,7 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
       totalItems={list.data?.total}
     />
 
-    {approving && approving.type === "appoint" ? <Modal size="sm" onClose={() => setApproving(null)} busy={appointApprove.isPending}>
+    {approving && approving.type === "appoint" ? <Modal size="dialog" onClose={() => setApproving(null)} busy={appointApprove.isPending}>
       <ModalHeader title={`Appoint ${approving.tutorName ?? "this Tutor"}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(approving.requestId)}`} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>

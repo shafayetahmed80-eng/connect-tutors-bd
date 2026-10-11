@@ -140,7 +140,7 @@ function TutorPaymentModal({ item, requestId, onClose }: { item: TutorTuition | 
   });
 
   const charge = item?.charge ?? null;
-  return <Modal size="lg" onClose={onClose} busy={report.isPending}>
+  return <Modal size="panel" onClose={onClose} busy={report.isPending}>
     <ModalHeader title={`Payments · Job ID ${jobIdForRequest(requestId)}`} />
     <ModalBody>
       <div className="space-y-5">

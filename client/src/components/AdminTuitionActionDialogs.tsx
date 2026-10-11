@@ -22,7 +22,7 @@ export function TutorMoveDialog({ move, tutorName, tutorNumber, jobId, busy, onC
   onClose: () => void;
   onDecide: () => void;
 }) {
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader
       title={move === "appoint" ? `Appoint ${tutorName}?` : move === "confirm" ? `Confirm ${tutorName}?` : `Remove ${tutorName}?`}
       meta={`Tutor ID ${tutorNumber ?? "not set"} · Job ID ${jobId}`}
@@ -62,7 +62,7 @@ export function CancelTuitionDialog({ jobId, guardianName, busy, onClose, onCanc
   onCancel: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
-  return <Modal size="sm" onClose={onClose} busy={busy}>
+  return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader title={`Cancel Job ID ${jobId}?`} meta={guardianName ? `Guardian ${guardianName}` : undefined} />
     <ModalBody className="space-y-3">
       <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>

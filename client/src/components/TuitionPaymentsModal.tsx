@@ -55,7 +55,7 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
 
   const charge = ledger.data?.charge ?? null;
 
-  return <Modal size="lg" onClose={onClose} busy={record.isPending || decide.isPending || chooseKind.isPending}>
+  return <Modal size="panel" onClose={onClose} busy={record.isPending || decide.isPending || chooseKind.isPending}>
     <ModalHeader title={`Payments · Job ID ${jobIdForRequest(requestId)}`} />
     <ModalBody>
       {ledger.isLoading ? <div className="flex min-h-32 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading payments…</div> : null}

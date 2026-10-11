@@ -270,7 +270,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
       onPageSize={next => updateFilter({ pageSize: next as TutorMatchingFilters["pageSize"] })}
     />
 
-    {approving ? <Modal size="sm" onClose={() => setApproving(null)} busy={approve.isPending}>
+    {approving ? <Modal size="dialog" onClose={() => setApproving(null)} busy={approve.isPending}>
       <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
@@ -291,7 +291,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
       onApprove={() => guardianAnswer.approve.mutate({ guardianRequestId: guardianRequest.id })}
     /> : null}
 
-    {cancelling ? <Modal size="sm" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
+    {cancelling ? <Modal size="dialog" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
       <ModalHeader title={`Cancel Job ID ${jobIdForRequest(requestId)}?`} meta={job ? `Guardian ${job.guardianName}` : undefined} />
       <ModalBody className="space-y-3">
         <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>
@@ -316,7 +316,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
       </ModalFooter>
     </Modal> : null}
 
-    {deciding ? <Modal size="sm" onClose={() => setDeciding(null)} busy={actionPending}>
+    {deciding ? <Modal size="dialog" onClose={() => setDeciding(null)} busy={actionPending}>
       <ModalHeader
         title={deciding.action === "appoint" ? `Appoint ${deciding.tutor.name}?` : deciding.action === "confirm" ? `Confirm ${deciding.tutor.name}?` : `Remove ${deciding.tutor.name}?`}
         meta={`Tutor ID ${deciding.tutor.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`}
