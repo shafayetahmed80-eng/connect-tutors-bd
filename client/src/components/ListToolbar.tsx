@@ -1,5 +1,63 @@
 import { LayoutGrid, SlidersHorizontal, XCircle } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+
+const SLIDE_MS = 200;
+
+/** A page that asks for less motion, or an environment that cannot say (a test), gets none. */
+function slidesAllowed() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+}
+
+type SlidePhase = "closed" | "opening" | "expanding" | "open" | "closing";
+
+/**
+ * Opens and closes a panel with a short slide: it grows from nothing to its own
+ * height while it fades in, and shrinks back the same way, so the list below it
+ * moves smoothly instead of jumping.
+ *
+ * The panel is still mounted only while it is open (or on its way out), so what
+ * it asks the server for - the filter options - waits for the first open, as it
+ * did before. It clips its content only while it is moving: at rest nothing is
+ * clipped, because the Clear and Apply bar sticks to the foot of a phone's
+ * screen and a clipping ancestor would stop it. With reduced motion it opens
+ * and closes at once.
+ */
+export function SlidePanel({ open, children }: { open: boolean; children: ReactNode }) {
+  const [phase, setPhase] = useState<SlidePhase>(open ? "open" : "closed");
+
+  // Before paint, so a panel that is not animating never shows a frame of the shut style.
+  useLayoutEffect(() => {
+    if (!slidesAllowed()) {
+      setPhase(open ? "open" : "closed");
+      return;
+    }
+    if (open) {
+      // Paint it shut first, then let it grow: two frames, or the browser has no starting point to move from.
+      setPhase("opening");
+      let second = 0;
+      const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => setPhase("expanding")); });
+      return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+    }
+    setPhase(current => (current === "closed" ? current : "closing"));
+  }, [open]);
+
+  useEffect(() => {
+    if (phase !== "expanding" && phase !== "closing") return;
+    const timer = window.setTimeout(() => setPhase(phase === "expanding" ? "open" : "closed"), SLIDE_MS + 30);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
+
+  if (phase === "closed" && !open) return null;
+  // The render where `open` has just turned true is shut until the effect above says otherwise.
+  const shown: SlidePhase = phase === "closed" ? "opening" : phase;
+  const grown = shown === "expanding" || shown === "open";
+  return <div
+    data-slide={shown}
+    className={`grid transition-[grid-template-rows,opacity] duration-200 ease-[cubic-bezier(.22,.61,.36,1)] ${grown ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+  >
+    <div className={`min-h-0 ${shown === "open" ? "" : "overflow-hidden"}`}>{children}</div>
+  </div>;
+}
 
 /**
  * The card that heads a list of tuitions: what the list is, how many are in it,

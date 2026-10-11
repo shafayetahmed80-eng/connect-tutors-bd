@@ -1,5 +1,5 @@
 import { DateField, FilterSelect, FilterTextBox } from "@/components/JobFilterFields";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { FilterPanelFrame, ListToolbarCard, SlidePanel } from "@/components/ListToolbar";
 import { useAppliedFilters } from "@/components/useAppliedFilters";
 import {
   DEFAULT_ADMIN_CHANGE_REQUEST_FILTERS,
@@ -112,7 +112,7 @@ export function AdminRequestFilterBar({ filters, eyebrow, count, loading, captio
       panelId={panelId}
     />
 
-    {filters.open ? <FilterPanelFrame
+    <SlidePanel open={filters.open}><FilterPanelFrame
       id={panelId}
       ariaLabel={panelLabel}
       total={count}
@@ -125,6 +125,6 @@ export function AdminRequestFilterBar({ filters, eyebrow, count, loading, captio
       alerts={filters.alerts}
     >
       {children}
-    </FilterPanelFrame> : null}
+    </FilterPanelFrame></SlidePanel>
   </>;
 }
