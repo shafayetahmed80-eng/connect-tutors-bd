@@ -622,7 +622,7 @@ function TutorProfileWorkspaceBody({
   });
   const addEducationRecord = () => {
     // Honours and Masters are each taken once; with both taken there is nothing to add.
-    if (historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel)).length === 0) return;
+    if (historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel), form.highestEducation).length === 0) return;
     const newIndex = form.educationRecords.length;
     setForm(current => ({ ...current, educationRecords: [...current.educationRecords, emptyEducationRecord()] }));
     setOpenQualificationIndices(current => {
@@ -1223,7 +1223,7 @@ function TutorProfileWorkspaceBody({
     // another qualification" only once an Owner makes the history required.
     const marked = (id: string) => (school || historyRequired) && isRequired(id);
     // A level another qualification already holds is not offered again.
-    const levelsLeft = historyLevelsLeft(form.educationRecords.filter((_, otherIndex) => otherIndex !== index).map(other => other.qualificationLevel));
+    const levelsLeft = historyLevelsLeft(form.educationRecords.filter((_, otherIndex) => otherIndex !== index).map(other => other.qualificationLevel), form.highestEducation);
     switch (fieldId) {
       case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker={marked(fieldId)} options={historyQualificationLevels.filter(level => level === record.qualificationLevel || levelsLeft.includes(level))} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
       // A school or college is chosen from the list, or created for this Tutor alone.
@@ -1305,7 +1305,7 @@ function TutorProfileWorkspaceBody({
         </div> : null}
       </div>;
     })}
-    {historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel)).length > 0
+    {historyLevelsLeft(form.educationRecords.map(record => record.qualificationLevel), form.highestEducation).length > 0
       ? <Button type="button" variant="outline" onClick={addEducationRecord} className="rounded-xl border-tp-accent-soft text-tp-accent"><Plus size={16} /> Add another qualification</Button>
       : null}
   </div>;
@@ -1340,6 +1340,10 @@ function TutorProfileWorkspaceBody({
     }
     if (panel === "qualifications") {
       if (!fields.some(field => field.id === "educationRecords")) return null;
+      // With Honours in the University Section there is no earlier degree to add, so the
+      // history has nothing to show until a record from before that already exists.
+      const hasHistoryRecord = form.educationRecords.some(record => !isSchoolQualification(record.qualificationLevel));
+      if (!hasHistoryRecord && historyLevelsLeft([], form.highestEducation).length === 0) return null;
       return renderQualificationHistory(fields.filter(field => field.id.startsWith("educationRecords.")));
     }
     if (panel === "documents") return <div>{fields.map(field => <React.Fragment key={field.id}>{renderField(field.id)}</React.Fragment>)}</div>;
