@@ -24,7 +24,9 @@ import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseS
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
-import { guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
+import { GUARDIAN_REQUEST_DRAFT_VERSION, guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
+import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom, type LearningNeedsLimits } from "@/components/LearningNeedsField";
+import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
 /** A little under the server's 20-minute intake handoff, so a reused number never outlives its cookie. */
@@ -50,346 +52,17 @@ export function parseGuardianRequestSubjects(value: unknown): string[] {
   }
 }
 
-const guardianDefaultSubjects = ["Bangla", "English", "Mathematics", "Science", "Physics", "Chemistry", "Biology", "ICT"] as const;
-export const guardianEarlyYearsSubjects = ["All", "English", "Bangla", "General Maths", "Handwriting", "Drawing", "Arts", "Religious Studies"] as const;
-export const guardianEnglishMediumEarlyYearsSubjects = [...guardianEarlyYearsSubjects, "Others"] as const;
-const guardianEarlyYearsLevels = ["Pre-Schooling", "Play", "Nursery", "KG"] as const;
-export const guardianEnglishMediumClassOneToFiveSubjects = ["All", "Maths", "English Literature", "English", "Bangla", "Science", "Islamic Studies", "History", "ICT", "Social Science", "Bangladesh & Global Studies", "Geography", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishMediumClassOneToFiveLevels = ["Standard 1", "Standard 2", "Standard 3", "Standard 4", "Standard 5"] as const;
-export const guardianEnglishMediumClassSixToSevenSubjects = ["All", "Physics", "Chemistry", "Biology", "Maths", "English Literature", "English", "Bangla", "Science", "Business Studies", "Islamic Studies", "History", "ICT", "Social Science", "Bangladesh & Global Studies", "Economics", "Geography", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishMediumClassSixToSevenLevels = ["Standard 6", "Standard 7"] as const;
-export const guardianEnglishMediumStandardEightToNineAndOLevelSubjects = ["All", "Physics", "Chemistry", "Maths", "Maths B", "Maths D", "Additional Maths", "Biology", "English Literature", "English Language", "Bangla", "ICT", "Accounting", "Business Studies", "Economics", "Bangladesh Studies", "Commerce", "Islamic Studies", "Law", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishMediumStandardEightToNineAndOLevelLevels = ["Standard 8", "Standard 9", "O Level"] as const;
-export const guardianEnglishMediumALevelSubjects = ["Chemistry", "Maths", "Maths B", "Maths D", "Additional Maths", "Biology", "Physics", "Environmental Systems and Societies", "Psychology", "English", "ICT", "Geography", "Economics", "Sociology", "Law", "Business Studies", "Commerce", "English Literature", "Accounting", "Bangla", "Politics", "Computer Science", "Finance", "Statistics", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishMediumALevels = ["A Level (AS)", "A Level (A2)"] as const;
-export const guardianBanglaMediumClassOneToEightSubjects = ["All", "English", "Bangla", "BGS", "General Maths", "General Science", "ICT", "Religious Studies", "Hinduism Religious Studies", "Buddhism Religious Studies", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianBanglaMediumClassOneToEightLevels = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8"] as const;
-export const guardianEnglishVersionClassOneToEightSubjects = ["All", "English", "Bangla", "BGS", "General Maths", "General Science", "Social Science", "General Knowledge", "ICT", "History", "Geography", "Home Economics", "Agricultural Education", "Religious Studies", "Hinduism Religious Studies", "Buddhism Religious Studies", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishVersionClassOneToEightLevels = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8"] as const;
-export const guardianEnglishVersionClassNineToTenSubjects = ["Physics", "Chemistry", "Biology", "General Maths", "Higher Maths", "Social Science", "Bangla", "English", "General Science", "Computer Studies", "BGS", "Religious Studies", "Accounting", "Finance & Banking", "Management", "Business Entrepreneurship", "Economics", "Civics", "Home Economics", "Agricultural Education", "History", "Geography", "Psychology", "Physical Education", "Health & Sports", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianEnglishVersionClassNineToTenLevels = ["Class 9", "Class 10"] as const;
-export const guardianBanglaMediumClassNineToTenSubjects = ["Physics", "Chemistry", "Biology", "General Maths", "Higher Maths", "Social Science", "Bangla", "English", "General Science", "ICT", "BGS", "Religious Studies", "Accounting", "Finance & Banking", "Management", "Business Entrepreneurship", "Economics", "Civics", "Home Economics", "Agricultural Education", "History", "Geography", "Psychology", "Physical Education", "Health & Sports", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianBanglaMediumClassNineToTenLevels = ["Class 9", "Class 10"] as const;
-export const guardianBanglaMediumHscSubjects = ["Physics", "Chemistry", "Biology", "Higher Maths", "ICT", "Accounting", "Finance", "Management", "Production Management & Marketing", "Statistics", "English", "Bangla", "Religious Studies", "Political Science", "History", "Islamic History and Culture", "Social Work", "Logic", "Agricultural Education", "Economics", "Sociology", "Geography", "Commercial Geography", "Psychology", "Civics", "All", "Others"] as const;
-const guardianBanglaMediumHscLevels = ["HSC- 1st Year", "HSC- 2nd Year"] as const;
-export const guardianEnglishVersionHscSubjects = ["Physics", "Chemistry", "Biology", "Higher Maths", "ICT", "Accounting", "Finance", "Management", "Production Management & Marketing", "Statistics", "English", "Bangla", "Religious Studies", "Political Science", "History", "Islamic History and Culture", "Social Work", "Logic", "Agricultural Education", "Economics", "Sociology", "Geography", "Commercial Geography", "Psychology", "Civics", "All", "Others"] as const;
-const guardianEnglishVersionHscLevels = ["HSC- 1st Year", "HSC- 2nd Year"] as const;
-export const guardianMadrasaPlayToClassEightSubjects = ["All", "English", "Bangla", "BGS", "General Maths", "General Science", "ICT", "Quran Majid and Tajweed", "Akayeed and Fiqh", "Arabic", "Agriculture Education", "Home Economics", "Work and Life Oriented Education", "Hadith Sharif", "Physical Education", "Health & Sport", "Handwriting", "Drawing", "Arts", "Others"] as const;
-const guardianMadrasaPlayToClassEightLevels = ["Play", "Nursery", "KG", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8"] as const;
-export const guardianMadrasaClassNineToTenSubjects = ["Physics", "Chemistry", "Biology", "Higher Maths", "ICT", "Home Economics", "Civics", "Arabic", "Akayeed and Fiqh", "Quran Majid and Tajweed", "Peace and Conflict Studies", "Career Studies", "All", "Physical Education", "Health & Sports", "Islamic studies", "Bangladesh and Global Studies", "Agriculture Education", "General Maths", "English", "Bangla"] as const;
-const guardianMadrasaClassNineToTenLevels = ["Class 9", "Class 10"] as const;
-export const guardianMadrasaAlimSubjects = ["Physics", "Chemistry", "Biology", "Higher Maths", "ICT", "Civics", "Farsi", "Urdu", "Economics", "English", "Quran Majid and Tajweed", "Hadith Sharif", "Al Fiqh", "Arabic", "Islamic History", "Balagat and Mantik", "Bangla"] as const;
-const guardianMadrasaAlimLevels = ["Alim- 1st Year", "Alim- 2nd Year"] as const;
-export const guardianSchoolAdmissionSubjects = ["All", "English", "Bangla", "BGS", "General Maths", "General Science", "General Knowledge", "ICT", "Others"] as const;
-const guardianSchoolAdmissionLevels = ["School Admission Test"] as const;
-export const guardianPublicUniversityAdmissionSubjects = ["Physics", "Chemistry", "Biology", "Higher Maths", "ICT", "General Knowledge", "Bangla", "English", "Management", "Business Principles", "Marketing", "Business Entrepreneurship", "Economics", "Civics", "Analytical Skills", "Finance & Banking", "Accounting", "All"] as const;
-const guardianPublicUniversityAdmissionLevels = ["Public University Admission Test"] as const;
-export const guardianPrivateUniversityAdmissionSubjects = ["Physics", "Chemistry", "Biology", "Maths", "English", "Bangla", "General Knowledge", "Accounting", "Management", "Analytical Skill"] as const;
-const guardianPrivateUniversityAdmissionLevels = ["Private University Admission Test"] as const;
-export const guardianEngineeringUniversityAdmissionSubjects = ["Physics", "Chemistry", "Higher Maths", "ICT", "English", "Bangla", "General Knowledge"] as const;
-const guardianEngineeringUniversityAdmissionLevels = ["Engineering University Admission Test"] as const;
-export const guardianMedicalCollegeAdmissionSubjects = ["Physics", "Chemistry", "Biology", "ICT", "English", "Bangla", "General Knowledge", "All"] as const;
-const guardianMedicalCollegeAdmissionLevels = ["Medical College Admission Test"] as const;
-export const guardianIbaAdmissionSubjects = ["Accounting", "Finance", "Management", "Production Management & Marketing", "Statistics", "English", "Bangla", "All"] as const;
-const guardianIbaAdmissionLevels = ["IBA Admission"] as const;
-export const guardianCurriculumCategories = [
-  "Bangla Medium",
-  "English Medium",
-  "English Version",
-  "Religious Studies",
-  "Admission Test",
-  "Arts",
-  "Language Learning",
-  "Test Preparation",
-  "Professional Skill Development",
-  "Special Skill Development",
-  "Special Child Education",
-  "University Help",
-  "Madrasa Medium",
-] as const;
+export * from "@/lib/guardianLearningCatalog";
+import {
+  getGuardianCurriculumTypesForCategory,
+  getGuardianCurriculumTypeForCategoryChange,
+  getGuardianLevelsForCurriculum,
+  getGuardianSelectedSubjectsForLearningNeed,
+  getGuardianSubjectsForLearningNeed,
+  guardianCurriculumCategories,
+} from "@/lib/guardianLearningCatalog";
+
 const categories = guardianCurriculumCategories;
-const fallbackGuardianLevels = ["Class 1–5", "Class 6–8", "Class 9–10", "SSC", "HSC", "University"] as const;
-const banglaAndEnglishVersionLevels = [
-  "Pre-Schooling",
-  "Play",
-  "Nursery",
-  "KG",
-  "Class 1",
-  "Class 2",
-  "Class 3",
-  "Class 4",
-  "Class 5",
-  "Class 6",
-  "Class 7",
-  "Class 8",
-  "Class 9",
-  "Class 10",
-  "HSC- 1st Year",
-  "HSC- 2nd Year",
-] as const;
-
-export const guardianLevelsByCurriculum = {
-  "Bangla Medium": banglaAndEnglishVersionLevels,
-  "English Version": banglaAndEnglishVersionLevels,
-  "English Medium": [
-    "Pre-Schooling",
-    "Nursery",
-    "KG",
-    "Play",
-    "Standard 1",
-    "Standard 2",
-    "Standard 3",
-    "Standard 4",
-    "Standard 5",
-    "Standard 6",
-    "Standard 7",
-    "Standard 8",
-    "Standard 9",
-    "O Level",
-    "A Level (AS)",
-    "A Level (A2)",
-  ],
-  "University Help": [
-    "BA (English)",
-    "BBA",
-    "MBBS",
-    "BS-Biochemistry",
-    "BS-Biotechnology",
-    "BS-Microbiology",
-    "B.Pharm",
-    "B.Sc-EEE",
-    "B.Sc-CSE",
-    "B.Sc-Civil Engineering",
-    "B.Sc-Mathematics",
-    "B.Sc-Mechanical Engineering",
-    "BSS-Economics",
-    "BSS-Anthropology",
-    "BSS-Sociology",
-    "LLB",
-    "BFA-Sculpture",
-    "BFA-Graphic Design",
-    "B.Arch",
-    "MBA",
-    "MS-Biochemistry",
-    "MS-Biotechnology",
-    "MS-Microbiology",
-    "M.Pharm",
-    "M.Sc-EEE",
-    "M.Sc-CSE",
-    "M.Sc-Mathematics",
-    "M.Sc-Mechanical Engineering",
-    "MSS-Economics",
-    "MSS-Sociology",
-    "MSS-Anthropology",
-    "LLM",
-    "MFA-Sculpture",
-    "MFA-Graphic Design",
-    "Diploma-Civil Engineering",
-    "Diploma-Computer Technology",
-  ],
-  "Madrasa Medium": [
-    "Play",
-    "Nursery",
-    "KG",
-    "Class 1",
-    "Class 2",
-    "Class 3",
-    "Class 4",
-    "Class 5",
-    "Class 6",
-    "Class 7",
-    "Class 8",
-    "Class 9",
-    "Class 10",
-    "Alim- 1st Year",
-    "Alim- 2nd Year",
-  ],
-  "Religious Studies": [
-    "Islamic Studies",
-    "Hinduism Studies",
-    "Buddhism Studies",
-    "Christianity Studies",
-  ],
-  "Language Learning": [
-    "Spoken English",
-    "IELTS Preparation",
-    "French",
-    "German",
-    "Japanese",
-    "Korean",
-    "Arabic",
-  ],
-  "Admission Test": [
-    "School Admission Test",
-    "Public University Admission Test",
-    "Private University Admission Test",
-    "Medical College Admission Test",
-    "Engineering University Admission Test",
-    "IBA Admission",
-    "University Admission",
-    "Medical Admission",
-    "Engineering Admission",
-    "IBA/MBA Admission",
-  ],
-  Arts: [
-    "Drawing & Painting",
-    "Handwriting",
-    "Music",
-    "Instrumental Music",
-    "Dance",
-    "Crafting",
-    "Recitation",
-  ],
-  "Test Preparation": [
-    "BCS",
-    "Bank Job",
-    "Government Job",
-    "GRE",
-    "GMAT",
-    "SAT",
-    "TOEFL",
-  ],
-  "Professional Skill Development": [
-    "Artificial Intelligence",
-    "Web Design",
-    "Adobe Illustrator",
-    "Adobe Photoshop",
-    "Web Development",
-    "Microsoft Office",
-    "Fashion Design",
-    "Fashion Drawing",
-    "Sewing & Tailoring",
-    "Digital Marketing",
-    "Computer Programming",
-    "Video Editing",
-  ],
-  "Special Skill Development": [
-    "Mental Math/Abacus",
-    "Coding for Kids",
-    "Creative Writing",
-    "Debate",
-    "Photography",
-    "Kung Fu",
-    "Karate",
-    "GYM",
-    "Yoga",
-    "Cooking",
-  ],
-  "Special Child Education": [
-    "Basic Education",
-    "Arts",
-    "Religious Studies",
-    "Special Skill Development",
-  ],
-} as const;
-
-export function getGuardianLevelsForCurriculum(curriculum: string): readonly string[] {
-  if (!curriculum) return [];
-  return guardianLevelsByCurriculum[curriculum as keyof typeof guardianLevelsByCurriculum] ?? fallbackGuardianLevels;
-}
-
-export const guardianEnglishMediumCurriculumTypes = ["British", "Cambridge", "Ed-excel"] as const;
-
-export function getGuardianCurriculumTypesForCategory(category: string): readonly string[] {
-  return category === "English Medium" ? guardianEnglishMediumCurriculumTypes : [];
-}
-
-export function getGuardianCurriculumTypeForCategoryChange(currentCurriculumType: string, nextCategory: string) {
-  return nextCategory === "English Medium" ? currentCurriculumType : "";
-}
-
-export function getGuardianSubjectsForLearningNeed(category: string, classCourse: string): readonly string[] {
-  const usesBanglaMediumClassOneToEightSubjects =
-    category === "Bangla Medium" &&
-    guardianBanglaMediumClassOneToEightLevels.includes(classCourse as typeof guardianBanglaMediumClassOneToEightLevels[number]);
-  const usesEnglishVersionClassOneToEightSubjects =
-    category === "English Version" &&
-    guardianEnglishVersionClassOneToEightLevels.includes(classCourse as typeof guardianEnglishVersionClassOneToEightLevels[number]);
-  const usesEnglishVersionClassNineToTenSubjects =
-    category === "English Version" &&
-    guardianEnglishVersionClassNineToTenLevels.includes(classCourse as typeof guardianEnglishVersionClassNineToTenLevels[number]);
-  const usesBanglaMediumClassNineToTenSubjects =
-    category === "Bangla Medium" &&
-    guardianBanglaMediumClassNineToTenLevels.includes(classCourse as typeof guardianBanglaMediumClassNineToTenLevels[number]);
-  const usesBanglaMediumHscSubjects =
-    category === "Bangla Medium" &&
-    guardianBanglaMediumHscLevels.includes(classCourse as typeof guardianBanglaMediumHscLevels[number]);
-  const usesEnglishVersionHscSubjects =
-    category === "English Version" &&
-    guardianEnglishVersionHscLevels.includes(classCourse as typeof guardianEnglishVersionHscLevels[number]);
-  const usesMadrasaPlayToClassEightSubjects =
-    category === "Madrasa Medium" &&
-    guardianMadrasaPlayToClassEightLevels.includes(classCourse as typeof guardianMadrasaPlayToClassEightLevels[number]);
-  const usesMadrasaClassNineToTenSubjects =
-    category === "Madrasa Medium" &&
-    guardianMadrasaClassNineToTenLevels.includes(classCourse as typeof guardianMadrasaClassNineToTenLevels[number]);
-  const usesMadrasaAlimSubjects =
-    category === "Madrasa Medium" &&
-    guardianMadrasaAlimLevels.includes(classCourse as typeof guardianMadrasaAlimLevels[number]);
-  const usesSchoolAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianSchoolAdmissionLevels.includes(classCourse as typeof guardianSchoolAdmissionLevels[number]);
-  const usesPublicUniversityAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianPublicUniversityAdmissionLevels.includes(classCourse as typeof guardianPublicUniversityAdmissionLevels[number]);
-  const usesPrivateUniversityAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianPrivateUniversityAdmissionLevels.includes(classCourse as typeof guardianPrivateUniversityAdmissionLevels[number]);
-  const usesEngineeringUniversityAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianEngineeringUniversityAdmissionLevels.includes(classCourse as typeof guardianEngineeringUniversityAdmissionLevels[number]);
-  const usesMedicalCollegeAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianMedicalCollegeAdmissionLevels.includes(classCourse as typeof guardianMedicalCollegeAdmissionLevels[number]);
-  const usesIbaAdmissionSubjects =
-    category === "Admission Test" &&
-    guardianIbaAdmissionLevels.includes(classCourse as typeof guardianIbaAdmissionLevels[number]);
-  const usesEnglishMediumEarlyYearsSubjects =
-    category === "English Medium" &&
-    guardianEarlyYearsLevels.includes(classCourse as typeof guardianEarlyYearsLevels[number]);
-  const usesEnglishMediumClassOneToFiveSubjects =
-    category === "English Medium" &&
-    guardianEnglishMediumClassOneToFiveLevels.includes(classCourse as typeof guardianEnglishMediumClassOneToFiveLevels[number]);
-  const usesEnglishMediumClassSixToSevenSubjects =
-    category === "English Medium" &&
-    guardianEnglishMediumClassSixToSevenLevels.includes(classCourse as typeof guardianEnglishMediumClassSixToSevenLevels[number]);
-  const usesEnglishMediumStandardEightToNineAndOLevelSubjects =
-    category === "English Medium" &&
-    guardianEnglishMediumStandardEightToNineAndOLevelLevels.includes(classCourse as typeof guardianEnglishMediumStandardEightToNineAndOLevelLevels[number]);
-  const usesEnglishMediumALevelSubjects =
-    category === "English Medium" &&
-    guardianEnglishMediumALevels.includes(classCourse as typeof guardianEnglishMediumALevels[number]);
-  const usesEarlyYearsSubjects =
-    (category === "Bangla Medium" || category === "English Version") &&
-    guardianEarlyYearsLevels.includes(classCourse as typeof guardianEarlyYearsLevels[number]);
-
-  if (usesBanglaMediumClassOneToEightSubjects) return guardianBanglaMediumClassOneToEightSubjects;
-  if (usesEnglishVersionClassOneToEightSubjects) return guardianEnglishVersionClassOneToEightSubjects;
-  if (usesEnglishVersionClassNineToTenSubjects) return guardianEnglishVersionClassNineToTenSubjects;
-  if (usesBanglaMediumClassNineToTenSubjects) return guardianBanglaMediumClassNineToTenSubjects;
-  if (usesBanglaMediumHscSubjects) return guardianBanglaMediumHscSubjects;
-  if (usesEnglishVersionHscSubjects) return guardianEnglishVersionHscSubjects;
-  if (usesMadrasaPlayToClassEightSubjects) return guardianMadrasaPlayToClassEightSubjects;
-  if (usesMadrasaClassNineToTenSubjects) return guardianMadrasaClassNineToTenSubjects;
-  if (usesMadrasaAlimSubjects) return guardianMadrasaAlimSubjects;
-  if (usesSchoolAdmissionSubjects) return guardianSchoolAdmissionSubjects;
-  if (usesPublicUniversityAdmissionSubjects) return guardianPublicUniversityAdmissionSubjects;
-  if (usesPrivateUniversityAdmissionSubjects) return guardianPrivateUniversityAdmissionSubjects;
-  if (usesEngineeringUniversityAdmissionSubjects) return guardianEngineeringUniversityAdmissionSubjects;
-  if (usesMedicalCollegeAdmissionSubjects) return guardianMedicalCollegeAdmissionSubjects;
-  if (usesIbaAdmissionSubjects) return guardianIbaAdmissionSubjects;
-  if (usesEnglishMediumEarlyYearsSubjects) return guardianEnglishMediumEarlyYearsSubjects;
-  if (usesEnglishMediumClassOneToFiveSubjects) return guardianEnglishMediumClassOneToFiveSubjects;
-  if (usesEnglishMediumClassSixToSevenSubjects) return guardianEnglishMediumClassSixToSevenSubjects;
-  if (usesEnglishMediumStandardEightToNineAndOLevelSubjects) return guardianEnglishMediumStandardEightToNineAndOLevelSubjects;
-  if (usesEnglishMediumALevelSubjects) return guardianEnglishMediumALevelSubjects;
-  return usesEarlyYearsSubjects ? guardianEarlyYearsSubjects : guardianDefaultSubjects;
-}
-
-export function getGuardianSelectedSubjectsForLearningNeed(selectedSubjects: string[], category: string, classCourse: string) {
-  const availableSubjects = new Set(getGuardianSubjectsForLearningNeed(category, classCourse));
-  return selectedSubjects.filter((subject) => availableSubjects.has(subject));
-}
 
 type TuitionType = "home" | "online" | "both" | "group" | "package";
 type BudgetKind = "range" | "discuss" | "";
@@ -397,10 +70,8 @@ type PreferredGender = "male" | "female" | "any" | "";
 type StudentGender = "male" | "female" | "";
 
 type RequestInput = {
-  category: string;
-  curriculumType: string;
-  classCourse: string;
-  selectedSubjects: string[];
+  /** What is asked to be taught: curricula, each with its classes, each class with its subjects. */
+  learningNeeds: LearningNeed[];
   tuitionType: TuitionType;
   groupCapacity: string;
   packageDurationMonths: string;
@@ -519,14 +190,12 @@ function Link({ href, className, children }: { href: string; className?: string;
   return <WouterLink href={normalizeGuardianPublicHref(href)} className={className}>{children}</WouterLink>;
 }
 
-export function getGuardianRequestStepValidation(input: RequestInput, step: 1 | 2) {
+export function getGuardianRequestStepValidation(input: RequestInput, step: 1 | 2, limits: LearningNeedsLimits = learningNeedsLimitsFrom(undefined)) {
   if (step >= 1) {
     if (!input.tuitionType) return "Choose a tuition type to continue.";
     if (input.tuitionType !== "online" && (!input.tuitionCityLocationId || !input.tuitionLocationId)) return "Choose a City and a location for Home, Group, or Package Tutoring.";
-    if (!input.category) return "Choose a curriculum or category to continue.";
-    if (input.category === "English Medium" && !getGuardianCurriculumTypesForCategory(input.category).includes(input.curriculumType)) return "Choose a Curriculum Type for English Medium to continue.";
-    if (!input.classCourse) return "Choose a class or level to continue.";
-    if (!input.selectedSubjects.length) return "Select at least one subject to continue.";
+    const learningGap = describeLearningNeedsGap(input.learningNeeds, limits);
+    if (learningGap) return learningGap;
   }
   if (step >= 2) {
     if (!input.daysPerWeek) return "Choose how many days per week you need tuition.";
@@ -580,10 +249,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [accountLocationId, setAccountLocationId] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [accountFieldErrors, setAccountFieldErrors] = useState<GuardianAccountFieldErrors>({});
-  const [category, setCategory] = useState("");
-  const [curriculumType, setCurriculumType] = useState("");
-  const [classCourse, setClassCourse] = useState("");
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [learningNeeds, setLearningNeeds] = useState<LearningNeed[]>([]);
   const [tuitionType, setTuitionType] = useState<TuitionType>("home");
   const [groupCapacity, setGroupCapacity] = useState("");
   const [packageDurationMonths, setPackageDurationMonths] = useState("");
@@ -617,10 +283,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setStep(1);
     setRequestId(null);
     setJourneyError("");
-    setCategory("");
-    setCurriculumType("");
-    setClassCourse("");
-    setSelectedSubjects([]);
+    setLearningNeeds([]);
     setTuitionType("home");
     setGroupCapacity("");
     setPackageDurationMonths("");
@@ -792,7 +455,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const requestInput = useMemo<RequestInput>(() => ({ category, curriculumType, classCourse, selectedSubjects, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, category, classCourse, curriculumType, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, selectedSubjects, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
+  const requestInput = useMemo<RequestInput>(() => ({ learningNeeds, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, learningNeeds, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
     if (embedded || isEditMode || routePath !== "/request-tutor") return;
@@ -818,10 +481,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     if (loadedEditRequestId === editRequestId) return;
     setStage("request");
     setStep(1);
-    setCategory(request.category ?? "");
-    setCurriculumType(request.curriculumType ?? "");
-    setClassCourse(request.classCourse ?? "");
-    setSelectedSubjects(parseGuardianRequestSubjects(request.subjects));
+    setLearningNeeds(request.learningNeeds?.length ? request.learningNeeds : learningNeedsFromLegacy({ category: request.category ?? "", curriculumType: request.curriculumType, classCourse: request.classCourse ?? "", subjects: parseGuardianRequestSubjects(request.subjects) }));
     setTuitionType(request.tuitionType as TuitionType);
     setGroupCapacity(request.groupCapacity?.toString() ?? "");
     setPackageDurationMonths(request.packageDurationMonths?.toString() ?? "");
@@ -848,10 +508,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     const draft = stored ? parseGuardianRequestDraft(stored) : null;
     if (draft) {
       setStep(draft.step);
-      setCategory(draft.request.category);
-      setCurriculumType(draft.request.curriculumType);
-      setClassCourse(draft.request.classCourse);
-      setSelectedSubjects(draft.request.selectedSubjects);
+      setLearningNeeds(draft.request.learningNeeds);
       setTuitionType(draft.request.tuitionType);
       setGroupCapacity(draft.request.groupCapacity);
       setPackageDurationMonths(draft.request.packageDurationMonths);
@@ -873,7 +530,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   useEffect(() => {
     if (isEditMode) return;
     if (stage !== "request" || !draftOwnerId || draftRestoredFor !== draftOwnerId || requestId) return;
-    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serializeGuardianRequestDraft({ version: 1, step, request: requestInput, notes }));
+    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serializeGuardianRequestDraft({ version: GUARDIAN_REQUEST_DRAFT_VERSION, step, request: requestInput, notes }));
   }, [draftOwnerId, draftRestoredFor, isEditMode, notes, requestId, requestInput, stage, step]);
 
   const clearJourneyError = () => setJourneyError("");
@@ -890,24 +547,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   // flight or if it fails. The server checks it again either way; this is only
   // so the form can say no before the work is lost.
   const resolvedLimits = trpc.siteLimits.resolved.useQuery();
-  const subjectLimit = resolvedLimits.data?.["request.subjects"] ?? defaultSiteLimits()["request.subjects"];
-
-  const toggleSubject = (subject: string) => {
-    clearJourneyError();
-    setSelectedSubjects((current) => {
-      if (current.includes(subject)) return current.filter((item) => item !== subject);
-      // The cap used to exist only on the server, so the form invited people to
-      // "choose every subject you need" and then refused the thirteenth with a
-      // validation error. Say no here, with a reason, before the work is lost.
-      if (current.length >= subjectLimit) {
-        setJourneyError(`You can choose up to ${subjectLimit} subjects. Remove one to add another.`);
-        return current;
-      }
-      return [...current, subject];
-    });
-  };
+  const needsLimits = learningNeedsLimitsFrom(resolvedLimits.data);
   const advance = () => {
-    const error = getGuardianRequestStepValidation(requestInput, 1);
+    const error = getGuardianRequestStepValidation(requestInput, 1, needsLimits);
     if (error) { setJourneyError(error); return; }
     clearJourneyError();
     setStep(2);
@@ -919,7 +561,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     // Guardian has not finished writing, and step 3 is already sent.
     if (step !== 2) return;
     if (!canStartGuardianRequestSubmission({ mutationPending: requestMutation.isPending || updatePendingMutation.isPending, submissionStarted: submissionStartedRef.current })) return;
-    const error = getGuardianRequestStepValidation(requestInput, 2);
+    const error = getGuardianRequestStepValidation(requestInput, 2, needsLimits);
     if (error) {
       setJourneyError(error);
       setStep(error.toLowerCase().includes("curriculum") || error.includes("class") || error.includes("subject") ? 1 : 2);
@@ -927,10 +569,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     }
     submissionStartedRef.current = true;
     const common = {
-      category,
-      curriculumType,
-      classCourse,
-      subjects: selectedSubjects,
+      learningNeeds: learningNeeds.map(need => ({
+        category: need.category,
+        ...(need.curriculumType ? { curriculumType: need.curriculumType } : {}),
+        classes: need.classes,
+      })),
       daysPerWeek: Number(daysPerWeek),
       preferredGender: preferredGender as Exclude<PreferredGender, "">,
       studentGender: studentGender || undefined,
@@ -1006,13 +649,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           tuitionCityLabel={tuitionCityLabel}
           tuitionLocationLabel={tuitionLocationLabel}
           pending={requestMutation.isPending || updatePendingMutation.isPending || submissionStartedRef.current}
-          onSetCategory={(value) => { clearJourneyError(); const nextClassCourse = getGuardianLevelsForCurriculum(value).includes(classCourse) ? classCourse : ""; setCategory(value); setCurriculumType((current) => getGuardianCurriculumTypeForCategoryChange(current, value)); setClassCourse(nextClassCourse); setSelectedSubjects((current) => getGuardianSelectedSubjectsForLearningNeed(current, value, nextClassCourse)); }}
-          onSetCurriculumType={(value) => { clearJourneyError(); setCurriculumType(value); }}
-          onSetClassCourse={(value) => { clearJourneyError(); setClassCourse(value); setSelectedSubjects((current) => getGuardianSelectedSubjectsForLearningNeed(current, category, value)); }}
+          needsLimits={needsLimits}
+          onSetLearningNeeds={(next) => { clearJourneyError(); setLearningNeeds(next); }}
+          onNeedsNotice={setJourneyError}
           onSetStudentGender={(value) => { clearJourneyError(); setStudentGender(value); }}
           onSetAddressDetails={(value) => { clearJourneyError(); setAddressDetails(value); }}
-          onToggleSubject={toggleSubject}
-          subjectLimit={subjectLimit}
           onSetTuitionType={(value) => { clearJourneyError(); setTuitionType(value); if (value !== "group") setGroupCapacity(""); if (value !== "package") setPackageDurationMonths(""); if (value === "group" || value === "both") setStudentCount(DEFAULT_STUDENT_COUNT); }}
           onSetGroupCapacity={(value) => { clearJourneyError(); setGroupCapacity(value.replace(/\D/g, "")); }}
           onSetPackageDurationMonths={(value) => { clearJourneyError(); setPackageDurationMonths(value.replace(/\D/g, "")); }}
@@ -1168,7 +809,7 @@ type RequestStageProps = {
   step: 1 | 2 | 3; requestInput: RequestInput; notes: string;
   cities: Array<{ id: string; label: string }>; tuitionLocations: Array<{ id: string; label: string }>;
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
-  onSetCategory: (value: string) => void; onSetCurriculumType: (value: string) => void; onSetClassCourse: (value: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void; onToggleSubject: (value: string) => void; subjectLimit: number;
+  needsLimits: LearningNeedsLimits; onSetLearningNeeds: (next: LearningNeed[]) => void; onNeedsNotice: (message: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
   onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetInstituteName: (value: string) => void; onSetHeardAboutUs: (value: RequestSource) => void; onSetNotes: (value: string) => void;
   onBack: () => void; onAdvance: () => void; onSubmit: (event: FormEvent) => void;
@@ -1179,8 +820,6 @@ type RequestStageProps = {
 export function RequestStage(props: RequestStageProps) {
   const { requestInput: input } = props;
   const resolveSlot = useSiteContentResolver();
-  const availableLevels = getGuardianLevelsForCurriculum(input.category);
-  const availableSubjects = getGuardianSubjectsForLearningNeed(input.category, input.classCourse);
   const locationSelection = getGuardianLocationSelectionState(input.tuitionCityLocationId, input.tuitionLocationId, props.tuitionCityLabel, props.tuitionLocationLabel);
   // Step 2 sends the request, so its button says so rather than "Continue" -
   // the Guardian has to know the press is the one that posts the job.
@@ -1221,16 +860,26 @@ export function RequestStage(props: RequestStageProps) {
           <SelectField label="Tuition type" slotId="request-tutor.field.tuitionType" icon={<TuitionTypeIcon type={input.tuitionType} />} value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} />
           {input.tuitionType !== "online" ? <SearchableLocationSelect label="Tuition City" slotId="request-tutor.field.tuitionCity" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /> : null}
           {input.tuitionType !== "online" ? <SearchableLocationSelect label="Location" slotId="request-tutor.field.tuitionLocation" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required onChange={props.onSetTuitionLocation} /> : null}
-          <SelectField label="Curriculum / category" slotId="request-tutor.field.category" icon={<RecordIcon name="category" size={17} />} value={input.category} onChange={props.onSetCategory} options={categories} placeholder="Choose a category" />
-          {input.category === "English Medium" ? <SelectField label="Curriculum Type" slotId="request-tutor.field.curriculumType" icon={<RecordIcon name="curriculumType" size={17} />} value={input.curriculumType} onChange={props.onSetCurriculumType} options={getGuardianCurriculumTypesForCategory(input.category)} placeholder="Choose a Curriculum Type" /> : null}
-          <SelectField label="Class / level" slotId="request-tutor.field.classCourse" icon={<RecordIcon name="classLevel" size={17} />} value={input.classCourse} onChange={props.onSetClassCourse} options={availableLevels} placeholder={input.category ? "Choose a level" : "Choose a curriculum first"} />
+          <div className={fieldGridWide}>
+            <LearningNeedsField
+              value={input.learningNeeds}
+              onChange={props.onSetLearningNeeds}
+              limits={props.needsLimits}
+              onNotice={props.onNeedsNotice}
+              labels={{
+                category: resolveSlot("request-tutor.field.category", "Curriculum / category"),
+                curriculumType: resolveSlot("request-tutor.field.curriculumType", "Curriculum Type"),
+                classCourse: resolveSlot("request-tutor.field.classCourse", "Class / level"),
+                subjects: resolveSlot("request-tutor.field.subjects", "Subjects"),
+              }}
+            />
+          </div>
           <SelectField label="Student gender" slotId="request-tutor.field.studentGender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} />
           <div className={fieldGridWide}>
             <TextAreaField label="Address Details" slotId="request-tutor.field.addressDetails" labelIcon={<RecordIcon name="location" size={15} />} id="address-details" optional value={input.addressDetails} onChange={props.onSetAddressDetails} maxLength={160} />
           </div>
         </div>
       </fieldset>
-      <fieldset aria-label="Subject selection" className="border-t border-j-border pt-6"><legend className="text-sm font-extrabold text-j-ink-strong"><span className="inline-flex items-center gap-1.5"><RecordIcon name="subjects" size={15} className="text-j-accent" />{resolveSlot("request-tutor.field.subjects", "Subject selection")}</span> <span className={requiredMark}>*</span></legend><div className="mt-1 flex flex-wrap items-start justify-end gap-3"><span role="status" aria-live="polite" aria-label={`${input.selectedSubjects.length} of ${props.subjectLimit} subjects selected`} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${input.selectedSubjects.length ? "bg-j-accent-wash text-[#126ea9]" : "bg-[#f6f9fb] text-[#71889b]"}`}>{input.selectedSubjects.length} of {props.subjectLimit} selected</span></div><div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{availableSubjects.map((subject) => <ChoiceButton key={subject} selected={input.selectedSubjects.includes(subject)} onClick={() => props.onToggleSubject(subject)}>{subject}</ChoiceButton>)}</div></fieldset>
     </div> : null}
     {props.step === 2 ? <div className="mt-7 space-y-6">
       {/* One grid, so the salary box is not 320px wide under a 384px student

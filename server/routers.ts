@@ -63,6 +63,7 @@ import {
   policyPageKeySchema,
 } from "./site-content";
 import { notifyTelegramAdmin } from "./telegram-notification";
+import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsInputSchema, refineLearningNeeds, withLegacyLearningNeeds } from "./learning-needs-input";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema, withoutRetiredTutorProfileFields } from "./tutor-profile.validation";
@@ -624,10 +625,8 @@ export function toClientAuthIdentity(user: {
 }
 
 const tutorRequestBaseInputSchema = z.object({
-  category: z.string().trim().min(1).max(120),
-  curriculumType: z.string().trim().max(32).optional(),
-  classCourse: z.string().trim().min(1).max(120),
-  subjects: z.array(z.string().trim().min(1)).min(1).max(siteLimitCeiling("request.subjects")),
+  // What it asks to have taught: curricula, the classes wanted in each, each class's own subjects.
+  learningNeeds: learningNeedsInputSchema,
   daysPerWeek: z.number().int().min(1).max(7),
   preferredGender: z.enum(["male", "female", "any"]),
   studentFirstName: z.string().trim().min(1).max(80).optional(),
@@ -670,15 +669,18 @@ export const tutorRequestInputSchema = z.discriminatedUnion("tuitionType", [
     tuitionType: z.literal("online"),
     studentCount: z.number().int().min(1).max(100),
   }).strict(),
-]).superRefine((input, ctx) => {
-  const curriculumTypes = ["British", "Cambridge", "Ed-excel"] as const;
-  if (input.category === "English Medium" && !curriculumTypes.includes(input.curriculumType as typeof curriculumTypes[number])) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculumType"], message: "Choose a Curriculum Type for English Medium to continue." });
-  }
-  if (input.category !== "English Medium" && input.curriculumType !== undefined && input.curriculumType !== "") {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculumType"], message: "Curriculum Type is only available for English Medium requests." });
-  }
-});
+]).superRefine((input, ctx) => refineLearningNeeds(input.learningNeeds, ctx));
+
+/**
+ * What `create` takes: the schema above, and also a request in the shape it had
+ * before there were lists (one category, one class, a list of subjects) from a
+ * page opened before the update.
+ *
+ * Typed as the schema itself on purpose: the client's input type is read from
+ * what `.input()` is given, and a preprocess step would make it `unknown`. At run
+ * time it is the preprocess followed by the schema.
+ */
+const tutorRequestCreateInputSchema = z.preprocess(withLegacyLearningNeeds, tutorRequestInputSchema) as unknown as typeof tutorRequestInputSchema;
 
 /**
  * An off-site tuition an Admin types in. It is the Guardian journey's own
@@ -700,7 +702,7 @@ const adminPostedTuitionInputSchema = z.object({
     guardianCityLocationId: _city, guardianLocationId: _location,
     ...requestInput
   } = value as Record<string, unknown>;
-  return requestInput;
+  return withLegacyLearningNeeds(requestInput);
 }, tutorRequestInputSchema));
 /**
  * The same shape as posting one, plus which tuition is being edited.
@@ -733,7 +735,7 @@ const guardianPendingTutorRequestUpdateSchema = z.object({
 }).passthrough().and(z.preprocess(value => {
   if (!value || typeof value !== "object") return value;
   const { requestId: _requestId, ...requestInput } = value as Record<string, unknown>;
-  return requestInput;
+  return withLegacyLearningNeeds(requestInput);
 }, tutorRequestInputSchema));
 
 export const tutorProfileInputSchema = z.object({
@@ -763,7 +765,8 @@ export const tutorProfileInputSchema = z.object({
  */
 async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionInputSchema>) {
   const limits = await db.getSiteLimits();
-  assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+  assertLearningNeedsWithinLimits(limits, input.learningNeeds);
+  const needs = learningNeedsForWrite(input.learningNeeds);
   assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
 
   let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
@@ -793,12 +796,13 @@ async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionI
 
   return {
     guardian: { name: input.guardianName, phone, cityLocationId: guardianCityLocationId, locationId: guardianLocationId },
+    learningNeeds: needs.learningNeeds,
     request: {
       tuitionType: input.tuitionType,
-      category: input.category,
-      curriculumType: input.curriculumType || null,
-      classCourse: input.classCourse,
-      subjects: JSON.stringify(input.subjects),
+      category: needs.category,
+      curriculumType: needs.curriculumType,
+      classCourse: needs.classCourse,
+      subjects: needs.subjects,
       groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
       packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
       // Narrowed on the tuition type rather than with `in`: an `in` check
@@ -2480,9 +2484,9 @@ export const appRouter = router({
           if (chosen === null) throw new TRPCError({ code: "BAD_REQUEST", message: `A Job ID is a number from ${JOB_ID_OFFSET + 1} up.` });
           requestId = chosen;
         }
-        const { guardian, request } = await buildAdminPostedTuition(input);
+        const { guardian, request, learningNeeds } = await buildAdminPostedTuition(input);
         try {
-          return await db.createAdminPostedTuition({ adminUserId: ctx.user.id, guardian, request, requestId });
+          return await db.createAdminPostedTuition({ adminUserId: ctx.user.id, guardian, request, requestId, learningNeeds });
         } catch (error) {
           if (error instanceof db.JobIdTakenError) throw new TRPCError({ code: "CONFLICT", message: error.message });
           throw error;
@@ -2491,7 +2495,7 @@ export const appRouter = router({
     updatePostedTuition: adminProcedure
       .input(adminPostedTuitionUpdateSchema)
       .mutation(async ({ ctx, input }) => {
-        const { guardian, request } = await buildAdminPostedTuition(input);
+        const { guardian, request, learningNeeds } = await buildAdminPostedTuition(input);
         const result = await db.updateAdminPostedTuition({
           adminUserId: ctx.user.id,
           requestId: input.requestId,
@@ -2499,6 +2503,7 @@ export const appRouter = router({
           // so a hand-made request cannot rename someone who registered.
           guardian: { name: guardian.name, phone: guardian.phone },
           request,
+          learningNeeds,
         });
         if (!result.updated) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
         return result;
@@ -3112,7 +3117,8 @@ export const appRouter = router({
         // construction - but only the schema does, and the schema now holds the
         // ceiling rather than the policy.
         const limits = await db.getSiteLimits();
-        assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+        assertLearningNeedsWithinLimits(limits, input.learningNeeds);
+        const needs = learningNeedsForWrite(input.learningNeeds);
         assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
 
         let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
@@ -3133,10 +3139,11 @@ export const appRouter = router({
           guardianUserId: ctx.user.id,
           requestId: input.requestId,
           tuitionType: input.tuitionType,
-          category: input.category,
-          curriculumType: input.curriculumType || null,
-          classCourse: input.classCourse,
-          subjects: JSON.stringify(input.subjects),
+          category: needs.category,
+          curriculumType: needs.curriculumType,
+          classCourse: needs.classCourse,
+          subjects: needs.subjects,
+          learningNeeds: needs.learningNeeds,
           groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
           packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
           studentCount: "studentCount" in input && typeof input.studentCount === "number" ? input.studentCount : null,
@@ -3160,9 +3167,10 @@ export const appRouter = router({
         }
         return result;
       }),
-    create: guardianProcedure.input(tutorRequestInputSchema).mutation(async ({ ctx, input }) => {
+    create: guardianProcedure.input(tutorRequestCreateInputSchema).mutation(async ({ ctx, input }) => {
       const limits = await db.getSiteLimits();
-      assertWithinLimit(limits, "request.subjects", input.subjects.length, "subjects");
+      assertLearningNeedsWithinLimits(limits, input.learningNeeds);
+      const needs = learningNeedsForWrite(input.learningNeeds);
       assertWithinLengthLimit(limits, "request.addressChars", (input.addressDetails ?? "").length, "Address details");
 
       let tuitionLocation: Awaited<ReturnType<typeof db.getTutorRequestLocation>> | null = null;
@@ -3185,10 +3193,10 @@ export const appRouter = router({
       const result = await db.createTutorRequest({
         guardianUserId: ctx.user.id,
         tuitionType: input.tuitionType,
-        category: input.category,
-        curriculumType: input.curriculumType || null,
-        classCourse: input.classCourse,
-        subjects: JSON.stringify(input.subjects),
+        category: needs.category,
+        curriculumType: needs.curriculumType,
+        classCourse: needs.classCourse,
+        subjects: needs.subjects,
         groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
         packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
         studentCount,
@@ -3207,12 +3215,12 @@ export const appRouter = router({
         contactConsent: "not_required",
         monthlyBudget,
         locationText,
-      });
+      }, needs.learningNeeds);
       const notificationDelivered = await notifyTelegramAdmin({
         requestId: result.id,
-        category: input.category,
-        classCourse: input.classCourse,
-        subjects: input.subjects,
+        category: needs.category,
+        classCourse: needs.classCourse,
+        subjects: needs.subjectNames,
         tuitionType: input.tuitionType,
         groupCapacity: input.tuitionType === "group" ? input.groupCapacity : null,
         packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,

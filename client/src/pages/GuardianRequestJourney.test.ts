@@ -7,9 +7,7 @@ import {
 } from "./GuardianRequestJourney";
 
 const completeLearningInput = {
-  category: "Bangla Medium",
-  classCourse: "Class 9–10",
-  selectedSubjects: ["Mathematics"],
+  learningNeeds: [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9–10", subjects: ["Mathematics"] }] }],
   tuitionType: "online" as const,
   tuitionCityLocationId: "",
   tuitionLocationId: "",
@@ -25,7 +23,7 @@ describe("Guardian request validation feedback", () => {
   });
 
   it("provides clear English recovery guidance for the first missing learning-need field", () => {
-    expect(getGuardianRequestStepValidation({ ...completeLearningInput, category: "" }, 1)).toBe(
+    expect(getGuardianRequestStepValidation({ ...completeLearningInput, learningNeeds: [] }, 1)).toBe(
       "Choose a curriculum or category to continue.",
     );
   });

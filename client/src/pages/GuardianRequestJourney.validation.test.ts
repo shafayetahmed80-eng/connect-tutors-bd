@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getGuardianRequestStepValidation } from "./GuardianRequestJourney";
 
 const completeRequest = {
-  category: "English Medium",
-  curriculumType: "British",
-  classCourse: "Class 9–10",
-  selectedSubjects: ["English"],
+  learningNeeds: [{ category: "English Medium", curriculumType: "British", classes: [{ classCourse: "Class 9–10", subjects: ["English"] }] }],
   tuitionType: "home" as const,
   groupCapacity: "",
   packageDurationMonths: "",
@@ -19,13 +16,41 @@ const completeRequest = {
   instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "10000",
 };
 
+const banglaMedium = [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 5", subjects: ["Mathematics"] }] }];
+const englishVersion = [{ category: "English Version", curriculumType: null, classes: [{ classCourse: "Class 6", subjects: ["Science", "English"] }, { classCourse: "Class 7", subjects: ["Mathematics"] }] }];
+
+describe("a request for several curricula and classes", () => {
+  it("accepts several curricula, each with its classes and every class with its own subjects", () => {
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: [...banglaMedium, ...englishVersion] }, 1)).toBeNull();
+  });
+
+  it("names the curriculum or class that is missing something", () => {
+    const noClass = [{ category: "Madrasa Medium", curriculumType: null, classes: [] }];
+    const noSubject = [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 5", subjects: [] }] }];
+
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: [...banglaMedium, ...noClass] }, 1)).toBe("Choose a class or level for Madrasa Medium to continue.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: noSubject }, 1)).toBe("Select at least one subject for Class 5 to continue.");
+  });
+
+  it("holds a request to the Owner's limits: curricula, classes in all, subjects in a class", () => {
+    const limits = { maxCurricula: 2, maxClasses: 3, maxSubjectsPerClass: 2 };
+    const three = ["Bangla Medium", "English Version", "Madrasa Medium"].map(category => ({ category, curriculumType: null, classes: [{ classCourse: "Class 5", subjects: ["Math"] }] }));
+    const fourClasses = [{ category: "Bangla Medium", curriculumType: null, classes: ["1", "2", "3", "4"].map(n => ({ classCourse: `Class ${n}`, subjects: ["Math"] })) }];
+    const manySubjects = [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 5", subjects: ["Math", "English", "Bangla"] }] }];
+
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: three }, 1, limits)).toBe("Choose at most 2 curricula.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: fourClasses }, 1, limits)).toBe("Choose at most 3 classes.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: manySubjects }, 1, limits)).toBe("You can choose up to 2 subjects for each class.");
+  });
+});
+
 describe("canonical Guardian Tutor Request validation", () => {
   it("requires the approved learning and preference fields before advancing", () => {
-    expect(getGuardianRequestStepValidation({ ...completeRequest, category: "" }, 1)).toBe("Choose a curriculum or category to continue.");
-    expect(getGuardianRequestStepValidation({ ...completeRequest, curriculumType: "" }, 1)).toBe(
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: [] }, 1)).toBe("Choose a curriculum or category to continue.");
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: [{ ...completeRequest.learningNeeds[0], curriculumType: null }] }, 1)).toBe(
       "Choose a Curriculum Type for English Medium to continue.",
     );
-    expect(getGuardianRequestStepValidation({ ...completeRequest, category: "Bangla Medium", curriculumType: "" }, 1)).toBeNull();
+    expect(getGuardianRequestStepValidation({ ...completeRequest, learningNeeds: banglaMedium }, 1)).toBeNull();
     expect(getGuardianRequestStepValidation({ ...completeRequest, daysPerWeek: "" }, 2)).toBe("Choose how many days per week you need tuition.");
     expect(getGuardianRequestStepValidation({ ...completeRequest, instituteName: "", heardAboutUs: "facebook" as const, salaryAmount: "" }, 2)).toBe("Enter the monthly salary you are offering.");
   });

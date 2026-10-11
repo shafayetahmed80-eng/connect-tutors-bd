@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     curriculumType: "Cambridge",
     classCourse: "Standard 1",
     subjects: "[\"English\"]",
+    learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Standard 1", subjects: ["English"] }] }],
     daysPerWeek: 3,
     preferredGender: "female",
     studentFirstName: "Amina",
@@ -81,8 +82,11 @@ describe("GuardianRequestJourney Pending edit flow", () => {
     render(<GuardianRequestJourney />);
 
     await waitFor(() => expect(screen.getByRole("list", { name: "Tutor request details progress" })).toBeTruthy());
-    expect((screen.getByDisplayValue("English Medium") as HTMLSelectElement).value).toBe("English Medium");
-    expect((screen.getByDisplayValue("Standard 1") as HTMLSelectElement).value).toBe("Standard 1");
+    // The curriculum, its type, the class and the subject come back chosen, each in its own block.
+    const english = screen.getByRole("group", { name: "English Medium" });
+    expect((within(english).getByRole("combobox", { name: /Curriculum Type/ }) as HTMLSelectElement).value).toBe("Cambridge");
+    expect(within(english).getByRole("button", { name: "Remove Standard 1" })).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Subjects for Standard 1" })).getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("textbox", { name: /Student first name/ })).toBeNull();
     expect((screen.getByDisplayValue("Private access note") as HTMLTextAreaElement).value).toBe("Private access note");
 
@@ -95,14 +99,27 @@ describe("GuardianRequestJourney Pending edit flow", () => {
       instituteName: "Dhaka College",
       heardAboutUs: "websites",
       tuitionType: "online",
-      category: "English Medium",
-      curriculumType: "Cambridge",
-      classCourse: "Standard 1",
-      subjects: ["English"],
+      learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Standard 1", subjects: ["English"] }] }],
       studentGender: "female",
       addressDetails: "Private access note",
       notes: "Weekday afternoons",
     }));
+  });
+
+  it("opens a request listed without the list of needs as a list of one, from its category, class and subjects", async () => {
+    const { learningNeeds, ...withoutList } = mocks.request;
+    mocks.request = withoutList;
+    try {
+      window.history.pushState({}, "", "/request-tutor?edit=17");
+      render(<GuardianRequestJourney />);
+
+      await waitFor(() => expect(screen.getByRole("list", { name: "Tutor request details progress" })).toBeTruthy());
+      const english = screen.getByRole("group", { name: "English Medium" });
+      expect(within(english).getByRole("button", { name: "Remove Standard 1" })).toBeTruthy();
+      expect(within(screen.getByRole("group", { name: "Subjects for Standard 1" })).getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
+    } finally {
+      mocks.request = { ...withoutList, learningNeeds };
+    }
   });
 
   it("does not render a stale non-Pending request as editable", async () => {

@@ -1,16 +1,11 @@
 import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
-import {
-  getGuardianCurriculumTypesForCategory,
-  getGuardianLevelsForCurriculum,
-  getGuardianSubjectsForLearningNeed,
-  guardianCurriculumCategories,
-} from "@/pages/GuardianRequestJourney";
+import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom } from "@/components/LearningNeedsField";
+import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { formatRequestSource, INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { formatStudentGender, formatTuitionType } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
-import { defaultSiteLimits } from "@shared/site-limits";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -104,6 +99,8 @@ export type AdminTuitionDraft = {
   curriculumType: string | null;
   classCourse: string;
   subjects: unknown;
+  /** What it asks to have taught; absent on a draft made before there were lists, which reads as its one curriculum and class. */
+  learningNeeds?: LearningNeed[];
   studentGender: string | null;
   addressDetails: string | null;
   studentCount: number | null;
@@ -153,12 +150,11 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   // asked again where the Guardian is - the record does not carry it here.
   const [guardianCityId, setGuardianCityId] = useState("");
   const [guardianLocationId, setGuardianLocationId] = useState("");
-  const [category, setCategory] = useState(draft?.category ?? "");
-  const [curriculumType, setCurriculumType] = useState(draft?.curriculumType ?? "");
-  const [classCourse, setClassCourse] = useState(draft?.classCourse ?? "");
+  const [learningNeeds, setLearningNeeds] = useState<LearningNeed[]>(() => !draft ? [] : draft.learningNeeds?.length
+    ? draft.learningNeeds
+    : learningNeedsFromLegacy({ category: draft.category, curriculumType: draft.curriculumType, classCourse: draft.classCourse, subjects: draftSubjects(draft.subjects) }));
   const [studentGender, setStudentGender] = useState<StudentGender>((draft?.studentGender as StudentGender) ?? "");
   const [addressDetails, setAddressDetails] = useState(draft?.addressDetails ?? "");
-  const [subjects, setSubjects] = useState<string[]>(draftSubjects(draft?.subjects));
   const [studentCount, setStudentCount] = useState(draft?.studentCount ? String(draft.studentCount) : "1");
   const [groupCapacity, setGroupCapacity] = useState(draft?.groupCapacity ? String(draft.groupCapacity) : "");
   const [packageDurationMonths, setPackageDurationMonths] = useState(draft?.packageDurationMonths ? String(draft.packageDurationMonths) : "");
@@ -174,12 +170,10 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const tuitionLocations = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: tuitionCityId, query: "", limit: 300 }, { enabled: Boolean(tuitionCityId) });
   const guardianLocations = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: guardianCityId, query: "", limit: 300 }, { enabled: Boolean(guardianCityId) });
 
-  const levels = getGuardianLevelsForCurriculum(category);
-  const availableSubjects = getGuardianSubjectsForLearningNeed(category, classCourse);
-  // The Owner's own limit, falling back to the shipped one - the same read the
-  // Guardian journey makes, so both forms cap subjects at the same number.
+  // The Owner's own limits, falling back to the shipped ones - the same read the
+  // Guardian journey makes, so both forms cap curricula, classes and subjects alike.
   const resolvedLimits = trpc.siteLimits.resolved.useQuery();
-  const subjectLimit = resolvedLimits.data?.["request.subjects"] ?? defaultSiteLimits()["request.subjects"];
+  const needsLimits = learningNeedsLimitsFrom(resolvedLimits.data);
 
   const create = trpc.admin.createPostedTuition.useMutation({
     onSuccess: result => { toast.success(`Job ID ${jobIdForRequest(result.id)} is live on the Job Board.`); onPosted(); },
@@ -193,37 +187,24 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   });
   const post = editing ? update : create;
 
-  const changeCategory = (value: string) => {
-    setCategory(value);
-    setCurriculumType(value === "English Medium" ? curriculumType : "");
-    const nextLevel = getGuardianLevelsForCurriculum(value).includes(classCourse) ? classCourse : "";
-    setClassCourse(nextLevel);
-    const allowed = new Set(getGuardianSubjectsForLearningNeed(value, nextLevel));
-    setSubjects(current => current.filter(subject => allowed.has(subject)));
-  };
-
-  const changeLevel = (value: string) => {
-    setClassCourse(value);
-    const allowed = new Set(getGuardianSubjectsForLearningNeed(category, value));
-    setSubjects(current => current.filter(subject => allowed.has(subject)));
-  };
-
-  const toggleSubject = (subject: string) => setSubjects(current => current.includes(subject)
-    ? current.filter(item => item !== subject)
-    : current.length < subjectLimit ? [...current, subject] : current);
-
   const submit = () => {
     if (!editing && typedJobId === "") { toast.error("Enter the Job ID."); return; }
     const days = Number(daysPerWeek);
     const salary = parseSalaryAmount(salaryAmount);
     if (salary === null) { toast.error("Enter the monthly salary."); return; }
+    const gap = describeLearningNeedsGap(learningNeeds, needsLimits);
+    if (gap) { toast.error(gap); return; }
     const base = {
       guardianName: guardianName.trim(),
       guardianPhone: guardianPhone.trim(),
-      category, classCourse, subjects, daysPerWeek: days,
+      learningNeeds: learningNeeds.map(need => ({
+        category: need.category,
+        ...(need.curriculumType ? { curriculumType: need.curriculumType } : {}),
+        classes: need.classes,
+      })),
+      daysPerWeek: days,
       preferredGender, budgetAmount: salary,
       heardAboutUs: heardAboutUs as RequestSource,
-      ...(curriculumType ? { curriculumType } : {}),
       ...(studentGender ? { studentGender } : {}),
       ...(addressDetails.trim() ? { addressDetails: addressDetails.trim() } : {}),
       ...(instituteName.trim() ? { instituteName: instituteName.trim() } : {}),
@@ -273,11 +254,9 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
           <CompactLocation><SearchableLocationSelect label="Location" value={tuitionLocationId} options={tuitionLocations.data ?? []} placeholder="Choose a City first" searchPlaceholder="Search location" emptyMessage="No location matches." disabled={!tuitionCityId} required onChange={setTuitionLocationId} /></CompactLocation>
         </>}
 
-        <Select title="Curriculum / category" required value={category} onChange={changeCategory} options={guardianCurriculumCategories} placeholder="Choose a category" />
-        {category === "English Medium"
-          ? <Select title="Curriculum Type" required value={curriculumType} onChange={setCurriculumType} options={getGuardianCurriculumTypesForCategory(category)} placeholder="Choose a type" />
-          : null}
-        <Select title="Class / level" required value={classCourse} onChange={changeLevel} options={levels} placeholder={category ? "Choose a level" : "Choose a curriculum first"} />
+        <div className="col-span-2 sm:col-span-3">
+          <LearningNeedsField value={learningNeeds} onChange={setLearningNeeds} limits={needsLimits} dense onNotice={message => toast.error(message)} />
+        </div>
         <Select title="Student gender" value={studentGender} onChange={value => setStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" format={value => formatStudentGender(value)} />
 
         {tuitionType === "group"
@@ -299,22 +278,6 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
         <Select title="Where Did You Hear About Us" required value={heardAboutUs} onChange={value => setHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" format={value => formatRequestSource(value as RequestSource)} />
         <Text title="Address Details" value={addressDetails} onChange={setAddressDetails} maxLength={160} />
       </div>
-
-      <fieldset className="mt-3.5 border-t border-j-border pt-3">
-        <legend className="text-[11px] font-semibold text-j-ink-soft">Subject selection {star} <span className="font-normal text-j-ink-muted">— {subjects.length} of {subjectLimit}</span></legend>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {availableSubjects.map(subject => {
-            const selected = subjects.includes(subject);
-            return <button
-              key={subject}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => toggleSubject(subject)}
-              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9]" : "border-[#dbeaf2] bg-white text-[#58758a] hover:bg-j-surface-sunken"}`}
-            >{selected ? <Check size={11} aria-hidden={true} /> : null}{subject}</button>;
-          })}
-        </div>
-      </fieldset>
 
       <label className="mt-3 block">
         <span className={label}>Additional notes</span>

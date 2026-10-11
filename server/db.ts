@@ -130,7 +130,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
-import { learningNeedMatchCondition, replaceRequestLearningNeeds } from "./request-learning-needs";
+import { attachLearningNeeds, learningNeedMatchCondition, replaceRequestLearningNeeds } from "./request-learning-needs";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
 import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
@@ -2750,8 +2750,9 @@ export async function listGuardianTutorRequests(userId: number) {
   // Tutors button is the number of rows behind it.
   const appliedByRequest = await countGuardianApplicantsByRequest(database, requests.map(request => request.id));
   const waitingByRequest = await getWaitingGuardianTuitionRequests(requests);
+  const withNeeds = await attachLearningNeeds(database, requests);
 
-  return requests.map(request => {
+  return withNeeds.map(request => {
     const waiting = waitingByRequest.get(request.id);
     return {
       ...request,
@@ -9625,7 +9626,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     // `guardianOpenId` is a server-side identifier and does not leave: what
     // the Edit form needs from it is the one fact of whether the Admin wrote
     // this Guardian's name and number, and so may correct them.
-    items: items.map(({ guardianOpenId, ...item }) => ({
+    items: (await attachLearningNeeds(database, items)).map(({ guardianOpenId, ...item }) => ({
       ...item,
       appliedTutorCount: appliedByRequest.get(item.id) ?? 0,
       appointmentRequested: appointmentRequestedIds.has(item.id),

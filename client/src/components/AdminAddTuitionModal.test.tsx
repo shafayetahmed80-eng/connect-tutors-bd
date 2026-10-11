@@ -32,14 +32,24 @@ const type = (label: RegExp | string, value: string) => fireEvent.change(screen.
 // are in the tree here; either one runs the same handler.
 const postButton = () => screen.getAllByRole("button", { name: /^Post$/ })[0];
 
+/** Types into a chip box and takes the one offer that matches, as a person would. */
+function chooseChip(scope: HTMLElement | Document, label: RegExp, option: string) {
+  const box = within(scope as HTMLElement).getByRole("combobox", { name: label });
+  fireEvent.click(box);
+  fireEvent.change(box, { target: { value: option } });
+  const list = within(scope as HTMLElement).getByRole("listbox");
+  fireEvent.click(within(list).getByRole("button", { name: option }));
+}
+/** The block a curriculum opens: its class box, and a subject group for each class chosen. */
+const curriculum = (name: string) => screen.getByRole("group", { name });
+
 /** Everything a tuition needs to post, so a test can vary only what it is about. */
 function fillTuition() {
   type(/Guardian name/, "Off-site Guardian");
   type(/Mobile number/, "01999888777");
-  fireEvent.change(screen.getByLabelText(/Curriculum \/ category/), { target: { value: "Bangla Medium" } });
-  fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 4" } });
-  const subjects = screen.getByRole("group", { name: /Subject selection/ });
-  fireEvent.click(within(subjects).getAllByRole("button")[0]);
+  chooseChip(document.body, /Curriculum \/ category/, "Bangla Medium");
+  chooseChip(curriculum("Bangla Medium"), /Class \/ level/, "Class 4");
+  fireEvent.click(within(screen.getByRole("group", { name: "Subjects for Class 4" })).getAllByRole("button")[0]);
   fireEvent.change(screen.getByLabelText(/Days per week/), { target: { value: "3" } });
   type(/Monthly salary/, "6,500");
   fireEvent.change(screen.getByLabelText(/Where Did You Hear About Us/), { target: { value: "others" } });
@@ -53,7 +63,8 @@ describe("Add Tuition", () => {
     expect(screen.getByLabelText(/Guardian name/)).toBeTruthy();
     expect(screen.getByLabelText(/Mobile number/)).toBeTruthy();
     // And the journey's own, all of them, with no step to walk through.
-    for (const field of [/Tuition type/, /Curriculum \/ category/, /Class \/ level/, /Student gender/, /Days per week/, /Preferred Tutor gender/, /Monthly salary/, /Institute Name/, /Where Did You Hear About Us/, /Address Details/, /Additional notes/]) {
+    expect(screen.getByRole("combobox", { name: /Curriculum \/ category/ })).toBeTruthy();
+    for (const field of [/Tuition type/, /Student gender/, /Days per week/, /Preferred Tutor gender/, /Monthly salary/, /Institute Name/, /Where Did You Hear About Us/, /Address Details/, /Additional notes/]) {
       expect(screen.getByLabelText(field), String(field)).toBeTruthy();
     }
     expect(postButton()).toBeTruthy();
@@ -117,32 +128,40 @@ describe("Add Tuition", () => {
     expect(screen.getByLabelText(/Number of students/)).toBeTruthy();
   });
 
-  it("offers the subjects that belong to the chosen curriculum and level", () => {
+  it("offers the subjects that belong to the chosen curriculum and class, a list for each class", () => {
     open();
-    const subjects = () => screen.getByRole("group", { name: /Subject selection/ });
+    chooseChip(document.body, /Curriculum \/ category/, "Bangla Medium");
+    chooseChip(curriculum("Bangla Medium"), /Class \/ level/, "Class 4");
+    chooseChip(curriculum("Bangla Medium"), /Class \/ level/, "Class 9");
+    const subjectsOf = (className: string) => within(screen.getByRole("group", { name: `Subjects for ${className}` })).getAllByRole("button").map(button => button.textContent);
 
-    fireEvent.change(screen.getByLabelText(/Curriculum \/ category/), { target: { value: "Bangla Medium" } });
-    fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 4" } });
-    const primary = within(subjects()).getAllByRole("button").map(button => button.textContent);
-
-    // A different level is a different subject list, not the same one again.
-    fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 9" } });
-    expect(within(subjects()).getAllByRole("button").map(button => button.textContent)).not.toEqual(primary);
+    // A different class is a different subject list, not the same one again.
+    expect(subjectsOf("Class 9")).not.toEqual(subjectsOf("Class 4"));
   });
 
-  it("drops a chosen subject that the new level does not teach", () => {
+  it("keeps each class's own subjects, and takes a class's subjects away with the class", () => {
     open();
-    fireEvent.change(screen.getByLabelText(/Curriculum \/ category/), { target: { value: "Bangla Medium" } });
-    fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Class 9" } });
-    const subjects = screen.getByRole("group", { name: /Subject selection/ });
-    const chosen = within(subjects).getAllByRole("button").at(-1)!;
-    fireEvent.click(chosen);
-    expect(within(subjects).getByRole("button", { pressed: true })).toBeTruthy();
+    chooseChip(document.body, /Curriculum \/ category/, "Bangla Medium");
+    chooseChip(curriculum("Bangla Medium"), /Class \/ level/, "Class 4");
+    chooseChip(curriculum("Bangla Medium"), /Class \/ level/, "Class 9");
+    fireEvent.click(within(screen.getByRole("group", { name: "Subjects for Class 9" })).getAllByRole("button").at(-1)!);
+    expect(within(screen.getByRole("group", { name: "Subjects for Class 9" })).getByRole("button", { pressed: true })).toBeTruthy();
+    // Class 4 has none of its own yet: choosing in one class does not choose in another.
+    expect(screen.getByRole("status", { name: /0 of \d+ subjects selected for Class 4/ })).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText(/Class \/ level/), { target: { value: "Nursery" } });
-    // The count in the legend is the honest one: nothing carried over that the
-    // new level does not offer.
-    expect(screen.getByText(/0 of \d+/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Class 9" }));
+    expect(screen.queryByRole("group", { name: "Subjects for Class 9" })).toBeNull();
+  });
+
+  it("takes a second curriculum, with its own classes", () => {
+    open();
+    chooseChip(document.body, /Curriculum \/ category/, "Bangla Medium");
+    chooseChip(document.body, /Curriculum \/ category/, "English Version");
+
+    expect(curriculum("Bangla Medium")).toBeTruthy();
+    expect(curriculum("English Version")).toBeTruthy();
+    chooseChip(curriculum("English Version"), /Class \/ level/, "Class 6");
+    expect(screen.getByRole("group", { name: "Subjects for Class 6" })).toBeTruthy();
   });
 
   it("sends the tuition as the Guardian journey would have posted it", () => {
@@ -154,13 +173,22 @@ describe("Add Tuition", () => {
       guardianName: "Off-site Guardian",
       guardianPhone: "01999888777",
       tuitionType: "home",
-      category: "Bangla Medium",
-      classCourse: "Class 4",
+      learningNeeds: [{ category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: [expect.any(String)] }] }],
       daysPerWeek: 3,
       // Typed with a comma, sent as a number.
       budgetAmount: 6500,
       heardAboutUs: "others",
     }));
+  });
+
+  it("will not post a tuition whose class has no subject chosen yet", () => {
+    open();
+    fillTuition();
+    fireEvent.click(within(screen.getByRole("group", { name: "Subjects for Class 4" })).getByRole("button", { pressed: true }));
+    fireEvent.click(postButton());
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith("Select at least one subject for Class 4 to continue.");
   });
 
   it("does not post a tuition with no salary", () => {
@@ -171,7 +199,12 @@ describe("Add Tuition", () => {
   });
 });
 
-const draft = {
+const draft: { learningNeeds?: Array<{ category: string; curriculumType: string | null; classes: Array<{ classCourse: string; subjects: string[] }> }> } & Record<string, unknown> & {
+  requestId: number; guardianName: string; guardianPhone: string; guardianIsAdminPosted: boolean; tuitionType: string; tuitionCityLocationId: string; tuitionLocationId: string;
+  category: string; curriculumType: string | null; classCourse: string; subjects: string; studentGender: string; addressDetails: string; studentCount: number;
+  groupCapacity: number | null; packageDurationMonths: number | null; daysPerWeek: number; preferredGender: string; budgetAmount: number; instituteName: string;
+  heardAboutUs: string; notes: string;
+} = {
   requestId: 14,
   guardianName: "Sojib Rahman",
   guardianPhone: "+8801674936203",
@@ -207,15 +240,36 @@ describe("Edit", () => {
     expect(screen.getByRole("heading", { name: /Edit Job ID 6813/ })).toBeTruthy();
     expect((screen.getByLabelText(/Guardian name/) as HTMLInputElement).value).toBe("Sojib Rahman");
     expect((screen.getByLabelText(/Mobile number/) as HTMLInputElement).value).toBe("+8801674936203");
-    expect((screen.getByLabelText(/Class \/ level/) as HTMLSelectElement).value).toBe("Class 4");
     expect((screen.getByLabelText(/Days per week/) as HTMLSelectElement).value).toBe("3");
     expect((screen.getByLabelText(/Monthly salary/) as HTMLInputElement).value).toBe("6500");
     expect((screen.getByLabelText(/Number of students/) as HTMLInputElement).value).toBe("2");
     expect((screen.getByLabelText(/Institute Name/) as HTMLInputElement).value).toBe("City College");
     expect((screen.getByLabelText(/Additional notes/) as HTMLTextAreaElement).value).toBe("Evening slots only");
-    // The subject the tuition already carries comes back chosen.
-    const subjects = screen.getByRole("group", { name: /Subject selection/ });
-    expect(within(subjects).getByRole("button", { pressed: true }).textContent).toContain("General Maths");
+    // The curriculum, class and subject the tuition already carries come back chosen.
+    expect(within(curriculum("Bangla Medium")).getByRole("button", { name: "Remove Class 4" })).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Subjects for Class 4" })).getByRole("button", { pressed: true }).textContent).toContain("General Maths");
+  });
+
+  it("opens a tuition that asks for several curricula and classes with each one chosen, and sends the same list back", () => {
+    openEdit({
+      learningNeeds: [
+        { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }] },
+        { category: "English Version", curriculumType: null, classes: [{ classCourse: "Class 6", subjects: ["English"] }, { classCourse: "Class 7", subjects: ["General Science"] }] },
+      ],
+    });
+
+    expect(curriculum("Bangla Medium")).toBeTruthy();
+    expect(within(curriculum("English Version")).getByRole("button", { name: "Remove Class 7" })).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Subjects for Class 7" })).getByRole("button", { pressed: true }).textContent).toContain("General Science");
+
+    fireEvent.click(updateButton());
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: 14,
+      learningNeeds: [
+        { category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }] },
+        { category: "English Version", classes: [{ classCourse: "Class 6", subjects: ["English"] }, { classCourse: "Class 7", subjects: ["General Science"] }] },
+      ],
+    }));
   });
 
   it("shows the tuition's own Job ID, which an edit cannot change", () => {
