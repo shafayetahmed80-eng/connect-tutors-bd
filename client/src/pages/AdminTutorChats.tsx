@@ -400,7 +400,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   return <div className="flex h-full min-h-0 flex-col">
     <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#dce9f1] px-4 py-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        {onBack ? <button type="button" onClick={onBack} aria-label="Back to Tutor list" className="grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-soft hover:bg-j-surface-sunken"><ArrowLeft size={18} /></button> : null}
+        {onBack ? <button type="button" onClick={onBack} aria-label="Back to Tutor list" className="grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-soft hover:bg-j-surface-sunken max-sm:size-10"><ArrowLeft size={18} /></button> : null}
         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint">
           {tutor?.profilePhotoUrl
             ? <img src={tutor.profilePhotoUrl} alt="" className="size-full object-cover" />

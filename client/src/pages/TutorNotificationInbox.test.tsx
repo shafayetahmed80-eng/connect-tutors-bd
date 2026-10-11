@@ -59,6 +59,16 @@ describe("the Tutor's notification inbox", () => {
     expect(screen.getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/tutor/dashboard/profile");
   });
 
+  it("makes Open and Mark read finger-sized on a phone, where they were bare 16px lines", () => {
+    state.items = [note()];
+    state.unread = 1;
+    render(<TutorNotificationInbox />);
+
+    for (const control of [screen.getByRole("link", { name: "Open" }), screen.getByRole("button", { name: "Mark read" })]) {
+      expect(control.className).toContain("max-sm:min-h-10");
+    }
+  });
+
   it("gives no Open link to a notice that has no page of its own", () => {
     state.items = [
       note({ id: 1, type: "announcement", title: "A message from the team", actionPath: "/tutor/dashboard/notifications" }),
