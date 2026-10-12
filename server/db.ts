@@ -133,7 +133,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
-import { attachLearningNeeds, learningNeedMatchCondition, readRequestLearningNeeds, replaceRequestLearningNeeds } from "./request-learning-needs";
+import { attachLearningNeeds, insertRequestLearningNeeds, learningNeedMatchCondition, readRequestLearningNeeds, replaceRequestLearningNeeds } from "./request-learning-needs";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
 import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
@@ -2542,7 +2542,7 @@ export async function createAdminPostedTuition(input: {
         postedByAdmin: 1,
       });
       const createdId = Number(created[0].insertId);
-      await replaceRequestLearningNeeds(tx, createdId, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
+      await insertRequestLearningNeeds(tx, createdId, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
       return createdId;
     });
   } catch (error) {
@@ -2709,7 +2709,7 @@ export async function createTutorRequest(request: InsertTutorRequest, learningNe
     const result = await tx.insert(tutorRequests).values(request);
     const id = Number(result[0].insertId);
     // The request's own category / classCourse / subjects are the summary of the list; the rows are the list.
-    await replaceRequestLearningNeeds(tx, id, learningNeeds ?? learningNeedsFromLegacy(request));
+    await insertRequestLearningNeeds(tx, id, learningNeeds ?? learningNeedsFromLegacy(request));
     return { id };
   });
 }
