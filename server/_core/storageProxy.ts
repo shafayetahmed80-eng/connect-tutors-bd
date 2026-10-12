@@ -4,6 +4,10 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./env";
 import { isLocalStorageBackend, resolveLocalStoragePath } from "../storage";
+import { getTutorProfileByUserId } from "../db";
+import { loginTwoFactorCleared } from "../login-two-factor";
+import { mayReadStorage, storageAccessFor } from "../storage-access";
+import { sdk } from "./sdk";
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   ".png": "image/png",
@@ -20,6 +24,21 @@ export function registerStorageProxy(app: Express) {
     if (!key) {
       res.status(400).send("Missing storage key");
       return;
+    }
+
+    // Identity documents and chat attachments are for their owner and the Admins; a
+    // refusal looks like a missing file so a path cannot be probed.
+    const access = storageAccessFor(key);
+    if (access.visibility === "private") {
+      const viewer = await sdk.authenticateRequest(req).catch(() => null);
+      const cleared = viewer ? await loginTwoFactorCleared(req, viewer.id).catch(() => false) : false;
+      const ownTutorId = viewer && cleared && access.tutorId !== undefined && viewer.role === "tutor"
+        ? (await getTutorProfileByUserId(viewer.id).catch(() => null))?.tutorId ?? null
+        : null;
+      if (!viewer || !cleared || !mayReadStorage(access, viewer, ownTutorId)) {
+        res.status(404).send("Not found");
+        return;
+      }
     }
 
     if (isLocalStorageBackend()) {
