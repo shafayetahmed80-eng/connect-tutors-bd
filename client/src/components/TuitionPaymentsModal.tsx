@@ -70,7 +70,7 @@ export default function TuitionPaymentsModal({ requestId, onClose }: { requestId
             value={ledger.data.kind}
             disabled={!ledger.data.canChooseKind || chooseKind.isPending}
             onChange={event => chooseKind.mutate({ requestId, kind: event.target.value as "home" | "online" })}
-            className="h-11 rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:opacity-60"
+            className="h-control rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100 disabled:opacity-60"
           >
             <option value="home">{chargeKindLabels.home}</option>
             <option value="online">{chargeKindLabels.online}</option>

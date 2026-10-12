@@ -53,14 +53,14 @@ function TutorMatchingFilterBar({ filters, onChange, onClear }: {
       <label className="relative block">
         <span className="sr-only">Search Tutors</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
     </RecentSearches>
-    <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorMatchingFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
-    <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorMatchingFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
-    <button type="button" onClick={onClear} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
+    <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorMatchingFilters["verified"] })} aria-label="Verification status" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
+    <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-control rounded-xl border border-j-border px-3 text-sm" />
+    <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-control rounded-xl border border-j-border px-3 text-sm" />
+    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorMatchingFilters["tuitionType"] })} aria-label="Tuition type" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
+    <button type="button" onClick={onClear} className="h-control rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
   </div>;
 }
 
@@ -204,7 +204,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         : lifecycleStage && canCancelTuition(lifecycleStage) ? <button
         type="button"
         onClick={() => { setCancelReason(""); setCancelling(true); }}
-        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
+        className="inline-flex h-control shrink-0 items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 text-sm font-bold text-red-700 hover:bg-red-50"
       >
         <CircleX className="h-4 w-4" /> Cancel Tuition
       </button> : null}
@@ -213,7 +213,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         type="button"
         onClick={() => setFiltersOpen(open => !open)}
         aria-expanded={filtersOpen}
-        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-j-border px-3.5 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+        className="inline-flex h-control shrink-0 items-center gap-2 rounded-xl border border-j-border px-3.5 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
       >
         <SlidersHorizontal className="h-4 w-4" /> Filter
         {activeFilterCount ? <span className="rounded-full bg-[#eaf4fd] px-1.5 text-2xs tabular-nums text-[#1267c8]">{activeFilterCount}</span> : null}
@@ -276,8 +276,8 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setApproving(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
+        <button type="button" onClick={() => setApproving(null)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={approve.isPending || !approving.interestId} onClick={() => { if (approving.interestId) approve.mutate({ interestId: approving.interestId }); }} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{approve.isPending ? "Approving…" : "Approve"}</button>
       </ModalFooter>
     </Modal> : null}
 
@@ -306,12 +306,12 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         </label>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setCancelling(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
+        <button type="button" onClick={() => setCancelling(false)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Keep Tuition</button>
         <button
           type="button"
           disabled={cancelTuition.isPending || cancelReason.trim().length < 3}
           onClick={() => cancelTuition.mutate({ requestId, reason: cancelReason.trim() })}
-          className="h-11 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          className="h-control rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
         >{cancelTuition.isPending ? "Cancelling…" : "Cancel Tuition"}</button>
       </ModalFooter>
     </Modal> : null}
@@ -331,12 +331,12 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
               : "The Tutor is removed and told. The tuition is Live again, and the Guardian can appoint another applicant."}</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setDeciding(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" onClick={() => setDeciding(null)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
         <button
           type="button"
           disabled={actionPending}
           onClick={decide}
-          className={`h-11 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" || deciding.action === "remove_confirmed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
+          className={`h-control rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${deciding.action === "remove_appointed" || deciding.action === "remove_confirmed" ? "bg-red-600 hover:bg-red-700" : deciding.action === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-j-accent hover:bg-j-accent-hover"}`}
         >{actionPending
           ? (deciding.action === "appoint" ? "Appointing…" : deciding.action === "confirm" ? "Confirming…" : "Removing…")
           : (deciding.action === "appoint" ? "Appoint" : deciding.action === "confirm" ? "Confirm" : "Remove Tutor")}</button>

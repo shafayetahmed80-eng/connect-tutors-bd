@@ -22,7 +22,7 @@ const MOTION =
 
 const SKIN = {
   solid: {
-    shell: `${MOTION} h-11 gap-2 rounded-xl bg-j-accent pl-1.5 pr-3.5 shadow-[0_1px_2px_rgba(22,125,221,.25)] hover:bg-j-accent-hover hover:shadow-[0_10px_28px_-8px_rgba(22,125,221,.45)]`,
+    shell: `${MOTION} h-control gap-2 rounded-xl bg-j-accent pl-1.5 pr-3.5 shadow-[0_1px_2px_rgba(22,125,221,.25)] hover:bg-j-accent-hover hover:shadow-[0_10px_28px_-8px_rgba(22,125,221,.45)]`,
     chip: "grid size-6 shrink-0 place-items-center rounded-lg bg-white/20 text-white",
     label: "text-xs font-bold text-white",
     plus: 13,

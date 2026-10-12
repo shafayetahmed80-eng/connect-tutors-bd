@@ -26,7 +26,7 @@ export function TutorProfileSkeleton() {
       </div>
     </div>
     <div className={`min-w-0 ${tp.stack}`}>
-      <Skeleton className="nav-tab-outer h-11 w-full rounded-xl bg-j-surface-sunken" />
+      <Skeleton className="nav-tab-outer h-control w-full rounded-xl bg-j-surface-sunken" />
       {[6, 4].map((rows, card) => <div key={card} className={`${tp.card} ${tp.cardPad}`}>
         <Skeleton className={`h-4 w-40 ${bar}`} />
         <div className="mt-5 grid gap-x-10 gap-y-4 lg:grid-cols-2">

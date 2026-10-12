@@ -152,3 +152,35 @@ describe("the Guardian request form's fields line up", () => {
     expect(tuitionTypeIcon.className).toContain("input-text-journey");
   });
 });
+
+describe("the Guardian request form's first step is ordered so no row is left half empty", () => {
+  function stepOneBoxes(tuitionType: "home" | "online") {
+    const { container } = render(<RequestStage {...props} step={1} requestInput={{ ...props.requestInput, tuitionType }} />);
+    const grid = Array.from(container.querySelectorAll("div")).find(div => div.className === fieldGrid)!;
+    return Array.from(grid.children).map(box => ({ wide: box.className.includes("col-span-2"), text: box.textContent ?? "" }));
+  }
+
+  it("puts Tuition type beside Student gender, Tuition City beside Location, then the two full-width blocks", () => {
+    const boxes = stepOneBoxes("home");
+
+    expect(boxes).toHaveLength(6);
+    expect(boxes[0].text).toMatch(/^Tuition type/);
+    expect(boxes[1].text).toMatch(/^Student gender/);
+    expect(boxes[2].text).toMatch(/Tuition City/);
+    expect(boxes[3].text).toMatch(/Location/);
+    expect([boxes[0].wide, boxes[1].wide, boxes[2].wide, boxes[3].wide]).toEqual([false, false, false, false]);
+    expect(boxes[4].wide).toBe(true);
+    expect(boxes[5].wide).toBe(true);
+    expect(boxes[5].text).toMatch(/Address Details/);
+  });
+
+  it("still fills its rows for an Online tuition, which has no City or Location", () => {
+    const boxes = stepOneBoxes("online");
+
+    expect(boxes).toHaveLength(4);
+    expect(boxes[0].text).toMatch(/^Tuition type/);
+    expect(boxes[1].text).toMatch(/^Student gender/);
+    expect(boxes.slice(2).every(box => box.wide)).toBe(true);
+    expect(boxes.map(box => box.text).join(" ")).not.toMatch(/Tuition City|Location/);
+  });
+});

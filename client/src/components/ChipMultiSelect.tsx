@@ -167,7 +167,7 @@ export default function ChipMultiSelect({
     // a keyboard user collects one open list per field they pass through.
     onBlur={event => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) close(); }}
   >
-    <div className={`flex w-full items-start gap-1.5 border transition focus-within:ring-2 ${tone.focus} ${dense ? "min-h-[var(--profile-field-height,44px)] max-sm:min-h-[var(--profile-field-height-phone,44px)] max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-11 rounded-xl px-3 py-2"} ${tone.border} ${tone.surface}`}>
+    <div className={`flex w-full items-start gap-1.5 border transition focus-within:ring-2 ${tone.focus} ${dense ? "min-h-control max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-control rounded-xl px-3 py-2"} ${tone.border} ${tone.surface}`}>
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         {selected.map(option => <span key={option.id} className={`inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pl-2 pr-1 text-xs font-semibold ${tone.chip}`}>
           <span className="truncate">{option.label}</span>

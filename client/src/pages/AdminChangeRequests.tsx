@@ -114,9 +114,9 @@ function ApproveDialog({ row, busy, onClose, onApprove }: { row: ChangeRequestRo
       <p className="text-sm leading-6 text-j-ink-soft">{outcomeText(row)}</p>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+      <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
       <button type="button" disabled={busy} onClick={onApprove}
-        className={`h-11 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${closing ? "bg-red-600 hover:bg-red-700" : "bg-[#0f7048] hover:bg-[#0c5b3a]"}`}
+        className={`h-control rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${closing ? "bg-red-600 hover:bg-red-700" : "bg-[#0f7048] hover:bg-[#0c5b3a]"}`}
       >{busy ? "Approving…" : "Approve"}</button>
     </ModalFooter>
   </Modal>;
@@ -133,9 +133,9 @@ function DeclineDialog({ row, busy, onClose, onDecline }: { row: ChangeRequestRo
         className="w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+      <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
       <button type="button" disabled={busy || !ready} onClick={() => onDecline(reason.trim())}
-        className="h-11 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+        className="h-control rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
       >{busy ? "Declining…" : "Decline"}</button>
     </ModalFooter>
   </Modal>;
@@ -211,7 +211,7 @@ export function AdminChangeRequestsContent() {
           value={query}
           onChange={event => setQuery(event.target.value)}
           placeholder="Search name, Guardian ID or Tutor ID"
-          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
       </label>
     </RecentSearches>

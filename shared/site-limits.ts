@@ -20,13 +20,14 @@
  */
 /**
  * The one height a field or a button stands, wherever it is on the site: the
- * Owner's rule of 2026-10-11. Every height dial below ships at this number, so
- * a freshly installed site is already uniform, and each stays editable so the
- * Owner can still move one place without moving the rest. Row actions inside a
- * table or card, tab rows, pagers, the sidebar menu and icon-only buttons are
- * deliberately smaller and are not this number.
+ * Owner's rule of 2026-10-11, brought down from 44 to 40 on 2026-10-12. One
+ * number, set in Admin (`control.height`, and `control.heightPhone` for a
+ * phone) and written once as the CSS variable `--control-height`; every field
+ * and button reads that variable. Row actions inside a table or card, tab
+ * rows, pagers, the sidebar menu and icon-only buttons are deliberately smaller
+ * and are not this number.
  */
-export const CONTROL_HEIGHT_PX = 44;
+export const CONTROL_HEIGHT_PX = 40;
 
 export const siteLimitIds = [
   "request.subjects",
@@ -46,9 +47,6 @@ export const siteLimitIds = [
   "modal.width.dialog",
   "modal.width.panel",
   "modal.height.panel",
-  "modal.fieldHeight.profile",
-  "modal.fieldHeight.profilePhone",
-  "modal.fieldHeight.journey",
   "modal.radius",
   "modal.motionMs",
   "modal.backdropOpacity",
@@ -67,11 +65,12 @@ export const siteLimitIds = [
   // component and the Guardian journey's own primary/ghost buttons. A fixed
   // width is not offered for either: a button sizes to its label by design,
   // and Cancel is not as long as Send request.
+  // The one height every field and ordinary button stands, on a laptop and on a phone.
+  "control.height",
+  "control.heightPhone",
   "button.textSize",
-  "button.height",
   "button.paddingX",
   "journeyButton.textSize",
-  "journeyButton.height",
   "journeyButton.paddingX",
   // What a Tutor pays Connect Tutors on a confirmed tuition, as a share of its
   // monthly salary. Read by `shared/platform-charge.ts`.
@@ -287,36 +286,6 @@ export const siteLimits: SiteLimitMeta[] = [
     max: 1200,
   },
   {
-    id: "modal.fieldHeight.profile",
-    group: "Modals",
-    label: "Field height, Tutor profile editor",
-    help: "Single-line inputs and dropdowns inside the profile section popup. Text boxes grow with what is typed and are not affected.",
-    unit: "px",
-    value: CONTROL_HEIGHT_PX,
-    min: 24,
-    max: 64,
-  },
-  {
-    id: "modal.fieldHeight.profilePhone",
-    group: "Modals",
-    label: "Field height on a phone, Tutor profile editor",
-    help: "The same boxes on a phone, where they are tapped rather than clicked. 44px is the smallest target a finger hits reliably; the height above still applies from 640px up.",
-    unit: "px",
-    value: CONTROL_HEIGHT_PX,
-    min: 24,
-    max: 64,
-  },
-  {
-    id: "modal.fieldHeight.journey",
-    group: "Modals",
-    label: "Field height, Hire a tutor sheet",
-    help: "Single-line inputs and dropdowns in the Guardian journey and the registration forms. Ships at the same height as every other field and button; it is listed on its own so it can be moved without moving the rest.",
-    unit: "px",
-    value: CONTROL_HEIGHT_PX,
-    min: 32,
-    max: 72,
-  },
-  {
     id: "modal.radius",
     group: "Modals",
     label: "Corner radius",
@@ -407,6 +376,26 @@ export const siteLimits: SiteLimitMeta[] = [
     max: 32,
   },
   {
+    id: "control.height",
+    group: "Button Section",
+    label: "Field and button height",
+    help: "One height for every input box, dropdown and ordinary button on a laptop: sign-in, registration, the three panels and their dialogs. Row actions, tab rows, pagers, the sidebar and icon-only buttons stay smaller. Text boxes grow with what is typed and are not affected.",
+    unit: "px",
+    value: CONTROL_HEIGHT_PX,
+    min: 28,
+    max: 64,
+  },
+  {
+    id: "control.heightPhone",
+    group: "Button Section",
+    label: "Field and button height on a phone",
+    help: "The same boxes and buttons on a phone, where they are tapped rather than clicked; the height above applies from 640px up.",
+    unit: "px",
+    value: CONTROL_HEIGHT_PX,
+    min: 32,
+    max: 64,
+  },
+  {
     id: "button.textSize",
     group: "Button Section",
     label: "Button text - shared button",
@@ -415,16 +404,6 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 14,
     min: 10,
     max: 20,
-  },
-  {
-    id: "button.height",
-    group: "Button Section",
-    label: "Button height - shared button",
-    help: "How tall that same ordinary button stands.",
-    unit: "px",
-    value: CONTROL_HEIGHT_PX,
-    min: 28,
-    max: 56,
   },
   {
     id: "button.paddingX",
@@ -445,16 +424,6 @@ export const siteLimits: SiteLimitMeta[] = [
     value: 14,
     min: 10,
     max: 20,
-  },
-  {
-    id: "journeyButton.height",
-    group: "Button Section",
-    label: "Button height - Guardian journey",
-    help: "How tall a journey or registration button stands. Ships at the same height as the shared button above and every field; it is listed on its own so a public form can be moved without moving the rest.",
-    unit: "px",
-    value: CONTROL_HEIGHT_PX,
-    min: 36,
-    max: 72,
   },
   {
     id: "journeyButton.paddingX",

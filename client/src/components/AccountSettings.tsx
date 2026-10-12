@@ -85,7 +85,7 @@ export function AccountSettings({ items, basePath }: { items: AccountSettingsIte
             aria-current={selected ? "page" : undefined}
             aria-label={item.status ? `${item.label}: ${item.status.label}` : item.label}
             onClick={() => choose(item.key)}
-            className={`group flex min-w-0 items-center justify-center gap-2 rounded-xl border bg-white px-3 py-2 transition-[border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none ${
+            className={`group flex min-w-0 items-center justify-center gap-2 rounded-xl border bg-white px-3 h-control transition-[border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none ${
               selected
                 ? item.danger ? "border-red-300 bg-red-50/60" : "border-[#7fb5ea] bg-[#f3f9ff]"
                 : item.danger ? "border-red-100 hover:border-red-200" : "border-[#dce9f1] hover:border-[#a9cdf0]"
@@ -162,7 +162,7 @@ export function SettingValue({ label, value }: { label: string; value: string })
   </p>;
 }
 
-const passwordInput = "rounded-xl border border-j-field-border px-3 py-2.5 text-sm font-normal outline-none ring-[#1677c8] focus:ring-2";
+const passwordInput = "h-control rounded-xl border border-j-field-border px-3 text-sm font-normal outline-none ring-[#1677c8] focus:ring-2";
 
 /** Changing one's own password: the current one, then the new one twice. */
 export function ChangePasswordForm() {

@@ -39,8 +39,8 @@ function Drawn({ width, height, scale, limits, lines }: { width: number; height:
       </div>
       <div className="min-h-0 flex-1 px-5 py-4"><Skeleton lines={lines} /></div>
       <div className="flex shrink-0 items-center justify-end gap-3 border-t border-j-border bg-white px-5" style={{ height: BAR_PX.footer }}>
-        <div className="rounded-xl border border-j-border" style={{ height: limits["button.height"], width: 84 }} />
-        <div className="rounded-xl bg-j-accent" style={{ height: limits["button.height"], width: 104 }} />
+        <div className="rounded-xl border border-j-border" style={{ height: limits["control.height"], width: 84 }} />
+        <div className="rounded-xl bg-j-accent" style={{ height: limits["control.height"], width: 104 }} />
       </div>
     </div>
   </div>;

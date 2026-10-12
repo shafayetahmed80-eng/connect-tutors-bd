@@ -121,7 +121,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
               value={query}
               onChange={event => { setQuery(event.target.value); setPage(1); }}
               placeholder="Search subject, class, location or Guardian"
-              className="h-11 w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+              className="h-control w-64 rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
             />
           </label>
         </RecentSearches>
@@ -140,7 +140,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
       matchingCaption={`matching ${stageLabel.toLowerCase()} jobs`}
       panelLabel="Posted jobs filters"
       postedBy={postedBy}
-      actions={<button type="button" onClick={() => setAdding(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
+      actions={<button type="button" onClick={() => setAdding(true)} className="inline-flex min-h-control items-center gap-2 rounded-xl bg-[#1677e8] px-4 text-sm font-bold text-white hover:bg-[#0e5fbd]">
         <Plus size={16} /> Add Tuition
       </button>}
     />
@@ -282,11 +282,11 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
           type="button"
           disabled={goLive.isPending}
           onClick={() => goLive.mutate({ requestId: statusJob.id, action: "go_live" })}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
+          className="inline-flex h-control w-full items-center justify-center gap-2 rounded-xl bg-[#0f7048] px-4 text-sm font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
         ><RadioTower size={16} /> {goLive.isPending ? "Going live…" : "Live"}</button>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setStatusJobId(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" onClick={() => setStatusJobId(null)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
       </ModalFooter>
     </Modal> : null}
   </div>;
