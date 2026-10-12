@@ -175,7 +175,7 @@ import {
   type TutorProfileDraftInput,
   type TutorProfileEditableDraftInput,
 } from "./tutor-profile.validation";
-import { pickDirectoryInstitute } from "./directory-institute";
+import { pickDirectoryEducation } from "./directory-institute";
 import { educationRecordFromRow } from "./tutor-profile-education-record";
 import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 import {
@@ -6098,19 +6098,27 @@ const adminTutorDirectoryFields = {
  * and the applied-Tutor list cannot render the same Tutor differently.
  */
 async function enrichAdminTutorDirectoryRows<
-  Row extends { id: string; cityLocationId: string | null; institution: string | null },
+  Row extends { id: string; cityLocationId: string | null; institution: string | null; departmentName: string | null },
 >(
   database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   rows: Row[],
 ) {
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
-  const [educationRows, cityRows, modeRows] = await Promise.all([
+  const [educationRows, academicRows, cityRows, modeRows] = await Promise.all([
     tutorIds.length
       ? database
-          .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
+          .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName, majorGroup: tutorEducationRecords.majorGroup })
           .from(tutorEducationRecords)
           .where(inArray(tutorEducationRecords.tutorId, tutorIds))
+      : [],
+    tutorIds.length
+      ? database
+          .select({ tutorId: tutorAcademicProfiles.tutorId, highestEducation: tutorAcademicProfiles.highestEducation, universityName: universities.name, departmentName: facultyDepartments.name })
+          .from(tutorAcademicProfiles)
+          .leftJoin(universities, eq(universities.id, tutorAcademicProfiles.universityId))
+          .leftJoin(facultyDepartments, eq(facultyDepartments.id, tutorAcademicProfiles.facultyDepartmentId))
+          .where(inArray(tutorAcademicProfiles.tutorId, tutorIds))
       : [],
     cityIds.length
       ? database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
@@ -6119,12 +6127,13 @@ async function enrichAdminTutorDirectoryRows<
       ? database.select({ tutorId: tutorTuitionModes.tutorId, mode: tutorTuitionModes.mode }).from(tutorTuitionModes).where(inArray(tutorTuitionModes.tutorId, tutorIds))
       : [],
   ]);
-  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null }>>();
+  const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null; majorGroup: string | null }>>();
   for (const record of educationRows) {
     const list = educationByTutor.get(record.tutorId) ?? [];
-    list.push({ qualificationLevel: record.qualificationLevel, instituteName: record.instituteName });
+    list.push({ qualificationLevel: record.qualificationLevel, instituteName: record.instituteName, majorGroup: record.majorGroup });
     educationByTutor.set(record.tutorId, list);
   }
+  const academicByTutor = new Map(academicRows.map(row => [row.tutorId, row] as const));
   const cityLabelById = new Map(cityRows.map(row => [row.id, row.label] as const));
   const modesByTutor = new Map<string, string[]>();
   for (const record of modeRows) {
@@ -6132,12 +6141,17 @@ async function enrichAdminTutorDirectoryRows<
     list.push(record.mode);
     modesByTutor.set(record.tutorId, list);
   }
-  return rows.map(row => ({
-    ...row,
-    cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
-    instituteName: pickDirectoryInstitute(educationByTutor.get(row.id) ?? []) ?? row.institution,
-    modes: modesByTutor.get(row.id) ?? [],
-  }));
+  return rows.map(row => {
+    const education = pickDirectoryEducation(academicByTutor.get(row.id) ?? null, educationByTutor.get(row.id) ?? []);
+    return {
+      ...row,
+      cityLabel: row.cityLocationId ? cityLabelById.get(row.cityLocationId) ?? null : null,
+      instituteName: education.instituteName ?? row.institution,
+      // The department of the same level the institute came from, not whatever the University Section holds.
+      departmentName: education.instituteName ? education.departmentName : row.departmentName,
+      modes: modesByTutor.get(row.id) ?? [],
+    };
+  });
 }
 /** Operational Tutor directory deliberately excludes email, documents, and photo keys. */
 /**
@@ -6630,15 +6644,21 @@ export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }
     .where(eq(tutors.id, input.tutorId));
   if (!row) throw new Error("Tutor was not found");
   const educationRows = await database
-    .select({ qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName })
+    .select({ qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName, majorGroup: tutorEducationRecords.majorGroup })
     .from(tutorEducationRecords)
     .where(eq(tutorEducationRecords.tutorId, input.tutorId));
+  const [academicRow] = await database
+    .select({ highestEducation: tutorAcademicProfiles.highestEducation, universityName: universities.name })
+    .from(tutorAcademicProfiles)
+    .leftJoin(universities, eq(universities.id, tutorAcademicProfiles.universityId))
+    .where(eq(tutorAcademicProfiles.tutorId, input.tutorId));
   const { profilePhotoKey, institution, departmentName, ...tutorFields } = row;
+  const education = pickDirectoryEducation(academicRow ? { ...academicRow, departmentName } : null, educationRows);
   const tutor = {
     ...tutorFields,
     profilePhotoUrl: profilePhotoKey ? await storageGetSignedUrl(profilePhotoKey) : null,
-    instituteName: pickDirectoryInstitute(educationRows) ?? institution,
-    departmentName,
+    instituteName: education.instituteName ?? institution,
+    departmentName: education.instituteName ? education.departmentName : departmentName,
   };
   const { messages, tutorLastReadAt, adminLastReadAt } = await getTutorAdminChatThread({ tutorId: input.tutorId });
   const claimedByAdmin = alias(users, "chat_claimed_by_admin");
