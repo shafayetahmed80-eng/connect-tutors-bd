@@ -11,18 +11,25 @@ const school = (qualificationLevel: string, instituteName: string, majorGroup: s
 const noAcademic = { highestEducation: null, universityName: null, departmentName: null };
 
 describe("which school introduces an applicant", () => {
-  it("takes Honours first, with its own department", () => {
+  it("takes Masters first, with its own department, wherever it is held", () => {
     expect(pickGuardianApplicantEducation(
       { highestEducation: "Honours", universityName: "University of Dhaka", departmentName: "Physics" },
       [school("HSC", "Notre Dame College", "Science"), school("Masters", "Jahangirnagar University", "Chemistry")],
-    )).toEqual({ instituteName: "University of Dhaka", departmentName: "Physics" });
-  });
+    )).toEqual({ instituteName: "Jahangirnagar University", departmentName: "Chemistry" });
 
-  it("finds Honours in the Qualification history when the University Section is a Masters", () => {
     expect(pickGuardianApplicantEducation(
       { highestEducation: "Masters", universityName: "Jahangirnagar University", departmentName: "Chemistry" },
       [school("Honours", "Rajshahi University", "Botany")],
-    )).toEqual({ instituteName: "Rajshahi University", departmentName: "Botany" });
+    )).toEqual({ instituteName: "Jahangirnagar University", departmentName: "Chemistry" });
+  });
+
+  it("falls to Honours, held in the section or in the Qualification history, when there is no Masters", () => {
+    expect(pickGuardianApplicantEducation(
+      { highestEducation: "Honours", universityName: "University of Dhaka", departmentName: "Physics" },
+      [school("HSC", "Notre Dame College", "Science")],
+    )).toEqual({ instituteName: "University of Dhaka", departmentName: "Physics" });
+    expect(pickGuardianApplicantEducation(null, [school("Honours", "Rajshahi University", "Botany"), school("HSC", "Dhaka College", "Science")]))
+      .toEqual({ instituteName: "Rajshahi University", departmentName: "Botany" });
   });
 
   it("falls to Masters, then Higher Secondary, then Secondary", () => {

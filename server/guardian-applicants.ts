@@ -53,8 +53,8 @@ export type GuardianApplicantEducation = { instituteName: string | null; departm
 const text = (value: string | null | undefined) => value?.trim() || null;
 
 /**
- * The school a Guardian meets an applicant by: Honours, then Masters, then
- * Higher Secondary, then Secondary - the first level the Tutor actually filled
+ * The school a Guardian meets an applicant by: Masters, then Honours, then
+ * Higher Secondary, then Secondary (the same order the Admin directory uses) - the first level the Tutor actually filled
  * in. The department always comes from that same level, so an institute is
  * never paired with a subject read somewhere else; at school level it is the
  * Science / Arts / Commerce group.
@@ -78,8 +78,8 @@ export function pickGuardianApplicantEducation(
     return record ? { instituteName: text(record.instituteName), departmentName: text(record.majorGroup) } : null;
   };
 
-  return fromAcademic("Honours") ?? fromRecord("Honours")
-    ?? fromAcademic("Masters") ?? fromRecord("Masters")
+  return fromAcademic("Masters") ?? fromRecord("Masters")
+    ?? fromAcademic("Honours") ?? fromRecord("Honours")
     // A University Section with no Education Level picked is still a
     // university, and outranks a school.
     ?? fromAcademic(null)
