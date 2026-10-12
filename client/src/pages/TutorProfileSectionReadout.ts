@@ -71,15 +71,32 @@ function fromMap<K extends string>(map: Record<K, string>, key: string): string 
   return (map as Record<string, string>)[key] ?? "";
 }
 
-function educationSummary(form: TeachingProfileState): string {
-  // Secondary and Higher Secondary are read out by their own cards.
+/**
+ * The Qualification history, a degree at a time with everything it holds, each
+ * row named by its level so two degrees never blur into one. Secondary and
+ * Higher Secondary are read out by their own cards.
+ */
+function historyRows(form: TeachingProfileState): ReadoutRowContent[] {
+  const of = (value: string | null | undefined) => (value ?? "").trim();
   const filled = form.educationRecords.filter(record =>
     !isSchoolQualification(record.qualificationLevel)
-    && [record.qualificationLevel, record.instituteName, record.degreeExamTitle].some(part => part.trim()));
-  if (filled.length === 0) return "";
-  return filled
-    .map(record => [record.degreeExamTitle || record.qualificationLevel, record.instituteName].filter(Boolean).join(" · "))
-    .join("; ");
+    && [record.qualificationLevel, record.instituteName, record.degreeExamTitle, record.majorGroup].some(part => of(part)));
+  if (filled.length === 0) return [{ label: "Qualification history", value: "" }];
+  return filled.flatMap(record => {
+    const level = of(record.qualificationLevel) || "Qualification";
+    const period = record.currentlyStudying
+      ? [of(record.studyStartYear), "Ongoing"].filter(Boolean).join(" - ")
+      : [of(record.studyStartYear), of(record.studyEndYear)].filter(Boolean).join(" - ");
+    return [
+      { label: `${level} · Institute name`, value: of(record.instituteName) },
+      { label: `${level} · Degree / exam title`, value: of(record.degreeExamTitle) },
+      { label: `${level} · Subject / group`, value: of(record.majorGroup) },
+      { label: `${level} · Curriculum`, value: of(record.curriculum) },
+      { label: `${level} · Study period`, value: period },
+      { label: `${level} · Result / GPA`, value: of(record.resultGpa), optional: true },
+      { label: `${level} · Institute ID card number`, value: of(record.instituteIdCardNumber), optional: true },
+    ];
+  });
 }
 
 /**
@@ -188,7 +205,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   graduationYear: form => form.studyStatus === "studying" ? null : { label: "Graduation year", value: text(form.graduationYear) },
   secondaryRecord: form => schoolRows(form, "SSC"),
   higherSecondaryRecord: form => schoolRows(form, "HSC"),
-  educationRecords: form => ({ label: "Qualification history", value: educationSummary(form) }),
+  educationRecords: form => historyRows(form),
   universityIdDocumentStatus: form => ({ label: "University ID card", value: form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : "" }),
   "supportingDocument.nid_card": documentRowBuilder("nid_card"),
   "supportingDocument.ssc_certificate": documentRowBuilder("ssc_certificate"),

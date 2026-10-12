@@ -163,3 +163,32 @@ describe("the Secondary and Higher Secondary read-outs", () => {
     expect(secondary.rows.every(row => row.missing)).toBe(true);
   });
 });
+
+describe("the Qualification history read-out", () => {
+  const degree = (level: "Honours" | "Masters", over: Record<string, unknown> = {}) => ({
+    qualificationLevel: level, instituteName: "Dhaka University", degreeExamTitle: level === "Honours" ? "BSc" : "MSc", majorGroup: "Physics",
+    curriculum: "English Version", resultGpa: "3.80", studyStartYear: "2016", studyEndYear: "2020", currentlyStudying: false, instituteIdCardNumber: "", ...over,
+  });
+  const history = (records: unknown[]) => {
+    const form = baseForm();
+    const education = getTutorProfileReadoutSections({ ...form, educationRecords: [...form.educationRecords, ...records] as never }, resolvers).find(section => section.id === "c")!;
+    return education.groups.flatMap(group => group.rows).filter(row => row.label.includes(" · "));
+  };
+
+  it("shows each degree with everything it holds, every row named by its level", () => {
+    const rows = history([degree("Honours"), degree("Masters", { currentlyStudying: true, studyEndYear: "" })]);
+    const byLabel = Object.fromEntries(rows.map(row => [row.label, row.value]));
+    expect(byLabel["Honours · Degree / exam title"]).toBe("BSc");
+    expect(byLabel["Honours · Study period"]).toBe("2016 - 2020");
+    expect(byLabel["Masters · Degree / exam title"]).toBe("MSc");
+    expect(byLabel["Masters · Study period"]).toBe("2016 - Ongoing");
+    expect(byLabel["Honours · Result / GPA"]).toBe("3.80");
+    expect(rows.filter(row => row.optional).map(row => row.label)).toContain("Honours · Institute ID card number");
+  });
+
+  it("is one missing row while no degree has been added", () => {
+    const form = baseForm();
+    const row = getTutorProfileReadoutSections(form, resolvers).find(section => section.id === "c")!.groups.flatMap(group => group.rows).find(entry => entry.label === "Qualification history");
+    expect(row?.missing).toBe(true);
+  });
+});
