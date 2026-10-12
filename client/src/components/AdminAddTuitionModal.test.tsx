@@ -200,17 +200,18 @@ describe("Add Tuition", () => {
     expect(mocks.post).toHaveBeenCalledWith(expect.objectContaining({ tutoringTime: "16:30", daysPerWeek: 3, budgetAmount: 6500 }));
   });
 
-  it("leaves the key out of the post when the box is blank", () => {
+  it("posts an explicit null, not an absent key, when the box is blank", () => {
     open();
     fillTuition();
     fireEvent.click(postButton());
 
     expect(mocks.post).toHaveBeenCalledTimes(1);
-    // Absent, not "" - the server stores a blank as NULL and would refuse an empty string.
-    expect(mocks.post.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    // The key is there and holds null: the server would refuse an empty string, and an absent key now
+    // means "leave the stored time alone", which a post has nothing to leave alone but which an edit does.
+    expect(mocks.post.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
   });
 
-  it("leaves the key out when the Admin typed a time and then cleared it again", () => {
+  it("posts an explicit null when the Admin typed a time and then cleared it again", () => {
     open();
     fillTuition();
     type(/Tutoring Time/, "16:30");
@@ -218,7 +219,7 @@ describe("Add Tuition", () => {
     fireEvent.click(postButton());
 
     expect(mocks.post).toHaveBeenCalledTimes(1);
-    expect(mocks.post.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    expect(mocks.post.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
   });
 
   it("will not post a tuition whose class has no subject chosen yet", () => {
@@ -347,28 +348,63 @@ describe("Edit", () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, tutoringTime: "07:15" }));
   });
 
-  it("sends no time once the Admin has cleared it, so the server clears it too", () => {
+  it("sends an explicit null once the Admin has cleared the time, which is how the server clears it", () => {
     openEdit({ tutoringTime: "16:30" });
     type(/Tutoring Time/, "");
     fireEvent.click(updateButton());
 
     expect(mocks.update).toHaveBeenCalledTimes(1);
-    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    // Null, not a missing key: a missing key on an edit leaves the stored time alone.
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14 }));
+  });
+
+  it("sends the saved time back as it was when the Admin edits something else", () => {
+    openEdit({ tutoringTime: "16:30" });
+    type(/Monthly salary/, "8000");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", "16:30");
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, budgetAmount: 8000 }));
+  });
+
+  it("opens a saved time that carries stray spaces trimmed, and sends the clean HH:mm", () => {
+    // The server refuses a padded time outright now, so the form must never be the one to send it.
+    openEdit({ tutoringTime: " 08:05 " });
+
+    expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("08:05");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", "08:05");
   });
 
   it.each([
     ["has none", null],
     ["was made before the field existed", undefined],
     ["holds something that is not an HH:mm time", "25:99"],
-  ])("opens the time box empty and sends no time for a tuition that %s", (_name, stored) => {
+  ])("opens the time box empty and sends an explicit null for a tuition that %s", (_name, stored) => {
     openEdit({ tutoringTime: stored });
 
     expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("");
     fireEvent.click(updateButton());
 
     expect(mocks.update).toHaveBeenCalledTimes(1);
-    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    // Always present, and null: an edit that has nothing to say about the time still says so plainly.
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
+  });
+
+  it("opens a legacy draft that has no tutoringTime key at all with an empty box, and sends null", () => {
+    // Not the same as a draft whose key holds undefined: the base draft above predates the field, so the key is not in the object.
+    expect(draft).not.toHaveProperty("tutoringTime");
+    openEdit();
+
+    expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
   });
 
   it("lets an Admin correct the name and number they wrote themselves", () => {

@@ -20,6 +20,7 @@ vi.mock("./chat-push", async importOriginal => ({
   sendWebPushNotification: vi.fn(async () => ({ ok: true as const, gone: false })),
 }));
 
+import type { TrpcContext } from "./_core/context";
 import type { AdminPostedTuitionRequest } from "./db";
 import {
   createAdminPostedTuition,
@@ -35,6 +36,7 @@ import {
   updateAdminPostedTuition,
   updateGuardianTutorRequest,
 } from "./db";
+import { appRouter } from "./routers";
 
 // The Tutoring Time a Guardian or an Admin types travels through the real database functions: stored on the
 // request, copied to the Job Board when the tuition goes Live, and read back by every screen that shows it.
@@ -92,16 +94,30 @@ afterAll(async () => {
   await db.delete(locations).where(eq(locations.id, city));
 });
 
-/** The request half of an Admin-posted tuition, with only the Tutoring Time left to choose. */
-function adminRequest(tutoringTime: string | null): AdminPostedTuitionRequest {
+/**
+ * The request half of an Admin-posted tuition, with only the Tutoring Time left to choose. A string sets the time and
+ * null clears it. Pass nothing and the request has no tutoringTime key at all: the edit says nothing about the time.
+ */
+function adminRequest(tutoringTime?: string | null): AdminPostedTuitionRequest {
   return {
     tuitionType: "home", category: "Bangla Medium", curriculumType: null, classCourse: "Class 5", subjects: JSON.stringify(["Math"]),
-    groupCapacity: null, packageDurationMonths: null, studentCount: 1, daysPerWeek: 3, tutoringTime, preferredGender: "any", studentGender: null,
+    groupCapacity: null, packageDurationMonths: null, studentCount: 1, daysPerWeek: 3, preferredGender: "any", studentGender: null,
     addressDetails: null, tuitionCityLocationId: city, tuitionLocationId: area, tuitionLocationLabel: `Test Area ${tag}`,
     budgetAmount: 5000, instituteName: null, heardAboutUs: null, notes: null, contactConsent: "not_required", monthlyBudget: null,
     locationText: `TTime area ${tag}`,
+    ...(tutoringTime === undefined ? {} : { tutoringTime }),
   };
 }
+
+/**
+ * The two ways a caller leaves the time out of an edit. No key at all is a direct call or an older client; the key
+ * holding undefined is what the routers pass on when the payload they were sent had none. Both mean "leave the
+ * stored time alone", and neither is the same as null, which is what an emptied box sends to clear it.
+ */
+const leftOut = [
+  ["no tutoringTime key", {}],
+  ["tutoringTime undefined", { tutoringTime: undefined }],
+] as const;
 
 /** An Admin adds a tuition and it goes Live, the way Add Tuition does. */
 async function postTuition(tutoringTime: string | null) {
@@ -122,6 +138,17 @@ async function stored(requestId: number) {
   const [request] = await db.select({ tutoringTime: tutorRequests.tutoringTime }).from(tutorRequests).where(eq(tutorRequests.id, requestId));
   const [job] = await db.select({ tutoringTime: tutorJobs.tutoringTime }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, requestId));
   return { request: request?.tutoringTime, job: job?.tutoringTime };
+}
+
+/**
+ * The notes on the two stored copies. The edits below change the notes and nothing else, so this is how a test knows
+ * the edit itself went through on a table while the Tutoring Time beside it did not move.
+ */
+async function storedNotes(requestId: number) {
+  const db = await database();
+  const [request] = await db.select({ notes: tutorRequests.notes }).from(tutorRequests).where(eq(tutorRequests.id, requestId));
+  const [job] = await db.select({ notes: tutorJobs.notes }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, requestId));
+  return { request: request?.notes, job: job?.notes };
 }
 
 /** The tuition as the Job Board hands it to a Tutor, found by its own Job ID. */
@@ -244,7 +271,7 @@ describe("a tuition posted without a Tutoring Time", () => {
 });
 
 describe("editing a Live tuition", () => {
-  it("re-projects a changed time to the Job Board, and a cleared one empties both tables", async () => {
+  it("re-projects a changed time to the Job Board, and an explicit null empties both tables", async () => {
     const requestId = await postTuition("16:30");
 
     const changed = await updateAdminPostedTuition({ adminUserId, requestId, request: adminRequest("09:45") });
@@ -269,6 +296,107 @@ describe("editing a Live tuition", () => {
   });
 });
 
+describe("editing a Live tuition without saying anything about its Tutoring Time", () => {
+  // A page open from before the field existed, or any caller that does not know it, sends the rest of the form and
+  // no time. That must not blank a time the tuition already has - on the request or on the Job Board copy.
+  it.each(leftOut)("keeps the time on the request and on the Job Board when the edit has %s", async (_how, absent) => {
+    const requestId = await postTuition("16:30");
+
+    const edited = await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(), notes: "Evening batch only", ...absent } });
+
+    expect(edited.updated).toBe(true);
+    // The edit itself reached both tables, so the Job Board copy really was rebuilt ...
+    expect(await storedNotes(requestId)).toEqual({ request: "Evening batch only", job: "Evening batch only" });
+    // ... and the rebuild used the time the request already held, not an empty one.
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: "16:30" });
+    expect((await publicJob(requestId)).tutoringTime).toBe("16:30");
+  });
+
+  it("clears the time on both tables when the same edit sends null", async () => {
+    const requestId = await postTuition("16:30");
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(null), notes: "Evening batch only" } });
+
+    expect(await storedNotes(requestId)).toEqual({ request: "Evening batch only", job: "Evening batch only" });
+    expect(await stored(requestId)).toEqual({ request: null, job: null });
+    expect((await publicJob(requestId)).tutoringTime).toBeNull();
+  });
+
+  it("sets the new time on both tables when the same edit sends one", async () => {
+    const requestId = await postTuition("16:30");
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest("18:00"), notes: "Evening batch only" } });
+
+    expect(await storedNotes(requestId)).toEqual({ request: "Evening batch only", job: "Evening batch only" });
+    expect(await stored(requestId)).toEqual({ request: "18:00", job: "18:00" });
+    expect((await publicJob(requestId)).tutoringTime).toBe("18:00");
+  });
+
+  it.each(leftOut)("leaves NULL on both tables for a tuition that had no time, when the edit has %s", async (_how, absent) => {
+    const requestId = await postTuition(null);
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(), notes: "Evening batch only", ...absent } });
+
+    // Not an empty string either: nothing in this edit ever wrote one.
+    expect(await storedNotes(requestId)).toEqual({ request: "Evening batch only", job: "Evening batch only" });
+    expect(await stored(requestId)).toEqual({ request: null, job: null });
+    expect((await publicJob(requestId)).tutoringTime).toBeNull();
+  });
+
+  it("keeps the time through two edits in a row that both leave it out", async () => {
+    const requestId = await postTuition("16:30");
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(), notes: "First change" } });
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(), notes: "Second change", daysPerWeek: 4 } });
+
+    expect(await storedNotes(requestId)).toEqual({ request: "Second change", job: "Second change" });
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: "16:30" });
+  });
+});
+
+describe("editing an Admin tuition that is off the Job Board", () => {
+  // Only a Live tuition is re-projected when it is edited; taking one Live again is a status change of its own.
+  // So here the edit lands on tutor_requests alone, and the board copy catches up when the tuition goes Live.
+  async function takeOffTheBoard(requestId: number) {
+    const db = await database();
+    await db.update(tutorRequests).set({ publicationState: "unpublished" }).where(eq(tutorRequests.id, requestId));
+    await db.update(tutorJobs).set({ publicationStatus: "unpublished" }).where(eq(tutorJobs.tutorRequestId, requestId));
+  }
+
+  it.each(leftOut)("keeps the stored time on the request when the edit has %s", async (_how, absent) => {
+    const requestId = await postTuition("16:30");
+    await takeOffTheBoard(requestId);
+
+    const edited = await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(), notes: "Evening batch only", ...absent } });
+
+    expect(edited.updated).toBe(true);
+    expect((await storedNotes(requestId)).request).toBe("Evening batch only");
+    expect((await stored(requestId)).request).toBe("16:30");
+  });
+
+  it("clears the stored time on the request when the edit sends null", async () => {
+    const requestId = await postTuition("16:30");
+    await takeOffTheBoard(requestId);
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: { ...adminRequest(null), notes: "Evening batch only" } });
+
+    expect((await stored(requestId)).request).toBeNull();
+  });
+
+  it("carries a time set during the edit to the Job Board when the tuition goes Live again", async () => {
+    const requestId = await postTuition("16:30");
+    await takeOffTheBoard(requestId);
+
+    await updateAdminPostedTuition({ adminUserId, requestId, request: adminRequest("18:00") });
+    // The edit is not a status change: the board copy is still the old one until the Admin takes it Live.
+    expect(await stored(requestId)).toEqual({ request: "18:00", job: "16:30" });
+
+    const live = await moderateTutorRequestPublication({ requestId, adminUserId, action: "go_live" });
+    expect(live.updated).toBe(true);
+    expect(await stored(requestId)).toEqual({ request: "18:00", job: "18:00" });
+  });
+});
+
 describe("a Guardian's own request", () => {
   it("comes back from My requests with its time, which is what the edit form fills itself in from", async () => {
     const requestId = await guardianRequest("09:15");
@@ -286,7 +414,7 @@ describe("a Guardian's own request", () => {
     expect((await guardianSees(older)).tutoringTime).toBeNull();
   });
 
-  it("can be edited to a new time and then to none", async () => {
+  it("can be edited to a new time and then, with an explicit null, to none", async () => {
     const requestId = await guardianRequest("09:15");
 
     const changed = await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, tutoringTime: "18:45" });
@@ -318,6 +446,149 @@ describe("a Guardian's own request", () => {
 
     expect(await stored(requestId)).toEqual({ request: null, job: null });
     expect((await publicJob(requestId)).tutoringTime).toBeNull();
+  });
+});
+
+describe("a Guardian's pending request edited without saying anything about its Tutoring Time", () => {
+  // The edit form of a page left open from before the field existed sends the whole request and no time. Saving it
+  // must not erase a time the request already holds; only an explicit null does that.
+  it.each(leftOut)("keeps the stored time when the edit has %s", async (_how, absent) => {
+    const requestId = await guardianRequest("16:30");
+
+    const edited = await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, notes: "Evening only", ...absent });
+
+    expect(edited.updated).toBe(true);
+    // The edit went through (the notes are new) and the time beside it did not move.
+    const seen = await guardianSees(requestId);
+    expect(seen.notes).toBe("Evening only");
+    expect(seen.tutoringTime).toBe("16:30");
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: undefined });
+  });
+
+  it("clears the stored time to NULL when the same edit sends null", async () => {
+    const requestId = await guardianRequest("16:30");
+
+    await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, notes: "Evening only", tutoringTime: null });
+
+    expect((await guardianSees(requestId)).notes).toBe("Evening only");
+    expect((await guardianSees(requestId)).tutoringTime).toBeNull();
+    expect(await stored(requestId)).toEqual({ request: null, job: undefined });
+  });
+
+  it("sets the new time when the same edit sends one", async () => {
+    const requestId = await guardianRequest("16:30");
+
+    await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, notes: "Evening only", tutoringTime: "18:00" });
+
+    expect((await guardianSees(requestId)).notes).toBe("Evening only");
+    expect(await stored(requestId)).toEqual({ request: "18:00", job: undefined });
+  });
+
+  it.each(leftOut)("leaves NULL on a request that had no time when the edit has %s", async (_how, absent) => {
+    const requestId = await guardianRequest(null);
+
+    await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, notes: "Evening only", ...absent });
+
+    expect((await guardianSees(requestId)).notes).toBe("Evening only");
+    expect(await stored(requestId)).toEqual({ request: null, job: undefined });
+  });
+
+  it("still reaches the Job Board with the kept time when an Admin takes it Live", async () => {
+    const requestId = await guardianRequest("16:30");
+    await updateGuardianTutorRequest({ guardianUserId, requestId, ...guardianFields, studentFirstName: null, notes: "Evening only" });
+
+    const live = await moderateTutorRequestPublication({ requestId, adminUserId, action: "go_live" });
+    expect(live.updated).toBe(true);
+
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: "16:30" });
+    expect((await publicJob(requestId)).tutoringTime).toBe("16:30");
+  });
+});
+
+describe("a page left open from before the field existed, saving through the real routers", () => {
+  // Everything above calls the database functions directly. This goes in at the front door: the real tRPC routers
+  // validate the payload, turn it into the call the database function gets, and write to the real tables. The
+  // payload is what an old tab sends, the whole form with no tutoringTime key.
+  const learningNeeds = [{ category: "Bangla Medium", classes: [{ classCourse: "Class 4", subjects: ["General Maths"] }] }];
+
+  async function callerFor(userId: number) {
+    const db = await database();
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return appRouter.createCaller({
+      user,
+      req: { protocol: "https", headers: { host: "x.example" } },
+      res: { cookie() {}, clearCookie() {} },
+    } as unknown as TrpcContext);
+  }
+
+  /** The Admin's Add Tuition form as the page sends it, for a Guardian made here (the name carries the tag for clean-up). */
+  function adminForm(guardianPhone: string, extra: Record<string, unknown> = {}) {
+    return {
+      guardianName: `TTime Guardian ${tag} router`, guardianPhone,
+      tuitionType: "home" as const, tuitionCityLocationId: city, tuitionLocationId: area, studentCount: 1,
+      learningNeeds, daysPerWeek: 3, preferredGender: "any" as const, budgetAmount: 5000, heardAboutUs: "others" as const,
+      ...extra,
+    };
+  }
+
+  /** An Admin posts a tuition with a time through the router, and it goes Live. */
+  async function postThroughRouter(tutoringTime: string) {
+    const guardianPhone = `017${Math.floor(10000000 + Math.random() * 89999999)}`;
+    const admin = await callerFor(adminUserId);
+    const posted = await admin.admin.createPostedTuition(adminForm(guardianPhone, { tutoringTime }));
+    made.requestIds.push(posted.id);
+    expect(posted.live).toBe(true);
+    expect(await stored(posted.id)).toEqual({ request: tutoringTime, job: tutoringTime });
+    return { requestId: posted.id, guardianPhone, admin };
+  }
+
+  it("keeps the stored time on the request and the Job Board when an Admin saves an edit with no tutoringTime key", async () => {
+    const { requestId, guardianPhone, admin } = await postThroughRouter("16:30");
+
+    const result = await admin.admin.updatePostedTuition({ ...adminForm(guardianPhone, { notes: "Evening batch only" }), requestId });
+
+    expect(result.updated).toBe(true);
+    expect(await storedNotes(requestId)).toEqual({ request: "Evening batch only", job: "Evening batch only" });
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: "16:30" });
+    expect((await publicJob(requestId)).tutoringTime).toBe("16:30");
+  });
+
+  it("clears both copies when the Admin's edit sends null, and sets both when it sends a time", async () => {
+    const { requestId, guardianPhone, admin } = await postThroughRouter("16:30");
+
+    await admin.admin.updatePostedTuition({ ...adminForm(guardianPhone), requestId, tutoringTime: null });
+    expect(await stored(requestId)).toEqual({ request: null, job: null });
+
+    await admin.admin.updatePostedTuition({ ...adminForm(guardianPhone), requestId, tutoringTime: "18:00" });
+    expect(await stored(requestId)).toEqual({ request: "18:00", job: "18:00" });
+    expect((await publicJob(requestId)).tutoringTime).toBe("18:00");
+  });
+
+  it("refuses a padded time with BAD_REQUEST and changes nothing on either copy", async () => {
+    const { requestId, guardianPhone, admin } = await postThroughRouter("16:30");
+
+    await expect(admin.admin.updatePostedTuition({ ...adminForm(guardianPhone, { notes: "Never saved" }), requestId, tutoringTime: " 08:05 " }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(await storedNotes(requestId)).toEqual({ request: null, job: null });
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: "16:30" });
+  });
+
+  it("keeps a Guardian's stored time when their pending-request edit has no tutoringTime key, and clears it for null", async () => {
+    const requestId = await guardianRequest("16:30");
+    const guardian = await callerFor(guardianUserId);
+    const form = {
+      requestId, tuitionType: "home" as const, tuitionCityLocationId: city, tuitionLocationId: area, studentCount: 1,
+      learningNeeds, daysPerWeek: 3, preferredGender: "any" as const, budgetAmount: 5000, heardAboutUs: "others" as const, notes: "Evening only",
+    };
+
+    const kept = await guardian.tutorRequests.updatePending(form);
+    expect(kept.updated).toBe(true);
+    expect((await guardianSees(requestId)).notes).toBe("Evening only");
+    expect(await stored(requestId)).toEqual({ request: "16:30", job: undefined });
+
+    await guardian.tutorRequests.updatePending({ ...form, tutoringTime: null });
+    expect(await stored(requestId)).toEqual({ request: null, job: undefined });
   });
 });
 

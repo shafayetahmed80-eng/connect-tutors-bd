@@ -428,7 +428,22 @@ describe("the Tutoring Time on a posted job", () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 13, tutoringTime: "16:30" }));
   });
 
-  it("opens Edit with an empty box for a tuition with no time, and sends none", async () => {
+  it("sends null when Edit clears the time the tuition had", async () => {
+    const user = userEvent.setup();
+    mocks.data.items[0].tutoringTime = "16:30";
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Edit/ }));
+
+    const form = within(screen.getByRole("dialog", { name: /Edit Job ID 6812/ }));
+    await user.clear(form.getByLabelText(/Tutoring Time/));
+    await user.click(form.getAllByRole("button", { name: /^Update$/ })[0]);
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
+  });
+
+  it("opens Edit with an empty box for a tuition with no time, and sends null", async () => {
     const user = userEvent.setup();
     render(<AdminPostedJobsContent />);
 
@@ -439,7 +454,8 @@ describe("the Tutoring Time on a posted job", () => {
     expect((form.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("");
     await user.click(form.getAllByRole("button", { name: /^Update$/ })[0]);
     expect(mocks.update).toHaveBeenCalledTimes(1);
-    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    // An explicit null, not an absent key: the edit now says plainly that there is no time.
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
   });
 });
 

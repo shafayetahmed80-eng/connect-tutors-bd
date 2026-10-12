@@ -30,6 +30,7 @@ describe("Job Board published projection", () => {
       locationId: "mirpur-10",
       locationLabel: "Mirpur 10, Dhaka",
       budgetAmount: 7000,
+      tutoringTime: null,
       publishedAt,
       privateAddress: "House 99, Road 7",
       addressDetails: "Use the west entrance",
@@ -58,6 +59,8 @@ describe("Job Board published projection", () => {
       studentCount: 1,
       studentGender: null,
       daysPerWeek: 4,
+      // A required key now (string | null), so a caller has to say which; null is "no wish".
+      tutoringTime: null as string | null,
       preferredTutorGender: "any" as const,
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
@@ -68,11 +71,34 @@ describe("Job Board published projection", () => {
     };
 
     expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: "16:30" }).tutoringTime).toBe("16:30");
-    // Null whether the request says null or says nothing, so the stored
-    // projection is never left holding a stale or undefined time.
     expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: null })).toHaveProperty("tutoringTime", null);
-    expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: undefined })).toHaveProperty("tutoringTime", null);
     expect(buildPublishedTutorJobProjection(request)).toHaveProperty("tutoringTime", null);
+  });
+
+  it("still reads a missing Tutoring Time as null at run time, though the type no longer lets a caller leave it out", () => {
+    const withoutTime = {
+      requestId: 1508,
+      tuitionType: "home" as const,
+      category: "English Medium",
+      classCourse: "Standard 2",
+      subjects: ["English"],
+      groupCapacity: null,
+      studentCount: 1,
+      studentGender: null,
+      daysPerWeek: 4,
+      preferredTutorGender: "any" as const,
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      locationLabel: "Mirpur 10, Dhaka",
+      budgetAmount: 7000,
+      notes: null,
+      publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+    };
+
+    // A cast or an untyped caller can still hand over no key or undefined. The builder turns either into
+    // null, so the stored projection is never left holding undefined (which an update would skip).
+    expect(buildPublishedTutorJobProjection(withoutTime as never)).toHaveProperty("tutoringTime", null);
+    expect(buildPublishedTutorJobProjection({ ...withoutTime, tutoringTime: undefined } as never)).toHaveProperty("tutoringTime", null);
   });
 
   it("keeps the Tutoring Time on an online tuition, where the location is dropped", () => {
@@ -109,6 +135,7 @@ describe("Job Board published projection", () => {
       subjects: ["English"],
       groupCapacity: 8,
       daysPerWeek: 4,
+      tutoringTime: null,
       preferredTutorGender: "any",
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
@@ -131,6 +158,7 @@ describe("Job Board published projection", () => {
       subjects: ["English"],
       groupCapacity: 8,
       daysPerWeek: 4,
+      tutoringTime: null,
       preferredTutorGender: "any",
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
@@ -234,6 +262,7 @@ describe("Job Board published projection", () => {
       subjects: ["English"],
       groupCapacity: null,
       daysPerWeek: 3,
+      tutoringTime: null,
       preferredTutorGender: "any",
       cityLocationId: "dhaka-city",
       locationId: "mirpur-10",
@@ -266,6 +295,7 @@ describe("Job Board published projection", () => {
       studentCount: 1,
       studentGender: null,
       daysPerWeek: 3,
+      tutoringTime: null as string | null,
       preferredTutorGender: "any" as const,
       cityLocationId: null,
       locationId: null,
@@ -283,6 +313,7 @@ describe("Job Board published projection", () => {
     // would go on showing the time the Guardian took off.
     const cleared = getPublishedTutorJobRefresh(buildPublishedTutorJobProjection({ ...request, tutoringTime: null }));
     expect(cleared).toHaveProperty("tutoringTime", null);
+    // A request that never had a time refreshes to null the same way.
     const neverSet = getPublishedTutorJobRefresh(buildPublishedTutorJobProjection(request));
     expect(neverSet).toHaveProperty("tutoringTime", null);
   });

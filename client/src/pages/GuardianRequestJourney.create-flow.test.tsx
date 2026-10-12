@@ -147,7 +147,7 @@ describe("GuardianRequestJourney create flow", () => {
       expect(sentRequest().tutoringTime).toBe("16:30");
     });
 
-    it("sends no time at all when the box is left blank, never an empty string", () => {
+    it("sends an explicit null when the box is left blank, never an empty string and never a missing key", () => {
       render(<GuardianRequestJourney embedded />);
       fillThroughStepOne();
       fillStepTwo();
@@ -155,13 +155,17 @@ describe("GuardianRequestJourney create flow", () => {
       expect(timeBox().value).toBe("");
       fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
-      // The server stores NULL for "no time"; an "" would be refused by its pattern.
+      // The server stores NULL for "no time"; an "" would be refused by its pattern. The key is there on
+      // purpose: the same form is used to edit, where null is how a cleared box clears a stored time and a
+      // missing key would mean "leave it alone". Create sends it the same way so the two cannot drift.
       const request = sentRequest();
-      expect(request.tutoringTime).toBeUndefined();
+      expect("tutoringTime" in request).toBe(true);
+      expect(request.tutoringTime).toBeNull();
       expect(request.tutoringTime).not.toBe("");
+      expect(request.tutoringTime).not.toBeUndefined();
     });
 
-    it("sends no time when the Guardian types one and then clears it", () => {
+    it("sends null, not an empty string, when the Guardian types a time and then clears it", () => {
       render(<GuardianRequestJourney embedded />);
       fillThroughStepOne();
       fillStepTwo();
@@ -170,7 +174,10 @@ describe("GuardianRequestJourney create flow", () => {
       fireEvent.change(timeBox(), { target: { value: "" } });
       fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
-      expect(sentRequest().tutoringTime).toBeUndefined();
+      const request = sentRequest();
+      expect("tutoringTime" in request).toBe(true);
+      expect(request.tutoringTime).toBeNull();
+      expect(request.tutoringTime).not.toBe("");
     });
 
     it("is blank again for the next request after the Guardian posts another", () => {
