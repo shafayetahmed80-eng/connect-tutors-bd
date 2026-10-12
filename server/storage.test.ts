@@ -38,9 +38,9 @@ describe("storage local fallback", () => {
     expect(await readFile(path.join(storageDir, result.key))).toEqual(bytes);
   });
 
-  it("hands back the proxy path itself as the 'signed' URL", async () => {
+  it("hands back the proxy path itself, under /api/files, as the 'signed' URL", async () => {
     await expect(storageGetSignedUrl("tutors/42/profile-photo_abcd1234.png")).resolves.toBe(
-      "/manus-storage/tutors/42/profile-photo_abcd1234.png",
+      "/api/files/tutors/42/profile-photo_abcd1234.png",
     );
   });
 
