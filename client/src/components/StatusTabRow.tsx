@@ -86,7 +86,7 @@ export default function StatusTabRow<K extends string>({ label, items, selected,
           data-chosen={chosen ? "" : undefined}
           {...(toggle ? { "aria-pressed": chosen } : { role: "tab", "aria-selected": chosen })}
           onClick={() => onSelect(toggle && chosen ? null : item.key)}
-          className={`relative shrink-0 whitespace-nowrap pb-2.5 pt-1.5 max-sm:pb-3 max-sm:pt-3 text-[10px] tracking-[-0.01em] sm:tracking-normal ${compact ? "sm:text-2xs" : "sm:text-xs"} font-semibold transition-colors ${chosen ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
+          className={`relative shrink-0 whitespace-nowrap pb-2.5 pt-1.5 max-sm:pb-3 max-sm:pt-3 text-[11px] tracking-[-0.01em] sm:tracking-normal ${compact ? "sm:text-2xs" : "sm:text-xs"} font-semibold transition-colors ${chosen ? "font-bold text-[#1267c8]" : "text-j-ink-muted hover:text-[#173d60]"}`}
         >
           {item.label}{item.wideSuffix ? <> <span className="hidden sm:inline">{item.wideSuffix}</span></> : null} <span className={`tabular-nums sm:ml-1 ${chosen ? "text-[#1267c8]" : "text-j-ink-faint"}`}>{String(item.count ?? 0).padStart(2, "0")}</span>
         </button>;
