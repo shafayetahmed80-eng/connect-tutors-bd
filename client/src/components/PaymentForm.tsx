@@ -14,7 +14,7 @@ export type PaymentFormValues<M extends TuitionPaymentMethod = TuitionPaymentMet
   note: string | null;
 };
 
-const fieldClass = "h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const fieldClass = "h-control w-full rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const labelClass = "mb-1 block text-2xs font-bold uppercase tracking-wide text-j-ink-muted";
 
 /**
@@ -84,7 +84,7 @@ export default function PaymentForm<M extends TuitionPaymentMethod>({ label, met
       <input id="payment-note" value={note} maxLength={280} onChange={event => setNote(event.target.value)} className={fieldClass} />
     </div>
     <div className="col-span-2 flex justify-end">
-      <button type="submit" disabled={!canSubmit} className="h-11 rounded-xl bg-j-accent px-5 text-sm font-bold text-white disabled:opacity-40">
+      <button type="submit" disabled={!canSubmit} className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white disabled:opacity-40">
         {pending ? pendingLabel : submitLabel}
       </button>
     </div>

@@ -864,10 +864,13 @@ export function RequestStage(props: RequestStageProps) {
       <fieldset>
         <legend className="sr-only">Learning details</legend>
         {/* One grid for the whole step, so every box is exactly one column
-            wide. Tuition type used to sit alone in a two-column grid with dead
-            space beside it, and the learning details ran a second grid below. */}
+            wide, and the boxes are ordered so that no row is left half empty:
+            Tuition type beside Student gender, Tuition City beside Location, then
+            the two full-width blocks. Online has no City or Location, and its two
+            rows still fill. */}
         <div className={fieldGrid}>
           <SelectField label="Tuition type" slotId="request-tutor.field.tuitionType" icon={<TuitionTypeIcon type={input.tuitionType} />} value={input.tuitionType} onChange={(value) => props.onSetTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose a tuition type" formatOption={(value) => formatTuitionType(value as TuitionType)} />
+          <SelectField label="Student gender" slotId="request-tutor.field.studentGender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} />
           {input.tuitionType !== "online" ? <SearchableLocationSelect label="Tuition City" slotId="request-tutor.field.tuitionCity" value={input.tuitionCityLocationId} options={props.cities} placeholder="Search a City" searchPlaceholder="Search City" emptyMessage="No City matches your search." required onChange={props.onSetTuitionCity} /> : null}
           {input.tuitionType !== "online" ? <SearchableLocationSelect label="Location" slotId="request-tutor.field.tuitionLocation" value={input.tuitionLocationId} options={props.tuitionLocations} placeholder="Choose a City first" searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." disabled={!input.tuitionCityLocationId} required onChange={props.onSetTuitionLocation} /> : null}
           <div className={fieldGridWide}>
@@ -884,7 +887,6 @@ export function RequestStage(props: RequestStageProps) {
               }}
             />
           </div>
-          <SelectField label="Student gender" slotId="request-tutor.field.studentGender" icon={input.studentGender ? <TutorPreferenceIcon preference={input.studentGender} className="text-j-accent" /> : <RecordIcon name="studentGender" size={17} />} optional value={input.studentGender} onChange={(value) => props.onSetStudentGender(value as StudentGender)} options={["female", "male"]} placeholder="No selection" formatOption={formatStudentGender} />
           <div className={fieldGridWide}>
             <TextAreaField label="Address Details" slotId="request-tutor.field.addressDetails" labelIcon={<RecordIcon name="location" size={15} />} id="address-details" name="street-address" autoComplete="street-address" optional value={input.addressDetails} onChange={props.onSetAddressDetails} maxLength={160} />
           </div>

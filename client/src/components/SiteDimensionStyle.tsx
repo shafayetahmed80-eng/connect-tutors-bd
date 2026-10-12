@@ -63,15 +63,18 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // The few panels that are only a short read follow their content instead, between a floor and the panel height.
     `  [data-modal-size="panel"][data-modal-fit] { height: auto; min-height: min(${FIT_PANEL_MIN_HEIGHT_PX}px, 86vh); max-height: min(86vh, ${limits["modal.height.panel"]}px); }`,
     "}",
+    // The one height a field or a button stands, written once. A phone is
+    // tapped, not clicked, so it has its own number; the laptop's takes over
+    // again from where a dialog stops being a sheet. Everything that stands this
+    // height reads the variable (the `h-control` and `min-h-control` classes, the
+    // rules below), so there is one number to move and nothing to keep in step.
+    `:root { --control-height: ${limits["control.height"]}px; }`,
+    `@media (max-width: 639px) { :root { --control-height: ${limits["control.heightPhone"]}px; } }`,
     // Single-line controls only. A text box grows with what is typed and keeps
-    // its own class, so it is not matched here.
-    `.modal-field-profile { height: ${limits["modal.fieldHeight.profile"]}px; }`,
-    // A phone is tapped, not clicked, so it has its own height; the one above
-    // takes over again from where the dialog stops being a sheet.
-    `@media (max-width: 639px) { .modal-field-profile { height: ${limits["modal.fieldHeight.profilePhone"]}px; } }`,
-    // Pickers that grow a line per row of chosen chips can take only a floor.
-    `:root { --profile-field-height: ${limits["modal.fieldHeight.profile"]}px; --profile-field-height-phone: ${limits["modal.fieldHeight.profilePhone"]}px; }`,
-    `.modal-field-journey { height: ${limits["modal.fieldHeight.journey"]}px; }`,
+    // its own class, so it is not matched here. Pickers that grow a line per row
+    // of chosen chips take the same height as a floor (`min-h-control`).
+    `.modal-field-profile { height: var(--control-height); }`,
+    `.modal-field-journey { height: var(--control-height); }`,
     // The letters inside a box, kept apart from the box's own height above -
     // one is type, the other is layout. Covers text areas too, which the
     // height rule above deliberately does not.
@@ -103,10 +106,10 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // it was given on purpose. Two attribute selectors outrank the single
     // Tailwind class (text-sm) still sitting in the component's shared base
     // string, which is what lets this win without editing that string.
-    `[data-slot="button"][data-size="default"] { font-size: ${limits["button.textSize"]}px; height: ${limits["button.height"]}px; padding-left: ${limits["button.paddingX"]}px; padding-right: ${limits["button.paddingX"]}px; }`,
+    `[data-slot="button"][data-size="default"] { font-size: ${limits["button.textSize"]}px; height: var(--control-height); padding-left: ${limits["button.paddingX"]}px; padding-right: ${limits["button.paddingX"]}px; }`,
     // The Guardian journey's own primary/ghost buttons - a separate
     // vocabulary from the shared Button above, not built on it.
-    `.journey-button { font-size: ${limits["journeyButton.textSize"]}px; height: ${limits["journeyButton.height"]}px; padding-left: ${limits["journeyButton.paddingX"]}px; padding-right: ${limits["journeyButton.paddingX"]}px; }`,
+    `.journey-button { font-size: ${limits["journeyButton.textSize"]}px; height: var(--control-height); padding-left: ${limits["journeyButton.paddingX"]}px; padding-right: ${limits["journeyButton.paddingX"]}px; }`,
     // The lettering on a job card. One number, the ordinary text; the title and
     // the New badge keep their distance from it - 2px above, 1px below - so the
     // card reads the same at any size. The foot holds buttons and links passed

@@ -68,3 +68,21 @@ describe("Admin Login password visibility", () => {
     expect(screen.getByRole("button", { name: "Hide password" })).not.toBeNull();
   });
 });
+
+describe("Admin Login layout", () => {
+  it("stacks the User ID, the Password and the button in one column, in a card as narrow as the other sign-in forms", () => {
+    render(<AdminLogin />);
+
+    const form = screen.getByLabelText("Password").closest("form")!;
+    const order = [screen.getByLabelText("User ID"), screen.getByLabelText("Password"), screen.getByRole("button", { name: /Sign in to Admin/ })];
+
+    // One column: nothing in the form asks for two, and nothing asks to span them.
+    expect(form.className).not.toMatch(/grid-cols-2/);
+    expect(form.innerHTML).not.toMatch(/col-span-2/);
+    expect(form.closest("section")!.className).not.toMatch(/max-w-3xl/);
+    // Top to bottom, in that order.
+    for (let index = 1; index < order.length; index++) {
+      expect(order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING, `element ${index}`).toBeTruthy();
+    }
+  });
+});

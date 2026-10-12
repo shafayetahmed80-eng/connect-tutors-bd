@@ -270,8 +270,8 @@ function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mism
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} disabled={busy} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">No</button>
-      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} className="h-11 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
+      <button type="button" onClick={onClose} disabled={busy} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">No</button>
+      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
     </ModalFooter>
   </Modal>;
 }
@@ -288,7 +288,7 @@ function JobBoardApplySuccess({ onClose }: { onClose: () => void }) {
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-11 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button>
+      <button type="button" onClick={onClose} className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button>
     </ModalFooter>
   </Modal>;
 }
@@ -536,7 +536,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
           type="button"
           disabled={isInterestSaving}
           onClick={event => { event.stopPropagation(); onInterestAction(); }}
-          className="inline-flex h-11 items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-11 max-md:px-5"
+          className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
         >{isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}</button>}
   />;
 }
@@ -588,12 +588,12 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
           again - only one of the two is ever set. */}
       {applied ? <span className="mr-auto inline-flex items-center gap-1.5 text-2xs font-bold text-[#0f7048]"><Check size={12} aria-hidden={true} />{applied.label} {applied.appliedOn}</span> : null}
       {reason ? <span className={`text-2xs text-j-ink-muted ${applied ? "" : "mr-auto"}`}>{reason}</span> : null}
-      <button type="button" onClick={onClose} className="h-11 rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
+      <button type="button" onClick={onClose} className="h-control rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
       <button
         type="button"
         disabled={isInterestSaving}
         onClick={onInterestAction}
-        className="inline-flex h-11 items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
+        className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
       >{isInterestSaving ? "Saving…" : label}</button>
     </>}
   />;

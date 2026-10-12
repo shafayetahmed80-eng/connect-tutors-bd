@@ -28,7 +28,7 @@ type StudentGender = "" | "female" | "male";
  */
 
 const label = "block text-[11px] font-semibold leading-tight text-j-ink-soft";
-const control = "mt-1 h-11 w-full rounded-lg border border-j-field-border bg-white px-2 text-[11px] text-j-ink outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const control = "mt-1 h-control w-full rounded-lg border border-j-field-border bg-white px-2 text-[11px] text-j-ink outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 const star = <span className="text-[#bd3535]">*</span>;
 
 function Field({ title, required, children }: { title: string; required?: boolean; children: ReactNode }) {
@@ -239,7 +239,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     type="button"
     disabled={post.isPending}
     onClick={submit}
-    className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-[#0f7048] px-4 text-xs font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
+    className="inline-flex h-control items-center gap-1.5 rounded-lg bg-[#0f7048] px-4 text-xs font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-50"
   >{post.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
     {post.isPending ? (editing ? "Updating…" : "Posting…") : editing ? "Update" : "Post"}
   </button>;
@@ -277,7 +277,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
         <Select title="Preferred Tutor gender" required value={preferredGender} onChange={value => setPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose" format={value => value === "any" ? "Any" : value === "male" ? "Male" : "Female"} />
 
         <Field title="Monthly salary" required>
-          <span className="mt-1 flex h-11 items-stretch overflow-hidden rounded-lg border border-j-field-border bg-white">
+          <span className="mt-1 flex h-control items-stretch overflow-hidden rounded-lg border border-j-field-border bg-white">
             {/* Typed however the Admin writes numbers - 5000, 5,000, even
                 "5,000 Taka". `parseSalaryAmount` keeps only the digits. */}
             <input value={salaryAmount} onChange={event => setSalaryAmount(event.target.value)} inputMode="numeric" placeholder="5,000" className="min-w-0 flex-1 px-2 text-[11px] text-j-ink outline-none" />

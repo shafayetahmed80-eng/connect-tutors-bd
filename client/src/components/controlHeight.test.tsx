@@ -10,27 +10,28 @@ import { GenderField, PhoneField } from "@/components/registrationFields";
 afterEach(cleanup);
 
 /**
- * The Owner's rule of 2026-10-11: a field and a button stand one height, 44px
- * (h-11), wherever they are. The height dials in Admin ship at the same number
- * (see SiteDimensionStyle.test.ts); these cover the pieces whose height is a
- * class rather than a dial.
+ * The Owner's rule of 2026-10-11: a field and a button stand one height,
+ * wherever they are - 40px since 2026-10-12. The number is one variable
+ * (--control-height, set from Admin; see SiteDimensionStyle.test.ts) and a piece
+ * stands it by carrying h-control or min-h-control, never a literal.
  */
 describe("one height for a field and a button", () => {
-  it("makes the shared input and the large button 44px (h-11)", () => {
+  it("makes the shared input and the large button stand the one height (h-control)", () => {
     render(<><Input aria-label="Name" /><Button size="lg">Save</Button></>);
 
-    expect(screen.getByLabelText("Name").className).toContain("h-11");
-    expect(screen.getByRole("button", { name: "Save" }).className).toContain("h-11");
+    expect(screen.getByLabelText("Name").className).toContain("h-control");
+    expect(screen.getByRole("button", { name: "Save" }).className).toContain("h-control");
+    expect(screen.getByLabelText("Name").className).not.toContain("h-11");
   });
 
-  it("makes the toolbar card's Filter button and the panel's Clear and Apply 44px", () => {
+  it("makes the toolbar card's Filter button and the panel's Clear and Apply stand the one height", () => {
     render(<>
       <ListToolbarCard eyebrow="Jobs" count={3} caption="in this list" filterOpen={false} onToggleFilter={() => {}} activeFilterCount={0} panelId="p" />
       <FilterPanelFrame id="p" ariaLabel="Filters" total={3} onClose={() => {}} onClear={() => {}} onApply={() => {}}><p>boxes</p></FilterPanelFrame>
     </>);
 
     for (const name of [/^Filter/, "Clear", "Apply", "Close"]) {
-      expect(screen.getByRole("button", { name }).className, String(name)).toContain("min-h-11");
+      expect(screen.getByRole("button", { name }).className, String(name)).toContain("min-h-control");
     }
   });
 

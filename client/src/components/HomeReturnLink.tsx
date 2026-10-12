@@ -24,7 +24,7 @@ export default function HomeReturnLink() {
       <div className="container flex min-h-12 items-center justify-end">
         <Link
           href="/"
-          className="group inline-flex min-h-11 items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-sky-800 transition-[transform,background-color,color] duration-150 ease-out hover:bg-sky-50 hover:text-sky-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 active:scale-[0.97]"
+          className="group inline-flex min-h-control items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-sky-800 transition-[transform,background-color,color] duration-150 ease-out hover:bg-sky-50 hover:text-sky-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 active:scale-[0.97]"
         >
           <ArrowLeft
             aria-hidden="true"

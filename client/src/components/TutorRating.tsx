@@ -76,12 +76,12 @@ export function RateTutorDialog({ requestId, jobId, existing, onClose }: {
       <CharacterRemaining value={comment} maxLength={TUTOR_REVIEW_COMMENT_MAX} />
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+      <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
       <button
         type="button"
         disabled={save.isPending || rating < 1}
         onClick={() => save.mutate({ requestId, rating, comment: comment.trim() || null })}
-        className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-50"
+        className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-50"
       >{save.isPending ? "Saving…" : "Save rating"}</button>
     </ModalFooter>
   </Modal>;

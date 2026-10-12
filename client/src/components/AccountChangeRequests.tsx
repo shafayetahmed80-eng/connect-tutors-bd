@@ -69,7 +69,7 @@ function DeclinedNote({ reason }: { reason: string | null }) {
   return <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800"><span className="font-bold">Declined: </span>{reason || "No reason given."}</p>;
 }
 
-const inputClass = "h-11 w-full rounded-xl border border-j-field-border bg-white px-3 text-sm outline-none ring-[#1677c8] focus:ring-2";
+const inputClass = "h-control w-full rounded-xl border border-j-field-border bg-white px-3 text-sm outline-none ring-[#1677c8] focus:ring-2";
 
 /** Asking for a new name or mobile number. */
 export function ValueChangeRequest({ changes, type, label, current }: { changes: AccountChanges; type: "name" | "mobile"; label: string; current: string | null }) {
@@ -175,7 +175,7 @@ export function VerificationRequest({ changes, verified, nidReady }: { changes: 
       type="button"
       disabled={changes.busy || !nidReady}
       onClick={() => changes.request.mutate({ type: "verification" })}
-      className="h-11 w-full rounded-xl bg-gradient-to-r from-[#5aa0d8] to-[#0f6fc2] text-base font-semibold text-white shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+      className="h-control w-full rounded-xl bg-gradient-to-r from-[#5aa0d8] to-[#0f6fc2] text-base font-semibold text-white shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
     >{changes.request.isPending ? "Sending…" : "Request to Verify"}</button>
   </div>;
 }

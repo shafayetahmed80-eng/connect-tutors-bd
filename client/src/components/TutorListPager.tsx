@@ -101,11 +101,11 @@ export function TutorListPager({ page, totalPages, onPage, label, pageSize, page
             role="option"
             aria-selected={draftPage === number}
             onClick={() => setDraftPage(number)}
-            className={`grid h-11 w-11 shrink-0 snap-center place-items-center rounded-xl text-base font-bold ${draftPage === number ? "bg-j-accent text-white" : "bg-j-surface-sunken text-j-ink-soft"}`}
+            className={`grid h-control w-control shrink-0 snap-center place-items-center rounded-xl text-base font-bold ${draftPage === number ? "bg-j-accent text-white" : "bg-j-surface-sunken text-j-ink-soft"}`}
           >{number}</button>)}
         </div>
         <SheetFooter className="border-t border-[#eef4f9] px-5 py-4">
-          <button type="button" onClick={confirmPicker} className="h-11 w-full rounded-xl bg-j-accent text-sm font-bold text-white">Done</button>
+          <button type="button" onClick={confirmPicker} className="h-control w-full rounded-xl bg-j-accent text-sm font-bold text-white">Done</button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
