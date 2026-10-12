@@ -1,4 +1,5 @@
 import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
@@ -27,6 +28,10 @@ export type RecordColumn<Row> = {
   wide?: boolean;
   /** The heading is for screen readers only, as an icon-only column's is. */
   headingHidden?: boolean;
+  /** A small icon in front of the label, in the heading and on a card alike. */
+  labelIcon?: ReactNode;
+  /** Restyles the label - the heading and the card's caption - for a column that should stand apart from the rest. */
+  labelClassName?: string;
   headClassName?: string;
   cellClassName?: string;
 };
@@ -62,6 +67,13 @@ function cardContent<Row>(column: RecordColumn<Row>, row: Row, index: number) {
   return (column.cardCell ?? column.cell)(row, index);
 }
 
+/** The label with its icon, when the column has one. */
+function columnLabel<Row>(column: RecordColumn<Row>) {
+  return column.labelIcon
+    ? <span className="inline-flex items-center gap-1.5">{column.labelIcon}{column.label}</span>
+    : column.label;
+}
+
 function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance }: RecordTableProps<Row>) {
   if (rows.length === 0) {
     return <div className="rounded-xl border border-j-border bg-white p-8 text-center text-sm text-j-ink-soft shadow-sm">{empty}</div>;
@@ -81,7 +93,7 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
 
       {body.length > 0 ? <dl className={`grid grid-cols-2 gap-x-3 gap-y-2.5 ${head.length > 0 ? "mt-3" : ""}`}>
         {body.map(column => <div key={column.key} className={`min-w-0 ${column.wide ? "col-span-2" : ""}`}>
-          <dt className="text-2xs font-bold uppercase tracking-wide text-j-ink-muted">{column.label}</dt>
+          <dt className={cn("text-2xs font-bold uppercase tracking-wide text-j-ink-muted", column.labelClassName)}>{columnLabel(column)}</dt>
           <dd className="mt-0.5 break-words text-sm">{cardContent(column, row, index)}</dd>
         </div>)}
       </dl> : null}
@@ -106,8 +118,8 @@ export default function RecordTable<Row>(props: RecordTableProps<Row>) {
       <caption className="sr-only">{caption}</caption>
       <thead>
         <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
-          {columns.map(column => <th key={column.key} scope="col" className={`px-3 py-2.5 ${column.headClassName ?? ""}`}>
-            {column.headingHidden ? <span className="sr-only">{column.label}</span> : column.label}
+          {columns.map(column => <th key={column.key} scope="col" className={cn("px-3 py-2.5", column.labelClassName, column.headClassName)}>
+            {column.headingHidden ? <span className="sr-only">{column.label}</span> : columnLabel(column)}
           </th>)}
         </tr>
       </thead>

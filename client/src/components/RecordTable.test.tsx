@@ -76,6 +76,31 @@ describe("RecordTable", () => {
     expect(first.queryByText("Job ID")).toBeNull();
   });
 
+  it("puts a column's icon and its own label style on the heading and on the card's caption alike", () => {
+    const styled: RecordColumn<Row>[] = [
+      ...columns.slice(0, 2),
+      { key: "salary", label: "Salary", labelIcon: <svg data-testid="salary-icon" />, labelClassName: "text-[#1680c2] tracking-[.16em]", cell: row => row.salary },
+    ];
+    const { unmount } = render(<RecordTable caption="Your tuitions" columns={styled} rows={rows} rowKey={row => row.id} empty="No tuition yet." />);
+
+    const heading = screen.getByRole("columnheader", { name: "Salary" });
+    expect(heading.textContent).toBe("Salary");
+    expect(heading.querySelector("[data-testid=salary-icon]")).not.toBeNull();
+    expect(heading.className).toContain("text-[#1680c2]");
+    expect(heading.className).toContain("tracking-[.16em]");
+    unmount();
+
+    onAPhone();
+    render(<RecordTable caption="Your tuitions" columns={styled} rows={rows} rowKey={row => row.id} empty="No tuition yet." />);
+    const caption = within(screen.getAllByRole("listitem")[0]).getByText("Salary").closest("dt")!;
+    expect(caption.querySelector("[data-testid=salary-icon]")).not.toBeNull();
+    // The column's colour wins over the card caption's own grey-blue rather than sharing the element with it.
+    expect(caption.className).toContain("text-[#1680c2]");
+    expect(caption.className).not.toContain("text-j-ink-muted");
+    // A column without them keeps the plain caption.
+    expect(within(screen.getAllByRole("listitem")[0]).getByText("Subjects").closest("dt")!.className).toContain("text-j-ink-muted");
+  });
+
   it("says the same thing about an empty list in both shapes", () => {
     renderTable([]);
     expect(screen.getByText("No tuition yet.")).toBeTruthy();

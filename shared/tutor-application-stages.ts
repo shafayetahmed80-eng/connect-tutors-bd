@@ -23,6 +23,22 @@ export function isTutorApplicationStage(value: unknown): value is TutorApplicati
   return tutorApplicationStages.some(stage => stage.key === value);
 }
 
+/**
+ * The stages in which the Guardian's name and number are the Tutor's to read:
+ * from the appointment, which is when the two are put in touch for the demo
+ * class, through the confirmation. Closed is not one of them - it is a
+ * Confirmed tuition whose fee has been paid in full - and no earlier or later
+ * stage carries them.
+ *
+ * The server releases the contact only at these stages and the Status tab
+ * shows the columns only at these stages, so the one list keeps the two in step.
+ */
+export const tutorGuardianContactStages = ["appointed", "confirmed"] as const satisfies readonly TutorApplicationStage[];
+
+export function stageShowsGuardianContact(stage: TutorApplicationStage) {
+  return (tutorGuardianContactStages as readonly TutorApplicationStage[]).includes(stage);
+}
+
 export type TutorApplicationRecord = {
   status: "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
   /** Set only once an Admin finalises the Guardian and Tutor appointment. */

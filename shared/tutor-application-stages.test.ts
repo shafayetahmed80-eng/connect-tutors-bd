@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { countTutorApplicationStages, filterTutorApplicationsByStage, getTutorApplicationStage, tutorApplicationStages } from "./tutor-application-stages";
+import {
+  countTutorApplicationStages,
+  filterTutorApplicationsByStage,
+  getTutorApplicationStage,
+  stageShowsGuardianContact,
+  tutorApplicationStages,
+  tutorGuardianContactStages,
+} from "./tutor-application-stages";
 
 describe("the stage a Tutor's application sits at", () => {
   it("names the six stages in the order a Tutor moves through them", () => {
@@ -55,5 +62,20 @@ describe("the stage a Tutor's application sits at", () => {
   it("filters to one stage without losing the rest of each row", () => {
     const records = [{ status: "interested" as const, publicJobId: "CT-1" }, { status: "declined" as const, publicJobId: "CT-2" }];
     expect(filterTutorApplicationsByStage(records, "cancelled")).toEqual([{ status: "declined", publicJobId: "CT-2" }]);
+  });
+});
+
+describe("the stages that carry the Guardian's name and number", () => {
+  it("are Appointed and Confirmed, and no other", () => {
+    expect([...tutorGuardianContactStages]).toEqual(["appointed", "confirmed"]);
+    for (const { key } of tutorApplicationStages) {
+      expect(stageShowsGuardianContact(key), key).toBe(key === "appointed" || key === "confirmed");
+    }
+  });
+
+  it("leave out Closed, which is a Confirmed tuition whose fee has been paid in full", () => {
+    const confirmedAt = new Date("2026-09-01");
+    expect(stageShowsGuardianContact(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: confirmedAt, paymentStatus: "full_due" }))).toBe(true);
+    expect(stageShowsGuardianContact(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: confirmedAt, paymentStatus: "full_paid" }))).toBe(false);
   });
 });

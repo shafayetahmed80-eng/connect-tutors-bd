@@ -193,4 +193,102 @@ describe("the Tutor's Status tab", () => {
     expect(card.getByText("Physics, Chemistry")).toBeTruthy();
     expect(card.getByText("6,000 Taka")).toBeTruthy();
   });
+
+  describe("the Guardian's name and number", () => {
+    const appointedJob = (over: Record<string, unknown> = {}) => job({
+      interestId: 7, publicJobId: "CT-J-7007", status: "matched", appointedAt: "2026-09-04T00:00:00.000Z",
+      guardianName: "Rahim Uddin", guardianPhone: "+8801712345678", ...over,
+    });
+    const confirmedJob = (over: Record<string, unknown> = {}) => appointedJob({
+      interestId: 8, publicJobId: "CT-J-8008", appointmentConfirmedAt: "2026-09-05T00:00:00.000Z", paymentStatus: "half_paid", ...over,
+    });
+
+    it("end the row on Appointed Jobs, after the stage date, labelled Guardian Name and Guardian Number", async () => {
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [appointedJob()];
+      const { container } = render(<TutorApplicationStatus />);
+
+      await user.click(screen.getByRole("tab", { name: /Appointed Jobs/ }));
+
+      expect(screen.getAllByRole("columnheader").map(head => head.textContent).slice(-3)).toEqual(["Appointed", "Guardian Name", "Guardian Number"]);
+      const row = within(container.querySelector("tbody tr")!);
+      expect(row.getByText("Rahim Uddin")).toBeTruthy();
+      expect(row.getByText("+880 1712 345678")).toBeTruthy();
+    });
+
+    it("make the number a call link and put a WhatsApp link beside it", async () => {
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [appointedJob()];
+      render(<TutorApplicationStatus />);
+
+      await user.click(screen.getByRole("tab", { name: /Appointed Jobs/ }));
+
+      expect(screen.getByRole("link", { name: "Call +880 1712 345678" }).getAttribute("href")).toBe("tel:+8801712345678");
+      expect(screen.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" }).getAttribute("href")).toBe("https://wa.me/8801712345678");
+    });
+
+    it("are on Confirmed Jobs too, beside the confirmation date and the payment status", async () => {
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [confirmedJob()];
+      render(<TutorApplicationStatus />);
+
+      await user.click(screen.getByRole("tab", { name: /Confirmed Jobs/ }));
+
+      expect(screen.getByRole("columnheader", { name: "Guardian Name" })).toBeTruthy();
+      expect(screen.getByRole("columnheader", { name: "Guardian Number" })).toBeTruthy();
+      expect(screen.getByText("Rahim Uddin")).toBeTruthy();
+      expect(screen.getByRole("columnheader", { name: "Confirmation Date" })).toBeTruthy();
+      expect(screen.getByText("Half Paid")).toBeTruthy();
+    });
+
+    it("are on no other stage, even if a row arrived carrying them", async () => {
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [
+        job({ interestId: 1, publicJobId: "CT-J-APPLIED", guardianName: "Stray Name", guardianPhone: "+8801712345678" }),
+        job({ interestId: 2, publicJobId: "CT-J-SHORT", status: "shortlisted", guardianName: "Stray Name", guardianPhone: "+8801712345678" }),
+        job({ interestId: 3, publicJobId: "CT-J-CLOSED", status: "matched", appointmentConfirmedAt: "2026-09-05T00:00:00.000Z", paymentStatus: "full_paid", guardianName: "Stray Name", guardianPhone: "+8801712345678" }),
+        job({ interestId: 4, publicJobId: "CT-J-GONE", status: "withdrawn", guardianName: "Stray Name", guardianPhone: "+8801712345678" }),
+      ];
+      render(<TutorApplicationStatus />);
+
+      for (const stage of [/Applied Jobs/, /Shortlisted Jobs/, /Closed Jobs/, /Cancelled Jobs/]) {
+        await user.click(screen.getByRole("tab", { name: stage }));
+        expect(screen.queryByRole("columnheader", { name: "Guardian Name" })).toBeNull();
+        expect(screen.queryByRole("columnheader", { name: "Guardian Number" })).toBeNull();
+        expect(screen.queryByText("Stray Name")).toBeNull();
+        expect(screen.queryByRole("link", { name: /Call / })).toBeNull();
+      }
+    });
+
+    it("read Not given, not a blank, when the Guardian left a name or a number out", async () => {
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [appointedJob({ guardianName: null, guardianPhone: null })];
+      const { container } = render(<TutorApplicationStatus />);
+
+      await user.click(screen.getByRole("tab", { name: /Appointed Jobs/ }));
+
+      const cells = Array.from(container.querySelectorAll("tbody tr td"));
+      expect(cells.slice(-2).map(cell => cell.textContent)).toEqual(["Not given", "Not given"]);
+      expect(screen.queryByRole("link", { name: /Call / })).toBeNull();
+    });
+
+    it("close a phone card as a labelled pair after the tuition's facts, with thumb-sized links", async () => {
+      window.innerWidth = 390;
+      const user = userEvent.setup({ document: window.document });
+      applications.current = [appointedJob()];
+      const { container } = render(<TutorApplicationStatus />);
+
+      await user.click(screen.getByRole("tab", { name: /Appointed Jobs/ }));
+
+      const card = within(container.querySelector("li")!);
+      expect(card.getByText("Guardian Name").closest("dt")).not.toBeNull();
+      expect(card.getByText("Guardian Number").closest("dt")).not.toBeNull();
+      expect(card.getByText("Rahim Uddin")).toBeTruthy();
+      expect(card.getByRole("link", { name: "Call +880 1712 345678" }).className).toContain("min-h-10");
+      expect(card.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" }).className).toContain("size-10");
+      // They come last among the card's labelled pairs, after the tuition's own facts and the stage date.
+      const labels = Array.from(container.querySelectorAll("dt")).map(dt => dt.textContent);
+      expect(labels.slice(-3)).toEqual(["Appointed", "Guardian Name", "Guardian Number"]);
+    });
+  });
 });

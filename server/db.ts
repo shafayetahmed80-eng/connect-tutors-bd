@@ -40,7 +40,7 @@ import {
 } from "@shared/tutor-profile-field-registry";
 import type { RequestSource } from "@shared/request-source";
 import { jobIdForRequest, requestIdFromJobId } from "@shared/job-id";
-import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
+import { getTutorApplicationStage, stageShowsGuardianContact, tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
 import { emptyTutorMatchFilters, rankTutorsForRequest, type MatchingTutorOption, type MatchingTutorRequestBrief, type MatchingWeights } from "@shared/tutor-matching";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { addDays } from "date-fns";
@@ -147,6 +147,7 @@ import {
 import { guardianCatalogIds, guardianReadableFields, projectTutorProfileForGuardian } from "@shared/guardian-tutor-profile";
 import { canRequestAppointment, canWithdrawAppointmentRequest } from "./guardian-applicant-actions";
 import { appointedTutorNotification, canAppointApplicant, canDeclineAppointmentRequest } from "./admin-appointment";
+import { tutorGuardianContactFor, type TutorGuardianContact } from "./tutor-guardian-contact";
 import { appointmentConfirmedTutorNotification, appointmentEndedTutorNotification, canReopenAppointedTuition, canReopenConfirmedTuition, tuitionCancelledTutorNotification } from "./appointed-tuition";
 import { ENV } from "./_core/env";
 import { GuardianRegistrationError } from "./guardian-registration.validation";
@@ -4018,6 +4019,43 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
     .innerJoin(tutorRequests, eq(tutorJobs.tutorRequestId, tutorRequests.id))
     .where(eq(tutorJobInterests.tutorId, tutorId))
     .orderBy(desc(tutorJobInterests.updatedAt), desc(tutorJobInterests.id));
+}
+
+/**
+ * The Status tab's list: a Tutor's own applications, and - on the ones at a
+ * stage that puts them in touch with the Guardian (Appointed, Confirmed) and on
+ * a tuition this Tutor holds - the Guardian's name and number.
+ *
+ * `listTutorJobInterestsForTutor` stays free of Guardian data: the Job Board and
+ * the Admin's copy of this list have no use for it, and a contact nobody asked
+ * for is one more place it could leak from. Every row here has `guardianName`
+ * and `guardianPhone`, null wherever the rule does not release them, so the page
+ * only renders what arrived and never decides what is private.
+ */
+export async function listTutorApplicationsWithGuardianContact(tutorId: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const applications = await listTutorJobInterestsForTutor(tutorId);
+  const requestIds = Array.from(new Set(
+    applications
+      .filter(application => stageShowsGuardianContact(getTutorApplicationStage(application)))
+      .map(application => application.requestId)
+      .filter((id): id is number => id !== null),
+  ));
+  const contacts = new Map<number, TutorGuardianContact>();
+  if (requestIds.length) {
+    const rows = await database
+      .select({ requestId: tutorRequests.id, appointedTutorId: tutorRequests.tutorId, name: users.name, phone: guardianProfiles.phone })
+      .from(tutorRequests)
+      .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
+      .leftJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+      .where(inArray(tutorRequests.id, requestIds));
+    for (const row of rows) contacts.set(row.requestId, row);
+  }
+  return applications.map(application => ({
+    ...application,
+    ...tutorGuardianContactFor(application, application.requestId === null ? undefined : contacts.get(application.requestId), tutorId),
+  }));
 }
 
 export async function reviewTutorJobInterestByAdmin(input: {

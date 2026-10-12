@@ -1360,9 +1360,10 @@ export const appRouter = router({
           return rethrowTutorInterestError(error);
         }
       }),
+    // The Status tab's list: it alone carries the Guardian's name and number, and only where the Tutor is appointed (`tutor.myJobInterests`, the Job Board's, never does).
     myInterests: activeTutorProcedure.query(async ({ ctx }) => {
       const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
-      return db.listTutorJobInterestsForTutor(tutorId);
+      return db.listTutorApplicationsWithGuardianContact(tutorId);
     }),
   }),
   tutor: router({
