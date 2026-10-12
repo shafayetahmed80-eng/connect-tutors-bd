@@ -46,8 +46,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete dist-latest --cleanup-tag --yes || true
+          # Creating straight after deleting can race the tag's removal and leave a
+          # DRAFT release, which the server cannot download (it answers 404, and
+          # update.sh then says the build is not finished). Give it a moment, and
+          # publish the release if it still came out as a draft.
+          sleep 5
           gh release create dist-latest dist.tar.gz dist-sha.txt \
             --prerelease \
             --target "$GITHUB_SHA" \
             --title "Built site (latest main)" \
             --notes "Built from $GITHUB_SHA. Downloaded by update.sh on the server."
+          if [ "$(gh release view dist-latest --json isDraft --jq .isDraft)" = "true" ]; then
+            gh release edit dist-latest --draft=false --prerelease
+          fi
