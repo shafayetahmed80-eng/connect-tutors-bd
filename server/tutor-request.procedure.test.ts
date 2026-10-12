@@ -145,12 +145,27 @@ describe("tutorRequests.create with a Tutoring Time", () => {
     expect(request).toHaveProperty("tutoringTime", null);
   });
 
-  it("trims the time before it reaches the writer", async () => {
+  it("hands the writer null when the client sends an explicit null for an empty box", async () => {
     arrange();
 
-    await guardian().tutorRequests.create({ ...validPayload, tutoringTime: " 08:05 " });
+    await guardian().tutorRequests.create({ ...validPayload, tutoringTime: null });
 
-    expect(dbMocks.createTutorRequest.mock.calls[0][0]).toMatchObject({ tutoringTime: "08:05" });
+    const [request] = dbMocks.createTutorRequest.mock.calls[0];
+    // The Guardian journey sends null for an empty box on create as well as on edit. A new request
+    // has nothing to keep, so null and a missing key both store no time.
+    expect(request).toHaveProperty("tutoringTime", null);
+  });
+
+  it("refuses a padded time instead of trimming it, without writing anything", async () => {
+    arrange();
+
+    // The time box never returns spaces or a newline. A padded value is refused on every route
+    // alike, so create no longer quietly stores a trimmed copy of what an edit would have thrown on.
+    for (const tutoringTime of [" 08:05 ", "08:05 ", " 08:05", "08:05\n"]) {
+      await expect(guardian().tutorRequests.create({ ...validPayload, tutoringTime }), JSON.stringify(tutoringTime))
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createTutorRequest).not.toHaveBeenCalled();
   });
 
   it("sends a time to every tuition type, online included, which has no location to ask about", async () => {

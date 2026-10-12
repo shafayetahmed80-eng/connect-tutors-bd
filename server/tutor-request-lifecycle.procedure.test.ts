@@ -162,12 +162,23 @@ describe("approved Guardian request lifecycle procedures", () => {
     expect(lifecycleDbMocks.updateGuardianTutorRequest).toHaveBeenCalledWith(expect.objectContaining({ guardianUserId: 77, requestId: 19, tutoringTime: "16:30" }));
   });
 
-  it("hands the writer null when an edit sends no Tutoring Time, which is how a Guardian clears one", async () => {
+  it("hands the writer undefined when an edit sends no Tutoring Time, so the stored time is kept", async () => {
     lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
 
-    // The form sends nothing for an emptied time box. The writer then has to be
-    // told null: a missing value would leave the old time in the row.
+    // A page left open from before the field existed sends no time at all. The writer is told
+    // undefined, which leaves the column alone, so that page cannot erase a time the request has.
     await (guardianCaller(77).tutorRequests as any).updatePending(pendingUpdate);
+
+    const [update] = lifecycleDbMocks.updateGuardianTutorRequest.mock.calls[0];
+    expect(update.tutoringTime).toBeUndefined();
+    expect(update.tutoringTime).not.toBeNull();
+  });
+
+  it("hands the writer null when an edit sends an explicit null, which is how a Guardian clears the time", async () => {
+    lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
+
+    // The journey sends null for an emptied time box, so a cleared box really clears the stored time.
+    await (guardianCaller(77).tutorRequests as any).updatePending({ ...pendingUpdate, tutoringTime: null });
 
     const [update] = lifecycleDbMocks.updateGuardianTutorRequest.mock.calls[0];
     expect(update).toHaveProperty("tutoringTime", null);
@@ -176,6 +187,15 @@ describe("approved Guardian request lifecycle procedures", () => {
   it("refuses a Tutoring Time on an edit that is not HH:mm, without updating anything", async () => {
     for (const tutoringTime of ["4:30 PM", "24:00", "16:60", ""]) {
       await expect((guardianCaller(77).tutorRequests as any).updatePending({ ...pendingUpdate, tutoringTime }), tutoringTime)
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(lifecycleDbMocks.updateGuardianTutorRequest).not.toHaveBeenCalled();
+  });
+
+  it("refuses a padded Tutoring Time on an edit instead of trimming it, the same as every other route", async () => {
+    // Not trimmed any more: " 08:05 " used to be cleaned up on create and to throw on an edit.
+    for (const tutoringTime of [" 08:05 ", "08:05 ", " 08:05", "08:05\n"]) {
+      await expect((guardianCaller(77).tutorRequests as any).updatePending({ ...pendingUpdate, tutoringTime }), JSON.stringify(tutoringTime))
         .rejects.toMatchObject({ code: "BAD_REQUEST" });
     }
     expect(lifecycleDbMocks.updateGuardianTutorRequest).not.toHaveBeenCalled();

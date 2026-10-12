@@ -273,7 +273,16 @@ describe("tutor request validation", () => {
       const parsed = tutorRequestInputSchema.safeParse(home);
 
       expect(parsed.success).toBe(true);
+      // Left out stays left out (not null): an edit reads that as "keep the stored time".
       expect(timeOf(parsed)).toBeUndefined();
+    });
+
+    it("takes null, which is how a cleared box clears a stored time, and parses it to null", () => {
+      const parsed = tutorRequestInputSchema.safeParse({ ...home, tutoringTime: null });
+
+      expect(parsed.success).toBe(true);
+      // Not turned into undefined: an edit tells "clear it" (null) from "leave it" (omitted) by this.
+      expect(timeOf(parsed)).toBeNull();
     });
 
     it("takes a zero-padded 24-hour time, midnight and the last minute of the day included", () => {
@@ -297,27 +306,36 @@ describe("tutor request validation", () => {
         "1630",
         "16.30",
         "-1:30",
-        "",   // the client sends nothing rather than a blank
-        "   ", // spaces only is blank once trimmed
+        "",   // an empty box is sent as null, never as a blank string
+        "   ", // spaces only is not a time either
       ];
       for (const time of notTimes) {
         expect(tutorRequestInputSchema.safeParse({ ...home, tutoringTime: time }).success, JSON.stringify(time)).toBe(false);
       }
     });
 
-    it("refuses a value that is not a string, null included", () => {
-      for (const value of [1630, 16.5, true, null, ["16:30"], { hour: 16, minute: 30 }]) {
+    it("refuses a value that is neither a string nor null", () => {
+      for (const value of [1630, 16.5, true, ["16:30"], { hour: 16, minute: 30 }]) {
         expect(tutorRequestInputSchema.safeParse({ ...home, tutoringTime: value }).success, JSON.stringify(value)).toBe(false);
       }
     });
 
-    it("trims surrounding spaces before checking, and keeps the trimmed time", () => {
-      const parsed = tutorRequestInputSchema.safeParse({ ...home, tutoringTime: "  16:30 " });
+    it("refuses a padded value rather than trimming it, so every route treats it the same way", () => {
+      // The time box never hands back spaces or a newline. The schema is not trimmed, so a padded
+      // value fails the pattern here, and so on every route built on this schema (create, a Guardian's
+      // edit, an Admin's post and edit). It used to be trimmed by some and to throw on the others.
+      for (const time of ["  16:30 ", " 08:05 ", "08:05\n", "08:05 ", " 08:05", "\t08:05", "16: 30"]) {
+        const parsed = tutorRequestInputSchema.safeParse({ ...home, tutoringTime: time });
+        expect(parsed.success, JSON.stringify(time)).toBe(false);
+      }
+      // The time without the padding is still fine.
+      expect(timeOf(tutorRequestInputSchema.safeParse({ ...home, tutoringTime: "08:05" }))).toBe("08:05");
+    });
 
-      expect(parsed.success).toBe(true);
-      expect(timeOf(parsed)).toBe("16:30");
-      // Spaces inside the time are not trimmed away: it is still not a time.
-      expect(tutorRequestInputSchema.safeParse({ ...home, tutoringTime: "16: 30" }).success).toBe(false);
+    it.each(Object.entries(requestsByType))("refuses a padded time on a %s request too", (_type, request) => {
+      // Each union member builds on the same base, so the refusal is not a quirk of the home request.
+      expect(tutorRequestInputSchema.safeParse({ ...request, tutoringTime: " 16:30 " }).success).toBe(false);
+      expect(tutorRequestInputSchema.safeParse({ ...request, tutoringTime: null }).success).toBe(true);
     });
 
     it.each(Object.entries(requestsByType))("is a known key on a %s request, while an unknown key is still refused", (_type, request) => {
