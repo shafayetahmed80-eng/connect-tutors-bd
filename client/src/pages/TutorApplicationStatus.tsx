@@ -1,7 +1,9 @@
 import PaymentStatusPill from "@/components/PaymentStatusPill";
+import { PhoneContact } from "@/components/PhoneContact";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { RecordIcon } from "@/components/recordIcons";
 import StatusTabRow from "@/components/StatusTabRow";
+import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { formatSubjects, formatTuitionType } from "@shared/job-card";
 import type { JobPaymentStatus } from "@shared/job-payment-status";
@@ -9,6 +11,7 @@ import {
   countTutorApplicationStages,
   filterTutorApplicationsByStage,
   isTutorApplicationStage,
+  stageShowsGuardianContact,
   tutorApplicationStages,
   type TutorApplicationStage,
 } from "@shared/tutor-application-stages";
@@ -36,6 +39,9 @@ type ApplicationRow = {
   paymentStatus: JobPaymentStatus;
   /** The day the last payment made the fee Full Paid; set once the tuition is Closed. */
   paymentCompletedAt?: string | Date | null;
+  /** The Guardian's name and number, which the server sends only for the tuition this Tutor is appointed to. */
+  guardianName?: string | null;
+  guardianPhone?: string | null;
 };
 
 function formatDate(value: string | Date) {
@@ -51,6 +57,37 @@ const notRecorded = <span className="italic text-j-ink-faint">Not recorded</span
 function StageDate({ value }: { value: string | Date | null }) {
   return value ? <span className="tabular-nums text-j-ink-strong">{formatDate(value)}</span> : notRecorded;
 }
+
+const notGiven = <span className="italic text-j-ink-faint">Not given</span>;
+
+/** The Guardian's name: plain text in the headings' typeface, with no fill or border to read as a button. */
+function GuardianName({ name, size }: { name: string | null | undefined; size: "table" | "card" }) {
+  if (!name) return notGiven;
+  return <span className={cn("break-words font-heading font-bold text-j-ink", size === "card" ? "text-[15px]" : "inline-block max-w-[14rem] text-sm")}>{name}</span>;
+}
+
+/**
+ * Where an appointed Tutor reaches the Guardian: name and number, the number
+ * one press from a call and one from a WhatsApp chat. The labels are the Job
+ * ID's blue and its pale icon, set in the headings' typeface. They come last on
+ * a card and in a row, after everything about the tuition itself.
+ */
+const guardianContactColumns: RecordColumn<ApplicationRow>[] = [
+  {
+    key: "guardianName", label: "Guardian Name", wide: true,
+    labelIcon: <RecordIcon name="name" size={12} className="text-[#8fb4d0]" />,
+    labelClassName: "font-heading font-extrabold tracking-[.16em] text-[#1680c2]",
+    cell: application => <GuardianName name={application.guardianName} size="table" />,
+    cardCell: application => <GuardianName name={application.guardianName} size="card" />,
+  },
+  {
+    key: "guardianNumber", label: "Guardian Number", wide: true, cellClassName: "whitespace-nowrap",
+    labelIcon: <RecordIcon name="phone" size={12} className="text-[#8fb4d0]" />,
+    labelClassName: "font-heading font-extrabold tracking-[.16em] text-[#1680c2]",
+    cell: application => application.guardianPhone ? <PhoneContact phone={application.guardianPhone} /> : notGiven,
+    cardCell: application => application.guardianPhone ? <PhoneContact phone={application.guardianPhone} size="card" /> : notGiven,
+  },
+];
 
 /**
  * Each stage carries the date it happened, and the one column that belongs to
@@ -110,6 +147,8 @@ export function TutorApplicationStatus() {
       </span>,
     },
     ...stageColumns(activeStage),
+    // Last, after everything about the tuition itself: the stage's own date ends the facts, and the Guardian to call follows.
+    ...(stageShowsGuardianContact(activeStage) ? guardianContactColumns : []),
   ];
 
   return <section>

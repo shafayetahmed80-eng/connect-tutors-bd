@@ -5,6 +5,7 @@ const interestDbMocks = vi.hoisted(() => ({
   getTutorAccountStatusByUserId: vi.fn(),
   getTutorProfileByUserId: vi.fn(),
   listTutorJobInterestsForTutor: vi.fn(),
+  listTutorApplicationsWithGuardianContact: vi.fn(),
   reviewTutorJobInterestByAdmin: vi.fn(),
   submitTutorJobInterest: vi.fn(),
   withdrawTutorJobInterest: vi.fn(),
@@ -84,15 +85,31 @@ describe("Tutor Job Board interest procedures", () => {
 
   it("lists and withdraws only the authenticated Tutor's own interests", async () => {
     interestDbMocks.listTutorJobInterestsForTutor.mockResolvedValue([{ interestId: 12, status: "interested", publicJobId: "CTB-260821-044" }]);
+    interestDbMocks.listTutorApplicationsWithGuardianContact.mockResolvedValue([{ interestId: 12, status: "interested", publicJobId: "CTB-260821-044", guardianName: null, guardianPhone: null }]);
     interestDbMocks.withdrawTutorJobInterest.mockResolvedValue({ interestId: 12, status: "withdrawn" });
     const caller = createCaller();
 
     await expect((caller.tutor as any).myJobInterests()).resolves.toHaveLength(1);
     await expect((caller.jobBoard as any).myInterests()).resolves.toHaveLength(1);
     await expect((caller.jobBoard as any).withdrawInterest({ interestId: 12 })).resolves.toEqual({ interestId: 12, status: "withdrawn" });
-    expect(interestDbMocks.listTutorJobInterestsForTutor).toHaveBeenCalledTimes(2);
     expect(interestDbMocks.listTutorJobInterestsForTutor).toHaveBeenCalledWith("tutor-1503");
+    expect(interestDbMocks.listTutorApplicationsWithGuardianContact).toHaveBeenCalledWith("tutor-1503");
     expect(interestDbMocks.withdrawTutorJobInterest).toHaveBeenCalledWith({ tutorId: "tutor-1503", interestId: 12 });
+  });
+
+  it("gives the Guardian's contact to the Status tab's list alone, never to the Job Board's", async () => {
+    interestDbMocks.listTutorJobInterestsForTutor.mockResolvedValue([{ interestId: 12, status: "matched" }]);
+    interestDbMocks.listTutorApplicationsWithGuardianContact.mockResolvedValue([{ interestId: 12, status: "matched", guardianName: "Rahim Uddin", guardianPhone: "+8801712345678" }]);
+    const caller = createCaller();
+
+    await expect((caller.jobBoard as any).myInterests()).resolves.toEqual([expect.objectContaining({ guardianName: "Rahim Uddin", guardianPhone: "+8801712345678" })]);
+    expect(interestDbMocks.listTutorJobInterestsForTutor).not.toHaveBeenCalled();
+
+    interestDbMocks.listTutorApplicationsWithGuardianContact.mockClear();
+    const [row] = await (caller.tutor as any).myJobInterests();
+    expect(row).not.toHaveProperty("guardianName");
+    expect(row).not.toHaveProperty("guardianPhone");
+    expect(interestDbMocks.listTutorApplicationsWithGuardianContact).not.toHaveBeenCalled();
   });
 
   it("passes an authenticated Admin review to the private interest workflow", async () => {
