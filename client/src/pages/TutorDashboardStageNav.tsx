@@ -59,7 +59,7 @@ export function TutorStageButtons({ counts }: { counts: Record<TutorApplicationS
             {counts ? String(counts[stage.key]).padStart(2, "0") : "–"}
           </span>
         </span>
-        <span className="sb-strip-label flex w-full min-w-0 items-center justify-center gap-1 text-[10px] font-medium leading-tight tracking-[-0.02em] max-[359px]:text-[9px] sm:justify-between sm:text-[11px] sm:tracking-normal lg:text-xs">
+        <span className="sb-strip-label flex w-full min-w-0 items-center justify-center gap-1 text-[11px] font-medium leading-tight tracking-[-0.02em] max-[359px]:text-[10px] sm:justify-between sm:text-xs sm:tracking-normal lg:text-xs">
           <span className="min-w-0 truncate sm:whitespace-normal">{shortLabel}<span className="hidden sm:inline"> Jobs</span></span>
           <ChevronRight size={14} aria-hidden={true} className="hidden shrink-0 -translate-x-1 opacity-0 transition-[opacity,transform] duration-300 group-hover:translate-x-0 group-hover:opacity-100 motion-reduce:transition-none lg:block" />
         </span>

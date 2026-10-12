@@ -78,8 +78,7 @@ describe("StatusTabRow", () => {
     render(<StatusTabRow label="Stages" items={items} selected="live" onSelect={() => {}} />);
 
     const tab = screen.getByRole("tab", { name: /Live/ });
-    // The Owner's one-line 10px rule is untouched; only the padding grows, on a phone only.
-    expect(tab.className).toContain("text-[10px]");
+    expect(tab.className).toContain("text-[11px]");
     expect(tab.className).toContain("whitespace-nowrap");
     expect(tab.className).toContain("max-sm:pt-3");
     expect(tab.className).toContain("max-sm:pb-3");
