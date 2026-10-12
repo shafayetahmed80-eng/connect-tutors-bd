@@ -134,6 +134,35 @@ describe("admin.createPostedTuition", () => {
     expect(dbMocks.createAdminPostedTuition).toHaveBeenCalledTimes(1);
   });
 
+  it("writes the Tutoring Time asked for into the tuition's row, and null when the form sent none", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 19, live: true });
+
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "16:30" });
+    await createCaller().admin.createPostedTuition(homeTuition);
+
+    expect(dbMocks.createAdminPostedTuition.mock.calls[0][0].request).toMatchObject({ tutoringTime: "16:30" });
+    // Null rather than a missing key or a blank: the column is nullable and a
+    // blank time is no wish at all.
+    expect(dbMocks.createAdminPostedTuition.mock.calls[1][0].request).toHaveProperty("tutoringTime", null);
+  });
+
+  it("holds the Tutoring Time to the Guardian journey's own rule - a zero-padded 24-hour time or nothing", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 20, live: true });
+
+    for (const tutoringTime of ["4:30 PM", "24:00", "16:60", ""]) {
+      await expect(createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime }), tutoringTime)
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
+
+    // The edge of the day on either side is a time.
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "00:00" });
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "23:59" });
+    expect(dbMocks.createAdminPostedTuition.mock.calls.map(([call]) => call.request.tutoringTime)).toEqual(["00:00", "23:59"]);
+  });
+
   it("asks for the Guardian's own City when the tuition is online and has none", async () => {
     const { tuitionCityLocationId: _city, tuitionLocationId: _location, ...rest } = homeTuition;
     await expect(createCaller().admin.createPostedTuition({ ...rest, tuitionType: "online" }))
@@ -246,6 +275,27 @@ describe("admin.updatePostedTuition", () => {
     // The name and number travel; whether they are honoured is the server's
     // call, not the caller's - a Guardian who registered owns both.
     expect(call.guardian).toEqual({ name: "Off-site Guardian", phone: "+8801999888777" });
+  });
+
+  it("puts the Tutoring Time into the row it rewrites, and null when the edit sends none so an old time is cleared", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: true, guardianEdited: false });
+
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime: "16:30" });
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14 });
+
+    expect(dbMocks.updateAdminPostedTuition.mock.calls[0][0].request).toMatchObject({ tutoringTime: "16:30" });
+    // The row is rewritten whole, so a missing value would keep the time the
+    // tuition had before; null is what takes it off.
+    expect(dbMocks.updateAdminPostedTuition.mock.calls[1][0].request).toHaveProperty("tutoringTime", null);
+  });
+
+  it("refuses an edit whose Tutoring Time is not HH:mm", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+
+    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime: "4:30 PM" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
   });
 
   it("holds an edit to the same rules a new tuition is held to", async () => {

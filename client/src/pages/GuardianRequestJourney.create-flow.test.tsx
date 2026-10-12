@@ -39,6 +39,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 import GuardianRequestJourney from "./GuardianRequestJourney";
+import { GUARDIAN_REQUEST_DRAFT_VERSION, serializeGuardianRequestDraft } from "./guardian-request-draft";
 
 afterEach(() => {
   cleanup();
@@ -123,6 +124,96 @@ describe("GuardianRequestJourney create flow", () => {
     expect(screen.getByText("6800")).not.toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
     expect(screen.queryByRole("button", { name: "Send request" })).toBeNull();
+  });
+
+  describe("Tutoring Time", () => {
+    /** The one request the create mutation was handed. */
+    function sentRequest() {
+      expect(mocks.create).toHaveBeenCalledTimes(1);
+      return mocks.create.mock.calls[0][0] as Record<string, unknown>;
+    }
+
+    const timeBox = () => screen.getByLabelText(/Tutoring Time/) as HTMLInputElement;
+
+    it("sends the time typed on step 2 with the request", () => {
+      render(<GuardianRequestJourney embedded />);
+      fillThroughStepOne();
+      fillStepTwo();
+
+      fireEvent.change(timeBox(), { target: { value: "16:30" } });
+      fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+
+      // Zero-padded 24-hour text, exactly what the browser's time box hands back.
+      expect(sentRequest().tutoringTime).toBe("16:30");
+    });
+
+    it("sends no time at all when the box is left blank, never an empty string", () => {
+      render(<GuardianRequestJourney embedded />);
+      fillThroughStepOne();
+      fillStepTwo();
+
+      expect(timeBox().value).toBe("");
+      fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+
+      // The server stores NULL for "no time"; an "" would be refused by its pattern.
+      const request = sentRequest();
+      expect(request.tutoringTime).toBeUndefined();
+      expect(request.tutoringTime).not.toBe("");
+    });
+
+    it("sends no time when the Guardian types one and then clears it", () => {
+      render(<GuardianRequestJourney embedded />);
+      fillThroughStepOne();
+      fillStepTwo();
+
+      fireEvent.change(timeBox(), { target: { value: "16:30" } });
+      fireEvent.change(timeBox(), { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+
+      expect(sentRequest().tutoringTime).toBeUndefined();
+    });
+
+    it("is blank again for the next request after the Guardian posts another", () => {
+      render(<GuardianRequestJourney embedded />);
+      fillThroughStepOne();
+      fillStepTwo();
+      fireEvent.change(timeBox(), { target: { value: "16:30" } });
+      fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+      act(() => { mocks.createOptions?.onSuccess?.({ id: 1 }); });
+
+      fireEvent.click(screen.getByRole("button", { name: "Post another request" }));
+      fillThroughStepOne();
+
+      // The previous answer is not carried over to the next request.
+      expect(timeBox().value).toBe("");
+    });
+
+    it("comes back with the rest of an unfinished request when the Guardian returns to it", () => {
+      window.sessionStorage.setItem("connect-tutors:guardian-request-draft:4", serializeGuardianRequestDraft({
+        version: GUARDIAN_REQUEST_DRAFT_VERSION,
+        step: 2,
+        request: {
+          learningNeeds: [], tuitionType: "online", groupCapacity: "", packageDurationMonths: "", studentCount: "1",
+          studentGender: "", addressDetails: "", tuitionCityLocationId: "", tuitionLocationId: "", daysPerWeek: "3",
+          tutoringTime: "16:30", preferredGender: "any", salaryAmount: "5000", instituteName: "", heardAboutUs: "facebook",
+        },
+        notes: "",
+      }));
+      render(<GuardianRequestJourney embedded />);
+
+      expect(timeBox().value).toBe("16:30");
+      expect(JSON.parse(window.sessionStorage.getItem("connect-tutors:guardian-request-draft:4")!).request.tutoringTime).toBe("16:30");
+    });
+
+    it("saves a typed time into the draft so a reload keeps it", () => {
+      render(<GuardianRequestJourney embedded />);
+      fillThroughStepOne();
+      fillStepTwo();
+
+      fireEvent.change(timeBox(), { target: { value: "09:05" } });
+
+      expect(JSON.parse(window.sessionStorage.getItem("connect-tutors:guardian-request-draft:4")!).request.tutoringTime).toBe("09:05");
+    });
   });
 
   it("clears the answers back to an empty step 1 when the Guardian posts another", () => {

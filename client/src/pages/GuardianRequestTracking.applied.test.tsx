@@ -32,6 +32,8 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({ tutorRequests: { appliedTutors: { invalidate: vi.fn() }, mine: { invalidate: vi.fn() } } }),
     tutorRequests: {
       mine: { useQuery: () => ({ data: mocks.requests, isLoading: false, error: null, refetch: vi.fn() }) },
+      // Read by the full-page request details, which a link to one request opens.
+      decideContactConsent: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       requestTuitionChange: { useMutation: () => ({ mutate: mocks.send, isPending: false }) },
       withdrawTuitionChange: { useMutation: () => ({ mutate: mocks.withdraw, isPending: false }) },
     },
@@ -152,5 +154,66 @@ describe("asking an Admin to cancel or remove, from the Posted jobs dialog", () 
     expect(within(details).queryByRole("button", { name: "Remove Tutor" })).toBeNull();
     await user.click(within(details).getByRole("button", { name: "Withdraw: Cancellation requested" }));
     expect(mocks.withdraw).toHaveBeenCalledWith({ requestId: 16 });
+  });
+});
+
+describe("the Tutoring Time a Guardian asked for", () => {
+  it("shows it as 4:30 PM in the Posted jobs details dialog", async () => {
+    mocks.requests = [{ ...base, id: 14, status: "new", publicationState: "submitted", appliedTutorCount: 0, tuitionRequest: null, tutoringTime: "16:30" }];
+    const user = userEvent.setup();
+    render(<GuardianRequestTracking embedded />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6813/ }));
+    const details = within(screen.getByRole("dialog"));
+    const row = details.getByText("Tutoring Time").parentElement!;
+    expect(within(row).getByText("4:30 PM")).toBeTruthy();
+  });
+
+  it.each([
+    ["null", null],
+    ["missing", undefined],
+    ["blank", ""],
+  ])("leaves the row out of the dialog when the request's time is %s", async (_name, stored) => {
+    mocks.requests = [{ ...base, id: 14, status: "new", publicationState: "submitted", appliedTutorCount: 0, tuitionRequest: null, tutoringTime: stored }];
+    const user = userEvent.setup();
+    render(<GuardianRequestTracking embedded />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6813/ }));
+    const details = within(screen.getByRole("dialog"));
+    expect(details.queryByText("Tutoring Time")).toBeNull();
+    expect(details.getByText("Days / Week")).toBeTruthy();
+  });
+
+  it("shows it in the private request details of a request opened by its own link", () => {
+    mocks.requests = [{ ...base, id: 14, status: "new", publicationState: "submitted", appliedTutorCount: 0, tuitionRequest: null, tutoringTime: "16:30" }];
+    render(<GuardianRequestTracking embedded detailRequestId={14} />);
+
+    const details = within(screen.getByRole("region", { name: "Private request #14" }));
+    expect(details.getByText("Days per week")).toBeTruthy();
+    const detail = details.getByText("Tutoring Time").parentElement!;
+    expect(within(detail).getByText("4:30 PM")).toBeTruthy();
+  });
+
+  it("writes a morning time with AM in the private request details", () => {
+    mocks.requests = [{ ...base, id: 14, status: "new", publicationState: "submitted", appliedTutorCount: 0, tuitionRequest: null, tutoringTime: "00:05" }];
+    render(<GuardianRequestTracking embedded detailRequestId={14} />);
+
+    expect(within(screen.getByRole("region", { name: "Private request #14" })).getByText("12:05 AM")).toBeTruthy();
+  });
+
+  it.each([
+    ["null", null],
+    ["missing", undefined],
+    ["blank", ""],
+  ])("leaves the detail out of the private request details when the time is %s", (_name, stored) => {
+    mocks.requests = [{ ...base, id: 14, status: "new", publicationState: "submitted", appliedTutorCount: 0, tuitionRequest: null, tutoringTime: stored }];
+    render(<GuardianRequestTracking embedded detailRequestId={14} />);
+
+    const details = within(screen.getByRole("region", { name: "Private request #14" }));
+    // The other details are there; only the time is missing, with no "Not set" in its place.
+    expect(details.getByText("Days per week")).toBeTruthy();
+    expect(details.getByText("Salary")).toBeTruthy();
+    expect(details.queryByText("Tutoring Time")).toBeNull();
+    expect(details.queryByText(/Not set/)).toBeNull();
   });
 });

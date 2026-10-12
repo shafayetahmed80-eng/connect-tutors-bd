@@ -181,6 +181,46 @@ describe("Add Tuition", () => {
     }));
   });
 
+  it("asks for a Tutoring Time in the browser's time box, and does not insist on one", () => {
+    open();
+
+    const box = screen.getByLabelText(/Tutoring Time/) as HTMLInputElement;
+    expect(box.type).toBe("time");
+    expect(box.value).toBe("");
+    // Optional like the Guardian journey's own: no required star beside the title.
+    expect(box.closest("label")!.textContent).not.toContain("*");
+  });
+
+  it("posts the time the Admin typed as a 24-hour HH:mm", () => {
+    open();
+    fillTuition();
+    type(/Tutoring Time/, "16:30");
+    fireEvent.click(postButton());
+
+    expect(mocks.post).toHaveBeenCalledWith(expect.objectContaining({ tutoringTime: "16:30", daysPerWeek: 3, budgetAmount: 6500 }));
+  });
+
+  it("leaves the key out of the post when the box is blank", () => {
+    open();
+    fillTuition();
+    fireEvent.click(postButton());
+
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    // Absent, not "" - the server stores a blank as NULL and would refuse an empty string.
+    expect(mocks.post.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+  });
+
+  it("leaves the key out when the Admin typed a time and then cleared it again", () => {
+    open();
+    fillTuition();
+    type(/Tutoring Time/, "16:30");
+    type(/Tutoring Time/, "");
+    fireEvent.click(postButton());
+
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(mocks.post.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+  });
+
   it("will not post a tuition whose class has no subject chosen yet", () => {
     open();
     fillTuition();
@@ -288,6 +328,47 @@ describe("Edit", () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, budgetAmount: 8000 }));
     expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("jobId");
     expect(mocks.post).not.toHaveBeenCalled();
+  });
+
+  it("opens with the time the tuition already carries, and sends it back with the edit", () => {
+    openEdit({ tutoringTime: "16:30" });
+
+    expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("16:30");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, tutoringTime: "16:30" }));
+  });
+
+  it("sends a changed time in place of the old one", () => {
+    openEdit({ tutoringTime: "16:30" });
+    type(/Tutoring Time/, "07:15");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14, tutoringTime: "07:15" }));
+  });
+
+  it("sends no time once the Admin has cleared it, so the server clears it too", () => {
+    openEdit({ tutoringTime: "16:30" });
+    type(/Tutoring Time/, "");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 14 }));
+  });
+
+  it.each([
+    ["has none", null],
+    ["was made before the field existed", undefined],
+    ["holds something that is not an HH:mm time", "25:99"],
+  ])("opens the time box empty and sends no time for a tuition that %s", (_name, stored) => {
+    openEdit({ tutoringTime: stored });
+
+    expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("");
+    fireEvent.click(updateButton());
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).not.toHaveProperty("tutoringTime");
   });
 
   it("lets an Admin correct the name and number they wrote themselves", () => {

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const job = (id: number, jobId: string, title: string) => ({
+const job = (id: number, jobId: string, title: string, extra: { tutoringTime?: string | null } = {}) => ({
   id, jobId, title,
   tuitionType: "home" as const,
   category: "Bangla Medium",
@@ -21,6 +21,7 @@ const job = (id: number, jobId: string, title: string) => ({
   locationLabel: "Adabor, Dhaka",
   directionLabel: null,
   publishedAt: new Date("2026-11-01T00:00:00.000Z"),
+  ...extra,
 });
 
 const mocks = vi.hoisted(() => ({
@@ -28,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   withdraw: vi.fn(),
   expressPending: false,
   interests: [] as Array<{ interestId: number; status: string; createdAt: Date; publicJobId: string }>,
+  /** The start time each listed job carries, by its id; a job not named here has none, as the server sends it. */
+  tutoringTimes: {} as Record<number, string | null | undefined>,
 }));
 
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { role: "tutor" }, loading: false }) }));
@@ -45,7 +48,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     jobBoard: {
       filterOptions: { useQuery: () => ({ data: undefined, isLoading: false }) },
-      list: { useQuery: () => ({ data: { items: [job(1, "6801", "Need a Tutor for Class 8"), job(2, "6802", "Need a Tutor for Class 9")], totalCount: 2 }, isLoading: false }) },
+      list: { useQuery: () => ({ data: { items: [job(1, "6801", "Need a Tutor for Class 8", { tutoringTime: mocks.tutoringTimes[1] }), job(2, "6802", "Need a Tutor for Class 9", { tutoringTime: mocks.tutoringTimes[2] })], totalCount: 2 }, isLoading: false }) },
       expressInterest: { useMutation: () => ({ mutate: mocks.express, isPending: mocks.expressPending }) },
       withdrawInterest: { useMutation: () => ({ mutate: mocks.withdraw, isPending: false }) },
     },
@@ -63,6 +66,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.interests = [];
   mocks.expressPending = false;
+  mocks.tutoringTimes = {};
 });
 
 const cardFor = (jobId: string) => screen.getByRole("button", { name: new RegExp(`Job ID ${jobId}`) });
@@ -187,5 +191,52 @@ describe("applying from a Job Board card", () => {
       expect(within(cardFor(jobId)).getByRole("button", { name: "Apply Now" }), jobId).toBeTruthy();
       expect(within(cardFor(jobId)).queryByRole("button", { name: "Saving…" }), jobId).toBeNull();
     }
+  });
+});
+
+describe("the Tutoring Time in the details dialog a Tutor opens", () => {
+  const detailsOf = (jobId: string) => {
+    fireEvent.click(cardFor(jobId));
+    return within(screen.getByRole("dialog"));
+  };
+
+  it("shows the Guardian's time as 4:30 PM for a job that carries one", () => {
+    mocks.tutoringTimes = { 1: "16:30" };
+    render(<JobBoardContent embedded />);
+
+    const dialog = detailsOf("6801");
+    const row = dialog.getByText("Tutoring Time").parentElement!;
+    expect(within(row).getByText("4:30 PM")).toBeTruthy();
+  });
+
+  it("writes an early-morning time with AM, and midnight as 12", () => {
+    mocks.tutoringTimes = { 1: "06:45", 2: "00:05" };
+    const { unmount } = render(<JobBoardContent embedded />);
+    expect(detailsOf("6801").getByText("6:45 AM")).toBeTruthy();
+    unmount();
+
+    render(<JobBoardContent embedded />);
+    expect(detailsOf("6802").getByText("12:05 AM")).toBeTruthy();
+  });
+
+  it.each([
+    ["has none", undefined],
+    ["has a null time", null],
+  ])("shows no Tutoring Time row for a job that %s", (_name, stored) => {
+    mocks.tutoringTimes = { 1: stored };
+    render(<JobBoardContent embedded />);
+
+    const dialog = detailsOf("6801");
+    expect(dialog.queryByText("Tutoring Time")).toBeNull();
+    // The rest of the dialog is there: it is only the row that is missing.
+    expect(dialog.getByText("Days / Week")).toBeTruthy();
+    expect(dialog.getByRole("button", { name: "Apply Now" })).toBeTruthy();
+  });
+
+  it("keeps each job's own time, so one job's time is never shown on its neighbour", () => {
+    mocks.tutoringTimes = { 1: "16:30" };
+    render(<JobBoardContent embedded />);
+
+    expect(detailsOf("6802").queryByText("Tutoring Time")).toBeNull();
   });
 });

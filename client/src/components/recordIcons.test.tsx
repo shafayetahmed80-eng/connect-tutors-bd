@@ -24,6 +24,17 @@ describe("recordIcons vocabulary", () => {
     expect(unnamed).toEqual([]);
   });
 
+  it("names an icon for the Tutoring Time row whether or not a time was chosen", () => {
+    // The row is built either way ("Not set" when blank), so it needs its mark in both.
+    for (const tutoringTime of [undefined, "", "16:30"]) {
+      const rows = buildGuardianRequestSummary({ ...emptyRequest, tutoringTime }, "", "Dhaka", "Mirpur 10").flatMap(g => g.rows);
+      expect(rows.map(r => r.label), `time ${JSON.stringify(tutoringTime)}`).toContain("Tutoring Time");
+    }
+    expect(labelIconName("Tutoring Time")).toBe("timeSlots");
+    // The same clock the Tutor profile uses for its own time-of-day answer.
+    expect(labelIconName("Tutoring Time")).toBe(labelIconName("Preferred time slots"));
+  });
+
   it("points every entry at an icon that renders", () => {
     // An entry naming an icon that does not exist would draw nothing, and a
     // silently empty label is exactly what this file is here to prevent.

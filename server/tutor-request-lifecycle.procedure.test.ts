@@ -154,6 +154,33 @@ describe("approved Guardian request lifecycle procedures", () => {
     }));
   });
 
+  it("hands the writer the Tutoring Time a Guardian sets or changes on an edit", async () => {
+    lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
+
+    await (guardianCaller(77).tutorRequests as any).updatePending({ ...pendingUpdate, tutoringTime: "16:30" });
+
+    expect(lifecycleDbMocks.updateGuardianTutorRequest).toHaveBeenCalledWith(expect.objectContaining({ guardianUserId: 77, requestId: 19, tutoringTime: "16:30" }));
+  });
+
+  it("hands the writer null when an edit sends no Tutoring Time, which is how a Guardian clears one", async () => {
+    lifecycleDbMocks.updateGuardianTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "pending" });
+
+    // The form sends nothing for an emptied time box. The writer then has to be
+    // told null: a missing value would leave the old time in the row.
+    await (guardianCaller(77).tutorRequests as any).updatePending(pendingUpdate);
+
+    const [update] = lifecycleDbMocks.updateGuardianTutorRequest.mock.calls[0];
+    expect(update).toHaveProperty("tutoringTime", null);
+  });
+
+  it("refuses a Tutoring Time on an edit that is not HH:mm, without updating anything", async () => {
+    for (const tutoringTime of ["4:30 PM", "24:00", "16:60", ""]) {
+      await expect((guardianCaller(77).tutorRequests as any).updatePending({ ...pendingUpdate, tutoringTime }), tutoringTime)
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(lifecycleDbMocks.updateGuardianTutorRequest).not.toHaveBeenCalled();
+  });
+
   it("reserves appointment confirmation and cancellation for an Admin, including a required cancellation reason", async () => {
     lifecycleDbMocks.confirmTutorRequestAppointment.mockResolvedValueOnce({ updated: true, lifecycle: "confirmed" });
     lifecycleDbMocks.cancelTutorRequest.mockResolvedValueOnce({ updated: true, lifecycle: "cancelled" });

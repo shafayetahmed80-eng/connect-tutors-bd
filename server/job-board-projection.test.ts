@@ -47,6 +47,59 @@ describe("Job Board published projection", () => {
     expect(job).not.toHaveProperty("guardianPhone");
   });
 
+  it("carries the Guardian's Tutoring Time into the projection, and null when there is none", () => {
+    const request = {
+      requestId: 1506,
+      tuitionType: "home" as const,
+      category: "English Medium",
+      classCourse: "Standard 2",
+      subjects: ["English"],
+      groupCapacity: null,
+      studentCount: 1,
+      studentGender: null,
+      daysPerWeek: 4,
+      preferredTutorGender: "any" as const,
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      locationLabel: "Mirpur 10, Dhaka",
+      budgetAmount: 7000,
+      notes: null,
+      publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+    };
+
+    expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: "16:30" }).tutoringTime).toBe("16:30");
+    // Null whether the request says null or says nothing, so the stored
+    // projection is never left holding a stale or undefined time.
+    expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: null })).toHaveProperty("tutoringTime", null);
+    expect(buildPublishedTutorJobProjection({ ...request, tutoringTime: undefined })).toHaveProperty("tutoringTime", null);
+    expect(buildPublishedTutorJobProjection(request)).toHaveProperty("tutoringTime", null);
+  });
+
+  it("keeps the Tutoring Time on an online tuition, where the location is dropped", () => {
+    const job = buildPublishedTutorJobProjection({
+      requestId: 1507,
+      tuitionType: "online",
+      category: "English Medium",
+      classCourse: "Standard 2",
+      subjects: ["English"],
+      groupCapacity: null,
+      studentCount: 1,
+      studentGender: null,
+      daysPerWeek: 4,
+      tutoringTime: "19:00",
+      preferredTutorGender: "any",
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      locationLabel: "Mirpur 10, Dhaka",
+      budgetAmount: null,
+      notes: null,
+      publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+    });
+
+    expect(job.locationLabel).toBeNull();
+    expect(job.tutoringTime).toBe("19:00");
+  });
+
   it("maps Group capacity only to the safe public student count", () => {
     const groupJob = buildPublishedTutorJobProjection({
       requestId: 1504,
@@ -106,6 +159,7 @@ describe("Job Board published projection", () => {
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",
       publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+      tutoringTime: "16:30",
       guardianName: "Private Guardian",
       guardianPhone: "+8801516131411",
       studentFirstName: "Private Student",
@@ -113,6 +167,7 @@ describe("Job Board published projection", () => {
       instituteName: "Dhaka College",
       heardAboutUs: "facebook",
       exactAddress: "House 99, Road 7",
+      addressDetails: "Use the west entrance",
     });
 
     expect(job).toMatchObject({
@@ -121,6 +176,8 @@ describe("Job Board published projection", () => {
       locationLabel: "Mirpur 10, Dhaka",
       directionLabel: "Mirpur 10, Dhaka",
       budgetAmount: 7000,
+      // A time of day is public the way Days / Week is: it says when, not who or where.
+      tutoringTime: "16:30",
       // Published on purpose: nothing reaches this board without an Admin
       // reading the request and approving it. Contacts, the student's name and
       // the exact address stay out - those are never reviewed into publication.
@@ -135,6 +192,37 @@ describe("Job Board published projection", () => {
     expect(job).not.toHaveProperty("guardianPhone");
     expect(job).not.toHaveProperty("studentFirstName");
     expect(job).not.toHaveProperty("exactAddress");
+    expect(job).not.toHaveProperty("addressDetails");
+  });
+
+  it("reads the Tutoring Time as null when a listing has none, whether the row holds null or no value at all", () => {
+    const row = {
+      id: 9,
+      publicJobId: "8303",
+      tuitionType: "home" as const,
+      category: "English Medium",
+      classCourse: "Standard 2",
+      subjects: "[\"English\"]",
+      studentCount: 1,
+      studentGender: null,
+      preferredTutorGender: "any" as const,
+      daysPerWeek: 4,
+      budgetAmount: 7000,
+      country: "Bangladesh",
+      cityLocationId: "dhaka-city",
+      locationId: "mirpur-10",
+      locationLabel: "Mirpur 10, Dhaka",
+      directionLabel: "Mirpur 10, Dhaka",
+      publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+      notes: null,
+    };
+
+    // A listing published before the field existed comes back with null; a
+    // caller that never selected the column has no key at all. Both read as
+    // null, so the board leaves the row out either way.
+    expect(toPublicTutorJob({ ...row, tutoringTime: null })).toHaveProperty("tutoringTime", null);
+    expect(toPublicTutorJob(row)).toHaveProperty("tutoringTime", null);
+    expect(toPublicTutorJob({ ...row, tutoringTime: "00:00" })).toHaveProperty("tutoringTime", "00:00");
   });
 
   it("refreshes every safe job-facing field on re-publish while preserving the immutable public Job ID", () => {
@@ -165,5 +253,37 @@ describe("Job Board published projection", () => {
     });
     expect(refreshed).not.toHaveProperty("publicJobId");
     expect(refreshed).not.toHaveProperty("tutorRequestId");
+  });
+
+  it("refreshes the Tutoring Time on re-publish, and sets it to null when the Guardian has since cleared it", () => {
+    const request = {
+      requestId: 1503,
+      tuitionType: "online" as const,
+      category: "English Medium",
+      classCourse: "Standard 3",
+      subjects: ["English"],
+      groupCapacity: null,
+      studentCount: 1,
+      studentGender: null,
+      daysPerWeek: 3,
+      preferredTutorGender: "any" as const,
+      cityLocationId: null,
+      locationId: null,
+      locationLabel: null,
+      budgetAmount: null,
+      notes: null,
+      publishedAt: new Date("2026-08-21T00:00:00.000Z"),
+    };
+
+    const withTime = getPublishedTutorJobRefresh(buildPublishedTutorJobProjection({ ...request, tutoringTime: "16:30" }));
+    expect(withTime).toMatchObject({ tutoringTime: "16:30", publicationStatus: "published" });
+
+    // The refresh is written over the stored listing. A cleared time has to
+    // arrive as null: a missing key is skipped by the update and the board
+    // would go on showing the time the Guardian took off.
+    const cleared = getPublishedTutorJobRefresh(buildPublishedTutorJobProjection({ ...request, tutoringTime: null }));
+    expect(cleared).toHaveProperty("tutoringTime", null);
+    const neverSet = getPublishedTutorJobRefresh(buildPublishedTutorJobProjection(request));
+    expect(neverSet).toHaveProperty("tutoringTime", null);
   });
 });
