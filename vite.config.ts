@@ -243,7 +243,10 @@ const plugins = [
       // pdf.js is fetched only when someone opens a Confirmation Letter; it
       // should not ride along in every visitor's install.
       globIgnores: ["**/assets/pdf-*.js", "**/assets/pdf.worker*"],
-      navigateFallbackDenylist: [/^\/api\//, /^\/storage/, /^\/oauth/],
+      // /manus-storage serves the images and documents the server holds; opening
+      // one (an Admin viewing a credential) must reach the server, not be answered
+      // with the app shell, which shows the 404 page.
+      navigateFallbackDenylist: [/^\/api\//, /^\/storage/, /^\/manus-storage\//, /^\/oauth/],
       cleanupOutdatedCaches: true,
       inlineWorkboxRuntime: true,
       maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
