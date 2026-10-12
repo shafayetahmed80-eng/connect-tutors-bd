@@ -47,6 +47,13 @@ describe("the tags the Owner's job details text size reads", () => {
     expect(dialog.querySelector("[data-modal-body]")?.textContent).toContain("Tuition Type");
   });
 
+  it("is a short read, so it is as tall as its details rather than standing the panel height", () => {
+    render(<JobDetailsModal job={job} onClose={vi.fn()} action={null} />);
+
+    expect(screen.getByRole("dialog").getAttribute("data-modal-size")).toBe("panel");
+    expect(screen.getByRole("dialog").hasAttribute("data-modal-fit")).toBe(true);
+  });
+
   it("sets each row's label column in em, so it widens with the text instead of squeezing it", () => {
     render(<JobDetailsModal job={job} onClose={vi.fn()} action={null} />);
 
