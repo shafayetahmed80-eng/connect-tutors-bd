@@ -1791,6 +1791,33 @@ export function toTutorProfileOwnerDto(profile: Awaited<ReturnType<typeof loadTu
   };
 }
 
+/**
+ * Links to the images a Tutor has uploaded, for that Tutor's own "View" buttons.
+ * The address is the server's own file path; it opens only while the Tutor is
+ * signed in, like every other identity document.
+ */
+export async function getTutorDocumentLinksByUserId(userId: number) {
+  const database = await getDb();
+  if (!database) return { universityId: null as string | null, supporting: {} as Record<string, string> };
+  const [tutor] = await database.select({ id: tutors.id }).from(tutors).where(eq(tutors.userId, userId)).limit(1);
+  if (!tutor) return { universityId: null as string | null, supporting: {} as Record<string, string> };
+  const [universityIdRow] = await database
+    .select({ storageKey: tutorUniversityIdDocuments.storageKey })
+    .from(tutorUniversityIdDocuments)
+    .where(eq(tutorUniversityIdDocuments.tutorId, tutor.id))
+    .limit(1);
+  const supportingRows = await database
+    .select({ documentType: tutorSupportingDocuments.documentType, storageKey: tutorSupportingDocuments.storageKey })
+    .from(tutorSupportingDocuments)
+    .where(eq(tutorSupportingDocuments.tutorId, tutor.id));
+  return {
+    universityId: universityIdRow?.storageKey ? await storageGetSignedUrl(universityIdRow.storageKey) : null,
+    supporting: Object.fromEntries(
+      await Promise.all(supportingRows.map(async row => [row.documentType, await storageGetSignedUrl(row.storageKey)] as const)),
+    ) as Record<string, string>,
+  };
+}
+
 export async function getTutorProfileByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;

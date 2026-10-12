@@ -13,6 +13,7 @@ const trpcMocks = vi.hoisted(() => ({
   searchUniversities: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
   searchFacultyDepartments: vi.fn<(...args: any[]) => { data: any[] }>(() => ({ data: [] })),
   resolvedFields: vi.fn<(...args: any[]) => { data: any[] | undefined }>(() => ({ data: undefined })),
+  documentLinks: vi.fn<(...args: any[]) => { data: any }>(() => ({ data: undefined })),
 }));
 
 vi.mock("@/lib/trpc", () => {
@@ -24,11 +25,13 @@ vi.mock("@/lib/trpc", () => {
         tutor: {
           getMyProfile: { invalidate: trpcMocks.invalidate },
           getDashboardStats: { invalidate: trpcMocks.invalidate },
+          myDocumentLinks: { invalidate: trpcMocks.invalidate },
         },
       }),
       tutor: {
         saveProfileDraft: { useMutation: () => ({ mutateAsync: trpcMocks.saveDraft, isPending: false }) },
         submitProfile: { useMutation: () => ({ mutateAsync: trpcMocks.submitProfile, isPending: false }) },
+        myDocumentLinks: { useQuery: trpcMocks.documentLinks },
       },
       // Content overrides are cosmetic; an empty list keeps the code defaults.
       siteContent: { list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) }, listBlocks: { useQuery: () => ({ data: [], isLoading: false, isError: false }) } },
@@ -508,6 +511,24 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).getByText("Complete the highlighted details before submitting for review.")).toBeTruthy();
     const named = within(dialog).getAllByRole("listitem").map(item => item.textContent);
     expect(named).toEqual(expect.arrayContaining(["Class / Level", "Minimum Monthly Fee"]));
+  });
+
+  it("puts a View button beside each document the Tutor has uploaded, and none beside one that is missing", async () => {
+    trpcMocks.documentLinks.mockImplementation(() => ({ data: { universityId: "/api/files/tutors/1/university-id_a.jpg", supporting: { nid_card: "/api/files/tutors/1/documents/nid_card_b.jpg" } } }));
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, universityIdDocumentStatus: "uploaded", uploadedSupportingDocuments: ["nid_card", "ssc_certificate"] } as never} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
+    const dialog = screen.getByRole("dialog");
+
+    const idLink = within(dialog).getByRole("link", { name: "View University ID card" }) as HTMLAnchorElement;
+    expect(idLink.getAttribute("href")).toBe("/api/files/tutors/1/university-id_a.jpg");
+    expect(idLink.target).toBe("_blank");
+    expect((within(dialog).getByRole("link", { name: /View NID/i }) as HTMLAnchorElement).getAttribute("href")).toBe("/api/files/tutors/1/documents/nid_card_b.jpg");
+    // Uploaded but no address yet, and not uploaded at all: nothing to open.
+    expect(within(dialog).getAllByRole("link", { name: /^View / })).toHaveLength(2);
+    trpcMocks.documentLinks.mockImplementation(() => ({ data: undefined }));
   });
 
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {

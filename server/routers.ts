@@ -1367,6 +1367,7 @@ export const appRouter = router({
   }),
   tutor: router({
     getMyProfile: activeTutorProcedure.query(({ ctx }) => db.getTutorProfileByUserId(ctx.user.id)),
+    myDocumentLinks: activeTutorProcedure.query(({ ctx }) => db.getTutorDocumentLinksByUserId(ctx.user.id)),
     saveProfileDraft: activeTutorProcedure.input(withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema)).mutation(async ({ ctx, input }) => {
       // The schema holds the ceiling; these are the Owner's numbers.
       assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);
