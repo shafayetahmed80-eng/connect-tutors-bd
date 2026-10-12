@@ -20,7 +20,7 @@ export function NotificationHistoryModal({ audience, onClose }: { audience: "tut
   const history = trpc.admin.listNotificationBroadcasts.useQuery({ audience, query, page: 1, pageSize: 20 });
   const items = history.data?.items ?? [];
 
-  return <Modal size="panel" onClose={onClose}>
+  return <Modal size="panel" fit onClose={onClose}>
     <ModalHeader title="Sent notifications" meta={audience === "tutor" ? "Broadcasts sent to the Tutor directory" : "Broadcasts sent to the Guardian directory"} />
     <ModalBody className="space-y-3">
       <RecentSearches page="notification-history" value={query} onPick={term => setQuery(term)}>

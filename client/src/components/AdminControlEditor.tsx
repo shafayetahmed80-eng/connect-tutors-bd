@@ -2,6 +2,7 @@ import SiteLimitEditor from "@/components/SiteLimitEditor";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import {
+  DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX,
@@ -81,6 +82,32 @@ function CommunityLinks() {
           >Reset</button>
         </div>;
       })}
+    </div>
+  </section>;
+}
+
+/**
+ * Whether a new tuition on the Job Board alerts the Tutors it fits - a notice in
+ * their bell and a phone alert. Saves as soon as it is picked.
+ */
+function NewTuitionAlertsSwitch({ enabled }: { enabled: boolean }) {
+  const utils = trpc.useUtils();
+  const setEnabled = trpc.adminControl.setNewTuitionTutorAlertsEnabled.useMutation({
+    onSuccess: () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); },
+    onError: error => { toast.error(error.message); },
+  });
+  return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+    <h2 id="new-tuition-alerts-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">New tuition alerts to Tutors</h2>
+    <div role="radiogroup" aria-labelledby="new-tuition-alerts-heading" className="mt-2 inline-flex gap-1 rounded-xl border border-j-border bg-j-surface-sunken p-1">
+      {([[true, "On"], [false, "Off"]] as const).map(([value, label]) => <button
+        key={label}
+        type="button"
+        role="radio"
+        aria-checked={enabled === value}
+        disabled={setEnabled.isPending}
+        onClick={() => { if (enabled !== value) setEnabled.mutate({ enabled: value }); }}
+        className={`h-9 rounded-lg px-3.5 text-sm font-bold disabled:opacity-60 ${enabled === value ? "bg-white text-j-accent shadow-sm" : "text-j-ink-soft hover:text-j-ink-strong"}`}
+      >{label}</button>)}
     </div>
   </section>;
 }
@@ -225,7 +252,8 @@ function PaymentAccounts() {
 }
 
 /**
- * The Owner's switches. One so far: which applicants a Guardian meets.
+ * The Owner's switches: which applicants a Guardian meets, whether a new
+ * tuition alerts the Tutors it fits, and the sign-in code.
  *
  * A choice saves as soon as it is picked, except turning to "Shortlisted only"
  * while Guardians have appointment requests for Tutors nobody shortlisted -
@@ -282,6 +310,8 @@ export default function AdminControlEditor() {
         })}
       </div>
     </section>
+
+    <NewTuitionAlertsSwitch enabled={control.data.newTuitionTutorAlerts?.enabled ?? DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED} />
 
     <LoginCodeSettings settings={control.data.tutorGuardianLoginOtp} />
 

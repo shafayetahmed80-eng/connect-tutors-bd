@@ -35,6 +35,34 @@ describe("the Preferred Tutor colour", () => {
   });
 });
 
+describe("the tags the Owner's job details text size reads", () => {
+  it("names the dialog a job details dialog, and tags its title, its line under the title and its footer", () => {
+    render(<JobDetailsModal job={job} onClose={vi.fn()} action={<button type="button">Apply Now</button>} />);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.getAttribute("data-modal-kind")).toBe("job-details");
+    expect(dialog.querySelector("[data-modal-title]")?.textContent).toBe(job.title);
+    expect(dialog.querySelector("[data-modal-meta]")?.textContent).toContain("Job ID : 6809");
+    expect(dialog.querySelector("[data-modal-footer]")?.textContent).toContain("Apply Now");
+    expect(dialog.querySelector("[data-modal-body]")?.textContent).toContain("Tuition Type");
+  });
+
+  it("is a short read, so it is as tall as its details rather than standing the panel height", () => {
+    render(<JobDetailsModal job={job} onClose={vi.fn()} action={null} />);
+
+    expect(screen.getByRole("dialog").getAttribute("data-modal-size")).toBe("panel");
+    expect(screen.getByRole("dialog").hasAttribute("data-modal-fit")).toBe(true);
+  });
+
+  it("sets each row's label column in em, so it widens with the text instead of squeezing it", () => {
+    render(<JobDetailsModal job={job} onClose={vi.fn()} action={null} />);
+
+    const label = screen.getByText("Tuition Type").closest("p")!;
+    expect(label.className).toContain("w-[9.5em]");
+    expect(label.className).not.toContain("w-[104px]");
+  });
+});
+
 describe("JobDetailsModal on the shared Modal shell", () => {
   it("announces itself as a dialog named by the job title", () => {
     render(<JobDetailsModal job={job} onClose={vi.fn()} action={<button type="button">Apply Now</button>} />);

@@ -34,6 +34,9 @@ const GUARDIAN_APPLIED_TUTORS: AdminDynamicDestination = { label: "অভিভ�
 const TUTOR_DASHBOARD: AdminDynamicDestination = { label: "টিউটর ড্যাশবোর্ড", path: "/tutor/dashboard" };
 const TUTOR_PAYMENT: AdminDynamicDestination = { label: "টিউটরের Payment ট্যাব", path: "/tutor/dashboard/payment" };
 const GUARDIAN_DASHBOARD: AdminDynamicDestination = { label: "অভিভাবক ড্যাশবোর্ড", path: "/guardian/dashboard" };
+const GUARDIAN_POSTED_JOBS: AdminDynamicDestination = { label: "অভিভাবকের Posted jobs", path: "/guardian/dashboard/posted-jobs" };
+const ADMIN_POSTED_JOBS: AdminDynamicDestination = { label: "Admin-এর Posted jobs", path: "/admin/posted-jobs" };
+const TUTOR_NOTIFICATIONS: AdminDynamicDestination = { label: "টিউটরের Notifications পাতা", path: "/tutor/dashboard/notifications" };
 
 export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
@@ -127,6 +130,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     seeAt: [TUTOR_PROFILE, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
   },
   {
+    path: "/admin/dynamic/job-card",
+    label: "Job card",
+    summary: "জব কার্ডের লেখার সাইজ (শিরোনাম, ঘরের নাম ও মান, বোতাম) আর কার্ডে চাপ দিলে যে ডিটেইলস ডায়ালগ খোলে তার লেখার সাইজ — দুটো আলাদা সংখ্যা, ১০ থেকে ২০ পিক্সেল। একই কার্ড বলে জব বোর্ড, Admin-এর Posted jobs আর অভিভাবকের Posted jobs — তিন জায়গায় একসাথে বদলায়।",
+    seeAt: [JOB_BOARD, ADMIN_POSTED_JOBS, GUARDIAN_POSTED_JOBS],
+  },
+  {
     path: "/admin/dynamic/limits",
     label: "Limits",
     summary: "সংখ্যার সীমা — সর্বোচ্চ কয়টা বাছা যাবে, লেখা কত লম্বা হতে পারে, ফাইল কত বড়। সীমা ছাড়ালে কাজটা আটকে যায়।",
@@ -135,8 +144,8 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/admin-control",
     label: "Admin Control",
-    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে।",
-    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT],
+    summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে। আর নতুন টিউশন লাইভ হলে মানানসই টিউটরদের ঘণ্টায় নোটিশ ও ফোনে অ্যালার্ট যাবে কিনা, তার সুইচ।",
+    seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT, TUTOR_NOTIFICATIONS],
   },
 ];
 

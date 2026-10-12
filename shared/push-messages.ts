@@ -1,3 +1,5 @@
+import type { LearningNeed } from "./learning-needs";
+
 /**
  * The words and links of the phone notifications that are not tied to a
  * stored in-panel notice: a new tuition that fits a Tutor, and an Admin chat
@@ -12,6 +14,58 @@ export const NEW_TUITION_PUSH = {
 } as const;
 
 const TUTOR_JOB_BOARD_PUSH_URL = "/tutor/dashboard/jobs";
+
+/** A notice's message column holds 360 characters; this leaves room for the part that is never cut. */
+const NEW_TUITION_NOTICE_MAX_CHARS = 340;
+
+/** What a request asks to have taught, curriculum by curriculum: "Bangla Medium: Class 5 (Bangla, English), Class 6 (Math)". */
+function describeLearningNeeds(needs: LearningNeed[]) {
+  return needs.map(need => {
+    const name = need.curriculumType ? `${need.category.trim()} (${need.curriculumType})` : need.category.trim();
+    const classes = need.classes
+      .map(item => item.subjects.length > 0 ? `${item.classCourse.trim()} (${item.subjects.join(", ")})` : item.classCourse.trim())
+      .join(", ");
+    return classes ? `${name}: ${classes}` : name;
+  }).join("; ");
+}
+
+function clipTo(text: string, maxCharacters: number) {
+  const characters = Array.from(text);
+  return characters.length > maxCharacters ? `${characters.slice(0, Math.max(0, maxCharacters - 1)).join("").trimEnd()}…` : text;
+}
+
+/**
+ * The bell notice a Tutor finds when a new tuition goes live where they teach.
+ * The heading is the phone alert's, with the Job ID so a Tutor can tell one from
+ * the next; the line is what the Job Board card says - what is wanted, place,
+ * salary - so the notice is enough to decide whether to open it.
+ *
+ * What is wanted names each class's own subjects under its curriculum. When the
+ * line is too long it is that part that is cut: the place and the salary are
+ * what a Tutor cannot do without, so they always stay.
+ */
+export function newTuitionNotice(input: {
+  publicJobId: string;
+  category: string;
+  classCourse: string;
+  tuitionType: "home" | "online" | "both" | "group" | "package";
+  locationLabel: string | null;
+  budgetAmount: number | null;
+  /** Each curriculum with its classes and their subjects. Absent, the request's one-line summary (class, curriculum) stands in. */
+  learningNeeds?: LearningNeed[];
+}) {
+  const place = input.tuitionType === "online" ? "Online" : input.locationLabel?.trim() ?? "";
+  const salary = input.budgetAmount && input.budgetAmount > 0 ? `${input.budgetAmount.toLocaleString("en-US")} Taka` : "";
+  const tail = [place, salary].filter(Boolean).join(" · ");
+  const wanted = input.learningNeeds && input.learningNeeds.length > 0
+    ? describeLearningNeeds(input.learningNeeds)
+    : [input.classCourse.trim(), input.category.trim()].filter(Boolean).join(" · ");
+  const room = NEW_TUITION_NOTICE_MAX_CHARS - (tail ? Array.from(tail).length + 3 : 0);
+  return {
+    title: `${NEW_TUITION_PUSH.title} — ${input.publicJobId}`,
+    message: [clipTo(wanted, room), tail].filter(Boolean).join(" · "),
+  };
+}
 
 /** Opens the Tutor panel Job Board with that tuition's details already open - the same link a sign-in return uses. */
 export function newTuitionPushUrl(publicJobId: string) {

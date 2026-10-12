@@ -5,7 +5,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
-import { FilterPanelFrame, ListToolbarCard } from "@/components/ListToolbar";
+import { FilterPanelFrame, ListToolbarCard, SlidePanel } from "@/components/ListToolbar";
 import { EMPTY_JOB_FILTER_OPTIONS, JOB_FILTER_LOCATION_LIMIT, JOB_FILTER_SUBJECT_LIMIT, JobCoreFilterFields, formatJobBoardTuitionType, reconcileJobFilters, type JobFilterOptions } from "@/components/JobFilterFields";
 import SharedJobDetailsModal from "@/components/JobDetailsModal";
 import ShareJobButton from "@/components/ShareJobButton";
@@ -433,7 +433,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       panelId="job-board-filters"
     />
 
-    {filterOpen ? <FilterPanelFrame
+    <SlidePanel open={filterOpen}><FilterPanelFrame
       id="job-board-filters"
       ariaLabel="Job Board filters"
       total={totalCount}
@@ -445,7 +445,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       alerts={datesOutOfOrder ? ["The 'from' date cannot be later than the 'to' date."] : []}
     >
       <JobBoardFilters draft={draft} setDraft={setDraft} options={filterOptionsQuery.data ?? EMPTY_JOB_FILTER_OPTIONS} />
-    </FilterPanelFrame> : null}
+    </FilterPanelFrame></SlidePanel>
 
     <div className="min-w-0">
         {jobsQuery.isError ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800"><p className="font-bold">Available tuition could not be loaded right now.</p><p className="mt-1">Please try again shortly. No private Guardian details are displayed in this view.</p><button type="button" onClick={() => jobsQuery.refetch()} disabled={jobsQuery.isFetching} data-motion={jobsQuery.isFetching ? "pending" : undefined} className="motion-interactive mt-4 inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 font-bold text-rose-800 ring-1 ring-inset ring-rose-200 hover:bg-rose-100 disabled:cursor-progress disabled:opacity-60">{jobsQuery.isFetching ? "Trying again…" : "Try again"}</button></div> : null}

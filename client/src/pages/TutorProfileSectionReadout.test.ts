@@ -143,3 +143,23 @@ describe("getTutorProfileReadoutSections", () => {
     expect(teaching.find(row => row.label === "Current location")?.value).toBe("Uttara");
   });
 });
+
+describe("the Secondary and Higher Secondary read-outs", () => {
+  it("show every detail the record holds, one row each, and mark the optional ones", () => {
+    const form = baseForm();
+    const records = form.educationRecords.map(record => record.qualificationLevel === "HSC"
+      ? { ...record, instituteName: "Notre Dame College", degreeExamTitle: "HSC", majorGroup: "Science", curriculum: "English Version" as const, resultGpa: "5.00", rollNumber: "123456", registrationNumber: "98765", passingYear: "2017" }
+      : record);
+    const education = getTutorProfileReadoutSections({ ...form, educationRecords: records }, resolvers).find(section => section.id === "c")!;
+    const higher = education.groups.find(group => group.heading === "Higher Secondary")!;
+
+    expect(higher.rows.map(row => [row.label, row.value])).toEqual([
+      ["Institute name", "Notre Dame College"], ["Degree / exam title", "HSC"], ["Subject / group", "Science"], ["Curriculum", "English Version"],
+      ["Result / GPA", "5.00"], ["Roll number", "123456"], ["Registration number", "98765"], ["Passing year", "2017"],
+    ]);
+    expect(higher.rows.filter(row => row.optional).map(row => row.label)).toEqual(["Result / GPA", "Roll number", "Registration number"]);
+    // Secondary has nothing yet: its rows are all there and all missing.
+    const secondary = education.groups.find(group => group.heading === "Secondary")!;
+    expect(secondary.rows.every(row => row.missing)).toBe(true);
+  });
+});

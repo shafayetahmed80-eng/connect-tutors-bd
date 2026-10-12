@@ -3,11 +3,11 @@ import { siteLimitCeiling } from "@shared/site-limits";
 import {
   MIN_STUDY_YEAR,
   academicEducationLevels,
-  educationRecordFieldApplies,
+  educationSectionStatus,
   isSchoolQualification,
   maxStudyYear,
   qualificationCurricula,
-  qualificationEducationLevels, fixedSchoolRecords } from "@shared/tutor-education";
+  qualificationEducationLevels } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
@@ -286,10 +286,10 @@ function isSubmissionFieldPresent(value: TutorProfileDraftInput, fieldId: string
  * config instead of a fixed list, so an Owner's reorder/enable/required
  * overrides (see `shared/tutor-profile-field-registry.ts`) take effect.
  *
- * `yearSemester`/`graduationYear` and `educationRecords.studyEndYear` stay
- * unconditional code logic, never config-driven - their requiredness already
- * branches on another field (`studyStatus`, `currentlyStudying`), and the
- * registry marks them `requiredConfigurable: false` for exactly that reason.
+ * Education is code logic, not config: any one of Secondary, Higher Secondary,
+ * the University Section or a degree added under it, filled in completely, is
+ * enough to apply (see `educationSectionStatus`), so no education detail has a
+ * Required switch and the registry marks them all `requiredConfigurable: false`.
  * `supportingDocument.*` overrides are accepted by the save mutation but not
  * enforced here yet - there is no "attempted but not uploaded" state to check
  * against, only "which types have been uploaded".
@@ -304,7 +304,8 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       if (!field.enabled || !field.required) continue;
       // Teaching Areas is for tutors who go somewhere; an online-only tutor does not.
       if (field.id === "teachingAreaIds" && offersOnlineTuitionOnly(value)) continue;
-      if (BLOCK_FIELD_IDS.has(field.id) || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.")) continue;
+      // The University ID card is asked for below, and only of a Tutor who filled in the University Section.
+      if (BLOCK_FIELD_IDS.has(field.id) || field.id.startsWith("educationRecords.") || field.id.startsWith("supportingDocument.") || field.id === "universityIdDocumentStatus") continue;
       if (!isSubmissionFieldPresent(value, field.id)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -314,68 +315,28 @@ export function buildTutorProfileSubmissionRefinement(config: ResolvedTutorProfi
       }
     }
 
-    // Study status decides which half of the study timeline the Tutor must fill:
-    // an in-progress year/semester, or the year they finished. Code-owned.
-    if (value.studyStatus === "studying" && value.yearSemester === undefined) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearSemester"], message: "This field is required before profile submission." });
-    }
-    if ((value.studyStatus === "graduated" || value.studyStatus === "professional") && value.graduationYear === undefined) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["graduationYear"], message: "This field is required before profile submission." });
-    }
-
-    // The Qualification history - the degrees added under "Add another
-    // qualification" - is optional unless an Owner turns it on. Secondary and
-    // Higher Secondary live in the same list but are checked on their own below,
-    // so only the degrees count here.
-    const educationRecordsField = config.byId.get("educationRecords");
-    const historyRequired = Boolean(educationRecordsField?.enabled && educationRecordsField.required);
-    if (historyRequired && !value.educationRecords?.some(record => !isSchoolQualification(record.qualificationLevel))) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: "Add at least one qualification before profile submission." });
-    }
-
-    // Secondary and Higher Secondary each have their own section, so each has
-    // to actually be there - a Tutor cannot submit having filled only the
-    // degree history. What they sat is carried by the record's Curriculum, so
-    // an English-Medium Tutor puts their O and A Levels in these two.
-    for (const { level, heading } of fixedSchoolRecords) {
-      const blockField = config.byId.get(level === "SSC" ? "secondaryRecord" : "higherSecondaryRecord");
-      if (!blockField?.enabled || !blockField.required) continue;
-      if (!value.educationRecords?.some(record => record.qualificationLevel === level)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords"], message: `Add your ${heading} qualification before profile submission.` });
-      }
-    }
-
-    // The end year every finished degree needs once the history is required.
-    // Code-owned rather than config-driven, because it branches on
-    // `currentlyStudying`; school records are passed in a single year and have none.
-    value.educationRecords?.forEach((record, index) => {
-      if (!historyRequired || isSchoolQualification(record.qualificationLevel)) return;
-      if (record.currentlyStudying || record.studyEndYear !== undefined) return;
+    // Education. A Tutor may apply with any one section filled in completely -
+    // Secondary, Higher Secondary, the University Section or a degree added under
+    // it - because plenty of teachers are SSC-only. A section started and left half
+    // done is not counted and not held against the Tutor. The Qualification history
+    // is never asked for.
+    const education = educationSectionStatus(
+      { records: value.educationRecords ?? [], university: value },
+      id => config.byId.get(id)?.enabled ?? true,
+    );
+    if (education.applies && !education.met) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["educationRecords", index, "studyEndYear"],
-        message: "Study end year is required unless Currently Studying is selected.",
+        path: ["educationRecords"],
+        message: "Complete at least one education section - Secondary, Higher Secondary or University - before profile submission.",
       });
-    });
+    }
 
-    if (value.educationRecords?.length) {
-      const requiredRecordFields = Array.from(config.byId.values()).filter(
-        field => field.id.startsWith("educationRecords.") && field.requiredConfigurable && field.enabled && field.required,
-      );
-      value.educationRecords.forEach((record, index) => {
-        for (const field of requiredRecordFields) {
-          const key = field.id.slice("educationRecords.".length) as keyof typeof record;
-          // A degree the Tutor added is held to these only once the history is
-          // required; the two school records always are.
-          if (!historyRequired && !isSchoolQualification(record.qualificationLevel)) continue;
-          // Only the fields this record's own level actually asks for. A school
-          // record left without a study start year has not omitted anything.
-          if (!educationRecordFieldApplies(field.id, record.qualificationLevel)) continue;
-          if (record[key] === undefined) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["educationRecords", index, key], message: "This field is required before profile submission." });
-          }
-        }
-      });
+    // The University ID card belongs to the University Section, so only a Tutor
+    // who has filled that section in is asked for it.
+    const idCard = config.byId.get("universityIdDocumentStatus");
+    if (education.university.complete && idCard?.enabled && idCard.required && !isSubmissionFieldPresent(value, "universityIdDocumentStatus")) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["universityIdDocumentStatus"], message: "This field is required before profile submission." });
     }
   };
 }
@@ -511,10 +472,6 @@ function hasNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function hasPositiveId(value: unknown) {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
-}
-
 function hasLocationId(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -523,28 +480,23 @@ function hasSelections(value: unknown) {
   return Array.isArray(value) && value.length > 0;
 }
 
-/** Study status decides which timeline field counts toward completion. */
-function hasStudyTimeline(profile: Record<string, unknown>) {
-  if (profile.studyStatus === "studying") return hasNonEmptyString(profile.yearSemester);
-  if (profile.studyStatus === "graduated" || profile.studyStatus === "professional") {
-    return typeof profile.graduationYear === "number" && Number.isInteger(profile.graduationYear);
-  }
-  return false;
-}
-
 /**
  * Each unit names the single registry field it represents, so a field an
  * Owner disables drops out of both the numerator and the denominator instead
  * of permanently counting against - or for - completion. `id: null` marks a
- * unit that doesn't reduce to one field (the study timeline is whichever of
- * two fields `studyStatus` selects; the fee check spans both `feeMin` and
- * `feeMax`) - those stay unconditionally counted, same as before this config
- * awareness existed.
+ * unit that doesn't reduce to one field (Education is any one of several
+ * sections; the fee check spans both `feeMin` and `feeMax`) - those stay
+ * counted whatever the Owner shows, the Education unit only while the Owner
+ * shows at least one education section.
  */
 export function calculateTutorProfileCompletion(
   profile: Record<string, unknown>,
   config: ResolvedTutorProfileFieldConfig = defaultTutorProfileFieldConfig(),
 ) {
+  const education = educationSectionStatus(
+    { records: Array.isArray(profile.educationRecords) ? profile.educationRecords as Array<Record<string, unknown>> : [], university: profile },
+    id => config.byId.get(id)?.enabled ?? true,
+  );
   const units: Array<{ id: string | null; ok: boolean }> = [
     { id: "profilePhotoUrl", ok: hasNonEmptyString(profile.profilePhotoKey) },
     { id: "name", ok: hasNonEmptyString(profile.name) },
@@ -556,11 +508,8 @@ export function calculateTutorProfileCompletion(
     { id: "currentCityId", ok: hasLocationId(profile.currentCityId) },
     { id: "currentLocationId", ok: hasLocationId(profile.currentLocationId) },
     { id: "teachingAreaIds", ok: offersOnlineTuitionOnly(profile as { tuitionTypes?: readonly string[] }) || hasSelections(profile.teachingAreaIds) },
-    { id: "universityId", ok: hasPositiveId(profile.universityId) },
-    { id: "facultyDepartmentId", ok: hasPositiveId(profile.facultyDepartmentId) },
-    { id: "degreeExamTitle", ok: hasNonEmptyString(profile.degreeExamTitle) },
-    { id: "studyStatus", ok: profile.studyStatus === "studying" || profile.studyStatus === "graduated" || profile.studyStatus === "professional" },
-    { id: null, ok: hasStudyTimeline(profile) },
+    // Education is one unit: any one section filled in completely (see `educationSectionStatus`).
+    ...(education.applies ? [{ id: null, ok: education.met }] : []),
     { id: "primarySubjectIds", ok: hasSelections(profile.primarySubjectIds) },
     { id: "classLevelIds", ok: hasSelections(profile.classLevelIds) },
     { id: "curriculumIds", ok: hasSelections(profile.curriculumIds) },

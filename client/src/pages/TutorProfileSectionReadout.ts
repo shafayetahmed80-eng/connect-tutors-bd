@@ -83,13 +83,23 @@ function educationSummary(form: TeachingProfileState): string {
 }
 
 /**
- * The one row a fixed school section shows. Its record is found by level, not
- * by position, the same way the editor finds it.
+ * The rows a fixed school section shows: everything its record holds, one row
+ * to a detail. Its record is found by level, not by position, the same way the
+ * editor finds it.
  */
-function schoolSummary(form: TeachingProfileState, level: "SSC" | "HSC"): string {
+function schoolRows(form: TeachingProfileState, level: "SSC" | "HSC"): ReadoutRowContent[] {
   const record = form.educationRecords.find(entry => entry.qualificationLevel === level);
-  if (!record) return "";
-  return [record.instituteName, record.majorGroup, record.passingYear].map(part => (part ?? "").trim()).filter(Boolean).join(" · ");
+  const of = (value: string | null | undefined) => (value ?? "").trim();
+  return [
+    { label: "Institute name", value: of(record?.instituteName) },
+    { label: "Degree / exam title", value: of(record?.degreeExamTitle) },
+    { label: "Subject / group", value: of(record?.majorGroup) },
+    { label: "Curriculum", value: of(record?.curriculum) },
+    { label: "Result / GPA", value: of(record?.resultGpa), optional: true },
+    { label: "Roll number", value: of(record?.rollNumber), optional: true },
+    { label: "Registration number", value: of(record?.registrationNumber), optional: true },
+    { label: "Passing year", value: of(record?.passingYear) },
+  ];
 }
 
 const sectionTitles: Record<TutorProfileSectionId, string> = {
@@ -128,8 +138,8 @@ const panelHeadings: Record<TutorProfileFieldPanel, string> = {
   review: "For the review team",
 };
 
-type ReadoutRowContent = { label: string; value: string };
-type ReadoutRowBuilder = (form: TeachingProfileState, resolve: TutorProfileReadoutResolvers) => ReadoutRowContent | null;
+type ReadoutRowContent = { label: string; value: string; optional?: boolean };
+type ReadoutRowBuilder = (form: TeachingProfileState, resolve: TutorProfileReadoutResolvers) => ReadoutRowContent | ReadoutRowContent[] | null;
 
 function documentRowBuilder(documentType: TutorSupportingDocumentType): ReadoutRowBuilder {
   return form => ({
@@ -176,8 +186,8 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   // Only the half of the study timeline that the chosen status asks for.
   yearSemester: form => form.studyStatus === "studying" ? { label: "Year/semester", value: text(form.yearSemester) } : null,
   graduationYear: form => form.studyStatus === "studying" ? null : { label: "Graduation year", value: text(form.graduationYear) },
-  secondaryRecord: form => ({ label: "Qualification", value: schoolSummary(form, "SSC") }),
-  higherSecondaryRecord: form => ({ label: "Qualification", value: schoolSummary(form, "HSC") }),
+  secondaryRecord: form => schoolRows(form, "SSC"),
+  higherSecondaryRecord: form => schoolRows(form, "HSC"),
   educationRecords: form => ({ label: "Qualification history", value: educationSummary(form) }),
   universityIdDocumentStatus: form => ({ label: "University ID card", value: form.universityIdDocumentStatus === "uploaded" ? "Uploaded for private review" : "" }),
   "supportingDocument.nid_card": documentRowBuilder("nid_card"),
@@ -214,7 +224,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
 function toRow(field: ResolvedTutorProfileField, content: ReadoutRowContent): TutorProfileReadoutRow {
   const missing = content.value.trim().length === 0;
   const base: TutorProfileReadoutRow = { label: content.label, value: content.value || NOT_GIVEN, missing };
-  return field.required ? base : { ...base, optional: true };
+  return field.required && !content.optional ? base : { ...base, optional: true };
 }
 
 /**
@@ -245,7 +255,7 @@ export function getTutorProfileReadoutSections(
         groupByKey.set(key, group);
         groups.push(group);
       }
-      group.rows.push(toRow(field, content));
+      for (const row of Array.isArray(content) ? content : [content]) group.rows.push(toRow(field, row));
     }
 
     return { id: sectionId, title: sectionTitles[sectionId], groups };

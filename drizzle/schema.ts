@@ -1620,6 +1620,8 @@ export const tutorNotificationTypeValues = [
   "announcement",
   /** A Guardian rated them on a Confirmed tuition. */
   "rating",
+  /** A new tuition went live somewhere they teach. One row per Tutor, refreshed by each new one. */
+  "new_tuition",
 ] as const;
 export type TutorNotificationType = (typeof tutorNotificationTypeValues)[number];
 

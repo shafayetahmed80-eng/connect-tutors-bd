@@ -112,9 +112,9 @@ describe("Tutor Profile field registry", () => {
 
   it("flips a configurable field required, and ignores the same override on a code-owned one", () => {
     const configurable = resolveTutorProfileFieldConfig([
-      { fieldId: "resultGpa", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
+      { fieldId: "additionalSubjectIds", section: null, subGroup: null, sortOrder: null, enabled: null, required: 1 },
     ]);
-    expect(configurable.byId.get("resultGpa")?.required).toBe(true);
+    expect(configurable.byId.get("additionalSubjectIds")?.required).toBe(true);
 
     // yearSemester's requiredness branches on studyStatus in code - a flat
     // override must not be able to fight that.

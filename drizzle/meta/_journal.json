@@ -832,7 +832,14 @@
       "idx": 118,
       "version": "5",
       "when": 1794800000000,
-      "tag": "0118_request_tutoring_time",
+      "tag": "0118_new_tuition_notification_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "5",
+      "when": 1794900000000,
+      "tag": "0119_request_tutoring_time",
       "breakpoints": true
     }
   ]

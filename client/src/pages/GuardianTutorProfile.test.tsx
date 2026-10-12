@@ -95,7 +95,8 @@ describe("an applicant's profile, as a Guardian reads it", () => {
     expect(screen.getByText("University of Dhaka")).toBeTruthy();
     expect(screen.getByText("Applied Physics")).toBeTruthy();
     expect(screen.getByText("Physics")).toBeTruthy();
-    expect(screen.getByText("Notre Dame College · Science · 2017")).toBeTruthy();
+    // Higher Secondary reads out each detail on its own row.
+    for (const detail of ["Notre Dame College", "Science", "2017"]) expect(screen.getAllByText(detail).length).toBeGreaterThan(0);
     expect(screen.getByText("I teach with patience.")).toBeTruthy();
   });
 

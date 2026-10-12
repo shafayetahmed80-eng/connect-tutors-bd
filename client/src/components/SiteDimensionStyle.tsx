@@ -26,6 +26,9 @@ export function modalShadow(limits: SiteLimitValues): string {
   return `0 ${blur / 2}px ${blur}px -${blur / 2}px ${ink(limits["modal.shadowOpacity"])}`;
 }
 
+/** The least a `fit` panel stands, so a one-line list does not shrink to a strip. */
+export const FIT_PANEL_MIN_HEIGHT_PX = 420;
+
 /** The height a panel stands on a window this tall: 86% of it, but never past the Owner's number. */
 export function modalPanelHeight(limits: SiteLimitValues, windowHeight: number): number {
   return Math.min(windowHeight * 0.86, limits["modal.height.panel"]);
@@ -34,6 +37,10 @@ export function modalPanelHeight(limits: SiteLimitValues, windowHeight: number):
 export function buildSiteDimensionCss(limits: SiteLimitValues): string {
   const radius = `${limits["modal.radius"]}px`;
   const motion = `${limits["modal.motionMs"]}ms`;
+  const card = limits["jobCard.textSize"];
+  const details = limits["jobDetails.textSize"];
+  // The dialog a job card opens, told apart from every other dialog by the kind it tags itself with.
+  const job = `[data-modal-kind="job-details"]`;
 
   return [
     "[data-modal-backdrop] {",
@@ -53,6 +60,8 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // holds, so a short form and a long one line up when they are opened in turn.
     `  [data-modal-size="dialog"] { max-width: ${limits["modal.width.dialog"]}px; }`,
     `  [data-modal-size="panel"] { max-width: ${limits["modal.width.panel"]}px; height: min(86vh, ${limits["modal.height.panel"]}px); }`,
+    // The few panels that are only a short read follow their content instead, between a floor and the panel height.
+    `  [data-modal-size="panel"][data-modal-fit] { height: auto; min-height: min(${FIT_PANEL_MIN_HEIGHT_PX}px, 86vh); max-height: min(86vh, ${limits["modal.height.panel"]}px); }`,
     "}",
     // Single-line controls only. A text box grows with what is typed and keeps
     // its own class, so it is not matched here.
@@ -98,6 +107,23 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // The Guardian journey's own primary/ghost buttons - a separate
     // vocabulary from the shared Button above, not built on it.
     `.journey-button { font-size: ${limits["journeyButton.textSize"]}px; height: ${limits["journeyButton.height"]}px; padding-left: ${limits["journeyButton.paddingX"]}px; padding-right: ${limits["journeyButton.paddingX"]}px; }`,
+    // The lettering on a job card. One number, the ordinary text; the title and
+    // the New badge keep their distance from it - 2px above, 1px below - so the
+    // card reads the same at any size. The foot holds buttons and links passed
+    // in by each panel, so it is set as a whole rather than piece by piece.
+    // Icons are sized in `em`, so they follow the text instead of staying put.
+    `.job-card-title { font-size: ${card + 2}px; }`,
+    `.job-card-text, .job-card-footer, .job-card-footer * { font-size: ${card}px; }`,
+    `.job-card-small { font-size: ${card - 1}px; }`,
+    `.job-card svg { width: 1.08em; height: 1.08em; }`,
+    // The dialog a card opens, with its own number: the rows, the line under the
+    // title and the notes at that size, the title 5px above, the buttons 1px
+    // above. The two spans-and-paragraphs rules come before the buttons' so that
+    // a span inside a button takes the button's size, not the row's.
+    `${job} [data-modal-title] { font-size: ${details + 5}px; }`,
+    `${job} [data-modal-meta], ${job} [data-modal-body] :is(p, span, a, strong, dt, dd, li, td, th), ${job} [data-modal-footer] :is(p, span) { font-size: ${details}px; }`,
+    `${job} [data-modal-footer] :is(button, a), ${job} [data-modal-footer] :is(button, a) * { font-size: ${details + 1}px; }`,
+    `${job} :is([data-modal-body], [data-modal-footer]) svg { width: 1.1em; height: 1.1em; }`,
   ].join("\n");
 }
 

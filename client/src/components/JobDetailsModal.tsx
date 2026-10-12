@@ -50,10 +50,10 @@ export function JobDetailRow({ label, value, muted, required, icon, valueIcon, v
 }) {
   const blankTone = required ? "font-medium text-j-err" : "italic text-j-ink-faint";
   return <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5 last:border-b-0">
-    <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
+    <p className="flex w-[9.5em] shrink-0 items-center gap-1.5 text-j-ink-muted">
       <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]">{icon}</span>{label}
     </p>
-    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words text-2xs leading-[1.5] ${muted ? blankTone : valueClassName ?? "text-[#173d60]"}`}>
+    <p className={`flex min-w-0 flex-1 items-center gap-1.5 break-words leading-[1.5] ${muted ? blankTone : valueClassName ?? "text-[#173d60]"}`}>
       {valueIcon}{value}
     </p>
   </div>;
@@ -91,7 +91,7 @@ export default function JobDetailsModal({
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
   return (
-    <Modal size="panel" onClose={onClose}>
+    <Modal size="panel" fit kind="job-details" onClose={onClose}>
       <ModalHeader
         title={job.title}
         meta={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 tabular-nums">
@@ -128,10 +128,10 @@ export default function JobDetailsModal({
           <div className="sm:col-span-2"><JobDetailRow icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
           <div className="sm:col-span-2">
             <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5">
-              <p className="flex w-[104px] shrink-0 items-center gap-1.5 text-2xs text-j-ink-muted">
+              <p className="flex w-[9.5em] shrink-0 items-center gap-1.5 text-j-ink-muted">
                 <span aria-hidden="true" className="shrink-0 text-[#8fb4d0]"><MapPin size={12} /></span>Location
               </p>
-              <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-2xs leading-[1.5] text-[#173d60]">
+              <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 leading-[1.5] text-[#173d60]">
                 {formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel, withCountry: true })}
                 {mapUrl
                   ? <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#1267c8] hover:underline"><MapPin size={12} /> View on map</a>

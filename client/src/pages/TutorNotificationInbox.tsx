@@ -1,7 +1,7 @@
 import { LabelIcon, RecordIcon } from "@/components/recordIcons";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { BadgeCheck, ClipboardList, FileCheck2, Megaphone, Settings, Star, UserRoundCog } from "lucide-react";
+import { BadgeCheck, BriefcaseBusiness, ClipboardList, FileCheck2, Megaphone, Settings, Star, UserRoundCog } from "lucide-react";
 import { notificationDestination, TUTOR_NOTIFICATIONS_PATH } from "@shared/notification-links";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ const TYPE_ICON = {
   account_change: Settings,
   rating: Star,
   announcement: Megaphone,
+  new_tuition: BriefcaseBusiness,
 } as const;
 
 type TutorNotification = {

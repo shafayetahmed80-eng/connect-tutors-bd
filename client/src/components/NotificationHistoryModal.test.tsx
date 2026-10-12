@@ -30,6 +30,15 @@ afterEach(() => {
   state.data = { items: [{ id: 1, audience: "tutor", title: "Platform maintenance", message: "Paused tonight.", recipientCount: 9, sentByName: "Owner", sentByEmail: null, createdAt: "2026-09-20T00:00:00.000Z" }], total: 1, page: 1, pageSize: 20, totalPages: 1 };
 });
 
+describe("Sent notifications history size", () => {
+  it("is a list that can be short, so it is as tall as its rows rather than standing the panel height", () => {
+    render(<NotificationHistoryModal audience="tutor" onClose={vi.fn()} />);
+
+    expect(screen.getByRole("dialog").getAttribute("data-modal-size")).toBe("panel");
+    expect(screen.getByRole("dialog").hasAttribute("data-modal-fit")).toBe(true);
+  });
+});
+
 describe("Sent notifications history search", () => {
   it("offers the searches made here before, and picking one searches again", async () => {
     const user = userEvent.setup({ document: window.document });

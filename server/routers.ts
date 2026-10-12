@@ -1906,6 +1906,9 @@ export const appRouter = router({
     setTutorGuardianLoginOtpEnabled: ownerAdminProcedure
       .input(z.object({ enabled: z.boolean() }))
       .mutation(({ input }) => db.setTutorGuardianLoginOtpEnabled(input.enabled)),
+    setNewTuitionTutorAlertsEnabled: ownerAdminProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(({ input }) => db.setNewTuitionTutorAlertsEnabled(input.enabled)),
     resetTutorGuardianLoginTrust: ownerAdminProcedure.mutation(() => db.resetTutorGuardianLoginTrust()),
     setTutorGuardianLoginOtpDays: ownerAdminProcedure
       .input(z.object({ days: z.number().int().min(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN).max(TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX) }))
