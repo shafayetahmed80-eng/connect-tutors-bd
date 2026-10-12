@@ -78,7 +78,7 @@ function EmptyCard({ heading, fields, onAdd }: { heading: string; fields: string
       type="button"
       onClick={onAdd}
       aria-label={`Add ${heading}`}
-      className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 px-3.5 text-xs max-sm:min-h-11 max-sm:w-full max-sm:justify-center ${tp.primaryButton}`}
+      className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 px-3.5 text-xs max-sm:min-h-control max-sm:w-full max-sm:justify-center ${tp.primaryButton}`}
     ><Plus size={14} aria-hidden={true} />Add</button>
   </div>;
 }

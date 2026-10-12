@@ -66,19 +66,19 @@ function CommunityLinks() {
             inputMode="url"
             aria-invalid={!valid}
             onChange={event => setDrafts(current => ({ ...current, [panel]: event.target.value }))}
-            className={`h-11 min-w-0 flex-1 rounded-xl border bg-j-surface-sunken px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
+            className={`h-control min-w-0 flex-1 rounded-xl border bg-j-surface-sunken px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
           />
           <button
             type="button"
             disabled={!dirty || !valid || busy}
             onClick={() => save.mutate({ slotId: communityLinkSlotId(panel), text: typed.trim() === DEFAULT_COMMUNITY_LINK ? null : typed.trim() })}
-            className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+            className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
           >{busy ? "Saving…" : "Save"}</button>
           <button
             type="button"
             disabled={saved === DEFAULT_COMMUNITY_LINK || busy}
             onClick={() => save.mutate({ slotId: communityLinkSlotId(panel), text: null })}
-            className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
+            className="h-control rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
           >Reset</button>
         </div>;
       })}
@@ -161,21 +161,21 @@ function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememb
         inputMode="numeric"
         aria-invalid={!valid}
         onChange={event => setTypedDays(event.target.value.replace(/D/g, "").slice(0, 2))}
-        className={`h-11 w-20 rounded-xl border bg-j-surface-sunken px-3 text-center text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
+        className={`h-control w-20 rounded-xl border bg-j-surface-sunken px-3 text-center text-sm outline-none focus:ring-2 focus:ring-sky-100 ${valid ? "border-j-border focus:border-j-accent" : "border-[#d84a4a]"}`}
       />
       <span className="text-sm font-bold text-j-ink-soft">days</span>
       <button
         type="button"
         disabled={!dirty || setDays.isPending}
         onClick={() => setDays.mutate({ days: parsed })}
-        className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+        className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
       >{setDays.isPending ? "Saving…" : "Save"}</button>
     </div>
     <div className="mt-2">
       <button
         type="button"
         onClick={() => setConfirmingReset(true)}
-        className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:text-j-ink-strong"
+        className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:text-j-ink-strong"
       >Reset trusted browsers</button>
     </div>
     {confirmingReset ? <Modal size="dialog" onClose={() => setConfirmingReset(false)} busy={resetTrust.isPending}>
@@ -184,12 +184,12 @@ function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememb
         <p className="text-sm leading-6 text-j-ink-soft">Every Tutor and Guardian will be asked for a sign-in code again the next time they open their panel.</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setConfirmingReset(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button type="button" onClick={() => setConfirmingReset(false)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
         <button
           type="button"
           disabled={resetTrust.isPending}
           onClick={() => resetTrust.mutate()}
-          className="h-11 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          className="h-control rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
         >{resetTrust.isPending ? "Resetting…" : "Reset"}</button>
       </ModalFooter>
     </Modal> : null}
@@ -231,19 +231,19 @@ function PaymentAccounts() {
             maxLength={MAX_SITE_CONTENT_TEXT_LENGTH}
             spellCheck={false}
             onChange={event => setDrafts(current => ({ ...current, [method]: event.target.value }))}
-            className="h-11 min-w-0 flex-1 rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+            className="h-control min-w-0 flex-1 rounded-xl border border-j-border bg-j-surface-sunken px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
           />
           <button
             type="button"
             disabled={!dirty || busy}
             onClick={() => save.mutate({ slotId: paymentAccountSlotId(method), text: typed.trim() || null })}
-            className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
+            className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-40"
           >{busy ? "Saving…" : "Save"}</button>
           <button
             type="button"
             disabled={!saved || busy}
             onClick={() => save.mutate({ slotId: paymentAccountSlotId(method), text: null })}
-            className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
+            className="h-control rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft disabled:opacity-40"
           >Reset</button>
         </div>;
       })}
@@ -334,12 +334,12 @@ export default function AdminControlEditor() {
         </p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setConfirming(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button type="button" onClick={() => setConfirming(false)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
         <button
           type="button"
           disabled={setVisibility.isPending}
           onClick={() => setVisibility.mutate({ visibility: "shortlisted" })}
-          className="h-11 rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          className="h-control rounded-xl bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
         >{setVisibility.isPending ? "Saving…" : "Cancel requests and save"}</button>
       </ModalFooter>
     </Modal> : null}

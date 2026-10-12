@@ -61,15 +61,15 @@ export function TutorDirectoryFilters({ filters, onChange, onClear, showProfileS
       <label className="relative block">
         <span className="sr-only">Search Tutors</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+        <input value={filters.query} onChange={event => onChange({ query: event.target.value })} placeholder="Search Tutor name, ID, institution or headline" className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </label>
     </RecentSearches>
-    {showProfileStatus ? <select value={filters.profileStatus} onChange={event => onChange({ profileStatus: event.target.value as ProfileStatus })} aria-label="Profile status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All profile statuses</option><option value="pending">Pending review</option><option value="changes_requested">Changes requested</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="draft">Draft</option></select> : null}
-    <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorFilters["verified"] })} aria-label="Verification status" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
-    <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-11 rounded-xl border border-j-border px-3 text-sm" />
-    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorFilters["tuitionType"] })} aria-label="Tuition type" className="h-11 rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
-    <button type="button" onClick={onClear} className="h-11 rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
+    {showProfileStatus ? <select value={filters.profileStatus} onChange={event => onChange({ profileStatus: event.target.value as ProfileStatus })} aria-label="Profile status" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All profile statuses</option><option value="pending">Pending review</option><option value="changes_requested">Changes requested</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="draft">Draft</option></select> : null}
+    <select value={filters.verified} onChange={event => onChange({ verified: event.target.value as TutorFilters["verified"] })} aria-label="Verification status" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
+    <input value={filters.location} onChange={event => onChange({ location: event.target.value })} placeholder="Location" className="h-control rounded-xl border border-j-border px-3 text-sm" />
+    <input value={filters.subject} onChange={event => onChange({ subject: event.target.value })} placeholder="Subject" className="h-control rounded-xl border border-j-border px-3 text-sm" />
+    <select value={filters.tuitionType} onChange={event => onChange({ tuitionType: event.target.value as TutorFilters["tuitionType"] })} aria-label="Tuition type" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All tuition modes</option><option value="home">Home tuition</option><option value="online">Online tuition</option><option value="group">Group tuition</option><option value="package">Package tuition</option></select>
+    <button type="button" onClick={onClear} className="h-control rounded-xl border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">Clear filters</button>
   </div>;
 }
 
@@ -129,7 +129,7 @@ export function AdminTutorProfilesContent() {
           value={query}
           onChange={event => choose(() => setQuery(event.target.value))}
           placeholder="Search Tutor name, ID, institution or headline"
-          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
       </label>
     </RecentSearches>
@@ -150,7 +150,7 @@ export function AdminTutorProfilesContent() {
           onClick={() => setHistoryOpen(true)}
           aria-label="History"
           title="History"
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken max-sm:w-11 max-sm:justify-center max-sm:px-0"
+          className="inline-flex min-h-control items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken max-sm:w-11 max-sm:justify-center max-sm:px-0"
         >
           <History className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">History</span>
         </button>
@@ -160,7 +160,7 @@ export function AdminTutorProfilesContent() {
           disabled={matchCount === 0 && selectedIds.size === 0}
           aria-label="Notify"
           title="Notify"
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-11 max-sm:justify-center max-sm:px-0"
+          className="inline-flex min-h-control items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-11 max-sm:justify-center max-sm:px-0"
         >
           <Megaphone className="h-4 w-4" aria-hidden="true" /> <span className="max-sm:sr-only">Notify</span>
         </button>
@@ -250,12 +250,12 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
         </div>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
+        <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
         <button
           type="button"
           disabled={notify.isPending}
           onClick={send}
-          className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
         >{notify.isPending ? "Sending…" : `Confirm & send to ${recipientCount}`}</button>
       </ModalFooter>
     </Modal>;
@@ -267,7 +267,7 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
       <div>
         <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
         <input id="notify-tutors-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
-          className="mt-1.5 h-11 w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+          className="mt-1.5 h-control w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </div>
       <div>
         <div className="flex items-center justify-between gap-3">
@@ -279,12 +279,12 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+      <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
       <button
         type="button"
         disabled={!ready}
         onClick={() => setConfirming(true)}
-        className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-[#0e6dc2] disabled:cursor-not-allowed disabled:opacity-50"
       >Review &amp; send to {recipientCount}</button>
     </ModalFooter>
   </Modal>;

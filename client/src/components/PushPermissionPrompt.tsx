@@ -76,8 +76,8 @@ function PushPermissionPromptDialog() {
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={notNow} disabled={busy} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">এখন না</button>
-      <button type="button" onClick={() => void turnOn()} disabled={busy} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-60">চালু করুন</button>
+      <button type="button" onClick={notNow} disabled={busy} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">এখন না</button>
+      <button type="button" onClick={() => void turnOn()} disabled={busy} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-60">চালু করুন</button>
     </ModalFooter>
   </Modal>;
 }

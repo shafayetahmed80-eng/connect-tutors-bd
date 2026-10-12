@@ -77,7 +77,7 @@ export function reconcileJobFilters<T extends Pick<JobCoreFilters, "cityId" | "l
   };
 }
 
-const boxClass = "h-11 w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100";
+const boxClass = "h-control w-full rounded-xl border border-[#dbe7ef] bg-white px-3 text-sm outline-none placeholder:text-[#8fa3b4] focus:border-j-accent focus:ring-2 focus:ring-sky-100";
 
 /**
  * A date box that says what it is for.
@@ -132,7 +132,7 @@ export function FilterTextBox({ label, value, onChange, inputMode, suffix }: { l
   />;
   if (!suffix) return input;
   // A money box carries its currency word, as every other money box in the app does.
-  return <span className="flex h-11 w-full items-stretch overflow-hidden rounded-xl border border-[#dbe7ef] bg-white focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100">
+  return <span className="flex h-control w-full items-stretch overflow-hidden rounded-xl border border-[#dbe7ef] bg-white focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100">
     {input}
     <span className="flex items-center border-l border-[#dbe7ef] px-3 text-xs font-semibold text-[#55738a]">{suffix}</span>
   </span>;

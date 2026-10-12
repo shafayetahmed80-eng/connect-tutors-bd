@@ -160,7 +160,7 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
           value={query}
           onChange={event => { setQuery(event.target.value); setPage(1); }}
           placeholder="Search Job ID, Guardian or Tutor"
-          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
       </label>
     </RecentSearches>
@@ -199,8 +199,8 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setApproving(null)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button type="button" disabled={appointApprove.isPending || !approving.interestId} onClick={() => { if (approving.interestId) appointApprove.mutate({ interestId: approving.interestId }); }} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{appointApprove.isPending ? "Approving…" : "Approve"}</button>
+        <button type="button" onClick={() => setApproving(null)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={appointApprove.isPending || !approving.interestId} onClick={() => { if (approving.interestId) appointApprove.mutate({ interestId: approving.interestId }); }} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{appointApprove.isPending ? "Approving…" : "Approve"}</button>
       </ModalFooter>
     </Modal> : null}
 

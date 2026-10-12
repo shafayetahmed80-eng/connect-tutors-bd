@@ -174,7 +174,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 
     <div className="flex flex-wrap items-center justify-between gap-3">
       <BackLink href="/admin/tutor-profiles">Back to Tutor Profiles</BackLink>
-      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-control items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
         <MessageCircle size={15} /> Message
       </Link>
     </div>
@@ -214,7 +214,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
           {profile.contactEmail ? <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5"><Mail size={13} className="shrink-0 text-[#8fb4d0]" aria-hidden={true} /><span className="truncate">{profile.contactEmail}</span></span> : null}
         </div>
         {decisions.length > 0
-          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:w-auto">
+          ? <button type="button" onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }} className="col-span-2 inline-flex h-control w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:w-auto">
               <UserRoundCog size={16} /> Review &amp; moderate
             </button>
           : <p className="col-span-2 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:max-w-[16rem]">No Admin status action is currently available for this profile.</p>}
@@ -251,7 +251,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
           <p className="text-sm leading-6 text-j-ink-soft">Correction requests and suspensions require an Admin reason that is stored in the moderation history.</p>
         </div>
         <label className="block text-sm font-bold text-j-ink-strong">Next status
-          <select value={nextStatus} onChange={event => setNextStatus(event.target.value as ModerationTarget)} className="mt-2 h-11 w-full rounded-xl border border-j-field-border bg-white px-3 font-normal">
+          <select value={nextStatus} onChange={event => setNextStatus(event.target.value as ModerationTarget)} className="mt-2 h-control w-full rounded-xl border border-j-field-border bg-white px-3 font-normal">
             {decisions.map(status => <option key={status} value={status}>{moderationLabel(profile.profileStatus, status)}</option>)}
           </select>
         </label>
@@ -261,8 +261,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         {moderation.isError ? <p className="text-sm text-red-700">{moderation.error.message}</p> : null}
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={() => setModerating(false)} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
-        <button type="button" disabled={moderation.isPending || (nextStatus !== "approved" && !reason.trim())} onClick={() => moderation.mutate({ tutorId, nextStatus, reason: reason.trim() || undefined })} className="h-11 rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{moderation.isPending ? "Saving…" : "Save moderation"}</button>
+        <button type="button" onClick={() => setModerating(false)} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Cancel</button>
+        <button type="button" disabled={moderation.isPending || (nextStatus !== "approved" && !reason.trim())} onClick={() => moderation.mutate({ tutorId, nextStatus, reason: reason.trim() || undefined })} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{moderation.isPending ? "Saving…" : "Save moderation"}</button>
       </ModalFooter>
     </Modal> : null}
   </div>;

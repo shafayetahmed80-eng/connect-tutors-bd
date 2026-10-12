@@ -522,7 +522,7 @@
 
   .mobile-filter-trigger,
   .mobile-clear-all {
-    min-height: 44px;
+    min-height: var(--control-height, 40px);
     border-radius: 12px;
     font-size: 13px;
     font-weight: 800;
@@ -722,7 +722,7 @@
 .auth-actions .button-primary,
 .auth-actions .button-secondary {
   justify-content: center;
-  min-height: 45px;
+  min-height: var(--control-height, 40px);
 }
 
 .auth-help-link {

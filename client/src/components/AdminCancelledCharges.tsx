@@ -102,7 +102,7 @@ export default function AdminCancelledChargesContent() {
           value={query}
           onChange={event => { setQuery(event.target.value); setPage(1); }}
           placeholder="Search class, subject or Tutor"
-          className="h-11 w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
+          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
         />
       </label>
     </RecentSearches>

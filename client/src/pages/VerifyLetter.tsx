@@ -49,7 +49,7 @@ function VerifyForm({ letterNumber, code }: { letterNumber: string; code: string
     <label className={fieldLabel} htmlFor="verify-letter-code">Code
       <input id="verify-letter-code" required value={letterCode} onChange={event => setLetterCode(event.target.value)} placeholder="ABCDE-FGHJK" autoComplete="off" spellCheck={false} className={`${filledField} mt-2 uppercase`} />
     </label>
-    <button type="submit" className={`${primaryButton} h-12 justify-center px-6`}>Check letter</button>
+    <button type="submit" className={`${primaryButton} h-control justify-center px-6`}>Check letter</button>
   </form>;
 }
 

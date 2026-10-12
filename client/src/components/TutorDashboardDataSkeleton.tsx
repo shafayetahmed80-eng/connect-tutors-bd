@@ -19,7 +19,7 @@ export function TutorDashboardDataSkeleton() {
             <Skeleton className="h-9 w-64 max-w-full rounded-xl bg-[#e8f5fc]" />
             <p className="text-sm font-medium text-[#6a8292]">Preparing your Tutor workspace</p>
           </div>
-          <Skeleton className="hidden h-11 w-11 shrink-0 rounded-xl bg-[#e8f5fc] sm:block" />
+          <Skeleton className="hidden h-control w-control shrink-0 rounded-xl bg-[#e8f5fc] sm:block" />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">

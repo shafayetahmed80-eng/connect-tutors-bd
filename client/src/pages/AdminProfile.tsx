@@ -317,13 +317,13 @@ function TwoFactorSmsBackupCard() {
       ) : null}
 
       {!editing && !smsBackup ? (
-        <button type="button" onClick={() => setEditing(true)} className="mt-3 inline-flex items-center rounded-lg border border-[#c9ddeb] px-3 text-xs font-bold text-[#42657d] hover:bg-white min-h-11">Add a backup number</button>
+        <button type="button" onClick={() => setEditing(true)} className="mt-3 inline-flex items-center rounded-lg border border-[#c9ddeb] px-3 text-xs font-bold text-[#42657d] hover:bg-white min-h-control">Add a backup number</button>
       ) : null}
 
       {editing && !sentPhone ? (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <Field label="Mobile number"><input name="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
-          <Button type="button" disabled={startSetup.isPending || !/^\+8801[3-9]\d{8}$/.test(phone)} onClick={() => void send()} className="h-11 rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{startSetup.isPending ? "Sending…" : "Send code"}</Button>
+          <Button type="button" disabled={startSetup.isPending || !/^\+8801[3-9]\d{8}$/.test(phone)} onClick={() => void send()} className="h-control rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{startSetup.isPending ? "Sending…" : "Send code"}</Button>
           <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
         </div>
       ) : null}
@@ -331,7 +331,7 @@ function TwoFactorSmsBackupCard() {
       {editing && sentPhone ? (
         <form onSubmit={event => void confirm(event)} className="mt-3 flex flex-wrap items-end gap-2">
           <Field label={`Code sent to ${sentPhone}`}><input value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} autoFocus className={`${inputClass} w-28 text-center font-mono tracking-[0.4em]`} /></Field>
-          <Button type="submit" disabled={confirmSetup.isPending || code.length !== 4} className="h-11 rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{confirmSetup.isPending ? "Confirming…" : "Confirm"}</Button>
+          <Button type="submit" disabled={confirmSetup.isPending || code.length !== 4} className="h-control rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{confirmSetup.isPending ? "Confirming…" : "Confirm"}</Button>
           <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
         </form>
       ) : null}

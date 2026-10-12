@@ -93,35 +93,57 @@ describe("the size an Owner sets for buttons", () => {
     }
   });
 
-  it("keeps the shared button and the journey button apart, as every other pair here does", () => {
-    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "button.height": 40, "journeyButton.height": 52 });
-    expect(css).toContain(`height: 40px`);
-    expect(css).toContain(`height: 52px`);
+  it("keeps the shared button's text and padding apart from the journey button's, as every other pair here does", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "button.textSize": 13, "journeyButton.textSize": 16, "button.paddingX": 12, "journeyButton.paddingX": 24 });
+    expect(css).toContain(`[data-slot="button"][data-size="default"] { font-size: 13px; height: var(--control-height); padding-left: 12px; padding-right: 12px; }`);
+    expect(css).toContain(`.journey-button { font-size: 16px; height: var(--control-height); padding-left: 24px; padding-right: 24px; }`);
   });
 });
 describe("the one height of a field and a button", () => {
-  const heightIds = ["modal.fieldHeight.profile", "modal.fieldHeight.profilePhone", "modal.fieldHeight.journey", "button.height", "journeyButton.height"];
+  const heightIds = ["control.height", "control.heightPhone"];
 
-  it("ships every height dial at the Owner's single number, so a fresh site is uniform", () => {
-    expect(CONTROL_HEIGHT_PX).toBe(44);
+  it("ships at 40px, on a laptop and on a phone, so a fresh site is uniform", () => {
+    expect(CONTROL_HEIGHT_PX).toBe(40);
     for (const id of heightIds) {
       expect(findSiteLimit(id)!.value, id).toBe(CONTROL_HEIGHT_PX);
     }
   });
 
-  it("keeps each of the five editable on its own, so one place can still be moved", () => {
+  it("offers the two numbers between bounds that hold the shipped one", () => {
     for (const id of heightIds) {
       const meta = findSiteLimit(id)!;
       expect(meta.min, id).toBeLessThanOrEqual(CONTROL_HEIGHT_PX);
       expect(meta.max, id).toBeGreaterThanOrEqual(CONTROL_HEIGHT_PX);
+      expect(meta.group, id).toBe("Button Section");
     }
   });
 
-  it("writes that number into the shared button, the journey button and both field boxes", () => {
+  it("no longer offers the five heights it replaced, so there is one number and nothing to keep in step", () => {
+    for (const id of ["modal.fieldHeight.profile", "modal.fieldHeight.profilePhone", "modal.fieldHeight.journey", "button.height", "journeyButton.height"]) {
+      expect(findSiteLimit(id), id).toBeUndefined();
+    }
+  });
+
+  it("writes the number once, as a variable, with the phone's number taking over below 640px", () => {
+    const shipped = buildSiteDimensionCss(defaultSiteLimits());
+    expect(shipped).toContain(":root { --control-height: 40px; }");
+    expect(shipped).toContain("@media (max-width: 639px) { :root { --control-height: 40px; } }");
+
+    const moved = buildSiteDimensionCss({ ...defaultSiteLimits(), "control.height": 36, "control.heightPhone": 44 });
+    expect(moved).toContain(":root { --control-height: 36px; }");
+    expect(moved).toContain("@media (max-width: 639px) { :root { --control-height: 44px; } }");
+  });
+
+  it("has the shared button, the journey button and both field boxes read it, outside any media query so a phone gets it too", () => {
     const css = buildSiteDimensionCss(defaultSiteLimits());
-    expect(css).toContain(`height: ${CONTROL_HEIGHT_PX}px; padding-left`);
-    expect(css).toContain(`.modal-field-journey { height: ${CONTROL_HEIGHT_PX}px; }`);
-    expect(css).toContain(`.modal-field-profile { height: ${CONTROL_HEIGHT_PX}px; }`);
+    const queryStart = css.indexOf("@media (min-width: 640px)");
+    const queryEnd = css.indexOf("\n}\n", queryStart) + 3;
+    const afterQuery = css.slice(queryEnd);
+
+    expect(css.slice(queryStart, queryEnd)).not.toContain("modal-field");
+    expect(css).toContain("height: var(--control-height); padding-left");
+    expect(afterQuery).toContain(".modal-field-profile { height: var(--control-height); }");
+    expect(afterQuery).toContain(".modal-field-journey { height: var(--control-height); }");
   });
 });
 describe("the dialog sizes an Owner sets", () => {
@@ -135,7 +157,7 @@ describe("the dialog sizes an Owner sets", () => {
       // entrance, a bare percentage inside color-mix for the two opacities.
       expect(css, id).toContain(`${meta.value}${meta.unit}`);
     }
-    expect(modalLimitIds).toHaveLength(11);
+    expect(modalLimitIds).toHaveLength(8);
   });
 
   it("writes the widths inside a media query, because a phone ignores them", () => {
@@ -165,27 +187,6 @@ describe("the dialog sizes an Owner sets", () => {
   it("caps a dialog by the shorter of the window and the panel height", () => {
     const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.height.panel": 900 });
     expect(css).toContain("max-height: min(92vh, 900px)");
-  });
-
-  it("sizes field boxes outside the media query, so a phone gets them too", () => {
-    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.fieldHeight.profile": 40, "modal.fieldHeight.journey": 52 });
-    const afterQuery = css.slice(css.indexOf("}\n"));
-
-    expect(afterQuery).toContain(".modal-field-profile { height: 40px; }");
-    expect(afterQuery).toContain(".modal-field-journey { height: 52px; }");
-  });
-
-  it("gives the profile editor's boxes their own height on a phone, 44px unless the Owner moves it", () => {
-    const shipped = buildSiteDimensionCss(defaultSiteLimits());
-    expect(shipped).toContain("@media (max-width: 639px) { .modal-field-profile { height: 44px; } }");
-    expect(shipped).toContain(".modal-field-profile { height: 44px; }");
-    expect(shipped).toContain("--profile-field-height-phone: 44px;");
-    // The floor a chip picker takes follows the same two numbers, above a phone and on it.
-    expect(shipped).toContain("--profile-field-height: 44px;");
-
-    const moved = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.fieldHeight.profilePhone": 48 });
-    expect(moved).toContain("@media (max-width: 639px) { .modal-field-profile { height: 48px; } }");
-    expect(moved).toContain("--profile-field-height-phone: 48px;");
   });
 
   it("keeps only the top corners rounded on a phone, all four above it", () => {

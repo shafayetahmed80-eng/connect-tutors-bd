@@ -114,13 +114,13 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   {
     path: "/admin/dynamic/input-field-text",
     label: "Input Field Text",
-    summary: "ইনপুট বাক্সে টাইপ করা লেখার আকার। বাক্সের নিজের উচ্চতা এখানে নয় — সেটা Modals-এ।",
+    summary: "ইনপুট বাক্সে টাইপ করা লেখার আকার। বাক্সের নিজের উচ্চতা এখানে নয় — সেটা Button Section-এ।",
     seeAt: [TUTOR_PROFILE, GUARDIAN_JOURNEY],
   },
   {
     path: "/admin/dynamic/button-section",
     label: "Button Section",
-    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, টিউটর রেজিস্ট্রেশন, Sign in পাতা আর টিউটর প্রোফাইলের পপআপ।",
+    summary: "বোতামের লেখা ও তার আকার — অভিভাবকের যাত্রা, টিউটর রেজিস্ট্রেশন, Sign in পাতা আর টিউটর প্রোফাইলের পপআপ। আর এখানেই সব ইনপুট বাক্স ও বোতামের একটাই উচ্চতা (ল্যাপটপে একটা, ফোনে একটা)।",
     seeAt: [GUARDIAN_JOURNEY, TUTOR_REGISTRATION, SIGN_IN, TUTOR_PROFILE],
   },
   {

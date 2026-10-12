@@ -70,7 +70,7 @@ function LetterPdfModal({ title, meta, label, file, onClose, busy, notice, actio
       />
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} disabled={busy} className="h-11 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">Close</button>
+      <button type="button" onClick={onClose} disabled={busy} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">Close</button>
       {actions(ready)}
     </ModalFooter>
   </Modal>;
@@ -88,7 +88,7 @@ function LetterViewer({ letterNumber, fileQuery, onClose }: { letterNumber: stri
       type="button"
       onClick={() => { if (ready) saveFile(ready.bytes, ready.fileName); }}
       disabled={!ready}
-      className="inline-flex h-11 items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-control items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white transition hover:bg-j-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
     >
       <Download className="size-4" aria-hidden="true" /> Download PDF
     </button>}
@@ -163,7 +163,7 @@ export function ConfirmationLetterDraftPreview({ terms, onClose, onIssue, issuin
       type="button"
       onClick={onIssue}
       disabled={!ready || issuing}
-      className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-control items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <ShieldCheck className="size-4" aria-hidden="true" /> {issuing ? "Issuing letter…" : "Issue letter"}
     </button>}
