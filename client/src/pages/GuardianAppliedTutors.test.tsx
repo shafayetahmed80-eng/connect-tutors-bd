@@ -67,7 +67,7 @@ describe("the Guardian's applicant list", () => {
 
     expect(mocks.lastInput).toEqual({ requestId: 13, page: 1, pageSize: 20 });
     expect(screen.getByText("Applied:").textContent).toContain("2");
-    expect(screen.getByText("Job ID 6812")).toBeTruthy();
+    expect(screen.getByText("Job ID : 6812")).toBeTruthy();
     expect(screen.getByText("Female Tutor")).toBeTruthy();
     expect(screen.getByText("History, Home Economics")).toBeTruthy();
     expect(screen.getByText("3 days / week")).toBeTruthy();

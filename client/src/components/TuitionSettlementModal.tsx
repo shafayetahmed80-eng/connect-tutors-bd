@@ -11,6 +11,7 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 const phaseLabels = {
   unpaid_first_month: "Ended in the first month, nothing paid",
@@ -60,7 +61,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
   const usesReceived = data?.phase === "unpaid_first_month" || (data?.phase === "first_month" && paid === 0);
 
   return <Modal size="panel" onClose={onClose} busy={save.isPending}>
-    <ModalHeader title={`Settle · Job ID ${jobIdForRequest(requestId)}`} />
+    <ModalHeader title={<>Settle · <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(requestId)} /></>} />
     <ModalBody>
       {preview.isError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{preview.error.message}</p> : null}
       {preview.isLoading ? <div className="flex min-h-24 items-center justify-center text-sm text-j-ink-soft"><LoadingCradle className="mr-2" /> Working out the settlement…</div> : null}

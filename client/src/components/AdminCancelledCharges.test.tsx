@@ -150,7 +150,7 @@ describe("tuitions cancelled after they were confirmed", () => {
 
     expect(screen.queryByRole("table")).toBeNull();
     const card = within(screen.getAllByRole("listitem")[0]);
-    expect(card.getByText("6820")).toBeTruthy();
+    expect(card.getByText("Job ID : 6820")).toBeTruthy();
     expect(card.getByText("Not settled")).toBeTruthy();
     expect(card.getByRole("button", { name: "Settle Job ID 6820" })).toBeTruthy();
   });

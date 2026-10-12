@@ -14,6 +14,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { Link } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 const appointedOn = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
@@ -43,8 +44,12 @@ export function AdminAppointedJobsContent() {
     {
       key: "jobId", label: "Job ID", place: "head",
       cell: job => <span className="inline-flex flex-wrap items-center gap-2">
-        <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span>
+        <JobIdTag bare className="text-2xs" jobId={jobIdForRequest(job.id)} />
         {/* A Guardian's waiting request is answered from the row's Actions menu. */}
+        {job.guardianRequest ? <AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /> : null}
+      </span>,
+      cardCell: job => <span className="inline-flex flex-wrap items-center gap-2">
+        <JobIdTag className="text-xs" jobId={jobIdForRequest(job.id)} />
         {job.guardianRequest ? <AdminGuardianTuitionRequestPill type={job.guardianRequest.type} /> : null}
       </span>,
     },

@@ -2,6 +2,7 @@ import { tuitionRequestWaitingLabels, type GuardianTuitionRequestType } from "@/
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 /** A Guardian's Confirm, Remove or Cancel request as an Admin reads it: with its reason. */
 export type AdminGuardianTuitionRequest = {
@@ -80,7 +81,7 @@ export function ApproveGuardianTuitionRequestDialog({ request, jobId, tutorName,
   onApprove: () => void;
 }) {
   const tutor = tutorName ?? "the Tutor";
-  const title = request.type === "confirm" ? `Confirm ${tutor}?` : request.type === "remove_tutor" ? `Remove ${tutor}?` : `Cancel Job ID ${jobId}?`;
+  const title = request.type === "confirm" ? `Confirm ${tutor}?` : request.type === "remove_tutor" ? `Remove ${tutor}?` : <>Cancel <JobIdTag colon={false} iconSize={12} jobId={jobId} />?</>;
   const outcome = request.type === "confirm"
     ? "The Guardian keeps the Tutor. The tuition leaves the Job Board."
     : request.type === "remove_tutor"
@@ -90,7 +91,7 @@ export function ApproveGuardianTuitionRequestDialog({ request, jobId, tutorName,
       : "The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.";
 
   return <Modal size="dialog" onClose={onClose} busy={busy}>
-    <ModalHeader title={title} meta={`${tuitionRequestWaitingLabels[request.type]} · Job ID ${jobId}`} />
+    <ModalHeader title={title} meta={<>{tuitionRequestWaitingLabels[request.type]} · <JobIdTag colon={false} iconSize={11} jobId={jobId} /></>} />
     <ModalBody className="space-y-3">
       {request.reason ? <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
         <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-muted">Guardian's reason</p>

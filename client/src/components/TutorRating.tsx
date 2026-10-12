@@ -10,6 +10,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import { formatTutorRating, TUTOR_RATING_MAX, TUTOR_REVIEW_COMMENT_MAX, type TutorRatingSummary } from "@shared/tutor-reviews";
 import { jobIdForRequest } from "@shared/job-id";
+import { JobIdTag } from "@/components/JobIdTag";
 
 /** "★ 4.6 · 5 ratings" - nothing at all until someone has rated. */
 export function TutorRatingLine({ summary, className = "" }: { summary?: TutorRatingSummary | null; className?: string }) {
@@ -59,7 +60,7 @@ export function RateTutorDialog({ requestId, jobId, existing, onClose }: {
   });
 
   return <Modal size="dialog" onClose={onClose} busy={save.isPending}>
-    <ModalHeader title={existing ? "Change your rating" : "Rate the Tutor"} meta={`Job ID ${jobId}`} />
+    <ModalHeader title={existing ? "Change your rating" : "Rate the Tutor"} meta={<JobIdTag colon={false} iconSize={11} jobId={jobId} />} />
     <ModalBody>
       <p className="text-sm font-bold text-j-ink-strong">Rating<span className={requiredMark}> *</span></p>
       <div className="mt-2"><StarPicker value={rating} onChange={setRating} /></div>
@@ -116,7 +117,7 @@ export function AdminTutorRatings({ tutorId }: { tutorId: string }) {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-j-ink-muted">
             <StarRow rating={review.rating} />
             <span className="font-semibold text-j-ink-strong">{review.guardianName || "Guardian"}</span>
-            <span>Job ID {jobIdForRequest(review.requestId)}</span>
+            <JobIdTag jobId={jobIdForRequest(review.requestId)} />
             <span>{new Date(review.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
             {review.hidden ? <span className="rounded-full bg-j-err-wash px-2 py-0.5 font-semibold text-j-err">Hidden</span> : null}
             <button

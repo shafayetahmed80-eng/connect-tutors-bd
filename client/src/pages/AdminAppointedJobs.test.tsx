@@ -173,7 +173,7 @@ describe("the next move, from the row", () => {
     fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Confirm" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Confirm Tania Sultana?")).toBeTruthy();
-    expect(within(dialog).getByText("Tutor ID 777 · Job ID 6812")).toBeTruthy();
+    expect(dialog.querySelector("[data-modal-meta]")?.textContent).toBe("Tutor ID 777 · Job ID 6812");
     expect(mocks.confirm).not.toHaveBeenCalled();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm" }));
@@ -207,7 +207,7 @@ describe("the next move, from the row", () => {
     fireEvent.click(within(openMenu(1)).getByRole("menuitem", { name: "Remove Tutor" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Remove Tanvir Ahmed?")).toBeTruthy();
-    expect(within(dialog).getByText("Tutor ID not set · Job ID 6820")).toBeTruthy();
+    expect(dialog.querySelector("[data-modal-meta]")?.textContent).toBe("Tutor ID not set · Job ID 6820");
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove Tutor" }));
     expect(mocks.reopen).toHaveBeenCalledWith({ requestId: 21, tutorId: "tutor-404" }, expect.anything());
   });
@@ -217,7 +217,7 @@ describe("the next move, from the row", () => {
 
     fireEvent.click(within(openMenu(0)).getByRole("menuitem", { name: "Cancel Tuition" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Cancel Job ID 6812?" })).toBeTruthy();
     const cancel = within(dialog).getByRole("button", { name: "Cancel Tuition" }) as HTMLButtonElement;
     expect(cancel.disabled).toBe(true);
 
@@ -253,7 +253,7 @@ describe("the next move, from the row", () => {
     expect(within(openMenu(0)).getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Approve request", "Decline request", "Confirm", "Remove Tutor"]);
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Approve request" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Cancel Job ID 6812?" })).toBeTruthy();
     expect(within(dialog).getByText("Found a Tutor elsewhere")).toBeTruthy();
   });
 });

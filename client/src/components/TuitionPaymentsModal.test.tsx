@@ -97,7 +97,7 @@ describe("a tuition's payments", () => {
     open({ charge, payments: [payment({})] });
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Payments · Job ID 6820")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Payments · Job ID 6820" })).toBeTruthy();
     expect(within(dialog).getByText("Half Paid")).toBeTruthy();
     const summary = within(screen.getByRole("region", { name: "Charge" }));
     expect(summary.getAllByText(/6,000/).length).toBeGreaterThan(0);

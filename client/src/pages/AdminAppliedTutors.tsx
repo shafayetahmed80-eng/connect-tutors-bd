@@ -26,6 +26,7 @@ import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 /**
  * Everyone who applied to one tuition.
@@ -203,7 +204,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     <TutorListPager page={filters.page} totalPages={applied.data?.totalPages ?? 1} onPage={next => updateFilter({ page: next })} label="Applied Tutor pages" />
 
     {approving ? <Modal size="dialog" onClose={() => setApproving(null)} busy={approve.isPending}>
-      <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
+      <ModalHeader title={`Appoint ${approving.name}?`} meta={<>Tutor ID {approving.tutorNumber ?? "not set"} · <JobIdTag colon={false} iconSize={11} jobId={jobIdForRequest(requestId)} /></>} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
@@ -279,7 +280,7 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
 
   type PostedTuition = (typeof items)[number];
   const tuitionColumns: RecordColumn<PostedTuition>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
+    { key: "jobId", label: "Job ID", place: "head", cell: job => <JobIdTag bare className="text-2xs" jobId={jobIdForRequest(job.id)} />, cardCell: job => <JobIdTag className="text-xs" jobId={jobIdForRequest(job.id)} /> },
     { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
     { key: "tuitionStatus", label: "Tuition Status", place: "head", cell: job => <TuitionStatus job={job} /> },
     { key: "classCourse", label: "Class / Level", cell: job => <span className="font-bold text-j-ink">{job.classCourse}</span> },

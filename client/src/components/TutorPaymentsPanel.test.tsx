@@ -116,7 +116,7 @@ describe("the Tutor's Payment tab", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Payments" }));
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByText("Payments · Job ID 6820")).toBeTruthy();
+    expect(dialog.getByRole("heading", { name: "Payments · Job ID 6820" })).toBeTruthy();
     expect(dialog.getByRole("table", { name: "Schedule" })).toBeTruthy();
     expect(dialog.getByText(/bKash · 9A8B7C/)).toBeTruthy();
     expect(dialog.getByText("Waiting")).toBeTruthy();
@@ -243,7 +243,7 @@ describe("the Tutor's Payment tab", () => {
 
     expect(screen.queryByRole("table")).toBeNull();
     const card = within(screen.getAllByRole("listitem")[0]);
-    expect(card.getByText("6820")).toBeTruthy();
+    expect(card.getByText("Job ID : 6820")).toBeTruthy();
     expect(card.getByText("Full Due")).toBeTruthy();
     expect(card.getByRole("button", { name: "Payments" })).toBeTruthy();
   });

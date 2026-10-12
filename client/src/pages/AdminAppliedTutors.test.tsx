@@ -146,9 +146,9 @@ describe("Admin Applied Tutors page", () => {
   it("carries the tuition itself, so the applicants are read against it", () => {
     render(<AdminAppliedTutorsContent requestId={13} />);
 
-    expect(screen.getByText("Job ID 6812")).toBeTruthy();
+    expect(screen.getByText("Job ID : 6812")).toBeTruthy();
     // On a phone the facts drop to the full width in two columns.
-    expect(screen.getByText("Job ID 6812").parentElement?.className).toContain("grid-cols-2");
+    expect(screen.getByText("Job ID : 6812").parentElement?.className).toContain("grid-cols-2");
     expect(screen.getByText("+8801674936203").parentElement?.className).toContain("col-span-2");
     expect(screen.getByText("Female Tutor")).toBeTruthy();
     // Area and city already arrive comma-separated.
@@ -305,7 +305,7 @@ describe("Admin Applied Tutors page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Appoint Tania Sultana" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Appoint Tania Sultana?")).toBeTruthy();
-    expect(within(dialog).getByText("Tutor ID 777 · Job ID 6812")).toBeTruthy();
+    expect(dialog.querySelector("[data-modal-meta]")?.textContent).toBe("Tutor ID 777 · Job ID 6812");
     expect(mocks.review).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Appoint" }));
     expect(mocks.review).toHaveBeenCalledWith({ interestId: 91, status: "matched" }, expect.anything());
@@ -366,7 +366,7 @@ describe("Admin Applied Tutors page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel Tuition" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Cancel Job ID 6812?" })).toBeTruthy();
     const cancel = within(dialog).getByRole("button", { name: "Cancel Tuition" }) as HTMLButtonElement;
     expect(cancel.disabled).toBe(true);
 
@@ -475,7 +475,7 @@ describe("a Guardian's Confirm, Remove or Cancel request", () => {
     expect(screen.getByText("Cancellation requested")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve: Cancellation requested" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Cancel Job ID 6812?" })).toBeTruthy();
     expect(within(dialog).getByText("Found a Tutor elsewhere")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
     expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });

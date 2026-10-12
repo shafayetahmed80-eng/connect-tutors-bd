@@ -22,6 +22,7 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type TutorTuition = inferRouterOutputs<AppRouter>["tutorPayments"]["mine"]["items"][number];
 
@@ -54,7 +55,7 @@ export default function TutorPaymentsPanel() {
   };
 
   const columns: RecordColumn<Item>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: item => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(item.id)}</span> },
+    { key: "jobId", label: "Job ID", place: "head", cell: item => <JobIdTag bare className="text-2xs" jobId={jobIdForRequest(item.id)} />, cardCell: item => <JobIdTag className="text-xs" jobId={jobIdForRequest(item.id)} /> },
     {
       key: "status", label: "Payment Status", place: "head",
       cell: item => <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -141,7 +142,7 @@ function TutorPaymentModal({ item, requestId, onClose }: { item: TutorTuition | 
 
   const charge = item?.charge ?? null;
   return <Modal size="panel" onClose={onClose} busy={report.isPending}>
-    <ModalHeader title={`Payments · Job ID ${jobIdForRequest(requestId)}`} />
+    <ModalHeader title={<>Payments · <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(requestId)} /></>} />
     <ModalBody>
       <div className="space-y-5">
         {charge ? <ChargeSummaryBlock charge={charge} settled={Boolean(item?.cancelled)} /> : null}

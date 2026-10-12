@@ -1,5 +1,6 @@
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { useState } from "react";
+import { JobIdTag } from "@/components/JobIdTag";
 
 /** The moves on a Tutor that ask for a confirmation first. */
 export type TutorMove = "appoint" | "confirm" | "remove_appointed" | "remove_confirmed";
@@ -25,7 +26,7 @@ export function TutorMoveDialog({ move, tutorName, tutorNumber, jobId, busy, onC
   return <Modal size="dialog" onClose={onClose} busy={busy}>
     <ModalHeader
       title={move === "appoint" ? `Appoint ${tutorName}?` : move === "confirm" ? `Confirm ${tutorName}?` : `Remove ${tutorName}?`}
-      meta={`Tutor ID ${tutorNumber ?? "not set"} · Job ID ${jobId}`}
+      meta={<>Tutor ID {tutorNumber ?? "not set"} · <JobIdTag colon={false} iconSize={11} jobId={jobId} /></>}
     />
     <ModalBody>
       <p className="text-sm leading-6 text-j-ink-soft">{move === "appoint"
@@ -63,7 +64,7 @@ export function CancelTuitionDialog({ jobId, guardianName, busy, onClose, onCanc
 }) {
   const [reason, setReason] = useState("");
   return <Modal size="dialog" onClose={onClose} busy={busy}>
-    <ModalHeader title={`Cancel Job ID ${jobId}?`} meta={guardianName ? `Guardian ${guardianName}` : undefined} />
+    <ModalHeader title={<>Cancel <JobIdTag colon={false} iconSize={12} jobId={jobId} />?</>} meta={guardianName ? `Guardian ${guardianName}` : undefined} />
     <ModalBody className="space-y-3">
       <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>
       <label className="block text-sm font-bold text-j-ink-strong">Reason (required)

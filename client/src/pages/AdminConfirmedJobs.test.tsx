@@ -256,7 +256,7 @@ describe("Admin Confirmed Jobs", () => {
 
     expect(screen.queryByRole("table")).toBeNull();
     const card = within(screen.getAllByRole("listitem")[0]);
-    expect(card.getByText("6820")).toBeTruthy();
+    expect(card.getByText("Job ID : 6820")).toBeTruthy();
     expect(card.getByText("777")).toBeTruthy();
     expect(card.getByText("Tania Sultana")).toBeTruthy();
     expect(card.getByText("+8801711111111")).toBeTruthy();
@@ -374,7 +374,7 @@ describe("the next move, from the row", () => {
 
     fireEvent.click(within(openMenu(1)).getByRole("menuitem", { name: "Cancel Tuition" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Cancel Job ID 6804?")).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "Cancel Job ID 6804?" })).toBeTruthy();
     const cancel = within(dialog).getByRole("button", { name: "Cancel Tuition" }) as HTMLButtonElement;
     expect(cancel.disabled).toBe(true);
 

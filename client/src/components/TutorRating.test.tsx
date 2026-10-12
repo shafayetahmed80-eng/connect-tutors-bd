@@ -72,7 +72,7 @@ describe("AdminTutorRatings", () => {
 
     expect(screen.getByText("4.5 · 2 ratings")).toBeTruthy();
     expect(screen.getByText("Excellent")).toBeTruthy();
-    expect(screen.getByText("Job ID 6806")).toBeTruthy();
+    expect(screen.getByText("Job ID : 6806")).toBeTruthy();
     expect(screen.getByLabelText("5 of 5 stars")).toBeTruthy();
     expect(screen.getByText("Guardian")).toBeTruthy();
   });

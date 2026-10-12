@@ -13,6 +13,7 @@ import { ChevronRight } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { Link } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type Application = TutorApplicationRecord & {
   interestId: number;
@@ -65,7 +66,7 @@ export default function AdminTutorApplications({ tutorId }: { tutorId: string })
                     aria-label={`Open the applicants of Job ID ${jobIdForRequest(application.requestId)}`}
                     className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-j-surface-sunken/60"
                   >
-                    <span className="w-12 shrink-0 font-mono text-2xs text-j-ink-muted">{jobIdForRequest(application.requestId)}</span>
+                    <JobIdTag bare className="w-16 shrink-0 text-2xs" jobId={jobIdForRequest(application.requestId)} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-j-ink">{application.classCourse} · {application.category}</span>
                       <span className="block truncate text-2xs text-j-ink-soft">{[formatSubjects(application.subjects), application.locationLabel].filter(Boolean).join(" · ")}</span>
