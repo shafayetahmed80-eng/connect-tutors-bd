@@ -26,6 +26,9 @@ export function modalShadow(limits: SiteLimitValues): string {
   return `0 ${blur / 2}px ${blur}px -${blur / 2}px ${ink(limits["modal.shadowOpacity"])}`;
 }
 
+/** The least a `fit` panel stands, so a one-line list does not shrink to a strip. */
+export const FIT_PANEL_MIN_HEIGHT_PX = 420;
+
 /** The height a panel stands on a window this tall: 86% of it, but never past the Owner's number. */
 export function modalPanelHeight(limits: SiteLimitValues, windowHeight: number): number {
   return Math.min(windowHeight * 0.86, limits["modal.height.panel"]);
@@ -57,6 +60,8 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // holds, so a short form and a long one line up when they are opened in turn.
     `  [data-modal-size="dialog"] { max-width: ${limits["modal.width.dialog"]}px; }`,
     `  [data-modal-size="panel"] { max-width: ${limits["modal.width.panel"]}px; height: min(86vh, ${limits["modal.height.panel"]}px); }`,
+    // The few panels that are only a short read follow their content instead, between a floor and the panel height.
+    `  [data-modal-size="panel"][data-modal-fit] { height: auto; min-height: min(${FIT_PANEL_MIN_HEIGHT_PX}px, 86vh); max-height: min(86vh, ${limits["modal.height.panel"]}px); }`,
     "}",
     // Single-line controls only. A text box grows with what is typed and keeps
     // its own class, so it is not matched here.

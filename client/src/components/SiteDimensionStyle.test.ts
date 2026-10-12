@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTROL_HEIGHT_PX, defaultSiteLimits, findSiteLimit, siteLimits, type SiteLimitId } from "@shared/site-limits";
-import { buildSiteDimensionCss, modalPanelHeight, modalShadow } from "./SiteDimensionStyle";
+import { buildSiteDimensionCss, FIT_PANEL_MIN_HEIGHT_PX, modalPanelHeight, modalShadow } from "./SiteDimensionStyle";
 
 /** Every dimension the Owner is offered on Admin > Modals. */
 const modalLimitIds = siteLimits.filter(limit => limit.group === "Modals").map(limit => limit.id);
@@ -221,6 +221,25 @@ describe("the dialog sizes an Owner sets", () => {
     expect(shipped).toContain("680px");
     expect(widened).toContain("900px");
     expect(widened).not.toContain("680px");
+  });
+});
+
+describe("a panel that fits its content", () => {
+  it("follows its content between a floor and the panel height, and only above a phone", () => {
+    const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "modal.height.panel": 640 });
+    const [phone, desktop] = css.split("@media (min-width: 640px) {");
+    const rule = `[data-modal-size="panel"][data-modal-fit] { height: auto; min-height: min(${FIT_PANEL_MIN_HEIGHT_PX}px, 86vh); max-height: min(86vh, 640px); }`;
+
+    expect(desktop).toContain(rule);
+    expect(phone).not.toContain("data-modal-fit");
+    expect(FIT_PANEL_MIN_HEIGHT_PX).toBe(420);
+  });
+
+  it("outranks the fixed panel height whichever rule is written first", () => {
+    // Two attribute selectors against one: the fit rule wins on specificity, not on order.
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    expect(css).toContain('[data-modal-size="panel"] { max-width: 680px; height: min(86vh, 720px); }');
+    expect(css).toContain('[data-modal-size="panel"][data-modal-fit] { height: auto;');
   });
 });
 

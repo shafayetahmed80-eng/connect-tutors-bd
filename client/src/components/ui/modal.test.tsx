@@ -106,6 +106,15 @@ describe("Modal", () => {
     expect(panel().getAttribute("data-modal-size")).toBe("dialog");
   });
 
+  it("stands the panel height unless it is asked to fit its content", () => {
+    const { rerender } = render(<Modal onClose={vi.fn()}><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
+    expect(screen.getByRole("dialog").hasAttribute("data-modal-fit")).toBe(false);
+
+    rerender(<Modal onClose={vi.fn()} fit><ModalHeader title="t" /><ModalBody>x</ModalBody></Modal>);
+    expect(screen.getByRole("dialog").hasAttribute("data-modal-fit")).toBe(true);
+    expect(screen.getByRole("dialog").getAttribute("data-modal-size")).toBe("panel");
+  });
+
   it("stops at 92% of the visible window on a phone, not of the largest one the browser could show", () => {
     // `vh` is the window with the browser's bars tucked away; with the address
     // bar showing, a sheet 92vh tall runs under it and its footer is out of reach.

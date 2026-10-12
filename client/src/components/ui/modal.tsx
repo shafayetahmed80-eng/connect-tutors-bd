@@ -72,9 +72,16 @@ export function Modal({
   isSuspended,
   panelTestId,
   kind,
+  fit = false,
   children,
 }: {
   size?: ModalSize;
+  /**
+   * A panel that is only a short read - a job's details, a list of notices - is as
+   * tall as what it holds (never under a floor, never past the panel height) instead
+   * of standing the panel height with a blank below. Width is the panel's still.
+   */
+  fit?: boolean;
   onClose: () => void;
   /** A submit is in flight: Escape and the backdrop stop closing the dialog. */
   busy?: boolean;
@@ -150,6 +157,7 @@ export function Modal({
           data-testid={panelTestId}
           data-modal-size={size}
           data-modal-kind={kind}
+          data-modal-fit={fit ? "" : undefined}
           tabIndex={-1}
           onClick={event => event.stopPropagation()}
           onKeyDown={onPanelKeyDown}
