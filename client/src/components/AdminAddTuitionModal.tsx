@@ -210,7 +210,8 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
         classes: need.classes,
       })),
       daysPerWeek: days,
-      ...(tutoringTime ? { tutoringTime } : {}),
+      // An empty box is sent as null, which is how an edit clears a time the tuition already had.
+      tutoringTime: tutoringTime || null,
       preferredGender, budgetAmount: salary,
       heardAboutUs: heardAboutUs as RequestSource,
       ...(studentGender ? { studentGender } : {}),

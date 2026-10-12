@@ -2580,7 +2580,8 @@ export type AdminPostedTuitionRequest = {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
-  tutoringTime: string | null;
+  /** Left out, the stored time stays as it is; null clears it. A client that does not know the field must not erase one. */
+  tutoringTime?: string | null;
   preferredGender: "male" | "female" | "any";
   studentGender: "male" | "female" | null;
   addressDetails: string | null;
@@ -2626,6 +2627,7 @@ export async function updateAdminPostedTuition(input: {
         id: tutorRequests.id,
         guardianUserId: tutorRequests.guardianUserId,
         publicationState: tutorRequests.publicationState,
+        tutoringTime: tutorRequests.tutoringTime,
         openId: users.openId,
       })
       .from(tutorRequests)
@@ -2672,7 +2674,8 @@ export async function updateAdminPostedTuition(input: {
           studentCount: input.request.studentCount ?? null,
           studentGender: input.request.studentGender ?? null,
           daysPerWeek: input.request.daysPerWeek,
-          tutoringTime: input.request.tutoringTime ?? null,
+          // Left out of the edit, the stored time was kept, so that is what the board shows.
+          tutoringTime: input.request.tutoringTime === undefined ? existing.tutoringTime : input.request.tutoringTime,
           preferredTutorGender: input.request.preferredGender,
           cityLocationId: input.request.tuitionCityLocationId ?? null,
           locationId: input.request.tuitionLocationId ?? null,
@@ -3379,7 +3382,8 @@ export async function updateGuardianTutorRequest(input: {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
-  tutoringTime: string | null;
+  /** Left out, the stored time stays as it is; null clears it. A client that does not know the field must not erase one. */
+  tutoringTime?: string | null;
   preferredGender: "male" | "female" | "any";
   studentFirstName: string | null;
   studentGender: "male" | "female" | null;

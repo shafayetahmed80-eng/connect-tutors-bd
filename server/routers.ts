@@ -629,9 +629,10 @@ const tutorRequestBaseInputSchema = z.object({
   // What it asks to have taught: curricula, the classes wanted in each, each class's own subjects.
   learningNeeds: learningNeedsInputSchema,
   daysPerWeek: z.number().int().min(1).max(7),
-  // The time of day to start, as the browser's time box gives it ("16:30"). Optional, and
-  // the client sends nothing rather than "" when the box is empty.
-  tutoringTime: z.string().trim().regex(TUTORING_TIME_PATTERN).optional(),
+  // The time of day to start, as the browser's time box gives it ("16:30"). Not trimmed: the box
+  // never returns spaces, and a padded value is refused the same way on every route. An edit
+  // that leaves it out keeps the stored time; null is how a cleared box clears it.
+  tutoringTime: z.string().regex(TUTORING_TIME_PATTERN).nullable().optional(),
   preferredGender: z.enum(["male", "female", "any"]),
   studentFirstName: z.string().trim().min(1).max(80).optional(),
   studentGender: z.enum(["male", "female"]).optional(),
@@ -813,7 +814,8 @@ async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionI
       // cannot see through the intersection this schema is built from.
       studentCount: input.tuitionType === "group" || input.tuitionType === "both" ? null : input.studentCount,
       daysPerWeek: input.daysPerWeek,
-      tutoringTime: input.tutoringTime ?? null,
+      // Left out on an Admin edit, the stored time stays; on a new tuition it simply starts blank.
+      tutoringTime: input.tutoringTime,
       preferredGender: input.preferredGender,
       studentGender: input.studentGender ?? null,
       addressDetails: input.addressDetails ?? null,
@@ -3153,7 +3155,8 @@ export const appRouter = router({
           packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
           studentCount: "studentCount" in input && typeof input.studentCount === "number" ? input.studentCount : null,
           daysPerWeek: input.daysPerWeek,
-          tutoringTime: input.tutoringTime ?? null,
+          // Left out, the stored time stays: a page open from before this field cannot erase one.
+          tutoringTime: input.tutoringTime,
           preferredGender: input.preferredGender,
           studentFirstName: input.studentFirstName ?? null,
           studentGender: input.studentGender ?? null,

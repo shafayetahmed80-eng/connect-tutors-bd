@@ -111,12 +111,13 @@ export function buildGuardianRequestSummary(
         ...headCount,
         filled("Location", location),
         filled("Days per week", input.daysPerWeek && plural(input.daysPerWeek, "day")),
-        filled("Tutoring Time", formatTutoringTime(input.tutoringTime), true),
         // Free text and a referral answer, in the order the field list sets.
         { label: "Institute Name", value: formatInstituteName(input.instituteName), empty: !input.instituteName.trim(), optional: true },
         { label: "Where Did You Hear About Us", value: formatRequestSource(input.heardAboutUs), empty: !input.heardAboutUs },
         filled("Preferred Tutor gender", input.preferredGender ? formatTutorPreference(input.preferredGender) : ""),
         { label: "Salary", value: formatSalaryAmount(salary), empty: salary === null },
+        // Where the form puts it: just above the notes.
+        filled("Tutoring Time", formatTutoringTime(input.tutoringTime), true),
         filled("Additional notes", notes, true),
       ],
     },

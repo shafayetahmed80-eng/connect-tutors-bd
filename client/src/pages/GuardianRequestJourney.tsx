@@ -582,8 +582,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
         classes: need.classes,
       })),
       daysPerWeek: Number(daysPerWeek),
-      // Blank is sent as nothing, never "": the server stores no time rather than an empty one.
-      tutoringTime: normalizeTutoringTime(tutoringTime) || undefined,
+      // An empty box is sent as null, never "": that is how an edit clears a time the request already had.
+      tutoringTime: normalizeTutoringTime(tutoringTime) || null,
       preferredGender: preferredGender as Exclude<PreferredGender, "">,
       studentGender: studentGender || undefined,
       addressDetails: addressDetails.trim() || undefined,

@@ -37,7 +37,8 @@
 | 6 | Where Did You Hear About Us | ড্রপডাউন — Friends & Family / Facebook / Websites / Others, বাছাই অনুযায়ী আইকন বদলায় | ✅ |
 | 7 | Preferred Tutor gender | ড্রপডাউন — Any / Female / Male | ✅ |
 | 8 | Monthly salary | সংখ্যা, প্লেসহোল্ডার `Ex - 5,000` | ✅ |
-| 9 | Additional notes | বড় লেখার ঘর | — |
+| 9 | Tutoring Time | সময়ের ঘর — ব্রাউজারের নিজস্ব ঘণ্টা/মিনিট/AM-PM বাছাই; কোন সময়ে পড়ানো শুরু হলে ভালো, সেই ইচ্ছা মাত্র | — |
+| 10 | Additional notes | বড় লেখার ঘর | — |
 
 **শর্তসাপেক্ষ:**
 
@@ -91,7 +92,8 @@
 | 14 | Where Did You Hear About Us | ধাপ ২ |
 | 15 | Preferred Tutor gender | ধাপ ২ |
 | 16 | Salary | ধাপ ২ · Monthly salary |
-| 17 | Additional notes | ধাপ ২ |
+| 17 | Tutoring Time | ধাপ ২ · সবখানে AM/PM-এ লেখা হয়, যেমন `4:30 PM` |
+| 18 | Additional notes | ধাপ ২ |
 
 ---
 

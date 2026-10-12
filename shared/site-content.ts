@@ -289,11 +289,11 @@ const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.field.groupCapacity", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Maximum students (group)", defaultText: "Maximum students", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.packageDuration", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Package duration", defaultText: "Package duration (months)", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.daysPerWeek", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Days per week", defaultText: "Days per week", defaultTextClass: "text-sm" },
-  { id: "request-tutor.field.tutoringTime", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Tutoring Time", defaultText: "Tutoring Time", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.instituteName", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Institute Name", defaultText: "Institute Name", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.heardAboutUs", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Where Did You Hear About Us", defaultText: "Where Did You Hear About Us", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.preferredGender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Preferred Tutor gender", defaultText: "Preferred Tutor gender", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.salary", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Monthly salary", defaultText: "Monthly salary", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.tutoringTime", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Tutoring Time", defaultText: "Tutoring Time", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.notes", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Additional notes", defaultText: "Additional notes", defaultTextClass: "text-sm" },
 ];
 

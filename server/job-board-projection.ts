@@ -13,8 +13,8 @@ export type SafeTutorRequestForPublication = {
   /** Student Gender is intentionally public only when the Guardian supplied it. */
   studentGender: "male" | "female" | null;
   daysPerWeek: number;
-  /** The Guardian's optional start-time wish, 24-hour `HH:mm`; a time of day is public the way Days / Week is. */
-  tutoringTime?: string | null;
+  /** The Guardian's optional start-time wish, 24-hour `HH:mm`; a time of day is public the way Days / Week is. Required, so a caller cannot forget it and blank a stored one. */
+  tutoringTime: string | null;
   preferredTutorGender: "male" | "female" | "any";
   cityLocationId: string | null;
   locationId: string | null;
