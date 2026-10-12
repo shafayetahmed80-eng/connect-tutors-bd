@@ -1,5 +1,6 @@
 import { REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { learningNeedsFromLegacy, normalizeLearningNeeds, type LearningNeed } from "@shared/learning-needs";
+import { normalizeTutoringTime } from "@shared/tutoring-time";
 
 /**
  * 2: what is asked to be taught is a list of curricula, each with its classes and
@@ -22,6 +23,8 @@ export type GuardianRequestDraft = {
     tuitionCityLocationId: string;
     tuitionLocationId: string;
     daysPerWeek: string;
+    /** Optional start time, 24-hour `HH:mm`, or "" when the box was left empty. */
+    tutoringTime: string;
     preferredGender: "male" | "female" | "any" | "";
     salaryAmount: string;
     instituteName: string;
@@ -101,6 +104,8 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
   const tuitionCityLocationId = asString(request.tuitionCityLocationId);
   const tuitionLocationId = asString(request.tuitionLocationId);
   const daysPerWeek = asString(request.daysPerWeek);
+  // A draft saved before this field existed has none: that reads as an empty box.
+  const tutoringTime = request.tutoringTime === undefined ? "" : asString(request.tutoringTime);
   const preferredGender = asOneOf(request.preferredGender, ["male", "female", "any", ""] as const);
   const salaryAmount = asString(request.salaryAmount);
   const instituteName = asString(request.instituteName ?? "");
@@ -118,6 +123,7 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
     tuitionCityLocationId === null ||
     tuitionLocationId === null ||
     daysPerWeek === null ||
+    tutoringTime === null ||
     preferredGender === null ||
     salaryAmount === null ||
     instituteName === null ||
@@ -141,6 +147,7 @@ function normalizeDraft(value: unknown): GuardianRequestDraft | null {
       tuitionCityLocationId,
       tuitionLocationId,
       daysPerWeek,
+      tutoringTime: normalizeTutoringTime(tutoringTime),
       preferredGender,
       salaryAmount,
       instituteName,

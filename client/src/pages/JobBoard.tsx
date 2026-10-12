@@ -61,6 +61,8 @@ export type JobBoardJob = {
   studentGender?: "male" | "female" | null;
   preferredTutorGender: TutorGender;
   daysPerWeek: number;
+  /** The Guardian's optional start time, 24-hour `HH:mm`; null when none was given. */
+  tutoringTime?: string | null;
   budgetAmount: number | null;
   /** What the Admin approved for publication, not the Guardian's raw note. */
   notes: string | null;
@@ -574,6 +576,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
       preferredTutorGender: job.preferredTutorGender,
       studentGender: job.studentGender ?? null,
       daysPerWeek: job.daysPerWeek,
+      tutoringTime: job.tutoringTime ?? null,
       studentCount: job.studentCount,
       notes: job.notes,
     }}

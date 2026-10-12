@@ -6,6 +6,7 @@ import { formatRequestSource, INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES, 
 import { formatStudentGender, formatTuitionType } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
+import { normalizeTutoringTime } from "@shared/tutoring-time";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -49,14 +50,17 @@ function Select({ title, required, value, onChange, options, placeholder, format
   </Field>;
 }
 
-function Text({ title, required, value, onChange, placeholder, maxLength, inputMode, readOnly }: {
+function Text({ title, required, value, onChange, placeholder, maxLength, inputMode, readOnly, type }: {
   title: string; required?: boolean; value: string; onChange: (value: string) => void;
   placeholder?: string; maxLength?: number; inputMode?: "numeric" | "tel" | "text";
+  /** The input's own type; a start time uses the browser's time box. */
+  type?: "text" | "time";
   /** Shown, but not the Admin's to change. */
   readOnly?: boolean;
 }) {
   return <Field title={title} required={required}>
     <input
+      type={type}
       value={value}
       onChange={event => onChange(event.target.value)}
       placeholder={placeholder}
@@ -107,6 +111,8 @@ export type AdminTuitionDraft = {
   groupCapacity: number | null;
   packageDurationMonths: number | null;
   daysPerWeek: number;
+  /** The Guardian's optional start time, 24-hour `HH:mm`; absent on a draft made before the field existed. */
+  tutoringTime?: string | null;
   preferredGender: string;
   budgetAmount: number | null;
   instituteName: string | null;
@@ -159,6 +165,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const [groupCapacity, setGroupCapacity] = useState(draft?.groupCapacity ? String(draft.groupCapacity) : "");
   const [packageDurationMonths, setPackageDurationMonths] = useState(draft?.packageDurationMonths ? String(draft.packageDurationMonths) : "");
   const [daysPerWeek, setDaysPerWeek] = useState(draft ? String(draft.daysPerWeek) : "");
+  const [tutoringTime, setTutoringTime] = useState(normalizeTutoringTime(draft?.tutoringTime));
   const [preferredGender, setPreferredGender] = useState<PreferredGender>((draft?.preferredGender as PreferredGender) ?? "any");
   const [salaryAmount, setSalaryAmount] = useState(draft?.budgetAmount ? String(draft.budgetAmount) : "");
   const [instituteName, setInstituteName] = useState(draft?.instituteName ?? "");
@@ -203,6 +210,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
         classes: need.classes,
       })),
       daysPerWeek: days,
+      ...(tutoringTime ? { tutoringTime } : {}),
       preferredGender, budgetAmount: salary,
       heardAboutUs: heardAboutUs as RequestSource,
       ...(studentGender ? { studentGender } : {}),
@@ -264,6 +272,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
           : <Text title="Number of students" required value={studentCount} onChange={setStudentCount} inputMode="numeric" placeholder="1–100" />}
         {tuitionType === "package" ? <Text title="Package duration (months)" required value={packageDurationMonths} onChange={setPackageDurationMonths} inputMode="numeric" placeholder="1–24" /> : null}
         <Select title="Days per week" required value={daysPerWeek} onChange={setDaysPerWeek} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" format={value => `${value} day${value === "1" ? "" : "s"}`} />
+        <Text title="Tutoring Time" type="time" value={tutoringTime} onChange={setTutoringTime} />
         <Select title="Preferred Tutor gender" required value={preferredGender} onChange={value => setPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose" format={value => value === "any" ? "Any" : value === "male" ? "Male" : "Female"} />
 
         <Field title="Monthly salary" required>

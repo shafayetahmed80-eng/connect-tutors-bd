@@ -2580,6 +2580,7 @@ export type AdminPostedTuitionRequest = {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
+  tutoringTime: string | null;
   preferredGender: "male" | "female" | "any";
   studentGender: "male" | "female" | null;
   addressDetails: string | null;
@@ -2671,6 +2672,7 @@ export async function updateAdminPostedTuition(input: {
           studentCount: input.request.studentCount ?? null,
           studentGender: input.request.studentGender ?? null,
           daysPerWeek: input.request.daysPerWeek,
+          tutoringTime: input.request.tutoringTime ?? null,
           preferredTutorGender: input.request.preferredGender,
           cityLocationId: input.request.tuitionCityLocationId ?? null,
           locationId: input.request.tuitionLocationId ?? null,
@@ -2717,6 +2719,7 @@ export async function listGuardianTutorRequests(userId: number) {
       classCourse: tutorRequests.classCourse,
       subjects: tutorRequests.subjects,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       preferredGender: tutorRequests.preferredGender,
       studentFirstName: tutorRequests.studentFirstName,
       studentGender: tutorRequests.studentGender,
@@ -3376,6 +3379,7 @@ export async function updateGuardianTutorRequest(input: {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
+  tutoringTime: string | null;
   preferredGender: "male" | "female" | "any";
   studentFirstName: string | null;
   studentGender: "male" | "female" | null;
@@ -3418,6 +3422,7 @@ export async function updateGuardianTutorRequest(input: {
       packageDurationMonths: input.packageDurationMonths,
       studentCount: input.studentCount,
       daysPerWeek: input.daysPerWeek,
+      tutoringTime: input.tutoringTime,
       preferredGender: input.preferredGender,
       studentFirstName: input.studentFirstName,
       studentGender: input.studentGender,
@@ -3795,6 +3800,7 @@ export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) 
       studentGender: tutorJobs.studentGender,
       preferredTutorGender: tutorJobs.preferredTutorGender,
       daysPerWeek: tutorJobs.daysPerWeek,
+      tutoringTime: tutorJobs.tutoringTime,
       budgetAmount: tutorJobs.budgetAmount,
       country: tutorJobs.country,
       cityLocationId: tutorJobs.cityLocationId,
@@ -4075,6 +4081,7 @@ async function synchronizePublishedTutorJob(
       studentCount: number | null;
       studentGender: "male" | "female" | null;
       daysPerWeek: number;
+      tutoringTime: string | null;
       preferredGender: "male" | "female" | "any";
       tuitionCityLocationId: string | null;
       tuitionLocationId: string | null;
@@ -4107,6 +4114,7 @@ async function synchronizePublishedTutorJob(
       studentCount: input.request.studentCount,
       studentGender: input.request.studentGender,
       daysPerWeek: input.request.daysPerWeek,
+      tutoringTime: input.request.tutoringTime ?? null,
       preferredTutorGender: input.request.preferredGender,
       cityLocationId: input.request.tuitionCityLocationId,
       locationId: input.request.tuitionLocationId,
@@ -4161,6 +4169,7 @@ export async function moderateTutorRequestPublication(input: {
         studentCount: tutorRequests.studentCount,
         studentGender: tutorRequests.studentGender,
         daysPerWeek: tutorRequests.daysPerWeek,
+        tutoringTime: tutorRequests.tutoringTime,
         preferredGender: tutorRequests.preferredGender,
         budgetAmount: tutorRequests.budgetAmount,
         instituteName: tutorRequests.instituteName,
@@ -4208,6 +4217,7 @@ export async function moderateTutorRequestPublication(input: {
         studentCount: request.studentCount,
         studentGender: request.studentGender,
         daysPerWeek: request.daysPerWeek,
+        tutoringTime: request.tutoringTime,
         preferredGender: request.preferredGender,
         tuitionCityLocationId: request.tuitionCityLocationId,
         tuitionLocationId: request.tuitionLocationId,
@@ -6905,6 +6915,7 @@ async function getAppliedJobHeader(database: NonNullable<Awaited<ReturnType<type
       subjects: tutorRequests.subjects,
       preferredGender: tutorRequests.preferredGender,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       budgetAmount: tutorRequests.budgetAmount,
       // Already stored as "Area, City", which is how the header shows it.
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
@@ -7500,6 +7511,7 @@ const adminPostedJobFields = {
   classCourse: tutorRequests.classCourse,
   subjects: tutorRequests.subjects,
   daysPerWeek: tutorRequests.daysPerWeek,
+  tutoringTime: tutorRequests.tutoringTime,
   preferredGender: tutorRequests.preferredGender,
   studentGender: tutorRequests.studentGender,
   // A Confirmed tuition whose fee is Full Paid is read as Closed.
@@ -7757,6 +7769,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       subjects: tutorRequests.subjects,
       preferredGender: tutorRequests.preferredGender,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       budgetAmount: tutorRequests.budgetAmount,
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
       locationText: tutorRequests.locationText,
@@ -7854,6 +7867,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       subjects: request.subjects,
       preferredGender: request.preferredGender,
       daysPerWeek: request.daysPerWeek,
+      tutoringTime: request.tutoringTime,
       budgetAmount: request.budgetAmount,
       tuitionLocationLabel: request.tuitionLocationLabel,
       locationText: request.locationText,

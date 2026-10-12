@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { ADMIN_SESSION_TTL_MS, COOKIE_NAME, ONE_YEAR_MS, PENDING_REDIRECT_COOKIE } from "@shared/const";
 import type { Request, Response } from "express";
 import { INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES } from "@shared/request-source";
+import { TUTORING_TIME_PATTERN } from "@shared/tutoring-time";
 import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -628,6 +629,9 @@ const tutorRequestBaseInputSchema = z.object({
   // What it asks to have taught: curricula, the classes wanted in each, each class's own subjects.
   learningNeeds: learningNeedsInputSchema,
   daysPerWeek: z.number().int().min(1).max(7),
+  // The time of day to start, as the browser's time box gives it ("16:30"). Optional, and
+  // the client sends nothing rather than "" when the box is empty.
+  tutoringTime: z.string().trim().regex(TUTORING_TIME_PATTERN).optional(),
   preferredGender: z.enum(["male", "female", "any"]),
   studentFirstName: z.string().trim().min(1).max(80).optional(),
   studentGender: z.enum(["male", "female"]).optional(),
@@ -809,6 +813,7 @@ async function buildAdminPostedTuition(input: z.infer<typeof adminPostedTuitionI
       // cannot see through the intersection this schema is built from.
       studentCount: input.tuitionType === "group" || input.tuitionType === "both" ? null : input.studentCount,
       daysPerWeek: input.daysPerWeek,
+      tutoringTime: input.tutoringTime ?? null,
       preferredGender: input.preferredGender,
       studentGender: input.studentGender ?? null,
       addressDetails: input.addressDetails ?? null,
@@ -3148,6 +3153,7 @@ export const appRouter = router({
           packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
           studentCount: "studentCount" in input && typeof input.studentCount === "number" ? input.studentCount : null,
           daysPerWeek: input.daysPerWeek,
+          tutoringTime: input.tutoringTime ?? null,
           preferredGender: input.preferredGender,
           studentFirstName: input.studentFirstName ?? null,
           studentGender: input.studentGender ?? null,
@@ -3201,6 +3207,7 @@ export const appRouter = router({
         packageDurationMonths: input.tuitionType === "package" ? input.packageDurationMonths : null,
         studentCount,
         daysPerWeek: input.daysPerWeek,
+        tutoringTime: input.tutoringTime ?? null,
         preferredGender: input.preferredGender,
         studentFirstName: input.studentFirstName ?? null,
         studentGender: input.studentGender ?? null,

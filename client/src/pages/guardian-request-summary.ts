@@ -1,6 +1,7 @@
 import { formatStudentGender, formatTuitionType, formatTutorPreference } from "@shared/job-card";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { formatSalaryAmount, parseSalaryAmount } from "@shared/salary-amount";
+import { formatTutoringTime } from "@shared/tutoring-time";
 import type { LearningNeed } from "@shared/learning-needs";
 
 /**
@@ -39,6 +40,8 @@ export type GuardianSummaryInput = {
   studentGender: string;
   addressDetails: string;
   daysPerWeek: string;
+  /** Optional on purpose: callers built before the field existed omit it. */
+  tutoringTime?: string;
   preferredGender: string;
   salaryAmount: string;
   instituteName: string;
@@ -108,6 +111,7 @@ export function buildGuardianRequestSummary(
         ...headCount,
         filled("Location", location),
         filled("Days per week", input.daysPerWeek && plural(input.daysPerWeek, "day")),
+        filled("Tutoring Time", formatTutoringTime(input.tutoringTime), true),
         // Free text and a referral answer, in the order the field list sets.
         { label: "Institute Name", value: formatInstituteName(input.instituteName), empty: !input.instituteName.trim(), optional: true },
         { label: "Where Did You Hear About Us", value: formatRequestSource(input.heardAboutUs), empty: !input.heardAboutUs },

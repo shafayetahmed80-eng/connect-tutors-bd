@@ -1,6 +1,7 @@
 import { RecordIcon, type RecordIconName } from "@/components/recordIcons";
 import { formatDaysPerWeek, formatSubjects, formatTutorPreference, tutorPreferenceToneClass } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
+import { formatTutoringTime } from "@shared/tutoring-time";
 import { jobIdForRequest } from "@shared/job-id";
 import type { ReactNode } from "react";
 
@@ -30,6 +31,8 @@ export type AppliedJobSummary = {
   subjects: Parameters<typeof formatSubjects>[0];
   preferredGender: Parameters<typeof formatTutorPreference>[0];
   daysPerWeek: Parameters<typeof formatDaysPerWeek>[0];
+  /** The Guardian's optional start time, 24-hour `HH:mm`; the strip leaves it out when there is none. */
+  tutoringTime?: string | null;
   budgetAmount: Parameters<typeof formatSalaryAmount>[0];
   tuitionLocationLabel: string | null;
   locationText: string | null;
@@ -60,6 +63,7 @@ export default function AppliedJobFacts({ job, afterJobId, children }: {
     <JobFact icon="subjects" value={formatSubjects(job.subjects)} />
     <JobFact icon="salary" value={formatSalaryAmount(job.budgetAmount)} />
     <JobFact icon="daysPerWeek" value={formatDaysPerWeek(job.daysPerWeek)} />
+    {formatTutoringTime(job.tutoringTime) ? <JobFact icon="timeSlots" value={formatTutoringTime(job.tutoringTime)} /> : null}
     {children}
   </div>;
 }

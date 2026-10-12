@@ -4,6 +4,7 @@ import { Link as WouterLink, useLocation } from "wouter";
 import { Check, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
+import { normalizeTutoringTime } from "@shared/tutoring-time";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
 import { GuardianRequestSummaryView } from "./GuardianRequestSummaryView";
@@ -81,6 +82,8 @@ type RequestInput = {
   tuitionCityLocationId: string;
   tuitionLocationId: string;
   daysPerWeek: string;
+  /** Optional start time, 24-hour `HH:mm`; "" while the box is empty. */
+  tutoringTime: string;
   preferredGender: PreferredGender;
   salaryAmount: string;
   instituteName: string;
@@ -261,6 +264,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const [tuitionCityLocationId, setTuitionCityLocationId] = useState("");
   const [tuitionLocationId, setTuitionLocationId] = useState("");
   const [daysPerWeek, setDaysPerWeek] = useState("");
+  const [tutoringTime, setTutoringTime] = useState("");
   const [preferredGender, setPreferredGender] = useState<PreferredGender>("");
   const [salaryAmount, setSalaryAmount] = useState("");
   const [instituteName, setInstituteName] = useState("");
@@ -293,6 +297,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setTuitionCityLocationId("");
     setTuitionLocationId("");
     setDaysPerWeek("");
+    setTutoringTime("");
     setPreferredGender("");
     setSalaryAmount("");
     setInstituteName("");
@@ -455,7 +460,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
   const localPhone = phone.replace(/\D/g, "").slice(0, 11);
-  const requestInput = useMemo<RequestInput>(() => ({ learningNeeds, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, learningNeeds, daysPerWeek, groupCapacity, packageDurationMonths, preferredGender, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
+  const requestInput = useMemo<RequestInput>(() => ({ learningNeeds, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, tutoringTime, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, learningNeeds, daysPerWeek, tutoringTime, groupCapacity, packageDurationMonths, preferredGender, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
     if (embedded || isEditMode || routePath !== "/request-tutor") return;
@@ -493,6 +498,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setInstituteName(request.instituteName ?? "");
     setHeardAboutUs(isRequestSource(request.heardAboutUs) ? request.heardAboutUs : "");
     setDaysPerWeek(request.daysPerWeek?.toString() ?? "");
+    setTutoringTime(normalizeTutoringTime(request.tutoringTime));
     setPreferredGender(request.preferredGender === "male" || request.preferredGender === "female" || request.preferredGender === "any" ? request.preferredGender : "");
     // Grouped for editing, so reopening a saved request shows "5,000" rather
     // than a bare 5000 the Guardian would have to re-punctuate.
@@ -518,6 +524,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       setTuitionCityLocationId(draft.request.tuitionCityLocationId);
       setTuitionLocationId(draft.request.tuitionLocationId);
       setDaysPerWeek(draft.request.daysPerWeek);
+      setTutoringTime(draft.request.tutoringTime);
       setPreferredGender(draft.request.preferredGender);
       setSalaryAmount(draft.request.salaryAmount);
       setInstituteName(draft.request.instituteName);
@@ -575,6 +582,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
         classes: need.classes,
       })),
       daysPerWeek: Number(daysPerWeek),
+      // Blank is sent as nothing, never "": the server stores no time rather than an empty one.
+      tutoringTime: normalizeTutoringTime(tutoringTime) || undefined,
       preferredGender: preferredGender as Exclude<PreferredGender, "">,
       studentGender: studentGender || undefined,
       addressDetails: addressDetails.trim() || undefined,
@@ -661,6 +670,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetTuitionCity={(value) => { clearJourneyError(); setTuitionCityLocationId(value); setTuitionLocationId(""); }}
           onSetTuitionLocation={(value) => { clearJourneyError(); setTuitionLocationId(value); }}
           onSetDays={(value) => { clearJourneyError(); setDaysPerWeek(value); }}
+          onSetTutoringTime={(value) => { clearJourneyError(); setTutoringTime(value); }}
           onSetPreferredGender={(value) => { clearJourneyError(); setPreferredGender(value); }}
           onSetSalaryAmount={(value) => { clearJourneyError(); setSalaryAmount(value); }}
           onSetInstituteName={(value) => { clearJourneyError(); setInstituteName(value); }}
@@ -811,7 +821,7 @@ type RequestStageProps = {
   tuitionCityLabel: string; tuitionLocationLabel: string; pending: boolean;
   needsLimits: LearningNeedsLimits; onSetLearningNeeds: (next: LearningNeed[]) => void; onNeedsNotice: (message: string) => void; onSetStudentGender: (value: StudentGender) => void; onSetAddressDetails: (value: string) => void;
   onSetTuitionType: (value: TuitionType) => void; onSetGroupCapacity: (value: string) => void; onSetPackageDurationMonths: (value: string) => void; onSetStudentCount: (value: string) => void; onSetTuitionCity: (value: string) => void; onSetTuitionLocation: (value: string) => void;
-  onSetDays: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetInstituteName: (value: string) => void; onSetHeardAboutUs: (value: RequestSource) => void; onSetNotes: (value: string) => void;
+  onSetDays: (value: string) => void; onSetTutoringTime: (value: string) => void; onSetPreferredGender: (value: PreferredGender) => void; onSetSalaryAmount: (value: string) => void; onSetInstituteName: (value: string) => void; onSetHeardAboutUs: (value: RequestSource) => void; onSetNotes: (value: string) => void;
   onBack: () => void; onAdvance: () => void; onSubmit: (event: FormEvent) => void;
   /** Step 3 reads the request back once it is sent. */
   isEditMode?: boolean; requestId?: number | null; onPostAnother?: () => void;
@@ -898,6 +908,7 @@ export function RequestStage(props: RequestStageProps) {
         <SelectField label="Where Did You Hear About Us" slotId="request-tutor.field.heardAboutUs" value={input.heardAboutUs} onChange={(value) => props.onSetHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" formatOption={formatRequestSource} icon={input.heardAboutUs ? REQUEST_SOURCE_ICONS[input.heardAboutUs] : <Megaphone size={17} />} />
         <SelectField label="Preferred Tutor gender" slotId="request-tutor.field.preferredGender" icon={<TutorPreferenceIcon preference={input.preferredGender || "any"} className="text-j-accent" />} value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} />
         <MoneyField label="Monthly salary" slotId="request-tutor.field.salary" labelIcon={<RecordIcon name="salary" size={15} />} value={input.salaryAmount} onChange={props.onSetSalaryAmount} placeholder={SALARY_INPUT_PLACEHOLDER} />
+        <InputField label="Tutoring Time" slotId="request-tutor.field.tutoringTime" optional type="time" value={input.tutoringTime} onChange={props.onSetTutoringTime} />
         <div className={fieldGridWide}>
           <TextAreaField label="Additional notes" slotId="request-tutor.field.notes" labelIcon={<RecordIcon name="notes" size={15} />} optional value={props.notes} onChange={props.onSetNotes} maxLength={2000} minHeight="min-h-28" />
         </div>
