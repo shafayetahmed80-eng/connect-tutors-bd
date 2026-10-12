@@ -28,6 +28,7 @@ import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, Pa
 import { GUARDIAN_REQUEST_DRAFT_VERSION, guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
 import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom, type LearningNeedsLimits } from "@/components/LearningNeedsField";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
+import { JobIdTag } from "@/components/JobIdTag";
 
 const LOCAL_PHONE = /^01[3-9]\d{8}$/;
 /** A little under the server's 20-minute intake handoff, so a reused number never outlives its cookie. */
@@ -948,7 +949,7 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
       <div className="min-w-0">
         <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-j-ok"><Check size={15} strokeWidth={3} /> Request received securely</p>
         <h2 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-j-ink"><SiteText slotId="request-tutor.done.heading" /></h2>
-        {requestId === null ? null : <p className="mt-1 text-sm text-[#5e7a90]">Job ID <strong className="text-j-ink tabular-nums">{jobIdForRequest(requestId)}</strong></p>}
+        {requestId === null ? null : <p className="mt-1"><JobIdTag className="text-xs" jobId={jobIdForRequest(requestId)} /></p>}
       </div>
       {/* A card rather than a filled button: `View my request` at the foot is
           the primary blue, and two competing solids would leave the Guardian

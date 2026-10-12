@@ -328,7 +328,7 @@ describe("Admin Posted jobs board", () => {
     await user.click(card);
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Approve: Cancellation requested" }));
     const approval = screen.getByRole("dialog");
-    expect(within(approval).getByText("Cancel Job ID 6812?")).toBeTruthy();
+    expect(within(approval).getByRole("heading", { name: "Cancel Job ID 6812?" })).toBeTruthy();
     expect(within(approval).getByText("Found a Tutor elsewhere")).toBeTruthy();
     await user.click(within(approval).getByRole("button", { name: "Approve" }));
     expect(mocks.approveGuardian).toHaveBeenCalledWith({ guardianRequestId: 7 });

@@ -39,7 +39,7 @@ describe("settling a cancelled tuition", () => {
     open(preview());
 
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByText("Settle · Job ID 6820")).toBeTruthy();
+    expect(dialog.getByRole("heading", { name: "Settle · Job ID 6820" })).toBeTruthy();
     expect(dialog.getByText("Ended in the first month")).toBeTruthy();
     expect((dialog.getByLabelText("Charge to keep (Taka)") as HTMLInputElement).value).toBe("1500");
     expect(dialog.getByText("1,000 Taka comes back to the Tutor")).toBeTruthy();

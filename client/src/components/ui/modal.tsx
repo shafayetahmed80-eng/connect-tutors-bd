@@ -181,7 +181,7 @@ export function ModalHeader({
   meta,
   action,
 }: {
-  title: string;
+  title: React.ReactNode;
   /** Small uppercase kicker above the title. Decorative — hidden from a screen reader. */
   eyebrow?: string;
   /** Spoken before the title, so the dialog is announced as e.g. "Edit …". */

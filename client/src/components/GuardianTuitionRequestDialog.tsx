@@ -1,6 +1,7 @@
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { requiredMark } from "@/components/journeyField";
 import { useState } from "react";
+import { JobIdTag } from "@/components/JobIdTag";
 
 export type GuardianTuitionRequestType = "confirm" | "remove_tutor" | "cancel_tuition";
 
@@ -45,10 +46,10 @@ export function GuardianTuitionRequestDialog({ type, jobId, tutorLabel, busy, on
     ? `Ask to confirm ${tutorLabel ?? "the Tutor"}?`
     : type === "remove_tutor"
       ? `Ask to remove ${tutorLabel ?? "the Tutor"}?`
-      : `Ask to cancel Job ID ${jobId}?`;
+      : <>Ask to cancel <JobIdTag colon={false} iconSize={12} jobId={jobId} />?</>;
 
   return <Modal size="dialog" onClose={onClose} busy={busy}>
-    <ModalHeader title={title} meta={type === "cancel_tuition" ? undefined : `Job ID ${jobId}`} />
+    <ModalHeader title={title} meta={type === "cancel_tuition" ? undefined : <JobIdTag colon={false} iconSize={11} jobId={jobId} />} />
     {needsReason ? <ModalBody>
       <label className="block text-sm font-bold text-j-ink-strong">
         Reason<span className={requiredMark}> *</span>

@@ -332,7 +332,7 @@ describe("Guardian private-account presentation", () => {
     />);
     expect(screen.getByRole("heading", { name: "Thank you. Your request is now pending review." })).not.toBeNull();
     // Request 1 is Job 6800 - the same number the Guardian will see on the card.
-    expect(screen.getByText("6800")).not.toBeNull();
+    expect(screen.getByText("Job ID : 6800")).not.toBeNull();
     expect(screen.getByText("English Medium (Cambridge)")).not.toBeNull();
     expect(screen.getByText("Facebook")).not.toBeNull();
     expect(screen.getByText("Evening slots preferred")).not.toBeNull();

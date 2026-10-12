@@ -14,6 +14,7 @@ import {
 } from "@shared/tutor-application-stages";
 import { useMemo, useState } from "react";
 import { useSearch } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type ApplicationRow = {
   interestId: number;
@@ -91,10 +92,8 @@ export function TutorApplicationStatus() {
   const columns: RecordColumn<ApplicationRow>[] = [
     {
       key: "jobId", label: "Job ID", place: "head",
-      cell: application => <span className="font-mono text-2xs text-j-ink-muted">{application.publicJobId}</span>,
-      cardCell: application => <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.16em] text-[#1680c2]">
-        <RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID : {application.publicJobId}
-      </span>,
+      cell: application => <JobIdTag bare className="text-2xs" jobId={application.publicJobId} />,
+      cardCell: application => <JobIdTag className="text-xs" jobId={application.publicJobId} />,
     },
     { key: "classCourse", label: "Class / Course", cell: application => <span className="font-bold text-j-ink">{application.classCourse}</span> },
     { key: "category", label: "Category", cell: application => <span className="text-j-ink-strong">{application.category}</span> },

@@ -4,6 +4,7 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { formatTutoringTime } from "@shared/tutoring-time";
 import { jobIdForRequest } from "@shared/job-id";
 import type { ReactNode } from "react";
+import { JobIdTag } from "@/components/JobIdTag";
 
 /**
  * One fact of the tuition, in the strip the applicants are read against.
@@ -53,9 +54,7 @@ export default function AppliedJobFacts({ job, afterJobId, children }: {
   children?: ReactNode;
 }) {
   return <div className="order-last grid min-w-0 basis-full grid-cols-2 items-start gap-x-3 gap-y-2 rounded-xl bg-j-surface-sunken px-3.5 py-3 text-2xs lg:order-none lg:flex lg:flex-1 lg:basis-0 lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1.5 lg:py-2.5">
-    <span className="inline-flex items-center gap-1.5 font-bold text-[#173d60]">
-      <RecordIcon name="jobId" size={12} className="text-[#8fb4d0]" />Job ID {jobIdForRequest(job.id)}
-    </span>
+    <JobIdTag jobId={jobIdForRequest(job.id)} />
     {afterJobId}
     <JobFact icon="tutorGender" value={`${formatTutorPreference(job.preferredGender)} Tutor`} tone={tutorPreferenceToneClass(job.preferredGender)} />
     <JobFact icon="location" value={job.tuitionLocationLabel ?? job.locationText ?? "Online"} wide />

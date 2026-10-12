@@ -121,7 +121,7 @@ describe("GuardianRequestJourney create flow", () => {
     // Posted jobs list behind it is told to refetch, and nothing navigates.
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.invalidate).toHaveBeenCalled();
-    expect(screen.getByText("6800")).not.toBeNull();
+    expect(screen.getByText("Job ID : 6800")).not.toBeNull();
     expect(screen.getByRole("link", { name: "View my request" }).getAttribute("href")).toBe("/guardian/dashboard/posted-jobs");
     expect(screen.queryByRole("button", { name: "Send request" })).toBeNull();
   });

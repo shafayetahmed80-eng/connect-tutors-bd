@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { getGuardianRequestLifecycle } from "./GuardianRequestTracking";
+import { JobIdTag } from "@/components/JobIdTag";
 
 const APPLICANT_PAGE_SIZE = 20;
 
@@ -135,7 +136,7 @@ export function GuardianAppliedTuitionsContent({ requests, isLoading, isError = 
 
   type TuitionRow = (typeof tuitions)[number];
   const columns: RecordColumn<TuitionRow>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: ({ request }) => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(request.id)}</span> },
+    { key: "jobId", label: "Job ID", place: "head", cell: ({ request }) => <JobIdTag bare className="text-2xs" jobId={jobIdForRequest(request.id)} />, cardCell: ({ request }) => <JobIdTag className="text-xs" jobId={jobIdForRequest(request.id)} /> },
     { key: "class", label: "Class / Level", cell: ({ request }) => <span className="font-bold text-j-ink">{request.classCourse}</span> },
     { key: "subjects", label: "Subjects", wide: true, cellClassName: "max-w-[16rem]", cell: ({ request }) => <span className="text-j-ink-strong">{formatSubjects(request.subjects)}</span> },
     { key: "location", label: "Location", cell: ({ request }) => <span className="text-j-ink-strong">{request.tuitionLocationLabel ?? "Online"}</span> },

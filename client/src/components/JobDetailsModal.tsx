@@ -12,9 +12,10 @@ import {
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { formatTutoringTime } from "@shared/tutoring-time";
-import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Clock, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
+import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Clock, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { TutorPreferenceIcon, type JobCardData } from "./JobCard";
+import { JobIdTag } from "@/components/JobIdTag";
 
 export type JobDetailsData = JobCardData & {
   studentGender: string | null;
@@ -95,7 +96,7 @@ export default function JobDetailsModal({
       <ModalHeader
         title={job.title}
         meta={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 tabular-nums">
-          <span className="inline-flex items-center gap-1"><Hash aria-hidden="true" size={11} className="text-[#8fb4d0]" />Job ID : {job.jobId}</span>
+          <JobIdTag iconSize={11} jobId={job.jobId} />
           <span aria-hidden className="text-[#dce9f1]">|</span>
           <span className="inline-flex items-center gap-1"><CalendarClock aria-hidden="true" size={11} className="text-[#8fb4d0]" />Posted : {job.postedAt}</span>
           <span aria-hidden className="text-[#dce9f1]">|</span>

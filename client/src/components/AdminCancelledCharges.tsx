@@ -12,6 +12,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { Link } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 const onDate = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
@@ -52,7 +53,7 @@ export default function AdminCancelledChargesContent() {
   };
 
   const columns: RecordColumn<CancelledJob>[] = [
-    { key: "jobId", label: "Job ID", place: "head", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{jobIdForRequest(job.id)}</span> },
+    { key: "jobId", label: "Job ID", place: "head", cell: job => <JobIdTag bare className="text-2xs" jobId={jobIdForRequest(job.id)} />, cardCell: job => <JobIdTag className="text-xs" jobId={jobIdForRequest(job.id)} /> },
     { key: "settlement", label: "Settlement", place: "head", cell: settlementCell },
     { key: "tutorNumber", label: "Tutor ID", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{job.tutorNumber ?? notSet}</span> },
     { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },

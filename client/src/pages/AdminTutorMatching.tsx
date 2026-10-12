@@ -18,6 +18,7 @@ import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRoute } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 export type TutorMatchingFilters = {
   query: string;
@@ -271,7 +272,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
     />
 
     {approving ? <Modal size="dialog" onClose={() => setApproving(null)} busy={approve.isPending}>
-      <ModalHeader title={`Appoint ${approving.name}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`} />
+      <ModalHeader title={`Appoint ${approving.name}?`} meta={<>Tutor ID {approving.tutorNumber ?? "not set"} · <JobIdTag colon={false} iconSize={11} jobId={jobIdForRequest(requestId)} /></>} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>
@@ -292,7 +293,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
     /> : null}
 
     {cancelling ? <Modal size="dialog" onClose={() => setCancelling(false)} busy={cancelTuition.isPending}>
-      <ModalHeader title={`Cancel Job ID ${jobIdForRequest(requestId)}?`} meta={job ? `Guardian ${job.guardianName}` : undefined} />
+      <ModalHeader title={<>Cancel <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(requestId)} />?</>} meta={job ? `Guardian ${job.guardianName}` : undefined} />
       <ModalBody className="space-y-3">
         <p className="text-sm leading-6 text-j-ink-soft">The tuition closes and leaves the Job Board. The Guardian is told, and so is its Tutor if it has one.</p>
         <label className="block text-sm font-bold text-j-ink-strong">Reason (required)
@@ -319,7 +320,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
     {deciding ? <Modal size="dialog" onClose={() => setDeciding(null)} busy={actionPending}>
       <ModalHeader
         title={deciding.action === "appoint" ? `Appoint ${deciding.tutor.name}?` : deciding.action === "confirm" ? `Confirm ${deciding.tutor.name}?` : `Remove ${deciding.tutor.name}?`}
-        meta={`Tutor ID ${deciding.tutor.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(requestId)}`}
+        meta={<>Tutor ID {deciding.tutor.tutorNumber ?? "not set"} · <JobIdTag colon={false} iconSize={11} jobId={jobIdForRequest(requestId)} /></>}
       />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">{deciding.action === "appoint"

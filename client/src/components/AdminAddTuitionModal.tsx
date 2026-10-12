@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type TuitionType = "home" | "online" | "group" | "package";
 type PreferredGender = "any" | "female" | "male";
@@ -247,7 +248,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   return <Modal size="panel" onClose={onClose} busy={post.isPending}>
     {/* On a laptop the Post button sits in the header, top right. On a phone
         the header has no room for it, so it moves to the foot instead. */}
-    <ModalHeader title={editing ? `Edit Job ID ${jobIdForRequest(draft.requestId)}` : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
+    <ModalHeader title={editing ? <>Edit <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(draft.requestId)} /></> : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
     <ModalBody>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
         <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(value.replace(/[^0-9]/g, ""))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />

@@ -13,6 +13,7 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, Redirect, useRoute } from "wouter";
+import { JobIdTag } from "@/components/JobIdTag";
 
 export const guardianRequestKinds = ["shortlist", "appoint", "confirm", "cancel"] as const;
 export type GuardianRequestKind = (typeof guardianRequestKinds)[number];
@@ -118,7 +119,8 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
   const columns: RecordColumn<GuardianRequestRow>[] = [
     {
       key: "job", label: "Job ID", place: "head",
-      cell: row => <Link href={`/admin/applied-tutors/${row.requestId}`} className="whitespace-nowrap font-bold tabular-nums text-j-accent hover:underline">{jobIdForRequest(row.requestId)}</Link>,
+      cell: row => <Link href={`/admin/applied-tutors/${row.requestId}`} className="whitespace-nowrap hover:underline"><JobIdTag bare className="text-2xs" jobId={jobIdForRequest(row.requestId)} /></Link>,
+      cardCell: row => <Link href={`/admin/applied-tutors/${row.requestId}`} className="whitespace-nowrap hover:underline"><JobIdTag className="text-xs" jobId={jobIdForRequest(row.requestId)} /></Link>,
     },
     ...(kind === "confirm" || kind === "cancel"
       ? [{ key: "type", label: "Request", place: "head" as const, cell: (row: GuardianRequestRow) => <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-2xs font-bold text-amber-800">{typeLabels[row.type]}</span> }]
@@ -194,7 +196,7 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
     />
 
     {approving && approving.type === "appoint" ? <Modal size="dialog" onClose={() => setApproving(null)} busy={appointApprove.isPending}>
-      <ModalHeader title={`Appoint ${approving.tutorName ?? "this Tutor"}?`} meta={`Tutor ID ${approving.tutorNumber ?? "not set"} · Job ID ${jobIdForRequest(approving.requestId)}`} />
+      <ModalHeader title={`Appoint ${approving.tutorName ?? "this Tutor"}?`} meta={<>Tutor ID {approving.tutorNumber ?? "not set"} · <JobIdTag colon={false} iconSize={11} jobId={jobIdForRequest(approving.requestId)} /></>} />
       <ModalBody>
         <p className="text-sm leading-6 text-j-ink-soft">The Tutor receives the Guardian's name and mobile number, and the Guardian sees the Tutor's. The tuition stays on the Job Board for the demo class.</p>
       </ModalBody>

@@ -22,6 +22,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
 import { useState } from "react";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type StageKey = "pending" | "live" | "appointed" | "confirmed" | "closed" | "cancelled";
 
@@ -277,7 +278,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
     /> : null}
 
     {statusJob && getGuardianRequestLifecycle(statusJob).key === "pending" ? <Modal size="dialog" onClose={() => setStatusJobId(null)} busy={goLive.isPending}>
-      <ModalHeader title={`Change status of Job ID ${jobIdForRequest(statusJob.id)}`} />
+      <ModalHeader title={<>Change status of <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(statusJob.id)} /></>} />
       <ModalBody>
         <button
           type="button"

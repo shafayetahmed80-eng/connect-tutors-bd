@@ -16,6 +16,7 @@ import RecentSearches from "@/components/RecentSearches";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { JobIdTag } from "@/components/JobIdTag";
 
 type GuardianFilters = {
   query: string;
@@ -220,7 +221,7 @@ export function GuardianActivityContent() {
       totalItems={requests.data?.total}
     />
     {contactRequestId !== null ? <Modal size="dialog" onClose={() => setContactRequestId(null)}>
-      <ModalHeader title={`Guardian contact · Job ID ${jobIdForRequest(contactRequestId)}`} />
+      <ModalHeader title={<>Guardian contact · <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(contactRequestId)} /></>} />
       <ModalBody className="space-y-4">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-j-accent" />
