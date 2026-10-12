@@ -122,7 +122,7 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   // Local fallback: hand back our own proxy path, which serves the file.
   if (isLocalStorageBackend()) {
-    return `/manus-storage/${key}`;
+    return `/api/files/${key}`;
   }
 
   const { forgeUrl, forgeKey } = getForgeConfig();

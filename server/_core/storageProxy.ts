@@ -19,7 +19,10 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
 };
 
 export function registerStorageProxy(app: Express) {
-  app.get("/manus-storage/*", async (req, res) => {
+  // Also under /api/files: an installed copy of the site that still holds an older service
+  // worker answers page navigations with the app shell except for /api, so a link to a
+  // file there reaches the server whatever worker the browser is running.
+  app.get(["/manus-storage/*", "/api/files/*"], async (req, res) => {
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
       res.status(400).send("Missing storage key");

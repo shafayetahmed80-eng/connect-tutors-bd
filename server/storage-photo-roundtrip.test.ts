@@ -66,5 +66,6 @@ describe("profile photo upload + serve on the local storage fallback", () => {
 
   it("returns 404 for a key that was never stored", async () => {
     await request(createApp()).get("/manus-storage/tutors/77/does-not-exist.png").expect(404);
+    await request(createApp()).get("/api/files/tutors/77/does-not-exist.png").expect(404);
   });
 });
