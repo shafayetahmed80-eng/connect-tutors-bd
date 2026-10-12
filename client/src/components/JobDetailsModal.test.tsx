@@ -96,3 +96,76 @@ describe("JobDetailsModal on the shared Modal shell", () => {
     expect(screen.queryByRole("link", { name: /View on map/ })).toBeNull();
   });
 });
+
+describe("the Tutoring Time row", () => {
+  // The row is the label's parent: label and value sit side by side inside it.
+  const rowOf = (label: string) => screen.getByText(label).parentElement!;
+
+  it.each([
+    ["16:30", "4:30 PM"],
+    // Midnight and noon are the two places a 12-hour clock is easy to get wrong.
+    ["00:05", "12:05 AM"],
+    ["12:00", "12:00 PM"],
+    ["09:07", "9:07 AM"],
+  ])("reads the Guardian's %s as %s", (stored, shown) => {
+    render(<JobDetailsModal job={{ ...job, tutoringTime: stored }} onClose={vi.fn()} action={null} />);
+
+    expect(within(rowOf("Tutoring Time")).getByText(shown)).toBeTruthy();
+  });
+
+  it("sits between Salary and Subjects, and leaves every other row where it was", () => {
+    render(<JobDetailsModal job={{ ...job, tutoringTime: "16:30" }} onClose={vi.fn()} action={null} />);
+
+    const follows = (earlier: string, later: string) =>
+      Boolean(screen.getByText(earlier).compareDocumentPosition(screen.getByText(later)) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows("Salary", "Tutoring Time")).toBe(true);
+    expect(follows("Tutoring Time", "Subjects")).toBe(true);
+    for (const label of ["Tuition Type", "Student Gender", "Preferred Tutor", "Days / Week", "No. of Students", "Salary", "Subjects", "Location", "Notes"]) {
+      expect(screen.getByText(label), label).toBeTruthy();
+    }
+  });
+
+  it.each([
+    ["null", null],
+    ["missing", undefined],
+    ["blank", ""],
+    ["spaces only", "   "],
+    ["an hour past 23", "24:00"],
+    ["minutes past 59", "16:60"],
+    ["not zero-padded", "4:30"],
+    ["written with AM/PM", "4:30 PM"],
+    ["not a time at all", "soon"],
+  ])("leaves the row out when the time is %s, rather than showing a blank in its place", (_name, stored) => {
+    const dialogText = (tutoringTime: string | null | undefined) => {
+      const view = render(<JobDetailsModal job={{ ...job, tutoringTime }} onClose={vi.fn()} action={null} />);
+      const text = document.body.textContent ?? "";
+      view.unmount();
+      return text;
+    };
+    // The dialog already carries blanks of its own (the fixture names no Student Gender, and
+    // reads "Not set" elsewhere), so "no placeholder" is judged against the same job with no
+    // time at all: whatever the time is, nothing is added to the dialog.
+    expect(dialogText(stored)).toBe(dialogText(undefined));
+
+    render(<JobDetailsModal job={{ ...job, tutoringTime: stored }} onClose={vi.fn()} action={null} />);
+    expect(screen.queryByText("Tutoring Time")).toBeNull();
+    // The dialog itself is intact: it is the row that is absent, not the body.
+    expect(screen.getByText("Days / Week")).toBeTruthy();
+    expect(screen.getByText("Subjects")).toBeTruthy();
+  });
+
+  it("leaves the row out for a caller that never names the field", () => {
+    // `job` above is typed without tutoringTime at all: the field is optional on JobDetailsData.
+    render(<JobDetailsModal job={job} onClose={vi.fn()} action={null} />);
+    expect(screen.queryByText("Tutoring Time")).toBeNull();
+  });
+
+  it("follows the job when the dialog is reused for a different one", () => {
+    const { rerender } = render(<JobDetailsModal job={{ ...job, tutoringTime: "16:30" }} onClose={vi.fn()} action={null} />);
+    expect(within(rowOf("Tutoring Time")).getByText("4:30 PM")).toBeTruthy();
+
+    rerender(<JobDetailsModal job={{ ...job, tutoringTime: null }} onClose={vi.fn()} action={null} />);
+    expect(screen.queryByText("Tutoring Time")).toBeNull();
+    expect(screen.queryByText("4:30 PM")).toBeNull();
+  });
+});

@@ -65,13 +65,13 @@ describe("tutor request procedure authorization", () => {
   });
 });
 
-describe("tutorRequests.create with several curricula and classes", () => {
-  const arrange = () => {
-    dbMocks.getSiteLimits.mockResolvedValue(defaultSiteLimits());
-    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "city-dhaka", locationId: "area-mirpur", locationLabel: "Mirpur, Dhaka" });
-    dbMocks.createTutorRequest.mockResolvedValue({ id: 31 });
-  };
+const arrange = () => {
+  dbMocks.getSiteLimits.mockResolvedValue(defaultSiteLimits());
+  dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "city-dhaka", locationId: "area-mirpur", locationLabel: "Mirpur, Dhaka" });
+  dbMocks.createTutorRequest.mockResolvedValue({ id: 31 });
+};
 
+describe("tutorRequests.create with several curricula and classes", () => {
   it("hands the writer the whole list and a one-line summary of it for the request's own columns", async () => {
     arrange();
 
@@ -121,5 +121,69 @@ describe("tutorRequests.create with several curricula and classes", () => {
 
     await guardian().tutorRequests.create({ ...validPayload, learningNeeds: [need("A", 2)] });
     expect(dbMocks.createTutorRequest).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("tutorRequests.create with a Tutoring Time", () => {
+  it("hands the writer the time the Guardian chose, as the 24-hour string it was sent", async () => {
+    arrange();
+
+    await guardian().tutorRequests.create({ ...validPayload, tutoringTime: "16:30" });
+
+    const [request] = dbMocks.createTutorRequest.mock.calls[0];
+    expect(request).toMatchObject({ guardianUserId: 23, tutoringTime: "16:30" });
+  });
+
+  it("hands the writer null, not undefined or a blank, when the Guardian chose none", async () => {
+    arrange();
+
+    await guardian().tutorRequests.create(validPayload);
+
+    const [request] = dbMocks.createTutorRequest.mock.calls[0];
+    // The column is nullable and blank means no wish at all, so the writer is
+    // never given "" or a missing key to store.
+    expect(request).toHaveProperty("tutoringTime", null);
+  });
+
+  it("hands the writer null when the client sends an explicit null for an empty box", async () => {
+    arrange();
+
+    await guardian().tutorRequests.create({ ...validPayload, tutoringTime: null });
+
+    const [request] = dbMocks.createTutorRequest.mock.calls[0];
+    // The Guardian journey sends null for an empty box on create as well as on edit. A new request
+    // has nothing to keep, so null and a missing key both store no time.
+    expect(request).toHaveProperty("tutoringTime", null);
+  });
+
+  it("refuses a padded time instead of trimming it, without writing anything", async () => {
+    arrange();
+
+    // The time box never returns spaces or a newline. A padded value is refused on every route
+    // alike, so create no longer quietly stores a trimmed copy of what an edit would have thrown on.
+    for (const tutoringTime of [" 08:05 ", "08:05 ", " 08:05", "08:05\n"]) {
+      await expect(guardian().tutorRequests.create({ ...validPayload, tutoringTime }), JSON.stringify(tutoringTime))
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createTutorRequest).not.toHaveBeenCalled();
+  });
+
+  it("sends a time to every tuition type, online included, which has no location to ask about", async () => {
+    arrange();
+    const { tuitionCityLocationId: _city, tuitionLocationId: _location, ...online } = validPayload;
+
+    await guardian().tutorRequests.create({ ...online, tuitionType: "online", tutoringTime: "19:00" });
+
+    expect(dbMocks.createTutorRequest.mock.calls[0][0]).toMatchObject({ tuitionType: "online", tutoringTime: "19:00" });
+  });
+
+  it("refuses a time that is not HH:mm without writing anything", async () => {
+    arrange();
+
+    for (const tutoringTime of ["4:30 PM", "24:00", "16:60", ""]) {
+      await expect(guardian().tutorRequests.create({ ...validPayload, tutoringTime }), tutoringTime)
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createTutorRequest).not.toHaveBeenCalled();
   });
 });

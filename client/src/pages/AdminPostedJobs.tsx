@@ -211,6 +211,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         preferredTutorGender: openJob.preferredGender,
         studentGender: openJob.studentGender,
         daysPerWeek: openJob.daysPerWeek,
+        tutoringTime: openJob.tutoringTime ?? null,
         studentCount: openJob.studentCount,
         notes: openJob.notes,
       }}

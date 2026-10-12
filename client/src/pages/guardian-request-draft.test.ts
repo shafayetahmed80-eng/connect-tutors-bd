@@ -21,6 +21,7 @@ const validDraft = {
     tuitionCityLocationId: "dhaka",
     tuitionLocationId: "mirpur-10",
     daysPerWeek: "4",
+    tutoringTime: "16:30",
     preferredGender: "female" as const,
     salaryAmount: "8000",
     instituteName: "Dhaka College",
@@ -133,5 +134,51 @@ describe("Guardian private request draft contract", () => {
     expect(restored?.request.instituteName).toBe("");
     expect(restored?.request.heardAboutUs).toBe("");
     expect(restored?.request.learningNeeds).toEqual(validDraft.request.learningNeeds);
+  });
+
+  describe("Tutoring Time", () => {
+    it("writes the chosen time to the stored draft and reads it back unchanged", () => {
+      // Checked in the stored text as well as the restored object, so a
+      // serializer that dropped the key would fail here and not only on reload.
+      const stored = serializeGuardianRequestDraft(validDraft);
+      expect(JSON.parse(stored).request.tutoringTime).toBe("16:30");
+      expect(parseGuardianRequestDraft(stored)?.request.tutoringTime).toBe("16:30");
+    });
+
+    it("keeps a box left empty as empty rather than inventing a time", () => {
+      const blank = { ...validDraft, request: { ...validDraft.request, tutoringTime: "" } };
+
+      expect(parseGuardianRequestDraft(serializeGuardianRequestDraft(blank))?.request.tutoringTime).toBe("");
+    });
+
+    it("restores a draft written before Tutoring Time existed as an empty box and keeps the rest", () => {
+      // A Guardian mid-request when this shipped must not lose the draft.
+      const { tutoringTime: _tutoringTime, ...legacyRequest } = validDraft.request;
+      const restored = parseGuardianRequestDraft(JSON.stringify({ ...validDraft, request: legacyRequest }));
+
+      expect(restored).not.toBeNull();
+      expect(restored?.request.tutoringTime).toBe("");
+      expect(restored).toEqual({ ...validDraft, request: { ...validDraft.request, tutoringTime: "" } });
+    });
+
+    it("rejects a draft whose Tutoring Time is not text instead of trusting session storage", () => {
+      for (const tutoringTime of [1630, null, true, ["16:30"], { time: "16:30" }]) {
+        const tampered = { ...validDraft, request: { ...validDraft.request, tutoringTime } };
+
+        expect(parseGuardianRequestDraft(JSON.stringify(tampered)), JSON.stringify(tutoringTime)).toBeNull();
+      }
+    });
+
+    it("clears text that is not a 24-hour time to an empty box rather than keeping it", () => {
+      // Valid shape, wrong content: the draft survives, but the bad time must
+      // not reach the form (and from there the server, which would refuse it).
+      for (const tutoringTime of ["4:30 PM", "24:00", "25:99", "16:60", "16.30", "soon"]) {
+        const odd = { ...validDraft, request: { ...validDraft.request, tutoringTime } };
+
+        expect(parseGuardianRequestDraft(JSON.stringify(odd))?.request.tutoringTime, tutoringTime).toBe("");
+        // Writing is held to the same rule, so a bad value is never stored.
+        expect(JSON.parse(serializeGuardianRequestDraft(odd)).request.tutoringTime, tutoringTime).toBe("");
+      }
+    });
   });
 });

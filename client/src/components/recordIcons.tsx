@@ -103,7 +103,7 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
   "Category": "category", "Curriculum Type": "curriculumType", "Class / level": "classLevel",
   "Subjects": "subjects", "Student gender": "studentGender", "Address Details": "address",
   "Tuition type": "tuitionType", "Maximum students": "students", "Number of students": "students",
-  "Package duration": "packageDuration", "Location": "location", "Days per week": "daysPerWeek",
+  "Package duration": "packageDuration", "Location": "location", "Days per week": "daysPerWeek", "Tutoring Time": "timeSlots",
   "Institute Name": "institute", "Where Did You Hear About Us": "referral",
   "Preferred Tutor gender": "tutorGender", "Salary": "salary", "Additional notes": "notes",
 

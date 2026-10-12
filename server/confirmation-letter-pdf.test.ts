@@ -74,6 +74,36 @@ describe("what the letter says", () => {
     expect(buildConfirmationLetterContent({ ...letter, tutorReference: "tutor-175" }).tutorRows).toEqual([["Name", "Ayesha Rahman"]]);
   });
 
+  it("leaves the Tutoring Time off, whether or not the request it was drawn from had one", () => {
+    // The Owner's rule: the Confirmation Letter carries no Tutoring Time. The letter is built from a
+    // snapshot that createConfirmationLetterDraft (db.ts) fills field by field from the request, and
+    // that needs a database to run. So this holds the line one step on, at the content builder: given a
+    // letter that does carry a time (a snapshot widened by mistake, or an older one), it prints no row
+    // for it and no time of day anywhere.
+    const withTime = { ...letter, tutoringTime: "16:30" } as ConfirmationLetterDocument;
+    const content = buildConfirmationLetterContent(withTime);
+
+    expect(content).toEqual(buildConfirmationLetterContent(letter));
+    expect(content.tuitionRows.map(([label]) => label)).not.toContain("Tutoring Time");
+    expect(content.tutorRows.map(([label]) => label)).not.toContain("Tutoring Time");
+
+    const everythingPrinted = [
+      ...content.tutorRows.flat(),
+      ...content.tuitionRows.flat(),
+      content.letterId, content.issued, content.version, content.fee,
+      ...Object.values(letterCopy),
+    ].join("\n");
+    expect(everythingPrinted).not.toContain("16:30");
+    expect(everythingPrinted).not.toContain("4:30 PM");
+    expect(everythingPrinted).not.toMatch(/tutoring time/i);
+    // The same, for a time at the other edges of the day and in a snapshot read back from JSON.
+    for (const tutoringTime of ["00:00", "23:59", "08:05"]) {
+      const stored = JSON.parse(JSON.stringify({ ...letter, tutoringTime, issuedAt: letter.issuedAt.toISOString() }));
+      const restored = buildConfirmationLetterContent({ ...stored, issuedAt: new Date(stored.issuedAt) });
+      expect(restored, tutoringTime).toEqual(buildConfirmationLetterContent(letter));
+    }
+  });
+
   it("is written in English only", () => {
     const content = buildConfirmationLetterContent(letter);
     const fixedText = [...Object.values(letterCopy), ...content.tutorRows.map(([label]) => label), ...content.tuitionRows.map(([label]) => label)];

@@ -13,6 +13,15 @@ type Executor = any;
  */
 export async function replaceRequestLearningNeeds(executor: Executor, requestId: number, needs: LearningNeed[]) {
   await executor.delete(tutorRequestLearningNeeds).where(eq(tutorRequestLearningNeeds.tutorRequestId, requestId));
+  await insertRequestLearningNeeds(executor, requestId, needs);
+}
+
+/**
+ * The same rows for a request that was only just created and so has none to replace. It skips the delete:
+ * deleting nothing still locks the gap after the newest request, and two requests made or edited at the
+ * same moment then wait on each other's gap and deadlock.
+ */
+export async function insertRequestLearningNeeds(executor: Executor, requestId: number, needs: LearningNeed[]) {
   const rows = learningNeedRows(needs);
   if (rows.length === 0) return;
   await executor.insert(tutorRequestLearningNeeds).values(rows.map((row, index) => ({

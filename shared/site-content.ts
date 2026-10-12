@@ -293,6 +293,7 @@ const requestTutorSlots: SiteContentSlot[] = [
   { id: "request-tutor.field.heardAboutUs", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Where Did You Hear About Us", defaultText: "Where Did You Hear About Us", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.preferredGender", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Preferred Tutor gender", defaultText: "Preferred Tutor gender", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.salary", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Monthly salary", defaultText: "Monthly salary", defaultTextClass: "text-sm" },
+  { id: "request-tutor.field.tutoringTime", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Tutoring Time", defaultText: "Tutoring Time", defaultTextClass: "text-sm" },
   { id: "request-tutor.field.notes", page: "guardian-profile", surface: "Request a tutor", group: "Field labels", label: "Request — Additional notes", defaultText: "Additional notes", defaultTextClass: "text-sm" },
 ];
 

@@ -1209,6 +1209,8 @@ export const tutorRequests = mysqlTable("tutor_requests", {
   /** Required for Home, Online, and Package requests; Group uses groupCapacity instead. */
   studentCount: int("studentCount"),
   daysPerWeek: int("daysPerWeek").notNull(),
+  /** Optional: the time of day the Guardian would like to start, as 24-hour `HH:mm` (see `@shared/tutoring-time`). A wish, not a booking. */
+  tutoringTime: varchar("tutoringTime", { length: 5 }),
   preferredGender: mysqlEnum("preferredGender", ["male", "female", "any"])
     .default("any")
     .notNull(),
@@ -1313,6 +1315,8 @@ export const tutorJobs = mysqlTable("tutor_jobs", {
     .default("any")
     .notNull(),
   daysPerWeek: int("daysPerWeek").notNull(),
+  /** The request's optional start-time wish, as 24-hour `HH:mm`; null when the Guardian gave none. */
+  tutoringTime: varchar("tutoringTime", { length: 5 }),
   /**
    * The monthly salary offered, as one number. Nullable only because the two
    * requests made before the range and "Discuss with coordinator" options were

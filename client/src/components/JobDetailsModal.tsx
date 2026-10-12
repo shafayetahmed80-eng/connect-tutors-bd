@@ -11,13 +11,16 @@ import {
   tutorPreferenceToneClass,
 } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
+import { formatTutoringTime } from "@shared/tutoring-time";
+import { AlignLeft, BookOpen, CalendarClock, CalendarDays, Clock, Hash, House, MapPin, UserRound, Users, UsersRound, Wallet } from "lucide-react";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { TutorPreferenceIcon, type JobCardData } from "./JobCard";
 
 export type JobDetailsData = JobCardData & {
   studentGender: string | null;
   daysPerWeek: number | null;
+  /** The Guardian's optional start time, 24-hour `HH:mm`. Optional here so a caller that has none need not name it. */
+  tutoringTime?: string | null;
   studentCount: number | null;
   notes: string | null;
 };
@@ -120,6 +123,8 @@ export default function JobDetailsModal({
           <JobDetailRow icon={<CalendarDays size={12} />} label="Days / Week" value={formatDaysPerWeek(job.daysPerWeek)} required />
           <JobDetailRow icon={<Users size={12} />} label="No. of Students" value={formatStudentCount(job.studentCount)} required />
           <JobDetailRow icon={<Wallet size={12} />} label="Salary" value={formatSalaryAmount(job.budgetAmount)} muted={job.budgetAmount === null} required />
+          {/* Only when the Guardian gave a start time: a blank here is not a gap in the record. */}
+          {formatTutoringTime(job.tutoringTime) ? <div className="sm:col-span-2"><JobDetailRow icon={<Clock size={12} />} label="Tutoring Time" value={formatTutoringTime(job.tutoringTime)} /></div> : null}
           <div className="sm:col-span-2"><JobDetailRow icon={<BookOpen size={12} />} label="Subjects" value={formatSubjects(job.subjects)} required /></div>
           <div className="sm:col-span-2">
             <div className="flex min-w-0 items-baseline gap-3 border-b border-[#eef4f9] py-1.5">

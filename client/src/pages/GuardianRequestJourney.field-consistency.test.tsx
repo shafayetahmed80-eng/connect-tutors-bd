@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +16,7 @@ const props = {
     learningNeeds: [{ category: "English Medium", curriculumType: "Cambridge", classes: [{ classCourse: "Class 1–5", subjects: ["English"] }] }],
     tuitionType: "package" as const, groupCapacity: "",
     packageDurationMonths: "6", studentCount: "2", studentGender: "" as const, addressDetails: "",
-    tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4",
+    tuitionCityLocationId: "dhaka", tuitionLocationId: "mirpur-10", daysPerWeek: "4", tutoringTime: "",
     preferredGender: "female" as const, instituteName: "", heardAboutUs: "facebook" as const,
     salaryAmount: "5,000",
   },
@@ -30,7 +30,7 @@ const props = {
   onSetLearningNeeds: vi.fn(), onNeedsNotice: vi.fn(), onSetStudentGender: vi.fn(),
   onSetAddressDetails: vi.fn(), onSetTuitionType: vi.fn(), onSetGroupCapacity: vi.fn(),
   onSetPackageDurationMonths: vi.fn(), onSetStudentCount: vi.fn(), onSetTuitionCity: vi.fn(),
-  onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(),
+  onSetTuitionLocation: vi.fn(), onSetDays: vi.fn(), onSetTutoringTime: vi.fn(), onSetPreferredGender: vi.fn(), onSetSalaryAmount: vi.fn(),
   onSetInstituteName: vi.fn(), onSetHeardAboutUs: vi.fn(), onSetNotes: vi.fn(), onBack: vi.fn(),
   onAdvance: vi.fn(), onSubmit: vi.fn(), onEditStep: vi.fn(),
 };
@@ -112,6 +112,56 @@ describe("the Guardian request form's fields line up", () => {
     expect(screen.getByRole("spinbutton", { name: /Package duration/ })).not.toBeNull();
     expect(screen.getByRole("textbox", { name: /Monthly salary/ })).not.toBeNull();
     expect(screen.getByRole("textbox", { name: /Additional notes/ })).not.toBeNull();
+  });
+
+  describe("Tutoring Time", () => {
+    it("is a time box on step 2, reachable by its label and above Additional notes", () => {
+      render(<RequestStage {...props} step={2} />);
+
+      // A time input has no ARIA role, so the label is the way to it - which is
+      // also what a screen reader user hears.
+      const box = screen.getByLabelText(/Tutoring Time/) as HTMLInputElement;
+      expect(box.tagName).toBe("INPUT");
+      expect(box.type).toBe("time");
+      expect(box.closest(`.${CSS.escape("gap-x-6")}`)).not.toBeNull();
+
+      const notes = screen.getByRole("textbox", { name: /Additional notes/ });
+      expect(box.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("is optional without saying so: no asterisk on its label and no '(optional)' beside it", () => {
+      render(<RequestStage {...props} step={2} />);
+
+      const label = (screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).closest("label")!;
+      expect(label.textContent).not.toContain("*");
+      expect(label.textContent?.toLowerCase()).not.toContain("(optional)");
+
+      // Not vacuous: a required field in the same step does carry the asterisk.
+      const required = (screen.getByRole("spinbutton", { name: /Number of students/ }) as HTMLInputElement).closest("label")!;
+      expect(required.textContent).toContain("*");
+    });
+
+    it("is not asked on step 1", () => {
+      render(<RequestStage {...props} step={1} />);
+
+      expect(screen.queryByLabelText(/Tutoring Time/)).toBeNull();
+    });
+
+    it("shows the time held in the request and reports what the Guardian types", () => {
+      props.onSetTutoringTime.mockClear();
+      const { rerender } = render(<RequestStage {...props} step={2} />);
+      const empty = screen.getByLabelText(/Tutoring Time/) as HTMLInputElement;
+      expect(empty.value).toBe("");
+
+      fireEvent.change(empty, { target: { value: "16:30" } });
+      expect(props.onSetTutoringTime).toHaveBeenCalledTimes(1);
+      expect(props.onSetTutoringTime).toHaveBeenCalledWith("16:30");
+
+      // The box is controlled: it reads the value the page holds, as when a
+      // saved request or a restored draft fills it in.
+      rerender(<RequestStage {...props} step={2} requestInput={{ ...props.requestInput, tutoringTime: "16:30" }} />);
+      expect((screen.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("16:30");
+    });
   });
 
   it("routes every request-step field label through a rewordable site-content slot", () => {

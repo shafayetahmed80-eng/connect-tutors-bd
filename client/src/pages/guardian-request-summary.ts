@@ -1,6 +1,7 @@
 import { formatStudentGender, formatTuitionType, formatTutorPreference } from "@shared/job-card";
 import { formatInstituteName, formatRequestSource } from "@shared/request-source";
 import { formatSalaryAmount, parseSalaryAmount } from "@shared/salary-amount";
+import { formatTutoringTime } from "@shared/tutoring-time";
 import type { LearningNeed } from "@shared/learning-needs";
 
 /**
@@ -39,6 +40,8 @@ export type GuardianSummaryInput = {
   studentGender: string;
   addressDetails: string;
   daysPerWeek: string;
+  /** Optional on purpose: callers built before the field existed omit it. */
+  tutoringTime?: string;
   preferredGender: string;
   salaryAmount: string;
   instituteName: string;
@@ -113,6 +116,8 @@ export function buildGuardianRequestSummary(
         { label: "Where Did You Hear About Us", value: formatRequestSource(input.heardAboutUs), empty: !input.heardAboutUs },
         filled("Preferred Tutor gender", input.preferredGender ? formatTutorPreference(input.preferredGender) : ""),
         { label: "Salary", value: formatSalaryAmount(salary), empty: salary === null },
+        // Where the form puts it: just above the notes.
+        filled("Tutoring Time", formatTutoringTime(input.tutoringTime), true),
         filled("Additional notes", notes, true),
       ],
     },

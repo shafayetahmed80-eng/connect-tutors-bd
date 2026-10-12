@@ -13,6 +13,8 @@ export type SafeTutorRequestForPublication = {
   /** Student Gender is intentionally public only when the Guardian supplied it. */
   studentGender: "male" | "female" | null;
   daysPerWeek: number;
+  /** The Guardian's optional start-time wish, 24-hour `HH:mm`; a time of day is public the way Days / Week is. Required, so a caller cannot forget it and blank a stored one. */
+  tutoringTime: string | null;
   preferredTutorGender: "male" | "female" | "any";
   cityLocationId: string | null;
   locationId: string | null;
@@ -37,6 +39,7 @@ export type PublishedTutorJobProjection = {
   studentGender: "male" | "female" | null;
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
+  tutoringTime: string | null;
   budgetAmount: number | null;
   notes: string | null;
   country: "Bangladesh";
@@ -70,6 +73,7 @@ export function buildPublishedTutorJobProjection(input: SafeTutorRequestForPubli
     studentGender: input.studentGender,
     preferredTutorGender: input.preferredTutorGender,
     daysPerWeek: input.daysPerWeek,
+    tutoringTime: input.tutoringTime ?? null,
     budgetAmount: input.budgetAmount,
     notes: input.notes,
     country: "Bangladesh",
@@ -102,6 +106,7 @@ type PublishedTutorJobRow = {
   studentGender: "male" | "female" | "any" | null;
   preferredTutorGender: "male" | "female" | "any";
   daysPerWeek: number;
+  tutoringTime?: string | null;
   budgetAmount: number | null;
   notes: string | null;
   country: string;
@@ -142,6 +147,8 @@ export function toPublicTutorJob(row: PublishedTutorJobRow) {
     ...(row.studentGender === "male" || row.studentGender === "female" ? { studentGender: row.studentGender } : {}),
     preferredTutorGender: row.preferredTutorGender,
     daysPerWeek: row.daysPerWeek,
+    // 24-hour "HH:mm", or null when the Guardian gave no start time. Readers write it as "4:30 PM".
+    tutoringTime: row.tutoringTime ?? null,
     // One number, or null on the two requests that predate the change. The
     // Job Board writes it as "5,000 Taka" or "Not set".
     budgetAmount: row.budgetAmount,

@@ -13,28 +13,19 @@ export type TutorFilterOptionRow = {
   locationId: string | null;
   /** The area's own name. */
   locationLabel: string | null;
-  /** A JSON array of subject names, as stored. */
-  subjects: string | null;
 };
-
-function subjectNames(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean)
-      : [];
-  } catch {
-    return [];
-  }
-}
 
 const byLabel = (left: { label: string }, right: { label: string }) => left.label.localeCompare(right.label);
 
-export function buildTutorFilterOptions(rows: TutorFilterOptionRow[], cityLabelById: Map<string, string>): AdminTutorFilterOptions {
+/**
+ * `subjectNames` are the catalog names of the subjects Tutors have picked,
+ * primary or additional, read from their real selections. Each name is offered
+ * once, however many Tutors picked it.
+ */
+export function buildTutorFilterOptions(rows: TutorFilterOptionRow[], cityLabelById: Map<string, string>, subjectNames: string[]): AdminTutorFilterOptions {
   const cities = new Map<string, string>();
   const locationsByCity = new Map<string, Map<string, string>>();
-  const subjects = new Set<string>();
+  const subjects = new Set(subjectNames.map(name => name.trim()).filter(Boolean));
 
   for (const row of rows) {
     if (row.cityLocationId) {
@@ -45,7 +36,6 @@ export function buildTutorFilterOptions(rows: TutorFilterOptionRow[], cityLabelB
         locationsByCity.set(row.cityLocationId, areas);
       }
     }
-    for (const subject of subjectNames(row.subjects)) subjects.add(subject);
   }
 
   return {

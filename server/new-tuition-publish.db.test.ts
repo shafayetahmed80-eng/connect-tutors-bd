@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { desc, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   guardianProfiles,
@@ -12,7 +12,6 @@ import {
   tutorNotifications,
   tutorRequestPublicationEvents,
   tutorRequests,
-  tutorTeachingAreas,
   tutors,
   users,
 } from "../drizzle/schema";
@@ -46,16 +45,16 @@ const alertsForMyTutor = () => sent.calls.filter(call => call.endpoint === endpo
 
 beforeAll(async () => {
   const database = (await getDb())!;
-  const occupied = new Set([
-    ...(await database.select({ id: tutors.locationId }).from(tutors)).map(row => row.id),
-    ...(await database.select({ id: tutorTeachingAreas.locationId }).from(tutorTeachingAreas)).map(row => row.id),
+  // Its own city and two areas: borrowing areas from the shared table lets this test post Guardians into
+  // places another test made for itself, and that test then cannot take its own area away again.
+  city = `test-publish-city-${tag}`;
+  area = `test-publish-area-${tag}`;
+  otherArea = `test-publish-other-${tag}`;
+  await database.insert(locations).values({ id: city, label: "Publish City", type: "city", country: "Bangladesh" });
+  await database.insert(locations).values([
+    { id: area, label: "Publish Area", type: "area", country: "Bangladesh", parentId: city },
+    { id: otherArea, label: "Publish Other Area", type: "area", country: "Bangladesh", parentId: city },
   ]);
-  const free = (await database.select({ id: locations.id, parentId: locations.parentId }).from(locations).where(eq(locations.type, "area")).orderBy(desc(locations.id)))
-    .filter(row => row.parentId && !occupied.has(row.id));
-  if (free.length < 2) throw new Error("These tests need two areas with a city and no Tutor in them in the locations table");
-  area = free[0]!.id;
-  city = free[0]!.parentId!;
-  otherArea = free[1]!.id;
 
   const [admin] = await database.insert(users).values({ openId: `test:publish:${tag}:admin`, name: "Publish Admin", role: "admin", loginMethod: "password" });
   adminUserId = Number(admin.insertId);
@@ -92,6 +91,8 @@ afterAll(async () => {
     await database.delete(tutors).where(inArray(tutors.id, made.tutorIds));
   }
   if (made.userIds.length) await database.delete(users).where(inArray(users.id, made.userIds));
+  await database.delete(locations).where(inArray(locations.id, [area, otherArea]));
+  await database.delete(locations).where(inArray(locations.id, [city]));
 });
 
 async function postTuition(locationId: string | null, tuitionType: "home" | "online") {

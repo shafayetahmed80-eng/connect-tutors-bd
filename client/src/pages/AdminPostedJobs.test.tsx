@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     subjectsByClass: { "Class 8": ["History"] },
   },
   publish: vi.fn(),
+  update: vi.fn(),
   historyEnabled: undefined as boolean | undefined,
   history: [] as Array<Record<string, unknown>>,
   approveGuardian: vi.fn(),
@@ -36,6 +37,7 @@ const mocks = vi.hoisted(() => ({
         classCourse: "Class 8",
         subjects: JSON.stringify(["History", "Home Economics"]),
         daysPerWeek: 3,
+        tutoringTime: null as string | null,
         preferredGender: "female",
         studentGender: "female",
         studentCount: 1,
@@ -95,7 +97,16 @@ vi.mock("@/lib/trpc", () => ({
       },
       approveGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.approveGuardian, isPending: false }) },
       declineGuardianTuitionRequest: { useMutation: () => ({ mutate: mocks.declineGuardian, isPending: false }) },
+      // The Edit form is the Add Tuition form opened on a draft; it needs these to render.
+      createPostedTuition: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updatePostedTuition: { useMutation: () => ({ mutate: mocks.update, isPending: false }) },
+      nextJobId: { useQuery: () => ({ data: undefined, isLoading: false, refetch: vi.fn() }) },
     },
+    catalog: {
+      searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },
+      searchRegistrationLocations: { useQuery: () => ({ data: [{ id: "banasree", label: "Banasree" }] }) },
+    },
+    siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
     useUtils: () => ({
       admin: {
         listPostedJobs: { invalidate: vi.fn() }, listAppliedTutors: { invalidate: vi.fn() }, listAppointedJobs: { invalidate: vi.fn() },
@@ -111,7 +122,7 @@ import { AdminPostedJobsContent } from "./AdminPostedJobs";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, paymentStatus: "full_due", appointmentRequested: false, postedByAdmin: 0, guardianRequest: null });
+  Object.assign(mocks.data.items[0], { publicationState: "submitted", status: "new", tutorId: null, appointmentConfirmedAt: null, paymentStatus: "full_due", appointmentRequested: false, postedByAdmin: 0, guardianRequest: null, tutoringTime: null });
 });
 
 describe("Admin Posted jobs board", () => {
@@ -374,6 +385,77 @@ describe("Admin Posted jobs board", () => {
   it("keeps the applied count off a tuition that is not live yet", () => {
     render(<AdminPostedJobsContent />);
     expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
+  });
+});
+
+describe("the Tutoring Time on a posted job", () => {
+  it("shows the Guardian's time as 4:30 PM in the details dialog", async () => {
+    const user = userEvent.setup();
+    mocks.data.items[0].tutoringTime = "16:30";
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = within(screen.getByRole("dialog"));
+
+    const row = dialog.getByText("Tutoring Time").parentElement!;
+    expect(within(row).getByText("4:30 PM")).toBeTruthy();
+  });
+
+  it("leaves the row out of the dialog when the Guardian gave no time", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    const dialog = within(screen.getByRole("dialog"));
+
+    expect(dialog.queryByText("Tutoring Time")).toBeNull();
+    // The rest of the record is there, so it is the row that is absent and not the dialog.
+    expect(dialog.getByText("Days / Week")).toBeTruthy();
+    expect(dialog.getByText("Evening slots only")).toBeTruthy();
+  });
+
+  it("opens Edit with the time already in its box, and sends it back with the update", async () => {
+    const user = userEvent.setup();
+    mocks.data.items[0].tutoringTime = "16:30";
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Edit/ }));
+
+    const form = within(screen.getByRole("dialog", { name: /Edit Job ID 6812/ }));
+    expect((form.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("16:30");
+    await user.click(form.getAllByRole("button", { name: /^Update$/ })[0]);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ requestId: 13, tutoringTime: "16:30" }));
+  });
+
+  it("sends null when Edit clears the time the tuition had", async () => {
+    const user = userEvent.setup();
+    mocks.data.items[0].tutoringTime = "16:30";
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Edit/ }));
+
+    const form = within(screen.getByRole("dialog", { name: /Edit Job ID 6812/ }));
+    await user.clear(form.getByLabelText(/Tutoring Time/));
+    await user.click(form.getAllByRole("button", { name: /^Update$/ })[0]);
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
+  });
+
+  it("opens Edit with an empty box for a tuition with no time, and sends null", async () => {
+    const user = userEvent.setup();
+    render(<AdminPostedJobsContent />);
+
+    await user.click(screen.getByRole("button", { name: /Job ID 6812/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Edit/ }));
+
+    const form = within(screen.getByRole("dialog", { name: /Edit Job ID 6812/ }));
+    expect((form.getByLabelText(/Tutoring Time/) as HTMLInputElement).value).toBe("");
+    await user.click(form.getAllByRole("button", { name: /^Update$/ })[0]);
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    // An explicit null, not an absent key: the edit now says plainly that there is no time.
+    expect(mocks.update.mock.calls[0][0]).toHaveProperty("tutoringTime", null);
   });
 });
 

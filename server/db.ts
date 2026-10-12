@@ -133,7 +133,7 @@ import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
 import type { AdminJobFilters } from "./admin-job-filters";
 import { buildJobFilterOptions } from "./job-filter-options";
-import { attachLearningNeeds, learningNeedMatchCondition, readRequestLearningNeeds, replaceRequestLearningNeeds } from "./request-learning-needs";
+import { attachLearningNeeds, insertRequestLearningNeeds, learningNeedMatchCondition, readRequestLearningNeeds, replaceRequestLearningNeeds } from "./request-learning-needs";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { buildTutorFilterOptions } from "./tutor-filter-options";
 import type { AdminGuardianRequestQueueFilters } from "./admin-request-filters";
@@ -2542,7 +2542,7 @@ export async function createAdminPostedTuition(input: {
         postedByAdmin: 1,
       });
       const createdId = Number(created[0].insertId);
-      await replaceRequestLearningNeeds(tx, createdId, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
+      await insertRequestLearningNeeds(tx, createdId, input.learningNeeds ?? learningNeedsFromLegacy(input.request));
       return createdId;
     });
   } catch (error) {
@@ -2584,6 +2584,8 @@ export type AdminPostedTuitionRequest = {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
+  /** Left out, the stored time stays as it is; null clears it. A client that does not know the field must not erase one. */
+  tutoringTime?: string | null;
   preferredGender: "male" | "female" | "any";
   studentGender: "male" | "female" | null;
   addressDetails: string | null;
@@ -2629,6 +2631,7 @@ export async function updateAdminPostedTuition(input: {
         id: tutorRequests.id,
         guardianUserId: tutorRequests.guardianUserId,
         publicationState: tutorRequests.publicationState,
+        tutoringTime: tutorRequests.tutoringTime,
         openId: users.openId,
       })
       .from(tutorRequests)
@@ -2675,6 +2678,8 @@ export async function updateAdminPostedTuition(input: {
           studentCount: input.request.studentCount ?? null,
           studentGender: input.request.studentGender ?? null,
           daysPerWeek: input.request.daysPerWeek,
+          // Left out of the edit, the stored time was kept, so that is what the board shows.
+          tutoringTime: input.request.tutoringTime === undefined ? existing.tutoringTime : input.request.tutoringTime,
           preferredTutorGender: input.request.preferredGender,
           cityLocationId: input.request.tuitionCityLocationId ?? null,
           locationId: input.request.tuitionLocationId ?? null,
@@ -2704,7 +2709,7 @@ export async function createTutorRequest(request: InsertTutorRequest, learningNe
     const result = await tx.insert(tutorRequests).values(request);
     const id = Number(result[0].insertId);
     // The request's own category / classCourse / subjects are the summary of the list; the rows are the list.
-    await replaceRequestLearningNeeds(tx, id, learningNeeds ?? learningNeedsFromLegacy(request));
+    await insertRequestLearningNeeds(tx, id, learningNeeds ?? learningNeedsFromLegacy(request));
     return { id };
   });
 }
@@ -2721,6 +2726,7 @@ export async function listGuardianTutorRequests(userId: number) {
       classCourse: tutorRequests.classCourse,
       subjects: tutorRequests.subjects,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       preferredGender: tutorRequests.preferredGender,
       studentFirstName: tutorRequests.studentFirstName,
       studentGender: tutorRequests.studentGender,
@@ -3380,6 +3386,8 @@ export async function updateGuardianTutorRequest(input: {
   packageDurationMonths: number | null;
   studentCount: number | null;
   daysPerWeek: number;
+  /** Left out, the stored time stays as it is; null clears it. A client that does not know the field must not erase one. */
+  tutoringTime?: string | null;
   preferredGender: "male" | "female" | "any";
   studentFirstName: string | null;
   studentGender: "male" | "female" | null;
@@ -3422,6 +3430,7 @@ export async function updateGuardianTutorRequest(input: {
       packageDurationMonths: input.packageDurationMonths,
       studentCount: input.studentCount,
       daysPerWeek: input.daysPerWeek,
+      tutoringTime: input.tutoringTime,
       preferredGender: input.preferredGender,
       studentFirstName: input.studentFirstName,
       studentGender: input.studentGender,
@@ -3799,6 +3808,7 @@ export async function listPublishedTutorJobs(input: PublishedTutorJobListInput) 
       studentGender: tutorJobs.studentGender,
       preferredTutorGender: tutorJobs.preferredTutorGender,
       daysPerWeek: tutorJobs.daysPerWeek,
+      tutoringTime: tutorJobs.tutoringTime,
       budgetAmount: tutorJobs.budgetAmount,
       country: tutorJobs.country,
       cityLocationId: tutorJobs.cityLocationId,
@@ -4079,6 +4089,7 @@ async function synchronizePublishedTutorJob(
       studentCount: number | null;
       studentGender: "male" | "female" | null;
       daysPerWeek: number;
+      tutoringTime: string | null;
       preferredGender: "male" | "female" | "any";
       tuitionCityLocationId: string | null;
       tuitionLocationId: string | null;
@@ -4111,6 +4122,7 @@ async function synchronizePublishedTutorJob(
       studentCount: input.request.studentCount,
       studentGender: input.request.studentGender,
       daysPerWeek: input.request.daysPerWeek,
+      tutoringTime: input.request.tutoringTime ?? null,
       preferredTutorGender: input.request.preferredGender,
       cityLocationId: input.request.tuitionCityLocationId,
       locationId: input.request.tuitionLocationId,
@@ -4165,6 +4177,7 @@ export async function moderateTutorRequestPublication(input: {
         studentCount: tutorRequests.studentCount,
         studentGender: tutorRequests.studentGender,
         daysPerWeek: tutorRequests.daysPerWeek,
+        tutoringTime: tutorRequests.tutoringTime,
         preferredGender: tutorRequests.preferredGender,
         budgetAmount: tutorRequests.budgetAmount,
         instituteName: tutorRequests.instituteName,
@@ -4212,6 +4225,7 @@ export async function moderateTutorRequestPublication(input: {
         studentCount: request.studentCount,
         studentGender: request.studentGender,
         daysPerWeek: request.daysPerWeek,
+        tutoringTime: request.tutoringTime,
         preferredGender: request.preferredGender,
         tuitionCityLocationId: request.tuitionCityLocationId,
         tuitionLocationId: request.tuitionLocationId,
@@ -6019,6 +6033,15 @@ export function tutorJobStageCondition(stage: TutorApplicationStage): SQL {
   return sql`exists (select 1 from ${sql.raw(from)} where ${sql.raw(q(tutorJobInterests, tutorJobInterests.tutorId))} = ${outerId(tutors)} and ${sql.raw(rule[stage])})`;
 }
 
+/**
+ * Whether the Tutor picked a subject - primary or additional - whose catalog
+ * name satisfies `match`. The picks live in `tutor_subjects`; the
+ * `tutors.subjects` text column is older and nothing writes it any more.
+ */
+function tutorPickedSubject(match: SQL) {
+  return sql`${tutors.id} in (select ${tutorSubjects.tutorId} from ${tutorSubjects} inner join ${subjectsCatalog} on ${subjectsCatalog.id} = ${tutorSubjects.subjectId} where ${match})`;
+}
+
 function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   const conditions: SQL[] = [];
   if (filters.profileStatus !== "all") conditions.push(eq(tutors.profileStatus, filters.profileStatus));
@@ -6029,14 +6052,11 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
     conditions.push(sql`${tutors.id} in (select ${tutorTuitionModes.tutorId} from ${tutorTuitionModes} where ${tutorTuitionModes.mode} = ${filters.tuitionType})`);
   }
   if (filters.location) conditions.push(like(locations.label, `%${filters.location}%`));
-  if (filters.subject) conditions.push(like(tutors.subjects, `%${filters.subject}%`));
+  if (filters.subject) conditions.push(tutorPickedSubject(like(subjectsCatalog.name, `%${filters.subject}%`)));
   if (filters.cityId) conditions.push(eq(tutors.cityLocationId, filters.cityId));
   if (filters.locationIds?.length) conditions.push(inArray(tutors.locationId, filters.locationIds));
-  // `subjects` is a JSON array in one column, so each chosen subject is a separate LIKE and any one of them may match - as on the Job Board.
-  if (filters.subjects?.length) {
-    const anySubject = or(...filters.subjects.map(subject => like(tutors.subjects, `%"${subject}"%`)));
-    if (anySubject) conditions.push(anySubject);
-  }
+  // Any one of the chosen subjects may match, as on the Job Board - by the whole catalog name, not a piece of one.
+  if (filters.subjects?.length) conditions.push(tutorPickedSubject(inArray(subjectsCatalog.name, filters.subjects)));
   if (filters.gender) conditions.push(eq(tutors.gender, filters.gender));
   if (filters.experienceFrom !== undefined) conditions.push(gte(tutors.teachingExperienceYears, filters.experienceFrom));
   if (filters.experienceTo !== undefined) conditions.push(lte(tutors.teachingExperienceYears, filters.experienceTo));
@@ -6057,7 +6077,12 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   return conditions;
 }
 
-/** What both Admin Tutor reads share; joins `locations` and nothing else. */
+/**
+ * What both Admin Tutor reads share; joins `locations` and nothing else. What
+ * a Tutor teaches is not here - it is read from their selections by
+ * `loadTutorTeachingSelections`, not from the older `tutors.subjects` and
+ * `tutors.levels` text columns.
+ */
 const adminTutorRecordFields = {
   id: tutors.id,
   name: tutors.name,
@@ -6065,8 +6090,6 @@ const adminTutorRecordFields = {
   headline: tutors.headline,
   institution: tutors.institution,
   education: tutors.education,
-  subjects: tutors.subjects,
-  levels: tutors.levels,
   teachingExperienceYears: tutors.teachingExperienceYears,
   profileStatus: tutors.profileStatus,
   verified: tutors.verified,
@@ -6089,13 +6112,69 @@ const adminTutorDirectoryFields = {
   tutorNumber: tutorRegistrations.tutorNumber,
 };
 
+type TutorTeachingSelections = { subjects: string[]; levels: string[]; curricula: string[] };
+
 /**
- * Fills in the two directory columns no single join can produce: the institute
- * (a priority pick across a Tutor's education records) and the City (a second
- * hop into the same `locations` table the row already joins for its area).
+ * What each Tutor said they teach, by the names the catalogs give those options
+ * today: subjects (the ones they lead with first), class levels and curricula.
  *
- * Two page-sized lookups rather than more joins, and shared so the directory
- * and the applied-Tutor list cannot render the same Tutor differently.
+ * Read from the three selection tables the Tutor Profile form writes. A renamed
+ * option reads by its new name, and an option the Owner has since hidden stays
+ * on the Tutors who picked it - it is still what they chose to teach.
+ */
+async function loadTutorTeachingSelections(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  tutorIds: string[],
+): Promise<Map<string, TutorTeachingSelections>> {
+  const byTutor = new Map<string, TutorTeachingSelections>();
+  if (tutorIds.length === 0) return byTutor;
+  const [subjectRows, levelRows, curriculumRows] = await Promise.all([
+    database
+      .select({ tutorId: tutorSubjects.tutorId, name: subjectsCatalog.name, sortOrder: subjectsCatalog.sortOrder, selectionType: tutorSubjects.selectionType })
+      .from(tutorSubjects)
+      .innerJoin(subjectsCatalog, eq(subjectsCatalog.id, tutorSubjects.subjectId))
+      .where(inArray(tutorSubjects.tutorId, tutorIds)),
+    database
+      .select({ tutorId: tutorClassLevels.tutorId, name: classLevels.name, sortOrder: classLevels.sortOrder })
+      .from(tutorClassLevels)
+      .innerJoin(classLevels, eq(classLevels.id, tutorClassLevels.classLevelId))
+      .where(inArray(tutorClassLevels.tutorId, tutorIds)),
+    database
+      .select({ tutorId: tutorCurricula.tutorId, name: curricula.name, sortOrder: curricula.sortOrder })
+      .from(tutorCurricula)
+      .innerJoin(curricula, eq(curricula.id, tutorCurricula.curriculumId))
+      .where(inArray(tutorCurricula.tutorId, tutorIds)),
+  ]);
+  const byCatalogOrder = (left: { sortOrder: number; name: string }, right: { sortOrder: number; name: string }) =>
+    left.sortOrder - right.sortOrder || left.name.localeCompare(right.name);
+  const entryOf = (tutorId: string) => {
+    const entry = byTutor.get(tutorId) ?? { subjects: [], levels: [], curricula: [] };
+    byTutor.set(tutorId, entry);
+    return entry;
+  };
+  const addOnce = (list: string[], name: string) => {
+    if (!list.includes(name)) list.push(name);
+  };
+  // A subject picked as both primary and additional is still one subject.
+  const ranked = [...subjectRows].sort((left, right) =>
+    Number(left.selectionType !== "primary") - Number(right.selectionType !== "primary") || byCatalogOrder(left, right));
+  for (const row of ranked) addOnce(entryOf(row.tutorId).subjects, row.name);
+  for (const row of [...levelRows].sort(byCatalogOrder)) addOnce(entryOf(row.tutorId).levels, row.name);
+  for (const row of [...curriculumRows].sort(byCatalogOrder)) addOnce(entryOf(row.tutorId).curricula, row.name);
+  return byTutor;
+}
+
+const noTeachingSelections: TutorTeachingSelections = { subjects: [], levels: [], curricula: [] };
+
+/**
+ * Fills in the directory columns no single join can produce: the institute
+ * (a priority pick across a Tutor's education records), the City (a second
+ * hop into the same `locations` table the row already joins for its area), and
+ * what the Tutor teaches (their real subject, class level and curriculum
+ * selections).
+ *
+ * Page-sized lookups rather than more joins, and shared so the directory, the
+ * applied-Tutor list and Tutor Matching cannot read the same Tutor differently.
  */
 async function enrichAdminTutorDirectoryRows<
   Row extends { id: string; cityLocationId: string | null; institution: string | null; departmentName: string | null },
@@ -6105,7 +6184,7 @@ async function enrichAdminTutorDirectoryRows<
 ) {
   const tutorIds = rows.map(row => row.id);
   const cityIds = rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id));
-  const [educationRows, academicRows, cityRows, modeRows] = await Promise.all([
+  const [educationRows, academicRows, cityRows, modeRows, selectionsByTutor] = await Promise.all([
     tutorIds.length
       ? database
           .select({ tutorId: tutorEducationRecords.tutorId, qualificationLevel: tutorEducationRecords.qualificationLevel, instituteName: tutorEducationRecords.instituteName, majorGroup: tutorEducationRecords.majorGroup })
@@ -6126,6 +6205,7 @@ async function enrichAdminTutorDirectoryRows<
     tutorIds.length
       ? database.select({ tutorId: tutorTuitionModes.tutorId, mode: tutorTuitionModes.mode }).from(tutorTuitionModes).where(inArray(tutorTuitionModes.tutorId, tutorIds))
       : [],
+    loadTutorTeachingSelections(database, tutorIds),
   ]);
   const educationByTutor = new Map<string, Array<{ qualificationLevel: string | null; instituteName: string | null; majorGroup: string | null }>>();
   for (const record of educationRows) {
@@ -6150,6 +6230,7 @@ async function enrichAdminTutorDirectoryRows<
       // The department of the same level the institute came from, not whatever the University Section holds.
       departmentName: education.instituteName ? education.departmentName : row.departmentName,
       modes: modesByTutor.get(row.id) ?? [],
+      ...(selectionsByTutor.get(row.id) ?? noTeachingSelections),
     };
   });
 }
@@ -6167,15 +6248,19 @@ export async function getAdminTutorFilterOptions() {
       cityLocationId: tutors.cityLocationId,
       locationId: tutors.locationId,
       locationLabel: locations.label,
-      subjects: tutors.subjects,
     })
     .from(tutors)
     .leftJoin(locations, eq(tutors.locationId, locations.id));
+  // The subjects Tutors have picked, by catalog name - not the older `tutors.subjects` text, which nothing fills in.
+  const subjectRows = await database
+    .selectDistinct({ name: subjectsCatalog.name })
+    .from(tutorSubjects)
+    .innerJoin(subjectsCatalog, eq(subjectsCatalog.id, tutorSubjects.subjectId));
   const cityIds = Array.from(new Set(rows.map(row => row.cityLocationId).filter((id): id is string => Boolean(id))));
   const cityRows = cityIds.length
     ? await database.select({ id: locations.id, label: locations.label }).from(locations).where(inArray(locations.id, cityIds))
     : [];
-  return buildTutorFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)));
+  return buildTutorFilterOptions(rows, new Map(cityRows.map(row => [row.id, row.label] as const)), subjectRows.map(row => row.name));
 }
 
 export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFilters) {
@@ -6907,6 +6992,7 @@ async function getAppliedJobHeader(database: NonNullable<Awaited<ReturnType<type
       subjects: tutorRequests.subjects,
       preferredGender: tutorRequests.preferredGender,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       budgetAmount: tutorRequests.budgetAmount,
       // Already stored as "Area, City", which is how the header shows it.
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
@@ -7157,8 +7243,8 @@ export async function listMatchingCandidatesForRequest(filters: AdminMatchingCan
   const candidates: MatchingTutorOption[] = enriched.map(row => ({
     id: row.id,
     name: row.name,
-    subjects: parseJsonList(row.subjects),
-    levels: parseJsonList(row.levels),
+    subjects: row.subjects,
+    levels: row.levels,
     fee: row.monthlyFeeMin ?? row.fee ?? 0,
     gender: row.gender,
     modes: row.modes,
@@ -7217,7 +7303,10 @@ export async function getAdminTutorReview(tutorId: string) {
     .leftJoin(locations, eq(tutors.locationId, locations.id))
     .where(eq(tutors.id, tutorId))
     .limit(1);
-  return rows[0];
+  const [row] = rows;
+  if (!row) return undefined;
+  const selections = await loadTutorTeachingSelections(database, [row.id]);
+  return { ...row, ...(selections.get(row.id) ?? noTeachingSelections) };
 }
 
 export type AdminGuardianRequestFilters = {
@@ -7499,6 +7588,7 @@ const adminPostedJobFields = {
   classCourse: tutorRequests.classCourse,
   subjects: tutorRequests.subjects,
   daysPerWeek: tutorRequests.daysPerWeek,
+  tutoringTime: tutorRequests.tutoringTime,
   preferredGender: tutorRequests.preferredGender,
   studentGender: tutorRequests.studentGender,
   // A Confirmed tuition whose fee is Full Paid is read as Closed.
@@ -7780,6 +7870,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       subjects: tutorRequests.subjects,
       preferredGender: tutorRequests.preferredGender,
       daysPerWeek: tutorRequests.daysPerWeek,
+      tutoringTime: tutorRequests.tutoringTime,
       budgetAmount: tutorRequests.budgetAmount,
       tuitionLocationLabel: tutorRequests.tuitionLocationLabel,
       locationText: tutorRequests.locationText,
@@ -7877,6 +7968,7 @@ export async function listGuardianAppliedTutors(input: GuardianAppliedTutorsInpu
       subjects: request.subjects,
       preferredGender: request.preferredGender,
       daysPerWeek: request.daysPerWeek,
+      tutoringTime: request.tutoringTime,
       budgetAmount: request.budgetAmount,
       tuitionLocationLabel: request.tuitionLocationLabel,
       locationText: request.locationText,

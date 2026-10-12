@@ -1,9 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminNotificationBroadcasts, guardianProfiles, locations, tutorNotifications, tutorRequests, tutorReviews, tutors, users } from "../drizzle/schema";
+import { adminNotificationBroadcasts, guardianProfiles, locations, subjectsCatalog, tutorNotifications, tutorRequests, tutorReviews, tutorSubjects, tutors, users } from "../drizzle/schema";
 import type { AdminTutorDirectoryFilters } from "./db";
 import { getAdminTutorFilterOptions, getDb, listAdminTutorDirectoryPage, notifyTutorDirectory } from "./db";
+import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 
 // Four Tutors made here, found again by a random tag in their ids and names, so
 // whatever else the database holds does not change what is read. Every row is
@@ -45,6 +46,14 @@ async function makeTutor(name: keyof typeof ids, over: Partial<typeof tutors.$in
   });
 }
 
+/** A real subject from the Tutor catalog (`pnpm db:seed:tutor-profile-catalog`), picked the way the profile form stores a pick. */
+async function pick(tutor: keyof typeof ids, name: string, selectionType: "primary" | "additional") {
+  const db = await database();
+  const [subject] = await db.select({ id: subjectsCatalog.id }).from(subjectsCatalog).where(eq(subjectsCatalog.normalizedName, normalizeCatalogName(name))).limit(1);
+  if (!subject) throw new Error(`"${name}" is not in the subjects catalog - run pnpm db:seed:tutor-profile-catalog first.`);
+  await db.insert(tutorSubjects).values({ tutorId: ids[tutor], subjectId: subject.id, selectionType });
+}
+
 let guardianUserId = 0;
 async function rate(tutorId: string, rating: number, hidden = false) {
   const db = await database();
@@ -66,10 +75,18 @@ beforeAll(async () => {
   guardianUserId = await makeUser("guardian", "guardian");
   await db.insert(guardianProfiles).values({ userId: guardianUserId, guardianId: `G${tag}`.slice(0, 12), phone: `+88017${Math.floor(10000000 + Math.random() * 89999999)}`, gender: "female", cityLocationId: cityA, locationId: areaA });
 
-  await makeTutor("t1", { gender: "female", teachingExperienceYears: 5, subjects: JSON.stringify(["Mathematics", "Physics"]), verified: 1, createdAt: ago(10) });
-  await makeTutor("t2", { gender: "male", teachingExperienceYears: 1, subjects: JSON.stringify(["Chemistry"]), verified: 0, createdAt: ago(40) });
-  await makeTutor("t3", { gender: "female", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: null, subjects: JSON.stringify(["Physics"]), verified: 0, createdAt: ago(2) });
-  await makeTutor("t4", { gender: "male", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: 12, subjects: JSON.stringify(["Biology"]), verified: 1, createdAt: ago(100) });
+  await makeTutor("t1", { gender: "female", teachingExperienceYears: 5, verified: 1, createdAt: ago(10) });
+  await makeTutor("t2", { gender: "male", teachingExperienceYears: 1, verified: 0, createdAt: ago(40) });
+  await makeTutor("t3", { gender: "female", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: null, verified: 0, createdAt: ago(2) });
+  await makeTutor("t4", { gender: "male", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: 12, verified: 1, createdAt: ago(100) });
+
+  // What each Tutor teaches is the subjects they picked - the older `tutors.subjects` text is not read.
+  await pick("t1", "Mathematics", "primary");
+  await pick("t1", "Physics", "primary");
+  await pick("t2", "Chemistry", "primary");
+  await pick("t3", "Physics", "primary");
+  await pick("t3", "Mathematics", "additional");
+  await pick("t4", "Biology", "primary");
 
   // t1 averages 4.5, t2 is 3; t3 has no rating; t4's only review was hidden by an Admin, so it counts toward nothing.
   await rate(ids.t1, 5);
@@ -85,6 +102,7 @@ afterAll(async () => {
   await db.delete(tutorNotifications).where(inArray(tutorNotifications.tutorId, tutorIds));
   await db.delete(adminNotificationBroadcasts).where(like(adminNotificationBroadcasts.title, `%${tag}%`));
   await db.delete(tutorReviews).where(inArray(tutorReviews.tutorId, tutorIds));
+  await db.delete(tutorSubjects).where(inArray(tutorSubjects.tutorId, tutorIds));
   if (requestIds.length) await db.delete(tutorRequests).where(inArray(tutorRequests.id, requestIds));
   await db.delete(tutors).where(inArray(tutors.id, tutorIds));
   if (userIds.length) {
@@ -117,11 +135,29 @@ describe("the Tutor Profiles filters", () => {
     expect((await read({ locationIds: [areaA, areaB] })).names).toEqual(["t1", "t2", "t3", "t4"]);
   });
 
-  it("finds a subject inside the JSON list, and any one of several", async () => {
+  it("finds a subject the Tutor picked, primary or additional, and any one of several", async () => {
     expect((await read({ subjects: ["Physics"] })).names).toEqual(["t1", "t3"]);
     expect((await read({ subjects: ["Chemistry", "Biology"] })).names).toEqual(["t2", "t4"]);
+    // t3 picked Mathematics as an additional subject; it still counts.
+    expect((await read({ subjects: ["Mathematics"] })).names).toEqual(["t1", "t3"]);
     // A whole name, not a piece of one: "Math" is not "Mathematics".
     expect((await read({ subjects: ["Math"] })).names).toEqual([]);
+  });
+
+  it("finds a piece of a subject's name when it is typed rather than chosen", async () => {
+    expect((await read({ subject: "Chem" })).names).toEqual(["t2"]);
+    expect((await read({ subject: "ics" })).names).toEqual(["t1", "t3"]);
+  });
+
+  it("puts the subjects each Tutor picked on their row, the ones they lead with first", async () => {
+    const page = await listAdminTutorDirectoryPage({ ...all });
+    const byName = Object.fromEntries(page.items.filter(item => nameOf[item.id]).map(item => [nameOf[item.id], item.subjects]));
+    expect(byName).toEqual({
+      t1: ["Mathematics", "Physics"],
+      t2: ["Chemistry"],
+      t3: ["Physics", "Mathematics"],
+      t4: ["Biology"],
+    });
   });
 
   it("takes an experience range, and does not find a Tutor who has not said how long", async () => {

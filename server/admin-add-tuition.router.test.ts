@@ -134,6 +134,46 @@ describe("admin.createPostedTuition", () => {
     expect(dbMocks.createAdminPostedTuition).toHaveBeenCalledTimes(1);
   });
 
+  it("writes the Tutoring Time asked for into the tuition's row, null as null, and leaves it out of a new tuition that sent none", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 19, live: true });
+
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "16:30" });
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: null });
+    await createCaller().admin.createPostedTuition(homeTuition);
+
+    expect(dbMocks.createAdminPostedTuition.mock.calls[0][0].request).toMatchObject({ tutoringTime: "16:30" });
+    // The form sends null for an empty box. It is handed on as null, not turned into a blank or dropped.
+    expect(dbMocks.createAdminPostedTuition.mock.calls[1][0].request).toHaveProperty("tutoringTime", null);
+    // A caller that sends nothing gets undefined handed on: the writer stores no time for a new
+    // tuition (it starts blank), and the same builder serves an edit, where undefined means "keep".
+    const left = dbMocks.createAdminPostedTuition.mock.calls[2][0].request;
+    expect(left.tutoringTime).toBeUndefined();
+  });
+
+  it("holds the Tutoring Time to the Guardian journey's own rule - a zero-padded 24-hour time or nothing", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.createAdminPostedTuition.mockResolvedValue({ id: 20, live: true });
+
+    for (const tutoringTime of ["4:30 PM", "24:00", "16:60", ""]) {
+      await expect(createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime }), tutoringTime)
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
+
+    // A padded time is refused, not trimmed: the same on every route that takes a request.
+    for (const tutoringTime of [" 08:05 ", "08:05 ", " 08:05", "08:05\n"]) {
+      await expect(createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime }), JSON.stringify(tutoringTime))
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.createAdminPostedTuition).not.toHaveBeenCalled();
+
+    // The edge of the day on either side is a time.
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "00:00" });
+    await createCaller().admin.createPostedTuition({ ...homeTuition, tutoringTime: "23:59" });
+    expect(dbMocks.createAdminPostedTuition.mock.calls.map(([call]) => call.request.tutoringTime)).toEqual(["00:00", "23:59"]);
+  });
+
   it("asks for the Guardian's own City when the tuition is online and has none", async () => {
     const { tuitionCityLocationId: _city, tuitionLocationId: _location, ...rest } = homeTuition;
     await expect(createCaller().admin.createPostedTuition({ ...rest, tuitionType: "online" }))
@@ -246,6 +286,44 @@ describe("admin.updatePostedTuition", () => {
     // The name and number travel; whether they are honoured is the server's
     // call, not the caller's - a Guardian who registered owns both.
     expect(call.guardian).toEqual({ name: "Off-site Guardian", phone: "+8801999888777" });
+  });
+
+  it("puts the Tutoring Time into the row it rewrites, null to clear an old time, and undefined when the edit sends none so the stored time is kept", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+    dbMocks.updateAdminPostedTuition.mockResolvedValue({ updated: true, guardianEdited: false });
+
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime: "16:30" });
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime: null });
+    await createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14 });
+
+    expect(dbMocks.updateAdminPostedTuition.mock.calls[0][0].request).toMatchObject({ tutoringTime: "16:30" });
+    // The modal sends null for an emptied box, and null is what takes an old time off.
+    expect(dbMocks.updateAdminPostedTuition.mock.calls[1][0].request).toHaveProperty("tutoringTime", null);
+    // An edit that says nothing about the time must not erase one (a client that does not know the
+    // field sends nothing), so the writer is handed undefined, which leaves the stored time alone.
+    const kept = dbMocks.updateAdminPostedTuition.mock.calls[2][0].request;
+    expect(kept.tutoringTime).toBeUndefined();
+    expect(kept.tutoringTime).not.toBeNull();
+  });
+
+  it("refuses an edit whose Tutoring Time is not HH:mm", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+
+    await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime: "4:30 PM" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
+  });
+
+  it("refuses an edit whose Tutoring Time is padded instead of trimming it", async () => {
+    dbMocks.getTutorRequestLocation.mockResolvedValue({ cityLocationId: "dhaka-city", locationId: "dhaka-shyamoli", locationLabel: "Shyamoli, Dhaka" });
+
+    // A padded value used to be trimmed by some routes and to throw "Unmergable intersection" on the
+    // Admin ones. It is a plain refusal now, here as on create.
+    for (const tutoringTime of [" 08:05 ", "08:05 ", " 08:05", "08:05\n"]) {
+      await expect(createCaller().admin.updatePostedTuition({ ...homeTuition, requestId: 14, tutoringTime }), JSON.stringify(tutoringTime))
+        .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(dbMocks.updateAdminPostedTuition).not.toHaveBeenCalled();
   });
 
   it("holds an edit to the same rules a new tuition is held to", async () => {

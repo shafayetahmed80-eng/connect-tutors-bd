@@ -73,6 +73,8 @@ afterEach(() => {
   mocks.updateOptions = null;
   mocks.request.status = "new";
   mocks.request.publicationState = "submitted";
+  // The base request is a legacy one with no time; a test that gives it one takes it back.
+  delete mocks.request.tutoringTime;
   window.history.pushState({}, "", "/request-tutor");
 });
 
@@ -120,6 +122,106 @@ describe("GuardianRequestJourney Pending edit flow", () => {
     } finally {
       mocks.request = { ...withoutList, learningNeeds };
     }
+  });
+
+  describe("Tutoring Time", () => {
+    /** Opens the Pending request for editing and moves to step 2, where the time box lives. */
+    async function openStepTwo() {
+      window.history.pushState({}, "", "/request-tutor?edit=17");
+      render(<GuardianRequestJourney />);
+      await waitFor(() => expect(screen.getByRole("list", { name: "Tutor request details progress" })).toBeTruthy());
+      fireEvent.click(screen.getByRole("button", { name: "Continue to tuition preferences" }));
+      return screen.getByLabelText(/Tutoring Time/) as HTMLInputElement;
+    }
+
+    /** What Save changes handed to updatePending. */
+    function savedRequest() {
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(mocks.updatePending).toHaveBeenCalledTimes(1);
+      return mocks.updatePending.mock.calls[0][0] as Record<string, unknown>;
+    }
+
+    it("opens with the saved time in the box and sends it back unchanged as the same HH:mm text", async () => {
+      mocks.request.tutoringTime = "16:30";
+      const box = await openStepTwo();
+
+      expect(box.value).toBe("16:30");
+      // Nothing is touched, so the string goes back as it came. Turning it into null would clear a time the
+      // Guardian never touched.
+      const saved = savedRequest();
+      expect(saved.requestId).toBe(17);
+      expect(saved.tutoringTime).toBe("16:30");
+    });
+
+    it("saves a new time in place of the old one", async () => {
+      mocks.request.tutoringTime = "16:30";
+      const box = await openStepTwo();
+
+      fireEvent.change(box, { target: { value: "09:05" } });
+
+      expect(savedRequest().tutoringTime).toBe("09:05");
+    });
+
+    it("sends null once the Guardian clears the box, which is how the server drops the saved time", async () => {
+      mocks.request.tutoringTime = "16:30";
+      const box = await openStepTwo();
+
+      fireEvent.change(box, { target: { value: "" } });
+
+      // An explicit null, not a missing key: the server reads a missing time as "leave the stored one alone",
+      // so only null clears it. And not "", which would fail the server's pattern.
+      const saved = savedRequest();
+      expect("tutoringTime" in saved).toBe(true);
+      expect(saved.tutoringTime).toBeNull();
+      expect(saved.tutoringTime).not.toBe("");
+      expect(saved.tutoringTime).not.toBeUndefined();
+    });
+
+    it("opens a request that never had a time (null from the server) with an empty box and sends null", async () => {
+      mocks.request.tutoringTime = null;
+      const box = await openStepTwo();
+
+      expect(box.value).toBe("");
+      const saved = savedRequest();
+      expect("tutoringTime" in saved).toBe(true);
+      expect(saved.tutoringTime).toBeNull();
+    });
+
+    it("opens a legacy request with no time key at all with an empty box and sends null", async () => {
+      // The base request in this file is exactly that: it predates the field.
+      expect("tutoringTime" in mocks.request).toBe(false);
+      const box = await openStepTwo();
+
+      expect(box.value).toBe("");
+      // There is no stored time to keep, so the form says "no time" with null rather than leaving the key out.
+      const saved = savedRequest();
+      expect("tutoringTime" in saved).toBe(true);
+      expect(saved.tutoringTime).toBeNull();
+    });
+
+    it.each(["4pm", "4:30 PM", "24:00", "16:60", "16:30:00", ""])("opens a saved value that does not read as a time (%j) with an empty box and sends null", async value => {
+      // Nothing the form writes can be anything but HH:mm, but if a row did
+      // carry something else, the Guardian would otherwise be stuck on a value
+      // the server refuses and cannot see in a time box.
+      mocks.request.tutoringTime = value;
+      const box = await openStepTwo();
+
+      expect(box.value).toBe("");
+      const saved = savedRequest();
+      expect("tutoringTime" in saved).toBe(true);
+      expect(saved.tutoringTime).toBeNull();
+    });
+
+    it("sends the new time, not null, when the Guardian clears the box and then types another", async () => {
+      mocks.request.tutoringTime = "16:30";
+      const box = await openStepTwo();
+
+      fireEvent.change(box, { target: { value: "" } });
+      fireEvent.change(box, { target: { value: "07:15" } });
+
+      // The clear is not remembered: the last thing in the box is what goes to the server.
+      expect(savedRequest().tutoringTime).toBe("07:15");
+    });
   });
 
   it("does not render a stale non-Pending request as editable", async () => {
