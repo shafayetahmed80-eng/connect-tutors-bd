@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
  * phone; only the size of what is pressed changes.
  *
  * Neither is drawn as a button - no fill, no border. The number is the Job ID's
- * blue with a pale handset in front, the WhatsApp mark is green; the area each
- * can be pressed in is larger than what is drawn, so a thumb still finds it.
+ * blue, the WhatsApp mark is green; the area each can be pressed in is larger
+ * than what is drawn, so a thumb still finds it.
  *
  * A number that is not a Bangladesh mobile is written as it came, with no
  * links, rather than point at one that would not connect.
@@ -31,10 +31,10 @@ export function PhoneContact({ phone, size = "table", className }: {
       aria-label={`Call ${links.display}`}
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md font-heading font-bold tabular-nums text-[#1680c2] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2]",
-        card ? "min-h-10 text-[15px]" : "min-h-8 text-sm",
+        card ? "min-h-10 text-[13px]" : "min-h-8 text-sm",
       )}
     >
-      <Phone aria-hidden="true" size={card ? 15 : 13} className="shrink-0 text-[#8fb4d0]" />
+      <Phone aria-hidden="true" size={card ? 13 : 13} className="shrink-0 text-[#8fb4d0]" />
       {links.display}
     </a>
     <a
@@ -48,7 +48,7 @@ export function PhoneContact({ phone, size = "table", className }: {
         card ? "size-10" : "size-8",
       )}
     >
-      <WhatsAppIcon size={card ? 24 : 20} />
+      <WhatsAppIcon size={card ? 16 : 16} />
     </a>
   </span>;
 }

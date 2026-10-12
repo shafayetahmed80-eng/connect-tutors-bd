@@ -63,27 +63,25 @@ const notGiven = <span className="italic text-j-ink-faint">Not given</span>;
 /** The Guardian's name: plain text in the headings' typeface, with no fill or border to read as a button. */
 function GuardianName({ name, size }: { name: string | null | undefined; size: "table" | "card" }) {
   if (!name) return notGiven;
-  return <span className={cn("break-words font-heading font-bold text-j-ink", size === "card" ? "text-[15px]" : "inline-block max-w-[14rem] text-sm")}>{name}</span>;
+  return <span className={cn("break-words font-heading font-bold text-[#1680c2]", size === "card" ? "text-[13px]" : "inline-block max-w-[14rem] text-sm")}>{name}</span>;
 }
 
 /**
  * Where an appointed Tutor reaches the Guardian: name and number, the number
  * one press from a call and one from a WhatsApp chat. The labels are the Job
- * ID's blue and its pale icon, set in the headings' typeface. They come last on
- * a card and in a row, after everything about the tuition itself.
+ * ID's blue, set in the headings' typeface. They come last on a card and in a
+ * row, after everything about the tuition itself.
  */
 const guardianContactColumns: RecordColumn<ApplicationRow>[] = [
   {
-    key: "guardianName", label: "Guardian Name", wide: true,
-    labelIcon: <RecordIcon name="name" size={12} className="text-[#8fb4d0]" />,
-    labelClassName: "font-heading font-extrabold tracking-[.16em] text-[#1680c2]",
+    key: "guardianName", label: "Guardian Name", wide: true, cardInline: true,
+    labelClassName: "font-heading font-extrabold tracking-wide text-[#1680c2]",
     cell: application => <GuardianName name={application.guardianName} size="table" />,
     cardCell: application => <GuardianName name={application.guardianName} size="card" />,
   },
   {
-    key: "guardianNumber", label: "Guardian Number", wide: true, cellClassName: "whitespace-nowrap",
-    labelIcon: <RecordIcon name="phone" size={12} className="text-[#8fb4d0]" />,
-    labelClassName: "font-heading font-extrabold tracking-[.16em] text-[#1680c2]",
+    key: "guardianNumber", label: "Guardian Number", wide: true, cellClassName: "whitespace-nowrap", cardInline: true,
+    labelClassName: "font-heading font-extrabold tracking-wide text-[#1680c2]",
     cell: application => application.guardianPhone ? <PhoneContact phone={application.guardianPhone} /> : notGiven,
     cardCell: application => application.guardianPhone ? <PhoneContact phone={application.guardianPhone} size="card" /> : notGiven,
   },

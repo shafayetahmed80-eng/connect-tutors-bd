@@ -101,6 +101,23 @@ describe("RecordTable", () => {
     expect(within(screen.getAllByRole("listitem")[0]).getByText("Subjects").closest("dt")!.className).toContain("text-j-ink-muted");
   });
 
+  it("renders label and value side-by-side with a colon when cardInline is set on a card", () => {
+    const inlineColumns: RecordColumn<Row>[] = [
+      { key: "jobId", label: "Job ID", cell: row => row.jobId },
+      { key: "salary", label: "Salary", wide: true, cardInline: true, cell: row => row.salary },
+    ];
+    onAPhone();
+    render(<RecordTable caption="Tuitions" columns={inlineColumns} rows={rows} rowKey={row => row.id} empty="None." />);
+
+    const firstCard = screen.getAllByRole("listitem")[0];
+    const salaryPair = within(firstCard).getByText("Salary:").closest("div")!;
+    expect(salaryPair.className).toContain("flex");
+    expect(salaryPair.className).toContain("flex-nowrap");
+    expect(salaryPair.className).toContain("items-center");
+    expect(within(salaryPair).getByText("Salary:").closest("dt")?.textContent).toBe("Salary:");
+    expect(within(salaryPair).getByText("BDT 8,000")).toBeTruthy();
+  });
+
   it("says the same thing about an empty list in both shapes", () => {
     renderTable([]);
     expect(screen.getByText("No tuition yet.")).toBeTruthy();

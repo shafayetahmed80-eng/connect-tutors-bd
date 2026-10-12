@@ -26,6 +26,8 @@ export type RecordColumn<Row> = {
   place?: "head" | "body" | "action";
   /** A long value - subjects, an address - takes the card's full width. */
   wide?: boolean;
+  /** Places the label and its value side-by-side on a card, separated by a colon, instead of stacked. */
+  cardInline?: boolean;
   /** The heading is for screen readers only, as an icon-only column's is. */
   headingHidden?: boolean;
   /** A small icon in front of the label, in the heading and on a card alike. */
@@ -68,10 +70,11 @@ function cardContent<Row>(column: RecordColumn<Row>, row: Row, index: number) {
 }
 
 /** The label with its icon, when the column has one. */
-function columnLabel<Row>(column: RecordColumn<Row>) {
+function columnLabel<Row>(column: RecordColumn<Row>, isCard: boolean = false) {
+  const text = isCard && column.cardInline ? `${column.label}:` : column.label;
   return column.labelIcon
-    ? <span className="inline-flex items-center gap-1.5">{column.labelIcon}{column.label}</span>
-    : column.label;
+    ? <span className="inline-flex items-center gap-1.5">{column.labelIcon}<span>{text}</span></span>
+    : text;
 }
 
 function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance }: RecordTableProps<Row>) {
@@ -92,9 +95,11 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
       </div> : null}
 
       {body.length > 0 ? <dl className={`grid grid-cols-2 gap-x-3 gap-y-2.5 ${head.length > 0 ? "mt-3" : ""}`}>
-        {body.map(column => <div key={column.key} className={`min-w-0 ${column.wide ? "col-span-2" : ""}`}>
-          <dt className={cn("text-2xs font-bold uppercase tracking-wide text-j-ink-muted", column.labelClassName)}>{columnLabel(column)}</dt>
-          <dd className="mt-0.5 break-words text-sm">{cardContent(column, row, index)}</dd>
+        {body.map(column => <div key={column.key} className={cn("min-w-0", column.wide && "col-span-2", column.cardInline && "flex flex-nowrap items-center gap-x-1.5")}>
+          <dt className={cn("text-2xs font-bold uppercase tracking-wide text-j-ink-muted", column.cardInline && "shrink-0 text-[13px]", column.labelClassName)}>
+            {columnLabel(column, true)}
+          </dt>
+          <dd className={cn("break-words text-sm", column.cardInline ? "mt-0 text-[13px] min-w-0" : "mt-0.5")}>{cardContent(column, row, index)}</dd>
         </div>)}
       </dl> : null}
 

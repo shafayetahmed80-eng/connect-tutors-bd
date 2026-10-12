@@ -281,14 +281,18 @@ describe("the Tutor's Status tab", () => {
       await user.click(screen.getByRole("tab", { name: /Appointed Jobs/ }));
 
       const card = within(container.querySelector("li")!);
-      expect(card.getByText("Guardian Name").closest("dt")).not.toBeNull();
-      expect(card.getByText("Guardian Number").closest("dt")).not.toBeNull();
-      expect(card.getByText("Rahim Uddin")).toBeTruthy();
+      const nameDt = card.getByText("Guardian Name:").closest("dt")!;
+      const numberDt = card.getByText("Guardian Number:").closest("dt")!;
+      expect(nameDt.querySelector("svg")).toBeNull();
+      expect(numberDt.querySelector("svg")).toBeNull();
+      expect(card.getByText("Rahim Uddin").className).toContain("text-[#1680c2]");
       expect(card.getByRole("link", { name: "Call +880 1712 345678" }).className).toContain("min-h-10");
       expect(card.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" }).className).toContain("size-10");
-      // They come last among the card's labelled pairs, after the tuition's own facts and the stage date.
+      // They come last among the card's labelled pairs, side-by-side with a colon after the tuition's own facts and the stage date.
       const labels = Array.from(container.querySelectorAll("dt")).map(dt => dt.textContent);
-      expect(labels.slice(-3)).toEqual(["Appointed", "Guardian Name", "Guardian Number"]);
+      expect(labels.slice(-3)).toEqual(["Appointed", "Guardian Name:", "Guardian Number:"]);
+      expect(card.getByText("Guardian Name:").closest("div")?.className).toContain("flex");
+      expect(card.getByText("Guardian Number:").closest("div")?.className).toContain("flex");
     });
   });
 });
