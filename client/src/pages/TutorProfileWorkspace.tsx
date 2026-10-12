@@ -15,7 +15,7 @@ import {
   tutorSupportingDocumentTypes,
   type TutorSupportingDocumentType,
 } from "@shared/tutor-documents";
-import { Check, ChevronDown, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -382,8 +382,10 @@ function FormTextArea({ label, hint, error, required = false, showRequiredMarker
  * status and button on the right. Owns its own hidden file input so every
  * document can be picked independently.
  */
-function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uploaded, uploading, onSelectFile }: {
+function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uploaded, uploading, onSelectFile, viewUrl }: {
   inputId: string;
+  /** Where the uploaded image can be opened, once the server has given it. */
+  viewUrl?: string | null;
   label: string;
   uploadLabel: string;
   required?: boolean;
@@ -410,6 +412,7 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
     </p>
     <div className="flex items-center gap-2">
       {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-j-ok"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
+      {uploaded && viewUrl ? <a href={viewUrl} target="_blank" rel="noreferrer" aria-label={`View ${label}`} className="inline-flex h-control items-center gap-1.5 rounded-lg border border-tp-border px-3 text-sm font-semibold text-tp-value hover:bg-tp-accent-wash"><Eye size={15} aria-hidden="true" />View</a> : null}
       <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-tp-accent-soft text-tp-accent"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
     </div>
   </div>;
@@ -506,6 +509,8 @@ function TutorProfileWorkspaceBody({
   // them submission requires. Until it loads, the shipped defaults stand in -
   // they are what the code was written against, so the form is never blank.
   const resolvedFields = trpc.tutorProfileFieldConfig.resolved.useQuery();
+  // Where this Tutor's uploaded images open, for the View buttons on the Credential tab.
+  const documentLinks = trpc.tutor.myDocumentLinks.useQuery();
   const fieldConfig = useMemo(
     () => resolvedFields.data ? indexResolvedFields(resolvedFields.data) : defaultTutorProfileFieldConfig(),
     [resolvedFields.data],
@@ -1041,7 +1046,7 @@ function TutorProfileWorkspaceBody({
       const result = await response.json().catch(() => ({})) as { error?: string; universityIdDocumentStatus?: "uploaded" };
       if (!response.ok || result.universityIdDocumentStatus !== "uploaded") throw new Error(result.error || "Unable to upload the University ID image.");
       setForm(current => ({ ...current, universityIdDocumentStatus: "uploaded" }));
-      await utils.tutor.getMyProfile.invalidate();
+      await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.myDocumentLinks.invalidate()]);
       setFeedback({ type: "success", message: "University ID image uploaded for private verification." });
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to upload the University ID image." });
@@ -1068,7 +1073,7 @@ function TutorProfileWorkspaceBody({
       setForm(current => current.uploadedSupportingDocuments.includes(documentType)
         ? current
         : { ...current, uploadedSupportingDocuments: [...current.uploadedSupportingDocuments, documentType] });
-      await utils.tutor.getMyProfile.invalidate();
+      await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.myDocumentLinks.invalidate()]);
       setFeedback({ type: "success", message: `${label} uploaded for private verification.` });
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : `Unable to upload the ${label}.` });
@@ -1158,6 +1163,7 @@ function TutorProfileWorkspaceBody({
         uploadLabel="Upload Both Side"
         // It belongs to the University Section, so only a Tutor who filled that in is asked for it.
         required={isRequired(fieldId) && educationStatus(form, fieldConfig).university.complete}
+        viewUrl={documentLinks.data?.universityId}
         uploaded={form.universityIdDocumentStatus === "uploaded"}
         uploading={uploadingUniversityId}
         onSelectFile={file => void uploadUniversityIdDocument(file)}
@@ -1196,6 +1202,7 @@ function TutorProfileWorkspaceBody({
             label={fieldLabel(fieldId, tutorSupportingDocumentLabels[documentType])}
             uploadLabel="Upload"
             uploaded={form.uploadedSupportingDocuments.includes(documentType)}
+            viewUrl={documentLinks.data?.supporting[documentType]}
             uploading={uploadingDocumentType === documentType}
             onSelectFile={file => void uploadSupportingDocument(documentType, file)}
           />;

@@ -21,6 +21,7 @@ vi.mock("@/lib/trpc", () => {
       tutor: {
         saveProfileDraft: { useMutation: () => ({ mutateAsync: mocks.saveDraft, isPending: false }) },
         submitProfile: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+        myDocumentLinks: { useQuery: () => ({ data: undefined }) },
       },
       siteContent: { list: { useQuery: empty }, listBlocks: { useQuery: empty } },
       // The Owner-set caps the profile reads to bound its multi-selects.
