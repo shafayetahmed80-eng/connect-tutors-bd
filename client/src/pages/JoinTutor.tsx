@@ -335,7 +335,8 @@ export default function JoinTutor() {
           <h1 id="tutor-registration-title" className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="tutor-registration.heading" /></h1>
         </div>
 
-        <form noValidate onSubmit={submitRegistration} className="mx-auto mt-4 rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6">
+        <form noValidate onSubmit={submitRegistration} className="relative mx-auto mt-4 overflow-hidden rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_1px_2px_rgba(16,49,77,.05),0_20px_54px_-14px_rgba(16,49,77,.20)] ring-1 ring-[rgba(16,49,77,.035)] transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[2px] hover:shadow-[0_24px_64px_-16px_rgba(16,49,77,.25)] sm:p-6">
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,transparent,var(--j-accent),transparent)]" />
           <section aria-labelledby="tutor-registration-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
             {isDraftRestored ? (
               <DraftRestoredAlert

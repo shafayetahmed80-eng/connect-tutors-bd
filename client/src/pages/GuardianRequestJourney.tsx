@@ -796,7 +796,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   return <div className={presentation.rootClassName}>
     {presentation.showPublicChrome ? <SiteHeader /> : null}
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
-      <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
+      <section className={embedded ? "" : "relative overflow-hidden rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_1px_2px_rgba(16,49,77,.05),0_20px_54px_-14px_rgba(16,49,77,.20)] ring-1 ring-[rgba(16,49,77,.035)] transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[2px] hover:shadow-[0_24px_64px_-16px_rgba(16,49,77,.25)] sm:p-6"}>
+        {!embedded ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,transparent,var(--j-accent),transparent)]" /> : null}
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {isGuestDraftRestored && (stage === "phone" || stage === "register") ? (
           <DraftRestoredAlert

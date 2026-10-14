@@ -30,7 +30,10 @@ export function SignInShell({ children }: { children: ReactNode }) {
   return <SiteContentProvider page="info-pages"><div className="site-page min-h-screen bg-j-page text-j-ink">
     <SiteHeader />
     <main className="px-4 py-10 sm:px-6 lg:py-16">
-      <section className="mx-auto max-w-xl rounded-[1.65rem] border border-j-border bg-white p-6 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-10 lg:max-w-3xl lg:p-12">{children}</section>
+      <section className="relative mx-auto max-w-xl overflow-hidden rounded-[1.65rem] border border-j-border bg-white p-6 shadow-[0_1px_2px_rgba(16,49,77,.05),0_20px_54px_-14px_rgba(16,49,77,.20)] ring-1 ring-[rgba(16,49,77,.035)] transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[2px] hover:shadow-[0_24px_64px_-16px_rgba(16,49,77,.25)] sm:p-10 lg:max-w-3xl lg:p-12">
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,transparent,var(--j-accent),transparent)]" />
+        {children}
+      </section>
     </main>
     <SiteFooter />
   </div></SiteContentProvider>;
