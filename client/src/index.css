@@ -768,6 +768,8 @@
   .confetti-particle,
   .chip-item,
   .chip-item[data-removing="true"],
+  .status-dot-ping,
+  .status-dot-breathe,
   .sb-root .sb-indicator,
   .sb-root .sb-sub,
   .sb-root .sb-sub li,
@@ -909,6 +911,33 @@
   pointer-events: none;
 }
 
+/* Status Pill Live Indicator Dot Animations */
+@keyframes status-dot-ping {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.85;
+  }
+  75%, 100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
 
+@keyframes status-dot-breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.88);
+  }
+}
 
+.status-dot-ping {
+  animation: status-dot-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
 
+.status-dot-breathe {
+  animation: status-dot-breathe 2.4s ease-in-out infinite;
+}
