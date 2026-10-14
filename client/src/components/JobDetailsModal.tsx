@@ -74,10 +74,11 @@ export default function JobDetailsModal({
   showMapLink = true,
   extraRows,
   footerStart,
+  customFooter,
 }: {
   job: JobDetailsData;
   onClose: () => void;
-  action: React.ReactNode;
+  action?: React.ReactNode;
   /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */
   showMapLink?: boolean;
   /**
@@ -88,6 +89,8 @@ export default function JobDetailsModal({
   extraRows?: React.ReactNode;
   /** Leads the footer on the left, opposite the actions - the Admin board's post type. */
   footerStart?: React.ReactNode;
+  /** Full custom footer layout (e.g. for responsive 2-row mobile footer in Job Board). */
+  customFooter?: React.ReactNode;
 }) {
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
 
@@ -147,12 +150,14 @@ export default function JobDetailsModal({
         </div>
       </ModalBody>
       <ModalFooter>
-        {footerStart
-          ? <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center">{footerStart}</div>
-              <div className="flex flex-wrap items-center justify-end gap-2">{action}</div>
-            </div>
-          : <div className="flex flex-1 flex-wrap items-center justify-end gap-2">{action}</div>}
+        {customFooter ?? (
+          footerStart
+            ? <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center">{footerStart}</div>
+                <div className="flex flex-wrap items-center justify-end gap-2">{action}</div>
+              </div>
+            : <div className="flex flex-1 flex-wrap items-center justify-end gap-2">{action}</div>
+        )}
       </ModalFooter>
     </Modal>
   );

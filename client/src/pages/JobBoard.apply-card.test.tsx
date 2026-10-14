@@ -240,3 +240,37 @@ describe("the Tutoring Time in the details dialog a Tutor opens", () => {
     expect(detailsOf("6802").queryByText("Tutoring Time")).toBeNull();
   });
 });
+
+describe("the applied job details modal mobile footer", () => {
+  it("renders Row 1 with applied status badge and share button, and Row 2 with full-width action buttons", () => {
+    mocks.interests = [{
+      interestId: 99,
+      status: "interested",
+      createdAt: new Date("2026-11-02T10:00:00.000Z"),
+      publicJobId: "6801",
+    }];
+
+    render(<JobBoardContent embedded />);
+
+    // Open details modal for the applied job
+    fireEvent.click(screen.getByRole("button", { name: new RegExp("Job ID 6801") }));
+    const dialog = within(screen.getByRole("dialog"));
+
+    // Applied badge is visible
+    expect(dialog.getByText(/Applied/)).toBeTruthy();
+
+    // Share button is visible inside dialog
+    expect(dialog.getByRole("button", { name: "Share this tuition" })).toBeTruthy();
+
+    // Close and Withdraw buttons are present with full-width responsive classes
+    const footerEl = document.querySelector("[data-modal-footer]")!;
+    const closeBtn = within(footerEl as HTMLElement).getByRole("button", { name: "Close" });
+    const withdrawBtn = within(footerEl as HTMLElement).getByRole("button", { name: "Withdraw application" });
+
+    expect(closeBtn).toBeTruthy();
+    expect(withdrawBtn).toBeTruthy();
+    expect(closeBtn.className).toContain("max-md:flex-1");
+    expect(withdrawBtn.className).toContain("max-md:flex-1");
+  });
+});
+
