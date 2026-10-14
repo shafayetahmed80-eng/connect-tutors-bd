@@ -985,7 +985,7 @@ describe("the Tutor Profile phone boxes", () => {
     await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
     const phone = within(screen.getByRole("dialog")).getByLabelText(tutorProfileCopy.fields.phone) as HTMLInputElement;
 
-    expect(phone.maxLength).toBe(10);
+    expect(phone.maxLength).toBe(14);
     expect(phone.readOnly).toBe(false);
   });
 
