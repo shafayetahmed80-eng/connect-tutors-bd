@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import React, { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -159,3 +159,71 @@ describe("ChipMultiSelect colours", () => {
     expect(chip.className).not.toContain("tp-");
   });
 });
+
+describe("ChipMultiSelect motion effects", () => {
+  it("renders chips with chip-item animation class and dismiss micro-interactions", () => {
+    render(<Harness initial={["a"]} />);
+    const removeBtn = screen.getByRole("button", { name: "Remove Apple" });
+    const chip = removeBtn.parentElement!;
+
+    expect(chip.className).toContain("chip-item");
+    expect(removeBtn.className).toContain("hover:rotate-90");
+    expect(removeBtn.className).toContain("active:scale-75");
+  });
+
+  it("applies data-removing during exit transition when animations are enabled", () => {
+    vi.useFakeTimers();
+    (window as unknown as { __ENABLE_CHIP_ANIMATION__?: boolean }).__ENABLE_CHIP_ANIMATION__ = true;
+    try {
+      render(<Harness initial={["a", "b"]} />);
+      const removeBanana = screen.getByRole("button", { name: "Remove Banana" });
+      const bananaChip = removeBanana.parentElement!;
+
+      expect(bananaChip.getAttribute("data-removing")).toBeNull();
+
+      fireEvent.click(removeBanana);
+
+      // During the transition, data-removing is true and button is disabled
+      expect(bananaChip.getAttribute("data-removing")).toBe("true");
+      expect((removeBanana as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByRole("button", { name: "Remove Banana" })).toBeTruthy();
+
+      // After 150ms animation completion, it unmounts from the list
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.queryByRole("button", { name: "Remove Banana" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Remove Apple" })).toBeTruthy();
+    } finally {
+      delete (window as unknown as { __ENABLE_CHIP_ANIMATION__?: boolean }).__ENABLE_CHIP_ANIMATION__;
+      vi.useRealTimers();
+    }
+  });
+
+  it("bypasses transition delay when prefers-reduced-motion is active", () => {
+    (window as unknown as { __ENABLE_CHIP_ANIMATION__?: boolean }).__ENABLE_CHIP_ANIMATION__ = true;
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion: reduce"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      render(<Harness initial={["a"]} />);
+      fireEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      // Immediately removed without delay for accessibility
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      delete (window as unknown as { __ENABLE_CHIP_ANIMATION__?: boolean }).__ENABLE_CHIP_ANIMATION__;
+    }
+  });
+});
+

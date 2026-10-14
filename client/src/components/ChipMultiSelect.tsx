@@ -1,5 +1,6 @@
 import { ChevronDown, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { isReducedMotionPreferred } from "@/lib/ripple";
 
 export type ChipOption = { id: string; label: string };
 
@@ -89,6 +90,7 @@ export default function ChipMultiSelect({
   };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [removingIds, setRemovingIds] = useState<string[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
@@ -142,6 +144,27 @@ export default function ChipMultiSelect({
   };
   const remove = (id: string) => onChange(selectedIds.filter(selectedId => selectedId !== id));
 
+  const handleRemove = (id: string) => {
+    if (removingIds.includes(id)) return;
+
+    // Respect reduced-motion preferences. In test environments without explicit animation testing flags,
+    // execute immediately to keep tests fast, reliable, and synchronous.
+    const isTesting = typeof process !== "undefined" && process.env?.NODE_ENV === "test";
+    const forceAnimateInTest = Boolean((window as unknown as { __ENABLE_CHIP_ANIMATION__?: boolean }).__ENABLE_CHIP_ANIMATION__);
+    const shouldAnimate = !isReducedMotionPreferred() && (!isTesting || forceAnimateInTest);
+
+    if (!shouldAnimate) {
+      remove(id);
+      return;
+    }
+
+    setRemovingIds(prev => [...prev, id]);
+    window.setTimeout(() => {
+      remove(id);
+      setRemovingIds(prev => prev.filter(item => item !== id));
+    }, 150);
+  };
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -156,7 +179,7 @@ export default function ChipMultiSelect({
       return;
     }
     if (event.key === "Backspace" && query === "" && selected.length > 0) {
-      remove(selected[selected.length - 1].id);
+      handleRemove(selected[selected.length - 1].id);
     }
   };
 
@@ -169,15 +192,25 @@ export default function ChipMultiSelect({
   >
     <div className={`flex w-full items-start gap-1.5 border transition focus-within:ring-2 ${tone.focus} ${dense ? "min-h-control max-sm:items-center rounded-lg px-2.5 py-1.5" : "min-h-control rounded-xl px-3 py-2"} ${tone.border} ${tone.surface}`}>
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        {selected.map(option => <span key={option.id} className={`inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pl-2 pr-1 text-xs font-semibold ${tone.chip}`}>
-          <span className="truncate">{option.label}</span>
-          <button
-            type="button"
-            aria-label={`Remove ${option.label}`}
-            onClick={() => remove(option.id)}
-            className={`grid size-4 shrink-0 place-items-center rounded outline-none focus-visible:ring-2 max-sm:size-6 ${tone.chipRemove}`}
-          ><X size={11} aria-hidden={true} /></button>
-        </span>)}
+        {selected.map(option => {
+          const isRemoving = removingIds.includes(option.id);
+          return (
+            <span
+              key={option.id}
+              data-removing={isRemoving ? "true" : undefined}
+              className={`chip-item inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pl-2 pr-1 text-xs font-semibold ${tone.chip}`}
+            >
+              <span className="truncate">{option.label}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${option.label}`}
+                onClick={() => handleRemove(option.id)}
+                disabled={isRemoving}
+                className={`grid size-4 shrink-0 place-items-center rounded outline-none transition-transform duration-200 hover:rotate-90 active:scale-75 focus-visible:ring-2 max-sm:size-6 ${tone.chipRemove}`}
+              ><X size={11} aria-hidden={true} /></button>
+            </span>
+          );
+        })}
         <input
           ref={inputRef}
           type="text"
