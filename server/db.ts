@@ -7126,7 +7126,10 @@ export async function sendPushToTutor(tutorId: string, payload: { title: string;
   await sendPushToUser(tutorRow?.userId ?? null, payload);
 }
 
-export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & { requestId: number };
+export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & {
+  requestId: number;
+  appliedTimeframe?: "all" | "1h" | "7h" | "10h" | "24h" | "3d" | "7d" | null;
+};
 
 /**
  * Every Tutor who applied to one tuition, as the Admin's Tutor Profiles rows.
@@ -7187,11 +7190,28 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const job = await getAppliedJobHeader(database, filters.requestId);
   if (!job) return undefined;
 
+  const now = new Date();
+  const h1Ago = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+  const h7Ago = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+  const h10Ago = new Date(now.getTime() - 10 * 60 * 60 * 1000);
+  const h24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const d3Ago = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const d7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  let timeframeCutoff: Date | null = null;
+  if (filters.appliedTimeframe === "1h") timeframeCutoff = h1Ago;
+  else if (filters.appliedTimeframe === "7h") timeframeCutoff = h7Ago;
+  else if (filters.appliedTimeframe === "10h") timeframeCutoff = h10Ago;
+  else if (filters.appliedTimeframe === "24h") timeframeCutoff = h24Ago;
+  else if (filters.appliedTimeframe === "3d") timeframeCutoff = d3Ago;
+  else if (filters.appliedTimeframe === "7d") timeframeCutoff = d7Ago;
+
   const conditions = [
     eq(tutorJobs.tutorRequestId, filters.requestId),
     // A withdrawn interest is not an application any more - the same rule the
     // count on the Posted jobs card follows, so the two agree.
     ne(tutorJobInterests.status, "withdrawn"),
+    ...(timeframeCutoff ? [gte(tutorJobInterests.createdAt, timeframeCutoff)] : []),
     ...getAdminTutorDirectoryConditions(filters),
   ];
   const where = and(...conditions);
@@ -7269,12 +7289,38 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   // "Applied: 26" is a fact about the tuition, and a filter must not change it.
   const appliedTotal = (await countAppliedTutorsByRequest(database, [filters.requestId])).get(filters.requestId) ?? 0;
 
+  // Calculate applicant counts across distinct timeframes
+  const [timeCountRows] = await database
+    .select({
+      total: count(),
+      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as int)`,
+      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as int)`,
+      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as int)`,
+      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as int)`,
+      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as int)`,
+      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as int)`,
+    })
+    .from(tutorJobInterests)
+    .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
+    .where(and(eq(tutorJobs.tutorRequestId, filters.requestId), ne(tutorJobInterests.status, "withdrawn")));
+
+  const timeCounts = {
+    all: Number(timeCountRows?.total ?? appliedTotal),
+    h1: Number(timeCountRows?.h1 ?? 0),
+    h7: Number(timeCountRows?.h7 ?? 0),
+    h10: Number(timeCountRows?.h10 ?? 0),
+    h24: Number(timeCountRows?.h24 ?? 0),
+    d3: Number(timeCountRows?.d3 ?? 0),
+    d7: Number(timeCountRows?.d7 ?? 0),
+  };
+
   // The Guardian's request waiting on this tuition, with their reason, for the Admin to approve or decline.
   const guardianRequest = (await getWaitingGuardianTuitionRequests([{ ...job, tutorId: job.appointedTutorId }])).get(job.id) ?? null;
   return {
     job,
     guardianRequest,
     appliedTotal,
+    timeCounts,
     items: await enrichAdminTutorDirectoryRows(database, rows),
     total,
     page: filters.page,

@@ -19,7 +19,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { getTutorApplicationStage } from "@shared/tutor-application-stages";
 import { applicantActions, canCancelTuition } from "@shared/admin-applicant-actions";
 import { trpc } from "@/lib/trpc";
-import { ChevronRight, CircleX, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, CircleX, Clock, Search, SlidersHorizontal } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import BackLink from "@/components/BackLink";
 import RecentSearches from "@/components/RecentSearches";
@@ -28,6 +28,27 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Link, useRoute } from "wouter";
 import { JobIdTag } from "@/components/JobIdTag";
+
+export type AppliedTutorTimeframe = "all" | "1h" | "7h" | "10h" | "24h" | "3d" | "7d";
+export type AppliedTutorFilters = TutorFilters & { appliedTimeframe: AppliedTutorTimeframe };
+export const defaultAppliedTutorFilters: AppliedTutorFilters = {
+  ...defaultTutorFilters,
+  appliedTimeframe: "all",
+};
+
+export const timeframeOptions: Array<{
+  key: AppliedTutorTimeframe;
+  label: string;
+  countKey: "all" | "h1" | "h7" | "h10" | "h24" | "d3" | "d7";
+}> = [
+  { key: "all", label: "All Applicants", countKey: "all" },
+  { key: "1h", label: "Last 1h", countKey: "h1" },
+  { key: "7h", label: "Last 7h", countKey: "h7" },
+  { key: "10h", label: "Last 10h", countKey: "h10" },
+  { key: "24h", label: "Last 24h", countKey: "h24" },
+  { key: "3d", label: "Last 3 days", countKey: "d3" },
+  { key: "7d", label: "Last 7 days", countKey: "d7" },
+];
 
 /**
  * Everyone who applied to one tuition.
@@ -40,11 +61,11 @@ import { JobIdTag } from "@/components/JobIdTag";
  * head while they scroll.
  */
 export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) {
-  const [filters, setFilters] = useState<TutorFilters>(defaultTutorFilters);
+  const [filters, setFilters] = useState<AppliedTutorFilters>(defaultAppliedTutorFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilterCount = countActiveFilters(filters, defaultTutorFilters, { ignore: ["page", "pageSize"] });
+  const activeFilterCount = countActiveFilters(filters, defaultAppliedTutorFilters, { ignore: ["page", "pageSize", "appliedTimeframe"] });
   const applied = trpc.admin.listAppliedTutors.useQuery({ ...filters, requestId }, { retry: false });
-  const updateFilter = (change: Partial<TutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
+  const updateFilter = (change: Partial<AppliedTutorFilters>) => setFilters(current => ({ ...current, ...change, page: change.page ?? 1 }));
   const job = applied.data?.job;
   const tuitionStage = job ? getGuardianRequestLifecycle({ ...job, tutorId: job.appointedTutorId }).key : null;
 
@@ -168,8 +189,46 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       </button>
     </section>
 
+    {/* Quick Timeframe Filter */}
+    <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-sm" aria-label="Filter applicants by time">
+      <div className="flex items-center gap-1.5 px-2 text-xs font-semibold text-j-ink-muted">
+        <Clock className="h-3.5 w-3.5 text-j-ink-soft" />
+        <span>Applied Within:</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {timeframeOptions.map(({ key, label, countKey }) => {
+          const count = applied.data?.timeCounts ? applied.data.timeCounts[countKey] : undefined;
+          const active = filters.appliedTimeframe === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => updateFilter({ appliedTimeframe: key })}
+              aria-pressed={active}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+                active
+                  ? "bg-[#1267c8] text-white shadow-xs"
+                  : "border border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken hover:text-j-ink"
+              }`}
+            >
+              <span>{label}</span>
+              {count !== undefined ? (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-3xs font-bold tabular-nums ${
+                    active ? "bg-white/20 text-white" : "bg-j-surface-muted text-j-ink-muted"
+                  }`}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+
     {filtersOpen ? <section className="rounded-2xl border border-j-border bg-white p-4 shadow-sm">
-      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(defaultTutorFilters)} />
+      <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(current => ({ ...defaultAppliedTutorFilters, appliedTimeframe: current.appliedTimeframe }))} />
     </section> : null}
 
     {applied.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading applied Tutors…</div> : null}
@@ -179,6 +238,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       ? <AdminTutorRows
           tutors={(applied.data?.items ?? []).map(row => ({
             ...row,
+            appliedAt: row.appliedAt,
             applicationStage: getTutorApplicationStage({
               status: row.applicationStatus,
               appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,

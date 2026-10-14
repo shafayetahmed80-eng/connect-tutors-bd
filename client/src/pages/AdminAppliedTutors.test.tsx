@@ -69,6 +69,7 @@ const mocks = vi.hoisted(() => ({
       cancellationReason: null,
     },
     appliedTotal: 26,
+    timeCounts: { all: 26, h1: 2, h7: 5, h10: 8, h24: 12, d3: 18, d7: 22 },
     guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
     items: [] as ReturnType<typeof tutor>[],
     total: 2,
@@ -180,6 +181,23 @@ describe("Admin Applied Tutors page", () => {
     // The arrow leads to the same profile page as the directory's own row.
     expect(within(rows[0]).getByRole("link", { name: /Open the full profile of Tania Sultana/i }).getAttribute("href"))
       .toBe("/admin/tutor-profiles/tutor-175");
+  });
+
+  it("renders timeframe filter buttons with applicant counts and updates appliedTimeframe on click", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTutorsContent requestId={13} />);
+
+    expect(screen.getByText("Applied Within:")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /All Applicants.*26/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 1h.*2/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 7h.*5/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 10h.*8/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 24h.*12/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 3 days.*18/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 7 days.*22/i })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Last 7h.*5/i }));
+    expect(mocks.lastInput).toMatchObject({ requestId: 13, appliedTimeframe: "7h" });
   });
 
   it("gives a phone one card per applicant, with the same columns and the same moves", () => {
