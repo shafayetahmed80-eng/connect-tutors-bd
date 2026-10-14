@@ -166,6 +166,8 @@ export type WorkspaceHeaderIdentity = {
    * panel's Notifications page. A panel with no inbox - Admin - leaves it out.
    */
   notifications?: { unreadCount: number | undefined; path: string };
+  /** Custom notification dropdown content (e.g., Admin web push controls). */
+  customNotificationsContent?: React.ReactNode;
 };
 
 export function getDashboardAvatarInitials(name: string, fallback = "?") {
@@ -868,20 +870,26 @@ function WorkspaceHeader({
               {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 rounded-xl p-3">
-            <p className="text-sm font-semibold text-j-ink">Notifications</p>
-            {identity.notifications ? <>
-              <p className="mt-1 text-sm leading-6 text-[#587489]">
-                {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
-              </p>
-              {onOpenNotifications ? <button
-                type="button"
-                onClick={() => { setNotificationsOpen(false); onOpenNotifications(); }}
-                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-j-accent px-3 text-sm font-bold text-white transition hover:bg-j-accent-hover"
-              >
-                View all notifications
-              </button> : null}
-            </> : <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>}
+          <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-2xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>
+            {identity.customNotificationsContent ? (
+              identity.customNotificationsContent
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-j-ink">Notifications</p>
+                {identity.notifications ? <>
+                  <p className="mt-1 text-sm leading-6 text-[#587489]">
+                    {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
+                  </p>
+                  {onOpenNotifications ? <button
+                    type="button"
+                    onClick={() => { setNotificationsOpen(false); onOpenNotifications(); }}
+                    className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-j-accent px-3 text-sm font-bold text-white transition hover:bg-j-accent-hover"
+                  >
+                    View all notifications
+                  </button> : null}
+                </> : <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>}
+              </>
+            )}
           </PopoverContent>
         </Popover>
         <DropdownMenu>

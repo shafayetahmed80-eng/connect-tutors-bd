@@ -1345,7 +1345,9 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const tutorId = await getApprovedTutorProfileId(ctx.user.id);
         try {
-          return await db.submitTutorJobInterest({ tutorId, tutorJobId: input.tutorJobId });
+          const outcome = await db.submitTutorJobInterest({ tutorId, tutorJobId: input.tutorJobId });
+          void db.notifyTutorAppliedToAdmins({ tutorId, tutorJobId: input.tutorJobId }).catch(() => {});
+          return outcome;
         } catch (error) {
           return rethrowTutorInterestError(error);
         }
@@ -1380,7 +1382,9 @@ export const appRouter = router({
     }),
     submitProfile: activeTutorProcedure.mutation(async ({ ctx }) => {
       try {
-        return await db.submitTutorProfile(ctx.user.id);
+        const result = await db.submitTutorProfile(ctx.user.id);
+        void db.notifyTutorRegistrationToAdmins({ userId: ctx.user.id }).catch(() => {});
+        return result;
       } catch (error) {
         return rethrowProfileValidationError(error, { procedure: "submitProfile", userId: ctx.user.id });
       }
@@ -2452,12 +2456,30 @@ export const appRouter = router({
       .mutation(({ input }) => db.deleteChatQuickReply(input)),
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
     getChatPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
+    getPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
     subscribeChatPush: adminProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1), p256dh: z.string().trim().min(1), auth: z.string().trim().min(1) }))
+      .mutation(({ ctx, input }) => db.subscribeAdminToChatPush({ adminId: ctx.user.id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth })),
+    subscribePush: adminProcedure
       .input(z.object({ endpoint: z.string().trim().min(1), p256dh: z.string().trim().min(1), auth: z.string().trim().min(1) }))
       .mutation(({ ctx, input }) => db.subscribeAdminToChatPush({ adminId: ctx.user.id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth })),
     unsubscribeChatPush: adminProcedure
       .input(z.object({ endpoint: z.string().trim().min(1) }))
       .mutation(({ input }) => db.unsubscribeAdminFromChatPush(input)),
+    unsubscribePush: adminProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1) }))
+      .mutation(({ input }) => db.unsubscribeAdminFromChatPush(input)),
+    getPushPreferences: adminProcedure.query(({ ctx }) => db.getAdminPushPreferences(ctx.user.id)),
+    updatePushPreferences: adminProcedure
+      .input(z.object({
+        notifyTuitions: z.boolean().optional(),
+        notifyApplications: z.boolean().optional(),
+        notifyPayments: z.boolean().optional(),
+        notifyRegistrations: z.boolean().optional(),
+        notifyChat: z.boolean().optional(),
+      }))
+      .mutation(({ ctx, input }) => db.updateAdminPushPreferences(ctx.user.id, input)),
+    sendTestPush: adminProcedure.mutation(({ ctx }) => db.sendTestAdminPushNotification(ctx.user.id)),
     getTutorChatThread: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.getTutorAdminChatThreadForAdmin(input)),
@@ -3244,6 +3266,13 @@ export const appRouter = router({
         monthlyBudget,
         locationText,
       });
+      void db.notifyAdminPushEvent({
+        type: "tuition_request",
+        requestId: result.id,
+        classCourse: needs.classCourse,
+        guardianName: ctx.user.name || null,
+        locationText: locationText || null,
+      }).catch(() => {});
       return { success: true, notificationDelivered, ...result } as const;
     }),
   }),
