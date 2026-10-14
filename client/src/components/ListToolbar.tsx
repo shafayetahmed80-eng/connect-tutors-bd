@@ -1,4 +1,4 @@
-import { LayoutGrid, SlidersHorizontal, XCircle } from "lucide-react";
+import { LayoutGrid, LoaderCircle, SlidersHorizontal, XCircle } from "lucide-react";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 const SLIDE_MS = 200;
@@ -105,10 +105,24 @@ export function ListToolbarCard({ eyebrow, count, caption, loading = false, filt
  * drawer: the fields want the width of the page, and the panel carries its own
  * count and its own way out. Choosing in it changes nothing until Apply.
  */
-export function FilterPanelFrame({ id, ariaLabel, total, loading = false, noun = "jobs found", onClose, onClear, onApply, applyDisabled = false, alerts = [], children }: {
+export function FilterPanelFrame({
+  id,
+  ariaLabel,
+  total,
+  totalDisplay,
+  loading = false,
+  noun = "jobs found",
+  onClose,
+  onClear,
+  onApply,
+  applyDisabled = false,
+  alerts = [],
+  children
+}: {
   id: string;
   ariaLabel: string;
   total: number | undefined;
+  totalDisplay?: ReactNode;
   loading?: boolean;
   /** What the number counts: "jobs found". */
   noun?: string;
@@ -120,9 +134,18 @@ export function FilterPanelFrame({ id, ariaLabel, total, loading = false, noun =
   alerts?: string[];
   children: ReactNode;
 }) {
+  const displayTotal = totalDisplay ?? (total === undefined ? "—" : total);
+
   return <section id={id} aria-label={ariaLabel} className="rounded-xl border border-[#dce8f0] bg-[#f7fbfe] p-4 shadow-[0_10px_24px_rgba(38,83,117,0.05)] sm:p-5">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#e4edf3] pb-3">
-      <p className="inline-flex items-center gap-2 text-sm text-[#55738a]"><LayoutGrid className="h-4 w-4 text-j-accent" aria-hidden="true" /><strong className="font-extrabold text-j-ink">{loading || total === undefined ? "—" : total}</strong> {noun}</p>
+      <p className="inline-flex items-center gap-2 text-sm text-[#55738a]" role="status" aria-live="polite">
+        <LayoutGrid className="h-4 w-4 text-j-accent shrink-0" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5">
+          <strong className="font-extrabold text-j-ink">{displayTotal}</strong>
+          <span>{noun}</span>
+          {loading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin text-j-accent ml-0.5 inline-block" aria-label="Loading preview" /> : null}
+        </span>
+      </p>
       <button type="button" onClick={onClose} className="motion-interactive inline-flex min-h-control items-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover"><XCircle className="h-4 w-4" aria-hidden="true" /> Close</button>
     </div>
 

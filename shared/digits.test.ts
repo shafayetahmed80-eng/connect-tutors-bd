@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BANGLA_DIGITS, normalizeNumericDigits, toEnglishDigits } from "./digits";
+import { BANGLA_DIGITS, normalizeNumericDigits, toBanglaDigits, toEnglishDigits } from "./digits";
 
 describe("shared/digits", () => {
   describe("toEnglishDigits", () => {
@@ -24,6 +24,21 @@ describe("shared/digits", () => {
 
     it("handles mixed Bangla and English digits", () => {
       expect(toEnglishDigits("01৭12৩45৬78")).toBe("01712345678");
+    });
+  });
+
+  describe("toBanglaDigits", () => {
+    it("handles empty and nullish inputs", () => {
+      expect(toBanglaDigits("")).toBe("");
+      expect(toBanglaDigits(null)).toBe("");
+      expect(toBanglaDigits(undefined)).toBe("");
+    });
+
+    it("converts all English digits to Bangla digits", () => {
+      expect(toBanglaDigits("0123456789")).toBe("০১২৩৪৫৬৭৮৯");
+      expect(toBanglaDigits(25)).toBe("২৫");
+      expect(toBanglaDigits(0)).toBe("০");
+      expect(toBanglaDigits("12 jobs found")).toBe("১২ jobs found");
     });
   });
 
