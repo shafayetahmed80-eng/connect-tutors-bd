@@ -1,17 +1,18 @@
 import React, { type ReactNode, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { Link as WouterLink, useLocation } from "wouter";
-import { Check, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
+import { ArrowLeft, Check, Edit3, Eye, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
 import { normalizeTutoringTime } from "@shared/tutoring-time";
 import { jobIdForRequest } from "@shared/job-id";
+import { buildJobTitle } from "@shared/job-title";
 import { buildGuardianRequestSummary } from "./guardian-request-summary";
 import { GuardianRequestSummaryView } from "./GuardianRequestSummaryView";
 import { MoneyAmountField } from "@/components/MoneyAmountField";
 import { PostAnotherRequestButton } from "@/components/PostAnotherRequestButton";
 import { RecordIcon } from "@/components/recordIcons";
-import { TutorPreferenceIcon } from "@/components/JobCard";
+import SharedJobCard, { type JobCardData, TutorPreferenceIcon } from "@/components/JobCard";
 import { toast } from "sonner";
 
 import SiteFooter from "@/components/SiteFooter";
@@ -56,6 +57,48 @@ export function parseGuardianRequestSubjects(value: unknown): string[] {
   } catch {
     return [];
   }
+}
+
+export function buildPreviewJobData(
+  input: RequestInput,
+  tuitionCityLabel: string,
+  tuitionLocationLabel: string,
+  requestId: number | null,
+  isEditMode: boolean
+): JobCardData {
+  const primaryCategory = input.learningNeeds[0]?.category || "Tuition";
+  const primaryClass = input.learningNeeds[0]?.classes?.[0]?.classCourse || "Classes";
+  const studentCountNum = Number(input.studentCount) || 1;
+  const daysPerWeekNum = Number(input.daysPerWeek) || 0;
+
+  const title = (primaryCategory && primaryClass && daysPerWeekNum > 0)
+    ? buildJobTitle({
+        category: primaryCategory,
+        classCourse: primaryClass,
+        studentCount: studentCountNum,
+        daysPerWeek: daysPerWeekNum,
+      })
+    : `Need ${primaryCategory} Tutor for ${primaryClass} - ${daysPerWeekNum || 3} Days / Week`;
+
+  const allSubjects = input.learningNeeds.flatMap(n => n.classes.flatMap(c => c.subjects));
+  const locationLabel = input.tuitionType === "online"
+    ? null
+    : tuitionLocationLabel
+      ? (tuitionCityLabel ? `${tuitionLocationLabel}, ${tuitionCityLabel}` : tuitionLocationLabel)
+      : null;
+
+  return {
+    jobId: isEditMode && requestId ? jobIdForRequest(requestId) : "CT-PREVIEW",
+    title,
+    postedAt: "Just now",
+    statusLabel: "Live Preview",
+    statusTone: "live",
+    tuitionType: input.tuitionType,
+    budgetAmount: parseSalaryAmount(input.salaryAmount),
+    subjects: allSubjects,
+    locationLabel,
+    preferredTutorGender: input.preferredGender || "any",
+  };
 }
 
 export * from "@/lib/guardianLearningCatalog";
@@ -245,6 +288,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const presentation = getGuardianRequestJourneyPresentation({ embedded });
   const [stage, setStage] = useState<"phone" | "register" | "code" | "request">(() => embedded ? "request" : "phone");
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [journeyError, setJourneyError] = useState("");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
@@ -290,6 +334,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const startAnotherRequest = () => {
     setStage("request");
     setStep(1);
+    setIsPreviewMode(false);
     setRequestId(null);
     setJourneyError("");
     setLearningNeeds([]);
@@ -430,6 +475,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
       submissionStartedRef.current = false;
       setRequestId(result.id);
+      setIsPreviewMode(false);
       setJourneyError("");
       // Step 3 is the confirmation, so a sent request stays in the journey
       // instead of navigating out of it. The Posted jobs list behind the sheet
@@ -451,6 +497,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       }
       removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
       submissionStartedRef.current = false;
+      setIsPreviewMode(false);
       setJourneyError("");
       toast.success("Your Pending request has been updated.");
       void utils.tutorRequests.mine.invalidate();
@@ -670,7 +717,20 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     const error = getGuardianRequestStepValidation(requestInput, 1, needsLimits);
     if (error) { setJourneyError(error); return; }
     clearJourneyError();
+    setIsPreviewMode(false);
     setStep(2);
+  };
+  const handleShowPreview = () => {
+    const error = getGuardianRequestStepValidation(requestInput, 2, needsLimits);
+    if (error) {
+      setJourneyError(error);
+      if (error.toLowerCase().includes("curriculum") || error.includes("class") || error.includes("subject")) {
+        setStep(1);
+      }
+      return;
+    }
+    clearJourneyError();
+    setIsPreviewMode(true);
   };
   const submitRequest = (event: FormEvent) => {
     event.preventDefault();
@@ -803,7 +863,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetInstituteName={(value) => { clearJourneyError(); setInstituteName(value); }}
           onSetHeardAboutUs={(value) => { clearJourneyError(); setHeardAboutUs(value); }}
           onSetNotes={(value) => { clearJourneyError(); setNotes(value); }}
-          onBack={() => { clearJourneyError(); setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3); }}
+          isPreviewMode={isPreviewMode}
+          onPreview={handleShowPreview}
+          onClosePreview={() => setIsPreviewMode(false)}
+          onJumpToStep={(targetStep) => { clearJourneyError(); setIsPreviewMode(false); setStep(targetStep); }}
+          onBack={() => { clearJourneyError(); if (isPreviewMode) { setIsPreviewMode(false); } else { setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3); } }}
           onAdvance={advance}
           onSubmit={submitRequest}
           isEditMode={isEditMode}
@@ -970,6 +1034,10 @@ type RequestStageProps = {
   onBack: () => void; onAdvance: () => void; onSubmit: (event: FormEvent) => void;
   /** Step 3 reads the request back once it is sent. */
   isEditMode?: boolean; requestId?: number | null; onPostAnother?: () => void;
+  isPreviewMode?: boolean;
+  onPreview?: () => void;
+  onClosePreview?: () => void;
+  onJumpToStep?: (step: 1 | 2) => void;
 };
 
 export function RequestStage(props: RequestStageProps) {
@@ -1038,7 +1106,78 @@ export function RequestStage(props: RequestStageProps) {
         </div>
       </fieldset>
     </div> : null}
-    {props.step === 2 ? <div className="mt-7 space-y-6">
+    {props.step === 2 && props.isPreviewMode ? (
+      <div className="mt-7 space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+        <div className="rounded-2xl border border-[#bce0fd] bg-gradient-to-r from-[#f0f8ff] via-[#f7fbff] to-[#e8f4fd] p-4.5 sm:p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-j-accent text-white shadow-sm">
+                <Eye size={20} aria-hidden="true" />
+              </span>
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-j-accent/10 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wider text-j-accent">
+                  Live Job Post Preview
+                </span>
+                <h2 className="mt-0.5 text-lg font-extrabold text-[#173d60] sm:text-xl">
+                  Review your tuition job post
+                </h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={props.onClosePreview}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#9bcdf4] bg-white px-3.5 py-2 text-xs font-bold text-[#126ea9] shadow-sm hover:bg-j-accent-wash"
+            >
+              <Edit3 size={14} aria-hidden="true" /> Back to Edit
+            </button>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-[#58758a]">
+            This authentic card demonstrates exactly how your tuition request will appear to qualified tutors on the public Job Board.
+          </p>
+        </div>
+
+        {/* Authentic Job Card */}
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#71889b]">Public Job Card</span>
+            <span className="text-2xs font-semibold text-[#126ea9]">Interactive Preview</span>
+          </div>
+          <SharedJobCard
+            job={buildPreviewJobData(input, props.tuitionCityLabel, props.tuitionLocationLabel, props.requestId ?? null, Boolean(props.isEditMode))}
+            onOpen={() => {}}
+            action={
+              <span className="inline-flex h-control items-center rounded-lg bg-j-accent px-4 text-xs font-bold text-white shadow-sm">
+                Apply Now
+              </span>
+            }
+            showMapLink={false}
+            isNew={true}
+          />
+        </div>
+
+        {/* Detailed Summary Breakdown with individual edit buttons */}
+        <div className="mt-6">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#71889b]">Full Details Breakdown</span>
+            <span className="text-xs text-[#71889b]">Verify all requirements</span>
+          </div>
+          <GuardianRequestSummaryView
+            groups={buildGuardianRequestSummary(input, props.notes, props.tuitionCityLabel, props.tuitionLocationLabel)}
+            renderGroupAction={(group) => (
+              <button
+                type="button"
+                onClick={() => props.onJumpToStep?.(group.step)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[#cbe4f7] bg-white px-2.5 py-1 text-xs font-bold text-j-accent hover:bg-j-accent-wash"
+                aria-label={`Edit ${group.title}`}
+              >
+                <Edit3 size={13} aria-hidden="true" /> Edit
+              </button>
+            )}
+          />
+        </div>
+      </div>
+    ) : null}
+    {props.step === 2 && !props.isPreviewMode ? <div className="mt-7 space-y-6">
       {/* One grid, so the salary box is not 320px wide under a 384px student
           count under a half-width dropdown. Every field is one column.
           The salary is one amount, not a range and not "discuss": a Tutor
@@ -1065,15 +1204,55 @@ export function RequestStage(props: RequestStageProps) {
         two actions and none of the journey's - there is nothing left to go
         Back to and nothing left to send. */}
     {props.step === 3 ? <SuccessState requestId={props.requestId ?? null} input={input} notes={props.notes} tuitionCityLabel={props.tuitionCityLabel} tuitionLocationLabel={props.tuitionLocationLabel} onPostAnother={props.onPostAnother ?? (() => undefined)} /> : null}
-    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">{props.step > 1 ? <button type="button" className={ghostButton} onClick={props.onBack}><SiteText slotId="button-section.journey.stepBack" fallback="Back" /></button> : <span className="hidden sm:block" />}{props.step === 1
-      // Distinct keys, so React mounts a fresh node for each rather than reusing
-      // one and only flipping `type`. Reusing it means the click that runs
-      // `onAdvance` (setting step 2) leaves the very same element as a
-      // `type="submit"` button, whose default action then submits the form -
-      // in edit mode every step-2 field is prefilled, so that stray submit
-      // saves and leaves the journey the instant "Continue" is pressed.
-      ? <button key="advance" type="button" className={`${primaryButton} w-full sm:w-auto`} aria-label="Continue to tuition preferences" onClick={props.onAdvance}><SiteText slotId="button-section.journey.stepContinue" fallback="Continue" /></button>
-      : <button key="submit" type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={props.pending} aria-label={submitLabel}>{props.pending && <Loader2 className="animate-spin" size={18} />}{submitLabel}</button>}</div>}
+    {props.step === 3 ? null : <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-[#e6eef4] pt-6 sm:flex-row sm:items-center">
+      {props.step === 2 && props.isPreviewMode ? (
+        <button type="button" className={ghostButton} onClick={props.onClosePreview}>
+          <span className="inline-flex items-center gap-1.5"><ArrowLeft size={16} aria-hidden="true" /> Back to edit form</span>
+        </button>
+      ) : props.step > 1 ? (
+        <button type="button" className={ghostButton} onClick={props.onBack}>
+          <SiteText slotId="button-section.journey.stepBack" fallback="Back" />
+        </button>
+      ) : (
+        <span className="hidden sm:block" />
+      )}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {props.step === 2 && !props.isPreviewMode ? (
+          <button
+            type="button"
+            className={`${ghostButton} border-[#9bcdf4] text-[#126ea9] hover:bg-j-accent-wash w-full sm:w-auto inline-flex items-center justify-center gap-1.5`}
+            onClick={props.onPreview}
+            aria-label="Preview and confirm job post"
+          >
+            <Eye size={16} aria-hidden="true" /> Preview & Confirm
+          </button>
+        ) : null}
+        {props.step === 1 ? (
+          <button
+            key="advance"
+            type="button"
+            className={`${primaryButton} w-full sm:w-auto`}
+            aria-label="Continue to tuition preferences"
+            onClick={props.onAdvance}
+          >
+            <SiteText slotId="button-section.journey.stepContinue" fallback="Continue" />
+          </button>
+        ) : (
+          <button
+            key={props.isPreviewMode ? "submit-preview" : "submit-direct"}
+            type="submit"
+            className={`${primaryButton} w-full sm:w-auto`}
+            disabled={props.pending}
+            aria-label={props.isPreviewMode ? (props.isEditMode ? "Confirm & Save changes" : "Confirm & Send request") : submitLabel}
+          >
+            {props.pending && <Loader2 className="animate-spin" size={18} />}
+            {props.isPreviewMode
+              ? (props.isEditMode ? "Confirm & Save changes" : "Confirm & Send request")
+              : submitLabel}
+          </button>
+        )}
+      </div>
+    </div>}
   </form>;
 }
 
@@ -1103,7 +1282,15 @@ export function SuccessState({ requestId, input, notes, tuitionCityLabel, tuitio
 
     <div className="mt-6"><GuardianRequestSummaryView groups={groups} /></div>
 
-    <div className="mt-7 flex justify-center border-t border-[#e6eef4] pt-6">
+    <div className="mt-7 flex flex-wrap justify-center gap-3 border-t border-[#e6eef4] pt-6">
+      {requestId ? (
+        <Link
+          href={`/request-tutor?edit=${requestId}`}
+          className={`${ghostButton} border-[#9bcdf4] text-[#126ea9] hover:bg-j-accent-wash inline-flex items-center gap-1.5`}
+        >
+          <Edit3 size={15} aria-hidden="true" /> Edit this request
+        </Link>
+      ) : null}
       <Link href="/guardian/dashboard/posted-jobs" className={primaryButton}><SiteText slotId="button-section.journey.viewRequest" fallback="View my request" /></Link>
     </div>
   </div>;
