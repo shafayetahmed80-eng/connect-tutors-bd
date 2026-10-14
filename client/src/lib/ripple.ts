@@ -109,12 +109,24 @@ export function initButtonRippleListener(): () => void {
     const target = event.target as HTMLElement | null;
     if (!target) return;
 
-    const btn = target.closest<HTMLElement>(
-      'button[data-ripple="true"], [data-ripple="true"], .btn-ripple, button.bg-j-accent, button.bg-[#1677e8], button.bg-[#0f7048]'
-    );
+    try {
+      const btn = target.closest<HTMLElement>("button, [data-ripple], .btn-ripple, .button-primary");
+      if (!btn) return;
 
-    if (btn) {
-      createRipple(event);
+      const isPrimaryButton =
+        btn.dataset.ripple === "true" ||
+        btn.classList.contains("btn-ripple") ||
+        btn.classList.contains("button-primary") ||
+        btn.classList.contains("bg-j-accent") ||
+        btn.classList.contains("bg-primary") ||
+        btn.className.includes("bg-[#1677e8]") ||
+        btn.className.includes("bg-[#0f7048]");
+
+      if (isPrimaryButton) {
+        createRipple(event);
+      }
+    } catch {
+      // Gracefully handle DOM lookup issues
     }
   };
 
