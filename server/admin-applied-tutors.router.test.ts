@@ -32,17 +32,19 @@ describe("admin.listAppliedTutors", () => {
     dbMocks.listAppliedTutorsForRequest.mockResolvedValue({
       job: { id: 13, classCourse: "Class 8", guardianPhone: "+8801674936203" },
       appliedTotal: 26,
+      timeCounts: { all: 26, h1: 2, h7: 5, h10: 8, h24: 12, d3: 18, d7: 22 },
       items: [{ id: "tutor-175", name: "Tania Sultana" }],
       total: 1, page: 1, pageSize: 20, totalPages: 1,
     });
 
-    const page = await createCaller().admin.listAppliedTutors({ requestId: 13, query: "Tania" });
+    const page = await createCaller().admin.listAppliedTutors({ requestId: 13, query: "Tania", appliedTimeframe: "7h" });
 
     expect(dbMocks.listAppliedTutorsForRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ requestId: 13, query: "Tania", page: 1, pageSize: 20 }),
+      expect.objectContaining({ requestId: 13, query: "Tania", appliedTimeframe: "7h", page: 1, pageSize: 20 }),
     );
     // The header count is the whole applicant list; `total` is the filtered page.
     expect(page.appliedTotal).toBe(26);
+    expect(page.timeCounts.h7).toBe(5);
     expect(page.total).toBe(1);
     expect(page.job.guardianPhone).toBe("+8801674936203");
   });

@@ -33,6 +33,8 @@ export type AdminTutorRow = {
   appointmentRequestedAt?: Date | string | null;
   /** The application itself, which the appointment actions act on. Applied-Tutor rows only. */
   interestId?: number;
+  /** When the application was submitted. Applied-Tutor rows only. */
+  appliedAt?: Date | string | null;
   /** Where this application stands, by the Tutor's own rule. Applied-Tutor rows only. */
   applicationStage?: TutorApplicationStage;
   /** The application's own status, which the Action column reads. Applied-Tutor rows only. */
@@ -103,6 +105,23 @@ const applicantActionNames: Record<ApplicantAction, (name: string) => string> = 
 
 function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
+}
+
+export function formatRelativeTime(date: Date | string | null | undefined): string | null {
+  if (!date) return null;
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return "Just now";
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 /**
@@ -195,7 +214,12 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     { key: "verified", label: "Verified", place: "head", cell: tutor => tutor.verified ? <BadgeCheck size={16} className="text-emerald-600" aria-label="Verified" /> : <CircleAlert size={16} className="text-amber-600" aria-label="Not verified" /> },
     ...(showApplicationStage ? [{
       key: "applicationStage", label: "Application", place: "head" as const,
-      cell: (tutor: AdminTutorRow) => tutor.applicationStage ? <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>{applicantStageLabels[tutor.applicationStage]}</span> : null,
+      cell: (tutor: AdminTutorRow) => tutor.applicationStage ? (
+        <div className="flex flex-col items-start gap-0.5">
+          <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>{applicantStageLabels[tutor.applicationStage]}</span>
+          {tutor.appliedAt ? <span className="text-3xs text-j-ink-muted whitespace-nowrap font-medium">{formatRelativeTime(tutor.appliedAt)}</span> : null}
+        </div>
+      ) : null,
     }] : []),
     ...(showGuardianMarks ? [{
       // The Guardian's own marks and the Admin's answer to them travel together.

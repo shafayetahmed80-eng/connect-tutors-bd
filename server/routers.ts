@@ -2545,7 +2545,10 @@ export const appRouter = router({
         return result;
       }),
     listAppliedTutors: adminProcedure
-      .input(adminTutorDirectoryInputSchema.extend({ requestId: z.number().int().positive() }))
+      .input(adminTutorDirectoryInputSchema.extend({
+        requestId: z.number().int().positive(),
+        appliedTimeframe: z.enum(["all", "1h", "7h", "10h", "24h", "3d", "7d"]).default("all"),
+      }))
       .query(async ({ input }) => {
         const page = await db.listAppliedTutorsForRequest(input);
         if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
