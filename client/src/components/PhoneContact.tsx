@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Phone } from "lucide-react";
+import { Check, Copy, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { contactNumberLinks } from "@/lib/contactNumber";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 import { cn } from "@/lib/utils";
 
 /**
  * A mobile number that can be used: the number itself rings it when pressed,
- * and a WhatsApp mark beside it opens a chat. Same two links on a laptop and a
+ * a WhatsApp mark beside it opens a chat, and a copy icon copies the number
+ * with a tactile spring-bounce and tooltip. Same links on a laptop and a
  * phone; only the size of what is pressed changes.
  *
  * Neither is drawn as a button - no fill, no border. The number is the Job ID's
@@ -15,7 +17,7 @@ import { cn } from "@/lib/utils";
  *
  * Direct call triggers a tactile micro-bounce, soft glow halo, and phone ringing
  * animation with a smooth short delay before dialling. WhatsApp triggers a bouncy
- * pulse pop and icon wiggle.
+ * pulse pop and icon wiggle. Copy triggers a tactile spring-pop and checkmark.
  *
  * A number that is not a Bangladesh mobile is written as it came, with no
  * links, rather than point at one that would not connect.
@@ -28,10 +30,12 @@ export function PhoneContact({ phone, size = "table", className }: {
 }) {
   const [isCalling, setIsCalling] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const callTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -39,6 +43,7 @@ export function PhoneContact({ phone, size = "table", className }: {
       if (callResetRef.current) clearTimeout(callResetRef.current);
       if (waTimerRef.current) clearTimeout(waTimerRef.current);
       if (waResetRef.current) clearTimeout(waResetRef.current);
+      if (copyResetRef.current) clearTimeout(copyResetRef.current);
     };
   }, []);
 
@@ -46,6 +51,7 @@ export function PhoneContact({ phone, size = "table", className }: {
   if (!links) return <span className="tabular-nums text-j-ink-strong">{phone}</span>;
 
   const card = size === "card";
+  const cleanNumber = links.clean ?? phone;
 
   const handleCallClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -83,6 +89,19 @@ export function PhoneContact({ phone, size = "table", className }: {
     }, 900);
   };
 
+  const handleCopyClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    void copyToClipboard(cleanNumber);
+    setIsCopied(true);
+    if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => {
+      setIsCopied(false);
+    }, 2000);
+  };
+
   return <span className={cn("inline-flex items-center gap-1", className)}>
     <a
       href={links.tel}
@@ -116,6 +135,32 @@ export function PhoneContact({ phone, size = "table", className }: {
     >
       <WhatsAppIcon size={card ? 16 : 16} />
     </a>
+    <button
+      type="button"
+      onClick={handleCopyClick}
+      data-copied={isCopied ? "true" : undefined}
+      aria-label={`Copy ${links.display}`}
+      title="নম্বর কপি করুন"
+      className={cn(
+        "phone-contact-copy relative inline-flex shrink-0 items-center justify-center rounded-full text-[#8fb4d0] transition-all duration-200 hover:scale-110 hover:text-[#1680c2] hover:bg-[#eef6fc] active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2]",
+        isCopied && "text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-50",
+        card ? "size-10" : "size-8",
+      )}
+    >
+      {isCopied ? (
+        <Check size={card ? 15 : 13} aria-hidden="true" className="phone-contact-copy-check animate-in zoom-in-75 duration-200 text-emerald-600" />
+      ) : (
+        <Copy size={card ? 14 : 12} aria-hidden="true" className="phone-contact-copy-icon" />
+      )}
+      {isCopied ? (
+        <span
+          aria-hidden="true"
+          className="phone-contact-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#173d60] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md z-30 pointer-events-none"
+        >
+          কপি হয়েছে!
+        </span>
+      ) : null}
+    </button>
   </span>;
 }
 

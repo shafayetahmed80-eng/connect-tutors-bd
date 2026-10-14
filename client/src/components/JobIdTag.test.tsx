@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobIdTag } from "./JobIdTag";
 import { ModalHeader, Modal } from "@/components/ui/modal";
 
@@ -54,4 +54,68 @@ describe("JobIdTag", () => {
     expect(tag().className).toContain("w-16");
     expect(tag().className).toContain("text-2xs");
   });
+
+  it("copies clean numeric ID on click with checkmark and 'কপি হয়েছে!' tooltip without bubbling", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    const outerClick = vi.fn();
+    render(
+      <div onClick={outerClick}>
+        <JobIdTag jobId="6804" />
+      </div>,
+    );
+
+    expect(screen.queryByText("কপি হয়েছে!")).toBeNull();
+    const el = tag();
+    expect(el.getAttribute("data-copied")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(el);
+    });
+
+    expect(writeText).toHaveBeenCalledWith("6804");
+    expect(outerClick).not.toHaveBeenCalled();
+    expect(el.getAttribute("data-copied")).toBe("true");
+    expect(screen.getByText("কপি হয়েছে!")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+
+    expect(el.getAttribute("data-copied")).toBeNull();
+    expect(screen.queryByText("কপি হয়েছে!")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("extracts only numbers even if jobId has formatting", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<JobIdTag jobId="#CT-9102" />);
+    await act(async () => {
+      fireEvent.click(tag());
+    });
+
+    expect(writeText).toHaveBeenCalledWith("9102");
+  });
+
+  it("triggers copy on keyboard Enter and Space", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<JobIdTag jobId="4421" />);
+    await act(async () => {
+      fireEvent.keyDown(tag(), { key: "Enter" });
+    });
+    expect(writeText).toHaveBeenCalledWith("4421");
+
+    writeText.mockClear();
+    await act(async () => {
+      fireEvent.keyDown(tag(), { key: " " });
+    });
+    expect(writeText).toHaveBeenCalledWith("4421");
+  });
 });
+

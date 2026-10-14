@@ -16,6 +16,7 @@ export function contactNumberLinks(phone: string) {
   if (!isSiteContactNumber(number)) return null;
   return {
     display: `+${number.slice(0, 3)} ${number.slice(3, 7)} ${number.slice(7)}`,
+    clean: `0${number.slice(3)}`,
     tel: telHref(number),
     whatsapp: whatsappHref(number),
   };

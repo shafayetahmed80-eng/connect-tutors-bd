@@ -101,5 +101,51 @@ describe("PhoneContact", () => {
     openSpy.mockRestore();
     vi.useRealTimers();
   });
+
+  it("renders a copy button and copies the clean 11-digit Bangladesh phone number with checkmark feedback", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    const outerClick = vi.fn();
+    render(
+      <div onClick={outerClick}>
+        <PhoneContact phone="+8801712345678" />
+      </div>,
+    );
+
+    const copyBtn = screen.getByRole("button", { name: "Copy +880 1712 345678" });
+    expect(copyBtn).toBeTruthy();
+    expect(copyBtn.getAttribute("data-copied")).toBeNull();
+    expect(screen.queryByText("কপি হয়েছে!")).toBeNull();
+
+    act(() => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeText).toHaveBeenCalledWith("01712345678");
+    expect(outerClick).not.toHaveBeenCalled();
+    expect(copyBtn.getAttribute("data-copied")).toBe("true");
+    expect(screen.getByText("কপি হয়েছে!")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+
+    expect(copyBtn.getAttribute("data-copied")).toBeNull();
+    expect(screen.queryByText("কপি হয়েছে!")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("scales the copy button to touch size on a phone card", () => {
+    const { rerender } = render(<PhoneContact phone="+8801712345678" />);
+    const copyBtn = screen.getByRole("button", { name: "Copy +880 1712 345678" });
+    expect(copyBtn.className).toContain("size-8");
+
+    rerender(<PhoneContact phone="+8801712345678" size="card" />);
+    const cardCopyBtn = screen.getByRole("button", { name: "Copy +880 1712 345678" });
+    expect(cardCopyBtn.className).toContain("size-10");
+  });
 });
+
 

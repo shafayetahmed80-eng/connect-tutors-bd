@@ -760,10 +760,45 @@
   .phone-contact-call[data-calling="true"] .phone-contact-icon,
   .phone-contact-wa[data-messaging="true"],
   .phone-contact-wa[data-messaging="true"] svg,
+  .jobid-copy-tooltip,
+  .phone-contact-tooltip,
+  [data-copied="true"],
+  .jobid-copied,
   .sb-root .sb-indicator,
   .sb-root .sb-sub,
   .sb-root .sb-sub li,
   .sb-root .sb-badge,
   .sb-root .sb-item > svg:first-child { transition: none !important; animation: none !important; }
 }
+
+/* One-tap Copy motion effects */
+@keyframes copy-pop-bounce {
+  0% { transform: scale(1); }
+  25% { transform: scale(0.92); }
+  55% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes copy-tooltip-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.jobid-copy-tooltip,
+.phone-contact-tooltip {
+  animation: copy-tooltip-rise 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+[data-copied="true"],
+.jobid-copied {
+  animation: copy-pop-bounce 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 
