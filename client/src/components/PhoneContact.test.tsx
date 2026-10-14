@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PhoneContact } from "./PhoneContact";
+
 
 afterEach(cleanup);
 
@@ -46,4 +47,59 @@ describe("PhoneContact", () => {
     expect(screen.getByText("Not a number")).toBeTruthy();
     expect(screen.queryByRole("link")).toBeNull();
   });
+
+  it("activates calling motion state with short delay before dialing", () => {
+    vi.useFakeTimers();
+
+    render(<PhoneContact phone="+8801712345678" />);
+    const call = screen.getByRole("link", { name: "Call +880 1712 345678" });
+    expect(call.getAttribute("data-calling")).toBeNull();
+
+    act(() => {
+      fireEvent.click(call);
+    });
+
+    expect(call.getAttribute("data-calling")).toBe("true");
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(call.getAttribute("data-calling")).toBe("true");
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(call.getAttribute("data-calling")).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it("activates WhatsApp motion state with short delay before opening", () => {
+    vi.useFakeTimers();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(<PhoneContact phone="+8801712345678" />);
+    const whatsapp = screen.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" });
+    expect(whatsapp.getAttribute("data-messaging")).toBeNull();
+
+    act(() => {
+      fireEvent.click(whatsapp);
+    });
+
+    expect(whatsapp.getAttribute("data-messaging")).toBe("true");
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(openSpy).toHaveBeenCalledWith("https://wa.me/8801712345678", "_blank", "noopener,noreferrer");
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(whatsapp.getAttribute("data-messaging")).toBeNull();
+
+    openSpy.mockRestore();
+    vi.useRealTimers();
+  });
 });
+
