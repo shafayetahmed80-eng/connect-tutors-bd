@@ -280,7 +280,7 @@ describe("Edit", () => {
 
     expect(screen.getByRole("heading", { name: /Edit Job ID 6813/ })).toBeTruthy();
     expect((screen.getByLabelText(/Guardian name/) as HTMLInputElement).value).toBe("Sojib Rahman");
-    expect((screen.getByLabelText(/Mobile number/) as HTMLInputElement).value).toBe("+8801674936203");
+    expect((screen.getByLabelText(/Mobile number/) as HTMLInputElement).value).toBe("1674 936 203");
     expect((screen.getByLabelText(/Days per week/) as HTMLSelectElement).value).toBe("3");
     expect((screen.getByLabelText(/Monthly salary/) as HTMLInputElement).value).toBe("6500");
     expect((screen.getByLabelText(/Number of students/) as HTMLInputElement).value).toBe("2");

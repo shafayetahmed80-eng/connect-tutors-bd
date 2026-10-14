@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { fieldLabel, filledField, requiredMark } from "@/components/journeyField";
 import { useWebOtp } from "@/lib/webOtp";
 import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
+import { cleanBangladeshLocalPhoneDigits, formatBangladeshLocalPhoneDisplay } from "@shared/phone";
 
 export type RegistrationGender = "male" | "female";
 
@@ -43,13 +44,33 @@ export function GenderField({ id, name, label, value, onSelect, invalid, describ
 
 /** The +880 field, editable unless a prior step already confirmed the number. */
 export function PhoneField({ id, label, value, onChange, invalid, describedBy, placeholder, readOnly }: { id: string; label: string; value: string; onChange?: (value: string) => void; invalid?: boolean; describedBy?: string; placeholder?: string; readOnly?: boolean }) {
+  const displayValue = formatBangladeshLocalPhoneDisplay(value);
   return <label className="block" htmlFor={id}>
     <span className={fieldLabel}>{label}<RequiredMark /></span>
     <span className={`modal-field-journey input-text-journey mt-2 flex items-stretch overflow-hidden rounded-xl border border-j-field-border transition ${readOnly ? "bg-j-surface-muted" : "bg-j-surface-sunken focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12"}`}>
-      <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-bold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
+      <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-bold text-j-ink-soft select-none"><Phone size={14} aria-hidden="true" />+880</span>
       {readOnly
-        ? <input id={id} readOnly aria-readonly="true" aria-invalid={invalid} aria-describedby={describedBy} tabIndex={-1} value={value} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 text-j-ink-soft outline-none" />
-        : <input id={id} required value={value} onChange={(event) => onChange?.(toEnglishDigits(event.target.value))} aria-invalid={invalid} aria-describedby={describedBy} className="min-w-0 flex-1 bg-transparent px-3.5 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder={placeholder} inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" />}
+        ? <input id={id} readOnly aria-readonly="true" aria-invalid={invalid} aria-describedby={describedBy} tabIndex={-1} value={displayValue} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 text-j-ink-soft outline-none tabular-nums" />
+        : <input
+            id={id}
+            required
+            value={displayValue}
+            onChange={(event) => onChange?.(cleanBangladeshLocalPhoneDigits(event.target.value))}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              if (pasted) {
+                event.preventDefault();
+                onChange?.(cleanBangladeshLocalPhoneDigits(pasted));
+              }
+            }}
+            aria-invalid={invalid}
+            aria-describedby={describedBy}
+            className="min-w-0 flex-1 bg-transparent px-3.5 text-j-ink outline-none placeholder:text-[#9aabbb] tabular-nums"
+            placeholder={placeholder ?? "1XXX XXX XXX"}
+            inputMode="numeric"
+            maxLength={14}
+            autoComplete="tel-national"
+          />}
     </span>
   </label>;
 }

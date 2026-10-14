@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import { rememberSignInRole } from "@/lib/signInRoleMemory";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
+import { cleanBangladeshLocalPhoneDigits, formatBangladeshLocalPhoneDisplay, isValidBangladeshLocalPhone } from "@shared/phone";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
@@ -31,7 +32,7 @@ import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom, 
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { JobIdTag } from "@/components/JobIdTag";
 
-const LOCAL_PHONE = /^01[3-9]\d{8}$/;
+const LOCAL_PHONE = /^1[3-9]\d{8}$/;
 /** A little under the server's 20-minute intake handoff, so a reused number never outlives its cookie. */
 const VERIFIED_PHONE_REUSE_MS = 18 * 60 * 1000;
 export function getGuardianPendingEditId(search: string) {
@@ -618,7 +619,8 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       return;
     }
     clearJourneyError();
-    const fullPhone = `+880${localPhone.slice(1)}`;
+    const digits = cleanBangladeshLocalPhoneDigits(localPhone);
+    const fullPhone = `+880${digits}`;
     if (verifiedPhone?.phone === fullPhone && Date.now() - verifiedPhone.at < VERIFIED_PHONE_REUSE_MS) { submitRegistration(fullPhone); return; }
     intakeMutation.mutate({ phone: fullPhone });
   };
@@ -629,9 +631,10 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={phoneStatusMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
-          if (!LOCAL_PHONE.test(localPhone)) { setJourneyError("Enter a valid Bangladesh mobile number, for example 01712345678."); return; }
+          const digits = cleanBangladeshLocalPhoneDigits(localPhone);
+          if (!isValidBangladeshLocalPhone(digits)) { setJourneyError("Enter a valid Bangladesh mobile number (10 digits after +880, e.g. 1712 345 678)."); return; }
           clearJourneyError();
-          phoneStatusMutation.mutate({ phone: `+880${localPhone.slice(1)}` });
+          phoneStatusMutation.mutate({ phone: `+880${digits}` });
         }} /> : null}
         {stage === "register" ? <AccountStage name={name} email={email} gender={gender} password={password} confirmPassword={confirmPassword} cities={cities} accountCityId={accountCityId} accountLocations={accountLocations} accountLocationId={accountLocationId} accountCityLabel={accountCityLabel} termsAccepted={termsAccepted} fieldErrors={accountFieldErrors} phone={localPhone} pending={intakeMutation.isPending} onBack={() => { clearJourneyError(); setStage("phone"); }} onName={(value) => { clearAccountFieldError("name"); setName(value); }} onEmail={(value) => { clearAccountFieldError("email"); setEmail(value); }} onGender={setGender} onPassword={(value) => { clearAccountFieldError("password"); setPassword(value); }} onConfirmPassword={(value) => { clearAccountFieldError("confirmPassword"); setConfirmPassword(value); }} onCity={(value) => { clearAccountFieldError("cityLocationId", "locationId"); setAccountCityId(value); setAccountLocationId(""); }} onLocation={(value) => { clearAccountFieldError("locationId"); setAccountLocationId(value); }} onTerms={(value) => { clearAccountFieldError("terms"); setTermsAccepted(value); }} onCreate={continueToVerify} /> : null}
         {stage === "code" && codeSentTo ? <CodeStage
@@ -693,15 +696,33 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
 
 /** The first screen: the mobile number and nothing else. The code is asked for last, on its own screen (CodeStage). */
 export function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phone: string; onPhoneChange: (value: string) => void; pending: boolean; onContinue: () => void }) {
-  const valid = LOCAL_PHONE.test(phone);
+  const digits = cleanBangladeshLocalPhoneDigits(phone);
+  const valid = isValidBangladeshLocalPhone(digits);
   const resolveSlot = useSiteContentResolver();
   return <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.phone.heading" /></h1>
     <label className="mt-6 block max-w-md" htmlFor="guardian-phone">
       <span className={fieldLabel}>{resolveSlot("request-tutor.field.phone", "Bangladesh mobile number")} <span className={requiredMark}>*</span></span>
       <span className={`modal-field-journey mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
-        <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
-        <input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb]" value={phone} onChange={(event) => onPhoneChange(toEnglishDigits(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); if (valid && !pending) onContinue(); } }} placeholder="01712345678" inputMode="numeric" autoComplete="tel" />
+        <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft select-none"><Phone size={14} aria-hidden="true" />+880</span>
+        <input
+          id="guardian-phone"
+          className="min-w-0 flex-1 bg-transparent px-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb] tabular-nums"
+          value={formatBangladeshLocalPhoneDisplay(phone)}
+          onChange={(event) => onPhoneChange(cleanBangladeshLocalPhoneDigits(event.target.value))}
+          onPaste={(event) => {
+            const pasted = event.clipboardData.getData("text");
+            if (pasted) {
+              event.preventDefault();
+              onPhoneChange(cleanBangladeshLocalPhoneDigits(pasted));
+            }
+          }}
+          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); if (valid && !pending) onContinue(); } }}
+          placeholder="1XXX XXX XXX"
+          inputMode="numeric"
+          maxLength={14}
+          autoComplete="tel-national"
+        />
         {valid ? <span className="flex items-center pr-3.5 text-j-ok" aria-hidden="true"><Check size={18} /></span> : null}
       </span>
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
@@ -762,7 +783,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
   const errors = props.fieldErrors ?? {};
   const resolveSlot = useSiteContentResolver();
   const passwordMatch = getPasswordMatch(props.password, props.confirmPassword);
-  const displayPhone = normalizeNumericDigits(props.phone).replace(/^0/, "");
+  const displayPhone = cleanBangladeshLocalPhoneDigits(props.phone);
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
