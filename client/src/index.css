@@ -770,6 +770,8 @@
   .chip-item[data-removing="true"],
   .status-dot-ping,
   .status-dot-breathe,
+  .empty-float,
+  .empty-halo-pulse,
   .sb-root .sb-indicator,
   .sb-root .sb-sub,
   .sb-root .sb-sub li,
@@ -941,3 +943,35 @@
 .status-dot-breathe {
   animation: status-dot-breathe 2.4s ease-in-out infinite;
 }
+
+/* Empty State Floating & Ambient Halo Animations */
+@keyframes empty-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes empty-halo-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
+.empty-float {
+  animation: empty-float 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.empty-halo-pulse {
+  animation: empty-halo-pulse 3.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+

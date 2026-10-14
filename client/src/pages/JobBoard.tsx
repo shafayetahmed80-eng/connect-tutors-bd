@@ -16,6 +16,7 @@ import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplyS
 import { TutorListPager } from "@/components/TutorListPager";
 import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, MapPinned, ShieldCheck, X } from "lucide-react";
 import CelebrationConfetti from "@/components/CelebrationConfetti";
+import EmptyState from "@/components/EmptyState";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -552,7 +553,23 @@ function JobMeta({ label, value }: { label: string; value: string }) { return <d
 
 function EmptyBoard({ onClear }: { onClear?: () => void }) {
   const contact = useSiteContact();
-  return <div className="rounded-xl border border-dashed border-[#c9dce8] bg-[radial-gradient(circle_at_50%_0%,#effaff,white_58%)] px-6 py-12 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-j-accent-wash shadow-[0_9px_18px_rgba(22,125,221,.12)]"><BriefcaseBusiness className="h-7 w-7 text-j-accent" /></div><p className="mt-4 text-2xs font-extrabold uppercase tracking-[0.16em] text-[#4c9ed8]">A careful match takes time</p><h2 className="mt-2 text-lg font-extrabold text-j-ink">No available tuition matches yet</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#5c7a8f]">Only Guardian-confirmed, active opportunities appear here. Broaden your filters or check back as the team publishes newly verified tuition requirements.</p><div className="mx-auto mt-5 flex max-w-md flex-wrap justify-center gap-3">{onClear ? <button type="button" onClick={onClear} className="rounded-xl bg-j-accent-wash px-4 py-2 text-sm font-bold text-j-accent">Clear filters</button> : null}<a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="rounded-xl border border-[#c9e2f2] bg-white px-4 py-2 text-sm font-bold text-j-accent">Ask our team on WhatsApp</a></div><p className="mt-5 text-xs font-semibold text-[#6b899d]"><ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-[#248d69]" />Private Guardian contact details are only coordinated after a suitable match.</p></div>; }
+  return (
+    <EmptyState
+      icon={BriefcaseBusiness}
+      kicker="A careful match takes time"
+      title="No available tuition matches yet"
+      description="Only Guardian-confirmed, active opportunities appear here. Broaden your filters or check back as the team publishes newly verified tuition requirements."
+      action={onClear ? { label: "Clear filters", onClick: onClear, variant: "secondary" } : undefined}
+      secondaryAction={{ label: "Ask our team on WhatsApp", href: contact.whatsapp(), external: true, variant: "secondary" }}
+      hint={
+        <span>
+          <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-[#248d69]" />
+          Private Guardian contact details are only coordinated after a suitable match.
+        </span>
+      }
+    />
+  );
+}
 
 /**
  * The same dialog the Guardian sees, with Apply Now in place of Update.

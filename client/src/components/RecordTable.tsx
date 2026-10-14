@@ -1,3 +1,4 @@
+import EmptyState from "@/components/EmptyState";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import type { CSSProperties, ReactNode } from "react";
@@ -79,7 +80,13 @@ function columnLabel<Row>(column: RecordColumn<Row>, isCard: boolean = false) {
 
 function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance }: RecordTableProps<Row>) {
   if (rows.length === 0) {
-    return <div className="rounded-xl border border-j-border bg-white p-8 text-center text-sm text-j-ink-soft shadow-sm">{empty}</div>;
+    return (
+      <EmptyState
+        compact
+        title={typeof empty === "string" ? empty : "No records found"}
+        description={typeof empty !== "string" ? empty : undefined}
+      />
+    );
   }
 
   const head = columns.filter(column => column.place === "head");
@@ -135,7 +142,16 @@ export default function RecordTable<Row>(props: RecordTableProps<Row>) {
             {columns.map(column => <td key={column.key} className={`px-3 py-2.5 align-top ${column.cellClassName ?? ""}`}>{column.cell(row, index)}</td>)}
           </tr>;
         })}
-        {rows.length === 0 ? <tr><td colSpan={columns.length} className="px-3 py-10 text-center text-sm text-j-ink-soft">{empty}</td></tr> : null}
+        {rows.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length} className="p-4 sm:p-6">
+              <EmptyState
+                title={typeof empty === "string" ? empty : "No records found"}
+                description={typeof empty !== "string" ? empty : undefined}
+              />
+            </td>
+          </tr>
+        ) : null}
       </tbody>
     </table>
   </div>;
