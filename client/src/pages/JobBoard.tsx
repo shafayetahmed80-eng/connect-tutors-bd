@@ -15,6 +15,7 @@ import { formatPostedDate, isNewJob } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorListPager } from "@/components/TutorListPager";
 import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, MapPinned, ShieldCheck, X } from "lucide-react";
+import CelebrationConfetti from "@/components/CelebrationConfetti";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -271,7 +272,7 @@ function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mism
     </ModalBody>
     <ModalFooter>
       <button type="button" onClick={onClose} disabled={busy} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">No</button>
-      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
+      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} data-ripple="true" className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
     </ModalFooter>
   </Modal>;
 }
@@ -281,14 +282,19 @@ function JobBoardApplySuccess({ onClose }: { onClose: () => void }) {
   return <Modal size="dialog" onClose={onClose}>
     <ModalHeader title="Application sent" />
     <ModalBody>
-      <div className="flex flex-col items-center py-2 text-center">
-        <CheckCircle2 className="h-11 w-11 text-emerald-600" aria-hidden="true" />
-        <p className="mt-3 text-lg font-extrabold text-j-ink">Successfully Applied!</p>
+      <div className="relative flex flex-col items-center py-3 text-center overflow-visible">
+        <div className="relative flex items-center justify-center">
+          <CelebrationConfetti />
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-[0_0_24px_rgba(16,185,129,0.22)] ring-8 ring-emerald-50/70">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" aria-hidden="true" />
+          </div>
+        </div>
+        <p className="mt-3.5 text-lg font-extrabold text-j-ink">Successfully Applied!</p>
         <p className="mt-2 text-sm leading-6 text-j-ink-soft">Guardian will review your profile & shortlist you if your profile strongly matches with their requirements.</p>
       </div>
     </ModalBody>
     <ModalFooter>
-      <button type="button" onClick={onClose} className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button>
+      <button type="button" onClick={onClose} data-ripple="true" className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover">Done</button>
     </ModalFooter>
   </Modal>;
 }
@@ -494,13 +500,13 @@ export function JobBoardFilters({ draft, setDraft, options }: {
 
 export function TutorInterestControl({ interest, isInterestSaving, onAction }: { interest?: TutorJobInterest; isInterestSaving: boolean; onAction: () => void }) {
   const presentation = getTutorInterestPresentation(interest?.status);
-  return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3">{presentation.statusLabel || presentation.description ? <div className="flex items-start gap-2"><HeartHandshake className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><div>{presentation.statusLabel ? <p className="text-sm font-extrabold text-[#245676]">{presentation.statusLabel}</p> : null}{presentation.description ? <p className="mt-0.5 text-xs leading-5 text-[#55738a]">{presentation.description}</p> : null}</div></div> : null}{presentation.action ? <button type="button" onClick={onAction} disabled={isInterestSaving} data-motion={isInterestSaving ? "pending" : undefined} aria-busy={isInterestSaving} className="motion-interactive inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{isInterestSaving ? "Saving application…" : presentation.actionLabel}</button> : null}</div>;
+  return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3">{presentation.statusLabel || presentation.description ? <div className="flex items-start gap-2"><HeartHandshake className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><div>{presentation.statusLabel ? <p className="text-sm font-extrabold text-[#245676]">{presentation.statusLabel}</p> : null}{presentation.description ? <p className="mt-0.5 text-xs leading-5 text-[#55738a]">{presentation.description}</p> : null}</div></div> : null}{presentation.action ? <button type="button" onClick={onAction} disabled={isInterestSaving} data-motion={isInterestSaving ? "pending" : undefined} data-ripple="true" aria-busy={isInterestSaving} className="motion-interactive inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{isInterestSaving ? "Saving application…" : presentation.actionLabel}</button> : null}</div>;
 }
 
 function ApplicationControl({ interest, isTutor, isApprovedTutor, isInterestSaving, onAction }: { interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onAction: () => void }) {
   if (isTutor && isApprovedTutor) return <TutorInterestControl interest={interest} isInterestSaving={isInterestSaving} onAction={onAction} />;
   const copy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
-  return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><p className="text-xs leading-5 text-[#55738a]">{copy.description}</p></div><button type="button" onClick={onAction} className="motion-interactive mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover">{copy.label}</button></div>;
+  return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><p className="text-xs leading-5 text-[#55738a]">{copy.description}</p></div><button type="button" onClick={onAction} data-ripple="true" className="motion-interactive mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover">{copy.label}</button></div>;
 }
 
 /**
@@ -535,6 +541,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
       : <button
           type="button"
           disabled={isInterestSaving}
+          data-ripple="true"
           onClick={event => { event.stopPropagation(); onInterestAction(); }}
           className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
         >{isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}</button>}
@@ -592,6 +599,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
       <button
         type="button"
         disabled={isInterestSaving}
+        data-ripple="true"
         onClick={onInterestAction}
         className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
       >{isInterestSaving ? "Saving…" : label}</button>

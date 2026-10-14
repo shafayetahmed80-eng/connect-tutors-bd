@@ -67,6 +67,7 @@ export function GuardianTuitionRequestDialog({ type, jobId, tutorLabel, busy, on
       <button
         type="button"
         disabled={busy || !ready}
+        data-ripple="true"
         onClick={() => onSend(needsReason ? reason.trim() : undefined)}
         className={`h-control rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${type === "confirm" ? "bg-[#0f7048] hover:bg-[#0c5b3a]" : "bg-red-600 hover:bg-red-700"}`}
       >{busy ? "Sending…" : "Send request"}</button>
