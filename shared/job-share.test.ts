@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildJobShareText, buildJobShareUrl } from "./job-share";
+import { buildFacebookShareUrl, buildJobShareText, buildJobShareUrl, buildWhatsAppShareUrl } from "./job-share";
 
 const job = {
   jobId: "6945",
@@ -16,6 +16,20 @@ describe("buildJobShareUrl", () => {
 
   it("does not double the slash when the origin ends with one", () => {
     expect(buildJobShareUrl("https://connecttutorsbd.com/", "6945")).toBe("https://connecttutorsbd.com/job-board?job=6945");
+  });
+});
+
+describe("buildWhatsAppShareUrl", () => {
+  it("creates a valid WhatsApp web share URL with encoded text", () => {
+    const text = "Need Tutor\nJob ID: 6945";
+    expect(buildWhatsAppShareUrl(text)).toBe("https://api.whatsapp.com/send?text=Need%20Tutor%0AJob%20ID%3A%206945");
+  });
+});
+
+describe("buildFacebookShareUrl", () => {
+  it("creates a valid Facebook sharer URL with encoded URL", () => {
+    const url = "https://connecttutorsbd.com/job-board?job=6945";
+    expect(buildFacebookShareUrl(url)).toBe("https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fconnecttutorsbd.com%2Fjob-board%3Fjob%3D6945");
   });
 });
 
