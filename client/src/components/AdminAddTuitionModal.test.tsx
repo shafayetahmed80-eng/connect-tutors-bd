@@ -23,7 +23,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import AdminAddTuitionModal from "./AdminAddTuitionModal";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); window.localStorage.clear(); window.sessionStorage.clear(); });
 
 const open = () => render(<AdminAddTuitionModal onClose={vi.fn()} onPosted={vi.fn()} />);
 const type = (label: RegExp | string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
@@ -419,5 +419,28 @@ describe("Edit", () => {
     openEdit({ guardianIsAdminPosted: false });
     expect((screen.getByLabelText(/Guardian name/) as HTMLInputElement).readOnly).toBe(true);
     expect((screen.getByLabelText(/Mobile number/) as HTMLInputElement).readOnly).toBe(true);
+  });
+
+  it("restores a saved draft when opening Add Tuition and clears it on click", () => {
+    window.localStorage.setItem("connect-tutors:draft:admin-add-tuition", JSON.stringify({
+      data: {
+        guardianName: "Restored Guardian",
+        guardianPhone: "1799999999",
+        salaryAmount: "7000",
+        notes: "Restored note",
+      },
+      savedAt: Date.now(),
+    }));
+
+    open();
+
+    expect((screen.getByLabelText(/Guardian name/) as HTMLInputElement).value).toBe("Restored Guardian");
+    expect((screen.getByLabelText(/Mobile number/) as HTMLInputElement).value).toBe("1799 999 999");
+    expect(screen.getByText(/সংরক্ষিত ড্রাফট/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /মুছে ফেলুন/ }));
+    expect((screen.getByLabelText(/Guardian name/) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/সংরক্ষিত ড্রাফট/)).toBeNull();
+    expect(window.localStorage.getItem("connect-tutors:draft:admin-add-tuition")).toBeNull();
   });
 });

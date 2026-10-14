@@ -28,6 +28,8 @@ import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } fro
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import { confirmPasswordBorder, GenderField, getPasswordMatch, PasswordField, PasswordMatch, PasswordStrength, PhoneCodeField, PhoneField, PolicyConsent, RegistrationFieldError, registrationFooter, registrationPolicyLinks, RequiredMark, SignInPrompt, useSecondsUntil } from "@/components/registrationFields";
 import { GUARDIAN_REQUEST_DRAFT_VERSION, guardianRequestDraftStorageKey, parseGuardianRequestDraft, serializeGuardianRequestDraft } from "./guardian-request-draft";
+import { DRAFT_STORAGE_KEYS, readStorageDraft, removeStorageDraft, saveStorageDraft } from "@/lib/formDraftStorage";
+import { DraftRestoredAlert } from "@/components/DraftRestoredAlert";
 import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom, type LearningNeedsLimits } from "@/components/LearningNeedsField";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { JobIdTag } from "@/components/JobIdTag";
@@ -373,6 +375,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const forgetPhoneCode = () => { setCodeSentTo(null); setPhoneCode(""); setPhoneCodeError(""); };
   const registrationMutation = trpc.guardianAuth.register.useMutation({
     onSuccess: () => {
+      removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
       setJourneyError("");
       setAccountFieldErrors({});
       void utils.auth.me.invalidate();
@@ -420,7 +423,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const draftOwnerId = authQuery.data?.role === "guardian" ? authQuery.data.id : null;
   const requestMutation = trpc.tutorRequests.create.useMutation({
     onSuccess: (result) => {
-      if (draftOwnerId) window.sessionStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId));
+      if (draftOwnerId) {
+        window.sessionStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId));
+        try { window.localStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId)); } catch {}
+      }
+      removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
       submissionStartedRef.current = false;
       setRequestId(result.id);
       setJourneyError("");
@@ -438,7 +445,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   });
   const updatePendingMutation = trpc.tutorRequests.updatePending.useMutation({
     onSuccess: () => {
-      if (draftOwnerId) window.sessionStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId));
+      if (draftOwnerId) {
+        window.sessionStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId));
+        try { window.localStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId)); } catch {}
+      }
+      removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
       submissionStartedRef.current = false;
       setJourneyError("");
       toast.success("Your Pending request has been updated.");
@@ -510,10 +521,14 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     setLoadedEditRequestId(editRequestId);
   }, [authQuery.data?.role, authQuery.isLoading, editRequestId, guardianRequestsQuery.data, guardianRequestsQuery.isLoading, loadedEditRequestId, navigate]);
 
+  const [isSignedDraftRestored, setIsSignedDraftRestored] = useState(false);
+  const [isGuestDraftRestored, setIsGuestDraftRestored] = useState(false);
+
   useEffect(() => {
     if (isEditMode) return;
     if (stage !== "request" || !draftOwnerId || draftRestoredFor === draftOwnerId) return;
-    const stored = window.sessionStorage.getItem(guardianRequestDraftStorageKey(draftOwnerId));
+    const stored = window.sessionStorage.getItem(guardianRequestDraftStorageKey(draftOwnerId))
+      || window.localStorage.getItem(guardianRequestDraftStorageKey(draftOwnerId));
     const draft = stored ? parseGuardianRequestDraft(stored) : null;
     if (draft) {
       setStep(draft.step);
@@ -533,6 +548,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
       setInstituteName(draft.request.instituteName);
       setHeardAboutUs(draft.request.heardAboutUs);
       setNotes(draft.notes);
+      setIsSignedDraftRestored(true);
     }
     setDraftRestoredFor(draftOwnerId);
   }, [draftOwnerId, draftRestoredFor, isEditMode, stage]);
@@ -540,8 +556,100 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   useEffect(() => {
     if (isEditMode) return;
     if (stage !== "request" || !draftOwnerId || draftRestoredFor !== draftOwnerId || requestId) return;
-    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serializeGuardianRequestDraft({ version: GUARDIAN_REQUEST_DRAFT_VERSION, step, request: requestInput, notes }));
+    const serialized = serializeGuardianRequestDraft({ version: GUARDIAN_REQUEST_DRAFT_VERSION, step, request: requestInput, notes });
+    window.sessionStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serialized);
+    try {
+      window.localStorage.setItem(guardianRequestDraftStorageKey(draftOwnerId), serialized);
+    } catch {}
   }, [draftOwnerId, draftRestoredFor, isEditMode, notes, requestId, requestInput, stage, step]);
+
+  const handleClearSignedDraft = () => {
+    if (draftOwnerId) {
+      window.sessionStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId));
+      try { window.localStorage.removeItem(guardianRequestDraftStorageKey(draftOwnerId)); } catch {}
+    }
+    setStep(1);
+    setLearningNeeds([]);
+    setTuitionType("home");
+    setGroupCapacity("");
+    setPackageDurationMonths("");
+    setStudentCount("1");
+    setStudentGender("");
+    setAddressDetails("");
+    setTuitionCityLocationId("");
+    setTuitionLocationId("");
+    setDaysPerWeek("");
+    setTutoringTime("");
+    setPreferredGender("any");
+    setSalaryAmount("");
+    setInstituteName("");
+    setHeardAboutUs("");
+    setNotes("");
+    setIsSignedDraftRestored(false);
+  };
+
+  useEffect(() => {
+    if (embedded || isEditMode || draftOwnerId) return;
+    const guest = readStorageDraft<{
+      phone?: string;
+      name?: string;
+      email?: string;
+      gender?: "" | "male" | "female";
+      accountCityId?: string;
+      accountLocationId?: string;
+      termsAccepted?: boolean;
+    }>(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
+
+    if (guest && (guest.phone || guest.name || guest.email || guest.accountCityId)) {
+      if (guest.phone) setPhone(guest.phone);
+      if (guest.name) setName(guest.name);
+      if (guest.email) setEmail(guest.email);
+      if (guest.gender) setGender(guest.gender);
+      if (guest.accountCityId) setAccountCityId(guest.accountCityId);
+      if (guest.accountLocationId) setAccountLocationId(guest.accountLocationId);
+      if (guest.termsAccepted) setTermsAccepted(guest.termsAccepted);
+      setIsGuestDraftRestored(true);
+    }
+  }, [draftOwnerId, embedded, isEditMode]);
+
+  useEffect(() => {
+    if (embedded || isEditMode || draftOwnerId) return;
+    if (stage !== "phone" && stage !== "register") return;
+    const hasContent = Boolean(
+      phone.trim() ||
+      name.trim() ||
+      email.trim() ||
+      gender ||
+      accountCityId ||
+      accountLocationId
+    );
+    if (hasContent) {
+      saveStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST, {
+        phone,
+        name,
+        email,
+        gender,
+        accountCityId,
+        accountLocationId,
+        termsAccepted,
+      });
+    }
+  }, [accountCityId, accountLocationId, draftOwnerId, email, embedded, gender, isEditMode, name, phone, stage, termsAccepted]);
+
+  const handleClearGuestDraft = () => {
+    removeStorageDraft(DRAFT_STORAGE_KEYS.GUARDIAN_JOURNEY_GUEST);
+    setPhone("");
+    setName("");
+    setEmail("");
+    setGender("");
+    setPassword("");
+    setConfirmPassword("");
+    setAccountCityId("");
+    setAccountLocationId("");
+    setTermsAccepted(false);
+    setStage("phone");
+    setIsGuestDraftRestored(false);
+  };
 
   const clearJourneyError = () => setJourneyError("");
   const clearAccountFieldError = (...keys: Array<keyof GuardianAccountFieldErrors>) => {
@@ -630,6 +738,20 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     <main className={embedded ? "py-0" : "px-4 py-8 sm:px-6"}><div className={embedded ? "max-w-none" : "mx-auto max-w-4xl"}>
       <section className={embedded ? "" : "rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6"}>
         {journeyError ? <p role="alert" className="mb-5 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{journeyError}</p> : null}
+        {isGuestDraftRestored && (stage === "phone" || stage === "register") ? (
+          <DraftRestoredAlert
+            onClear={handleClearGuestDraft}
+            onDismiss={() => setIsGuestDraftRestored(false)}
+            className="mb-4"
+          />
+        ) : null}
+        {isSignedDraftRestored && stage === "request" && step !== 3 ? (
+          <DraftRestoredAlert
+            onClear={handleClearSignedDraft}
+            onDismiss={() => setIsSignedDraftRestored(false)}
+            className="mb-4"
+          />
+        ) : null}
         {stage === "phone" ? <PhoneStage phone={localPhone} pending={phoneStatusMutation.isPending} onPhoneChange={(value) => { clearJourneyError(); setPhone(value); }} onContinue={() => {
           const digits = cleanBangladeshLocalPhoneDigits(localPhone);
           if (!isValidBangladeshLocalPhone(digits)) { setJourneyError("Enter a valid Bangladesh mobile number (10 digits after +880, e.g. 1712 345 678)."); return; }

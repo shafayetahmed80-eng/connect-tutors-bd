@@ -11,9 +11,11 @@ import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 import { cleanBangladeshLocalPhoneDigits, formatBangladeshLocalPhoneDisplay } from "@shared/phone";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { JobIdTag } from "@/components/JobIdTag";
+import { DRAFT_STORAGE_KEYS, readStorageDraft, removeStorageDraft, saveStorageDraft } from "@/lib/formDraftStorage";
+import { DraftRestoredAlert } from "@/components/DraftRestoredAlert";
 
 type TuitionType = "home" | "online" | "group" | "package";
 type PreferredGender = "any" | "female" | "male";
@@ -204,6 +206,100 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const [instituteName, setInstituteName] = useState(draft?.instituteName ?? "");
   const [heardAboutUs, setHeardAboutUs] = useState<RequestSource | "">((draft?.heardAboutUs as RequestSource) ?? "");
   const [notes, setNotes] = useState(draft?.notes ?? "");
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  useEffect(() => {
+    if (editing) return;
+    const saved = readStorageDraft<Record<string, unknown>>(DRAFT_STORAGE_KEYS.ADMIN_ADD_TUITION);
+    if (saved && (saved.guardianName || saved.guardianPhone || saved.salaryAmount || (saved.learningNeeds as LearningNeed[])?.length || saved.tuitionCityId || saved.addressDetails || saved.notes)) {
+      if (typeof saved.typedJobId === "string" || saved.typedJobId === null) setTypedJobId(saved.typedJobId as string | null);
+      if (typeof saved.guardianName === "string") setGuardianName(saved.guardianName);
+      if (typeof saved.guardianPhone === "string") setGuardianPhone(saved.guardianPhone);
+      if (typeof saved.tuitionType === "string") setTuitionType(saved.tuitionType as TuitionType);
+      if (typeof saved.tuitionCityId === "string") setTuitionCityId(saved.tuitionCityId);
+      if (typeof saved.tuitionLocationId === "string") setTuitionLocationId(saved.tuitionLocationId);
+      if (typeof saved.guardianCityId === "string") setGuardianCityId(saved.guardianCityId);
+      if (typeof saved.guardianLocationId === "string") setGuardianLocationId(saved.guardianLocationId);
+      if (Array.isArray(saved.learningNeeds) && saved.learningNeeds.length) setLearningNeeds(saved.learningNeeds as LearningNeed[]);
+      if (typeof saved.studentGender === "string") setStudentGender(saved.studentGender as StudentGender);
+      if (typeof saved.addressDetails === "string") setAddressDetails(saved.addressDetails);
+      if (typeof saved.studentCount === "string") setStudentCount(saved.studentCount);
+      if (typeof saved.groupCapacity === "string") setGroupCapacity(saved.groupCapacity);
+      if (typeof saved.packageDurationMonths === "string") setPackageDurationMonths(saved.packageDurationMonths);
+      if (typeof saved.daysPerWeek === "string") setDaysPerWeek(saved.daysPerWeek);
+      if (typeof saved.tutoringTime === "string") setTutoringTime(saved.tutoringTime);
+      if (typeof saved.preferredGender === "string") setPreferredGender(saved.preferredGender as PreferredGender);
+      if (typeof saved.salaryAmount === "string") setSalaryAmount(saved.salaryAmount);
+      if (typeof saved.instituteName === "string") setInstituteName(saved.instituteName);
+      if (typeof saved.heardAboutUs === "string") setHeardAboutUs(saved.heardAboutUs as RequestSource | "");
+      if (typeof saved.notes === "string") setNotes(saved.notes);
+      setIsDraftRestored(true);
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (editing) return;
+    const hasContent = Boolean(
+      guardianName.trim() ||
+      guardianPhone.trim() ||
+      salaryAmount.trim() ||
+      learningNeeds.length ||
+      tuitionCityId ||
+      addressDetails.trim() ||
+      notes.trim()
+    );
+    if (hasContent) {
+      saveStorageDraft(DRAFT_STORAGE_KEYS.ADMIN_ADD_TUITION, {
+        typedJobId,
+        guardianName,
+        guardianPhone,
+        tuitionType,
+        tuitionCityId,
+        tuitionLocationId,
+        guardianCityId,
+        guardianLocationId,
+        learningNeeds,
+        studentGender,
+        addressDetails,
+        studentCount,
+        groupCapacity,
+        packageDurationMonths,
+        daysPerWeek,
+        tutoringTime,
+        preferredGender,
+        salaryAmount,
+        instituteName,
+        heardAboutUs,
+        notes,
+      });
+    }
+  }, [editing, typedJobId, guardianName, guardianPhone, tuitionType, tuitionCityId, tuitionLocationId, guardianCityId, guardianLocationId, learningNeeds, studentGender, addressDetails, studentCount, groupCapacity, packageDurationMonths, daysPerWeek, tutoringTime, preferredGender, salaryAmount, instituteName, heardAboutUs, notes]);
+
+  const handleClearDraft = () => {
+    removeStorageDraft(DRAFT_STORAGE_KEYS.ADMIN_ADD_TUITION);
+    setTypedJobId(null);
+    setGuardianName("");
+    setGuardianPhone("");
+    setTuitionType("home");
+    setTuitionCityId("");
+    setTuitionLocationId("");
+    setGuardianCityId("");
+    setGuardianLocationId("");
+    setLearningNeeds([]);
+    setStudentGender("");
+    setAddressDetails("");
+    setStudentCount("1");
+    setGroupCapacity("");
+    setPackageDurationMonths("");
+    setDaysPerWeek("");
+    setTutoringTime("");
+    setPreferredGender("any");
+    setSalaryAmount("");
+    setInstituteName("");
+    setHeardAboutUs("");
+    setNotes("");
+    setIsDraftRestored(false);
+  };
 
   const online = tuitionType === "online";
   const cities = trpc.catalog.searchGuardianLocations.useQuery({ query: "", limit: 50, types: ["city"] });
@@ -216,7 +312,11 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const needsLimits = learningNeedsLimitsFrom(resolvedLimits.data);
 
   const create = trpc.admin.createPostedTuition.useMutation({
-    onSuccess: result => { toast.success(`Job ID ${jobIdForRequest(result.id)} is live on the Job Board.`); onPosted(); },
+    onSuccess: result => {
+      removeStorageDraft(DRAFT_STORAGE_KEYS.ADMIN_ADD_TUITION);
+      toast.success(`Job ID ${jobIdForRequest(result.id)} is live on the Job Board.`);
+      onPosted();
+    },
     // A taken Job ID may mean the sequence moved on under the form; offer the
     // new next one if the Admin had not typed their own.
     onError: error => { toast.error(error.message); void nextJobId.refetch(); },
@@ -279,10 +379,15 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   </button>;
 
   return <Modal size="panel" onClose={onClose} busy={post.isPending}>
-    {/* On a laptop the Post button sits in the header, top right. On a phone
-        the header has no room for it, so it moves to the foot instead. */}
     <ModalHeader title={editing ? <>Edit <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(draft.requestId)} /></> : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
     <ModalBody>
+      {!editing && isDraftRestored ? (
+        <DraftRestoredAlert
+          onClear={handleClearDraft}
+          onDismiss={() => setIsDraftRestored(false)}
+          className="mb-3"
+        />
+      ) : null}
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
         <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(normalizeNumericDigits(value, 9))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />
         <Text title="Guardian name" required readOnly={guardianLocked} value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />

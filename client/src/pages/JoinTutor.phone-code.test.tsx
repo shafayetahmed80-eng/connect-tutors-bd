@@ -33,6 +33,8 @@ import JoinTutor from "./JoinTutor";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 async function fillTheForm(user: ReturnType<typeof userEvent.setup>) {
@@ -161,5 +163,31 @@ describe("Tutor registration with an SMS code", () => {
     await user.type(screen.getByLabelText(/^Verification code/), "9999");
     await user.click(screen.getByRole("button", { name: "Verify and create account" }));
     expect(screen.getByText("That code is not right. 4 tries left.")).toBeTruthy();
+  });
+
+  it("silently restores a saved draft on mount and allows clearing it", async () => {
+    const user = userEvent.setup({ document: window.document });
+    window.localStorage.setItem("connect-tutors:draft:tutor-registration", JSON.stringify({
+      data: {
+        name: "Ayesha Siddiqua",
+        phone: "1812345678",
+        contactEmail: "ayesha@example.com",
+        gender: "female",
+        cityId: "dhaka",
+        locationId: "mirpur",
+      },
+      savedAt: Date.now(),
+    }));
+
+    render(<JoinTutor />);
+
+    expect((screen.getByLabelText(/^Full name/) as HTMLInputElement).value).toBe("Ayesha Siddiqua");
+    expect((screen.getByLabelText(/^Email/) as HTMLInputElement).value).toBe("ayesha@example.com");
+    expect(screen.getByText(/সংরক্ষিত ড্রাফট/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /মুছে ফেলুন/ }));
+    expect((screen.getByLabelText(/^Full name/) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/সংরক্ষিত ড্রাফট/)).toBeNull();
+    expect(window.localStorage.getItem("connect-tutors:draft:tutor-registration")).toBeNull();
   });
 });

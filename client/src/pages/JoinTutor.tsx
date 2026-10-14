@@ -7,6 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { rememberSignInRole } from "@/lib/signInRoleMemory";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { formatBangladeshMobile, isValidBangladeshLocalMobile, normalizeBangladeshLocalMobile, saveTutorOnboardingDraft } from "@/lib/tutorOnboarding";
+import { DRAFT_STORAGE_KEYS, readStorageDraft, removeStorageDraft, saveStorageDraft } from "@/lib/formDraftStorage";
+import { DraftRestoredAlert } from "@/components/DraftRestoredAlert";
 import { clearCurrentTutorPortalToken, getCurrentTutorPortalToken, storeCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { completeTutorLoginHandoff } from "@/lib/tutorLoginHandoff";
 import { TRPCClientError } from "@trpc/client";
@@ -91,7 +93,54 @@ export default function JoinTutor() {
   const [agreed, setAgreed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<TutorRegistrationErrors>({});
   const [submitError, setSubmitError] = useState("");
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
   const resolveSlot = useSiteContentResolver();
+
+  useEffect(() => {
+    const saved = readStorageDraft<Partial<TutorRegistrationForm>>(DRAFT_STORAGE_KEYS.TUTOR_REGISTRATION);
+    if (saved && (saved.name || saved.phone || saved.contactEmail || saved.cityId || saved.locationId || saved.gender)) {
+      setForm((current) => ({
+        ...current,
+        name: saved.name ?? current.name,
+        phone: saved.phone ?? current.phone,
+        contactEmail: saved.contactEmail ?? current.contactEmail,
+        gender: saved.gender ?? current.gender,
+        cityId: saved.cityId ?? current.cityId,
+        locationId: saved.locationId ?? current.locationId,
+      }));
+      setIsDraftRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const hasContent = Boolean(
+      form.name.trim() ||
+      form.phone.trim() ||
+      form.contactEmail.trim() ||
+      form.gender ||
+      form.cityId ||
+      form.locationId
+    );
+    if (hasContent) {
+      saveStorageDraft(DRAFT_STORAGE_KEYS.TUTOR_REGISTRATION, {
+        name: form.name,
+        phone: form.phone,
+        contactEmail: form.contactEmail,
+        gender: form.gender,
+        cityId: form.cityId,
+        locationId: form.locationId,
+      });
+    }
+  }, [form.name, form.phone, form.contactEmail, form.gender, form.cityId, form.locationId]);
+
+  const handleClearDraft = () => {
+    removeStorageDraft(DRAFT_STORAGE_KEYS.TUTOR_REGISTRATION);
+    setForm(initialForm);
+    setAgreed(false);
+    setIsDraftRestored(false);
+    setFieldErrors({});
+    setSubmitError("");
+  };
 
   useEffect(() => {
     if (!authLoading && user?.role === "tutor" && getCurrentTutorPortalToken()) navigate("/tutor/dashboard");
@@ -195,6 +244,7 @@ export default function JoinTutor() {
         cityId: form.cityId,
         locationId: form.locationId,
       });
+      removeStorageDraft(DRAFT_STORAGE_KEYS.TUTOR_REGISTRATION);
       if (!result.tutorPortalToken) throw new Error("Tutor portal proof was not issued.");
       await completeTutorLoginHandoff({
         tutorPortalToken: result.tutorPortalToken,
@@ -287,6 +337,12 @@ export default function JoinTutor() {
 
         <form noValidate onSubmit={submitRegistration} className="mx-auto mt-4 rounded-[1.65rem] border border-j-border bg-white p-5 shadow-[0_20px_56px_rgba(27,84,122,0.13)] sm:p-6">
           <section aria-labelledby="tutor-registration-title" className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+            {isDraftRestored ? (
+              <DraftRestoredAlert
+                onClear={handleClearDraft}
+                onDismiss={() => setIsDraftRestored(false)}
+              />
+            ) : null}
             <div className={fieldGrid}>
               <RegistrationFieldError id="name-error" message={fieldErrors.name}><label className="block" htmlFor="name"><span className={fieldLabel}>{resolveSlot("tutor-registration.field.fullName", "Full name")}<RequiredMark /></span><input id="name" required maxLength={160} value={form.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} className={fieldClass} placeholder="Your full name" autoComplete="name" /></label></RegistrationFieldError>
               <RegistrationFieldError id="gender-error" message={fieldErrors.gender}><GenderField id="gender" name="gender" label={resolveSlot("tutor-registration.field.gender", "Gender")} value={form.gender} onSelect={(value) => update("gender", value)} invalid={Boolean(fieldErrors.gender)} describedBy={fieldErrors.gender ? "gender-error" : undefined} /></RegistrationFieldError>
