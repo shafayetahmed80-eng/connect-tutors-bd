@@ -614,7 +614,6 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
       preferredTutorGender: job.preferredTutorGender,
     }}
     onOpen={onDetails}
-    footerStart={<ShareJobButton job={job} />}
     action={applied
       ? <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
           <Check size={13} aria-hidden={true} />{applied.label} <span className="font-semibold text-[#3f8468]">{applied.appliedOn}</span>

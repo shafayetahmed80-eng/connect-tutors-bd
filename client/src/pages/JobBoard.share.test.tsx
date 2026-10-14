@@ -66,6 +66,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 import { JobBoardContent } from "./JobBoard";
+import ShareJobButton from "@/components/ShareJobButton";
 
 beforeEach(() => {
   mocks.share.mockResolvedValue("copied");
@@ -79,19 +80,20 @@ afterEach(() => {
 });
 
 describe("sharing a tuition from the Job Board", () => {
-  it("shares the card's job from a small icon, without opening its details", async () => {
+  it("keeps share button off the primary job card, and exposes it in the details dialog", async () => {
     render(<JobBoardContent embedded />);
 
-    fireEvent.click(within(screen.getByRole("button", { name: /Job ID 6801/ })).getByRole("button", { name: "Share this tuition" }));
+    expect(within(screen.getByRole("button", { name: /Job ID 6801/ })).queryByRole("button", { name: "Share this tuition" })).toBeNull();
 
-    expect(mocks.share).toHaveBeenCalledWith(expect.objectContaining({ jobId: "6801", title: "Need a Tutor for Class 8", budgetAmount: 5000, locationLabel: "Adabor, Dhaka" }));
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Job details copied"));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    // Opening details displays the Share button
+    fireEvent.click(screen.getByRole("button", { name: /Job ID 6801/ }));
+    const share = within(screen.getByRole("dialog")).getByRole("button", { name: "Share this tuition" });
+    expect(share).toBeTruthy();
   });
 
   it("says so when the copy did not work, and says nothing after the share sheet is closed", async () => {
-    render(<JobBoardContent embedded />);
-    const share = within(screen.getByRole("button", { name: /Job ID 6801/ })).getByRole("button", { name: "Share this tuition" });
+    render(<ShareJobButton job={job(1, "6801", "Need a Tutor for Class 8")} />);
+    const share = screen.getByRole("button", { name: "Share this tuition" });
 
     mocks.share.mockResolvedValueOnce("failed");
     fireEvent.click(share);
