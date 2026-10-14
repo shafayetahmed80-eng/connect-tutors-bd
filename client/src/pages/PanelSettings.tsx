@@ -13,6 +13,7 @@ import { AccountSettings, ChangePasswordForm, SettingValue, type AccountSettings
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { GuardianVerificationBadge } from "@/components/GuardianVerificationBadge";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { AdminPushNotificationSettings } from "@/components/AdminPushNotificationSettings";
 import { SignOutEverywhereButton } from "@/components/SignOutEverywhereButton";
 import { trpc } from "@/lib/trpc";
 
@@ -67,6 +68,18 @@ function notificationsItem(): AccountSettingsItem {
   };
 }
 
+function adminNotificationsItem(): AccountSettingsItem {
+  return {
+    key: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    iconTone: "sky",
+    alwaysOpen: true,
+    value: "This device",
+    content: <AdminPushNotificationSettings />,
+  };
+}
+
 /** Every panel's Settings; a Tutor's or Guardian's (`member`) goes through their own route. */
 function signOutEverywhereItem(member = false): AccountSettingsItem {
   return {
@@ -111,9 +124,15 @@ export function AdminSettingsContent() {
         { key: "mobile", label: "Mobile Number", shortLabel: "Mobile", icon: Phone, iconTone: "rose", value: mobile ?? "", content: <OwnerContactForm field="mobile" name={name} phone={mobile} /> },
         passwordItem("User ID", profile?.loginId ?? ""),
         signOutEverywhereItem(),
-        notificationsItem(),
+        adminNotificationsItem(),
       ]
-    : [...requestedValueItems(changes), passwordItem("User ID", profile?.loginId ?? ""), signOutEverywhereItem(), closeAccountItem(changes)];
+    : [
+        ...requestedValueItems(changes),
+        passwordItem("User ID", profile?.loginId ?? ""),
+        signOutEverywhereItem(),
+        adminNotificationsItem(),
+        closeAccountItem(changes),
+      ];
   return <AccountSettings items={items} basePath={ADMIN_SETTINGS_PATH} />;
 }
 

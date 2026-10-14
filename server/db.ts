@@ -125,9 +125,18 @@ import {
   type User,
   type UserRole,
   type TutorRequestPublicationState,
+  adminPushPreferences,
 } from "../drizzle/schema";
 import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
 import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
+import {
+  notifyAdminsOfEvent,
+  getAdminPushPreferences as getAdminPushPreferencesDb,
+  updateAdminPushPreferences as updateAdminPushPreferencesDb,
+  sendTestAdminPushNotification as sendTestAdminPushNotificationDb,
+  type AdminPushEvent,
+  type AdminPushPreferences,
+} from "./admin-push";
 import { ADMIN_CHAT_PUSH_TITLE, ADMIN_CHAT_PUSH_URL, adminChatPushBody, NEW_TUITION_PUSH, newTuitionNotice, newTuitionPushUrl } from "@shared/push-messages";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
 import { getGuardianRequestLifecycle, type GuardianRequestLifecycle } from "./tutor-request-lifecycle";
@@ -6632,17 +6641,13 @@ export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: strin
 }
 
 async function pushChatMessageToAdmins(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string, preview: string) {
-  const subscriptions = await database.select().from(adminPushSubscriptions);
-  if (subscriptions.length === 0) return;
   const [tutorRow] = await database.select({ name: tutors.name }).from(tutors).where(eq(tutors.id, tutorId));
-  const title = tutorRow?.name ? `${tutorRow.name} sent a message` : "New Tutor message";
-  const body = preview || "Sent an attachment";
-  const results = await Promise.all(subscriptions.map(async subscription => ({
-    id: subscription.id,
-    result: await sendWebPushNotification(subscription, { title, body, url: `/admin/tutor-chats?tutorId=${tutorId}` }),
-  })));
-  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
-  if (goneIds.length > 0) await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
+  void notifyAdminsOfEvent(database, {
+    type: "tutor_chat",
+    tutorId,
+    tutorName: tutorRow?.name ?? null,
+    preview: preview || "Sent an attachment",
+  }).catch(() => {});
 }
 
 export async function markTutorAdminChatReadByTutor(input: { tutorId: string }) {
@@ -6967,6 +6972,74 @@ export async function unsubscribeAdminFromChatPush(input: { endpoint: string }) 
   if (!database) throw new Error("Database is not available");
   await database.delete(adminPushSubscriptions).where(eq(adminPushSubscriptions.endpoint, input.endpoint));
   return { unsubscribed: true as const };
+}
+
+export async function getAdminPushPreferences(adminId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return getAdminPushPreferencesDb(database, adminId);
+}
+
+export async function updateAdminPushPreferences(adminId: number, updates: Partial<AdminPushPreferences>) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return updateAdminPushPreferencesDb(database, adminId, updates);
+}
+
+export async function sendTestAdminPushNotification(adminId: number) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return sendTestAdminPushNotificationDb(database, adminId);
+}
+
+export async function notifyAdminPushEvent(event: AdminPushEvent) {
+  const database = await getDb();
+  if (!database) return { sent: 0 };
+  return notifyAdminsOfEvent(database, event);
+}
+
+export async function notifyTutorAppliedToAdmins(input: { tutorId: string; tutorJobId: number }) {
+  const database = await getDb();
+  if (!database) return;
+  const [job] = await database
+    .select({ id: tutorJobs.id, tutorRequestId: tutorJobs.tutorRequestId, publicJobId: tutorJobs.publicJobId })
+    .from(tutorJobs)
+    .where(eq(tutorJobs.id, input.tutorJobId))
+    .limit(1);
+  if (!job) return;
+  const [tutor] = await database
+    .select({ name: tutors.name })
+    .from(tutors)
+    .where(eq(tutors.id, input.tutorId))
+    .limit(1);
+  await notifyAdminsOfEvent(database, {
+    type: "tutor_application",
+    requestId: job.tutorRequestId,
+    jobId: job.publicJobId,
+    tutorName: tutor?.name ?? null,
+  });
+}
+
+export async function notifyTutorRegistrationToAdmins(input: { userId: number }) {
+  const database = await getDb();
+  if (!database) return;
+  const profile = await loadTutorProfileOwner(database, input.userId);
+  if (!profile || !profile.tutorId) return;
+  let instituteName: string | null = null;
+  if (profile.universityId) {
+    const [univ] = await database
+      .select({ name: universities.name })
+      .from(universities)
+      .where(eq(universities.id, profile.universityId))
+      .limit(1);
+    instituteName = univ?.name ?? null;
+  }
+  await notifyAdminsOfEvent(database, {
+    type: "tutor_registration",
+    tutorId: profile.tutorId,
+    tutorName: profile.name,
+    instituteName,
+  });
 }
 
 export async function getPushNotificationPublicKey() {
@@ -9516,7 +9589,7 @@ export async function reportTuitionPayment(input: {
 }): Promise<TuitionPaymentFailure | { outcome: "reported" }> {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  return database.transaction(async tx => {
+  const result = await database.transaction(async tx => {
     const request = await loadChargeRequest(tx, input.requestId);
     // Someone else's tuition looks exactly like one that does not exist.
     if (!request || request.tutorId !== input.tutorId || !request.confirmedAt) return { outcome: "not_found" as const };
@@ -9559,6 +9632,22 @@ export async function reportTuitionPayment(input: {
     });
     return { outcome: "reported" as const };
   });
+
+  if (result.outcome === "reported") {
+    const [tutorRow] = await database
+      .select({ name: tutors.name })
+      .from(tutors)
+      .where(eq(tutors.id, input.tutorId))
+      .limit(1);
+    void notifyAdminsOfEvent(database, {
+      type: "payment_report",
+      requestId: input.requestId,
+      amount: input.amount,
+      tutorName: tutorRow?.name ?? null,
+    }).catch(() => {});
+  }
+
+  return result;
 }
 
 /**

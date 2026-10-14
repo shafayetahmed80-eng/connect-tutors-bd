@@ -1834,6 +1834,26 @@ export const adminPushSubscriptions = mysqlTable(
 );
 
 /**
+ * Category-level push notification preferences per Admin account.
+ * Missing row means all categories are enabled by default.
+ */
+export const adminPushPreferences = mysqlTable(
+  "admin_push_preferences",
+  {
+    adminId: int("adminId").primaryKey(),
+    notifyTuitions: boolean("notifyTuitions").default(true).notNull(),
+    notifyApplications: boolean("notifyApplications").default(true).notNull(),
+    notifyPayments: boolean("notifyPayments").default(true).notNull(),
+    notifyRegistrations: boolean("notifyRegistrations").default(true).notNull(),
+    notifyChat: boolean("notifyChat").default(true).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.adminId], foreignColumns: [users.id], name: "app_admin_fk" }),
+  ]
+);
+
+/**
  * One row per browser a Tutor or Guardian allowed push notifications on - the
  * same shape as `adminPushSubscriptions`, keyed by `userId` instead of
  * `adminId` since either role can hold one. Removed the moment the browser

@@ -5,6 +5,7 @@ import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
 import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import { AdminPushHeaderPopover } from "@/components/AdminPushHeaderPopover";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 
@@ -232,6 +233,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
         ...(access?.loginId ? [{ label: "User ID", value: access.loginId }] : []),
         { label: "Role", value: access?.isOwner ? "Project Owner" : "Administrator" },
       ],
+      customNotificationsContent: <AdminPushHeaderPopover />,
     }}
   >{children}</DashboardLayout>;
 }
