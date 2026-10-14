@@ -63,7 +63,7 @@ function Fact({ icon, label, value, muted, wide }: { icon: React.ReactNode; labe
   </div>;
 }
 
-export default function JobCard({ job, onOpen, action, showMapLink = true, footerStart, isNew = false }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Leads the footer on the left - the Admin board puts the post type there. */ footerStart?: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean; /** The Job Board marks a job that went live in the last day, for the Tutors reading it. */ isNew?: boolean }) {
+export default function JobCard({ job, onOpen, action, showMapLink = false, footerStart, isNew = false }: { job: JobCardData; onOpen: () => void; action: React.ReactNode; /** Leads the footer on the left - the Admin board puts the post type there. */ footerStart?: React.ReactNode; /** Off in the Guardian panel: a Guardian already knows where their own tuition is. */ showMapLink?: boolean; /** The Job Board marks a job that went live in the last day, for the Tutors reading it. */ isNew?: boolean }) {
   const salary = formatSalaryAmount(job.budgetAmount);
   const place = formatLocation({ tuitionType: job.tuitionType, locationLabel: job.locationLabel });
   const mapUrl = showMapLink ? buildMapsDirectionUrl(job.tuitionType === "online" ? null : job.locationLabel) : null;
@@ -102,28 +102,31 @@ export default function JobCard({ job, onOpen, action, showMapLink = true, foote
         <Fact icon={<MapPin size={13} />} label="Location" value={place} wide />
       </div>
 
-      <p className="job-card-text mt-2.5 flex items-center gap-1.5 text-j-ink-muted">
-        <TutorPreferenceIcon preference={job.preferredTutorGender} className={tutorPreferenceToneClass(job.preferredTutorGender)} />
-        <span><strong className={`font-bold ${tutorPreferenceToneClass(job.preferredTutorGender)}`}>{formatTutorPreference(job.preferredTutorGender)}</strong> tutor preferred</span>
-      </p>
-
-      {/* Pushed to the foot so every card in a row ends level. */}
+      {/* Pushed to the foot so every card in a row ends level. Tutor preference on the left beside action. */}
       <div className="job-card-footer mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#eaf1f6] pt-2.5" style={{ marginTop: "auto", paddingTop: "10px" }}>
-        {footerStart || mapUrl
-          ? <span className="flex min-w-0 items-center gap-3">
-              {footerStart}
-              {mapUrl
-                ? <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={event => event.stopPropagation()}
-                    className="inline-flex items-center gap-1 font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
-                  ><MapPin size={13} /> View on map</a>
-                : null}
+        <div className="job-card-text flex min-w-0 flex-1 items-center gap-2 text-j-ink-muted">
+          {footerStart}
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <TutorPreferenceIcon preference={job.preferredTutorGender} className={tutorPreferenceToneClass(job.preferredTutorGender)} />
+            <span className="truncate">
+              <strong className={`font-bold ${tutorPreferenceToneClass(job.preferredTutorGender)}`}>
+                {formatTutorPreference(job.preferredTutorGender)}
+              </strong> tutor preferred
             </span>
-          : <span />}
-        {action}
+          </span>
+          {showMapLink && mapUrl
+            ? <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={event => event.stopPropagation()}
+                className="inline-flex items-center gap-1 font-semibold text-j-ink-muted hover:text-[#1267c8] hover:underline max-md:min-h-10"
+              ><MapPin size={13} /> View on map</a>
+            : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {action}
+        </div>
       </div>
     </article>
   );
