@@ -57,6 +57,13 @@ describe("MoneyAmountField", () => {
     expect(onChange).not.toHaveBeenCalledWith("5,000");
   });
 
+  it("converts Bangla digits to English digits as they are typed", () => {
+    const { onChange, field } = renderField({ value: "" });
+
+    fireEvent.change(field, { target: { value: "৫০০০" } });
+    expect(onChange).toHaveBeenCalledWith("5000");
+  });
+
   it("holds its peace on blur where the caller stores something other than the typed text", () => {
     // A filter that strips to digits every keystroke would throw the commas
     // away on the next render, so it does not ask for them.

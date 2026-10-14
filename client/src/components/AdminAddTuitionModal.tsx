@@ -7,6 +7,7 @@ import { formatStudentGender, formatTuitionType } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
 import { normalizeTutoringTime } from "@shared/tutoring-time";
+import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -251,9 +252,9 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     <ModalHeader title={editing ? <>Edit <JobIdTag colon={false} iconSize={12} jobId={jobIdForRequest(draft.requestId)} /></> : "Add Tuition"} action={<span className="hidden sm:inline-flex">{postButton}</span>} />
     <ModalBody>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-        <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(value.replace(/[^0-9]/g, ""))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />
+        <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(normalizeNumericDigits(value, 9))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />
         <Text title="Guardian name" required readOnly={guardianLocked} value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />
-        <Text title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={setGuardianPhone} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
+        <Text title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={value => setGuardianPhone(toEnglishDigits(value))} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
         <Select title="Tuition type" required value={tuitionType} onChange={value => setTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose" format={value => formatTuitionType(value)} />
 
         {online ? <>

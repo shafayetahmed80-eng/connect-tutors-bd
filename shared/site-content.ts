@@ -23,6 +23,7 @@ import {
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK } from "./community";
 import { tutorProfileColourParts, tutorProfileColours, tutorProfileColourSlotId } from "./tutor-profile-colours";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels } from "./platform-charge";
+import { normalizeNumericDigits } from "./digits";
 import { homeCopy, infoPageActions, infoPageCopy } from "./public-content";
 import { howItWorksGuides, howItWorksPanels, howItWorksSlotId } from "./how-it-works";
 export const siteContentPageIds = ["site", "tutor-profile", "guardian-profile", "sidebar-tabs", "home", "info-pages", "button-section", "admin-control", "how-it-works"] as const;
@@ -749,7 +750,7 @@ export function isSiteContactNumber(value: string) {
  * working link instead of a silent 404 on wa.me.
  */
 export function normalizeSiteContactNumber(value: string) {
-  const digits = value.replace(/\D/g, "");
+  const digits = normalizeNumericDigits(value);
   if (digits.startsWith("880")) return digits;
   if (digits.startsWith("0")) return `88${digits}`;
   if (digits.startsWith("1")) return `880${digits}`;

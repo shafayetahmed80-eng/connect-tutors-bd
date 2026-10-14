@@ -1,3 +1,5 @@
+import { toEnglishDigits } from "../shared/digits";
+
 const BANGLADESH_MOBILE_PATTERN = /^\+8801[3-9]\d{8}$/;
 
 export class GuardianIntakeValidationError extends Error {
@@ -13,7 +15,8 @@ export class GuardianIntakeValidationError extends Error {
  * verify ownership of the phone number.
  */
 export function normalizeBangladeshMobile(value: string): string {
-  const compact = value.trim().replace(/[\s-]/g, "");
+  const english = toEnglishDigits(value);
+  const compact = english.trim().replace(/[\s-]/g, "");
   const canonical = compact.startsWith("01")
     ? `+880${compact.slice(1)}`
     : compact;

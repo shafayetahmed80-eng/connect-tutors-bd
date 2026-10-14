@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import {
   ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminProfileCompletion, adminReligionOptions, type AdminProfileImageKind,
 } from "@shared/admin-profile";
+import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 
 const IMAGE_ACCEPT = "image/jpeg,image/jpg,image/pjpeg,image/png,image/webp";
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"];
@@ -322,7 +323,7 @@ function TwoFactorSmsBackupCard() {
 
       {editing && !sentPhone ? (
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <Field label="Mobile number"><input name="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
+          <Field label="Mobile number"><input name="tel" autoComplete="tel" value={phone} onChange={event => setPhone(toEnglishDigits(event.target.value))} placeholder="+8801XXXXXXXXX" inputMode="tel" className={inputClass} /></Field>
           <Button type="button" disabled={startSetup.isPending || !/^\+8801[3-9]\d{8}$/.test(phone)} onClick={() => void send()} className="h-control rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{startSetup.isPending ? "Sending…" : "Send code"}</Button>
           <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
         </div>
@@ -330,7 +331,7 @@ function TwoFactorSmsBackupCard() {
 
       {editing && sentPhone ? (
         <form onSubmit={event => void confirm(event)} className="mt-3 flex flex-wrap items-end gap-2">
-          <Field label={`Code sent to ${sentPhone}`}><input value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} autoFocus className={`${inputClass} w-28 text-center font-mono tracking-[0.4em]`} /></Field>
+          <Field label={`Code sent to ${sentPhone}`}><input value={code} onChange={event => setCode(normalizeNumericDigits(event.target.value, 4))} inputMode="numeric" maxLength={4} autoFocus className={`${inputClass} w-28 text-center font-mono tracking-[0.4em]`} /></Field>
           <Button type="submit" disabled={confirmSetup.isPending || code.length !== 4} className="h-control rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">{confirmSetup.isPending ? "Confirming…" : "Confirm"}</Button>
           <button type="button" onClick={reset} className="h-[42px] text-xs font-bold text-j-ink-muted hover:underline">Cancel</button>
         </form>

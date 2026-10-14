@@ -7,6 +7,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import { CheckCircle2, ClipboardCopy, KeyRound, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
+import { normalizeNumericDigits } from "@shared/digits";
 
 function getErrorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : "That code could not be confirmed. Try again.";
@@ -57,7 +58,7 @@ export default function AdminTwoFactorSetup() {
 
   // Six digits is a complete code, so there is nothing to wait for a button click to do.
   const handleCodeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    const digits = normalizeNumericDigits(raw, 6);
     setCode(digits);
     if (digits.length === 6) void runConfirm(digits);
   };

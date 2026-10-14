@@ -8,6 +8,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
+import { normalizeNumericDigits } from "@shared/digits";
 
 function getErrorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : "We could not confirm that. Try again.";
@@ -94,7 +95,7 @@ export default function LoginTwoFactorChallenge() {
 
   // Four digits is a complete code, so there is nothing for a button click to wait on.
   const handleCodeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    const digits = normalizeNumericDigits(raw, 4);
     setCode(digits);
     if (digits.length === 4) void runVerify(digits);
   };

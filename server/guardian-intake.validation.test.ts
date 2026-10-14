@@ -8,6 +8,8 @@ describe("Guardian phone intake validation", () => {
   it("normalizes supported Bangladesh mobile formats to the private canonical form", () => {
     expect(normalizeBangladeshMobile("01516131411")).toBe("+8801516131411");
     expect(normalizeBangladeshMobile("+880 1516-131411")).toBe("+8801516131411");
+    expect(normalizeBangladeshMobile("০১৫১৬১৩১৪১১")).toBe("+8801516131411");
+    expect(normalizeBangladeshMobile("+৮৮০ ১৫১৬-১৩১৪১১")).toBe("+8801516131411");
   });
 
   it("rejects invalid Bangladesh mobile prefixes and incorrect lengths", () => {

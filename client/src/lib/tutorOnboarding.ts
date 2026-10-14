@@ -1,8 +1,10 @@
+import { normalizeNumericDigits } from "@shared/digits";
+
 export const TUTOR_ONBOARDING_DRAFT_KEY = "connect-tutors:tutor-onboarding-draft";
 export const BANGLADESH_COUNTRY_CODE = "+880";
 
 export function normalizeBangladeshLocalMobile(value: string) {
-  const digits = value.replace(/\D/g, "");
+  const digits = normalizeNumericDigits(value);
   const withoutCountryCode = digits.startsWith("880") ? digits.slice(3) : digits;
   const withoutTrunkPrefix = withoutCountryCode.startsWith("0") ? withoutCountryCode.slice(1) : withoutCountryCode;
   return withoutTrunkPrefix.slice(0, 10);
