@@ -51,7 +51,7 @@ export function PhoneContact({ phone, size = "table", className }: {
   if (!links) return <span className="tabular-nums text-j-ink-strong">{phone}</span>;
 
   const card = size === "card";
-  const cleanNumber = links.clean ?? phone;
+  const cleanNumber = links.tel.replace("tel:+880", "0");
 
   const handleCallClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
