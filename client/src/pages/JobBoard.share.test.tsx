@@ -113,6 +113,58 @@ describe("sharing a tuition from the Job Board", () => {
 
     expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Share this tuition" }).textContent).toContain("Share");
   });
+
+  it("opens the share popover menu in details dialog with WhatsApp, Facebook, Copy Link and Copy Details options", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Job ID 6801/ }));
+
+    const shareBtn = within(screen.getByRole("dialog")).getByRole("button", { name: "Share this tuition" });
+    fireEvent.click(shareBtn);
+
+    const shareOptions = screen.getByRole("dialog", { name: "Share options" });
+    expect(within(shareOptions).getByText("Share to WhatsApp")).toBeTruthy();
+    expect(within(shareOptions).getByText("Share on Facebook")).toBeTruthy();
+    expect(within(shareOptions).getByText("Copy Link")).toBeTruthy();
+    expect(within(shareOptions).getByText("Copy Full Details")).toBeTruthy();
+
+    // Clicking WhatsApp opens a window with WhatsApp share URL
+    fireEvent.click(within(shareOptions).getByRole("button", { name: /Share to WhatsApp/ }));
+    expect(openSpy).toHaveBeenCalledWith(expect.stringContaining("https://api.whatsapp.com/send?text="), "_blank", expect.any(String));
+
+    openSpy.mockRestore();
+  });
+
+  it("copies link and provides checkmark feedback when Copy Link is clicked in details popover", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Job ID 6801/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Share this tuition" }));
+
+    const copyLinkBtn = screen.getByRole("button", { name: /Copy Link/ });
+    fireEvent.click(copyLinkBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Link Copied!")).toBeTruthy();
+      expect(mocks.toastSuccess).toHaveBeenCalledWith("Tuition link copied to clipboard");
+    });
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/job-board?job=6801"));
+  });
+
+  it("closes the share popover when Escape is pressed", () => {
+    render(<JobBoardContent embedded />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Job ID 6801/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Share this tuition" }));
+
+    expect(screen.getByRole("dialog", { name: "Share options" })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Share options" })).toBeNull();
+  });
 });
 
 describe("opening a shared link", () => {

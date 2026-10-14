@@ -34,3 +34,14 @@ export function buildJobShareText(job: JobShareInput, url: string): string {
   lines.push(`Job ID: ${job.jobId}`, url);
   return lines.join("\n");
 }
+
+/** Direct WhatsApp share URL with pre-filled message text. */
+export function buildWhatsAppShareUrl(text: string): string {
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+}
+
+/** Direct Facebook share dialog URL with target tuition link. */
+export function buildFacebookShareUrl(url: string): string {
+  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+}
+
