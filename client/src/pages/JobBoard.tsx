@@ -21,6 +21,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation, useSearch } from "wouter";
+import { useIsMobile } from "@/hooks/useMobile";
 
 type TutorGender = "male" | "female" | "any";
 type TuitionType = "home" | "online" | "both" | "group" | "package";
@@ -427,6 +428,61 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const [savingJobId, setSavingJobId] = useState<number | null>(null);
   const isInterestSaving = expressInterest.isPending || withdrawInterest.isPending;
   const isApprovedTutor = isTutor && tutorProfileQuery.data?.profileStatus === "approved";
+  const isMobile = useIsMobile();
+  const [extraMobileJobs, setExtraMobileJobs] = useState<JobBoardJob[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const mobileSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset extra mobile jobs whenever filters/query change
+  useEffect(() => {
+    setExtraMobileJobs([]);
+  }, [filters]);
+
+  // Combine page 1 jobs with any lazily streamed extra pages on mobile
+  const displayedJobs = useMemo(() => {
+    if (!isMobile || extraMobileJobs.length === 0) return jobs;
+    const ids = new Set(jobs.map(j => j.id));
+    const fresh = extraMobileJobs.filter(j => !ids.has(j.id));
+    return [...jobs, ...fresh];
+  }, [isMobile, jobs, extraMobileJobs]);
+
+  // Infinite scroll trigger on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const sentinel = mobileSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const first = entries[0];
+        if (first && first.isIntersecting && !isLoadingMore && !jobsQuery.isFetching) {
+          const currentTotal = displayedJobs.length;
+          if (currentTotal < totalCount && (utils as any).jobBoard?.list?.fetch) {
+            const nextPage = Math.floor(currentTotal / filters.pageSize) + 1;
+            setIsLoadingMore(true);
+            void (utils as any).jobBoard.list
+              .fetch({ ...queryInput, page: nextPage })
+              .then((result: { items?: JobBoardJob[] } | undefined) => {
+                if (result?.items?.length) {
+                  setExtraMobileJobs(prev => {
+                    const ids = new Set(prev.map(j => j.id));
+                    const fresh = result.items!.filter(j => !ids.has(j.id));
+                    return [...prev, ...fresh];
+                  });
+                }
+              })
+              .catch(() => {})
+              .finally(() => setIsLoadingMore(false));
+          }
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isMobile, isLoadingMore, jobsQuery.isFetching, displayedJobs.length, totalCount, filters.pageSize, queryInput, utils]);
 
   useEffect(() => {
     if (filters.page > pagination.totalPages) setFilters(current => ({ ...current, page: pagination.totalPages }));
@@ -540,17 +596,29 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         {interestError ? <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-bold">Your Job Board application was not updated.</p><p className="mt-1">{interestError}</p></div> : null}
         {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? clearFilters : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
-      {jobs.length ? <div className="grid gap-4 md:grid-cols-2">{jobs.map((job, index) => <div key={job.id} className="job-board-card-enter" style={{ "--stagger": Math.min(index, JOB_CARD_STAGGER_CAP) } as React.CSSProperties}><JobCard job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} /></div>)}</div> : null}
-      <div className="mt-7"><TutorListPager
-        page={queryInput.page}
-        totalPages={pagination.totalPages}
-        onPage={goToPage}
-        label="Job Board pagination"
-        pageSize={filters.pageSize}
-        pageSizeOptions={[20, 50, 100]}
-        onPageSize={changePageSize}
-        totalItems={totalCount}
-      /></div>
+      {displayedJobs.length ? <div className="grid gap-4 md:grid-cols-2">{displayedJobs.map((job, index) => <div key={job.id} className="job-board-card-enter" style={{ "--stagger": index % (JOB_CARD_STAGGER_CAP + 1) } as React.CSSProperties}><JobCard job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} /></div>)}</div> : null}
+      {isMobile ? (
+        <div ref={mobileSentinelRef} className="py-2 flex justify-center items-center">
+          {isLoadingMore ? (
+            <div className="flex items-center gap-2 py-3 text-sm font-semibold text-[#55738a]">
+              <span className="inline-block size-2 animate-pulse rounded-full bg-j-accent" />
+              <span>Loading more tuitions…</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {totalCount > 50 ? (
+        <div className="hidden md:block mt-7"><TutorListPager
+          page={queryInput.page}
+          totalPages={pagination.totalPages}
+          onPage={goToPage}
+          label="Job Board pagination"
+          pageSize={filters.pageSize}
+          pageSizeOptions={[20, 50, 100]}
+          onPageSize={changePageSize}
+          totalItems={totalCount}
+        /></div>
+      ) : null}
     </div>
     {activeJob ? <JobDetails job={activeJob} onClose={closeActiveJob} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
 
