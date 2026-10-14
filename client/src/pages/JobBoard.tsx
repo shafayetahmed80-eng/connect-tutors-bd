@@ -752,22 +752,50 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
       notes: job.notes,
     }}
     onClose={onClose}
-    footerStart={<ShareJobButton job={job} labelled />}
     extraRows={appliedNote ? <div className="sm:col-span-2 border-t border-[#eef4f9] pt-2.5"><p className="text-2xs font-semibold leading-[1.6] text-[#bd3535]">Note: {appliedNote}</p></div> : null}
-    action={<>
-      {/* The day the application was made, beside the reason it cannot be made
-          again - only one of the two is ever set. */}
-      {applied ? <span className="mr-auto inline-flex items-center gap-1.5 text-2xs font-bold text-[#0f7048]"><Check size={12} aria-hidden={true} />{applied.label} {applied.appliedOn}</span> : null}
-      {reason ? <span className={`text-2xs text-j-ink-muted ${applied ? "" : "mr-auto"}`}>{reason}</span> : null}
-      <button type="button" onClick={onClose} className="h-control rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa]">Close</button>
-      <button
-        type="button"
-        disabled={isInterestSaving}
-        data-ripple="true"
-        onClick={onInterestAction}
-        className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50"
-      >{isInterestSaving ? "Saving…" : label}</button>
-    </>}
+    customFooter={
+      <div className="flex w-full flex-col gap-2.5 md:flex-row md:items-center md:justify-between md:gap-3">
+        {/* Row 1 on mobile: applied status / reason on left, share button on right.
+            On desktop (md+), md:contents makes them direct items in the outer flex row. */}
+        <div className="flex w-full items-center justify-between gap-2 md:contents">
+          {applied ? (
+            <div className="flex min-w-0 items-center md:order-2">
+              <span className="inline-flex items-center gap-1.5 text-2xs font-bold text-[#0f7048]">
+                <Check size={12} aria-hidden={true} />{applied.label} {applied.appliedOn}
+              </span>
+            </div>
+          ) : reason ? (
+            <div className="flex min-w-0 items-center md:order-2">
+              <span className="text-2xs text-j-ink-muted leading-tight">{reason}</span>
+            </div>
+          ) : null}
+          <div className="flex shrink-0 items-center ml-auto md:ml-0 md:mr-auto md:order-1">
+            <ShareJobButton job={job} labelled />
+          </div>
+        </div>
+
+        {/* Row 2 on mobile: full-width action buttons (50% each with touch target).
+            On desktop (md+), md:contents makes them direct items beside status on the right. */}
+        <div className="flex w-full items-center gap-2 max-md:pt-1 md:contents">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-control rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa] max-md:flex-1 max-md:justify-center md:order-3 md:flex-none"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            disabled={isInterestSaving}
+            data-ripple="true"
+            onClick={onInterestAction}
+            className="inline-flex h-control items-center justify-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:flex-1 md:order-4 md:flex-none"
+          >
+            {isInterestSaving ? "Saving…" : label}
+          </button>
+        </div>
+      </div>
+    }
   />;
 }
 
