@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { jobIdForRequest } from "@shared/job-id";
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
-import { Search } from "lucide-react";
+import SearchInput from "@/components/SearchInput";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, Redirect, useRoute } from "wouter";
@@ -155,16 +155,14 @@ export function AdminGuardianRequestsContent({ kind }: { kind: GuardianRequestKi
       : null}
 
     <RecentSearches page="guardian-requests" value={query} onPick={term => { setQuery(term); setPage(1); }} className="max-w-sm">
-      <label className="relative block">
-        <span className="sr-only">Search requests</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input
-          value={query}
-          onChange={event => { setQuery(event.target.value); setPage(1); }}
-          placeholder="Search Job ID, Guardian or Tutor"
-          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-        />
-      </label>
+      <SearchInput
+        value={query}
+        onChange={val => { setQuery(val); setPage(1); }}
+        onClear={() => { setQuery(""); setPage(1); }}
+        placeholder="Search Job ID, Guardian or Tutor"
+        label="Search requests"
+        variant="sunken"
+      />
     </RecentSearches>
 
     <AdminRequestFilterBar

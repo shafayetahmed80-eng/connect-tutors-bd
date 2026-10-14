@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { eq, inArray, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adminNotificationBroadcasts, guardianProfiles, locations, subjectsCatalog, tutorNotifications, tutorRequests, tutorReviews, tutorSubjects, tutors, users } from "../drizzle/schema";
+import { adminNotificationBroadcasts, guardianProfiles, locations, subjectsCatalog, tutorNotifications, tutorRegistrations, tutorRequests, tutorReviews, tutorSubjects, tutors, users } from "../drizzle/schema";
 import type { AdminTutorDirectoryFilters } from "./db";
 import { getAdminTutorFilterOptions, getDb, listAdminTutorDirectoryPage, notifyTutorDirectory } from "./db";
 import { normalizeCatalogName } from "./tutor-profile-catalog.seed";
@@ -38,10 +38,14 @@ async function makeUser(suffix: string, role: "tutor" | "guardian" | "admin") {
   return id;
 }
 
-async function makeTutor(name: keyof typeof ids, over: Partial<typeof tutors.$inferInsert>) {
+async function makeTutor(name: keyof typeof ids, over: Partial<typeof tutors.$inferInsert>, tutorNumber?: number) {
   const db = await database();
+  const userId = await makeUser(name, "tutor");
+  if (tutorNumber) {
+    await db.insert(tutorRegistrations).values({ userId, tutorNumber });
+  }
   await db.insert(tutors).values({
-    id: ids[name], userId: await makeUser(name, "tutor"), name: `Tutor ${name} ${tag}`, profileStatus: "approved", gender: "female", locationId: areaA, cityLocationId: cityA,
+    id: ids[name], userId, name: `Tutor ${name} ${tag}`, profileStatus: "approved", gender: "female", locationId: areaA, cityLocationId: cityA,
     ...over,
   });
 }
@@ -64,6 +68,9 @@ async function rate(tutorId: string, rating: number, hidden = false) {
   await db.insert(tutorReviews).values({ tutorRequestId: Number(request.insertId), tutorId, guardianUserId, rating, hiddenAt: hidden ? new Date() : null });
 }
 
+const t1TutorNumber = Number(Math.floor(500000 + Math.random() * 400000));
+const t1Phone = `+8801799${Math.floor(100000 + Math.random() * 899999)}`;
+
 beforeAll(async () => {
   const db = await database();
   await db.insert(locations).values({ id: cityA, label: `Test City A ${tag}`, type: "city", country: "Bangladesh" });
@@ -75,7 +82,7 @@ beforeAll(async () => {
   guardianUserId = await makeUser("guardian", "guardian");
   await db.insert(guardianProfiles).values({ userId: guardianUserId, guardianId: `G${tag}`.slice(0, 12), phone: `+88017${Math.floor(10000000 + Math.random() * 89999999)}`, gender: "female", cityLocationId: cityA, locationId: areaA });
 
-  await makeTutor("t1", { gender: "female", teachingExperienceYears: 5, verified: 1, createdAt: ago(10) });
+  await makeTutor("t1", { gender: "female", teachingExperienceYears: 5, verified: 1, createdAt: ago(10), phone: t1Phone }, t1TutorNumber);
   await makeTutor("t2", { gender: "male", teachingExperienceYears: 1, verified: 0, createdAt: ago(40) });
   await makeTutor("t3", { gender: "female", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: null, verified: 0, createdAt: ago(2) });
   await makeTutor("t4", { gender: "male", locationId: areaB, cityLocationId: cityB, teachingExperienceYears: 12, verified: 1, createdAt: ago(100) });
@@ -106,6 +113,7 @@ afterAll(async () => {
   if (requestIds.length) await db.delete(tutorRequests).where(inArray(tutorRequests.id, requestIds));
   await db.delete(tutors).where(inArray(tutors.id, tutorIds));
   if (userIds.length) {
+    await db.delete(tutorRegistrations).where(inArray(tutorRegistrations.userId, userIds));
     await db.delete(guardianProfiles).where(inArray(guardianProfiles.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }
@@ -207,6 +215,13 @@ describe("the Tutor Profiles filters", () => {
     expect(options.locationsByCity[cityA]).toEqual([{ id: areaA, label: `Test Area A ${tag}` }]);
     expect(options.locationsByCity[cityB]).toEqual([{ id: areaB, label: `Test Area B ${tag}` }]);
     expect(options.subjects).toEqual(expect.arrayContaining(["Biology", "Chemistry", "Mathematics", "Physics"]));
+  });
+
+  it("finds a Tutor by Tutor Number, T-prefixed ID, phone, or name in query", async () => {
+    expect((await read({ query: String(t1TutorNumber) })).names).toEqual(["t1"]);
+    expect((await read({ query: `T${t1TutorNumber}` })).names).toEqual(["t1"]);
+    expect((await read({ query: t1Phone })).names).toEqual(["t1"]);
+    expect((await read({ query: `Tutor t1 ${tag}` })).names).toEqual(["t1"]);
   });
 
   it("notifies exactly the Tutors the same choices list, no more", async () => {

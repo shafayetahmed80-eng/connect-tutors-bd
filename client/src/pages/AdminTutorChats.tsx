@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import RecentSearches from "@/components/RecentSearches";
+import SearchInput from "@/components/SearchInput";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useAdminChatSocket } from "@/hooks/useChatSocket";
@@ -244,16 +245,14 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
     </div>
     <div className="flex items-center gap-2 border-b border-[#dce9f1] p-3">
       <RecentSearches page="tutor-chats" value={query} onPick={term => onQueryChange(term)} className="min-w-0 flex-1">
-        <label className="relative block">
-          <span className="sr-only">Search Tutor chats</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-          <input
-            value={query}
-            onChange={event => onQueryChange(event.target.value)}
-            placeholder="Search Tutor name or ID"
-            className="h-control w-full rounded-lg border border-j-border bg-white pl-9 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-          />
-        </label>
+        <SearchInput
+          value={query}
+          onChange={onQueryChange}
+          onClear={() => onQueryChange("")}
+          placeholder="Search Tutor name or ID"
+          label="Search Tutor chats"
+          variant="white"
+        />
       </RecentSearches>
       <label className="relative shrink-0">
         <span className="sr-only">Sort conversations</span>
@@ -433,11 +432,18 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
           : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
               <UserRoundCheck size={13} /> Claim
             </button>}
-        <label className="relative hidden shrink-0 sm:block">
-          <span className="sr-only">Search this conversation</span>
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-control w-32 rounded-lg border border-j-border bg-white pl-7 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-        </label>
+        <div className="hidden shrink-0 sm:block">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            onClear={() => setQuery("")}
+            placeholder="Search"
+            label="Search this conversation"
+            variant="white"
+            size="sm"
+            className="w-36"
+          />
+        </div>
       </div>
     </header>
 

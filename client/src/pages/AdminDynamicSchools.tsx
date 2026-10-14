@@ -3,8 +3,9 @@ import StatusTabRow from "@/components/StatusTabRow";
 import { TutorListPager } from "@/components/TutorListPager";
 import { trpc } from "@/lib/trpc";
 import { parseBulkSchoolColleges, SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, schoolCollegeDivisionLabels, schoolCollegeDivisionValues, type SchoolCollegeDivision } from "@shared/school-colleges";
-import { ChevronDown, ChevronUp, Loader2, Plus, Search, Upload } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Plus, Upload } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
+import SearchInput from "@/components/SearchInput";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -158,11 +159,15 @@ export function SchoolCollegeManager() {
       onSelect={key => { setView(key ?? "shared"); setPage(1); }}
     />
     <div className="flex flex-wrap items-center gap-2">
-      <label className="relative min-w-[14rem] flex-1">
-        <span className="sr-only">Search names</span>
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
-        <input value={queryInput} onChange={event => setQueryInput(event.target.value)} placeholder="Search names" className={`${inputClass} pl-8`} />
-      </label>
+      <div className="min-w-[14rem] flex-1">
+        <SearchInput
+          value={queryInput}
+          onChange={setQueryInput}
+          placeholder="Search names"
+          label="Search names"
+          className="h-8 rounded-lg border border-j-border bg-white text-sm text-j-ink-strong"
+        />
+      </div>
       {view === "shared" ? <DivisionSelect label="Division filter" value={division} withAll onChange={value => { setDivision(value); setPage(1); }} /> : null}
     </div>
     {view === "shared" ? <form className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-j-field-border p-2.5" onSubmit={event => {
