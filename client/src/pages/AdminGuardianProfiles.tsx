@@ -9,6 +9,7 @@ import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import StatusTabRow from "@/components/StatusTabRow";
 import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { AdminMessageTemplatesMenu } from "@/components/AdminMessageTemplatesMenu";
 import { trpc } from "@/lib/trpc";
 import { GuardianActivityContent, GuardianVerificationModal } from "@/pages/AdminGuardianActivity";
 import type { AdminGuardianFilterInput } from "@shared/admin-guardian-filters";
@@ -216,12 +217,21 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
 }) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const usingSelection = selectedIds.length > 0;
   const recipientCount = usingSelection ? selectedIds.length : matchCount;
+  const createTemplate = trpc.admin.createMessageTemplate.useMutation();
   const notify = trpc.admin.notifyGuardianDirectory.useMutation({
     onSuccess: result => {
       toast.success(`Sent to ${result.sent} Guardian${result.sent === 1 ? "" : "s"}.`);
+      if (saveAsTemplate && title.trim() && message.trim()) {
+        createTemplate.mutate({
+          category: "guardian_notify",
+          title: title.trim(),
+          body: message.trim(),
+        });
+      }
       if (usingSelection) onSent();
       onClose();
     },
@@ -244,6 +254,7 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
           <p className="font-bold text-j-ink">{title.trim()}</p>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-soft">{message.trim()}</p>
         </div>
+        {saveAsTemplate ? <p className="text-2xs font-semibold text-j-accent">✓ Will also save as reusable template</p> : null}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
@@ -261,7 +272,20 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
     <ModalHeader title="Notify these Guardians" meta={recipientLine} />
     <ModalBody className="space-y-4">
       <div>
-        <label htmlFor="notify-guardians-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+        <div className="flex items-center justify-between">
+          <label htmlFor="notify-guardians-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+          <AdminMessageTemplatesMenu
+            category="guardian_notify"
+            variant="button"
+            buttonLabel="Templates"
+            onSelect={tpl => {
+              setTitle(tpl.title);
+              setMessage(tpl.body);
+            }}
+            currentDraft={{ title, body: message }}
+            align="right"
+          />
+        </div>
         <input id="notify-guardians-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
           className="mt-1.5 h-control w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </div>
@@ -272,6 +296,17 @@ function NotifyGuardiansModal({ filters, matchCount, selectedIds, onSent, onClos
         </div>
         <textarea id="notify-guardians-message" value={message} maxLength={NOTIFY_MESSAGE_MAX} rows={4} onChange={event => setMessage(event.target.value)}
           className="mt-1.5 w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+      <div className="flex items-center justify-between pt-1">
+        <label className="flex cursor-pointer items-center gap-2 select-none text-xs font-semibold text-j-ink-soft hover:text-j-ink">
+          <input
+            type="checkbox"
+            checked={saveAsTemplate}
+            onChange={e => setSaveAsTemplate(e.target.checked)}
+            className="size-4 rounded accent-j-accent"
+          />
+          <span>Save as reusable template for future notifications</span>
+        </label>
       </div>
     </ModalBody>
     <ModalFooter>

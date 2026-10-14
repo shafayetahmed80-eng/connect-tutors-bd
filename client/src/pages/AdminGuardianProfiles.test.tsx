@@ -22,6 +22,11 @@ vi.mock("@/pages/AdminGuardianActivity", () => ({
 vi.mock("sonner", () => ({ toast: { success: (message: string) => { state.toasts.push(message); }, error: (message: string) => { state.toasts.push(message); } } }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      admin: {
+        listMessageTemplates: { invalidate: vi.fn() },
+      },
+    }),
     admin: {
       listGuardianProfiles: {
         useQuery: (input: Record<string, unknown>) => {
@@ -52,6 +57,15 @@ vi.mock("@/lib/trpc", () => ({
           state.historyInput = input;
           return { data: state.historyData, isLoading: false, isError: false };
         },
+      },
+      listMessageTemplates: {
+        useQuery: () => ({ data: { items: [] }, isLoading: false }),
+      },
+      createMessageTemplate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      deleteMessageTemplate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       getGuardianProfile: {
         useQuery: () => ({

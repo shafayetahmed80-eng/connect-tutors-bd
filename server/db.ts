@@ -65,6 +65,8 @@ import {
   tutorAdminChatMessages,
   tutorAdminChatNotes,
   chatQuickReplies,
+  adminMessageTemplates,
+  type AdminMessageTemplateCategory,
   adminPushSubscriptions,
   pushSubscriptions,
   classLevels,
@@ -6941,6 +6943,67 @@ export async function deleteChatQuickReply(input: { id: number }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   await database.delete(chatQuickReplies).where(eq(chatQuickReplies.id, input.id));
+  return { deleted: true as const };
+}
+
+let adminMessageTemplatesTableReady = false;
+async function ensureAdminMessageTemplatesTable(database: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  if (adminMessageTemplatesTableReady) return;
+  await database.execute(sql`
+    CREATE TABLE IF NOT EXISTS \`admin_message_templates\` (
+      \`id\` int AUTO_INCREMENT NOT NULL,
+      \`category\` enum('tutor_chat','tutor_notify','guardian_notify') NOT NULL,
+      \`title\` varchar(120) NOT NULL,
+      \`body\` varchar(2000) NOT NULL,
+      \`createdByAdminId\` int,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT \`admin_message_templates_id\` PRIMARY KEY(\`id\`),
+      KEY \`admin_message_templates_category_idx\` (\`category\`,\`createdAt\`),
+      KEY \`admin_message_templates_created_by_idx\` (\`createdByAdminId\`)
+    )
+  `);
+  adminMessageTemplatesTableReady = true;
+}
+
+/** Reusable message & notification templates for Tutor Chat, Tutor Profiles, and Guardian Profiles. */
+export async function listAdminMessageTemplates(category?: AdminMessageTemplateCategory) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await ensureAdminMessageTemplatesTable(database);
+  const where = category ? eq(adminMessageTemplates.category, category) : undefined;
+  const rows = await database
+    .select({
+      id: adminMessageTemplates.id,
+      category: adminMessageTemplates.category,
+      title: adminMessageTemplates.title,
+      body: adminMessageTemplates.body,
+      createdAt: adminMessageTemplates.createdAt,
+    })
+    .from(adminMessageTemplates)
+    .where(where)
+    .orderBy(asc(adminMessageTemplates.title));
+  return { items: rows };
+}
+
+export async function createAdminMessageTemplate(input: { category: AdminMessageTemplateCategory; title: string; body: string; createdByAdminId?: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await ensureAdminMessageTemplatesTable(database);
+  const [result] = await database.insert(adminMessageTemplates).values({
+    category: input.category,
+    title: input.title,
+    body: input.body,
+    createdByAdminId: input.createdByAdminId ?? null,
+  });
+  return { id: Number(result.insertId), created: true as const };
+}
+
+export async function deleteAdminMessageTemplate(input: { id: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await ensureAdminMessageTemplatesTable(database);
+  await database.delete(adminMessageTemplates).where(eq(adminMessageTemplates.id, input.id));
   return { deleted: true as const };
 }
 

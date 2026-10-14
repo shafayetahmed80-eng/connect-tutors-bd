@@ -79,6 +79,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      admin: {
+        listMessageTemplates: { invalidate: vi.fn() },
+        listChatQuickReplies: { invalidate: vi.fn() },
+      },
+    }),
     admin: {
       listTutorDirectory: {
         useQuery: (input: unknown) => {
@@ -106,6 +112,15 @@ vi.mock("@/lib/trpc", () => ({
           mocks.historyInput = input;
           return { data: mocks.historyData, isLoading: false, isError: false };
         },
+      },
+      listMessageTemplates: {
+        useQuery: () => ({ data: { items: [] }, isLoading: false }),
+      },
+      createMessageTemplate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      deleteMessageTemplate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
     },
   },

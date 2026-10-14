@@ -7,6 +7,7 @@ import { NotificationHistoryModal } from "@/components/NotificationHistoryModal"
 import StatusTabRow from "@/components/StatusTabRow";
 import { TutorListPager } from "@/components/TutorListPager";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { AdminMessageTemplatesMenu } from "@/components/AdminMessageTemplatesMenu";
 import { trpc } from "@/lib/trpc";
 import type { AdminTutorFilterInput } from "@shared/admin-tutor-filters";
 import { tutorApplicationStages, type TutorApplicationStage } from "@shared/tutor-application-stages";
@@ -222,12 +223,21 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
 }) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const usingSelection = selectedIds.length > 0;
   const recipientCount = usingSelection ? selectedIds.length : matchCount;
+  const createTemplate = trpc.admin.createMessageTemplate.useMutation();
   const notify = trpc.admin.notifyTutorDirectory.useMutation({
     onSuccess: result => {
       toast.success(`Sent to ${result.sent} Tutor${result.sent === 1 ? "" : "s"}.`);
+      if (saveAsTemplate && title.trim() && message.trim()) {
+        createTemplate.mutate({
+          category: "tutor_notify",
+          title: title.trim(),
+          body: message.trim(),
+        });
+      }
       if (usingSelection) onSent();
       onClose();
     },
@@ -250,6 +260,7 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
           <p className="font-bold text-j-ink">{title.trim()}</p>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-soft">{message.trim()}</p>
         </div>
+        {saveAsTemplate ? <p className="text-2xs font-semibold text-j-accent">✓ Will also save as reusable template</p> : null}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={() => setConfirming(false)} disabled={notify.isPending} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">Back</button>
@@ -267,7 +278,20 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
     <ModalHeader title="Notify these Tutors" meta={recipientLine} />
     <ModalBody className="space-y-4">
       <div>
-        <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+        <div className="flex items-center justify-between">
+          <label htmlFor="notify-tutors-title" className="text-sm font-bold text-j-ink">Title <span className="text-red-600">*</span></label>
+          <AdminMessageTemplatesMenu
+            category="tutor_notify"
+            variant="button"
+            buttonLabel="Templates"
+            onSelect={tpl => {
+              setTitle(tpl.title);
+              setMessage(tpl.body);
+            }}
+            currentDraft={{ title, body: message }}
+            align="right"
+          />
+        </div>
         <input id="notify-tutors-title" value={title} maxLength={NOTIFY_TITLE_MAX} onChange={event => setTitle(event.target.value)}
           className="mt-1.5 h-control w-full rounded-xl border border-j-border bg-white px-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
       </div>
@@ -278,6 +302,17 @@ function NotifyTutorsModal({ filters, matchCount, selectedIds, onSent, onClose }
         </div>
         <textarea id="notify-tutors-message" value={message} maxLength={NOTIFY_MESSAGE_MAX} rows={4} onChange={event => setMessage(event.target.value)}
           className="mt-1.5 w-full rounded-xl border border-j-border bg-white px-3 py-2 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+      </div>
+      <div className="flex items-center justify-between pt-1">
+        <label className="flex cursor-pointer items-center gap-2 select-none text-xs font-semibold text-j-ink-soft hover:text-j-ink">
+          <input
+            type="checkbox"
+            checked={saveAsTemplate}
+            onChange={e => setSaveAsTemplate(e.target.checked)}
+            className="size-4 rounded accent-j-accent"
+          />
+          <span>Save as reusable template for future notifications</span>
+        </label>
       </div>
     </ModalBody>
     <ModalFooter>

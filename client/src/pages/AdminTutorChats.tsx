@@ -13,7 +13,7 @@ import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { trpc } from "@/lib/trpc";
 import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
-import { ArchiveRestore, ArrowLeft, BellRing, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -120,19 +120,45 @@ function ChatPushToggle() {
 }
 
 /** A shared library of canned replies any Admin can drop straight into the composer, managed from the same dropdown. */
-function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
+function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string) => void; currentDraft?: string }) {
   const [open, setOpen] = useState(false);
   const [managing, setManaging] = useState(false);
   const [label, setLabel] = useState("");
   const [draftBody, setDraftBody] = useState("");
   const utils = trpc.useUtils();
   const listQuery = trpc.admin.listChatQuickReplies.useQuery(undefined, { enabled: open });
+  const templatesQuery = trpc.admin.listMessageTemplates.useQuery({ category: "tutor_chat" }, { enabled: open });
   const create = trpc.admin.createChatQuickReply.useMutation({
-    onSuccess: () => { setLabel(""); setDraftBody(""); void utils.admin.listChatQuickReplies.invalidate(); },
+    onSuccess: () => {
+      setLabel("");
+      setDraftBody("");
+      void utils.admin.listChatQuickReplies.invalidate();
+      void utils.admin.listMessageTemplates.invalidate();
+      toast.success("Saved as template.");
+    },
     onError: error => toast.error(error.message),
   });
-  const remove = trpc.admin.deleteChatQuickReply.useMutation({ onSuccess: () => void utils.admin.listChatQuickReplies.invalidate() });
-  const items = listQuery.data?.items ?? [];
+  const remove = trpc.admin.deleteChatQuickReply.useMutation({
+    onSuccess: () => {
+      void utils.admin.listChatQuickReplies.invalidate();
+      void utils.admin.listMessageTemplates.invalidate();
+    },
+  });
+  const removeTemplate = trpc.admin.deleteMessageTemplate.useMutation({
+    onSuccess: () => {
+      void utils.admin.listChatQuickReplies.invalidate();
+      void utils.admin.listMessageTemplates.invalidate();
+    },
+  });
+
+  const rawQuickReplies = listQuery.data?.items ?? [];
+  const rawTemplates = templatesQuery.data?.items ?? [];
+  const items = [
+    ...rawQuickReplies.map(item => ({ id: `qr-${item.id}`, numId: item.id, isTemplate: false, label: item.label, body: item.body })),
+    ...rawTemplates
+      .filter(t => !rawQuickReplies.some(q => q.label === t.title && q.body === t.body))
+      .map(t => ({ id: `tpl-${t.id}`, numId: t.id, isTemplate: true, label: t.title, body: t.body })),
+  ];
 
   const submitNew = (event: React.FormEvent) => {
     event.preventDefault();
@@ -148,9 +174,27 @@ function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
     </button>
     {open ? <div className="absolute bottom-12 left-0 z-10 w-72 rounded-xl border border-j-border bg-white p-2 shadow-lg">
       <div className="flex items-center justify-between px-1 pb-1.5">
-        <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Quick replies</p>
+        <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Quick replies &amp; Templates</p>
         <button type="button" onClick={() => setManaging(value => !value)} className="text-2xs font-bold text-j-accent">{managing ? "Done" : "Manage"}</button>
       </div>
+
+      {currentDraft?.trim() && !managing ? (
+        <div className="mb-2 border-b border-j-border pb-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setLabel(currentDraft.slice(0, 30).trim());
+              setDraftBody(currentDraft.trim());
+              setManaging(true);
+            }}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-2xs font-bold text-[#1267c8] hover:bg-sky-100"
+          >
+            <BookmarkPlus className="size-3" />
+            <span>Save current message as template</span>
+          </button>
+        </div>
+      ) : null}
+
       <div className="max-h-56 space-y-1 overflow-y-auto">
         {items.length === 0 ? <p className="px-1.5 py-2 text-xs text-j-ink-muted">No quick replies yet.</p> : null}
         {items.map(item => <div key={item.id} className="flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 hover:bg-j-surface-sunken">
@@ -158,7 +202,13 @@ function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
             <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
             <p className="truncate text-2xs text-j-ink-muted">{item.body}</p>
           </button>
-          {managing ? <button type="button" onClick={() => remove.mutate({ id: item.id })} aria-label={`Delete ${item.label}`} className="shrink-0 text-2xs font-bold text-red-600">Delete</button> : null}
+          {managing ? <button type="button" onClick={() => {
+            if (item.isTemplate) {
+              removeTemplate.mutate({ id: item.numId });
+            } else {
+              remove.mutate({ id: item.numId });
+            }
+          }} aria-label={`Delete ${item.label}`} className="shrink-0 text-2xs font-bold text-red-600">Delete</button> : null}
         </div>)}
       </div>
       {managing ? <form onSubmit={submitNew} className="mt-2 space-y-1.5 border-t border-j-border pt-2">
@@ -168,6 +218,66 @@ function QuickRepliesMenu({ onInsert }: { onInsert: (body: string) => void }) {
       </form> : null}
     </div> : null}
   </div>;
+}
+
+/** Modal to save any existing chat message directly as a template */
+function SaveMessageAsTemplateModal({ body, onClose }: { body: string; onClose: () => void }) {
+  const [label, setLabel] = useState(() => body.slice(0, 40).trim());
+  const [messageBody, setMessageBody] = useState(body);
+  const utils = trpc.useUtils();
+  const create = trpc.admin.createChatQuickReply.useMutation({
+    onSuccess: () => {
+      toast.success("Saved as template.");
+      void utils.admin.listChatQuickReplies.invalidate();
+      void utils.admin.listMessageTemplates.invalidate();
+      onClose();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!label.trim() || !messageBody.trim()) return;
+    create.mutate({ label: label.trim(), body: messageBody.trim() });
+  };
+
+  return (
+    <Modal size="dialog" onClose={onClose}>
+      <ModalHeader title="Save as Template" meta="Add this message to reusable templates" />
+      <form onSubmit={submit}>
+        <ModalBody className="space-y-3">
+          <div>
+            <label className="text-xs font-bold text-j-ink">Template Label / Title</label>
+            <input
+              value={label}
+              onChange={e => setLabel(e.target.value)}
+              placeholder="e.g. Profile guidance"
+              maxLength={60}
+              required
+              className="mt-1 h-control w-full rounded-xl border border-j-border px-3 text-xs outline-none focus:border-j-accent"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-j-ink">Template Message</label>
+            <Textarea
+              value={messageBody}
+              onChange={e => setMessageBody(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              required
+              className="mt-1 text-xs"
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-xs font-bold text-j-ink-soft">Cancel</button>
+          <Button type="submit" disabled={!label.trim() || !messageBody.trim() || create.isPending} className="h-control rounded-xl text-xs">
+            {create.isPending ? "Saving…" : "Save Template"}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
 }
 
 /** Admin-only remarks on a Tutor's chat - coordination between Admins, never shown in the Tutor's own thread. */
@@ -299,6 +409,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [query, setQuery] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [savingTemplateBody, setSavingTemplateBody] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const markedTutorId = useRef<string | null>(null);
@@ -477,6 +588,18 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
             >
               <ThumbsUp className="size-3" fill={message.adminReacted ? "currentColor" : "none"} />
             </button>
+            {message.body ? (
+              <button
+                type="button"
+                onClick={() => setSavingTemplateBody(message.body)}
+                title="Save this message as template"
+                aria-label="Save this message as template"
+                className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold text-j-ink-faint hover:text-j-accent"
+              >
+                <BookmarkPlus className="size-3" />
+                <span className="hidden sm:inline">Save as template</span>
+              </button>
+            ) : null}
             {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
             {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
           </div>
@@ -515,7 +638,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
               </button>
             </>
           : null}
-        <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} />
+        <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} currentDraft={body} />
         <Textarea
           value={body}
           onChange={event => { setBody(event.target.value); onTyping(); }}
@@ -532,6 +655,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     </div>
 
     {notesOpen ? <ChatNotesModal tutorId={tutorId} onClose={() => setNotesOpen(false)} /> : null}
+    {savingTemplateBody ? <SaveMessageAsTemplateModal body={savingTemplateBody} onClose={() => setSavingTemplateBody(null)} /> : null}
   </div>;
 }
 
