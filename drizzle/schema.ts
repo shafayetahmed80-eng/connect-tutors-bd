@@ -1811,6 +1811,30 @@ export const chatQuickReplies = mysqlTable(
   ]
 );
 
+export const adminMessageTemplateCategoryValues = ["tutor_chat", "tutor_notify", "guardian_notify"] as const;
+export type AdminMessageTemplateCategory = (typeof adminMessageTemplateCategoryValues)[number];
+
+/** Reusable message & notification templates across Tutor Chat, Tutor Profiles & Guardian Profiles. */
+export const adminMessageTemplates = mysqlTable(
+  "admin_message_templates",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    category: mysqlEnum("category", adminMessageTemplateCategoryValues).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    body: varchar("body", { length: 2000 }).notNull(),
+    createdByAdminId: int("createdByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.createdByAdminId], foreignColumns: [users.id], name: "amt_created_by_fk" }),
+    index("admin_message_templates_category_idx").on(table.category, table.createdAt),
+  ]
+);
+
+export type AdminMessageTemplate = typeof adminMessageTemplates.$inferSelect;
+export type InsertAdminMessageTemplate = typeof adminMessageTemplates.$inferInsert;
+
 /**
  * One row per browser the Admin allowed push notifications on. `endpoint` is
  * the push service URL the browser vendor assigns; `p256dh`/`auth` are the

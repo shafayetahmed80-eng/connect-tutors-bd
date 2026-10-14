@@ -2456,6 +2456,20 @@ export const appRouter = router({
     deleteChatQuickReply: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => db.deleteChatQuickReply(input)),
+    /** Universal reusable message templates across Tutor Chat, Tutor Profiles & Guardian Profiles. */
+    listMessageTemplates: adminProcedure
+      .input(z.object({ category: z.enum(["tutor_chat", "tutor_notify", "guardian_notify"]).optional() }).optional())
+      .query(({ input }) => db.listAdminMessageTemplates(input?.category)),
+    createMessageTemplate: adminProcedure
+      .input(z.object({
+        category: z.enum(["tutor_chat", "tutor_notify", "guardian_notify"]),
+        title: z.string().trim().min(1).max(120),
+        body: z.string().trim().min(1).max(2000),
+      }))
+      .mutation(({ ctx, input }) => db.createAdminMessageTemplate({ ...input, createdByAdminId: ctx.user.id })),
+    deleteMessageTemplate: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => db.deleteAdminMessageTemplate(input)),
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
     getChatPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
     getPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
