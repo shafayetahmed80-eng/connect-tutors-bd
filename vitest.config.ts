@@ -21,6 +21,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    exclude: ["**/.claude/**", "**/node_modules/**", "**/dist/**"],
     // The heavier jsdom component tests (full Tutor Profile workspace render with
     // many mocked queries + several userEvent steps) run close to the 5s default
     // and tip over under load; give every test more headroom. A genuinely broken

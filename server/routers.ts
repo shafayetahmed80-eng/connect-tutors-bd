@@ -1035,9 +1035,8 @@ export const appRouter = router({
       const isTutor = ctx.user?.role === "tutor";
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      // A deliberate Admin sign-out drops this browser's second-factor trust too,
-      // so a password learned after the fact cannot ride the old proof back in.
-      if (ctx.user?.role === "admin") clearAdminTwoFactorProofCookie(ctx.req, ctx.res);
+      // Keep 30-day Admin 2FA trusted device proof intact across normal logouts.
+      // Global invalidation is performed via 'Sign out everywhere' (sessionsValidFrom).
       if (ctx.user && ctx.user.role !== "admin") clearLoginTwoFactorProofCookie(ctx.req, ctx.res);
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
@@ -1255,6 +1254,9 @@ export const appRouter = router({
       if (!knownDevice) {
         markAdminDeviceKnown(ctx.req, ctx.res, user.id);
         void db.sendPushToOwner(adminNewDevicePush(input.userId.trim().toLowerCase(), ip)).catch(() => {});
+      }
+      if (hasAdminTwoFactorProof(ctx.req, user.id, user.sessionsValidFrom)) {
+        setAdminTwoFactorProofCookie(ctx.req, ctx.res, user.id);
       }
       return { success: true, user: toClientAuthIdentity(user) } as const;
     }),

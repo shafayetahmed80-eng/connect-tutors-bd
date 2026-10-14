@@ -185,8 +185,8 @@ describe("the sign-in challenge for an already-enrolled Admin", () => {
   });
 });
 
-describe("signing out", () => {
-  it("drops this browser's second-factor trust, so signing back in needs the challenge again", async () => {
+describe("signing out and 30-day device trust", () => {
+  it("retains this browser's 30-day second-factor trust across normal logouts, so signing back in does not need the challenge again", async () => {
     dbMocks.getAdminTwoFactorSettings.mockResolvedValue(encryptedSettings(ownerUser.id));
     const { caller, setCookies } = createCaller();
     const code = createAdminTotp(SECRET, ADMIN_TOTP_ISSUER, "owner").generate();
@@ -194,10 +194,12 @@ describe("signing out", () => {
     expect(setCookies["connect-admin-2fa"]).toBeTruthy();
 
     await caller.auth.logout();
-    expect(setCookies["connect-admin-2fa"]).toBe("");
+    // 2FA proof cookie is preserved for 30-day trusted device login
+    expect(setCookies["connect-admin-2fa"]).not.toBe("");
 
     const { caller: afterLogout } = createCaller(ownerUser, cookieHeaderFor(setCookies));
-    await expect(afterLogout.admin.guardianRequestCounts()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    dbMocks.countGuardianRequestActions.mockResolvedValue({ shortlist: 0, appoint: 0, confirm: 0, cancel: 0 });
+    await expect(afterLogout.admin.guardianRequestCounts()).resolves.toMatchObject({ appoint: 0 });
   });
 });
 
