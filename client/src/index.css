@@ -764,6 +764,8 @@
   .phone-contact-tooltip,
   [data-copied="true"],
   .jobid-copied,
+  .ripple-wave,
+  .confetti-particle,
   .sb-root .sb-indicator,
   .sb-root .sb-sub,
   .sb-root .sb-sub li,
@@ -800,5 +802,65 @@
 .jobid-copied {
   animation: copy-pop-bounce 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* Button Ripple Wave Motion */
+@keyframes ripple-spread {
+  0% {
+    transform: scale(0);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: scale(0);
+  animation: ripple-spread 600ms cubic-bezier(0.1, 0.6, 0.2, 1) forwards;
+  background: rgba(255, 255, 255, 0.42);
+  z-index: 10;
+}
+
+.ripple-wave-dark {
+  background: rgba(22, 119, 232, 0.24);
+}
+
+.ripple-wave-light {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Celebration Confetti Radial Burst */
+@keyframes confetti-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--particle-x) * 0.45), calc(var(--particle-y) * 0.45)) scale(1.25) rotate(calc(var(--particle-rot) * 0.3));
+  }
+  65% {
+    opacity: 0.95;
+    transform: translate(var(--particle-x), var(--particle-y)) scale(1) rotate(calc(var(--particle-rot) * 0.8));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-x), calc(var(--particle-y) + var(--particle-gravity, 25px))) scale(0.45) rotate(var(--particle-rot));
+  }
+}
+
+.confetti-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0);
+  animation: confetti-burst var(--particle-duration, 1200ms) cubic-bezier(0.12, 0.8, 0.3, 1) var(--particle-delay, 0ms) forwards;
+}
+
 
 

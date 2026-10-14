@@ -89,6 +89,7 @@ function AppointmentControl({ tutor, actions }: { tutor: GuardianApplicantRow; a
               <button
                 type="button"
                 disabled={actions.busy}
+                data-ripple="true"
                 onClick={() => actions.onAskConfirm?.(tutor)}
                 aria-label={`Ask to confirm ${tutor.name}`}
                 className="inline-flex h-8 items-center rounded-lg bg-[#0f7048] px-3 text-2xs font-bold text-white hover:bg-[#0c5b3a] disabled:opacity-40"
