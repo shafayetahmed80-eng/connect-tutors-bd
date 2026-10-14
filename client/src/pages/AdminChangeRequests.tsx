@@ -14,6 +14,7 @@ import {
 import { ArrowRight, Search } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
+import SearchInput from "@/components/SearchInput";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -204,16 +205,14 @@ export function AdminChangeRequestsContent() {
     <StatusTabRow label="Request status" items={statusTabs.map(tab => ({ ...tab, count: counts?.[tab.key] }))} selected={status} onSelect={key => chooseStatus(key ?? "pending")} />
 
     <RecentSearches page="change-requests" value={query} onPick={term => setQuery(term)} className="max-w-sm">
-      <label className="relative block">
-        <span className="sr-only">Search change requests</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input
-          value={query}
-          onChange={event => setQuery(event.target.value)}
-          placeholder="Search name, Guardian ID or Tutor ID"
-          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-        />
-      </label>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        onClear={() => setQuery("")}
+        placeholder="Search name, Guardian ID or Tutor ID"
+        label="Search change requests"
+        variant="sunken"
+      />
     </RecentSearches>
 
     <AdminRequestFilterBar

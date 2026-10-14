@@ -13,6 +13,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { BadgeCheck, ChevronRight, Eye, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
+import SearchInput from "@/components/SearchInput";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -195,7 +196,14 @@ export function GuardianActivityContent() {
     <CollapsiblePanel title="Filters" icon={<SlidersHorizontal className="h-4 w-4" />} activeCount={activeFilterCount}>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <RecentSearches page="guardian-activity" value={filters.query} onPick={term => updateFilter({ query: term })} className="sm:col-span-2">
-          <label className="relative block"><span className="sr-only">Search requests</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" /><input value={filters.query} onChange={e => updateFilter({ query: e.target.value })} placeholder="Search subject, class, category or location" className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" /></label>
+          <SearchInput
+            value={filters.query}
+            onChange={val => updateFilter({ query: val })}
+            onClear={() => updateFilter({ query: "" })}
+            placeholder="Search subject, class, category or location"
+            label="Search requests"
+            variant="sunken"
+          />
         </RecentSearches>
         <select value={filters.status} onChange={e => updateFilter({ status: e.target.value as GuardianFilters["status"] })} aria-label="Request status" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All request statuses</option><option value="new">New</option><option value="reviewing">Reviewing</option><option value="matched">Matched</option><option value="closed">Closed</option></select>
         <select value={filters.contactConsent} onChange={e => updateFilter({ contactConsent: e.target.value as GuardianFilters["contactConsent"] })} aria-label="Contact consent status" className="h-control rounded-xl border border-j-border bg-white px-3 text-sm"><option value="all">All consent states</option><option value="not_required">Not required</option><option value="pending">Consent pending</option><option value="approved">Consent approved</option><option value="declined">Consent declined</option></select>

@@ -975,3 +975,23 @@
   will-change: transform, opacity;
 }
 
+/* Search Input Auto-focus Glow & Bloom Animation */
+@keyframes search-input-glow-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(22, 125, 221, 0.4), 0 2px 6px rgba(22, 125, 221, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 4.5px rgba(22, 125, 221, 0.22), 0 4px 14px -2px rgba(22, 125, 221, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(22, 125, 221, 0.18), 0 2px 8px -2px rgba(22, 125, 221, 0.16);
+  }
+}
+
+.search-input-glow:focus,
+.search-input-glow:focus-visible {
+  border-color: var(--j-accent, #167ddd);
+  animation: search-input-glow-pulse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+

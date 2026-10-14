@@ -6139,14 +6139,22 @@ function getAdminTutorDirectoryConditions(filters: AdminTutorDirectoryFilters) {
   if (filters.joinedFrom) conditions.push(gte(tutors.createdAt, filters.joinedFrom));
   if (filters.joinedTo) conditions.push(lte(tutors.createdAt, filters.joinedTo));
   if (filters.query) {
-    const pattern = `%${filters.query}%`;
-    const searchCondition = or(
-      like(tutors.id, pattern),
-      like(tutors.name, pattern),
-      like(tutors.headline, pattern),
-      like(tutors.institution, pattern),
-    );
-    if (searchCondition) conditions.push(searchCondition);
+    const raw = filters.query.trim();
+    if (raw) {
+      const pattern = `%${raw}%`;
+      const digitsOnly = raw.replace(/\D/g, "");
+      const numberPattern = digitsOnly ? `%${digitsOnly}%` : null;
+      const searchCondition = or(
+        like(tutors.id, pattern),
+        like(tutors.name, pattern),
+        like(tutors.headline, pattern),
+        like(tutors.phone, pattern),
+        like(tutors.institution, pattern),
+        like(sql`cast(${tutorRegistrations.tutorNumber} as char)`, pattern),
+        ...(numberPattern ? [like(sql`cast(${tutorRegistrations.tutorNumber} as char)`, numberPattern)] : []),
+      );
+      if (searchCondition) conditions.push(searchCondition);
+    }
   }
   return conditions;
 }
@@ -6352,7 +6360,11 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
   const rows = conditions.length
     ? await itemQuery.where(and(...conditions)).orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset)
     : await itemQuery.orderBy(desc(tutors.updatedAt)).limit(filters.pageSize).offset(offset);
-  const totalQuery = database.select({ value: count() }).from(tutors).leftJoin(locations, eq(tutors.locationId, locations.id));
+  const totalQuery = database
+    .select({ value: count() })
+    .from(tutors)
+    .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
   const totals = conditions.length ? await totalQuery.where(and(...conditions)) : await totalQuery;
   const total = Number(totals[0]?.value ?? 0);
 
@@ -6364,6 +6376,7 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
     .select({ status: tutors.profileStatus, value: count() })
     .from(tutors)
     .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(and(...getAdminTutorDirectoryConditions({ ...filters, profileStatus: "all" })))
     .groupBy(tutors.profileStatus);
   const profileStatus: Record<"all" | TutorProfileStatus, number> = { all: 0, draft: 0, pending: 0, changes_requested: 0, approved: 0, suspended: 0 };
@@ -6376,6 +6389,7 @@ export async function listAdminTutorDirectoryPage(filters: AdminTutorDirectoryFi
       .select({ value: count() })
       .from(tutors)
       .leftJoin(locations, eq(tutors.locationId, locations.id))
+      .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
       .where(and(...getAdminTutorDirectoryConditions({ ...filters, jobStage: stage.key })));
     return [stage.key, Number(row?.value ?? 0)] as const;
   }));
@@ -6430,7 +6444,11 @@ export async function notifyTutorDirectory(input: {
     ? await database.select({ id: tutors.id }).from(tutors).where(inArray(tutors.id, input.tutorIds))
     : await (async () => {
       const conditions = getAdminTutorDirectoryConditions({ ...input.filters, page: 1, pageSize: 1 });
-      const matchQuery = database.select({ id: tutors.id }).from(tutors).leftJoin(locations, eq(tutors.locationId, locations.id));
+      const matchQuery = database
+        .select({ id: tutors.id })
+        .from(tutors)
+        .leftJoin(locations, eq(tutors.locationId, locations.id))
+        .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId));
       return conditions.length ? await matchQuery.where(and(...conditions)) : await matchQuery;
     })();
   if (matches.length === 0) return { sent: 0 };
@@ -6707,9 +6725,14 @@ export async function listTutorAdminChatThreadsForAdmin(input: { query: string; 
   if (!database) throw new Error("Database is not available");
   await sweepStaleTutorAdminChatThreads(database);
   const trimmedQuery = input.query.trim();
-  const queryAsNumber = trimmedQuery && /^\d+$/.test(trimmedQuery) ? Number(trimmedQuery) : null;
+  const digitsOnly = trimmedQuery.replace(/\D/g, "");
+  const queryAsNumber = digitsOnly ? Number(digitsOnly) : null;
   const searchCondition = trimmedQuery
-    ? or(like(tutors.name, `%${trimmedQuery}%`), queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined)
+    ? or(
+        like(tutors.name, `%${trimmedQuery}%`),
+        like(tutors.phone, `%${trimmedQuery}%`),
+        queryAsNumber !== null ? eq(tutorRegistrations.tutorNumber, queryAsNumber) : undefined,
+      )
     : undefined;
   const archivedCondition = input.archived ? isNotNull(tutorAdminChatThreads.archivedAt) : isNull(tutorAdminChatThreads.archivedAt);
   const narrowing: SQL[] = [];
@@ -7200,6 +7223,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))
     .innerJoin(tutors, eq(tutors.id, tutorJobInterests.tutorId))
     .leftJoin(locations, eq(tutors.locationId, locations.id))
+    .leftJoin(tutorRegistrations, eq(tutorRegistrations.userId, tutors.userId))
     .where(where);
   let total = Number(totals[0]?.value ?? 0);
 

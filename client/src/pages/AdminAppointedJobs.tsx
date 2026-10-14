@@ -12,6 +12,7 @@ import { formatSalaryAmount } from "@shared/salary-amount";
 import { ChevronRight, Search } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
+import SearchInput from "@/components/SearchInput";
 import { useState } from "react";
 import { Link } from "wouter";
 import { JobIdTag } from "@/components/JobIdTag";
@@ -74,16 +75,14 @@ export function AdminAppointedJobsContent() {
 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <RecentSearches page="appointed-jobs" value={query} onPick={term => { setQuery(term); setPage(1); }} className="max-w-sm">
-      <label className="relative block">
-        <span className="sr-only">Search appointed jobs</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-j-ink-faint" />
-        <input
-          value={query}
-          onChange={event => { setQuery(event.target.value); setPage(1); }}
-          placeholder="Search class, subject, location or Tutor"
-          className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-10 pr-3 text-sm outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100"
-        />
-      </label>
+      <SearchInput
+        value={query}
+        onChange={val => { setQuery(val); setPage(1); }}
+        onClear={() => { setQuery(""); setPage(1); }}
+        placeholder="Search class, subject, location or Tutor"
+        label="Search appointed jobs"
+        variant="sunken"
+      />
     </RecentSearches>
 
     <AdminJobFilterBar

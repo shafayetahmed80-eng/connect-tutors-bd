@@ -7,7 +7,8 @@ import { useSiteContact } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
-import { Mic, Paperclip, Phone, Search, Send, Square, ThumbsUp, X } from "lucide-react";
+import SearchInput from "@/components/SearchInput";
+import { Mic, Paperclip, Phone, Send, Square, ThumbsUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -155,11 +156,15 @@ export function TutorAdminChatPanel() {
       </a>
     </header>
 
-    <label className="relative block border-b border-[#dce9f1] p-3">
-      <span className="sr-only">Search this conversation</span>
-      <Search className="pointer-events-none absolute left-6 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-j-ink-faint" />
-      <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-control w-full rounded-lg border border-j-border bg-white pl-8 pr-2 text-xs outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
-    </label>
+    <div className="border-b border-[#dce9f1] p-3">
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search"
+        label="Search this conversation"
+        className="h-control w-full rounded-lg border border-j-border bg-white text-xs"
+      />
+    </div>
 
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
       {threadQuery.isLoading
