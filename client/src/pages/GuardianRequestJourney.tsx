@@ -21,6 +21,7 @@ import { fieldGrid, fieldGridWide, fieldLabel, filledField, filledArea, primaryB
 import { trpc } from "@/lib/trpc";
 import { rememberSignInRole } from "@/lib/signInRoleMemory";
 import { defaultSiteLimits } from "@shared/site-limits";
+import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 import { SALARY_INPUT_PLACEHOLDER, formatSalaryAmount, formatSalaryInput, parseSalaryAmount, salaryValidationMessage, validateSalaryAmount } from "@shared/salary-amount";
 import { SiteBlocks, SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { SearchableLocationSelect } from "@/pages/JoinTutor";
@@ -460,7 +461,7 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
   const accountCityLabel = cities.find((city) => city.id === accountCityId)?.label ?? "";
   const tuitionCityLabel = cities.find((city) => city.id === tuitionCityLocationId)?.label ?? "";
   const tuitionLocationLabel = tuitionLocations.find((location) => location.id === tuitionLocationId)?.label ?? "";
-  const localPhone = phone.replace(/\D/g, "").slice(0, 11);
+  const localPhone = normalizeNumericDigits(phone, 11);
   const requestInput = useMemo<RequestInput>(() => ({ learningNeeds, tuitionType, groupCapacity, packageDurationMonths, studentCount, studentGender, addressDetails, tuitionCityLocationId, tuitionLocationId, daysPerWeek, tutoringTime, preferredGender, salaryAmount, instituteName, heardAboutUs }), [addressDetails, salaryAmount, instituteName, heardAboutUs, learningNeeds, daysPerWeek, tutoringTime, groupCapacity, packageDurationMonths, preferredGender, studentCount, studentGender, tuitionCityLocationId, tuitionLocationId, tuitionType]);
 
   useEffect(() => {
@@ -665,9 +666,9 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
           onSetStudentGender={(value) => { clearJourneyError(); setStudentGender(value); }}
           onSetAddressDetails={(value) => { clearJourneyError(); setAddressDetails(value); }}
           onSetTuitionType={(value) => { clearJourneyError(); setTuitionType(value); if (value !== "group") setGroupCapacity(""); if (value !== "package") setPackageDurationMonths(""); if (value === "group" || value === "both") setStudentCount(DEFAULT_STUDENT_COUNT); }}
-          onSetGroupCapacity={(value) => { clearJourneyError(); setGroupCapacity(value.replace(/\D/g, "")); }}
-          onSetPackageDurationMonths={(value) => { clearJourneyError(); setPackageDurationMonths(value.replace(/\D/g, "")); }}
-          onSetStudentCount={(value) => { clearJourneyError(); setStudentCount(value.replace(/\D/g, "")); }}
+          onSetGroupCapacity={(value) => { clearJourneyError(); setGroupCapacity(normalizeNumericDigits(value)); }}
+          onSetPackageDurationMonths={(value) => { clearJourneyError(); setPackageDurationMonths(normalizeNumericDigits(value)); }}
+          onSetStudentCount={(value) => { clearJourneyError(); setStudentCount(normalizeNumericDigits(value)); }}
           onSetTuitionCity={(value) => { clearJourneyError(); setTuitionCityLocationId(value); setTuitionLocationId(""); }}
           onSetTuitionLocation={(value) => { clearJourneyError(); setTuitionLocationId(value); }}
           onSetDays={(value) => { clearJourneyError(); setDaysPerWeek(value); }}
@@ -700,7 +701,7 @@ export function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phon
       <span className={fieldLabel}>{resolveSlot("request-tutor.field.phone", "Bangladesh mobile number")} <span className={requiredMark}>*</span></span>
       <span className={`modal-field-journey mt-2 flex items-stretch overflow-hidden rounded-xl border bg-j-surface-sunken transition focus-within:border-j-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-j-accent/12 ${valid ? "border-j-ok" : "border-j-field-border"}`}>
         <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-semibold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
-        <input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb]" value={phone} onChange={(event) => onPhoneChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); if (valid && !pending) onContinue(); } }} placeholder="01712345678" inputMode="numeric" autoComplete="tel" />
+        <input id="guardian-phone" className="min-w-0 flex-1 bg-transparent px-3.5 text-base tracking-[0.02em] outline-none placeholder:text-[#9aabbb]" value={phone} onChange={(event) => onPhoneChange(toEnglishDigits(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); if (valid && !pending) onContinue(); } }} placeholder="01712345678" inputMode="numeric" autoComplete="tel" />
         {valid ? <span className="flex items-center pr-3.5 text-j-ok" aria-hidden="true"><Check size={18} /></span> : null}
       </span>
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
@@ -761,7 +762,7 @@ export function AccountStage(props: GuardianAccountStageProps) {
   const errors = props.fieldErrors ?? {};
   const resolveSlot = useSiteContentResolver();
   const passwordMatch = getPasswordMatch(props.password, props.confirmPassword);
-  const displayPhone = props.phone.replace(/\D/g, "").replace(/^0/, "");
+  const displayPhone = normalizeNumericDigits(props.phone).replace(/^0/, "");
   return <section className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300" aria-label="Guardian account details">
     <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-j-ink sm:text-3xl"><SiteText slotId="request-tutor.account.heading" /></h1>
 
@@ -1021,7 +1022,7 @@ function SelectField({ label, slotId, labelIcon, value, onChange, options, place
 function NumberField({ label, slotId, labelIcon, id, value, onChange, min, max }: { label: string; slotId?: string; labelIcon?: ReactNode; id: string; value: string; onChange: (value: string) => void; min: number; max: number }) {
   return <label className="block">
     <FieldLabelText label={label} slotId={slotId} labelIcon={labelIcon} />
-    <input id={id} className={`${filledField} mt-2`} type="number" min={min} max={max} step={1} inputMode="numeric" value={value} onChange={(event) => onChange(event.target.value)} />
+    <input id={id} className={`${filledField} mt-2`} type="number" min={min} max={max} step={1} inputMode="numeric" value={value} onChange={(event) => onChange(toEnglishDigits(event.target.value))} />
   </label>;
 }
 

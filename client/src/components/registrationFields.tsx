@@ -10,6 +10,7 @@ import React, { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { fieldLabel, filledField, requiredMark } from "@/components/journeyField";
 import { useWebOtp } from "@/lib/webOtp";
+import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 
 export type RegistrationGender = "male" | "female";
 
@@ -48,7 +49,7 @@ export function PhoneField({ id, label, value, onChange, invalid, describedBy, p
       <span className="flex items-center gap-1.5 border-r border-j-border px-3.5 font-bold text-j-ink-soft"><Phone size={14} aria-hidden="true" />+880</span>
       {readOnly
         ? <input id={id} readOnly aria-readonly="true" aria-invalid={invalid} aria-describedby={describedBy} tabIndex={-1} value={value} className="min-w-0 flex-1 cursor-not-allowed bg-transparent px-3.5 text-j-ink-soft outline-none" />
-        : <input id={id} required value={value} onChange={(event) => onChange?.(event.target.value)} aria-invalid={invalid} aria-describedby={describedBy} className="min-w-0 flex-1 bg-transparent px-3.5 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder={placeholder} inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" />}
+        : <input id={id} required value={value} onChange={(event) => onChange?.(toEnglishDigits(event.target.value))} aria-invalid={invalid} aria-describedby={describedBy} className="min-w-0 flex-1 bg-transparent px-3.5 text-j-ink outline-none placeholder:text-[#9aabbb]" placeholder={placeholder} inputMode="numeric" pattern="1[3-9][0-9]{8}" maxLength={10} autoComplete="tel-national" />}
     </span>
   </label>;
 }
@@ -165,7 +166,7 @@ export function PhoneCodeField({ id, label, sentTo, value, onChange, onComplete,
         id={id}
         value={value}
         onChange={(event) => {
-          const digits = event.target.value.replace(/\D/g, "").slice(0, 4);
+          const digits = normalizeNumericDigits(event.target.value, 4);
           onChange(digits);
           if (digits.length === 4) onComplete?.(digits);
         }}

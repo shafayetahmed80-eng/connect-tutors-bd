@@ -73,6 +73,10 @@ describe("Password account identifier normalization", () => {
       kind: "phone",
       value: "+8801712345678",
     });
+    expect(db.normalizePasswordAccountIdentifier("০১৭১২৩৪৫৬৭৮")).toEqual({
+      kind: "phone",
+      value: "+8801712345678",
+    });
     expect(db.normalizePasswordAccountIdentifier("not-an-account-identifier")).toBeUndefined();
   });
 });

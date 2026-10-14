@@ -14,11 +14,10 @@
 /** Largest amount accepted, matching the column the old range fields used. */
 export const MAX_SALARY_AMOUNT = 500_000;
 
-/** Bangla digits map to Latin so `৫০০০` reads as 5000. */
-const banglaDigits = "০১২৩৪৫৬৭৮৯";
+import { toEnglishDigits } from "./digits";
 
 function toLatinDigits(value: string): string {
-  return value.replace(/[০-৯]/g, digit => String(banglaDigits.indexOf(digit)));
+  return toEnglishDigits(value);
 }
 
 /**

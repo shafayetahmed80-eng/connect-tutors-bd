@@ -9,6 +9,9 @@ describe("Tutor onboarding helpers", () => {
   it("normalizes common Bangladesh mobile formats to the 10-digit local entry", () => {
     expect(normalizeBangladeshLocalMobile("01712 345678")).toBe("1712345678");
     expect(normalizeBangladeshLocalMobile("+8801712345678")).toBe("1712345678");
+    expect(normalizeBangladeshLocalMobile("০১৭১২ ৩৪৫৬৭৮")).toBe("1712345678");
+    expect(normalizeBangladeshLocalMobile("+৮৮০১৭১২৩৪৫৬৭৮")).toBe("1712345678");
+    expect(formatBangladeshMobile("০১৭১২ ৩৪৫৬৭৮")).toBe("+8801712345678");
     expect(formatBangladeshMobile("01712 345678")).toBe("+8801712345678");
   });
 

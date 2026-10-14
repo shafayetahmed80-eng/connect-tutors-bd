@@ -38,6 +38,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from "./TutorProfileTeachingDays";
 import { RecordIcon } from "@/components/recordIcons";
 import { defaultSiteLimits } from "@shared/site-limits";
+import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
 import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileEditTargetFields, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import {
@@ -305,8 +306,17 @@ function CatalogSearchField({
   </label>;
 }
 
-function FormInput({ label, hint, error, required = false, showRequiredMarker = required, className: extraClassName, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${extraClassName ?? ""} ${error ? "border-tp-danger" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}</label>;
+function FormInput({ label, hint, error, required = false, showRequiredMarker = required, className: extraClassName, onChange, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (props.type === "number" || props.inputMode === "numeric" || props.type === "tel") {
+      const converted = toEnglishDigits(event.target.value);
+      if (converted !== event.target.value) {
+        event.target.value = converted;
+      }
+    }
+    onChange?.(event);
+  };
+  return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}><span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><input {...props} onChange={handleChange} required={required} aria-invalid={Boolean(error)} aria-required={showRequiredMarker || undefined} className={`${fieldClassName} ${extraClassName ?? ""} ${error ? "border-tp-danger" : ""}`} />{hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}{error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}</label>;
 }
 
 /**
@@ -339,7 +349,7 @@ function FormPhoneInput({ label, error, required = false, showRequiredMarker = r
         aria-invalid={Boolean(error)}
         aria-required={showRequiredMarker || undefined}
         value={toLocalPhoneDigits(value)}
-        onChange={event => onChange(toStoredPhoneValue(event.target.value))}
+        onChange={event => onChange(toStoredPhoneValue(toEnglishDigits(event.target.value)))}
         className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-tp-heading outline-none placeholder:text-tp-label-faint"
       />
     </span>
@@ -420,7 +430,7 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
 
 /** Years are typed by hand, so keep the field to digits instead of a spinner. */
 function digitsOnly(value: string, maxLength: number) {
-  return value.replace(/\D/g, "").slice(0, maxLength);
+  return normalizeNumericDigits(value, maxLength);
 }
 
 function InlineError({ message }: { message?: string }) {

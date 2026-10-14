@@ -1,5 +1,6 @@
 import React from "react";
 import { formatSalaryInput, parseSalaryAmount } from "@shared/salary-amount";
+import { toEnglishDigits } from "@shared/digits";
 
 /** The currency word, kept here so every money field says it the same way. */
 export const MONEY_SUFFIX = "Taka";
@@ -55,7 +56,7 @@ export function MoneyAmountField({
       aria-label={ariaLabel}
       placeholder={placeholder}
       maxLength={maxLength}
-      onChange={event => onChange(event.target.value)}
+      onChange={event => onChange(toEnglishDigits(event.target.value))}
       onBlur={() => {
         if (formatOnBlur && amount !== null) onChange(formatSalaryInput(amount));
         onBlur?.();

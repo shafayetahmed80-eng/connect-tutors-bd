@@ -1,4 +1,5 @@
 import { tuitionPaymentMethodLabels, type TuitionPaymentMethod } from "@shared/platform-charge";
+import { normalizeNumericDigits } from "@shared/digits";
 import { useEffect, useState } from "react";
 
 /** Today as the Dhaka calendar reads it, in the `YYYY-MM-DD` a date box wants. */
@@ -63,7 +64,7 @@ export default function PaymentForm<M extends TuitionPaymentMethod>({ label, met
   >
     <div>
       <label htmlFor="payment-amount" className={labelClass}>Amount (Taka)</label>
-      <input id="payment-amount" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value.replace(/\D/g, ""))} className={fieldClass} />
+      <input id="payment-amount" inputMode="numeric" value={amount} onChange={event => setAmount(normalizeNumericDigits(event.target.value))} className={fieldClass} />
     </div>
     <div>
       <label htmlFor="payment-method" className={labelClass}>Method</label>

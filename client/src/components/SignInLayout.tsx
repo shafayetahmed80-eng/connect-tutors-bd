@@ -17,6 +17,7 @@ import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarnin
 import { fieldLabel, filledField, primaryButton, requiredMark } from "@/components/journeyField";
 import { Link } from "wouter";
 import { SiteContentProvider, useSiteContentText } from "@/lib/siteContent";
+import { toEnglishDigits } from "@shared/digits";
 
 
 /**
@@ -76,7 +77,7 @@ export function SignInForm({ idPrefix, identifier, onIdentifier, password, onPas
   return <form className="mt-8 space-y-5" onSubmit={onSubmit}>
     <div>
       <label htmlFor={identifierId} className={fieldLabel}>Email or mobile number{star}</label>
-      <input id={identifierId} name="identifier" required type="text" inputMode="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={identifier} onChange={(event) => onIdentifier(event.target.value)} placeholder="name@example.com or 017XXXXXXXX" className={`${filledField} mt-2`} />
+      <input id={identifierId} name="identifier" required type="text" inputMode="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={identifier} onChange={(event) => onIdentifier(toEnglishDigits(event.target.value))} placeholder="name@example.com or 017XXXXXXXX" className={`${filledField} mt-2`} />
     </div>
     <div>
       <div className="flex items-center justify-between gap-4">

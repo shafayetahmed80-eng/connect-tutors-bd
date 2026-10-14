@@ -9,6 +9,7 @@ import { LoadingCradle } from "@/components/BrandMark";
 import { KeyRound, LogOut, MessageSquareText, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
+import { normalizeNumericDigits } from "@shared/digits";
 
 function getErrorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : "We could not confirm that. Try again.";
@@ -59,7 +60,7 @@ export default function AdminTwoFactorChallenge() {
 
   // Six digits is a complete code, so there is nothing to wait for a button click to do.
   const handleCodeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    const digits = normalizeNumericDigits(raw, 6);
     setCode(digits);
     if (digits.length === 6) void runVerifyCode(digits);
   };
@@ -110,7 +111,7 @@ export default function AdminTwoFactorChallenge() {
   };
 
   const handleSmsCodeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    const digits = normalizeNumericDigits(raw, 4);
     setSmsCode(digits);
     if (digits.length === 4) void runVerifySms(digits);
   };

@@ -8,6 +8,7 @@ import {
   type SettlementDisposition,
 } from "@shared/platform-charge";
 import { formatSalaryAmount } from "@shared/salary-amount";
+import { normalizeNumericDigits } from "@shared/digits";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -78,7 +79,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
           </div>
           {usesReceived ? <div>
             <label htmlFor="settle-received" className={labelClass}>Salary received (Taka)</label>
-            <input id="settle-received" inputMode="numeric" value={received} onChange={event => { setReceived(event.target.value.replace(/\D/g, "")); setKeepOverride(""); }} className={fieldClass} />
+            <input id="settle-received" inputMode="numeric" value={received} onChange={event => { setReceived(normalizeNumericDigits(event.target.value)); setKeepOverride(""); }} className={fieldClass} />
           </div> : null}
         </div>
 
@@ -91,7 +92,7 @@ export default function TuitionSettlementModal({ requestId, existing, onClose }:
 
         <div className="max-w-xs">
           <label htmlFor="settle-keep" className={labelClass}>Charge to keep (Taka)</label>
-          <input id="settle-keep" inputMode="numeric" value={keepOverride === "" ? String(data.retained) : keepOverride} onChange={event => setKeepOverride(event.target.value.replace(/\D/g, ""))} className={fieldClass} />
+          <input id="settle-keep" inputMode="numeric" value={keepOverride === "" ? String(data.retained) : keepOverride} onChange={event => setKeepOverride(normalizeNumericDigits(event.target.value))} className={fieldClass} />
           {keepOverride !== "" && Number(keepOverride) !== data.retained
             ? <button type="button" onClick={() => setKeepOverride("")} className="mt-1 text-2xs font-bold text-j-accent">Use the suggested {formatSalaryAmount(data.retained)}</button>
             : null}
