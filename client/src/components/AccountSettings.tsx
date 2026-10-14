@@ -1,7 +1,9 @@
-import { ChevronDown, KeyRound, PencilLine, type LucideIcon } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, KeyRound, PencilLine, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useLocation, useSearch } from "wouter";
+import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
+import { PasswordStrength } from "@/components/registrationFields";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -168,6 +170,13 @@ const passwordInput = "h-control rounded-xl border border-j-field-border px-3 te
 export function ChangePasswordForm() {
   const empty = { currentPassword: "", newPassword: "", confirmNewPassword: "" };
   const [form, setForm] = useState(empty);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const currentCapsLock = useCapsLockWarning();
+  const newCapsLock = useCapsLockWarning();
+  const confirmCapsLock = useCapsLockWarning();
+
   const mutation = trpc.account.changePassword.useMutation({
     onSuccess: () => { setForm(empty); toast.success("Password changed. Use your new password next time you sign in."); },
     onError: error => toast.error(error.message),
@@ -177,13 +186,96 @@ export function ChangePasswordForm() {
 
   return <form className="grid max-w-xl gap-4" onSubmit={event => { event.preventDefault(); mutation.mutate(form); }}>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">Current password
-      <input required type="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.currentPassword} onChange={event => set({ currentPassword: event.target.value })} className={passwordInput} />
+      <div className="relative">
+        <input
+          required
+          type={showCurrent ? "text" : "password"}
+          autoComplete="current-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={form.currentPassword}
+          onChange={event => set({ currentPassword: event.target.value })}
+          onKeyDown={currentCapsLock.updateCapsLockState}
+          onKeyUp={currentCapsLock.updateCapsLockState}
+          onBlur={currentCapsLock.clearCapsLockWarning}
+          className={`${passwordInput} w-full pr-11`}
+        />
+        <button
+          type="button"
+          onClick={() => setShowCurrent(v => !v)}
+          aria-label={showCurrent ? "Hide current password" : "Show current password"}
+          title={showCurrent ? "Hide current password" : "Show current password"}
+          aria-pressed={showCurrent}
+          className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-[#1677c8]"
+        >
+          {showCurrent ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+      <CapsLockWarning isCapsLockOn={currentCapsLock.isCapsLockOn} />
     </label>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">New password
-      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.newPassword} onChange={event => set({ newPassword: event.target.value })} className={passwordInput} />
+      <div className="relative">
+        <input
+          required
+          minLength={8}
+          maxLength={128}
+          type={showNew ? "text" : "password"}
+          autoComplete="new-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={form.newPassword}
+          onChange={event => set({ newPassword: event.target.value })}
+          onKeyDown={newCapsLock.updateCapsLockState}
+          onKeyUp={newCapsLock.updateCapsLockState}
+          onBlur={newCapsLock.clearCapsLockWarning}
+          className={`${passwordInput} w-full pr-11`}
+        />
+        <button
+          type="button"
+          onClick={() => setShowNew(v => !v)}
+          aria-label={showNew ? "Hide new password" : "Show new password"}
+          title={showNew ? "Hide new password" : "Show new password"}
+          aria-pressed={showNew}
+          className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-[#1677c8]"
+        >
+          {showNew ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+      <CapsLockWarning isCapsLockOn={newCapsLock.isCapsLockOn} />
+      <PasswordStrength id="account-new-password-strength" password={form.newPassword} />
     </label>
     <label className="grid gap-1.5 text-sm font-bold text-j-ink-strong">Confirm new password
-      <input required minLength={8} maxLength={128} type="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={form.confirmNewPassword} onChange={event => set({ confirmNewPassword: event.target.value })} className={`${passwordInput} ${mismatch ? "border-red-300" : ""}`} />
+      <div className="relative">
+        <input
+          required
+          minLength={8}
+          maxLength={128}
+          type={showConfirm ? "text" : "password"}
+          autoComplete="new-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={form.confirmNewPassword}
+          onChange={event => set({ confirmNewPassword: event.target.value })}
+          onKeyDown={confirmCapsLock.updateCapsLockState}
+          onKeyUp={confirmCapsLock.updateCapsLockState}
+          onBlur={confirmCapsLock.clearCapsLockWarning}
+          className={`${passwordInput} w-full pr-11 ${mismatch ? "border-red-300" : ""}`}
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirm(v => !v)}
+          aria-label={showConfirm ? "Hide confirm new password" : "Show confirm new password"}
+          title={showConfirm ? "Hide confirm new password" : "Show confirm new password"}
+          aria-pressed={showConfirm}
+          className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-[#1677c8]"
+        >
+          {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      </div>
+      <CapsLockWarning isCapsLockOn={confirmCapsLock.isCapsLockOn} />
       {mismatch ? <span className="text-xs font-semibold text-red-700">New passwords do not match.</span> : null}
     </label>
     <Button type="submit" disabled={mutation.isPending || mismatch} className="w-fit rounded-xl bg-[#1677c8] font-bold hover:bg-[#0e4f85]">

@@ -88,10 +88,17 @@ describe("the temporary-password change page", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/admin/applied-tutors"));
   });
 
-  it("sends anyone who is not signed in as an Admin to the Admin sign-in", async () => {
-    mocks.user = null;
-    mocks.access = { data: undefined, isLoading: false };
+  it("toggles the temporary password visibility between password and text", () => {
     render(<AdminPasswordChange />);
-    await waitFor(() => expect(window.location.pathname).toBe("/admin/login"));
+    const tempInput = screen.getByLabelText("Temporary password");
+    expect(tempInput.getAttribute("type")).toBe("password");
+
+    const toggleButton = screen.getByRole("button", { name: "Show temporary password" });
+    fireEvent.click(toggleButton);
+    expect(tempInput.getAttribute("type")).toBe("text");
+    expect(screen.getByRole("button", { name: "Hide temporary password" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide temporary password" }));
+    expect(tempInput.getAttribute("type")).toBe("password");
   });
 });

@@ -108,4 +108,38 @@ describe("changing one's own password", () => {
     fireEvent.click(screen.getByRole("button", { name: /Change password/ }));
     expect(state.mutate).toHaveBeenCalledWith({ currentPassword: "old-password", newPassword: "new-password-1", confirmNewPassword: "new-password-1" });
   });
+
+  it("toggles password visibility for all three fields and displays strength meter for new password", () => {
+    render(<ChangePasswordForm />);
+
+    const currentInput = screen.getByLabelText("Current password");
+    const newInput = screen.getByLabelText("New password");
+    const confirmInput = screen.getByLabelText(/Confirm new password/);
+
+    expect(currentInput.getAttribute("type")).toBe("password");
+    expect(newInput.getAttribute("type")).toBe("password");
+    expect(confirmInput.getAttribute("type")).toBe("password");
+
+    // Toggle current password
+    fireEvent.click(screen.getByRole("button", { name: "Show current password" }));
+    expect(currentInput.getAttribute("type")).toBe("text");
+    fireEvent.click(screen.getByRole("button", { name: "Hide current password" }));
+    expect(currentInput.getAttribute("type")).toBe("password");
+
+    // Toggle new password
+    fireEvent.click(screen.getByRole("button", { name: "Show new password" }));
+    expect(newInput.getAttribute("type")).toBe("text");
+
+    // Check strength meter updates
+    fireEvent.change(newInput, { target: { value: "weak" } });
+    expect(screen.getByRole("progressbar", { name: "Password strength" })).toBeTruthy();
+    expect(screen.getByText("Weak")).toBeTruthy();
+
+    fireEvent.change(newInput, { target: { value: "StrongPass#2026" } });
+    expect(screen.getByText("Excellent")).toBeTruthy();
+
+    // Toggle confirm password
+    fireEvent.click(screen.getByRole("button", { name: "Show confirm new password" }));
+    expect(confirmInput.getAttribute("type")).toBe("text");
+  });
 });
