@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { LoadingCradle } from "@/components/BrandMark";
 import { CapsLockWarning, useCapsLockWarning } from "@/components/CapsLockWarning";
 import { CredentialPasswordFields } from "@/pages/AdminSecurityWorkspace";
-import { KeyRound, LogOut } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 
@@ -23,6 +23,7 @@ export default function AdminPasswordChange() {
   const access = trpc.admin.getWorkspaceAccess.useQuery(undefined, { enabled: isAdmin, retry: false, refetchOnWindowFocus: false });
   const changePassword = trpc.account.changePassword.useMutation();
   const [currentPassword, setCurrentPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -73,7 +74,12 @@ export default function AdminPasswordChange() {
         {isAdmin && access.data?.passwordChangeRequired ? <form className="mt-8 grid gap-3" onSubmit={submit} noValidate>
           <div>
             <label htmlFor="admin-current-password" className="text-xs font-bold text-j-ink-soft">Temporary password</label>
-            <input id="admin-current-password" type="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} onKeyDown={currentCapsLock.updateCapsLockState} onKeyUp={currentCapsLock.updateCapsLockState} onBlur={currentCapsLock.clearCapsLockWarning} required className="mt-1 h-control w-full rounded-xl border border-j-field-border bg-white px-3 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+            <div className="relative mt-1">
+              <input id="admin-current-password" type={showCurrentPassword ? "text" : "password"} autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} onKeyDown={currentCapsLock.updateCapsLockState} onKeyUp={currentCapsLock.updateCapsLockState} onBlur={currentCapsLock.clearCapsLockWarning} required className="h-control w-full rounded-xl border border-j-field-border bg-white px-3 pr-11 outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
+              <button type="button" aria-controls="admin-current-password" aria-label={showCurrentPassword ? "Hide temporary password" : "Show temporary password"} aria-pressed={showCurrentPassword} onClick={() => setShowCurrentPassword(visible => !visible)} className="absolute inset-y-0 right-1 inline-flex w-9 items-center justify-center rounded-lg text-j-ink-soft outline-none hover:bg-j-surface-muted hover:text-j-ink focus-visible:ring-2 focus-visible:ring-j-accent focus-visible:ring-offset-1">
+                {showCurrentPassword ? <EyeOff aria-hidden="true" size={17} /> : <Eye aria-hidden="true" size={17} />}
+              </button>
+            </div>
             <CapsLockWarning isCapsLockOn={currentCapsLock.isCapsLockOn} />
           </div>
           <CredentialPasswordFields idPrefix="change" password={newPassword} confirmPassword={confirmNewPassword} onPasswordChange={setNewPassword} onConfirmPasswordChange={setConfirmNewPassword} />
