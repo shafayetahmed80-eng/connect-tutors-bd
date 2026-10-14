@@ -82,11 +82,15 @@ import GuardianRequestJourney from "./GuardianRequestJourney";
 beforeEach(() => {
   mocks.authMe = { data: null, isLoading: false, refetch: vi.fn() };
   window.history.pushState({}, "", "/request-tutor");
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   mocks.phoneStatusOptions = null;
   mocks.intakeOptions = null;
   mocks.registerOptions = null;
@@ -365,5 +369,27 @@ describe("GuardianRequestJourney account creation flow", () => {
     render(<GuardianRequestJourney />);
 
     await waitFor(() => expect(window.location.pathname).toBe("/guardian/dashboard/hire"));
+  });
+
+  it("silently restores a guest guardian draft and allows clearing it", () => {
+    window.localStorage.setItem("connect-tutors:draft:guardian-journey:guest", JSON.stringify({
+      data: {
+        phone: "1711223344",
+        name: "Farzana Yasmin",
+        email: "farzana@example.com",
+        gender: "female",
+      },
+      savedAt: Date.now(),
+    }));
+
+    render(<GuardianRequestJourney />);
+
+    expect((document.getElementById("guardian-phone") as HTMLInputElement).value).toBe("1711 223 344");
+    expect(screen.getByText(/সংরক্ষিত ড্রাফট/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /মুছে ফেলুন/ }));
+    expect((document.getElementById("guardian-phone") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/সংরক্ষিত ড্রাফট/)).toBeNull();
+    expect(window.localStorage.getItem("connect-tutors:draft:guardian-journey:guest")).toBeNull();
   });
 });
