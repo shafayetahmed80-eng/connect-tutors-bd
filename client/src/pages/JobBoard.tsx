@@ -326,12 +326,91 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   const locationsQuery = trpc.catalog.searchRegistrationLocations.useQuery({ cityId: filters.cityId, query: "", limit: 300 }, { enabled: Boolean(filters.cityId) });
   const jobsQuery = trpc.jobBoard.list.useQuery(queryInput);
   const filterOptionsQuery = trpc.jobBoard.filterOptions.useQuery();
+
+  // Live draft preview count: queries totalCount for the draft filter selection before Apply
+  const [debouncedDraft, setDebouncedDraft] = useState<JobBoardFilterState>(draft);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDraft(draft);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [draft]);
+
+  const isDraftSameAsFilters = useMemo(() => {
+    return (
+      draft.postedFrom === filters.postedFrom &&
+      draft.postedTo === filters.postedTo &&
+      draft.country === filters.country &&
+      draft.cityId === filters.cityId &&
+      draft.jobId === filters.jobId &&
+      draft.studentGender === filters.studentGender &&
+      draft.preferredTutorGender === filters.preferredTutorGender &&
+      draft.locationIds.length === filters.locationIds.length &&
+      draft.tuitionTypes.length === filters.tuitionTypes.length &&
+      draft.daysPerWeek.length === filters.daysPerWeek.length &&
+      draft.categories.length === filters.categories.length &&
+      draft.classCourses.length === filters.classCourses.length &&
+      draft.subjects.length === filters.subjects.length &&
+      JSON.stringify(draft.locationIds) === JSON.stringify(filters.locationIds) &&
+      JSON.stringify(draft.tuitionTypes) === JSON.stringify(filters.tuitionTypes) &&
+      JSON.stringify(draft.daysPerWeek) === JSON.stringify(filters.daysPerWeek) &&
+      JSON.stringify(draft.categories) === JSON.stringify(filters.categories) &&
+      JSON.stringify(draft.classCourses) === JSON.stringify(filters.classCourses) &&
+      JSON.stringify(draft.subjects) === JSON.stringify(filters.subjects)
+    );
+  }, [draft, filters]);
+
+  const isDebouncedDraftSameAsFilters = useMemo(() => {
+    return (
+      debouncedDraft.postedFrom === filters.postedFrom &&
+      debouncedDraft.postedTo === filters.postedTo &&
+      debouncedDraft.country === filters.country &&
+      debouncedDraft.cityId === filters.cityId &&
+      debouncedDraft.jobId === filters.jobId &&
+      debouncedDraft.studentGender === filters.studentGender &&
+      debouncedDraft.preferredTutorGender === filters.preferredTutorGender &&
+      debouncedDraft.locationIds.length === filters.locationIds.length &&
+      debouncedDraft.tuitionTypes.length === filters.tuitionTypes.length &&
+      debouncedDraft.daysPerWeek.length === filters.daysPerWeek.length &&
+      debouncedDraft.categories.length === filters.categories.length &&
+      debouncedDraft.classCourses.length === filters.classCourses.length &&
+      debouncedDraft.subjects.length === filters.subjects.length &&
+      JSON.stringify(debouncedDraft.locationIds) === JSON.stringify(filters.locationIds) &&
+      JSON.stringify(debouncedDraft.tuitionTypes) === JSON.stringify(filters.tuitionTypes) &&
+      JSON.stringify(debouncedDraft.daysPerWeek) === JSON.stringify(filters.daysPerWeek) &&
+      JSON.stringify(debouncedDraft.categories) === JSON.stringify(filters.categories) &&
+      JSON.stringify(debouncedDraft.classCourses) === JSON.stringify(filters.classCourses) &&
+      JSON.stringify(debouncedDraft.subjects) === JSON.stringify(filters.subjects)
+    );
+  }, [debouncedDraft, filters]);
+
+  const draftQueryInput = useMemo(
+    () => buildJobBoardQuery({ ...debouncedDraft, page: 1, pageSize: 1 }),
+    [debouncedDraft]
+  );
+
+  const draftPreviewQuery = trpc.jobBoard.list.useQuery(
+    draftQueryInput,
+    {
+      enabled: filterOpen && !isDebouncedDraftSameAsFilters,
+      staleTime: 5000,
+    }
+  );
+
   const tutorInterestsQuery = trpc.tutor.myJobInterests.useQuery(undefined, { enabled: isTutor, retry: false });
   const tutorProfileQuery = trpc.tutor.getMyProfile.useQuery(undefined, { enabled: isTutor, retry: false });
   const expressInterest = trpc.jobBoard.expressInterest.useMutation({ onSuccess: () => utils.tutor.myJobInterests.invalidate() });
   const withdrawInterest = trpc.jobBoard.withdrawInterest.useMutation({ onSuccess: () => utils.tutor.myJobInterests.invalidate() });
   const jobs = (jobsQuery.data?.items ?? []) as JobBoardJob[];
   const totalCount = jobsQuery.data?.totalCount ?? 0;
+  const previewCount = isDraftSameAsFilters
+    ? totalCount
+    : (draftPreviewQuery.data?.totalCount ?? totalCount);
+  const isPreviewLoading = !isDraftSameAsFilters && (
+    isDebouncedDraftSameAsFilters ||
+    draftPreviewQuery.isLoading ||
+    draftPreviewQuery.isFetching
+  );
   const pagination = getJobBoardPagination({ page: queryInput.page, pageSize: filters.pageSize, totalCount });
   const cities = citiesQuery.data ?? [];
   const locations = locationsQuery.data ?? [];
@@ -443,8 +522,9 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
     <SlidePanel open={filterOpen}><FilterPanelFrame
       id="job-board-filters"
       ariaLabel="Job Board filters"
-      total={totalCount}
-      loading={jobsQuery.isLoading}
+      total={previewCount}
+      loading={isPreviewLoading}
+      noun={previewCount === 1 ? "job found" : "jobs found"}
       onClose={() => setFilterOpen(false)}
       onClear={clearFilters}
       onApply={applyFilters}

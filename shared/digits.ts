@@ -22,6 +22,15 @@ export function toEnglishDigits(value: string | number | null | undefined): stri
 }
 
 /**
+ * Converts standard ASCII Latin digits [0-9] to their Bangla numeral [০-৯] equivalents.
+ * Characters that are not ASCII digits remain unchanged.
+ */
+export function toBanglaDigits(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return String(value).replace(/[0-9]/g, digit => BANGLA_DIGITS.charAt(Number(digit)));
+}
+
+/**
  * Normalizes input by converting Bangla digits to English digits
  * and stripping out all non-digit characters.
  *

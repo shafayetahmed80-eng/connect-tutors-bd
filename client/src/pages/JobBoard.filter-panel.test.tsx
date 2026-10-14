@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -13,7 +13,7 @@ const options = {
   subjectsByClass: { "Class 4": ["General Maths"], "O Level": ["Physics"] },
 };
 
-const mocks = vi.hoisted(() => ({ lastQuery: null as unknown }));
+const mocks = vi.hoisted(() => ({ lastQuery: null as unknown, lastPreviewQuery: null as unknown }));
 
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: null, loading: false }) }));
 vi.mock("@/lib/siteContent", () => ({
@@ -31,9 +31,12 @@ vi.mock("@/lib/trpc", () => ({
     jobBoard: {
       filterOptions: { useQuery: () => ({ data: options, isLoading: false }) },
       list: {
-        // The board asks for its list; a shared link's single job is a second, disabled-until-needed ask.
+        // The board asks for its list; the live preview asks with pageSize: 1
         useQuery: (input: unknown, options?: { enabled?: boolean }) => {
-          if (options?.enabled !== false) mocks.lastQuery = input;
+          if (options?.enabled !== false) {
+            if ((input as { pageSize?: number })?.pageSize === 1) mocks.lastPreviewQuery = input;
+            else mocks.lastQuery = input;
+          }
           return { data: { items: [], totalCount: 7 }, isLoading: false };
         },
       },
@@ -49,7 +52,7 @@ vi.mock("@/lib/trpc", () => ({
 
 import { JobBoardContent } from "./JobBoard";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.lastQuery = null; });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.lastQuery = null; mocks.lastPreviewQuery = null; });
 
 const openPanel = () => fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
 // Anchored at both ends: the "Class" field and a "Class 4" option in its own
@@ -154,5 +157,21 @@ describe("the Job Board filter panel", () => {
 
     expect(screen.getByRole("alert").textContent).toMatch(/cannot be later than/);
     expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("requests a preview count with pageSize: 1 when a filter is picked, while keeping the main board intact", () => {
+    vi.useFakeTimers();
+    render(<JobBoardContent embedded />);
+    openPanel();
+
+    pick("Tuition Type", "Online Tutoring");
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(mocks.lastPreviewQuery).toMatchObject({ tuitionTypes: ["online"], pageSize: 1 });
+    expect(mocks.lastQuery).toMatchObject({ page: 1, pageSize: 20 });
+    expect(mocks.lastQuery).not.toHaveProperty("tuitionTypes");
+    vi.useRealTimers();
   });
 });
