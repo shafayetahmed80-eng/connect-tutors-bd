@@ -76,12 +76,9 @@ export default function JobCard({ job, onOpen, action, showMapLink = false, foot
       onClick={onOpen}
       onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
       aria-label={`${job.title}, Job ID ${job.jobId}${isNew ? ", new" : ""}`}
-      // A calmer hover than it had: half the lift, a longer and gentler curve,
-      // a border that warms rather than snapping to full accent blue, and a
-      // shadow that is softer but spreads further. On a page of twenty cards
-      // the old 3px snap read as the list twitching under the pointer.
-      className="job-card flex h-full cursor-pointer flex-col rounded-xl border border-[#dce9f1] bg-white px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(36,86,129,.05)] transition-[transform,box-shadow,border-color] duration-[320ms] ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[1.5px] hover:border-[#a9cdf0] hover:shadow-[0_10px_32px_-6px_rgba(36,86,129,.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="job-card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-j-border bg-white px-4 pb-3.5 pt-4 shadow-[0_1px_2px_rgba(16,49,77,.05),0_12px_36px_-10px_rgba(16,49,77,.14)] ring-1 ring-[rgba(16,49,77,.035)] transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-[2px] hover:border-[#a9cdf0] hover:shadow-[0_20px_48px_-12px_rgba(16,49,77,.20)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677e8] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,transparent,var(--j-accent),transparent)]" />
       <div className="flex items-start justify-between gap-2">
         <h3 className="job-card-title font-semibold leading-[1.35] tracking-[-.005em] text-[#173d60]">{job.title}</h3>
         {isNew ? <span className="job-card-small mt-px shrink-0 rounded-full bg-j-accent-wash px-2 py-0.5 font-bold uppercase tracking-[0.06em] text-j-accent">New</span> : null}
