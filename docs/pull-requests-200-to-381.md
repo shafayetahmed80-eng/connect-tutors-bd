@@ -395,4 +395,5 @@
 | [#380](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/380) | 🟢 MERGED | feat(job-board): tuition details share menu with WhatsApp, Facebook and copy feedback | feat/job-details-share-menu | 2026-10-14 |
 | [#381](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/381) | 🟢 MERGED | feat(ui): search input clear button, auto-focus glow, and admin directory search fixes | feat/search-input-glow-and-clear | 2026-10-14 |
 | [#382](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/382) | 🟢 MERGED | feat(guardian-request): instant preview & edit mode before submission and in success state | feat/guardian-request-preview-confirm | 2026-10-15 |
+| [#383](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/383) | 🟢 MERGED | feat(tutor): interactive application history timeline tracker and live search | feat/tutor-application-history-tracker | 2026-10-15 |
 
