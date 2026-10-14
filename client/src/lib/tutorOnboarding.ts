@@ -1,21 +1,19 @@
-import { normalizeNumericDigits } from "@shared/digits";
+import { cleanBangladeshLocalPhoneDigits, isValidBangladeshLocalPhone, BANGLADESH_COUNTRY_CODE } from "@shared/phone";
 
 export const TUTOR_ONBOARDING_DRAFT_KEY = "connect-tutors:tutor-onboarding-draft";
-export const BANGLADESH_COUNTRY_CODE = "+880";
+export { BANGLADESH_COUNTRY_CODE };
 
 export function normalizeBangladeshLocalMobile(value: string) {
-  const digits = normalizeNumericDigits(value);
-  const withoutCountryCode = digits.startsWith("880") ? digits.slice(3) : digits;
-  const withoutTrunkPrefix = withoutCountryCode.startsWith("0") ? withoutCountryCode.slice(1) : withoutCountryCode;
-  return withoutTrunkPrefix.slice(0, 10);
+  return cleanBangladeshLocalPhoneDigits(value);
 }
 
 export function isValidBangladeshLocalMobile(value: string) {
-  return /^1[3-9]\d{8}$/.test(value);
+  return isValidBangladeshLocalPhone(value);
 }
 
 export function formatBangladeshMobile(value: string) {
-  return `${BANGLADESH_COUNTRY_CODE}${normalizeBangladeshLocalMobile(value)}`;
+  const digits = cleanBangladeshLocalPhoneDigits(value);
+  return digits ? `${BANGLADESH_COUNTRY_CODE}${digits}` : "";
 }
 
 /**

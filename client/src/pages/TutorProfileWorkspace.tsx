@@ -39,6 +39,7 @@ import { expandTeachingDayIds, selectedTeachingDayIds, teachingDayOptions } from
 import { RecordIcon } from "@/components/recordIcons";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
+import { cleanBangladeshLocalPhoneDigits, formatBangladeshLocalPhoneDisplay } from "@shared/phone";
 import { findIncompletePhoneFields, incompletePhoneMessage, toLocalPhoneDigits, toStoredPhoneValue, type TutorProfilePhoneField } from "./TutorProfilePhoneFields";
 import { createTutorProfileSectionDraftPayload, getTutorProfileEditTargetFields, type TutorProfileEditTarget, type TutorProfileSectionGroupId, type TutorProfileSectionId } from "./TutorProfileSectionDraft";
 import {
@@ -337,20 +338,27 @@ function FormPhoneInput({ label, error, required = false, showRequiredMarker = r
   return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
     <span className={`${fieldClassName} flex items-stretch overflow-hidden !px-0 !py-0 focus-within:border-tp-accent focus-within:ring-2 focus-within:ring-tp-accent-wash ${error ? "border-tp-danger" : ""}`}>
-      <span aria-hidden="true" className="flex items-center border-r border-tp-border bg-j-surface-sunken px-2.5 font-bold text-tp-label">{BANGLADESH_COUNTRY_CODE}</span>
+      <span aria-hidden="true" className="flex items-center border-r border-tp-border bg-j-surface-sunken px-2.5 font-bold text-tp-label select-none">{BANGLADESH_COUNTRY_CODE}</span>
       <input
         type="tel"
         inputMode="numeric"
         autoComplete={autoComplete}
-        maxLength={10}
-        placeholder="1XXXXXXXXX"
+        maxLength={14}
+        placeholder="1XXX XXX XXX"
         required={required}
         aria-label={label}
         aria-invalid={Boolean(error)}
         aria-required={showRequiredMarker || undefined}
-        value={toLocalPhoneDigits(value)}
-        onChange={event => onChange(toStoredPhoneValue(toEnglishDigits(event.target.value)))}
-        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-tp-heading outline-none placeholder:text-tp-label-faint"
+        value={formatBangladeshLocalPhoneDisplay(value)}
+        onChange={event => onChange(toStoredPhoneValue(cleanBangladeshLocalPhoneDigits(event.target.value)))}
+        onPaste={event => {
+          const pasted = event.clipboardData.getData("text");
+          if (pasted) {
+            event.preventDefault();
+            onChange(toStoredPhoneValue(cleanBangladeshLocalPhoneDigits(pasted)));
+          }
+        }}
+        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-tp-heading outline-none placeholder:text-tp-label-faint tabular-nums"
       />
     </span>
     {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}

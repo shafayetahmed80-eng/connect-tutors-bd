@@ -135,7 +135,7 @@ describe("validateGuardianRegistration", () => {
 describe("GuardianRequestJourney account creation flow", () => {
   /** The first screen: the number, then Continue. `phoneStatus` answers whether the number already has an account. */
   function enterNumber(number = "01712345678") {
-    fireEvent.change(screen.getByPlaceholderText("01712345678"), { target: { value: number } });
+    fireEvent.change(document.getElementById("guardian-phone")!, { target: { value: number } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   }
   const numberIsNew = () => act(() => mocks.phoneStatusOptions?.onSuccess?.({ registered: false }));
@@ -154,7 +154,7 @@ describe("GuardianRequestJourney account creation flow", () => {
 
     expect(screen.getByRole("heading", { name: "Create your Guardian account" })).toBeTruthy();
     // The number is carried over and can be read, not typed over.
-    const shown = screen.getByDisplayValue("1712345678") as HTMLInputElement;
+    const shown = screen.getByDisplayValue("1712 345 678") as HTMLInputElement;
     expect(shown.readOnly).toBe(true);
     fillAccountForm();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -222,11 +222,11 @@ describe("GuardianRequestJourney account creation flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Back to your details" }));
     expect((screen.getByPlaceholderText("Your full name") as HTMLInputElement).value).toBe("Rahima Begum");
-    expect(screen.getByDisplayValue("1712345678")).toBeTruthy();
+    expect(screen.getByDisplayValue("1712 345 678")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Back to phone" }));
     expect(screen.getByRole("heading", { name: "Start with your phone number" })).toBeTruthy();
-    expect((screen.getByPlaceholderText("01712345678") as HTMLInputElement).value).toBe("01712345678");
+    expect((document.getElementById("guardian-phone") as HTMLInputElement).value).toBe("1712 345 678");
   });
 
   it("does not send a second SMS for a number this visit already proved", () => {

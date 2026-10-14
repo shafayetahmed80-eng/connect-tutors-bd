@@ -8,6 +8,7 @@ import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
 import { normalizeTutoringTime } from "@shared/tutoring-time";
 import { normalizeNumericDigits, toEnglishDigits } from "@shared/digits";
+import { cleanBangladeshLocalPhoneDigits, formatBangladeshLocalPhoneDisplay } from "@shared/phone";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Send } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -72,6 +73,36 @@ function Text({ title, required, value, onChange, placeholder, maxLength, inputM
       aria-readonly={readOnly}
       className={`${control} ${readOnly ? "cursor-not-allowed bg-j-surface-sunken text-j-ink-soft" : ""}`}
     />
+  </Field>;
+}
+
+function AdminPhoneInput({ title, required, value, onChange, readOnly }: {
+  title: string; required?: boolean; value: string; onChange: (value: string) => void;
+  readOnly?: boolean;
+}) {
+  return <Field title={title} required={required}>
+    <span className={`mt-1 flex h-control w-full items-stretch overflow-hidden rounded-lg border border-j-field-border bg-white text-[11px] focus-within:border-j-accent focus-within:ring-2 focus-within:ring-sky-100 ${readOnly ? "cursor-not-allowed bg-j-surface-sunken" : ""}`}>
+      <span className="flex items-center border-r border-j-border bg-j-surface-sunken px-2 font-bold text-j-ink-soft select-none">+880</span>
+      <input
+        type="tel"
+        inputMode="numeric"
+        readOnly={readOnly}
+        aria-readonly={readOnly}
+        aria-label={title}
+        value={formatBangladeshLocalPhoneDisplay(value)}
+        onChange={event => onChange(cleanBangladeshLocalPhoneDigits(event.target.value))}
+        onPaste={event => {
+          const pasted = event.clipboardData.getData("text");
+          if (pasted) {
+            event.preventDefault();
+            onChange(cleanBangladeshLocalPhoneDigits(pasted));
+          }
+        }}
+        placeholder="1XXX XXX XXX"
+        maxLength={14}
+        className={`min-w-0 flex-1 bg-transparent px-2 text-[11px] text-j-ink outline-none tabular-nums placeholder:text-j-ink-faint ${readOnly ? "cursor-not-allowed text-j-ink-soft" : ""}`}
+      />
+    </span>
   </Field>;
 }
 
@@ -150,7 +181,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
   const [typedJobId, setTypedJobId] = useState<string | null>(null);
   const jobId = editing ? jobIdForRequest(draft.requestId) : typedJobId ?? nextJobId.data?.jobId ?? "";
   const [guardianName, setGuardianName] = useState(draft?.guardianName ?? "");
-  const [guardianPhone, setGuardianPhone] = useState(draft?.guardianPhone ?? "");
+  const [guardianPhone, setGuardianPhone] = useState(draft?.guardianPhone ? cleanBangladeshLocalPhoneDigits(draft.guardianPhone) : "");
   const [tuitionType, setTuitionType] = useState<TuitionType>((draft?.tuitionType as TuitionType) ?? "home");
   const [tuitionCityId, setTuitionCityId] = useState(draft?.tuitionCityLocationId ?? "");
   const [tuitionLocationId, setTuitionLocationId] = useState(draft?.tuitionLocationId ?? "");
@@ -203,9 +234,10 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
     if (salary === null) { toast.error("Enter the monthly salary."); return; }
     const gap = describeLearningNeedsGap(learningNeeds, needsLimits);
     if (gap) { toast.error(gap); return; }
+    const phoneDigits = cleanBangladeshLocalPhoneDigits(guardianPhone);
     const base = {
       guardianName: guardianName.trim(),
-      guardianPhone: guardianPhone.trim(),
+      guardianPhone: phoneDigits ? (guardianPhone.startsWith("+880") ? guardianPhone : `0${phoneDigits}`) : "",
       learningNeeds: learningNeeds.map(need => ({
         category: need.category,
         ...(need.curriculumType ? { curriculumType: need.curriculumType } : {}),
@@ -254,7 +286,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
         <Text title="Job ID" required={!editing} readOnly={editing} value={jobId} onChange={value => setTypedJobId(normalizeNumericDigits(value, 9))} maxLength={9} inputMode="numeric" placeholder={nextJobId.isLoading ? "…" : undefined} />
         <Text title="Guardian name" required readOnly={guardianLocked} value={guardianName} onChange={setGuardianName} maxLength={160} placeholder="Full name" />
-        <Text title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={value => setGuardianPhone(toEnglishDigits(value))} maxLength={20} inputMode="tel" placeholder="01XXXXXXXXX" />
+        <AdminPhoneInput title="Mobile number" required readOnly={guardianLocked} value={guardianPhone} onChange={setGuardianPhone} />
         <Select title="Tuition type" required value={tuitionType} onChange={value => setTuitionType(value as TuitionType)} options={["home", "online", "group", "package"]} placeholder="Choose" format={value => formatTuitionType(value)} />
 
         {online ? <>
