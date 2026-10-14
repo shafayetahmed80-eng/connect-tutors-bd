@@ -1,8 +1,14 @@
+import { useMemo, useState } from "react";
+import { useSearch } from "wouter";
+import { Clock } from "lucide-react";
 import PaymentStatusPill from "@/components/PaymentStatusPill";
 import { PhoneContact } from "@/components/PhoneContact";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { RecordIcon } from "@/components/recordIcons";
 import StatusTabRow from "@/components/StatusTabRow";
+import { SearchInput } from "@/components/SearchInput";
+import { JobIdTag } from "@/components/JobIdTag";
+import { TutorApplicationTimelineModal, type ApplicationTimelineData } from "@/components/TutorApplicationTimelineModal";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { formatSubjects, formatTuitionType } from "@shared/job-card";
@@ -15,34 +21,8 @@ import {
   tutorApplicationStages,
   type TutorApplicationStage,
 } from "@shared/tutor-application-stages";
-import { useMemo, useState } from "react";
-import { useSearch } from "wouter";
-import { JobIdTag } from "@/components/JobIdTag";
 
-type ApplicationRow = {
-  interestId: number;
-  status: "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
-  appointmentConfirmedAt: string | Date | null;
-  createdAt: string | Date;
-  publicJobId: string;
-  tuitionType: string;
-  category: string;
-  classCourse: string;
-  subjects: string;
-  daysPerWeek: number;
-  locationLabel: string | null;
-  budgetAmount: number | null;
-  shortlistedAt: string | Date | null;
-  appointedAt: string | Date | null;
-  endedAt: string | Date | null;
-  tuitionCancelledAt: string | Date | null;
-  paymentStatus: JobPaymentStatus;
-  /** The day the last payment made the fee Full Paid; set once the tuition is Closed. */
-  paymentCompletedAt?: string | Date | null;
-  /** The Guardian's name and number, which the server sends only for the tuition this Tutor is appointed to. */
-  guardianName?: string | null;
-  guardianPhone?: string | null;
-};
+type ApplicationRow = ApplicationTimelineData;
 
 function formatDate(value: string | Date) {
   return new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -121,14 +101,56 @@ export function TutorApplicationStatus() {
   const visible = useMemo(() => filterTutorApplicationsByStage(applications, activeStage), [applications, activeStage]);
   const activeLabel = tutorApplicationStages.find(stage => stage.key === activeStage)?.label ?? "";
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTimelineApp, setSelectedTimelineApp] = useState<ApplicationRow | null>(null);
+
+  const filteredVisible = useMemo(() => {
+    if (!searchQuery.trim()) return visible;
+    const q = searchQuery.toLowerCase().trim();
+    return visible.filter(app => {
+      const idMatch = app.publicJobId.toLowerCase().includes(q) || app.publicJobId.replace(/\D/g, "").includes(q);
+      const subjectsMatch = formatSubjects(app.subjects).toLowerCase().includes(q);
+      const catMatch = (app.category ?? "").toLowerCase().includes(q);
+      const classMatch = (app.classCourse ?? "").toLowerCase().includes(q);
+      const locMatch = (app.locationLabel ?? "").toLowerCase().includes(q);
+      return idMatch || subjectsMatch || catMatch || classMatch || locMatch;
+    });
+  }, [visible, searchQuery]);
+
   // One column list in two shapes: the table a laptop has room for, and one
   // card per application on a phone, where nine columns can only be read
   // sideways. The Applied Tutors screens are built the same way.
   const columns: RecordColumn<ApplicationRow>[] = [
     {
       key: "jobId", label: "Job ID", place: "head",
-      cell: application => <JobIdTag bare className="text-2xs" jobId={application.publicJobId} />,
-      cardCell: application => <JobIdTag className="text-xs" jobId={application.publicJobId} />,
+      cell: application => (
+        <div className="flex flex-col items-start gap-1">
+          <JobIdTag bare className="text-2xs" jobId={application.publicJobId} />
+          <button
+            type="button"
+            onClick={() => setSelectedTimelineApp(application)}
+            aria-label={`View timeline for ${application.publicJobId}`}
+            className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
+          >
+            <Clock size={10} aria-hidden="true" />
+            Timeline
+          </button>
+        </div>
+      ),
+      cardCell: application => (
+        <div className="flex items-center gap-2">
+          <JobIdTag className="text-xs" jobId={application.publicJobId} />
+          <button
+            type="button"
+            onClick={() => setSelectedTimelineApp(application)}
+            aria-label={`View timeline for ${application.publicJobId}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
+          >
+            <Clock size={11} aria-hidden="true" />
+            Timeline
+          </button>
+        </div>
+      ),
     },
     { key: "classCourse", label: "Class / Course", cell: application => <span className="font-bold text-j-ink">{application.classCourse}</span> },
     { key: "category", label: "Category", cell: application => <span className="text-j-ink-strong">{application.category}</span> },
@@ -154,7 +176,7 @@ export function TutorApplicationStatus() {
       label="Application stages"
       items={tutorApplicationStages.map(stage => ({ key: stage.key, label: stage.label.replace(/\s*Jobs$/, ""), wideSuffix: "Jobs", count: counts[stage.key] }))}
       selected={activeStage}
-      onSelect={key => { if (key) setActiveStage(key); }}
+      onSelect={key => { if (key) { setActiveStage(key); setSearchQuery(""); } }}
     />
 
     {interestsQuery.isLoading
@@ -165,15 +187,46 @@ export function TutorApplicationStatus() {
       ? <p role="alert" className="mt-6 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-8 text-center text-sm font-semibold text-j-err">Your applications could not be loaded just now. Please try again.</p>
       : null}
 
-    {!interestsQuery.isLoading && !interestsQuery.isError ? <div className="mt-5">
-      <RecordTable
-        caption={`Your ${activeLabel.toLowerCase()}`}
-        columns={columns}
-        rows={visible}
-        rowKey={application => application.interestId}
-        empty={`No ${activeLabel.toLowerCase()}. Your other applications are under the stages above.`}
-        tableClassName="min-w-[64rem]"
-      />
-    </div> : null}
+    {!interestsQuery.isLoading && !interestsQuery.isError ? (
+      <div className="mt-5 space-y-3">
+        {applications.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="w-full sm:max-w-xs">
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onClear={() => setSearchQuery("")}
+                placeholder="Search applications..."
+                size="sm"
+                variant="white"
+              />
+            </div>
+            {searchQuery.trim() && (
+              <p className="text-xs text-j-ink-muted">
+                Showing {filteredVisible.length} of {visible.length} in {activeLabel.toLowerCase()}
+              </p>
+            )}
+          </div>
+        )}
+
+        <RecordTable
+          caption={`Your ${activeLabel.toLowerCase()}`}
+          columns={columns}
+          rows={filteredVisible}
+          rowKey={application => application.interestId}
+          empty={
+            visible.length === 0
+              ? `No ${activeLabel.toLowerCase()}. Your other applications are under the stages above.`
+              : `No applications match "${searchQuery}". Clear search to view all ${activeLabel.toLowerCase()}.`
+          }
+          tableClassName="min-w-[64rem]"
+        />
+      </div>
+    ) : null}
+
+    <TutorApplicationTimelineModal
+      application={selectedTimelineApp}
+      onClose={() => setSelectedTimelineApp(null)}
+    />
   </section>;
 }
