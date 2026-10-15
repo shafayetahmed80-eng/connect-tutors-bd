@@ -2,47 +2,47 @@ import { describe, expect, it } from "vitest";
 import { formatTutorDashboardLocation, formatTutorSince, getTutorDashboardSection, getTutorNavigationGroups, getTutorSidebarIdentity, tutorDashboardNavigation } from "./TutorDashboard";
 
 describe("Tutor Dashboard navigation", () => {
-  it("groups current Tutor work separately from planned tools", () => {
+  it("groups current Tutor work into active workspace and account sections", () => {
     expect(getTutorNavigationGroups(tutorDashboardNavigation)).toEqual([
       {
         label: "Active workspace",
-        items: ["Dashboard", "Profile", "Status", "Notifications", "Chat with Admin", "Tuition preferences", "Tutor requests", "Settings", "Job Board", "Confirmation Letter", "Payment", "How It Works", "Join our Community", "Install app"],
-      },
-      {
-        label: "Coming later",
         items: [
-          "Certificate",
-          "Refer & Earn",
-          "Exclusively Yours",
+          "Dashboard",
+          "Job Board",
+          "Status",
+          "Profile",
+          "Confirmation Letter",
+          "Payment",
+          "Notifications",
+          "Chat with Admin",
+          "How It Works",
+          "Join our Community",
+          "Install app",
         ],
       },
-      { label: "Account", items: ["Sign Out"] },
+      { label: "Account", items: ["Settings", "Sign Out"] },
     ]);
   });
 
-  it("keeps all planned Tutor destinations visible but clearly marked", () => {
-    const planned = tutorDashboardNavigation.filter(item => item.sectionLabel === "Coming later");
-    expect(planned.map(item => item.label)).toEqual([
-      "Certificate",
-      "Refer & Earn",
-      "Exclusively Yours",
-    ]);
-    expect(planned.every(item => item.planned)).toBe(true);
+  it("hides planned future destinations and deprecated tabs from navigation", () => {
+    const labels = tutorDashboardNavigation.map(item => item.label);
+    expect(labels).not.toContain("Certificate");
+    expect(labels).not.toContain("Refer & Earn");
+    expect(labels).not.toContain("Exclusively Yours");
+    expect(labels).not.toContain("Tuition preferences");
+    expect(labels).not.toContain("Tutor requests");
   });
 
-  it("keeps the current workspace routes available before future destinations", () => {
+  it("keeps the current workspace routes available in streamlined sequence", () => {
     expect(tutorDashboardNavigation.filter(item => item.sectionLabel === "Active workspace").map(item => item.label)).toEqual([
       "Dashboard",
-      "Profile",
-      "Status",
-      "Notifications",
-      "Chat with Admin",
-      "Tuition preferences",
-      "Tutor requests",
-      "Settings",
       "Job Board",
+      "Status",
+      "Profile",
       "Confirmation Letter",
       "Payment",
+      "Notifications",
+      "Chat with Admin",
       "How It Works",
       "Join our Community",
       "Install app",
@@ -54,6 +54,9 @@ describe("Tutor Dashboard navigation", () => {
 
     expect(signOut?.sectionLabel).toBe("Account");
     expect(signOut?.action).toBe("signout");
+
+    const settings = tutorDashboardNavigation.find(item => item.label === "Settings");
+    expect(settings?.sectionLabel).toBe("Account");
   });
 
   it("formats a stored registration date for the Tutor identity header", () => {
