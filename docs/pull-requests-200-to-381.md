@@ -1,15 +1,15 @@
-# 📋 কানেক্ট টিউটরস (Connect Tutors BD) — সম্পূর্ণ পুল রিকোয়েস্ট তালিকা (PR #1 থেকে #381)
+# 📋 কানেক্ট টিউটরস (Connect Tutors BD) — সম্পূর্ণ পুল রিকোয়েস্ট তালিকা (PR #1 থেকে #390)
 
-> এই ফাইলে প্রজেক্টের সূচনা থেকে বর্তমান পর্যন্ত (PR #1 থেকে #381) মোট 381টি পুল রিকোয়েস্টের পূর্ণাঙ্গ তালিকা সংরক্ষিত রয়েছে।
+> এই ফাইলে প্রজেক্টের সূচনা থেকে বর্তমান পর্যন্ত (PR #1 থেকে #390) মোট 390টি পুল রিকোয়েস্টের পূর্ণাঙ্গ তালিকা সংরক্ষিত রয়েছে।
 
 ### 📊 সারাংশ:
-- **সর্বমোট PR:** 381টি (PR #1 থেকে #381)
-- **মার্জড PR:** 375টি 🟢
+- **সর্বমোট PR:** 390টি (PR #1 থেকে #390)
+- **মার্জড PR:** 384টি 🟢
 - **ক্লোজড/রিপ্লেসড PR:** 6টি ⚪
 
 ---
 
-## 📑 সম্পূর্ণ তালিকা (PR #1 থেকে #381)
+## 📑 সম্পূর্ণ তালিকা (PR #1 থেকে #390)
 
 | PR # | স্ট্যাটাস | টাইটেল ও কাজের বিবরণ | ব্রাঞ্চ | মার্জের তারিখ |
 | :---: | :---: | :--- | :--- | :---: |
@@ -396,4 +396,12 @@
 | [#381](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/381) | 🟢 MERGED | feat(ui): search input clear button, auto-focus glow, and admin directory search fixes | feat/search-input-glow-and-clear | 2026-10-14 |
 | [#382](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/382) | 🟢 MERGED | feat(guardian-request): instant preview & edit mode before submission and in success state | feat/guardian-request-preview-confirm | 2026-10-15 |
 | [#383](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/383) | 🟢 MERGED | feat(tutor): interactive application history timeline tracker and live search | feat/tutor-application-history-tracker | 2026-10-15 |
+| [#384](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/384) | 🟢 MERGED | feat(admin): trust device for 30 days after successful 2FA verification | feat/admin-2fa-trust-device | 2026-10-15 |
+| [#385](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/385) | 🟢 MERGED | feat(admin): add applicant timeframe quick filter and relative timestamps in applied tutors | feat/applied-tutors-timeframe-filter | 2026-10-15 |
+| [#386](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/386) | 🟢 MERGED | feat(admin): add reusable message templates for tutor chats, tutor profiles, and guardian profiles | feat/admin-message-templates | 2026-10-15 |
+| [#387](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/387) | 🟢 MERGED | feat(job-board): streamline primary job card view and align tutor preference in footer | feat/job-board-primary-view | 2026-10-15 |
+| [#388](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/388) | 🟢 MERGED | style: apply elevated card design with top gradient bar and soft hover lift | feat/elevated-border-card-styling | 2026-10-15 |
+| [#389](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/389) | 🟢 MERGED | feat(job-board): desktop-only pagination if live jobs > 50 and mobile infinite stream with staggered motion | feat/job-board-pagination-mobile-stream | 2026-10-15 |
+| [#390](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/390) | 🟢 MERGED | feat(job-board): clean 2-row mobile footer in applied job details modal | feat/applied-job-details-mobile-footer | 2026-10-15 |
+
 
