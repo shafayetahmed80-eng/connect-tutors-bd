@@ -27,7 +27,7 @@ import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
-import { Bell, BadgeCheck, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, Download, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { BadgeCheck, Bell, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, Download, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -37,22 +37,17 @@ import { toast } from "sonner";
 
 export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/tutor/dashboard", sectionLabel: "Active workspace" },
-  { icon: UserRound, label: "Profile", path: "/tutor/dashboard/profile", sectionLabel: "Active workspace" },
-  { icon: BadgeCheck, label: "Status", path: "/tutor/dashboard/status", sectionLabel: "Active workspace" },
-  { icon: Bell, label: "Notifications", path: "/tutor/dashboard/notifications", sectionLabel: "Active workspace" },
-  { icon: MessageCircle, label: "Chat with Admin", path: "/tutor/dashboard/chat", sectionLabel: "Active workspace" },
-  { icon: BookOpenCheck, label: "Tuition preferences", path: "/tutor/dashboard/preferences", sectionLabel: "Active workspace" },
-  { icon: ClipboardList, label: "Tutor requests", path: "/tutor/dashboard/requests", sectionLabel: "Active workspace" },
-  { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Active workspace" },
   { icon: BriefcaseBusiness, label: "Job Board", path: "/tutor/dashboard/jobs", sectionLabel: "Active workspace" },
+  { icon: BadgeCheck, label: "Status", path: "/tutor/dashboard/status", sectionLabel: "Active workspace" },
+  { icon: UserRound, label: "Profile", path: "/tutor/dashboard/profile", sectionLabel: "Active workspace" },
   { icon: FileCheck2, label: "Confirmation Letter", path: "/tutor/dashboard/confirmation-letter", sectionLabel: "Active workspace" },
   { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Active workspace" },
+  { icon: Bell, label: "Notifications", path: "/tutor/dashboard/notifications", sectionLabel: "Active workspace" },
+  { icon: MessageCircle, label: "Chat with Admin", path: "/tutor/dashboard/chat", sectionLabel: "Active workspace" },
   { icon: CircleHelp, label: "How It Works", path: "/tutor/dashboard/how-it-works", sectionLabel: "Active workspace" },
   { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Active workspace", community: true },
   { icon: Download, label: "Install app", path: "/tutor/dashboard/install", sectionLabel: "Active workspace", action: "install" },
-  { icon: GraduationCap, label: "Certificate", path: "/tutor/dashboard/certificate", sectionLabel: "Coming later", planned: true },
-  { icon: Share2, label: "Refer & Earn", path: "/tutor/dashboard/refer-earn", sectionLabel: "Coming later", planned: true },
-  { icon: Sparkles, label: "Exclusively Yours", path: "/tutor/dashboard/exclusively-yours", sectionLabel: "Coming later", planned: true },
+  { icon: Settings, label: "Settings", path: "/tutor/dashboard/settings", sectionLabel: "Account" },
   { icon: LogOut, label: "Sign Out", path: "/tutor/dashboard/sign-out", sectionLabel: "Account", action: "signout" },
 ];
 

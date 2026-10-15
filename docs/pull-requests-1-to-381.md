@@ -1,15 +1,15 @@
-# 📋 কানেক্ট টিউটরস (Connect Tutors BD) — সম্পূর্ণ পুল রিকোয়েস্ট তালিকা (PR #1 থেকে #390)
+# 📋 কানেক্ট টিউটরস (Connect Tutors BD) — সম্পূর্ণ পুল রিকোয়েস্ট তালিকা (PR #1 থেকে #391)
 
-> এই ফাইলে প্রজেক্টের সূচনা থেকে বর্তমান পর্যন্ত (PR #1 থেকে #390) মোট 390টি পুল রিকোয়েস্টের পূর্ণাঙ্গ তালিকা সংরক্ষিত রয়েছে।
+> এই ফাইলে প্রজেক্টের সূচনা থেকে বর্তমান পর্যন্ত (PR #1 থেকে #391) মোট 391টি পুল রিকোয়েস্টের পূর্ণাঙ্গ তালিকা সংরক্ষিত রয়েছে।
 
 ### 📊 সারাংশ:
-- **সর্বমোট PR:** 390টি (PR #1 থেকে #390)
-- **মার্জড PR:** 384টি 🟢
+- **সর্বমোট PR:** 391টি (PR #1 থেকে #391)
+- **মার্জড PR:** 385টি 🟢
 - **ক্লোজড/রিপ্লেসড PR:** 6টি ⚪
 
 ---
 
-## 📑 সম্পূর্ণ তালিকা (PR #1 থেকে #390)
+## 📑 সম্পূর্ণ তালিকা (PR #1 থেকে #391)
 
 | PR # | স্ট্যাটাস | টাইটেল ও কাজের বিবরণ | ব্রাঞ্চ | মার্জের তারিখ |
 | :---: | :---: | :--- | :--- | :---: |
@@ -403,4 +403,4 @@
 | [#388](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/388) | 🟢 MERGED | style: apply elevated card design with top gradient bar and soft hover lift | feat/elevated-border-card-styling | 2026-10-15 |
 | [#389](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/389) | 🟢 MERGED | feat(job-board): desktop-only pagination if live jobs > 50 and mobile infinite stream with staggered motion | feat/job-board-pagination-mobile-stream | 2026-10-15 |
 | [#390](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/390) | 🟢 MERGED | feat(job-board): clean 2-row mobile footer in applied job details modal | feat/applied-job-details-mobile-footer | 2026-10-15 |
-
+| [#391](https://github.com/shafayetahmed80-eng/connect-tutors-bd/pull/391) | 🟢 MERGED | feat(tutor): streamline sidebar navigation menu and hide planned tabs | feat/tutor-sidebar-menu-order | 2026-10-15 |
