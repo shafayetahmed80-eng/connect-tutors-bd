@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import SearchInput from "@/components/SearchInput";
-import { Mic, Paperclip, Phone, Send, Square, ThumbsUp, X } from "lucide-react";
+import { Mic, Paperclip, Phone, Send, ShieldCheck, Square, ThumbsUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -164,6 +164,11 @@ export function TutorAdminChatPanel() {
         label="Search this conversation"
         className="h-control w-full rounded-lg border border-j-border bg-white text-xs"
       />
+    </div>
+
+    <div className="flex items-center gap-2 border-b border-[#e2eaf1] bg-[#f4f8fb] px-3.5 py-2 text-2xs font-medium text-j-ink-muted">
+      <ShieldCheck className="size-3.5 shrink-0 text-[#1677c8]" aria-hidden="true" />
+      <span>গোপনীয়তা ও সুরক্ষার স্বার্থে চ্যাট হিস্ট্রি এবং শেয়ার করা ফাইলসমূহ ৩০ দিন পর স্বয়ংক্রিয়ভাবে মুছে যায়।</span>
     </div>
 
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">

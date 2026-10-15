@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, getTableName, gt,
-  gte, inArray, isNotNull, isNull, like, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
+  gte, inArray, isNotNull, isNull, like, lt, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { AnyMySqlColumn, MySqlTable } from "drizzle-orm/mysql-core";
 import {
   MAX_LOCATION_ID_LENGTH,
@@ -165,7 +165,8 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
-import { storageGetSignedUrl, storagePut, storageRead } from "./storage";
+import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
+import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
 import { letterVerificationCode, letterVerificationUrl, matchesLetterVerificationCode } from "./confirmation-letter-verification";
 import {
@@ -6589,6 +6590,7 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
   const eligible = await tutorHasAppointedOrLaterTuition(database, input.tutorId);
   const [thread] = await database.select().from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
   if (!thread) return { messages: [], tutorLastReadAt: null, adminLastReadAt: null, eligible };
+  const cutoff = new Date(Date.now() - TUTOR_ADMIN_CHAT_RETENTION_MS);
   const rows = await database
     .select({
       id: tutorAdminChatMessages.id,
@@ -6601,7 +6603,7 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
       createdAt: tutorAdminChatMessages.createdAt,
     })
     .from(tutorAdminChatMessages)
-    .where(eq(tutorAdminChatMessages.threadId, thread.id))
+    .where(and(eq(tutorAdminChatMessages.threadId, thread.id), gte(tutorAdminChatMessages.createdAt, cutoff)))
     .orderBy(desc(tutorAdminChatMessages.id))
     .limit(TUTOR_ADMIN_CHAT_MESSAGE_PAGE);
   const messages = await Promise.all(rows.reverse().map(async row => {
@@ -6686,6 +6688,83 @@ async function sweepStaleTutorAdminChatThreads(database: NonNullable<Awaited<Ret
     .update(tutorAdminChatThreads)
     .set({ archivedAt: new Date() })
     .where(and(isNull(tutorAdminChatThreads.archivedAt), lte(tutorAdminChatThreads.lastMessageAt, cutoff)));
+}
+
+/**
+ * Permanently removes chat messages older than retentionDays (default 30) from the
+ * database and deletes their associated file attachments from storage.
+ * Synchronizes each affected thread's `lastMessageAt` and `lastMessagePreview`.
+ */
+export async function purgeExpiredTutorAdminChatMessages(retentionDays = TUTOR_ADMIN_CHAT_RETENTION_DAYS) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+
+  // 1. Find all expired messages with attachments to delete the files from storage
+  const expiredWithAttachments = await database
+    .select({
+      id: tutorAdminChatMessages.id,
+      attachmentKey: tutorAdminChatMessages.attachmentKey,
+    })
+    .from(tutorAdminChatMessages)
+    .where(and(lt(tutorAdminChatMessages.createdAt, cutoff), isNotNull(tutorAdminChatMessages.attachmentKey)));
+
+  for (const item of expiredWithAttachments) {
+    if (item.attachmentKey) {
+      await storageDelete(item.attachmentKey).catch(() => {});
+    }
+  }
+
+  // 2. Identify all thread IDs containing expired messages
+  const affectedThreadRows = await database
+    .selectDistinct({ threadId: tutorAdminChatMessages.threadId })
+    .from(tutorAdminChatMessages)
+    .where(lt(tutorAdminChatMessages.createdAt, cutoff));
+
+  // 3. Delete expired messages from the database
+  const deleteResult = await database
+    .delete(tutorAdminChatMessages)
+    .where(lt(tutorAdminChatMessages.createdAt, cutoff));
+
+  // 4. For each affected thread, resync `lastMessageAt` and `lastMessagePreview`
+  for (const { threadId } of affectedThreadRows) {
+    const [latest] = await database
+      .select({
+        createdAt: tutorAdminChatMessages.createdAt,
+        body: tutorAdminChatMessages.body,
+        attachmentKey: tutorAdminChatMessages.attachmentKey,
+      })
+      .from(tutorAdminChatMessages)
+      .where(eq(tutorAdminChatMessages.threadId, threadId))
+      .orderBy(desc(tutorAdminChatMessages.id))
+      .limit(1);
+
+    if (latest) {
+      const preview = latest.body || (latest.attachmentKey ? "📎 Attachment" : "");
+      await database
+        .update(tutorAdminChatThreads)
+        .set({
+          lastMessageAt: latest.createdAt,
+          lastMessagePreview: preview.slice(0, 200),
+        })
+        .where(eq(tutorAdminChatThreads.id, threadId));
+    } else {
+      await database
+        .update(tutorAdminChatThreads)
+        .set({
+          lastMessageAt: null,
+          lastMessagePreview: null,
+        })
+        .where(eq(tutorAdminChatThreads.id, threadId));
+    }
+  }
+
+  return {
+    purgedMessagesCount: (deleteResult as any)?.[0]?.affectedRows ?? expiredWithAttachments.length,
+    attachmentsDeletedCount: expiredWithAttachments.length,
+    cutoff,
+  };
 }
 
 /** The Admin's list of every Tutor who has written in, newest activity first, with the visible Tutor ID (`tutorNumber`) alongside the name. */

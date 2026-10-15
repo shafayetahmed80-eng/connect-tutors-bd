@@ -15,6 +15,8 @@ export const UNAUTHED_ERR_MSG = "Please login (10001)";
 export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
 export const ADMIN_TWO_FACTOR_REQUIRED_ERR_MSG = "Two-factor verification is required (10003)";
 export const ADMIN_PASSWORD_CHANGE_REQUIRED_ERR_MSG = "Change your temporary password first (10005)";
+export const TUTOR_ADMIN_CHAT_RETENTION_DAYS = 30;
+export const TUTOR_ADMIN_CHAT_RETENTION_MS = TUTOR_ADMIN_CHAT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 export const OAUTH_STATE_COOKIE = "__Host-oauth_state";
 export const PENDING_ROLE_COOKIE = "connect-role";

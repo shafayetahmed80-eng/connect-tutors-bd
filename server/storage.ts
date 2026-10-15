@@ -8,7 +8,7 @@
 // those bytes directly. Nothing about the Forge path changes when the keys are
 // present, so staging and production are untouched.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ENV } from "./_core/env";
 
@@ -158,3 +158,22 @@ export async function storageRead(relKey: string): Promise<Buffer> {
   }
   return Buffer.from(await resp.arrayBuffer());
 }
+
+/**
+ * Removes an uploaded file from disk (or remote store) when its referencing
+ * record is permanently purged. Silently succeeds if the file is already gone.
+ */
+export async function storageDelete(relKey: string): Promise<boolean> {
+  try {
+    const key = normalizeKey(relKey);
+    if (isLocalStorageBackend()) {
+      const filePath = resolveLocalStoragePath(key);
+      await unlink(filePath).catch(() => {});
+      return true;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+

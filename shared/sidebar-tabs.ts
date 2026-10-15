@@ -162,7 +162,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/tutor/dashboard/confirmation-letter", "Confirmation Letter"],
       ["/tutor/dashboard/payment", "Payment"],
       ["/tutor/dashboard/notifications", "Notifications"],
-      ["/tutor/dashboard/chat", "Chat with Admin"],
+      ["/tutor/dashboard/chat", "Live Chat"],
       ["/tutor/dashboard/how-it-works", "How It Works"],
       ["/tutor/dashboard/community", "Join our Community"],
       ["/tutor/dashboard/install", "Install app"],
