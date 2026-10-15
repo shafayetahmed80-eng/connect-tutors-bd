@@ -150,4 +150,10 @@ describe("the Tutor's Admin chat panel", () => {
     expect(screen.queryByText("About my profile")).toBeNull();
     expect(screen.getByText("About payment")).toBeTruthy();
   });
+
+  it("displays the 30-day auto-delete privacy and security banner", () => {
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText(/গোপনীয়তা ও সুরক্ষার স্বার্থে চ্যাট হিস্ট্রি এবং শেয়ার করা ফাইলসমূহ ৩০ দিন পর স্বয়ংক্রিয়ভাবে মুছে যায়/)).toBeTruthy();
+  });
 });
+

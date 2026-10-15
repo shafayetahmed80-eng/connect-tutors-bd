@@ -43,7 +43,7 @@ export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: FileCheck2, label: "Confirmation Letter", path: "/tutor/dashboard/confirmation-letter", sectionLabel: "Active workspace" },
   { icon: CreditCard, label: "Payment", path: "/tutor/dashboard/payment", sectionLabel: "Active workspace" },
   { icon: Bell, label: "Notifications", path: "/tutor/dashboard/notifications", sectionLabel: "Active workspace" },
-  { icon: MessageCircle, label: "Chat with Admin", path: "/tutor/dashboard/chat", sectionLabel: "Active workspace" },
+  { icon: MessageCircle, label: "Live Chat", path: "/tutor/dashboard/chat", sectionLabel: "Active workspace" },
   { icon: CircleHelp, label: "How It Works", path: "/tutor/dashboard/how-it-works", sectionLabel: "Active workspace" },
   { icon: UsersRound, label: "Join our Community", path: "/tutor/dashboard/community", sectionLabel: "Active workspace", community: true },
   { icon: Download, label: "Install app", path: "/tutor/dashboard/install", sectionLabel: "Active workspace", action: "install" },
