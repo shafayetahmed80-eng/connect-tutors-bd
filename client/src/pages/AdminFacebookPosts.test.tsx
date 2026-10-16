@@ -511,6 +511,46 @@ describe("AdminFacebookPostsContent", () => {
       });
     });
   });
+
+  it("opens single tuition social poster modal with BTPA-077 and ratio controls", () => {
+    render(<AdminFacebookPostsContent />);
+
+    const posterBtn = screen.getByRole("button", { name: /Generate social poster for job/i });
+    expect(posterBtn).toBeDefined();
+
+    fireEvent.click(posterBtn);
+
+    expect(screen.getByRole("heading", { name: /Facebook Social Poster/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /1:1 Square \(1080×1080\)/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /16:9 Landscape \(1200×675\)/i })).toBeDefined();
+    expect(screen.getAllByText(/BTPA-077/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Download PNG/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Copy Image/i })).toBeDefined();
+
+    // Click landscape ratio
+    const landscapeBtn = screen.getByRole("button", { name: /16:9 Landscape \(1200×675\)/i });
+    fireEvent.click(landscapeBtn);
+
+    // Close modal
+    const closeBtn = screen.getByRole("button", { name: /Close modal/i });
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByRole("heading", { name: /Facebook Social Poster/i })).toBeNull();
+  });
+
+  it("opens bulk tuitions social poster modal when clicking Bulk Poster button", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const bulkPosterBtn = screen.getByRole("button", { name: /Bulk Poster/i });
+    expect(bulkPosterBtn).toBeDefined();
+
+    fireEvent.click(bulkPosterBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /Facebook Multi-Tuition Banner/i })).toBeDefined();
+      expect(screen.getAllByText(/BTPA-077/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
 
 
