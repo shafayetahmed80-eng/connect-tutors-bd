@@ -146,6 +146,13 @@ describe("PhoneContact", () => {
     const cardCopyBtn = screen.getByRole("button", { name: "Copy +880 1712 345678" });
     expect(cardCopyBtn.className).toContain("size-10");
   });
+
+  it("omits the copy button when showCopy is set to false", () => {
+    render(<PhoneContact phone="+8801712345678" showCopy={false} />);
+    expect(screen.getByRole("link", { name: "Call +880 1712 345678" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Copy/i })).toBeNull();
+  });
 });
 
 

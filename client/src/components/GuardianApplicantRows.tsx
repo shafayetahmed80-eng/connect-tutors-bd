@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { WaitingTuitionRequestMark, type WaitingTuitionRequest } from "@/components/GuardianTuitionRequestDialog";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
+import { PhoneContact } from "@/components/PhoneContact";
 
 /**
  * An applicant as a Guardian reads one: the Admin's row without the part that
@@ -54,8 +55,14 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-function MobileValue({ tutor }: { tutor: GuardianApplicantRow }) {
-  if (!tutor.phoneHidden) return <Value value={tutor.phone ?? ""} />;
+function MobileValue({ tutor, size = "table" }: { tutor: GuardianApplicantRow; size?: "table" | "card" }) {
+  if (!tutor.phoneHidden) {
+    return tutor.phone ? (
+      <PhoneContact phone={tutor.phone} size={size} showCopy={false} />
+    ) : (
+      <Value value="" />
+    );
+  }
   return <span className="whitespace-nowrap">
     <span className="text-j-ink-strong">+880</span>
     <span aria-hidden="true" className="ml-1 tracking-wider text-j-ink-faint">••••••••••</span>
@@ -143,7 +150,13 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
     { key: "serial", label: "#", place: "head", cell: (_tutor, index) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> },
     { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
     { key: "name", label: "Name", place: "head", cell: tutor => <span className="inline-flex flex-wrap items-center gap-1.5 font-bold text-j-ink">{tutor.name}{tutor.verified ? <TutorVerifiedBadge /> : null}</span> },
-    { key: "phone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: tutor => <MobileValue tutor={tutor} /> },
+    {
+      key: "phone",
+      label: "Mobile",
+      cellClassName: "whitespace-nowrap",
+      cell: tutor => <MobileValue tutor={tutor} size="table" />,
+      cardCell: tutor => <MobileValue tutor={tutor} size="card" />,
+    },
     { key: "institute", label: "Institute", wide: true, cellClassName: "max-w-[16rem]", cell: tutor => <Value value={tutor.instituteName ?? ""} /> },
     { key: "department", label: "Department", cellClassName: "max-w-[12rem]", cell: tutor => <Value value={tutor.departmentName ?? ""} /> },
     { key: "city", label: "City", cell: tutor => <Value value={tutor.cityLabel ?? ""} /> },

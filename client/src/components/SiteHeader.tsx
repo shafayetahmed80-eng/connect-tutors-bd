@@ -4,7 +4,7 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { Download, Menu, MessageCircle, Phone, UserRound, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandMark, brandWordmark, useCradleSwing } from "./BrandMark";
 import InstallAppButton from "./InstallAppButton";
 
@@ -58,23 +58,82 @@ export default function SiteHeader() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const [isCalling, setIsCalling] = useState(false);
+  const [isMessaging, setIsMessaging] = useState(false);
+  const callTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Same label whether or not someone is signed in; only where it goes changes.
   const accountNavigation = getPublicAccountNavigation(user);
 
   useEffect(() => setOpen(false), [location]);
+
+  useEffect(() => {
+    return () => {
+      if (callTimerRef.current) clearTimeout(callTimerRef.current);
+      if (callResetRef.current) clearTimeout(callResetRef.current);
+      if (waTimerRef.current) clearTimeout(waTimerRef.current);
+      if (waResetRef.current) clearTimeout(waResetRef.current);
+    };
+  }, []);
+
+  const handleCallClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setIsCalling(true);
+    if (callTimerRef.current) clearTimeout(callTimerRef.current);
+    if (callResetRef.current) clearTimeout(callResetRef.current);
+
+    callTimerRef.current = setTimeout(() => {
+      try {
+        window.location.href = contact.tel;
+      } catch {
+        // Fallback for restricted test environments
+      }
+    }, 220);
+
+    callResetRef.current = setTimeout(() => {
+      setIsCalling(false);
+    }, 900);
+  };
+
+  const handleWhatsAppClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setIsMessaging(true);
+    if (waTimerRef.current) clearTimeout(waTimerRef.current);
+    if (waResetRef.current) clearTimeout(waResetRef.current);
+
+    waTimerRef.current = setTimeout(() => {
+      window.open(contact.whatsapp(), "_blank", "noopener,noreferrer");
+    }, 220);
+
+    waResetRef.current = setTimeout(() => {
+      setIsMessaging(false);
+    }, 900);
+  };
 
   return (
     <header className="site-header">
       <div className="microbar">
         <div className="shell microbar-inner">
           <div className="contact-actions">
-            <a href={contact.tel} className="phone-link">
-              <Phone size={14} />
+            <a
+              href={contact.tel}
+              onClick={handleCallClick}
+              data-calling={isCalling ? "true" : undefined}
+              className="phone-link phone-contact-call transition-transform duration-200 active:scale-95"
+            >
+              <Phone size={14} className="phone-contact-icon transition-transform duration-200" />
               <span>+880 1516 131411</span>
             </a>
             <a
               href={contact.whatsapp()}
-              className="whatsapp-link"
+              onClick={handleWhatsAppClick}
+              data-messaging={isMessaging ? "true" : undefined}
+              className="whatsapp-link phone-contact-wa transition-transform duration-200 hover:scale-110 active:scale-90"
               target="_blank"
               rel="noreferrer"
               aria-label="Message Connect Tutors on WhatsApp"

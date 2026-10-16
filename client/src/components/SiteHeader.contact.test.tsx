@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,5 +29,23 @@ describe("the header's contact strip", () => {
     render(<SiteHeader />);
 
     expect(screen.getByText("+880 1516 131411")).toBeTruthy();
+  });
+
+  it("activates tactile motion state on call and whatsapp click", () => {
+    render(<SiteHeader />);
+
+    const call = screen.getByRole("link", { name: /\+880 1516 131411/ });
+    expect(call.getAttribute("data-calling")).toBeNull();
+    act(() => {
+      fireEvent.click(call);
+    });
+    expect(call.getAttribute("data-calling")).toBe("true");
+
+    const whatsapp = screen.getByRole("link", { name: "Message Connect Tutors on WhatsApp" });
+    expect(whatsapp.getAttribute("data-messaging")).toBeNull();
+    act(() => {
+      fireEvent.click(whatsapp);
+    });
+    expect(whatsapp.getAttribute("data-messaging")).toBe("true");
   });
 });
