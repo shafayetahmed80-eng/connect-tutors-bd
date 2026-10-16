@@ -165,7 +165,7 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
-import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
+import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument, type TutorCvEducationRecord } from "./tutor-cv-pdf";
 import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
@@ -1876,6 +1876,31 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
   const institutionName = profile.universityId && catalogLabels.universities[String(profile.universityId)]
     ? catalogLabels.universities[String(profile.universityId)]
     : (profile.institution || undefined);
+  const departmentName = profile.facultyDepartmentId && catalogLabels.facultyDepartments[String(profile.facultyDepartmentId)]
+    ? catalogLabels.facultyDepartments[String(profile.facultyDepartmentId)]
+    : undefined;
+
+  // Merge university degree from academic profile (Honours/Masters) with itemized school/board education records
+  const mergedEducationRecords: TutorCvEducationRecord[] = [...(profile.educationRecords ?? [])];
+  if (profile.highestEducation || institutionName || profile.degreeExamTitle) {
+    const universityLevel = profile.highestEducation || "Honours";
+    const alreadyHasUniversityLevel = mergedEducationRecords.some(r =>
+      r.qualificationLevel?.trim().toLowerCase() === universityLevel.trim().toLowerCase() ||
+      (r.instituteName && institutionName && r.instituteName.trim().toLowerCase() === institutionName.trim().toLowerCase())
+    );
+
+    if (!alreadyHasUniversityLevel) {
+      mergedEducationRecords.unshift({
+        qualificationLevel: universityLevel,
+        degreeExamTitle: profile.degreeExamTitle || universityLevel,
+        instituteName: institutionName,
+        majorGroup: departmentName || undefined,
+        resultGpa: profile.resultGpa || undefined,
+        passingYear: profile.graduationYear || undefined,
+        currentlyStudying: profile.studyStatus === "studying" ? 1 : 0,
+      });
+    }
+  }
 
   // Combine Location + City + Country ("Location, City, Bangladesh")
   const rawLocLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
@@ -1912,6 +1937,7 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     tutorId: profile.tutorId,
     tutorNumber: profile.tutorNumber,
     name: profile.name,
+    profileStatus: profile.profileStatus,
     headline: profile.headline,
     gender: profile.gender,
     dateOfBirth: formatDob(profile.dateOfBirth),
@@ -1926,7 +1952,7 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     highestEducation: profile.highestEducation,
     institution: institutionName,
     education: profile.education,
-    educationRecords: profile.educationRecords,
+    educationRecords: mergedEducationRecords,
     subjects: subjectNames.length ? subjectNames : profile.subjects,
     levels: levelNames.length ? levelNames : profile.levels,
     tuitionTypes: profile.tuitionTypes,

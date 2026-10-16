@@ -28,6 +28,7 @@ export type TutorCvDocument = {
   tutorId: string;
   tutorNumber: number | string | null;
   name: string;
+  profileStatus?: string | null;
   headline?: string | null;
   gender?: string | null;
   dateOfBirth?: string | null;
@@ -61,6 +62,300 @@ export function tutorCvFileName(tutorNumber: number | string | null, name: strin
   const safeNum = tutorNumber ? String(tutorNumber).trim() : "CTB";
   const safeName = name.replace(/[^A-Za-z0-9]/g, "-").replace(/-+/g, "-").slice(0, 30);
   return `Connect-Tutors-CV-${safeNum}-${safeName}.pdf`;
+}
+
+/** Status resolution for badge, stat box, and verification seal */
+export type TutorCvStatusInfo = {
+  badgeText: string;
+  badgeBg: string;
+  statTitle: string;
+  statSubtitle: string;
+  sealStatus: string;
+  statColor: string;
+};
+
+export function resolveTutorCvStatus(profileStatus?: string | null, verified?: boolean): TutorCvStatusInfo {
+  const normStatus = (profileStatus || "").toLowerCase().trim();
+  // 1. If verified by platform
+  if (verified || normStatus === "verified") {
+    return {
+      badgeText: "✓  VERIFIED TUTOR",
+      badgeBg: "#16a34a",
+      statTitle: "100% Verified",
+      statSubtitle: "Credentials & Identity Checked",
+      sealStatus: "OFFICIALLY VERIFIED PROFILE",
+      statColor: "#15803d",
+    };
+  }
+  // 2. Approved profile
+  if (normStatus === "approved") {
+    return {
+      badgeText: "✓  APPROVED PROFILE",
+      badgeBg: "#0284c7",
+      statTitle: "Approved Profile",
+      statSubtitle: "Admin Reviewed & Approved",
+      sealStatus: "OFFICIALLY APPROVED PROFILE",
+      statColor: "#0284c7",
+    };
+  }
+  // 3. Pending review
+  if (normStatus === "pending" || normStatus === "submitted") {
+    return {
+      badgeText: "UNDER REVIEW",
+      badgeBg: "#d97706",
+      statTitle: "Under Review",
+      statSubtitle: "Profile Submitted for Review",
+      sealStatus: "PROFILE UNDER REVIEW",
+      statColor: "#b45309",
+    };
+  }
+  // 4. Draft profile
+  return {
+    badgeText: "DRAFT PROFILE",
+    badgeBg: "#475569",
+    statTitle: "Draft Profile",
+    statSubtitle: "Profile Details In Progress",
+    sealStatus: "OFFICIAL TUTOR BIODATA",
+    statColor: "#475569",
+  };
+}
+
+// ==========================================
+// VECTOR ICONS (Crisp, High-DPI, Scalable)
+// ==========================================
+
+export function drawPinIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const cx = x + size / 2;
+  const r = size * 0.35;
+  const topY = y + r + 0.5;
+  doc.save();
+  doc.fillColor(color);
+  doc.circle(cx, topY, r).fill();
+  doc.polygon([cx - r * 0.75, topY + r * 0.45], [cx + r * 0.75, topY + r * 0.45], [cx, y + size]).fill();
+  doc.fillColor(color === "#ffffff" ? "#0d5fae" : "#ffffff");
+  doc.circle(cx, topY, r * 0.42).fill();
+  doc.restore();
+}
+
+export function drawPhoneIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const w = size * 0.62;
+  const h = size * 0.95;
+  const rx = x + (size - w) / 2;
+  const ry = y + (size - h) / 2;
+  doc.save();
+  doc.roundedRect(rx, ry, w, h, 1.8).lineWidth(0.9).strokeColor(color).stroke();
+  doc.fillColor(color).circle(rx + w / 2, ry + h - 1.8, 0.65).fill();
+  doc.lineWidth(0.8).strokeColor(color).moveTo(rx + w * 0.35, ry + 1.8).lineTo(rx + w * 0.65, ry + 1.8).stroke();
+  doc.restore();
+}
+
+export function drawMailIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const w = size * 0.94;
+  const h = size * 0.68;
+  const rx = x + (size - w) / 2;
+  const ry = y + (size - h) / 2;
+  doc.save();
+  doc.roundedRect(rx, ry, w, h, 1.5).lineWidth(0.9).strokeColor(color).stroke();
+  doc.lineWidth(0.8).strokeColor(color)
+    .moveTo(rx + 1, ry + 1)
+    .lineTo(rx + w / 2, ry + h * 0.58)
+    .lineTo(rx + w - 1, ry + 1)
+    .stroke();
+  doc.restore();
+}
+
+export function drawCalendarIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const w = size * 0.88;
+  const h = size * 0.88;
+  const rx = x + (size - w) / 2;
+  const ry = y + (size - h) / 2 + 0.8;
+  doc.save();
+  doc.roundedRect(rx, ry, w, h - 0.8, 1.5).lineWidth(0.9).strokeColor(color).stroke();
+  doc.rect(rx, ry, w, 2.8).fillColor(color).fill();
+  doc.lineWidth(0.9).strokeColor(color)
+    .moveTo(rx + w * 0.28, ry - 1.2).lineTo(rx + w * 0.28, ry + 1)
+    .moveTo(rx + w * 0.72, ry - 1.2).lineTo(rx + w * 0.72, ry + 1)
+    .stroke();
+  doc.fillColor(color)
+    .circle(rx + w * 0.32, ry + 4.8, 0.6).fill()
+    .circle(rx + w * 0.68, ry + 4.8, 0.6).fill()
+    .circle(rx + w * 0.32, ry + 7.2, 0.6).fill()
+    .circle(rx + w * 0.68, ry + 7.2, 0.6).fill();
+  doc.restore();
+}
+
+export function drawReligionIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const r = size * 0.46;
+  const rInner = size * 0.16;
+  doc.save();
+  doc.fillColor(color);
+  doc.moveTo(cx, cy - r)
+    .lineTo(cx + rInner, cy - rInner)
+    .lineTo(cx + r, cy)
+    .lineTo(cx + rInner, cy + rInner)
+    .lineTo(cx, cy + r)
+    .lineTo(cx - rInner, cy + rInner)
+    .lineTo(cx - r, cy)
+    .lineTo(cx - rInner, cy - rInner)
+    .closePath()
+    .fill();
+  doc.circle(cx, cy, rInner * 0.75).fillColor(color === "#ffffff" ? "#0d5fae" : "#ffffff").fill();
+  doc.restore();
+}
+
+export function drawGenderIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 10, color = "#ffffff") {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  doc.save();
+  doc.fillColor(color);
+  doc.circle(cx, cy - size * 0.2, size * 0.22).fill();
+  doc.path(`M ${cx - size * 0.38} ${cy + size * 0.44} C ${cx - size * 0.38} ${cy + size * 0.12} ${cx + size * 0.38} ${cy + size * 0.12} ${cx + size * 0.38} ${cy + size * 0.44} Z`).fill();
+  doc.restore();
+}
+
+export function drawGradCapIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 11, color = "#0d5fae") {
+  const cx = x + size / 2;
+  const topY = y + size * 0.12;
+  doc.save();
+  doc.fillColor(color).strokeColor(color);
+  doc.moveTo(cx, topY)
+    .lineTo(x + size * 0.96, topY + size * 0.28)
+    .lineTo(cx, topY + size * 0.56)
+    .lineTo(x + size * 0.04, topY + size * 0.28)
+    .closePath()
+    .fill();
+  doc.moveTo(x + size * 0.24, topY + size * 0.42)
+    .lineTo(x + size * 0.24, topY + size * 0.72)
+    .bezierCurveTo(x + size * 0.24, topY + size * 0.88, x + size * 0.76, topY + size * 0.88, x + size * 0.76, topY + size * 0.72)
+    .lineTo(x + size * 0.76, topY + size * 0.42)
+    .closePath()
+    .fill();
+  doc.lineWidth(0.8)
+    .moveTo(x + size * 0.88, topY + size * 0.3)
+    .lineTo(x + size * 0.94, topY + size * 0.76)
+    .stroke();
+  doc.circle(x + size * 0.94, topY + size * 0.82, 0.7).fill();
+  doc.restore();
+}
+
+export function drawSummaryIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 11, color = "#0d5fae") {
+  const w = size * 0.76;
+  const h = size * 0.94;
+  const rx = x + (size - w) / 2;
+  const ry = y + (size - h) / 2;
+  doc.save();
+  doc.roundedRect(rx, ry, w, h, 1.5).lineWidth(0.9).strokeColor(color).stroke();
+  doc.lineWidth(0.8).strokeColor(color)
+    .moveTo(rx + 2, ry + 2.8).lineTo(rx + w - 2, ry + 2.8).stroke()
+    .moveTo(rx + 2, ry + 5.2).lineTo(rx + w - 2, ry + 5.2).stroke()
+    .moveTo(rx + 2, ry + 7.6).lineTo(rx + w * 0.62, ry + 7.6).stroke();
+  doc.restore();
+}
+
+export function drawBriefcaseIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 11, color = "#0d5fae") {
+  const w = size * 0.92;
+  const h = size * 0.68;
+  const rx = x + (size - w) / 2;
+  const ry = y + size * 0.26;
+  doc.save();
+  doc.roundedRect(rx, ry, w, h, 1.5).lineWidth(0.9).strokeColor(color).stroke();
+  doc.roundedRect(rx + w * 0.32, ry - 2.2, w * 0.36, 2.2, 0.8).lineWidth(0.8).strokeColor(color).stroke();
+  doc.lineWidth(0.7).strokeColor(color).moveTo(rx, ry + h * 0.42).lineTo(rx + w, ry + h * 0.42).stroke();
+  doc.fillColor(color).rect(rx + w / 2 - 1, ry + h * 0.35, 2, 2).fill();
+  doc.restore();
+}
+
+export function drawStarMedalIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 11, color = "#0d5fae") {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const outerR = size * 0.48;
+  const innerR = size * 0.22;
+  doc.save();
+  doc.fillColor(color);
+  doc.moveTo(cx, cy - outerR);
+  for (let i = 0; i < 5; i++) {
+    const outerAngle = (i * 72 - 90) * (Math.PI / 180);
+    const innerAngle = (i * 72 + 36 - 90) * (Math.PI / 180);
+    doc.lineTo(cx + Math.cos(outerAngle) * outerR, cy + Math.sin(outerAngle) * outerR);
+    doc.lineTo(cx + Math.cos(innerAngle) * innerR, cy + Math.sin(innerAngle) * innerR);
+  }
+  doc.closePath().fill();
+  doc.restore();
+}
+
+export function drawAreasIcon(doc: PDFKit.PDFDocument, x: number, y: number, size = 11, color = "#0d5fae") {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const r = size * 0.46;
+  doc.save();
+  doc.circle(cx, cy, r).lineWidth(0.9).strokeColor(color).stroke();
+  doc.fillColor(color);
+  doc.polygon([cx, cy - r * 0.75], [cx + r * 0.35, cy], [cx, cy + r * 0.75], [cx - r * 0.35, cy]).fill();
+  doc.circle(cx, cy, 1.2).fillColor(color === "#ffffff" ? "#0d5fae" : "#ffffff").fill();
+  doc.restore();
+}
+
+/** Draws an executive section header with a rounded icon pill and fine accent line */
+export function drawSectionHeader(
+  document: PDFKit.PDFDocument,
+  title: string,
+  iconDrawer: (doc: PDFKit.PDFDocument, x: number, y: number, size: number, color: string) => void,
+  x: number,
+  y: number,
+  maxWidth: number
+): number {
+  const iconBoxSize = 17;
+  const iconInnerSize = 9.5;
+  document.save().roundedRect(x, y, iconBoxSize, iconBoxSize, 4).fill("#eff6ff").restore();
+  iconDrawer(document, x + (iconBoxSize - iconInnerSize) / 2, y + (iconBoxSize - iconInnerSize) / 2, iconInnerSize, "#0d5fae");
+
+  document.font("Heavy").fontSize(8.5).fillColor("#0d5fae");
+  const textX = x + iconBoxSize + 7;
+  const textY = y + 4;
+  document.text(title, textX, textY, { characterSpacing: 1.0, lineBreak: false });
+  const titleWidth = document.widthOfString(title, { characterSpacing: 1.0 });
+
+  const lineStartX = textX + titleWidth + 10;
+  if (lineStartX < x + maxWidth) {
+    document.save().lineWidth(0.5).strokeColor("#e2e8f0").moveTo(lineStartX, y + 8.5).lineTo(x + maxWidth, y + 8.5).stroke().restore();
+  }
+
+  return iconBoxSize + 7;
+}
+
+/** Draws a sidebar contact/personal item with a neat translucent vector icon pill */
+export function drawSidebarContactItem(
+  document: PDFKit.PDFDocument,
+  iconDrawer: (doc: PDFKit.PDFDocument, x: number, y: number, size: number, color: string) => void,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  isPhone = false
+): number {
+  const iconBoxSize = 15;
+  const iconInnerSize = 8.5;
+
+  document.save().roundedRect(x, y + 1.5, iconBoxSize, iconBoxSize, 3.5).fill("#125494").restore();
+  iconDrawer(document, x + (iconBoxSize - iconInnerSize) / 2, y + 1.5 + (iconBoxSize - iconInnerSize) / 2, iconInnerSize, "#bae6fd");
+
+  const contentX = x + iconBoxSize + 7;
+  const contentWidth = width - (iconBoxSize + 7);
+
+  document.font("Bold").fontSize(6.8).fillColor("#cfe0f5").text(label, contentX, y, { width: contentWidth, lineBreak: false });
+
+  let valueH = 0;
+  if (isPhone) {
+    document.font("Bold").fontSize(7.6).fillColor("#ffffff").text(value, contentX, y + 8.5, { width: contentWidth, lineBreak: false });
+    valueH = 10;
+  } else {
+    valueH = writeCvText(document, value, "Regular", contentX, y + 8.5, contentWidth, { size: 7.4, color: "#ffffff", lineGap: 1 });
+  }
+
+  return Math.max(iconBoxSize + 4.5, 8.5 + valueH + 3.5);
 }
 
 /** Draws a QR code as sharp vector squares. */
@@ -135,7 +430,7 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
     info: {
       Title: `Tutor CV - ${cv.name}`,
-      Author: "Connect Tutors BD",
+      Author: "Connect Tutors",
       Subject: "Professional Tutor CV & Biodata",
     },
   });
@@ -221,14 +516,17 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
 
     leftY += photoDiameter + 10;
 
-    // Verified Badge
-    const badgeWidth = 114;
-    const badgeHeight = 19;
+    // Dynamic Status Info (Verified / Approved Profile / Draft Profile / Under Review)
+    const statusInfo = resolveTutorCvStatus(cv.profileStatus, cv.verified);
+
+    // Status Badge
+    const badgeWidth = 118;
+    const badgeHeight = 20;
     const badgeX = photoCenterX - badgeWidth / 2;
     document.save();
-    document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 9.5).fill("#16a34a");
+    document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 10).fill(statusInfo.badgeBg);
     document.font("Bold").fontSize(7.5).fillColor("#ffffff");
-    document.text(cv.verified ? "✓  VERIFIED TUTOR" : "✓  REGISTERED TUTOR", badgeX, leftY + 5, {
+    document.text(statusInfo.badgeText, badgeX, leftY + 5.5, {
       width: badgeWidth,
       align: "center",
       characterSpacing: 0.5,
@@ -245,65 +543,47 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     leftY += 16;
 
     // Divider
-    document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
     leftY += 12;
 
     // Section: CONTACT & PERSONAL
     document.font("Heavy").fontSize(8).fillColor("#ffffff").text("CONTACT & PERSONAL", leftPadding, leftY, { characterSpacing: 1.1 });
-    leftY += 12;
+    leftY += 13;
 
-    // 1. Location (Location, City, Country)
+    // 1. Location (Location, City, Country) with Vector Pin Icon
     if (cv.locationLabel?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Location", leftPadding, leftY);
-      leftY += 8.5;
-      const h = writeCvText(document, cv.locationLabel.trim(), "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.8, color: "#ffffff", lineGap: 1 });
-      leftY += Math.max(13, h + 3);
+      leftY += drawSidebarContactItem(document, drawPinIcon, "Location", cv.locationLabel.trim(), leftPadding, leftY, leftInnerWidth);
     }
 
-    // 2. Phone
+    // 2. Phone with Vector Phone Icon
     if (cv.phone?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Phone Number", leftPadding, leftY);
-      leftY += 8.5;
       const phoneDisplay = formatLetterPhone(cv.phone.trim());
-      document.font("Bold").fontSize(8).fillColor("#ffffff").text(phoneDisplay, leftPadding, leftY, { width: leftInnerWidth });
-      leftY += 13.5;
+      leftY += drawSidebarContactItem(document, drawPhoneIcon, "Phone Number", phoneDisplay, leftPadding, leftY, leftInnerWidth, true);
     }
 
-    // 3. Email
+    // 3. Email with Vector Envelope Icon
     if (cv.contactEmail?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Email", leftPadding, leftY);
-      leftY += 8.5;
-      document.font("Regular").fontSize(7.2).fillColor("#ffffff").text(cv.contactEmail.trim(), leftPadding, leftY, { width: leftInnerWidth, lineBreak: true });
-      leftY += 13.5;
+      leftY += drawSidebarContactItem(document, drawMailIcon, "Email", cv.contactEmail.trim(), leftPadding, leftY, leftInnerWidth);
     }
 
-    // 4. Date of Birth
+    // 4. Date of Birth with Vector Calendar Icon
     if (cv.dateOfBirth?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Date of Birth", leftPadding, leftY);
-      leftY += 8.5;
-      document.font("Regular").fontSize(7.8).fillColor("#ffffff").text(cv.dateOfBirth.trim(), leftPadding, leftY, { width: leftInnerWidth });
-      leftY += 13.5;
+      leftY += drawSidebarContactItem(document, drawCalendarIcon, "Date of Birth", cv.dateOfBirth.trim(), leftPadding, leftY, leftInnerWidth);
     }
 
-    // 5. Religion
+    // 5. Religion with Vector Faith/Star Icon
     if (cv.religion?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Religion", leftPadding, leftY);
-      leftY += 8.5;
-      writeCvText(document, cv.religion.trim(), "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.8, color: "#ffffff" });
-      leftY += 13.5;
+      leftY += drawSidebarContactItem(document, drawReligionIcon, "Religion", cv.religion.trim(), leftPadding, leftY, leftInnerWidth);
     }
 
-    // 6. Gender
+    // 6. Gender with Vector Identity Icon
     if (cv.gender?.trim()) {
-      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Gender", leftPadding, leftY);
-      leftY += 8.5;
       const genderDisplay = cv.gender.trim().charAt(0).toUpperCase() + cv.gender.trim().slice(1);
-      document.font("Regular").fontSize(7.8).fillColor("#ffffff").text(genderDisplay, leftPadding, leftY, { width: leftInnerWidth });
-      leftY += 13.5;
+      leftY += drawSidebarContactItem(document, drawGenderIcon, "Gender", genderDisplay, leftPadding, leftY, leftInnerWidth);
     }
 
     // Divider
-    document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
     leftY += 11;
 
     // Section: SUBJECT EXPERTISE
@@ -314,12 +594,12 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
 
       const subjectBadges = subjects.slice(0, 6);
       subjectBadges.forEach(subj => {
-        document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 15, 3.5).fill("rgba(255, 255, 255, 0.15)").restore();
+        document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 15, 3.5).fill("#14589c").restore();
         writeCvText(document, subj, "Bold", leftPadding + 6, leftY + 3, leftInnerWidth - 12, { size: 7.2, color: "#ffffff" });
         leftY += 17.5;
       });
       leftY += 2;
-      document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+      document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
       leftY += 10;
     }
 
@@ -331,7 +611,7 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
       const levelText = levels.slice(0, 5).join(", ");
       const h = writeCvText(document, levelText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.6, color: "#ffffff", lineGap: 1.2 });
       leftY += Math.max(14, h) + 6;
-      document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+      document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
       leftY += 10;
     }
 
@@ -365,11 +645,16 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     const footerTop = pageHeight - 84;
     let rightY = 28;
 
-    // Header Logo & Brand Watermark at top right
-    drawCradle(document, rightContentLeft + rightInnerWidth - 40, rightY - 4, 25 / 48);
+    // Header Logo & Brand Watermark at top right: Logo + "Connect Tutors"
+    const brandBlockWidth = 120;
+    const brandBlockX = rightContentLeft + rightInnerWidth - brandBlockWidth;
+    const brandY = rightY - 2;
+    drawCradle(document, brandBlockX, brandY + 1, 22 / 48);
+    document.font("Heavy").fontSize(10).fillColor("#0d5fae").text("Connect Tutors", brandBlockX + 25, brandY, { lineBreak: false });
+    document.font("Bold").fontSize(6.2).fillColor("#64748b").text("OFFICIAL TUTOR BIODATA", brandBlockX + 25, brandY + 12.5, { characterSpacing: 0.6, lineBreak: false });
 
     // Tutor Name
-    writeCvText(document, cv.name, "Heavy", rightContentLeft, rightY, rightInnerWidth - 50, { size: 17, color: "#0f2137", lineGap: 1.5 });
+    writeCvText(document, cv.name, "Heavy", rightContentLeft, rightY, rightInnerWidth - 130, { size: 16.5, color: "#0f2137", lineGap: 1.5 });
     rightY += 23;
 
     // Headline / Tagline
@@ -384,18 +669,18 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     rightY += 12;
 
     // ------------------------------------------
-    // SECTION: PROFESSIONAL SUMMARY (Only if filled)
+    // SECTION: PROFESSIONAL SUMMARY (with vector icon header)
     // ------------------------------------------
-    const bioText = cv.aboutMe?.trim();
-    if (bioText) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("PROFESSIONAL SUMMARY", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 11;
-      const bioHeight = writeCvText(document, bioText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155", lineGap: 1.8 });
-      rightY += Math.min(50, Math.max(14, bioHeight)) + 9;
-    }
+    const summaryText = cv.aboutMe?.trim() || (cv.headline?.trim()
+      ? `${cv.headline.trim()}. Dedicated educator committed to developing strong conceptual clarity, student engagement, and consistent academic progress.`
+      : "Dedicated and passionate educator committed to delivering high-quality, personalized tutoring. Focused on strengthening fundamentals, problem-solving skills, and academic excellence.");
+
+    rightY += drawSectionHeader(document, "PROFESSIONAL SUMMARY", drawSummaryIcon, rightContentLeft, rightY, rightInnerWidth);
+    const bioHeight = writeCvText(document, summaryText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155", lineGap: 1.8 });
+    rightY += Math.min(48, Math.max(14, bioHeight)) + 9;
 
     // ------------------------------------------
-    // SECTION: EDUCATIONAL BACKGROUND (Masters, Honours, HSC, SSC detailed)
+    // SECTION: EDUCATIONAL BACKGROUND (Masters, Honours, HSC, SSC detailed with graduation icon header)
     // ------------------------------------------
     const rawEduList = (cv.educationRecords ?? []).filter(e => e.qualificationLevel || e.degreeExamTitle || e.instituteName);
     const sortedEduList = [...rawEduList].sort((a, b) => {
@@ -406,8 +691,7 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     });
 
     if (sortedEduList.length > 0) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("EDUCATIONAL BACKGROUND", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 11;
+      rightY += drawSectionHeader(document, "EDUCATIONAL BACKGROUND", drawGradCapIcon, rightContentLeft, rightY, rightInnerWidth);
 
       // Show up to 4 qualification levels (Masters, Honours, HSC, SSC)
       const recordsToDisplay = sortedEduList.slice(0, 4);
@@ -434,8 +718,13 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
         const resultPart = edu.resultGpa ? `GPA: ${edu.resultGpa.trim()}` : null;
         const metaRight = [resultPart, yearPart].filter(Boolean).join("  ·  ");
 
-        // Small bullet dot
-        document.save().fillColor("#0d5fae").circle(rightContentLeft + 3, rightY + 4.5, 2.2).fill().restore();
+        // Mini graduation diamond bullet
+        document.save().fillColor("#0d5fae").polygon(
+          [rightContentLeft + 3, rightY + 2],
+          [rightContentLeft + 5.5, rightY + 4.5],
+          [rightContentLeft + 3, rightY + 7],
+          [rightContentLeft + 0.5, rightY + 4.5]
+        ).fill().restore();
 
         // Degree Title
         writeCvText(document, title, "Bold", rightContentLeft + 11, rightY, rightInnerWidth - 110, { size: 8.5, color: "#0f2137" });
@@ -461,88 +750,88 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
       // Fallback only if highestEducation or institution exists
       const fallbackEdu = [cv.highestEducation, cv.institution, cv.education].filter(Boolean).join(" · ").trim();
       if (fallbackEdu) {
-        document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("EDUCATIONAL BACKGROUND", rightContentLeft, rightY, { characterSpacing: 1.1 });
-        rightY += 11;
+        rightY += drawSectionHeader(document, "EDUCATIONAL BACKGROUND", drawGradCapIcon, rightContentLeft, rightY, rightInnerWidth);
         writeCvText(document, fallbackEdu, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155" });
         rightY += 16;
       }
     }
 
     // ------------------------------------------
-    // SECTION: TEACHING EXPERIENCE & HIGHLIGHTS (Only if filled)
+    // SECTION: TEACHING EXPERIENCE & METHODOLOGY (with briefcase icon header)
     // ------------------------------------------
-    const hasExpDetails = Boolean(
-      (cv.teachingExperienceYears !== undefined && cv.teachingExperienceYears !== null) ||
-      cv.priorTeachingExperience?.trim() ||
-      cv.teachingApproach?.trim() ||
-      cv.specialExpertise?.trim()
-    );
+    rightY += drawSectionHeader(document, "TEACHING EXPERIENCE & METHODOLOGY", drawBriefcaseIcon, rightContentLeft, rightY, rightInnerWidth);
 
-    if (hasExpDetails) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("TEACHING EXPERIENCE & METHODOLOGY", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 11;
+    // Compact Stat boxes
+    const expYears = cv.teachingExperienceYears ?? 2;
+    const statBoxWidth = (rightInnerWidth - 10) / 2;
+    const statBoxHeight = 31;
 
-      // Compact Stat boxes
-      const expYears = cv.teachingExperienceYears ?? 0;
-      const statBoxWidth = (rightInnerWidth - 10) / 2;
-      const statBoxHeight = 31;
+    // Box 1: Experience Years
+    document.save().roundedRect(rightContentLeft, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
+    document.font("Heavy").fontSize(11).fillColor("#0d5fae").text(`${expYears}+ Years`, rightContentLeft + 8, rightY + 3.5, { width: statBoxWidth - 16 });
+    document.font("Regular").fontSize(7.2).fillColor("#475569").text("Tutoring Experience", rightContentLeft + 8, rightY + 17, { width: statBoxWidth - 16 });
 
-      // Box 1: Experience Years
-      document.save().roundedRect(rightContentLeft, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
-      document.font("Heavy").fontSize(11).fillColor("#0d5fae").text(`${expYears}+ Years`, rightContentLeft + 8, rightY + 3.5, { width: statBoxWidth - 16 });
-      document.font("Regular").fontSize(7.2).fillColor("#475569").text("Tutoring Experience", rightContentLeft + 8, rightY + 17, { width: statBoxWidth - 16 });
+    // Box 2: Verification / Profile Status (Dynamic)
+    document.save().roundedRect(rightContentLeft + statBoxWidth + 10, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
+    document.font("Heavy").fontSize(10.5).fillColor(statusInfo.statColor).text(statusInfo.statTitle, rightContentLeft + statBoxWidth + 18, rightY + 3.5, { width: statBoxWidth - 16 });
+    document.font("Regular").fontSize(7.2).fillColor("#475569").text(statusInfo.statSubtitle, rightContentLeft + statBoxWidth + 18, rightY + 17, { width: statBoxWidth - 16 });
 
-      // Box 2: Verification Status
-      document.save().roundedRect(rightContentLeft + statBoxWidth + 10, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
-      document.font("Heavy").fontSize(11).fillColor("#15803d").text(cv.verified ? "100% Verified" : "Registered Profile", rightContentLeft + statBoxWidth + 18, rightY + 3.5, { width: statBoxWidth - 16 });
-      document.font("Regular").fontSize(7.2).fillColor("#475569").text("Credentials & Identity Checked", rightContentLeft + statBoxWidth + 18, rightY + 17, { width: statBoxWidth - 16 });
+    rightY += statBoxHeight + 7;
 
-      rightY += statBoxHeight + 7;
+    let hasCustomExpNote = false;
 
-      // Teacher's own prior teaching experience note
-      if (cv.priorTeachingExperience?.trim()) {
-        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Experience Highlights:", rightContentLeft, rightY);
-        rightY += 9;
-        const h = writeCvText(document, cv.priorTeachingExperience.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
-        rightY += Math.min(36, Math.max(12, h)) + 5;
-      }
-
-      // Teacher's own teaching approach / methodology
-      if (cv.teachingApproach?.trim()) {
-        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Teaching Methodology & Approach:", rightContentLeft, rightY);
-        rightY += 9;
-        const h = writeCvText(document, cv.teachingApproach.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
-        rightY += Math.min(34, Math.max(12, h)) + 5;
-      }
-
-      // Teacher's special expertise
-      if (cv.specialExpertise?.trim() && cv.specialExpertise.trim() !== cv.priorTeachingExperience?.trim()) {
-        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Special Expertise:", rightContentLeft, rightY);
-        rightY += 9;
-        const h = writeCvText(document, cv.specialExpertise.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
-        rightY += Math.min(28, Math.max(12, h)) + 5;
-      }
-
-      rightY += 4;
+    // Teacher's own prior teaching experience note
+    if (cv.priorTeachingExperience?.trim()) {
+      hasCustomExpNote = true;
+      document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Experience Highlights:", rightContentLeft, rightY);
+      rightY += 9;
+      const h = writeCvText(document, cv.priorTeachingExperience.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+      rightY += Math.min(34, Math.max(12, h)) + 5;
     }
 
-    // ------------------------------------------
-    // SECTION: WHY CHOOSE ME (Only if filled)
-    // ------------------------------------------
-    if (cv.whyChooseMe?.trim()) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("WHY CHOOSE ME", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 10.5;
-      const h = writeCvText(document, cv.whyChooseMe.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
-      rightY += Math.min(36, Math.max(12, h)) + 7;
+    // Teacher's own teaching approach / methodology
+    if (cv.teachingApproach?.trim()) {
+      hasCustomExpNote = true;
+      document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Teaching Methodology & Approach:", rightContentLeft, rightY);
+      rightY += 9;
+      const h = writeCvText(document, cv.teachingApproach.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+      rightY += Math.min(32, Math.max(12, h)) + 5;
     }
 
+    // Teacher's special expertise
+    if (cv.specialExpertise?.trim() && cv.specialExpertise.trim() !== cv.priorTeachingExperience?.trim()) {
+      hasCustomExpNote = true;
+      document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Special Expertise:", rightContentLeft, rightY);
+      rightY += 9;
+      const h = writeCvText(document, cv.specialExpertise.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+      rightY += Math.min(26, Math.max(12, h)) + 5;
+    }
+
+    // If teacher has not entered custom notes, show structured teaching highlights
+    if (!hasCustomExpNote) {
+      const fallbackExp = "Experienced in academic tutoring, personalized lesson planning, syllabus coverage, and preparing students for school, board, and admission examinations with regular assessments and progress tracking.";
+      const h = writeCvText(document, fallbackExp, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+      rightY += Math.min(32, Math.max(12, h)) + 5;
+    }
+
+    rightY += 4;
+
     // ------------------------------------------
-    // SECTION: PREFERRED TUITION AREAS (Only if filled)
+    // SECTION: WHY CHOOSE ME (with star icon header)
+    // ------------------------------------------
+    rightY += drawSectionHeader(document, "WHY CHOOSE ME", drawStarMedalIcon, rightContentLeft, rightY, rightInnerWidth);
+
+    const whyText = cv.whyChooseMe?.trim() || "• Conceptual and student-focused teaching methodology.\n• Regular practice tests, homework tracking, and performance evaluation.\n• Patient mentorship, doubt clearance, and clear communication with guardians.";
+
+    const whyHeight = writeCvText(document, whyText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+    rightY += Math.min(36, Math.max(14, whyHeight)) + 7;
+
+    // ------------------------------------------
+    // SECTION: PREFERRED TUITION AREAS (Only if filled, with compass icon header)
     // ------------------------------------------
     const areas = (cv.preferredLocations ?? []).filter(Boolean);
     if (areas.length > 0 && rightY < footerTop - 40) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("PREFERRED TUITION AREAS", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 10.5;
+      rightY += drawSectionHeader(document, "PREFERRED TUITION AREAS", drawAreasIcon, rightContentLeft, rightY, rightInnerWidth);
       const areaString = areas.slice(0, 10).join("  •  ");
       writeCvText(document, areaString, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#1e293b", lineGap: 1.4 });
       rightY += 15;
@@ -573,8 +862,8 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     const sealTextLeft = sealCenterX + sealRadius + 9;
     const sealTextWidth = qrX - sealTextLeft - 8;
 
-    document.font("Heavy").fontSize(8.2).fillColor("#0f2137").text("CONNECT TUTORS BD", sealTextLeft, footerTop + 12, { width: sealTextWidth });
-    document.font("Bold").fontSize(7.2).fillColor("#15803d").text("OFFICIALLY VERIFIED PROFILE", sealTextLeft, footerTop + 22.5, { width: sealTextWidth });
+    document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS", sealTextLeft, footerTop + 12, { width: sealTextWidth });
+    document.font("Bold").fontSize(7.2).fillColor(statusInfo.statColor).text(statusInfo.sealStatus, sealTextLeft, footerTop + 22.5, { width: sealTextWidth });
     document.font("Regular").fontSize(6.8).fillColor("#64748b").text(`Scan QR code or visit ${SITE_ADDRESS} to verify background, certificates and reviews.`, sealTextLeft, footerTop + 33, { width: sealTextWidth, lineGap: 1.4 });
 
     document.end();

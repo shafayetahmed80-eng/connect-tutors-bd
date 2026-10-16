@@ -1,10 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
+import { renderTutorCvPdf, resolveTutorCvStatus, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
 
 describe("tutorCvFileName", () => {
   it("formats standard file names cleanly", () => {
     expect(tutorCvFileName(84210, "Md. Rashedul Islam")).toBe("Connect-Tutors-CV-84210-Md-Rashedul-Islam.pdf");
     expect(tutorCvFileName(null, "Tutor")).toBe("Connect-Tutors-CV-CTB-Tutor.pdf");
+  });
+});
+
+describe("resolveTutorCvStatus", () => {
+  it("resolves verified status correctly", () => {
+    const verifiedStatus = resolveTutorCvStatus("approved", true);
+    expect(verifiedStatus.badgeText).toBe("✓  VERIFIED TUTOR");
+    expect(verifiedStatus.badgeBg).toBe("#16a34a");
+    expect(verifiedStatus.statTitle).toBe("100% Verified");
+    expect(verifiedStatus.sealStatus).toBe("OFFICIALLY VERIFIED PROFILE");
+  });
+
+  it("resolves approved unverified profile correctly", () => {
+    const approvedStatus = resolveTutorCvStatus("approved", false);
+    expect(approvedStatus.badgeText).toBe("✓  APPROVED PROFILE");
+    expect(approvedStatus.badgeBg).toBe("#0284c7");
+    expect(approvedStatus.statTitle).toBe("Approved Profile");
+    expect(approvedStatus.sealStatus).toBe("OFFICIALLY APPROVED PROFILE");
+  });
+
+  it("resolves pending review profile correctly", () => {
+    const pendingStatus = resolveTutorCvStatus("pending", false);
+    expect(pendingStatus.badgeText).toBe("UNDER REVIEW");
+    expect(pendingStatus.badgeBg).toBe("#d97706");
+  });
+
+  it("resolves draft profile correctly", () => {
+    const draftStatus = resolveTutorCvStatus("draft", false);
+    expect(draftStatus.badgeText).toBe("DRAFT PROFILE");
+    expect(draftStatus.badgeBg).toBe("#475569");
+    expect(draftStatus.statTitle).toBe("Draft Profile");
   });
 });
 
@@ -88,6 +119,30 @@ describe("renderTutorCvPdf", () => {
     expect(bytes.length).toBeGreaterThan(1000);
     expect(isPdf(bytes)).toBe(true);
     expect(countPdfPages(bytes)).toBe(1);
+    // Metadata should have "Connect Tutors" as Author
+    expect(bytes.toString("latin1")).toContain("Connect Tutors");
+  });
+
+  it("renders draft and approved profile statuses gracefully as 1-page PDFs", async () => {
+    const draftCv: TutorCvDocument = {
+      tutorId: "tutor_draft",
+      tutorNumber: 101,
+      name: "Draft Tutor",
+      profileStatus: "draft",
+      verified: false,
+    };
+    const draftBytes = await renderTutorCvPdf(draftCv);
+    expect(countPdfPages(draftBytes)).toBe(1);
+
+    const approvedCv: TutorCvDocument = {
+      tutorId: "tutor_appr",
+      tutorNumber: 102,
+      name: "Approved Tutor",
+      profileStatus: "approved",
+      verified: false,
+    };
+    const apprBytes = await renderTutorCvPdf(approvedCv);
+    expect(countPdfPages(apprBytes)).toBe(1);
   });
 
   it("handles minimal tutor CV data without crashing and maintains single page", async () => {
