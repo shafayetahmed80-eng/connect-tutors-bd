@@ -109,6 +109,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/tutor-chats", "Tutor Chats"],
       ["/admin/change-requests", "Change requests"],
       ["/admin/posted-jobs", "Posted jobs"],
+      ["/admin/facebook-posts", "Facebook Post"],
       ["/admin/appointed-jobs", "Appointed Jobs"],
       ["/admin/confirmed-jobs", "Confirmed Jobs"],
       ["/admin/admin-posted-jobs", "Admin Posted Jobs"],
