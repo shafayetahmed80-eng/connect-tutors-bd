@@ -1373,6 +1373,16 @@ export const appRouter = router({
   tutor: router({
     getMyProfile: activeTutorProcedure.query(({ ctx }) => db.getTutorProfileByUserId(ctx.user.id)),
     myDocumentLinks: activeTutorProcedure.query(({ ctx }) => db.getTutorDocumentLinksByUserId(ctx.user.id)),
+    getMyCvPdf: activeTutorProcedure.query(async ({ ctx }) => {
+      try {
+        return await db.getTutorCvPdfByUserId(ctx.user.id);
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to generate tutor CV PDF",
+        });
+      }
+    }),
     saveProfileDraft: activeTutorProcedure.input(withoutRetiredTutorProfileFields(tutorProfileEditableDraftSchema)).mutation(async ({ ctx, input }) => {
       // The schema holds the ceiling; these are the Owner's numbers.
       assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);

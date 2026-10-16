@@ -43,6 +43,8 @@ describe("Tutor profile access", () => {
   it("rejects unauthenticated and Guardian access before profile data is read", async () => {
     await expect(createCaller().tutor.getMyProfile()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(createCaller("guardian").tutor.getMyProfile()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller().tutor.getMyCvPdf()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(createCaller("guardian").tutor.getMyCvPdf()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
 

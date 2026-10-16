@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowRight, Camera, Check, ChevronDown, Eye, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Check, ChevronDown, Eye, FileText, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
@@ -68,6 +68,7 @@ export function TutorProfileIdentityRail({
   previewMode,
   onTogglePreview,
   rating,
+  onOpenCvModal,
 }: {
   name: string;
   tutorNumber: number | null | undefined;
@@ -97,6 +98,8 @@ export function TutorProfileIdentityRail({
   onTogglePreview: () => void;
   /** The Guardians' star rating; shows only once someone has rated. */
   rating?: TutorRatingSummary | null;
+  /** Opens the professional 1-page CV preview & download modal */
+  onOpenCvModal?: () => void;
 }) {
   const hasPhoto = Boolean(photoUrl) && !photoPreviewFailed;
   // Phones only: from `lg` up the list is always on screen and this is unused.
@@ -230,5 +233,15 @@ export function TutorProfileIdentityRail({
     >
       {previewMode ? <><PencilLine size={15} /> Edit Information</> : <><Eye size={15} /> View Profile</>}
     </Button>
+
+    {onOpenCvModal ? (
+      <Button
+        type="button"
+        onClick={onOpenCvModal}
+        className={`mt-2.5 rounded-xl bg-emerald-600 font-semibold text-white shadow-xs transition hover:bg-emerald-700 active:scale-[0.99] ${tutorProfileResponsiveClasses.completionActionButton}`}
+      >
+        <FileText size={15} aria-hidden={true} /> Download CV (PDF)
+      </Button>
+    ) : null}
   </section>;
 }
