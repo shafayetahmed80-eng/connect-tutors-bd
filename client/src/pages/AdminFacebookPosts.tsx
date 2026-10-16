@@ -26,8 +26,10 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { FacebookPosterModal } from "@/components/FacebookPosterModal";
+import type { FacebookPosterJob } from "@/lib/facebook-poster";
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
@@ -242,6 +244,9 @@ export function AdminFacebookPostsContent() {
     format: FacebookPostBulkFormat;
   } | null>(null);
 
+  const [posterJob, setPosterJob] = useState<FacebookPosterJob | null>(null);
+  const [bulkPosterJobs, setBulkPosterJobs] = useState<FacebookPosterJob[] | null>(null);
+
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -385,6 +390,25 @@ export function AdminFacebookPostsContent() {
         jobs: list,
         format: selectedBulkFormat,
       });
+    } catch {
+      toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
+    } finally {
+      setIsBulkCopying(false);
+    }
+  };
+
+  const handleGenerateBulkPoster = async () => {
+    if (isBulkCopying) return;
+    setIsBulkCopying(true);
+    try {
+      const list = await fetchFilteredJobs(4);
+      if (list.length === 0) {
+        toast.error("পোস্টার তৈরি করার জন্য কোনো লাইভ টিউশন নেই।");
+        return;
+      }
+      setBulkPosterJobs(
+        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin }))
+      );
     } catch {
       toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
     } finally {
@@ -681,6 +705,21 @@ export function AdminFacebookPostsContent() {
             >
               <Eye className="size-3.5" />
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPosterJob({
+                  ...job,
+                  jobId: code,
+                  origin: window.location.origin,
+                });
+              }}
+              aria-label={`Generate social poster for job ${code}`}
+              className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-[#1877f2] hover:bg-sky-50 hover:border-sky-300 transition"
+              title="Generate Social Media Poster (Banner with QR & BTPA-077)"
+            >
+              <ImageIcon className="size-3.5" />
+            </button>
           </div>
         );
       },
@@ -887,6 +926,16 @@ export function AdminFacebookPostsContent() {
           >
             <Eye className="size-3.5" />
             <span>Preview Bulk ({totalMatching})</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerateBulkPoster}
+            disabled={isBulkCopying || totalMatching === 0}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
+            title="Generate Social Media Poster for Filtered Tuitions (Up to 4)"
+          >
+            <ImageIcon className="size-3.5 text-[#1877f2]" />
+            <span>Bulk Poster ({Math.min(totalMatching, 4)})</span>
           </button>
           <button
             type="button"
@@ -1321,6 +1370,18 @@ export function AdminFacebookPostsContent() {
         </Modal>
       ) : null}
 
+      {/* Social Media Poster Modals */}
+      <FacebookPosterModal
+        isOpen={Boolean(posterJob)}
+        onClose={() => setPosterJob(null)}
+        job={posterJob}
+      />
+
+      <FacebookPosterModal
+        isOpen={Boolean(bulkPosterJobs && bulkPosterJobs.length > 0)}
+        onClose={() => setBulkPosterJobs(null)}
+        jobs={bulkPosterJobs}
+      />
     </div>
   );
 }
