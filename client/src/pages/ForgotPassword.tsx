@@ -122,7 +122,7 @@ export default function ForgotPassword() {
 
   const footer = <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
     <Link href={signInHref(role)} className="font-extrabold text-j-accent underline underline-offset-2">Back to sign in</Link>
-    <a href={contact.whatsapp("Hello Connect Tutors, I need help recovering my account.")} className="font-semibold text-j-ink-muted underline underline-offset-2 hover:text-j-ink-soft">Need help? WhatsApp</a>
+    <a href={contact.whatsapp("Hello Connect Tutors, I need help recovering my account.")} className="font-semibold text-j-ink-muted underline underline-offset-2 hover:text-j-ink-soft transition-transform duration-200 active:scale-95 inline-block">Need help? WhatsApp</a>
   </div>;
 
   if (!codeSentTo) {

@@ -7513,12 +7513,12 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const [timeCountRows] = await database
     .select({
       total: count(),
-      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as int)`,
-      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as int)`,
-      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as int)`,
-      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as int)`,
-      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as int)`,
-      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as int)`,
+      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as unsigned)`,
+      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as unsigned)`,
+      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as unsigned)`,
+      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as unsigned)`,
+      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as unsigned)`,
+      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as unsigned)`,
     })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))

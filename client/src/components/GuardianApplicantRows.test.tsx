@@ -55,7 +55,7 @@ describe("Guardian applicant rows", () => {
     expect(card.getByRole("link", { name: "Open the profile of Tania Sultana" })).toBeTruthy();
   });
 
-  it("renders tactile call and WhatsApp links without a copy button when a tutor's phone is revealed", () => {
+  it("renders tactile call link without WhatsApp or copy button when a tutor's phone is revealed", () => {
     render(<GuardianApplicantRows
       tutors={[{ ...applicant("tutor-175", "Tania Sultana", true), phone: "+8801712345678", phoneHidden: false, appointed: true }]}
       requestId={13}
@@ -64,12 +64,11 @@ describe("Guardian applicant rows", () => {
       actions={rowActions}
     />);
 
-    const callLink = screen.getByRole("link", { name: "Call +880 1712 345678" });
+    const callLink = screen.getByRole("link", { name: "Call +8801712345678" });
     expect(callLink.getAttribute("href")).toBe("tel:+8801712345678");
+    expect(callLink.className).toContain("phone-contact-call");
 
-    const waLink = screen.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" });
-    expect(waLink.getAttribute("href")).toBe("https://wa.me/8801712345678");
-
+    expect(screen.queryByRole("link", { name: /WhatsApp/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Copy/i })).toBeNull();
   });
 });

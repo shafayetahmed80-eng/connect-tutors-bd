@@ -1,9 +1,8 @@
-import { ChevronRight, Star } from "lucide-react";
+import { ChevronRight, Phone, Star } from "lucide-react";
 import { Link } from "wouter";
 import { WaitingTuitionRequestMark, type WaitingTuitionRequest } from "@/components/GuardianTuitionRequestDialog";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import TutorVerifiedBadge from "@/components/TutorVerifiedBadge";
-import { PhoneContact } from "@/components/PhoneContact";
 
 /**
  * An applicant as a Guardian reads one: the Admin's row without the part that
@@ -57,10 +56,22 @@ function Value({ value }: { value: string }) {
 
 function MobileValue({ tutor, size = "table" }: { tutor: GuardianApplicantRow; size?: "table" | "card" }) {
   if (!tutor.phoneHidden) {
-    return tutor.phone ? (
-      <PhoneContact phone={tutor.phone} size={size} showCopy={false} />
-    ) : (
-      <Value value="" />
+    if (!tutor.phone) return <Value value="" />;
+    return (
+      <a
+        href={`tel:${tutor.phone}`}
+        aria-label={`Call ${tutor.phone}`}
+        className={`group phone-contact-call relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-md font-heading font-bold tabular-nums text-[#1680c2] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2] transition-transform duration-200 active:scale-95 ${
+          size === "card" ? "min-h-10 text-[13px]" : "min-h-8 text-sm"
+        }`}
+      >
+        <Phone
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
+        />
+        {tutor.phone}
+      </a>
     );
   }
   return <span className="whitespace-nowrap">

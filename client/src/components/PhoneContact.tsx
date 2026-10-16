@@ -74,7 +74,7 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
 
     callResetRef.current = setTimeout(() => {
       setIsCalling(false);
-    }, 900);
+    }, 700);
   };
 
   const handleWhatsAppClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -90,7 +90,7 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
 
     waResetRef.current = setTimeout(() => {
       setIsMessaging(false);
-    }, 900);
+    }, 700);
   };
 
   const handleCopyClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -117,11 +117,19 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
         card ? "min-h-10 text-[13px]" : "min-h-8 text-sm",
       )}
     >
-      <Phone
-        aria-hidden="true"
-        size={card ? 13 : 13}
-        className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
-      />
+      {isCalling ? (
+        <Check
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-j-ok transition-all duration-200"
+        />
+      ) : (
+        <Phone
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
+        />
+      )}
       {formatDisplay ? links.display : phone}
     </a>
     <a
@@ -130,14 +138,18 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
       data-messaging={isMessaging ? "true" : undefined}
       target="_blank"
       rel="noreferrer"
-      aria-label={`Message ${links.display} on WhatsApp`}
       title="Message on WhatsApp"
       className={cn(
         "phone-contact-wa inline-flex shrink-0 items-center justify-center rounded-full text-j-ok transition-all duration-200 hover:scale-110 hover:bg-j-ok-wash active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-j-ok",
         card ? "size-10" : "size-8",
       )}
     >
-      <WhatsAppIcon size={card ? 16 : 16} />
+      {isMessaging ? (
+        <Check aria-hidden="true" size={card ? 16 : 16} className="shrink-0 text-j-ok transition-all duration-200" />
+      ) : (
+        <WhatsAppIcon size={card ? 16 : 16} />
+      )}
+      <span className="sr-only">{`Message ${links.display} on WhatsApp`}</span>
     </a>
     {showCopy ? (
       <button
