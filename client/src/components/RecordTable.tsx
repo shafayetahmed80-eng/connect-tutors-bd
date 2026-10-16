@@ -1,6 +1,12 @@
 import EmptyState from "@/components/EmptyState";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
+import { MoreHorizontal } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
@@ -37,6 +43,15 @@ export type RecordColumn<Row> = {
   labelClassName?: string;
   headClassName?: string;
   cellClassName?: string;
+  /**
+   * On mobile cards, keep this action always visible directly on the card even
+   * if additional actions collapse into the "More (...)" menu.
+   */
+  cardActionPinned?: boolean;
+  /**
+   * On mobile cards, force this action into the "More (...)" overflow dropdown.
+   */
+  cardActionOverflow?: boolean;
 };
 
 export type RecordTableProps<Row> = {
@@ -56,6 +71,12 @@ export type RecordTableProps<Row> = {
   plain?: boolean;
   /** Rows rise in, one after another, the first time this list of rows appears. */
   animateEntrance?: boolean;
+  /**
+   * Maximum number of action controls shown directly on a mobile card before
+   * overflowing additional actions into a "More (...)" dropdown menu.
+   * If unset or undefined, all action controls are shown directly on the card.
+   */
+  maxCardActions?: number;
 };
 
 /** Steps beyond this many rows would make the last ones wait too long to arrive. */
@@ -78,7 +99,7 @@ function columnLabel<Row>(column: RecordColumn<Row>, isCard: boolean = false) {
     : text;
 }
 
-function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance }: RecordTableProps<Row>) {
+function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance, maxCardActions }: RecordTableProps<Row>) {
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -92,6 +113,23 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
   const head = columns.filter(column => column.place === "head");
   const body = columns.filter(column => (column.place ?? "body") === "body");
   const actions = columns.filter(column => column.place === "action");
+
+  let visibleActions = actions;
+  let overflowActions: RecordColumn<Row>[] = [];
+
+  if (typeof maxCardActions === "number" || actions.some(col => col.cardActionOverflow)) {
+    const limit = typeof maxCardActions === "number" ? maxCardActions : actions.length;
+    const pinned = actions.filter(col => col.cardActionPinned && !col.cardActionOverflow);
+    const explicitOverflow = actions.filter(col => col.cardActionOverflow);
+    const regular = actions.filter(col => !col.cardActionPinned && !col.cardActionOverflow);
+
+    const availableSlots = Math.max(0, limit - pinned.length);
+    const visibleRegular = regular.slice(0, availableSlots);
+    const overflowRegular = regular.slice(availableSlots);
+
+    visibleActions = [...pinned, ...visibleRegular];
+    overflowActions = [...explicitOverflow, ...overflowRegular];
+  }
 
   return <ul aria-label={caption} className="space-y-2.5">
     {rows.map((row, index) => {
@@ -111,9 +149,51 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
       </dl> : null}
 
       {/* A control sized for a mouse is too small for a thumb; on a card every one of them clears 40px. */}
-      {actions.length > 0 ? <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#eef4f9] pt-3 [&_a]:min-h-10 [&_a]:min-w-10 [&_button]:min-h-10 [&_button]:min-w-10">
-        {actions.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}
-      </div> : null}
+      {actions.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#eef4f9] pt-3 [&_a]:min-h-10 [&_a]:min-w-10 [&_button]:min-h-10 [&_button]:min-w-10">
+          <div className="flex flex-wrap items-center gap-2">
+            {visibleActions.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}
+          </div>
+
+          {overflowActions.length > 0 ? (
+            <div className="relative ml-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More actions"
+                    className="inline-flex size-10 items-center justify-center rounded-lg border border-j-border bg-white text-j-ink-muted hover:bg-slate-50 hover:text-j-ink active:scale-95 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-j-accent/30"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 p-1.5 shadow-lg rounded-xl border border-j-border bg-white z-50">
+                  {overflowActions.map(column => (
+                    <div
+                      key={column.key}
+                      onClick={e => {
+                        const target = e.currentTarget;
+                        const interactive = target.querySelector<HTMLElement>("a, button");
+                        if (interactive && !interactive.contains(e.target as Node)) {
+                          interactive.click();
+                        }
+                      }}
+                      className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-slate-50 transition-colors cursor-pointer [&_a]:min-h-9 [&_button]:min-h-9"
+                    >
+                      {cardContent(column, row, index)}
+                      {column.headingHidden && column.label ? (
+                        <span className="text-xs font-medium text-j-ink-strong select-none">
+                          {column.label}
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </li>;
     })}
   </ul>;
