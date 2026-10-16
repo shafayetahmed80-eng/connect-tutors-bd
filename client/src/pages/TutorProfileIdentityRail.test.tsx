@@ -142,4 +142,17 @@ describe("TutorProfileIdentityRail", () => {
     renderRail();
     expect(screen.queryByText(/required fields? left|Every required field/)).toBeNull();
   });
+
+  it("renders the Download CV (PDF) button when onOpenCvModal is provided and fires callback on click", () => {
+    const onOpenCvModal = vi.fn();
+    const { unmount } = renderRail({ onOpenCvModal });
+    const downloadBtn = screen.getByRole("button", { name: /Download CV \(PDF\)/i });
+    expect(downloadBtn).toBeTruthy();
+    fireEvent.click(downloadBtn);
+    expect(onOpenCvModal).toHaveBeenCalledOnce();
+    unmount();
+
+    renderRail({ onOpenCvModal: undefined });
+    expect(screen.queryByRole("button", { name: /Download CV \(PDF\)/i })).toBeNull();
+  });
 });

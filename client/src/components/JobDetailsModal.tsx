@@ -39,7 +39,7 @@ export type JobDetailsData = JobCardData & {
  */
 export function JobDetailRow({ label, value, muted, required, icon, valueIcon, valueClassName }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   /** The value is a blank rather than an answer. */
   muted?: boolean;
   /** A blank here is a gap in the record, not a question left unanswered. */

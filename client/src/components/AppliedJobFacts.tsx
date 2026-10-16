@@ -15,7 +15,7 @@ import { JobIdTag } from "@/components/JobIdTag";
  */
 export function JobFact({ icon, value, wide = false, tone }: {
   icon: RecordIconName;
-  value: string;
+  value: ReactNode;
   wide?: boolean;
   /** A text colour class that the icon and the words both take, in place of the strip's usual two. */
   tone?: string;

@@ -19,6 +19,7 @@ import { Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, Tras
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
+import { TutorCvPreviewModal } from "@/components/TutorCvPreviewModal";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { describeMissingDetails, educationStatus, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
@@ -680,6 +681,7 @@ function TutorProfileWorkspaceBody({
   // preview; the rail's button becomes "Edit Information" to come back.
   const [previewMode, setPreviewMode] = useState(false);
   const [previewAudience, setPreviewAudience] = useState<"self" | "guardian">("self");
+  const [isCvModalOpen, setIsCvModalOpen] = useState(false);
   // The card just saved, marked on the card itself for a few seconds: the
   // page's own notice sits above the tabs, off screen when the card is low.
   const [justSaved, setJustSaved] = useState<TutorProfileEditTarget | null>(null);
@@ -1434,6 +1436,7 @@ function TutorProfileWorkspaceBody({
         onReturnToSelectedJob={statusCard.action === "return" ? onReturnToSelectedJob : undefined}
         previewMode={previewMode}
         onTogglePreview={() => setPreviewMode(current => !current)}
+        onOpenCvModal={() => setIsCvModalOpen(true)}
       />
 
       <div className={`min-w-0 ${tp.stack}`}>
@@ -1486,6 +1489,12 @@ function TutorProfileWorkspaceBody({
       </div>
     </div>
     <output className="sr-only" aria-live="polite">Draft fields ready: {Object.keys(previewPayload).length} editable values.</output>
+    <TutorCvPreviewModal
+      isOpen={isCvModalOpen}
+      onClose={() => setIsCvModalOpen(false)}
+      tutorName={form.name}
+      tutorNumber={profile?.tutorNumber}
+    />
   </form>;
 }
 

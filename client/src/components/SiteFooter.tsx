@@ -2,9 +2,10 @@
  * Connect Tutors visual direction: Neighbourhood Learning Blue — an editorial, supportive footer
  * that turns service details into clear next steps rather than a dense utility panel.
  */
+import { useState, useRef } from "react";
 import { useSiteContact } from "@/lib/siteContent";
 import { Link } from "wouter";
-import { CircleHelp, ClipboardList, MessageCircle } from "lucide-react";
+import { Check, CircleHelp, ClipboardList, MessageCircle } from "lucide-react";
 import { BrandLogo } from "./SiteHeader";
 import InstallAppButton from "./InstallAppButton";
 
@@ -37,14 +38,30 @@ export const footerSupportChannels = [
   },
 ] as const;
 
-function FooterSupportIcon({ type }: { type: (typeof footerSupportChannels)[number]["type"] }) {
+function FooterSupportIcon({ type, isMessaging }: { type: (typeof footerSupportChannels)[number]["type"]; isMessaging?: boolean }) {
   if (type === "request") return <ClipboardList />;
-  if (type === "whatsapp") return <MessageCircle />;
+  if (type === "whatsapp") {
+    return isMessaging ? (
+      <Check className="text-j-ok animate-in zoom-in-75" />
+    ) : (
+      <MessageCircle />
+    );
+  }
   return <CircleHelp />;
 }
 
 export default function SiteFooter() {
   const contact = useSiteContact();
+  const [isMessaging, setIsMessaging] = useState(false);
+  const waTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleWhatsAppClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    setIsMessaging(true);
+    if (waTimerRef.current) clearTimeout(waTimerRef.current);
+    waTimerRef.current = setTimeout(() => setIsMessaging(false), 700);
+  };
+
   // The WhatsApp row carries no number of its own: it is filled from the one
   // Admin-editable value so a change reaches every link on the site at once.
   const channels = footerSupportChannels.map(channel =>
@@ -59,12 +76,24 @@ export default function SiteFooter() {
           <BrandLogo />
         </div>
         {channels.map((channel) => (
-          <div className="footer-contact-card" key={channel.type}>
-            <FooterSupportIcon type={channel.type} />
+          <div
+            className={`footer-contact-card ${channel.type === "whatsapp" ? "phone-contact-wa" : ""}`}
+            key={channel.type}
+            data-messaging={channel.type === "whatsapp" && isMessaging ? "true" : undefined}
+          >
+            <FooterSupportIcon type={channel.type} isMessaging={isMessaging} />
             <div>
               <strong>{channel.title}</strong>
               {channel.href.startsWith("http") ? (
-                <a href={channel.href} target="_blank" rel="noreferrer">{channel.action}</a>
+                <a
+                  href={channel.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={channel.type === "whatsapp" ? handleWhatsAppClick : undefined}
+                  className="transition-transform duration-200 active:scale-95 inline-block"
+                >
+                  {channel.action}
+                </a>
               ) : (
                 <Link href={channel.href}>{channel.action}</Link>
               )}

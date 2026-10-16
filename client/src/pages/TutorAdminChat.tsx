@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import SearchInput from "@/components/SearchInput";
-import { Mic, Paperclip, Phone, Send, ShieldCheck, Square, ThumbsUp, X } from "lucide-react";
+import { Check, Mic, Paperclip, Phone, Send, ShieldCheck, Square, ThumbsUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -59,6 +59,8 @@ export function TutorAdminChatPanel() {
   const markRead = trpc.tutorAdminChat.markRead.useMutation({ onSuccess: () => utils.tutorAdminChat.unreadCount.invalidate() });
   const react = trpc.tutorAdminChat.react.useMutation({ onSuccess: () => utils.tutorAdminChat.thread.invalidate() });
   const contact = useSiteContact();
+  const [isCalling, setIsCalling] = useState(false);
+  const callTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const portalToken = getCurrentTutorPortalToken();
   const sendFrame = useTutorChatSocket(portalToken, frame => {
@@ -150,8 +152,25 @@ export function TutorAdminChatPanel() {
         <BrandMark />
         <span className="brand-wordmark flex"><strong>{brandWordmark.primary}</strong><em>{brandWordmark.secondary}</em></span>
       </div>
-      <a href={contact.tel} className="flex shrink-0 items-center gap-1.5 text-sm font-bold text-j-accent">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-j-accent-wash text-j-accent"><Phone size={13} /></span>
+      <a
+        href={contact.tel}
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          setIsCalling(true);
+          if (callTimerRef.current) clearTimeout(callTimerRef.current);
+          callTimerRef.current = setTimeout(() => setIsCalling(false), 700);
+        }}
+        data-calling={isCalling ? "true" : undefined}
+        aria-label={`Call ${contact.display}`}
+        className="group phone-contact-call flex shrink-0 items-center gap-1.5 text-sm font-bold text-j-accent transition-transform duration-200 active:scale-95"
+      >
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-j-accent-wash text-j-accent">
+          {isCalling ? (
+            <Check size={13} className="text-j-ok animate-in zoom-in-75" />
+          ) : (
+            <Phone size={13} className="phone-contact-icon transition-transform duration-200 group-hover:-rotate-12" />
+          )}
+        </span>
         {contact.display}
       </a>
     </header>

@@ -1,4 +1,4 @@
-import { ChevronRight, Star } from "lucide-react";
+import { ChevronRight, Phone, Star } from "lucide-react";
 import { Link } from "wouter";
 import { WaitingTuitionRequestMark, type WaitingTuitionRequest } from "@/components/GuardianTuitionRequestDialog";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -54,8 +54,26 @@ function Value({ value }: { value: string }) {
   return <span className={value ? "text-j-ink-strong" : "italic text-j-ink-faint"}>{value || "Not set"}</span>;
 }
 
-function MobileValue({ tutor }: { tutor: GuardianApplicantRow }) {
-  if (!tutor.phoneHidden) return <Value value={tutor.phone ?? ""} />;
+function MobileValue({ tutor, size = "table" }: { tutor: GuardianApplicantRow; size?: "table" | "card" }) {
+  if (!tutor.phoneHidden) {
+    if (!tutor.phone) return <Value value="" />;
+    return (
+      <a
+        href={`tel:${tutor.phone}`}
+        aria-label={`Call ${tutor.phone}`}
+        className={`group phone-contact-call relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-md font-heading font-bold tabular-nums text-[#1680c2] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2] transition-transform duration-200 active:scale-95 ${
+          size === "card" ? "min-h-10 text-[13px]" : "min-h-8 text-sm"
+        }`}
+      >
+        <Phone
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
+        />
+        {tutor.phone}
+      </a>
+    );
+  }
   return <span className="whitespace-nowrap">
     <span className="text-j-ink-strong">+880</span>
     <span aria-hidden="true" className="ml-1 tracking-wider text-j-ink-faint">••••••••••</span>
@@ -143,7 +161,13 @@ export default function GuardianApplicantRows({ tutors, requestId, emptyLabel, s
     { key: "serial", label: "#", place: "head", cell: (_tutor, index) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> },
     { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
     { key: "name", label: "Name", place: "head", cell: tutor => <span className="inline-flex flex-wrap items-center gap-1.5 font-bold text-j-ink">{tutor.name}{tutor.verified ? <TutorVerifiedBadge /> : null}</span> },
-    { key: "phone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: tutor => <MobileValue tutor={tutor} /> },
+    {
+      key: "phone",
+      label: "Mobile",
+      cellClassName: "whitespace-nowrap",
+      cell: tutor => <MobileValue tutor={tutor} size="table" />,
+      cardCell: tutor => <MobileValue tutor={tutor} size="card" />,
+    },
     { key: "institute", label: "Institute", wide: true, cellClassName: "max-w-[16rem]", cell: tutor => <Value value={tutor.instituteName ?? ""} /> },
     { key: "department", label: "Department", cellClassName: "max-w-[12rem]", cell: tutor => <Value value={tutor.departmentName ?? ""} /> },
     { key: "city", label: "City", cell: tutor => <Value value={tutor.cityLabel ?? ""} /> },

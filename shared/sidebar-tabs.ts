@@ -157,6 +157,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     items: [
       ["/tutor/dashboard", "Dashboard"],
       ["/tutor/dashboard/jobs", "Job Board"],
+      ["/tutor/dashboard/advance-matching", "Advance Matching Jobs"],
       ["/tutor/dashboard/status", "Status"],
       ["/tutor/dashboard/profile", "Profile"],
       ["/tutor/dashboard/confirmation-letter", "Confirmation Letter"],

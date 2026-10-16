@@ -22,11 +22,15 @@ import { cn } from "@/lib/utils";
  * A number that is not a Bangladesh mobile is written as it came, with no
  * links, rather than point at one that would not connect.
  */
-export function PhoneContact({ phone, size = "table", className }: {
+export function PhoneContact({ phone, size = "table", className, showCopy = true, formatDisplay = true }: {
   phone: string;
   /** `table` for a row; `card` for a phone card, where each link is at least thumb-sized. */
   size?: "table" | "card";
   className?: string;
+  /** Whether to render the copy-to-clipboard button. Defaults to true. */
+  showCopy?: boolean;
+  /** Whether to format display with spaces (+880 1XXX XXXXXX) or keep original raw text. Defaults to true. */
+  formatDisplay?: boolean;
 }) {
   const [isCalling, setIsCalling] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
@@ -70,7 +74,7 @@ export function PhoneContact({ phone, size = "table", className }: {
 
     callResetRef.current = setTimeout(() => {
       setIsCalling(false);
-    }, 900);
+    }, 700);
   };
 
   const handleWhatsAppClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -86,7 +90,7 @@ export function PhoneContact({ phone, size = "table", className }: {
 
     waResetRef.current = setTimeout(() => {
       setIsMessaging(false);
-    }, 900);
+    }, 700);
   };
 
   const handleCopyClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -113,12 +117,20 @@ export function PhoneContact({ phone, size = "table", className }: {
         card ? "min-h-10 text-[13px]" : "min-h-8 text-sm",
       )}
     >
-      <Phone
-        aria-hidden="true"
-        size={card ? 13 : 13}
-        className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
-      />
-      {links.display}
+      {isCalling ? (
+        <Check
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-j-ok transition-all duration-200"
+        />
+      ) : (
+        <Phone
+          aria-hidden="true"
+          size={13}
+          className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
+        />
+      )}
+      {formatDisplay ? links.display : phone}
     </a>
     <a
       href={links.whatsapp}
@@ -126,41 +138,47 @@ export function PhoneContact({ phone, size = "table", className }: {
       data-messaging={isMessaging ? "true" : undefined}
       target="_blank"
       rel="noreferrer"
-      aria-label={`Message ${links.display} on WhatsApp`}
       title="Message on WhatsApp"
       className={cn(
         "phone-contact-wa inline-flex shrink-0 items-center justify-center rounded-full text-j-ok transition-all duration-200 hover:scale-110 hover:bg-j-ok-wash active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-j-ok",
         card ? "size-10" : "size-8",
       )}
     >
-      <WhatsAppIcon size={card ? 16 : 16} />
-    </a>
-    <button
-      type="button"
-      onClick={handleCopyClick}
-      data-copied={isCopied ? "true" : undefined}
-      aria-label={`Copy ${links.display}`}
-      title="নম্বর কপি করুন"
-      className={cn(
-        "phone-contact-copy relative inline-flex shrink-0 items-center justify-center rounded-full text-[#8fb4d0] transition-all duration-200 hover:scale-110 hover:text-[#1680c2] hover:bg-[#eef6fc] active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2]",
-        isCopied && "text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-50",
-        card ? "size-10" : "size-8",
-      )}
-    >
-      {isCopied ? (
-        <Check size={card ? 15 : 13} aria-hidden="true" className="phone-contact-copy-check animate-in zoom-in-75 duration-200 text-emerald-600" />
+      {isMessaging ? (
+        <Check aria-hidden="true" size={card ? 16 : 16} className="shrink-0 text-j-ok transition-all duration-200" />
       ) : (
-        <Copy size={card ? 14 : 12} aria-hidden="true" className="phone-contact-copy-icon" />
+        <WhatsAppIcon size={card ? 16 : 16} />
       )}
-      {isCopied ? (
-        <span
-          aria-hidden="true"
-          className="phone-contact-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#173d60] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md z-30 pointer-events-none"
-        >
-          কপি হয়েছে!
-        </span>
-      ) : null}
-    </button>
+      <span className="sr-only">{`Message ${links.display} on WhatsApp`}</span>
+    </a>
+    {showCopy ? (
+      <button
+        type="button"
+        onClick={handleCopyClick}
+        data-copied={isCopied ? "true" : undefined}
+        aria-label={`Copy ${links.display}`}
+        title="নম্বর কপি করুন"
+        className={cn(
+          "phone-contact-copy relative inline-flex shrink-0 items-center justify-center rounded-full text-[#8fb4d0] transition-all duration-200 hover:scale-110 hover:text-[#1680c2] hover:bg-[#eef6fc] active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1680c2]",
+          isCopied && "text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-50",
+          card ? "size-10" : "size-8",
+        )}
+      >
+        {isCopied ? (
+          <Check size={card ? 15 : 13} aria-hidden="true" className="phone-contact-copy-check animate-in zoom-in-75 duration-200 text-emerald-600" />
+        ) : (
+          <Copy size={card ? 14 : 12} aria-hidden="true" className="phone-contact-copy-icon" />
+        )}
+        {isCopied ? (
+          <span
+            aria-hidden="true"
+            className="phone-contact-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#173d60] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md z-30 pointer-events-none"
+          >
+            কপি হয়েছে!
+          </span>
+        ) : null}
+      </button>
+    ) : null}
   </span>;
 }
 

@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./db", () => ({ runPaymentReminders: vi.fn() }));
+vi.mock("./db", () => ({ runPaymentReminders: vi.fn(), purgeExpiredTutorAdminChatMessages: vi.fn() }));
 
 import { registerCronRoutes } from "./cron-routes";
 

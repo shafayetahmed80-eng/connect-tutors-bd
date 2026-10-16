@@ -3,6 +3,7 @@ import { AdminGuardianTuitionRequestMark, ApproveGuardianTuitionRequestDialog, u
 import AdminTutorRows, { type AdminApplicantRowActions, type AdminAppointmentRequestActions, type AdminTutorRow } from "@/components/AdminTutorRows";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import AppliedJobFacts, { JobFact } from "@/components/AppliedJobFacts";
+import { PhoneContact } from "@/components/PhoneContact";
 import PostTypeBadge from "@/components/PostTypeBadge";
 import { TutorListPager } from "@/components/TutorListPager";
 import { getGuardianRequestLifecycle } from "@/pages/GuardianRequestTracking";
@@ -201,7 +202,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Tuition Status <TuitionStatus job={{ ...job, tutorId: job.appointedTutorId }} /></span>
       </>}>
-        <JobFact icon="phone" value={job.guardianPhone || "Not given"} wide />
+        <JobFact icon="phone" value={job.guardianPhone ? <PhoneContact phone={job.guardianPhone} size="table" showCopy={false} formatDisplay={false} className="col-span-2 lg:col-span-1" /> : "Not given"} wide />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
       {guardianRequest?.type === "cancel_tuition"

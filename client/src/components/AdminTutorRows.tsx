@@ -6,6 +6,7 @@ import type { TutorMatchNote } from "@shared/tutor-matching";
 import { BadgeCheck, ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { PhoneContact } from "@/components/PhoneContact";
 
 /**
  * A Tutor as an Admin scans one: Tutor Profiles and the applied-Tutor list of
@@ -202,7 +203,13 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     ...(numbered ? [{ key: "serial", label: "#", place: "head" as const, cell: (_tutor: AdminTutorRow, index: number) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> }] : []),
     { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
     { key: "name", label: "Name", place: "head", cell: tutor => <span className="font-bold text-j-ink">{tutor.name}</span> },
-    { key: "phone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: tutor => <Value value={tutor.phone ?? ""} /> },
+    {
+      key: "phone",
+      label: "Mobile",
+      cellClassName: "whitespace-nowrap",
+      cell: tutor => tutor.phone ? <PhoneContact phone={tutor.phone} size="table" showCopy={false} formatDisplay={false} /> : <Value value="" />,
+      cardCell: tutor => tutor.phone ? <PhoneContact phone={tutor.phone} size="card" showCopy={false} formatDisplay={false} /> : <Value value="" />,
+    },
     { key: "institute", label: "Institute", wide: true, cellClassName: "max-w-[16rem]", cell: tutor => <Value value={tutor.instituteName ?? ""} /> },
     { key: "department", label: "Department", cellClassName: "max-w-[12rem]", cell: tutor => <Value value={tutor.departmentName ?? ""} /> },
     { key: "city", label: "City", cell: tutor => <Value value={tutor.cityLabel ?? ""} /> },

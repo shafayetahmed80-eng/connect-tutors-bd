@@ -20,6 +20,7 @@ import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutor
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorApplicationStatus } from "./TutorApplicationStatus";
 import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
+import { TutorRecommendedJobs } from "@/components/TutorRecommendedJobs";
 import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorAdminChatPanel } from "./TutorAdminChat";
@@ -38,6 +39,7 @@ import { toast } from "sonner";
 export const tutorDashboardNavigation: DashboardNavigationItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/tutor/dashboard", sectionLabel: "Active workspace" },
   { icon: BriefcaseBusiness, label: "Job Board", path: "/tutor/dashboard/jobs", sectionLabel: "Active workspace" },
+  { icon: Sparkles, label: "Advance Matching Jobs", path: "/tutor/dashboard/advance-matching", sectionLabel: "Active workspace" },
   { icon: BadgeCheck, label: "Status", path: "/tutor/dashboard/status", sectionLabel: "Active workspace" },
   { icon: UserRound, label: "Profile", path: "/tutor/dashboard/profile", sectionLabel: "Active workspace" },
   { icon: FileCheck2, label: "Confirmation Letter", path: "/tutor/dashboard/confirmation-letter", sectionLabel: "Active workspace" },
@@ -64,6 +66,7 @@ export function getTutorNavigationGroups(items: DashboardNavigationItem[]) {
 export const tutorDashboardSections = [
   "dashboard",
   "jobs",
+  "advance-matching",
   "profile",
   "status",
   "notifications",
@@ -289,6 +292,7 @@ export default function TutorDashboard() {
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
+      {section === "advance-matching" && <TutorRecommendedJobs limit={20} />}
       {section === "profile" && profileQuery.isLoading && <TutorProfileSkeleton />}
       {section === "profile" && !profileQuery.isLoading && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}
       {section === "preferences" && <Preferences profile={profile} navigate={navigate} />}

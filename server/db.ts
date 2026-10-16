@@ -165,6 +165,7 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
+import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
 import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
@@ -1835,6 +1836,83 @@ export async function getTutorProfileByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
   return toTutorProfileOwnerDto(await loadTutorProfileOwner(db, userId));
+}
+
+export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName: string; pdfBase64: string }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const profile = await loadTutorProfileOwner(db, userId);
+  if (!profile) throw new Error("Tutor profile not found");
+
+  const rating = await getTutorRatingSummary(profile.tutorId);
+  const catalogLabels = await loadTutorCatalogLabels(db, {
+    subjects: [...(profile.primarySubjectIds ?? []), ...(profile.additionalSubjectIds ?? [])],
+    classLevels: profile.classLevelIds ?? [],
+    curricula: profile.curriculumIds ?? [],
+    universityId: profile.universityId ?? null,
+    facultyDepartmentId: profile.facultyDepartmentId ?? null,
+    locations: [
+      ...(profile.currentLocationId ? [profile.currentLocationId] : []),
+      ...(profile.teachingAreaIds ?? []),
+    ],
+  });
+
+  let photoBuffer: Buffer | null = null;
+  if (profile.profilePhotoKey) {
+    try {
+      photoBuffer = await storageRead(profile.profilePhotoKey);
+    } catch {
+      photoBuffer = null;
+    }
+  }
+
+  const subjectNames = [
+    ...(profile.primarySubjectIds ?? []).map((id: number | string) => catalogLabels.subjects[String(id)]).filter(Boolean),
+    ...(profile.additionalSubjectIds ?? []).map((id: number | string) => catalogLabels.subjects[String(id)]).filter(Boolean),
+  ];
+  const levelNames = (profile.classLevelIds ?? []).map((id: number | string) => catalogLabels.classLevels[String(id)]).filter(Boolean);
+  const preferredLocationNames = (profile.teachingAreaIds ?? []).map((id: string) => catalogLabels.locations[id]).filter(Boolean);
+  const institutionName = profile.universityId && catalogLabels.universities[String(profile.universityId)]
+    ? catalogLabels.universities[String(profile.universityId)]
+    : (profile.institution || undefined);
+
+  const locationLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
+
+  const cvDoc: TutorCvDocument = {
+    tutorId: profile.tutorId,
+    tutorNumber: profile.tutorNumber,
+    name: profile.name,
+    headline: profile.headline,
+    gender: profile.gender,
+    phone: profile.phone,
+    contactEmail: profile.contactEmail,
+    locationLabel,
+    photoBuffer,
+    verified: profile.verified,
+    ratingAverage: rating.count > 0 ? rating.average : undefined,
+    reviewCount: rating.count,
+    highestEducation: profile.highestEducation,
+    institution: institutionName,
+    education: profile.education,
+    educationRecords: profile.educationRecords,
+    subjects: subjectNames.length ? subjectNames : profile.subjects,
+    levels: levelNames.length ? levelNames : profile.levels,
+    tuitionTypes: profile.tuitionTypes,
+    teachingExperienceYears: profile.teachingExperienceYears ?? profile.experience,
+    priorTeachingExperience: profile.priorTeachingExperience,
+    specialExpertise: profile.specialExpertise,
+    academicAchievement: profile.academicAchievement,
+    aboutMe: profile.aboutMe || profile.about,
+    preferredLocations: preferredLocationNames,
+    publicProfileUrl: `https://connecttutorsbd.com/tutors/${profile.tutorId}`,
+  };
+
+  const pdfBuffer = await renderTutorCvPdf(cvDoc);
+  const fileName = tutorCvFileName(profile.tutorNumber, profile.name);
+  return {
+    fileName,
+    pdfBase64: pdfBuffer.toString("base64"),
+  };
 }
 
 function catalogLabelMap(rows: Array<{ id: number | string; label: string }>): Record<string, string> {
@@ -7435,12 +7513,12 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const [timeCountRows] = await database
     .select({
       total: count(),
-      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as int)`,
-      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as int)`,
-      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as int)`,
-      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as int)`,
-      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as int)`,
-      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as int)`,
+      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as unsigned)`,
+      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as unsigned)`,
+      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as unsigned)`,
+      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as unsigned)`,
+      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as unsigned)`,
+      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as unsigned)`,
     })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobs.id, tutorJobInterests.tutorJobId))

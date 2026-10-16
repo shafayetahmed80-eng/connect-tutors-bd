@@ -9,6 +9,7 @@ describe("Tutor Dashboard navigation", () => {
         items: [
           "Dashboard",
           "Job Board",
+          "Advance Matching Jobs",
           "Status",
           "Profile",
           "Confirmation Letter",
@@ -37,6 +38,7 @@ describe("Tutor Dashboard navigation", () => {
     expect(tutorDashboardNavigation.filter(item => item.sectionLabel === "Active workspace").map(item => item.label)).toEqual([
       "Dashboard",
       "Job Board",
+      "Advance Matching Jobs",
       "Status",
       "Profile",
       "Confirmation Letter",
@@ -98,5 +100,6 @@ describe("Tutor Dashboard navigation", () => {
   it("keeps a safe selected Apply Now return on the protected Profile section", () => {
     expect(getTutorDashboardSection("/tutor/dashboard/profile?returnTo=%2Fjob-board%3Fjob%3DCT-JOB-000042")).toBe("profile");
     expect(getTutorDashboardSection("/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3DCT-JOB-000042")).toBe("jobs");
+    expect(getTutorDashboardSection("/tutor/dashboard/advance-matching")).toBe("advance-matching");
   });
 });
