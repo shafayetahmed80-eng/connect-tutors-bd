@@ -71,6 +71,7 @@ describe("TutorRecommendedJobs", () => {
     render(<TutorRecommendedJobs />);
 
     expect(screen.getByText("Recommended For You")).toBeTruthy();
+    expect(screen.getByText("Advance Matching Jobs")).toBeTruthy();
     expect(screen.getByText("5 Matching")).toBeTruthy();
     expect(screen.getByText("Class 10")).toBeTruthy();
     expect(screen.getByText("Physics, Higher Mathematics")).toBeTruthy();
