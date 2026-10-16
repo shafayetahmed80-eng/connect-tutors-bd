@@ -2616,6 +2616,18 @@ export const appRouter = router({
         if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Tutor profile is unavailable." });
         return profile;
       }),
+    getTutorCvPdf: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
+      .query(async ({ input }) => {
+        try {
+          return await db.getTutorCvPdfForAdmin(input);
+        } catch (error) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: error instanceof Error ? error.message : "Failed to generate tutor CV PDF",
+          });
+        }
+      }),
     getTutorModerationHistory: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .query(({ input }) => db.listTutorModerationEvents(input.tutorId)),

@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
 import BackLink from "@/components/BackLink";
+import { TutorCvPreviewModal } from "@/components/TutorCvPreviewModal";
 
 const statusStyles: Record<string, string> = {
   draft: "bg-j-surface-muted text-j-ink-soft",
@@ -128,6 +129,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const profile = profileQuery.data;
 
   const [moderating, setModerating] = useState(false);
+  const [cvOpen, setCvOpen] = useState(false);
   const [nextStatus, setNextStatus] = useState<ModerationTarget>("approved");
   const [reason, setReason] = useState("");
   const moderation = trpc.admin.moderateTutorProfile.useMutation({
@@ -174,9 +176,18 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 
     <div className="flex flex-wrap items-center justify-between gap-3">
       <BackLink href="/admin/tutor-profiles">Back to Tutor Profiles</BackLink>
-      <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-control items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
-        <MessageCircle size={15} /> Message
-      </Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCvOpen(true)}
+          className="inline-flex h-control items-center gap-2 rounded-xl bg-[#0d5fae] px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#0a4c8c]"
+        >
+          <FileText size={15} /> View Official CV
+        </button>
+        <Link href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`} className="inline-flex h-control items-center gap-1.5 rounded-lg border border-j-border px-3 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+          <MessageCircle size={15} /> Message
+        </Link>
+      </div>
     </div>
 
     {/*
@@ -229,6 +240,28 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 
     {profile.userId ? <AdminPasswordResetLink userId={profile.userId} phone={profile.phone} /> : null}
 
+    {/* Official Tutor CV & Biodata Banner */}
+    <section className="rounded-2xl border border-sky-200 bg-gradient-to-r from-[#eff6ff] to-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0d5fae] text-white shadow-sm">
+            <FileText size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-j-ink">Official Tutor CV &amp; Biodata</h3>
+            <p className="text-2xs text-j-ink-soft">Executive 1-page printable biodata with Inter typography and verification seal</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCvOpen(true)}
+          className="inline-flex h-control items-center gap-2 rounded-xl bg-[#0d5fae] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0a4c8c]"
+        >
+          <FileText size={15} /> Preview &amp; Download PDF
+        </button>
+      </div>
+    </section>
+
     {/* Private documents - Admin-only signed URLs. */}
     <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
       <h3 className="mb-3 font-bold tracking-[-0.02em] text-j-ink">Documents</h3>
@@ -265,6 +298,14 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         <button type="button" disabled={moderation.isPending || (nextStatus !== "approved" && !reason.trim())} onClick={() => moderation.mutate({ tutorId, nextStatus, reason: reason.trim() || undefined })} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white disabled:opacity-50">{moderation.isPending ? "Saving…" : "Save moderation"}</button>
       </ModalFooter>
     </Modal> : null}
+
+    <TutorCvPreviewModal
+      isOpen={cvOpen}
+      onClose={() => setCvOpen(false)}
+      tutorId={tutorId}
+      tutorName={profile.name}
+      tutorNumber={profile.tutorNumber}
+    />
   </div>;
 }
 

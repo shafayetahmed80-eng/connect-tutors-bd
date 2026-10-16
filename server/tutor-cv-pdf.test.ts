@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
+import { renderTutorCvPdf, resolveTutorCvStatus, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
 
 describe("tutorCvFileName", () => {
   it("formats standard file names cleanly", () => {
@@ -8,25 +8,73 @@ describe("tutorCvFileName", () => {
   });
 });
 
+describe("resolveTutorCvStatus", () => {
+  it("resolves verified status correctly", () => {
+    const verifiedStatus = resolveTutorCvStatus("approved", true);
+    expect(verifiedStatus.badgeText).toBe("✓  VERIFIED TUTOR");
+    expect(verifiedStatus.badgeBg).toBe("#16a34a");
+    expect(verifiedStatus.statTitle).toBe("100% Verified");
+    expect(verifiedStatus.sealStatus).toBe("OFFICIALLY VERIFIED PROFILE");
+  });
+
+  it("resolves approved unverified profile correctly", () => {
+    const approvedStatus = resolveTutorCvStatus("approved", false);
+    expect(approvedStatus.badgeText).toBe("✓  APPROVED PROFILE");
+    expect(approvedStatus.badgeBg).toBe("#0284c7");
+    expect(approvedStatus.statTitle).toBe("Approved Profile");
+    expect(approvedStatus.sealStatus).toBe("OFFICIALLY APPROVED PROFILE");
+  });
+
+  it("resolves pending review profile correctly", () => {
+    const pendingStatus = resolveTutorCvStatus("pending", false);
+    expect(pendingStatus.badgeText).toBe("UNDER REVIEW");
+    expect(pendingStatus.badgeBg).toBe("#d97706");
+  });
+
+  it("resolves draft profile correctly", () => {
+    const draftStatus = resolveTutorCvStatus("draft", false);
+    expect(draftStatus.badgeText).toBe("DRAFT PROFILE");
+    expect(draftStatus.badgeBg).toBe("#475569");
+    expect(draftStatus.statTitle).toBe("Draft Profile");
+  });
+});
+
 describe("renderTutorCvPdf", () => {
   const isPdf = (bytes: Buffer) => bytes.subarray(0, 5).toString("latin1") === "%PDF-";
+  const countPdfPages = (bytes: Buffer) => {
+    const text = bytes.toString("latin1");
+    const matches = text.match(/\/Type\s*\/Page\b/g);
+    return matches ? matches.length : 1;
+  };
 
-  const sampleCv: TutorCvDocument = {
+  const comprehensiveCv: TutorCvDocument = {
     tutorId: "tutor_xyz123",
     tutorNumber: 84210,
     name: "মোঃ রাশেদুল ইসলাম",
-    headline: "B.Sc in Civil Engineering (BUET) | Experienced Science Tutor",
+    headline: "M.Sc & B.Sc in Civil Engineering (BUET) | Senior Science Tutor",
+    gender: "male",
+    dateOfBirth: "15 Jan 1998",
+    religion: "Islam",
     phone: "01711234567",
     contactEmail: "rashed.buet@gmail.com",
-    locationLabel: "ধানমন্ডি, ঢাকা",
+    locationLabel: "মিরপুর-১০, ঢাকা, বাংলাদেশ",
     verified: true,
     ratingAverage: 4.9,
     reviewCount: 14,
-    highestEducation: "Honours / Bachelor",
+    highestEducation: "Masters / Post Graduation",
     institution: "Bangladesh University of Engineering and Technology (BUET)",
     educationRecords: [
       {
-        qualificationLevel: "Honours / Bachelor",
+        qualificationLevel: "Masters",
+        degreeExamTitle: "M.Sc in Structural Engineering",
+        instituteName: "BUET",
+        majorGroup: "Civil Engineering",
+        resultGpa: "3.92 / 4.00",
+        studyStartYear: 2022,
+        studyEndYear: 2024,
+      },
+      {
+        qualificationLevel: "Honours",
         degreeExamTitle: "B.Sc in Civil Engineering",
         instituteName: "BUET",
         majorGroup: "Engineering",
@@ -35,39 +83,69 @@ describe("renderTutorCvPdf", () => {
         studyEndYear: 2022,
       },
       {
-        qualificationLevel: "Higher Secondary / HSC",
+        qualificationLevel: "HSC",
         degreeExamTitle: "HSC",
         instituteName: "Notre Dame College",
         majorGroup: "Science",
+        curriculum: "Bangla Version",
         resultGpa: "5.00",
         passingYear: 2017,
       },
       {
-        qualificationLevel: "Secondary / SSC",
+        qualificationLevel: "SSC",
         degreeExamTitle: "SSC",
         instituteName: "Ideal School & College",
         majorGroup: "Science",
+        curriculum: "Bangla Version",
         resultGpa: "5.00",
         passingYear: 2015,
       },
     ],
-    subjects: ["Physics", "Higher Mathematics", "ICT", "General Science"],
+    subjects: ["Physics", "Higher Mathematics", "ICT", "General Science", "Chemistry"],
     levels: ["Class 9", "Class 10", "HSC 1st Year", "HSC 2nd Year"],
     tuitionTypes: ["home", "online"],
     teachingExperienceYears: 4,
-    priorTeachingExperience: "Taught 30+ students in Dhanmondi and Mirpur. Specialized in board exam preparation and conceptual problem solving.",
-    preferredLocations: ["Dhanmondi", "Lalmatia", "Mirpur", "Mohammadpur"],
-    aboutMe: "Dedicated educator with 4+ years of tutoring experience in high school and college science subjects.",
+    priorTeachingExperience: "ধানমন্ডি ও মিরপুরে ৩০+ শিক্ষার্থীকে সফলভাবে পড়ানোর অভিজ্ঞতা। বোর্ড পরীক্ষায় এ+ পাওয়ার কৌশল ও নিয়মিত পরীক্ষা নেওয়া হয়।",
+    teachingApproach: "বেসিক কনসেপ্ট ক্লিয়ার করা, নিয়মিত প্র্যাকটিস ও হ্যান্ডনোট প্রদান। প্রতিটি টপিক সহজভাবে বিশ্লেষণ করে পড়াই।",
+    specialExpertise: "উচ্চতর গণিত ও পদার্থবিজ্ঞানের জটিল সমস্যা সহজ কৌশলে সমাধান।",
+    whyChooseMe: "বুয়েট গ্র্যাজুয়েট হিসেবে বিষয়ভিত্তিক গভীর জ্ঞান, ধৈর্যশীল আচরণ ও শিক্ষার্থীদের রেজাল্ট নিশ্চিত করার আন্তরিক প্রচেষ্টা।",
+    preferredLocations: ["Mirpur", "Dhanmondi", "Mohammadpur", "Uttara"],
+    aboutMe: "নিবেদিতপ্রাণ শিক্ষক। প্রতিটি শিক্ষার্থীর দুর্বলতা চিহ্নিত করে তাদের আত্মবিশ্বাস ও মেধার বিকাশ ঘটাতে সচেষ্ট।",
   };
 
-  it("renders a valid 1-page PDF buffer from sample tutor CV data", async () => {
-    const bytes = await renderTutorCvPdf(sampleCv);
+  it("renders a valid 1-page PDF buffer with all enriched fields (DOB, religion, location, whyChooseMe, approach, 4 education records)", async () => {
+    const bytes = await renderTutorCvPdf(comprehensiveCv);
     expect(bytes).toBeInstanceOf(Buffer);
     expect(bytes.length).toBeGreaterThan(1000);
     expect(isPdf(bytes)).toBe(true);
+    expect(countPdfPages(bytes)).toBe(1);
+    // Metadata should have "Connect Tutors" as Author
+    expect(bytes.toString("latin1")).toContain("Connect Tutors");
   });
 
-  it("handles minimal tutor CV data without crashing", async () => {
+  it("renders draft and approved profile statuses gracefully as 1-page PDFs", async () => {
+    const draftCv: TutorCvDocument = {
+      tutorId: "tutor_draft",
+      tutorNumber: 101,
+      name: "Draft Tutor",
+      profileStatus: "draft",
+      verified: false,
+    };
+    const draftBytes = await renderTutorCvPdf(draftCv);
+    expect(countPdfPages(draftBytes)).toBe(1);
+
+    const approvedCv: TutorCvDocument = {
+      tutorId: "tutor_appr",
+      tutorNumber: 102,
+      name: "Approved Tutor",
+      profileStatus: "approved",
+      verified: false,
+    };
+    const apprBytes = await renderTutorCvPdf(approvedCv);
+    expect(countPdfPages(apprBytes)).toBe(1);
+  });
+
+  it("handles minimal tutor CV data without crashing and maintains single page", async () => {
     const minimalCv: TutorCvDocument = {
       tutorId: "min_tutor_1",
       tutorNumber: null,
@@ -76,5 +154,24 @@ describe("renderTutorCvPdf", () => {
     const bytes = await renderTutorCvPdf(minimalCv);
     expect(bytes).toBeInstanceOf(Buffer);
     expect(isPdf(bytes)).toBe(true);
+    expect(countPdfPages(bytes)).toBe(1);
+  });
+
+  it("sorts education records chronologically by qualification hierarchy (Masters -> Honours -> HSC -> SSC)", async () => {
+    const shuffledCv: TutorCvDocument = {
+      tutorId: "tutor_shuffled",
+      tutorNumber: 12345,
+      name: "Anisur Rahman",
+      educationRecords: [
+        { qualificationLevel: "SSC", degreeExamTitle: "SSC", passingYear: 2014 },
+        { qualificationLevel: "Masters", degreeExamTitle: "MBA", passingYear: 2022 },
+        { qualificationLevel: "HSC", degreeExamTitle: "HSC", passingYear: 2016 },
+        { qualificationLevel: "Honours", degreeExamTitle: "BBA", passingYear: 2020 },
+      ],
+    };
+    const bytes = await renderTutorCvPdf(shuffledCv);
+    expect(isPdf(bytes)).toBe(true);
+    expect(countPdfPages(bytes)).toBe(1);
   });
 });
+

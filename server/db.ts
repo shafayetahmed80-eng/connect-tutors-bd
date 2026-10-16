@@ -165,7 +165,7 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
-import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument } from "./tutor-cv-pdf";
+import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument, type TutorCvEducationRecord } from "./tutor-cv-pdf";
 import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
 import { confirmationLetterFileName } from "@shared/confirmation-letter";
@@ -1853,6 +1853,7 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     facultyDepartmentId: profile.facultyDepartmentId ?? null,
     locations: [
       ...(profile.currentLocationId ? [profile.currentLocationId] : []),
+      ...(profile.currentCityId ? [profile.currentCityId] : []),
       ...(profile.teachingAreaIds ?? []),
     ],
   });
@@ -1875,15 +1876,72 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
   const institutionName = profile.universityId && catalogLabels.universities[String(profile.universityId)]
     ? catalogLabels.universities[String(profile.universityId)]
     : (profile.institution || undefined);
+  const departmentName = profile.facultyDepartmentId && catalogLabels.facultyDepartments[String(profile.facultyDepartmentId)]
+    ? catalogLabels.facultyDepartments[String(profile.facultyDepartmentId)]
+    : undefined;
 
-  const locationLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
+  // Merge university degree from academic profile (Honours/Masters) with itemized school/board education records
+  const mergedEducationRecords: TutorCvEducationRecord[] = [...(profile.educationRecords ?? [])];
+  if (profile.highestEducation || institutionName || profile.degreeExamTitle) {
+    const universityLevel = profile.highestEducation || "Honours";
+    const alreadyHasUniversityLevel = mergedEducationRecords.some(r =>
+      r.qualificationLevel?.trim().toLowerCase() === universityLevel.trim().toLowerCase() ||
+      (r.instituteName && institutionName && r.instituteName.trim().toLowerCase() === institutionName.trim().toLowerCase())
+    );
+
+    if (!alreadyHasUniversityLevel) {
+      mergedEducationRecords.unshift({
+        qualificationLevel: universityLevel,
+        degreeExamTitle: profile.degreeExamTitle || universityLevel,
+        instituteName: institutionName,
+        majorGroup: departmentName || undefined,
+        resultGpa: profile.resultGpa || undefined,
+        passingYear: profile.graduationYear || undefined,
+        currentlyStudying: profile.studyStatus === "studying" ? 1 : 0,
+      });
+    }
+  }
+
+  // Combine Location + City + Country ("Location, City, Bangladesh")
+  const rawLocLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
+  const rawCityLabel = (profile.currentCityId && catalogLabels.locations[profile.currentCityId]) || undefined;
+
+  const locParts: string[] = [];
+  if (rawLocLabel && rawLocLabel.trim()) {
+    locParts.push(rawLocLabel.trim());
+  }
+  if (rawCityLabel && rawCityLabel.trim()) {
+    const lowerLoc = rawLocLabel?.toLowerCase() || "";
+    const lowerCity = rawCityLabel.trim().toLowerCase();
+    if (!lowerLoc.includes(lowerCity)) {
+      locParts.push(rawCityLabel.trim());
+    }
+  }
+  locParts.push("Bangladesh");
+  const locationLabel = locParts.filter(Boolean).join(", ");
+
+  const formatDob = (rawDob: string | undefined): string | undefined => {
+    if (!rawDob) return undefined;
+    const trimmed = rawDob.trim();
+    if (!trimmed) return undefined;
+    const dateObj = new Date(trimmed);
+    if (!isNaN(dateObj.getTime())) {
+      const day = dateObj.getDate();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${day} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+    }
+    return trimmed;
+  };
 
   const cvDoc: TutorCvDocument = {
     tutorId: profile.tutorId,
     tutorNumber: profile.tutorNumber,
     name: profile.name,
+    profileStatus: profile.profileStatus,
     headline: profile.headline,
     gender: profile.gender,
+    dateOfBirth: formatDob(profile.dateOfBirth),
+    religion: profile.privateDetails?.religion?.trim() || undefined,
     phone: profile.phone,
     contactEmail: profile.contactEmail,
     locationLabel,
@@ -1894,13 +1952,15 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     highestEducation: profile.highestEducation,
     institution: institutionName,
     education: profile.education,
-    educationRecords: profile.educationRecords,
+    educationRecords: mergedEducationRecords,
     subjects: subjectNames.length ? subjectNames : profile.subjects,
     levels: levelNames.length ? levelNames : profile.levels,
     tuitionTypes: profile.tuitionTypes,
     teachingExperienceYears: profile.teachingExperienceYears ?? profile.experience,
     priorTeachingExperience: profile.priorTeachingExperience,
     specialExpertise: profile.specialExpertise,
+    teachingApproach: profile.teachingApproach,
+    whyChooseMe: profile.whyChooseMe,
     academicAchievement: profile.academicAchievement,
     aboutMe: profile.aboutMe || profile.about,
     preferredLocations: preferredLocationNames,
@@ -2042,6 +2102,25 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
     createdAt: owner.createdAt ?? null,
     updatedAt: owner.updatedAt ?? null,
   };
+}
+
+/**
+ * Generates the official 1-page Tutor CV & Biodata PDF for Admin inspection.
+ */
+export async function getTutorCvPdfForAdmin(input: { tutorId: string }): Promise<{ fileName: string; pdfBase64: string }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database unavailable");
+  const [owner] = await database
+    .select({ userId: tutors.userId })
+    .from(tutors)
+    .where(eq(tutors.id, input.tutorId))
+    .limit(1);
+
+  if (!owner || owner.userId == null) {
+    throw new Error("Tutor profile not found");
+  }
+
+  return await getTutorCvPdfByUserId(owner.userId);
 }
 
 export async function saveTutorProfilePhotoKey(userId: number, key: string) {

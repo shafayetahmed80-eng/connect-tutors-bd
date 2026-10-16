@@ -21,6 +21,7 @@
     "db:reset-admin-login": "node scripts/reset-admin-login.mjs"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
     "@fontsource/noto-sans-bengali": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
