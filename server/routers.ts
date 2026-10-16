@@ -7,6 +7,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
+import { getRecommendedJobsForTutor } from "./tutor-job-recommender";
 import { adminJobFiltersSchema } from "./admin-job-filters";
 import { adminGuardianRequestQueueFiltersSchema } from "./admin-request-filters";
 import { ADMIN_TUTOR_LOCATION_LIMIT, ADMIN_TUTOR_SUBJECT_LIMIT } from "@shared/admin-tutor-filters";
@@ -1406,6 +1407,11 @@ export const appRouter = router({
       const tutorId = await getAuthenticatedTutorProfileId(ctx.user.id);
       return db.listTutorJobInterestsForTutor(tutorId);
     }),
+    recommendedJobs: activeTutorProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(20).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return getRecommendedJobsForTutor(ctx.user.id, input?.limit ?? 3);
+      }),
   }),
   // A Tutor's platform charge: where it stands, and telling us they have paid.
   tutorPayments: router({

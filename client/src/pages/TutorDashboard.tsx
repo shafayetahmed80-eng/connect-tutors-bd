@@ -20,6 +20,7 @@ import { readTutorOnboardingDraft, type TutorOnboardingDraft } from "@/lib/tutor
 import { buildTutorApplyJobBoardPath, getTutorApplyReturnFromLocation, readStoredTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorApplicationStatus } from "./TutorApplicationStatus";
 import { TutorDashboardStageNav } from "./TutorDashboardStageNav";
+import { TutorRecommendedJobs } from "@/components/TutorRecommendedJobs";
 import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorAdminChatPanel } from "./TutorAdminChat";
@@ -289,6 +290,7 @@ export default function TutorDashboard() {
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
+      {section === "dashboard" && !profileQuery.isLoading && !statsQuery.isLoading && <TutorRecommendedJobs />}
       {section === "profile" && profileQuery.isLoading && <TutorProfileSkeleton />}
       {section === "profile" && !profileQuery.isLoading && <TutorProfileWorkspace profile={profile} onboardingFallback={onboardingFallback} onDirtyChange={setHasUnsavedProfileChanges} tutorApplyReturnTo={tutorApplyReturnTo} onReturnToSelectedJob={returnToSelectedTutorJob} />}
       {section === "preferences" && <Preferences profile={profile} navigate={navigate} />}

@@ -45,6 +45,8 @@ describe("Tutor profile access", () => {
     await expect(createCaller("guardian").tutor.getMyProfile()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller().tutor.getMyCvPdf()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(createCaller("guardian").tutor.getMyCvPdf()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller().tutor.recommendedJobs()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(createCaller("guardian").tutor.recommendedJobs()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
 
