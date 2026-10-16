@@ -6,6 +6,7 @@ import { AdminFacebookPostsContent } from "./AdminFacebookPosts";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  fetchFn: vi.fn(),
   liveData: {
     items: [
       {
@@ -20,12 +21,12 @@ const mocks = vi.hoisted(() => ({
         addressDetails: "Road 8/A",
         budgetAmount: 9000,
         daysPerWeek: 3,
-        tutoringTime: "সন্ধ্যা ৬:০০",
+        tutoringTime: "6:00 PM",
         studentGender: "male",
         studentCount: 1,
         preferredGender: "female",
         instituteName: "BUET / DU",
-        notes: "পদার্থবিজ্ঞানে বিশেষ যত্ন নিতে হবে।",
+        notes: "Careful attention needed in Physics.",
         status: "matched",
         publicationState: "published",
         createdAt: new Date("2026-10-15T10:00:00.000Z"),
@@ -38,11 +39,16 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+mocks.fetchFn.mockImplementation(() => Promise.resolve(mocks.liveData));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       admin: {
-        listPostedJobs: { invalidate: vi.fn() },
+        listPostedJobs: {
+          invalidate: vi.fn(),
+          fetch: mocks.fetchFn,
+        },
       },
     }),
     admin: {
@@ -116,20 +122,20 @@ describe("AdminFacebookPostsContent", () => {
     // Salary & Schedule
     expect(screen.getByText("9,000 Taka")).toBeDefined();
     expect(screen.getByText("3 days / week")).toBeDefined();
-    expect(screen.getByText("সন্ধ্যা ৬:০০")).toBeDefined();
+    expect(screen.getByText("6:00 PM")).toBeDefined();
 
     // Student & Tutor Preference
     expect(screen.getByText("Female")).toBeDefined();
     expect(screen.getByText("BUET / DU")).toBeDefined();
 
     // Special notes
-    expect(screen.getByText("পদার্থবিজ্ঞানে বিশেষ যত্ন নিতে হবে।")).toBeDefined();
+    expect(screen.getByText("Careful attention needed in Physics.")).toBeDefined();
   });
 
-  it("copies formatted Facebook post text to clipboard on 'Copy Post' click", async () => {
+  it("copies single tuition in English inline pipe format on 'Copy (EN)' click", async () => {
     render(<AdminFacebookPostsContent />);
 
-    const copyBtn = screen.getByRole("button", { name: /Copy Facebook post for job/i });
+    const copyBtn = screen.getByRole("button", { name: /Copy English inline post for job/i });
     expect(copyBtn).toBeDefined();
 
     fireEvent.click(copyBtn);
@@ -137,30 +143,71 @@ describe("AdminFacebookPostsContent", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
-    expect(calledText).toContain("🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors BD) 🔴");
-    expect(calledText).toContain("📚 শ্রেণি/কোর্স: Class 10 (National Curriculum)");
-    expect(calledText).toContain("📝 বিষয়সমূহ: Higher Math, Physics");
-    expect(calledText).toContain("📍 লোকেশন: Dhanmondi, Dhaka (Road 8/A)");
-    expect(calledText).toContain("💰 পারিশ্রমিক/বেতন: 9,000 Taka");
-    expect(calledText).toContain("📅 সপ্তাহে দিন: 3 দিন/সপ্তাহ");
-    expect(calledText).toContain("⏰ পড়ার সময়: সন্ধ্যা ৬:০০");
-    expect(calledText).toContain("🎓 টিউটর অগ্রাধিকার: Female টিউটর (BUET / DU)");
-    expect(calledText).toContain("📋 বিশেষ শর্তাবলী: পদার্থবিজ্ঞানে বিশেষ যত্ন নিতে হবে।");
-    expect(calledText).toContain("/job-board?job=");
+    expect(calledText).toContain("Job #");
+    expect(calledText).toContain("Class 10 (National Curriculum)");
+    expect(calledText).toContain("Higher Math, Physics");
+    expect(calledText).toContain("Dhanmondi, Dhaka (Road 8/A)");
+    expect(calledText).toContain("9,000 BDT/month");
+    expect(calledText).toContain("3 Days/week, 6:00 PM");
+    expect(calledText).toContain("Female Tutor (BUET / DU)");
+    expect(calledText).toContain("1 Student (Male)");
+    expect(calledText).toContain("Apply:");
 
     await waitFor(() => {
       expect(screen.getByText("Copied!")).toBeDefined();
     });
   });
 
-  it("opens preview modal when Preview Post button is clicked", async () => {
+  it("copies all filtered tuitions in English side-by-side format via 'Copy All Filtered'", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
+    expect(copyAllBtn).toBeDefined();
+
+    fireEvent.click(copyAllBtn);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalled();
+    });
+
+    const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledText).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴");
+    expect(calledText).toContain("Total 1 Tuition Available right now.");
+    expect(calledText).toContain("1. Job #");
+    expect(calledText).toContain("Higher Math, Physics");
+    expect(calledText).toContain("9,000 BDT/month");
+    expect(calledText).toContain("/job-board");
+  });
+
+  it("opens bulk preview modal when 'Preview Bulk' button is clicked", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const previewBulkBtn = screen.getByRole("button", { name: /Preview Bulk/i });
+    fireEvent.click(previewBulkBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Bulk Facebook Post Preview/i)).toBeDefined();
+    });
+
+    const copyModalBtn = screen.getByRole("button", { name: /Copy All to Clipboard/i });
+    fireEvent.click(copyModalBtn);
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalled();
+  });
+
+  it("opens single preview modal and allows toggling format", async () => {
     render(<AdminFacebookPostsContent />);
 
     const previewBtn = screen.getByRole("button", { name: /Preview Facebook post for job/i });
     fireEvent.click(previewBtn);
 
     expect(screen.getByText(/Facebook Post Preview/i)).toBeDefined();
-    expect(screen.getByText(/Copy to Clipboard/i)).toBeDefined();
+
+    // Toggle Bengali format
+    const bnBtn = screen.getByRole("button", { name: /Bengali \(Detailed Post\)/i });
+    fireEvent.click(bnBtn);
+
+    expect(screen.getByText(/ফেসবুক গ্রুপ বা পেইজে বিস্তারিত পোস্ট করার উপযোগী ফরম্যাট/i)).toBeDefined();
 
     const copyModalBtn = screen.getByRole("button", { name: /Copy to Clipboard/i });
     fireEvent.click(copyModalBtn);
@@ -180,3 +227,4 @@ describe("AdminFacebookPostsContent", () => {
     });
   });
 });
+
