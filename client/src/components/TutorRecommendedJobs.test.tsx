@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import React from "react";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { trpc } from "@/lib/trpc";
 import { TutorRecommendedJobs } from "./TutorRecommendedJobs";
 
 afterEach(() => cleanup());
@@ -86,5 +87,31 @@ describe("TutorRecommendedJobs", () => {
 
     const applyBtn = screen.getByRole("button", { name: /View Details & Apply/i });
     expect(applyBtn).toBeTruthy();
+  });
+
+  it("formats subjects cleanly stripping inverted commas or JSON brackets", () => {
+    const rawWithQuotes = {
+      ...mockRecommendedData,
+      items: [
+        {
+          ...mockRecommendedData.items[0],
+          job: {
+            ...mockRecommendedData.items[0].job,
+            subjects: '["Bangla", "English", "General Science"]',
+          },
+        },
+      ],
+    };
+
+    const queryMock = vi.mocked(trpc.tutor.recommendedJobs.useQuery);
+    queryMock.mockReturnValue({
+      data: rawWithQuotes,
+      isLoading: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<TutorRecommendedJobs />);
+    expect(screen.getByText("Bangla, English, General Science")).toBeTruthy();
+    expect(screen.queryByText(/\["Bangla"/)).toBeNull();
   });
 });

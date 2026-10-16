@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatSalaryAmount } from "@shared/salary-amount";
-import { formatLocation, formatPostedDate, formatTuitionType } from "@shared/job-card";
+import { formatLocation, formatPostedDate, formatSubjects, formatTuitionType } from "@shared/job-card";
 import JobDetailsModal, { type JobDetailsData } from "@/components/JobDetailsModal";
 import { JobIdTag } from "@/components/JobIdTag";
 import { RecordIcon } from "@/components/recordIcons";
@@ -279,7 +279,7 @@ export function TutorRecommendedJobs({ limit = 20 }: { limit?: number }) {
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
                     <Fact icon={<House size={13} />} label="Tuition Type" value={formatTuitionType(job.tuitionType)} />
                     <Fact icon={<Wallet size={13} />} label="Salary" value={formatSalaryAmount(job.budgetAmount)} />
-                    <Fact icon={<BookOpen size={13} />} label="Subjects" value={job.subjects || "Various"} />
+                    <Fact icon={<BookOpen size={13} />} label="Subjects" value={formatSubjects(job.subjects)} />
                     <Fact
                       icon={<MapPin size={13} />}
                       label="Location"

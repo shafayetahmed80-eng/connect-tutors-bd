@@ -76,11 +76,25 @@ export function formatStudentCount(count: number | null | undefined): string {
 export function readSubjects(value: unknown): string[] {
   if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
   if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
     try {
-      const parsed: unknown = JSON.parse(value);
+      const parsed: unknown = JSON.parse(trimmed);
       if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+      if (typeof parsed === "string" && Boolean(parsed.trim())) {
+        return readSubjects(parsed);
+      }
     } catch {
-      // A malformed legacy row shows nothing rather than raw JSON.
+      // Not valid JSON array
+    }
+    // Handle comma-separated strings or strings with quotes, ignoring malformed json like "{not json"
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("<")) {
+      const parts = trimmed
+        .replace(/^[\[\s]+|[\]\s]+$/g, "")
+        .split(",")
+        .map(p => p.trim().replace(/^["']+|["']+$/g, "").trim())
+        .filter(Boolean);
+      if (parts.length > 0) return parts;
     }
   }
   return [];

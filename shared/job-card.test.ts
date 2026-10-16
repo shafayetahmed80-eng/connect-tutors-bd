@@ -70,6 +70,10 @@ describe("job card wording", () => {
     expect(readSubjects(["Bangla", "ICT"])).toEqual(["Bangla", "ICT"]);
     expect(readSubjects('["Higher Maths","ICT"]')).toEqual(["Higher Maths", "ICT"]);
     expect(formatSubjects('["Higher Maths","ICT"]')).toBe("Higher Maths, ICT");
+    expect(readSubjects('"Physics", "Higher Mathematics"')).toEqual(["Physics", "Higher Mathematics"]);
+    expect(formatSubjects('"Physics", "Higher Mathematics"')).toBe("Physics, Higher Mathematics");
+    expect(readSubjects('Physics, Higher Mathematics')).toEqual(["Physics", "Higher Mathematics"]);
+    expect(formatSubjects('Physics, Higher Mathematics')).toBe("Physics, Higher Mathematics");
   });
 
   it("shows nothing rather than raw JSON when a row is malformed", () => {
