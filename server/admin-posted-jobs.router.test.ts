@@ -44,6 +44,13 @@ describe("admin.listPostedJobs", () => {
     // Applied Tutors asks for several stages at once.
     await createCaller().admin.listPostedJobs({ stages: ["live", "appointed", "confirmed"] });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "all", page: 1, pageSize: 20, postedBy: "all", stages: ["live", "appointed", "confirmed"] });
+
+    // Filters by Facebook post status
+    await createCaller().admin.listPostedJobs({ stage: "live", facebookPosted: "not_posted" });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 20, postedBy: "all", facebookPosted: "not_posted" });
+
+    await createCaller().admin.listPostedJobs({ stage: "live", facebookPosted: "posted" });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 20, postedBy: "all", facebookPosted: "posted" });
   });
 
   it("refuses an unknown stage, a silly page size, and a non-admin caller", async () => {

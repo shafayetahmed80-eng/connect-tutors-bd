@@ -1857,6 +1857,28 @@ export type FacebookPostTemplateRow = typeof facebookPostTemplates.$inferSelect;
 export type InsertFacebookPostTemplateRow = typeof facebookPostTemplates.$inferInsert;
 
 /**
+ * Tracks tuition requests posted to Facebook by admins.
+ * 1 row per tuition request.
+ */
+export const tutorRequestFacebookPosts = mysqlTable(
+  "tutor_request_facebook_posts",
+  {
+    requestId: int("requestId").primaryKey().references(() => tutorRequests.id, { onDelete: "cascade" }),
+    postedAt: timestamp("postedAt").defaultNow().notNull(),
+    postedByAdminId: int("postedByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.postedByAdminId], foreignColumns: [users.id], name: "trfp_posted_by_fk" }),
+    index("trfp_posted_at_idx").on(table.postedAt),
+  ]
+);
+
+export type TutorRequestFacebookPost = typeof tutorRequestFacebookPosts.$inferSelect;
+export type InsertTutorRequestFacebookPost = typeof tutorRequestFacebookPosts.$inferInsert;
+
+/**
  * One row per browser the Admin allowed push notifications on. `endpoint` is
  * the push service URL the browser vendor assigns; `p256dh`/`auth` are the
  * keys `web-push` needs to encrypt a message to it. Removed the moment the

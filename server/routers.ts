@@ -2501,6 +2501,15 @@ export const appRouter = router({
       .mutation(({ ctx, input }) => db.saveFacebookPostTemplates(input, ctx.user.id)),
     /** Reset Facebook post templates to defaults (Owner-only). */
     resetFacebookPostTemplates: ownerAdminProcedure.mutation(() => db.resetFacebookPostTemplates()),
+    /** Mark one or more tuition requests as posted (or unposted) to Facebook by any Admin. */
+    setFacebookPostStatus: adminProcedure
+      .input(
+        z.object({
+          requestIds: z.array(z.number().int().positive()).min(1).max(500),
+          isPosted: z.boolean(),
+        })
+      )
+      .mutation(({ ctx, input }) => db.setFacebookPostStatus(input.requestIds, input.isPosted, ctx.user.id)),
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
     getChatPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
     getPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
@@ -2675,6 +2684,7 @@ export const appRouter = router({
         postedBy: z.enum(["all", "admin"]).default("all"),
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "closed", "cancelled"])).min(1).max(6).optional(),
         filters: adminJobFiltersSchema.optional(),
+        facebookPosted: z.enum(["all", "posted", "not_posted"]).optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
     /** What the tuition filter panel may offer, from the tuitions in the list it sits on. */
