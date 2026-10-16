@@ -220,9 +220,11 @@ describe("AdminFacebookPostsContent", () => {
     expect(calledText).toContain("Job ID: ");
     expect(calledText).toContain("Higher Math, Physics");
     expect(calledText).toContain("9,000 BDT/month");
-    expect(calledText).toContain("🚀 HOW TO APPLY (100% FREE & DIRECT):");
+    expect(calledText).toContain("🚀 How to Apply:");
     expect(calledText).toContain("/job-board");
     expect(calledText).toContain("Connect Tutors — The Most Trusted Digital Tuition Platform");
+    expect(calledText).not.toContain("100% FREE");
+    expect(calledText).not.toContain("Zero Media Fees");
   });
 
   it("opens bulk preview modal and allows switching formats live via pills", async () => {
@@ -284,11 +286,11 @@ describe("AdminFacebookPostsContent", () => {
 
     expect(screen.getByText(/Facebook Post Preview/i)).toBeDefined();
 
-    // Toggle Bengali format
-    const bnBtn = screen.getByRole("button", { name: /Bengali \(Detailed Post\)/i });
-    fireEvent.click(bnBtn);
+    // Toggle inline format
+    const inlineBtn = screen.getByRole("button", { name: /Inline Line Only/i });
+    fireEvent.click(inlineBtn);
 
-    expect(screen.getByText(/ফেসবুক গ্রুপ বা পেইজে বিস্তারিত পোস্ট করার উপযোগী ফরম্যাট/i)).toBeDefined();
+    expect(screen.getByText(/শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য/i)).toBeDefined();
 
     const copyModalBtn = screen.getByRole("button", { name: /Copy to Clipboard/i });
     fireEvent.click(copyModalBtn);

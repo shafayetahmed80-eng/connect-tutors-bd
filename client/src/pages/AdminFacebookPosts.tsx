@@ -91,7 +91,7 @@ export function AdminFacebookPostsContent() {
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [previewJob, setPreviewJob] = useState<FacebookPostJobInput | null>(null);
-  const [previewFormat, setPreviewFormat] = useState<"english" | "bengali">("english");
+  const [previewFormat, setPreviewFormat] = useState<"full" | "inline">("full");
   const [isBulkCopying, setIsBulkCopying] = useState(false);
   const [isBulkCopied, setIsBulkCopied] = useState(false);
   const [selectedBulkFormat, setSelectedBulkFormat] = useState<FacebookPostBulkFormat>(() => {
@@ -454,7 +454,7 @@ export function AdminFacebookPostsContent() {
             <button
               type="button"
               onClick={() => {
-                setPreviewFormat("english");
+                setPreviewFormat("full");
                 setPreviewJob({ ...job, jobId: code, origin: window.location.origin });
               }}
               aria-label={`Preview Facebook post for job ${code}`}
@@ -648,35 +648,35 @@ export function AdminFacebookPostsContent() {
               <span className="text-2xs font-semibold text-j-ink-soft uppercase tracking-wider">Format:</span>
               <button
                 type="button"
-                onClick={() => setPreviewFormat("english")}
+                onClick={() => setPreviewFormat("full")}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                  previewFormat === "english"
+                  previewFormat === "full"
                     ? "bg-[#1877f2] text-white"
                     : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
                 }`}
               >
-                English (Inline Side-by-side)
+                Full Post (Area Grouped)
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewFormat("bengali")}
+                onClick={() => setPreviewFormat("inline")}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                  previewFormat === "bengali"
+                  previewFormat === "inline"
                     ? "bg-[#1877f2] text-white"
                     : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
                 }`}
               >
-                Bengali (Detailed Post)
+                Inline Line Only
               </button>
             </div>
 
             <p className="mb-2 text-xs text-j-ink-soft">
-              {previewFormat === "english"
-                ? "জবের তথ্যগুলো ইংরেজিতে পাশাপাশি সাজানো হয়েছে:"
-                : "ফেসবুক গ্রুপ বা পেইজে বিস্তারিত পোস্ট করার উপযোগী ফরম্যাট:"}
+              {previewFormat === "inline"
+                ? "শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য:"
+                : "ফেসবুক গ্রুপ বা পেজে পোস্ট করার উপযোগী সম্পূর্ণ ইংরেজি পোস্ট:"}
             </p>
             <div className="rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
-              {previewFormat === "english"
+              {previewFormat === "inline"
                 ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
                 : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates })}
             </div>
@@ -686,7 +686,7 @@ export function AdminFacebookPostsContent() {
               type="button"
               onClick={async () => {
                 const text =
-                  previewFormat === "english"
+                  previewFormat === "inline"
                     ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
                     : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates });
                 await copyToClipboard(text);

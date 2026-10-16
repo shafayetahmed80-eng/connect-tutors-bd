@@ -48,32 +48,34 @@ export interface BuildJobDetailsInlineOptions {
   includeApplyUrl?: boolean;
 }
 
+export const ITEM_DIVIDER = "────────────────────────────────────────";
+
 export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📢 Total {count} Tuitions Available right now.
-👉 Tutors can view details and apply directly online for FREE!
+🔍 Search using "Job ID" on our website to view full details.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 export const DEFAULT_BULK_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 HOW TO APPLY (100% FREE & DIRECT):
-👉 Visit Job Board: {website}
-🔍 Search using the "Job ID" to view full details
-⚡ Apply in 1-Click • Zero Media Fees • Direct Guardian Contact
+🚀 How to Apply:
+👉 Visit our website and search using the "Job ID" to apply:
+{website}
 
+⚡ 1-Click Apply • Direct Guardian Contact • Verified Tuitions
 🌐 Connect Tutors — The Most Trusted Digital Tuition Platform
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-export const DEFAULT_SINGLE_HEADER = `🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors) 🔴
-━━━━━━━━━━━━━━━━━━━━━━━━`;
+export const DEFAULT_SINGLE_HEADER = `🔴 NEW TUITION OFFER — CONNECT TUTORS 🔴
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 আবেদন করার নিয়ম (সম্পূর্ণ ফ্রি):
-👉 সরাসরি আবেদন লিংক:
+export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 How to Apply:
+👉 Direct Apply Link:
 {applyUrl}
-⚡ কোনো মিডিয়া ফি নেই • সরাসরি অভিভাবকদের সাথে সংযোগ
 
-🌐 কানেক্ট টিউটরস (Connect Tutors) — ১০০% বিশ্বস্ত ও স্মার্ট ডিজিটাল প্ল্যাটফর্ম
-━━━━━━━━━━━━━━━━━━━━━━━━`;
+⚡ 1-Click Apply • Direct Guardian Contact • Verified Tuitions
+🌐 Connect Tutors — The Most Trusted Digital Tuition Platform
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 /**
  * Replaces placeholders like {count}, {website}, {applyUrl}, {jobId} with actual values.
@@ -90,8 +92,8 @@ export function renderTemplateText(
 }
 
 /**
- * Builds a clean, professional, high-converting Bengali Facebook post text
- * formatted specifically for Facebook groups and pages.
+ * Builds a clean, professional, high-converting English Facebook post text
+ * for a single tuition in Area Grouped side-by-side format.
  */
 export function buildFacebookPostText(
   job: FacebookPostJobInput,
@@ -101,50 +103,6 @@ export function buildFacebookPostText(
   const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
 
   const code = job.jobId || jobIdForRequest(job.id);
-  const classText = job.classCourse?.trim() || "সাধারণ";
-  const medium = job.curriculumType?.trim() || job.category?.trim();
-  const classWithMedium = medium ? `${classText} (${medium})` : classText;
-
-  const subjects = formatSubjects(job.subjects);
-  
-  // Location
-  let loc = formatLocation({
-    tuitionType: job.tuitionType || "home",
-    locationLabel: job.tuitionLocationLabel ?? job.locationText,
-  });
-  if (job.addressDetails?.trim() && job.tuitionType !== "online") {
-    loc += ` (${job.addressDetails.trim()})`;
-  }
-
-  // Salary
-  const salary = job.budgetAmount !== null && job.budgetAmount !== undefined && job.budgetAmount > 0
-    ? formatSalaryAmount(job.budgetAmount)
-    : "আলোচনা সাপেক্ষে (Negotiable)";
-
-  // Days
-  const days = job.daysPerWeek && job.daysPerWeek > 0
-    ? `${job.daysPerWeek} দিন/সপ্তাহ`
-    : "আলোচনা সাপেক্ষে";
-
-  // Time
-  const time = job.tutoringTime?.trim() || "আলোচনা সাপেক্ষে / ফ্লেক্সিবল";
-
-  // Student Info
-  const countStr = formatStudentCount(job.studentCount);
-  const genderStr = formatStudentGender(job.studentGender);
-  const studentInfo = `${countStr} (${genderStr})`;
-
-  // Tutor Preference
-  const tutorGender = formatTutorPreference(job.preferredGender || "any");
-  const institute = job.instituteName?.trim();
-  const tutorPref = institute ? `${tutorGender} টিউটর (${institute})` : `${tutorGender} টিউটর`;
-
-  // Notes
-  const rawNotes = job.notes?.trim();
-  const notesText = rawNotes && rawNotes.toLowerCase() !== "no special requirements"
-    ? rawNotes
-    : "কোনো বিশেষ শর্ত নেই";
-
   const cleanOrigin = origin.replace(/\/+$/, "");
   const applyUrl = `${cleanOrigin}/job-board?job=${encodeURIComponent(code)}`;
 
@@ -154,20 +112,27 @@ export function buildFacebookPostText(
   const header = renderTemplateText(rawHeader, { jobId: code, origin: cleanOrigin, applyUrl });
   const footer = renderTemplateText(rawFooter, { jobId: code, origin: cleanOrigin, applyUrl });
 
-  const bodyLines = [
-    `📌 জব আইডি: ${code}`,
-    `📚 শ্রেণি/কোর্স: ${classWithMedium}`,
-    `📝 বিষয়সমূহ: ${subjects}`,
-    `📍 লোকেশন: ${loc}`,
-    `💰 পারিশ্রমিক/বেতন: ${salary}`,
-    `📅 সপ্তাহে দিন: ${days}`,
-    `⏰ পড়ার সময়: ${time}`,
-    `👨‍🎓 শিক্ষার্থীর তথ্য: ${studentInfo}`,
-    `🎓 টিউটর অগ্রাধিকার: ${tutorPref}`,
-    `📋 বিশেষ শর্তাবলী: ${notesText}`,
+  const areaHeading = getJobAreaKey(job);
+  const f = extractJobEnglishFields(job);
+  const parts: string[] = [
+    `Job ID: ${f.code}`,
+    `🎓 ${f.tutorPref}`,
+    f.classWithMedium,
+    f.subjects,
+    `🗓️ ${f.schedule}`,
+    `💰 ${f.salary}`,
   ];
+  if (f.studentInfo) {
+    parts.push(f.studentInfo);
+  }
+  if (f.notes) {
+    parts.push(`Notes: ${f.notes}`);
+  }
 
-  return [header, ...bodyLines, footer].join("\n");
+  const jobLine = parts.join("  |  ");
+  const body = `${areaHeading}\n${jobLine}\n${ITEM_DIVIDER}`;
+
+  return [header, "", body, "", footer].join("\n");
 }
 
 /**
@@ -235,8 +200,7 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
 
 /**
  * Formats a single tuition's details side-by-side in English.
- * Default: "Job ID: CT-1042 | Class 9 (English Medium) | Math, Physics | ..."
- * Without individual apply URL unless explicitly enabled.
+ * Order: Job ID | Tutor Pref | Class | Subjects | Location | Schedule | Salary
  */
 export function buildEnglishJobDetailsInline(
   job: FacebookPostJobInput,
@@ -249,12 +213,12 @@ export function buildEnglishJobDetailsInline(
   const f = extractJobEnglishFields(job);
   const parts: string[] = [
     `Job ID: ${f.code}`,
+    `🎓 ${f.tutorPref}`,
     f.classWithMedium,
     f.subjects,
-    f.loc,
-    f.salary,
-    f.schedule,
-    f.tutorPref,
+    `📍 ${f.loc}`,
+    `🗓️ ${f.schedule}`,
+    `💰 ${f.salary}`,
   ];
   if (f.studentInfo) {
     parts.push(f.studentInfo);
@@ -266,24 +230,24 @@ export function buildEnglishJobDetailsInline(
     const cleanOrigin = origin.replace(/\/+$/, "");
     parts.push(`Apply: ${cleanOrigin}/job-board?job=${encodeURIComponent(f.code)}`);
   }
-  return parts.join(" | ");
+  return parts.join("  |  ");
 }
 
 /**
  * Format 1: Iconic Emoji (1-Line)
- * Example: 1. 📌 Job ID: 1024 | 🔹 Class 9 (English Medium) | 📚 Math, Physics | 📍 Dhanmondi | 💰 8,000 BDT/month | 🗓️ 3 Days/week | 🎓 Male Tutor
+ * Example: 1. 📌 Job ID: 1024  |  🎓 Male Tutor  |  🔹 Class 9 (English Medium)  |  📚 Math, Physics  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
  */
 export function formatJobEmojiLine(job: FacebookPostJobInput, index?: number): string {
   const f = extractJobEnglishFields(job);
   const prefix = typeof index === "number" ? `${index}. ` : "";
   const parts: string[] = [
     `📌 Job ID: ${f.code}`,
+    `🎓 ${f.tutorPref}`,
     `🔹 ${f.classWithMedium}`,
     `📚 ${f.subjects}`,
     `📍 ${f.loc}`,
-    `💰 ${f.salary}`,
     `🗓️ ${f.schedule}`,
-    `🎓 ${f.tutorPref}`,
+    `💰 ${f.salary}`,
   ];
   if (f.studentInfo) {
     parts.push(`👨‍🎓 ${f.studentInfo}`);
@@ -291,24 +255,24 @@ export function formatJobEmojiLine(job: FacebookPostJobInput, index?: number): s
   if (f.notes) {
     parts.push(`📋 Notes: ${f.notes}`);
   }
-  return `${prefix}${parts.join(" | ")}`;
+  return `${prefix}${parts.join("  |  ")}`;
 }
 
 /**
  * Format 2: Mobile Card (2-Line)
- * Line 1: 1. 📌 Job ID: 1024 • Class 9 (English Medium) • 📚 Math, Physics
- * Line 2:    📍 Dhanmondi | 💰 8,000 BDT/month | 🗓️ 3 Days/week | 🎓 Male Tutor
+ * Line 1: 1. 📌 Job ID: 1024 • 🎓 Male Tutor • 🔹 Class 9 (English Medium)
+ * Line 2:    📚 Math, Physics  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
  */
 export function formatJobMobileCard(job: FacebookPostJobInput, index?: number): string {
   const f = extractJobEnglishFields(job);
   const prefix = typeof index === "number" ? `${index}. ` : "";
-  const line1 = `${prefix}📌 Job ID: ${f.code} • ${f.classWithMedium} • 📚 ${f.subjects}`;
+  const line1 = `${prefix}📌 Job ID: ${f.code} • 🎓 ${f.tutorPref} • 🔹 ${f.classWithMedium}`;
 
   const line2Parts: string[] = [
+    `📚 ${f.subjects}`,
     `📍 ${f.loc}`,
-    `💰 ${f.salary}`,
     `🗓️ ${f.schedule}`,
-    `🎓 ${f.tutorPref}`,
+    `💰 ${f.salary}`,
   ];
   if (f.studentInfo) {
     line2Parts.push(`👨‍🎓 ${f.studentInfo}`);
@@ -317,23 +281,23 @@ export function formatJobMobileCard(job: FacebookPostJobInput, index?: number): 
     line2Parts.push(`📋 Notes: ${f.notes}`);
   }
   const indent = typeof index === "number" ? "   " : "";
-  const line2 = `${indent}${line2Parts.join(" | ")}`;
+  const line2 = `${indent}${line2Parts.join("  |  ")}`;
   return `${line1}\n${line2}`;
 }
 
 /**
  * Format 3: Key Priority (High-Contrast)
- * Example: 1. [Job ID: 1024] 🎯 MATH, PHYSICS 📍 DHANMONDI | Class 9 (English Medium) | 💰 8,000 BDT/month | ...
+ * Example: 1. [Job ID: 1024] 🎓 MALE TUTOR 🎯 MATH, PHYSICS  |  Class 9 (English Medium)  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
  */
 export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number): string {
   const f = extractJobEnglishFields(job);
   const prefix = typeof index === "number" ? `${index}. ` : "";
   const parts: string[] = [
-    `${prefix}[Job ID: ${f.code}] 🎯 ${f.subjects.toUpperCase()} 📍 ${f.loc.toUpperCase()}`,
+    `${prefix}[Job ID: ${f.code}] 🎓 ${f.tutorPref.toUpperCase()} 🎯 ${f.subjects.toUpperCase()}`,
     f.classWithMedium,
-    `💰 ${f.salary}`,
+    `📍 ${f.loc}`,
     `🗓️ ${f.schedule}`,
-    `🎓 ${f.tutorPref}`,
+    `💰 ${f.salary}`,
   ];
   if (f.studentInfo) {
     parts.push(`👨‍🎓 ${f.studentInfo}`);
@@ -341,7 +305,7 @@ export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number):
   if (f.notes) {
     parts.push(`📋 Notes: ${f.notes}`);
   }
-  return parts.join(" | ");
+  return parts.join("  |  ");
 }
 
 /**
@@ -352,11 +316,11 @@ export function formatJobAreaItem(job: FacebookPostJobInput, index: number): str
   const f = extractJobEnglishFields(job);
   const parts: string[] = [
     `${index}. Job ID: ${f.code}`,
+    `🎓 ${f.tutorPref}`,
     f.classWithMedium,
     f.subjects,
-    `💰 ${f.salary}`,
     `🗓️ ${f.schedule}`,
-    `🎓 ${f.tutorPref}`,
+    `💰 ${f.salary}`,
   ];
   if (f.studentInfo) {
     parts.push(`👨‍🎓 ${f.studentInfo}`);
@@ -364,7 +328,7 @@ export function formatJobAreaItem(job: FacebookPostJobInput, index: number): str
   if (f.notes) {
     parts.push(`📋 Notes: ${f.notes}`);
   }
-  return parts.join(" | ");
+  return parts.join("  |  ");
 }
 
 /**
@@ -415,9 +379,13 @@ export function buildEnglishBulkFacebookPostText(
   let bodyContent = "";
 
   if (format === "mobile-card") {
-    bodyContent = jobs.map((job, idx) => formatJobMobileCard(job, idx + 1)).join("\n\n");
+    bodyContent = jobs
+      .map((job, idx) => `${formatJobMobileCard(job, idx + 1)}\n${ITEM_DIVIDER}`)
+      .join("\n");
   } else if (format === "key-priority") {
-    bodyContent = jobs.map((job, idx) => formatJobKeyPriority(job, idx + 1)).join("\n");
+    bodyContent = jobs
+      .map((job, idx) => `${formatJobKeyPriority(job, idx + 1)}\n${ITEM_DIVIDER}`)
+      .join("\n");
   } else if (format === "area-grouped") {
     const groups: Record<string, FacebookPostJobInput[]> = {};
     for (const job of jobs) {
@@ -431,16 +399,18 @@ export function buildEnglishBulkFacebookPostText(
     for (const area of areas) {
       const areaJobs = groups[area];
       const items = areaJobs.map((job: FacebookPostJobInput) => {
-        const itemStr = formatJobAreaItem(job, counter);
+        const itemStr = `${formatJobAreaItem(job, counter)}\n${ITEM_DIVIDER}`;
         counter++;
         return itemStr;
       });
-      groupBlocks.push(`${area}:\n${items.join("\n")}`);
+      groupBlocks.push(`${area}\n${items.join("\n")}`);
     }
     bodyContent = groupBlocks.join("\n\n");
   } else {
     // "emoji-line" (default)
-    bodyContent = jobs.map((job, idx) => formatJobEmojiLine(job, idx + 1)).join("\n");
+    bodyContent = jobs
+      .map((job, idx) => `${formatJobEmojiLine(job, idx + 1)}\n${ITEM_DIVIDER}`)
+      .join("\n");
   }
 
   return [header, "", bodyContent, "", footer].join("\n");
