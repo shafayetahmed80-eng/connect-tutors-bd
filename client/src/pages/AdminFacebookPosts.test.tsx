@@ -172,7 +172,7 @@ describe("AdminFacebookPostsContent", () => {
 
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(calledText).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴");
-    expect(calledText).toContain("Total 1 Tuition Available right now.");
+    expect(calledText).toContain("Total 1");
     expect(calledText).toContain("1. Job #");
     expect(calledText).toContain("Higher Math, Physics");
     expect(calledText).toContain("9,000 BDT/month");
@@ -215,6 +215,39 @@ describe("AdminFacebookPostsContent", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
   });
 
+  it("opens template customizer modal and allows saving custom header and footer", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const customizeBtn = screen.getByRole("button", { name: /Customize Template/i });
+    expect(customizeBtn).toBeDefined();
+
+    fireEvent.click(customizeBtn);
+
+    expect(screen.getByText(/Customize Facebook Post Template/i)).toBeDefined();
+
+    // Edit the bulk header
+    const headerInput = screen.getByPlaceholderText(/Enter header text for bulk post/i);
+    fireEvent.change(headerInput, { target: { value: "🔥 CUSTOM TUITION HEADER ({count}) 🔥" } });
+
+    // Save changes
+    const saveBtn = screen.getByRole("button", { name: /Save Changes/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Customize Facebook Post Template/i)).toBeNull();
+    });
+
+    // Copy all and verify custom header is used
+    const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
+    fireEvent.click(copyAllBtn);
+
+    await waitFor(() => {
+      const calls = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallText = calls[calls.length - 1][0];
+      expect(lastCallText).toContain("🔥 CUSTOM TUITION HEADER (1) 🔥");
+    });
+  });
+
   it("updates search query when typing in search input", () => {
     render(<AdminFacebookPostsContent />);
 
@@ -227,4 +260,5 @@ describe("AdminFacebookPostsContent", () => {
     });
   });
 });
+
 

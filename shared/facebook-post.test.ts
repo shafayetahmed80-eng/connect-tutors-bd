@@ -161,5 +161,56 @@ describe("buildEnglishBulkFacebookPostText", () => {
     const post = buildEnglishBulkFacebookPostText([]);
     expect(post).toBe("No live tuitions match the current criteria.");
   });
+
+  it("supports dynamic custom header and footer with placeholders", () => {
+    const post = buildEnglishBulkFacebookPostText(
+      [
+        {
+          id: 1,
+          jobId: "CT-2001",
+          classCourse: "Class 8",
+          tuitionLocationLabel: "Banani, Dhaka",
+          budgetAmount: 7000,
+        },
+      ],
+      {
+        origin: "https://connecttutorsbd.com",
+        template: {
+          bulkHeader: "🔥 HOT TUITIONS ({count} AVAILABLE) 🔥\nWelcome tutors!",
+          bulkFooter: "Apply now at {website} | Contact Support",
+        },
+      },
+    );
+
+    expect(post).toContain("🔥 HOT TUITIONS (1 AVAILABLE) 🔥\nWelcome tutors!");
+    expect(post).toContain("1. Job #CT-2001");
+    expect(post).toContain("Apply now at https://connecttutorsbd.com/job-board | Contact Support");
+  });
 });
+
+describe("buildFacebookPostText with custom template", () => {
+  it("supports dynamic custom header and footer for single job", () => {
+    const post = buildFacebookPostText(
+      {
+        id: 77,
+        jobId: "CT-0077",
+        classCourse: "Class 7",
+        tuitionLocationLabel: "Mohammadpur",
+        budgetAmount: 5000,
+      },
+      {
+        origin: "https://connecttutorsbd.com",
+        template: {
+          singleHeader: "⚡ টিউশন নোটিশ: {jobId} ⚡",
+          singleFooter: "আবেদন লিংক: {applyUrl}",
+        },
+      },
+    );
+
+    expect(post).toContain("⚡ টিউশন নোটিশ: CT-0077 ⚡");
+    expect(post).toContain("📌 জব আইডি: CT-0077");
+    expect(post).toContain("আবেদন লিংক: https://connecttutorsbd.com/job-board?job=CT-0077");
+  });
+});
+
 

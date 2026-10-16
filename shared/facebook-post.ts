@@ -24,11 +24,59 @@ export type FacebookPostJobInput = {
   origin?: string;
 };
 
+export type FacebookPostCustomTemplate = {
+  bulkHeader?: string;
+  bulkFooter?: string;
+  singleHeader?: string;
+  singleFooter?: string;
+};
+
+export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📢 Total {count} Tuitions Available right now.
+👉 Tutors can view details and apply directly online for FREE!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+export const DEFAULT_BULK_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 Browse all available tuition jobs and apply online:
+{website}
+
+🌐 Connect Tutors BD — The Most Trusted & 100% Free Application Platform for Tutors`;
+
+export const DEFAULT_SINGLE_HEADER = `🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors BD) 🔴
+━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━
+👉 বিস্তারিত দেখে সরাসরি অনলাইনে আবেদন করতে ভিজিট করুন:
+{applyUrl}
+
+🌐 কানেক্ট টিউটরস — কোনো মিডিয়া নয়, ১০০% স্মার্ট ও বিশ্বস্ত ডিজিটাল টিউশন প্ল্যাটফর্ম`;
+
+/**
+ * Replaces placeholders like {count}, {website}, {applyUrl}, {jobId} with actual values.
+ */
+export function renderTemplateText(
+  template: string,
+  variables: Record<string, string | number>,
+): string {
+  let result = template;
+  for (const [key, val] of Object.entries(variables)) {
+    result = result.replaceAll(`{${key}}`, String(val));
+  }
+  return result;
+}
+
 /**
  * Builds a clean, professional, high-converting Bengali Facebook post text
  * formatted specifically for Facebook groups and pages.
  */
-export function buildFacebookPostText(job: FacebookPostJobInput, origin = "https://connecttutorsbd.com"): string {
+export function buildFacebookPostText(
+  job: FacebookPostJobInput,
+  optionsOrOrigin: string | { origin?: string; template?: FacebookPostCustomTemplate } = "https://connecttutorsbd.com",
+): string {
+  const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
+  const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
+
   const code = job.jobId || jobIdForRequest(job.id);
   const classText = job.classCourse?.trim() || "সাধারণ";
   const medium = job.curriculumType?.trim() || job.category?.trim();
@@ -77,9 +125,13 @@ export function buildFacebookPostText(job: FacebookPostJobInput, origin = "https
   const cleanOrigin = origin.replace(/\/+$/, "");
   const applyUrl = `${cleanOrigin}/job-board?job=${encodeURIComponent(code)}`;
 
-  const lines = [
-    "🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors BD) 🔴",
-    "━━━━━━━━━━━━━━━━━━━━━━━━",
+  const rawHeader = template?.singleHeader?.trim() || DEFAULT_SINGLE_HEADER;
+  const rawFooter = template?.singleFooter?.trim() || DEFAULT_SINGLE_FOOTER;
+
+  const header = renderTemplateText(rawHeader, { jobId: code, origin: cleanOrigin, applyUrl });
+  const footer = renderTemplateText(rawFooter, { jobId: code, origin: cleanOrigin, applyUrl });
+
+  const bodyLines = [
     `📌 জব আইডি: ${code}`,
     `📚 শ্রেণি/কোর্স: ${classWithMedium}`,
     `📝 বিষয়সমূহ: ${subjects}`,
@@ -90,14 +142,9 @@ export function buildFacebookPostText(job: FacebookPostJobInput, origin = "https
     `👨‍🎓 শিক্ষার্থীর তথ্য: ${studentInfo}`,
     `🎓 টিউটর অগ্রাধিকার: ${tutorPref}`,
     `📋 বিশেষ শর্তাবলী: ${notesText}`,
-    "━━━━━━━━━━━━━━━━━━━━━━━━",
-    "👉 বিস্তারিত দেখে সরাসরি অনলাইনে আবেদন করতে ভিজিট করুন:",
-    applyUrl,
-    "",
-    "🌐 কানেক্ট টিউটরস — কোনো মিডিয়া নয়, ১০০% স্মার্ট ও বিশ্বস্ত ডিজিটাল টিউশন প্ল্যাটফর্ম",
   ];
 
-  return lines.join("\n");
+  return [header, ...bodyLines, footer].join("\n");
 }
 
 /**
@@ -184,30 +231,33 @@ export function buildEnglishJobDetailsInline(
  */
 export function buildEnglishBulkFacebookPostText(
   jobs: FacebookPostJobInput[],
-  origin = "https://connecttutorsbd.com",
+  optionsOrOrigin: string | { origin?: string; template?: FacebookPostCustomTemplate } = "https://connecttutorsbd.com",
 ): string {
   if (jobs.length === 0) {
     return "No live tuitions match the current criteria.";
   }
 
+  const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
+  const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
+
   const cleanOrigin = origin.replace(/\/+$/, "");
   const jobBoardUrl = `${cleanOrigin}/job-board`;
 
-  const lines = [
-    "🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    `📢 Total ${jobs.length} ${jobs.length === 1 ? "Tuition Available" : "Tuitions Available"} right now.`,
-    "👉 Tutors can view details and apply directly online for FREE!",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "",
-    ...jobs.map((job, idx) => `${idx + 1}. ${buildEnglishJobDetailsInline(job, cleanOrigin)}\n`),
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "📌 Browse all available tuition jobs and apply online:",
-    jobBoardUrl,
-    "",
-    "🌐 Connect Tutors BD — The Most Trusted & 100% Free Application Platform for Tutors",
-  ];
+  const rawHeader = template?.bulkHeader?.trim() || DEFAULT_BULK_HEADER;
+  const rawFooter = template?.bulkFooter?.trim() || DEFAULT_BULK_FOOTER;
 
-  return lines.join("\n");
+  const vars = {
+    count: jobs.length,
+    website: jobBoardUrl,
+    origin: cleanOrigin,
+  };
+
+  const header = renderTemplateText(rawHeader, vars);
+  const footer = renderTemplateText(rawFooter, vars);
+
+  const jobItems = jobs.map((job, idx) => `${idx + 1}. ${buildEnglishJobDetailsInline(job, cleanOrigin)}\n`);
+
+  return [header, "", ...jobItems, footer].join("\n");
 }
+
 
