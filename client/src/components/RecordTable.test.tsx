@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RecordTable, { type RecordColumn } from "./RecordTable";
 
@@ -169,4 +169,83 @@ describe("RecordTable", () => {
     const cards = screen.getAllByRole("listitem");
     expect(cards[9].style.getPropertyValue("--stagger")).toBe("8");
   });
+
+  describe("mobile card action overflow 'More (...)' menu", () => {
+    const multiActionColumns: RecordColumn<Row>[] = [
+      { key: "jobId", label: "Job ID", cell: row => row.jobId },
+      { key: "act1", label: "Action 1", place: "action", cell: row => <button type="button">Btn 1 {row.jobId}</button> },
+      { key: "act2", label: "Action 2", place: "action", cell: row => <button type="button">Btn 2 {row.jobId}</button> },
+      { key: "act3", label: "Action 3", place: "action", headingHidden: true, cell: row => <button type="button">Btn 3 {row.jobId}</button> },
+      { key: "act4", label: "Action 4", place: "action", headingHidden: true, cell: row => <button type="button">Btn 4 {row.jobId}</button> },
+    ];
+
+    it("shows all actions directly when maxCardActions is not specified", () => {
+      onAPhone();
+      render(<RecordTable caption="Tuitions" columns={multiActionColumns} rows={rows.slice(0, 1)} rowKey={row => row.id} empty="None." />);
+
+      const card = within(screen.getAllByRole("listitem")[0]);
+      expect(card.getByRole("button", { name: "Btn 1 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 2 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 3 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 4 6801" })).toBeTruthy();
+      expect(card.queryByRole("button", { name: "More actions" })).toBeNull();
+    });
+
+    it("shows all actions directly when total actions are less than or equal to maxCardActions", () => {
+      onAPhone();
+      render(<RecordTable caption="Tuitions" columns={multiActionColumns.slice(0, 3)} rows={rows.slice(0, 1)} rowKey={row => row.id} empty="None." maxCardActions={2} />);
+
+      const card = within(screen.getAllByRole("listitem")[0]);
+      expect(card.getByRole("button", { name: "Btn 1 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 2 6801" })).toBeTruthy();
+      expect(card.queryByRole("button", { name: "More actions" })).toBeNull();
+    });
+
+    it("collapses actions beyond maxCardActions into a 'More (...)' dropdown on a phone card", () => {
+      onAPhone();
+      render(<RecordTable caption="Tuitions" columns={multiActionColumns} rows={rows.slice(0, 1)} rowKey={row => row.id} empty="None." maxCardActions={2} />);
+
+      const card = within(screen.getAllByRole("listitem")[0]);
+      // First 2 actions are visible directly on the card
+      expect(card.getByRole("button", { name: "Btn 1 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 2 6801" })).toBeTruthy();
+      // More actions button is present
+      const moreBtn = card.getByRole("button", { name: "More actions" });
+      expect(moreBtn).toBeTruthy();
+
+      // Actions 3 and 4 are not rendered directly on card root
+      expect(card.queryByRole("button", { name: "Btn 3 6801" })).toBeNull();
+      expect(card.queryByRole("button", { name: "Btn 4 6801" })).toBeNull();
+
+      // Opening the dropdown reveals actions 3 and 4 with their labels
+      fireEvent.pointerDown(moreBtn, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      expect(screen.getByRole("button", { name: "Btn 3 6801" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Btn 4 6801" })).toBeTruthy();
+      expect(screen.getByText("Action 3")).toBeTruthy();
+      expect(screen.getByText("Action 4")).toBeTruthy();
+    });
+
+    it("respects cardActionPinned and cardActionOverflow flags", () => {
+      const priorityColumns: RecordColumn<Row>[] = [
+        { key: "jobId", label: "Job ID", cell: row => row.jobId },
+        { key: "act1", label: "Action 1", place: "action", cell: row => <button type="button">Btn 1 {row.jobId}</button> },
+        { key: "act2", label: "Action 2", place: "action", cardActionOverflow: true, cell: row => <button type="button">Btn 2 {row.jobId}</button> },
+        { key: "act3", label: "Action 3", place: "action", cardActionPinned: true, cell: row => <button type="button">Btn 3 {row.jobId}</button> },
+      ];
+
+      onAPhone();
+      render(<RecordTable caption="Tuitions" columns={priorityColumns} rows={rows.slice(0, 1)} rowKey={row => row.id} empty="None." maxCardActions={2} />);
+
+      const card = within(screen.getAllByRole("listitem")[0]);
+      // Pinned action 3 and regular action 1 stay visible directly
+      expect(card.getByRole("button", { name: "Btn 3 6801" })).toBeTruthy();
+      expect(card.getByRole("button", { name: "Btn 1 6801" })).toBeTruthy();
+      // Explicit overflow action 2 goes into menu
+      expect(card.queryByRole("button", { name: "Btn 2 6801" })).toBeNull();
+
+      fireEvent.pointerDown(card.getByRole("button", { name: "More actions" }), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      expect(screen.getByRole("button", { name: "Btn 2 6801" })).toBeTruthy();
+    });
+  });
 });
+
