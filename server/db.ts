@@ -10299,15 +10299,13 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
     .leftJoin(tutorRequestFacebookPosts, eq(tutorRequestFacebookPosts.requestId, tutorRequests.id))
     .where(scope);
-  const counts: Record<AdminTuitionStage, number> & { livePosted: number; liveUnposted: number } = {
+  const counts: Record<AdminTuitionStage, number> = {
     pending: Number(countRow?.pending ?? 0),
     live: Number(countRow?.live ?? 0),
     appointed: Number(countRow?.appointed ?? 0),
     confirmed: Number(countRow?.confirmed ?? 0),
     closed: Number(countRow?.closed ?? 0),
     cancelled: Number(countRow?.cancelled ?? 0),
-    livePosted: Number(countRow?.livePosted ?? 0),
-    liveUnposted: Number(countRow?.liveUnposted ?? 0),
   };
 
   const fbPostCondition =
@@ -10383,6 +10381,8 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       facebookPostedByAdminName: item.facebookPostedByAdminName ?? null,
     })),
     counts,
+    livePostedCount: Number(countRow?.livePosted ?? 0),
+    liveUnpostedCount: Number(countRow?.liveUnposted ?? 0),
     total,
     page: filters.page,
     pageSize: filters.pageSize,

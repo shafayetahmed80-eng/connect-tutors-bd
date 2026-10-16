@@ -228,7 +228,9 @@ export function AdminFacebookPostsContent() {
     facebookPosted: fbPostFilter,
   });
 
-  const counts = (jobs.data?.counts as (Record<string, number> & { livePosted?: number; liveUnposted?: number })) ?? {};
+  const counts = jobs.data?.counts ?? {};
+  const livePostedCount = jobs.data?.livePostedCount ?? 0;
+  const liveUnpostedCount = jobs.data?.liveUnpostedCount ?? 0;
 
   const items = jobs.data?.items ?? [];
   type LiveJob = (typeof items)[number];
@@ -779,7 +781,7 @@ export function AdminFacebookPostsContent() {
                 fbPostFilter === "not_posted" ? "bg-white/20 text-white" : "bg-amber-200/70 text-amber-900 font-semibold"
               }`}
             >
-              {counts.liveUnposted ?? 0}
+              {liveUnpostedCount}
             </span>
           </button>
 
@@ -803,7 +805,7 @@ export function AdminFacebookPostsContent() {
                 fbPostFilter === "posted" ? "bg-white/20 text-white" : "bg-emerald-200/70 text-emerald-900 font-semibold"
               }`}
             >
-              {counts.livePosted ?? 0}
+              {livePostedCount}
             </span>
           </button>
         </div>
