@@ -22,6 +22,7 @@ describe("Admin workspace navigation", () => {
       "Tutor Chats",
       "Change requests",
       "Posted jobs",
+      "Facebook Post",
       "Appointed Jobs",
       "Confirmed Jobs",
       "Admin Posted Jobs",

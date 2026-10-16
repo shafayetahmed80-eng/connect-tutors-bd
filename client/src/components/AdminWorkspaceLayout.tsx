@@ -3,7 +3,7 @@ import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationIt
 import { trpc } from "@/lib/trpc";
 import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { AdminPushHeaderPopover } from "@/components/AdminPushHeaderPopover";
 import { type ReactNode, useEffect, useRef } from "react";
@@ -68,6 +68,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: MessageCircle, label: "Tutor Chats", path: "/admin/tutor-chats", sectionLabel: "Operations", badge: tutorChatUnreadThreads },
     { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Operations", badge: pendingChangeRequests },
     { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
+    { icon: Share2, label: "Facebook Post", path: "/admin/facebook-posts", sectionLabel: "Operations" },
     { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations", badge: guardianRequests?.appointedJobs },
     { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations", badge: guardianRequests?.confirmedJobs },
     { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
