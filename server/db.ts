@@ -1853,6 +1853,7 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     facultyDepartmentId: profile.facultyDepartmentId ?? null,
     locations: [
       ...(profile.currentLocationId ? [profile.currentLocationId] : []),
+      ...(profile.currentCityId ? [profile.currentCityId] : []),
       ...(profile.teachingAreaIds ?? []),
     ],
   });
@@ -1876,7 +1877,36 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     ? catalogLabels.universities[String(profile.universityId)]
     : (profile.institution || undefined);
 
-  const locationLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
+  // Combine Location + City + Country ("Location, City, Bangladesh")
+  const rawLocLabel = (profile.currentLocationId && catalogLabels.locations[profile.currentLocationId]) || profile.currentLocationLabel || undefined;
+  const rawCityLabel = (profile.currentCityId && catalogLabels.locations[profile.currentCityId]) || undefined;
+
+  const locParts: string[] = [];
+  if (rawLocLabel && rawLocLabel.trim()) {
+    locParts.push(rawLocLabel.trim());
+  }
+  if (rawCityLabel && rawCityLabel.trim()) {
+    const lowerLoc = rawLocLabel?.toLowerCase() || "";
+    const lowerCity = rawCityLabel.trim().toLowerCase();
+    if (!lowerLoc.includes(lowerCity)) {
+      locParts.push(rawCityLabel.trim());
+    }
+  }
+  locParts.push("Bangladesh");
+  const locationLabel = locParts.filter(Boolean).join(", ");
+
+  const formatDob = (rawDob: string | undefined): string | undefined => {
+    if (!rawDob) return undefined;
+    const trimmed = rawDob.trim();
+    if (!trimmed) return undefined;
+    const dateObj = new Date(trimmed);
+    if (!isNaN(dateObj.getTime())) {
+      const day = dateObj.getDate();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${day} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+    }
+    return trimmed;
+  };
 
   const cvDoc: TutorCvDocument = {
     tutorId: profile.tutorId,
@@ -1884,6 +1914,8 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     name: profile.name,
     headline: profile.headline,
     gender: profile.gender,
+    dateOfBirth: formatDob(profile.dateOfBirth),
+    religion: profile.privateDetails?.religion?.trim() || undefined,
     phone: profile.phone,
     contactEmail: profile.contactEmail,
     locationLabel,
@@ -1901,6 +1933,8 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     teachingExperienceYears: profile.teachingExperienceYears ?? profile.experience,
     priorTeachingExperience: profile.priorTeachingExperience,
     specialExpertise: profile.specialExpertise,
+    teachingApproach: profile.teachingApproach,
+    whyChooseMe: profile.whyChooseMe,
     academicAchievement: profile.academicAchievement,
     aboutMe: profile.aboutMe || profile.about,
     preferredLocations: preferredLocationNames,

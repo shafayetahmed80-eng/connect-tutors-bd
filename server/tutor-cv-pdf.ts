@@ -17,6 +17,7 @@ export type TutorCvEducationRecord = {
   instituteName?: string | null;
   majorGroup?: string | null;
   resultGpa?: string | null;
+  curriculum?: string | null;
   passingYear?: number | null;
   studyStartYear?: number | null;
   studyEndYear?: number | null;
@@ -29,6 +30,8 @@ export type TutorCvDocument = {
   name: string;
   headline?: string | null;
   gender?: string | null;
+  dateOfBirth?: string | null;
+  religion?: string | null;
   phone?: string | null;
   contactEmail?: string | null;
   locationLabel?: string | null;
@@ -46,6 +49,8 @@ export type TutorCvDocument = {
   teachingExperienceYears?: number | null;
   priorTeachingExperience?: string | null;
   specialExpertise?: string | null;
+  teachingApproach?: string | null;
+  whyChooseMe?: string | null;
   academicAchievement?: string | null;
   aboutMe?: string | null;
   preferredLocations?: string[];
@@ -73,7 +78,7 @@ export function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number
   document.fill().restore();
 }
 
-/** Renders multi-script text with fallback to Noto Sans Bengali when Bengali characters are present. */
+/** Renders multi-script text with fallback to Noto Sans Bengali when Bengali characters are present and returns height. */
 export function writeCvText(
   document: PDFKit.PDFDocument,
   text: string,
@@ -82,7 +87,7 @@ export function writeCvText(
   y: number,
   width: number,
   options?: { size?: number; color?: string; align?: "left" | "center" | "right"; lineGap?: number },
-) {
+): number {
   const runs = splitScriptRuns(text);
   const size = options?.size ?? 9;
   const lineGap = options?.lineGap ?? 1.5;
@@ -106,6 +111,18 @@ export function writeCvText(
       document.text(run.text, textOpts);
     }
   });
+
+  return document.heightOfString(text, { width, lineGap });
+}
+
+function getEducationLevelRank(level?: string | null): number {
+  if (!level) return 99;
+  const l = level.toLowerCase();
+  if (l.includes("master") || l.includes("post grad") || l.includes("msc") || l.includes("mba") || l.includes("ma") || l.includes("m.s")) return 1;
+  if (l.includes("honour") || l.includes("bachelor") || l.includes("degree") || l.includes("undergrad") || l.includes("bsc") || l.includes("bba") || l.includes("ba")) return 2;
+  if (l.includes("hsc") || l.includes("higher secondary") || l.includes("a level") || l.includes("alim")) return 3;
+  if (l.includes("ssc") || l.includes("secondary") || l.includes("o level") || l.includes("dakhil")) return 4;
+  return 5;
 }
 
 /**
@@ -141,14 +158,17 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     const rightColWidth = pageWidth - leftColWidth;
     const rightColLeft = leftColWidth;
 
-    // 1. Draw Left Sidebar (Deep Navy / Slate Background)
+    // 1. Draw Left Sidebar using Website's Brand Sidebar Gradient (#0d5fae -> #0a4c8c)
+    const sidebarGradient = document.linearGradient(0, 0, 0, pageHeight);
+    sidebarGradient.stop(0, "#0d5fae");
+    sidebarGradient.stop(1, "#0a4c8c");
     document.save();
-    document.rect(0, 0, leftColWidth, pageHeight).fill("#13293d");
+    document.rect(0, 0, leftColWidth, pageHeight).fill(sidebarGradient);
     document.restore();
 
-    // 2. Draw Subtle Top Brand Accent Bar across right column
+    // 2. Draw Top Accent Bar across right column
     document.save();
-    document.rect(leftColWidth, 0, rightColWidth, 5).fill("#0b5fa8");
+    document.rect(leftColWidth, 0, rightColWidth, 5).fill("#0d5fae");
     document.restore();
 
     // ==========================================
@@ -156,10 +176,10 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     // ==========================================
     const leftPadding = 18;
     const leftInnerWidth = leftColWidth - leftPadding * 2;
-    let leftY = 32;
+    let leftY = 30;
 
-    // Photo or Monogram
-    const photoDiameter = 80;
+    // Photo or Monogram Avatar
+    const photoDiameter = 76;
     const photoRadius = photoDiameter / 2;
     const photoCenterX = leftPadding + leftInnerWidth / 2;
     const photoCenterY = leftY + photoRadius;
@@ -178,7 +198,7 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
         });
         document.restore();
         // White border ring around photo
-        document.save().lineWidth(2.5).strokeColor("#ffffff").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
+        document.save().lineWidth(2).strokeColor("#ffffff").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
         photoDrawn = true;
       } catch {
         photoDrawn = false;
@@ -186,29 +206,29 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     }
 
     if (!photoDrawn) {
-      // Monogram avatar
-      document.save().fillColor("#1c3d5a").circle(photoCenterX, photoCenterY, photoRadius).fill().restore();
-      document.save().lineWidth(2.5).strokeColor("#3b82f6").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
+      // Monogram avatar with website brand tones
+      document.save().fillColor("#093d70").circle(photoCenterX, photoCenterY, photoRadius).fill().restore();
+      document.save().lineWidth(2).strokeColor("#60a5fa").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
       const initials = cv.name
         .split(/\s+/)
         .filter(Boolean)
         .slice(0, 2)
         .map(p => p.charAt(0).toUpperCase())
         .join("") || "T";
-      document.font("Heavy").fontSize(26).fillColor("#ffffff");
-      document.text(initials, photoCenterX - 30, photoCenterY - 14, { width: 60, align: "center", lineBreak: false });
+      document.font("Heavy").fontSize(24).fillColor("#ffffff");
+      document.text(initials, photoCenterX - 30, photoCenterY - 13, { width: 60, align: "center", lineBreak: false });
     }
 
-    leftY += photoDiameter + 12;
+    leftY += photoDiameter + 10;
 
     // Verified Badge
     const badgeWidth = 114;
-    const badgeHeight = 20;
+    const badgeHeight = 19;
     const badgeX = photoCenterX - badgeWidth / 2;
     document.save();
-    document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 10).fill("#15803d");
+    document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 9.5).fill("#16a34a");
     document.font("Bold").fontSize(7.5).fillColor("#ffffff");
-    document.text(cv.verified ? "✓  VERIFIED TUTOR" : "✓  REGISTERED TUTOR", badgeX, leftY + 5.5, {
+    document.text(cv.verified ? "✓  VERIFIED TUTOR" : "✓  REGISTERED TUTOR", badgeX, leftY + 5, {
       width: badgeWidth,
       align: "center",
       characterSpacing: 0.5,
@@ -216,243 +236,348 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     });
     document.restore();
 
-    leftY += badgeHeight + 10;
+    leftY += badgeHeight + 8;
 
     // Tutor ID Tag
     const tutorIdDisplay = cv.tutorNumber ? `TUTOR ID: ${cv.tutorNumber}` : `ID: ${cv.tutorId}`;
-    document.font("Heavy").fontSize(9.5).fillColor("#93c5fd");
+    document.font("Heavy").fontSize(9).fillColor("#dbeafe");
     document.text(tutorIdDisplay, leftPadding, leftY, { width: leftInnerWidth, align: "center", characterSpacing: 0.5 });
-    leftY += 18;
+    leftY += 16;
 
     // Divider
-    document.save().lineWidth(0.6).strokeColor("#274563").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-    leftY += 14;
+    document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    leftY += 12;
 
-    // Section: CONTACT INFO
-    document.font("Heavy").fontSize(8).fillColor("#38bdf8").text("CONTACT INFORMATION", leftPadding, leftY, { characterSpacing: 1.1 });
-    leftY += 13;
+    // Section: CONTACT & PERSONAL
+    document.font("Heavy").fontSize(8).fillColor("#ffffff").text("CONTACT & PERSONAL", leftPadding, leftY, { characterSpacing: 1.1 });
+    leftY += 12;
 
-    if (cv.locationLabel) {
-      document.font("Bold").fontSize(7.5).fillColor("#94a3b8").text("Location", leftPadding, leftY);
-      leftY += 9;
-      writeCvText(document, cv.locationLabel, "Regular", leftPadding, leftY, leftInnerWidth, { size: 8, color: "#ffffff", lineGap: 1 });
-      leftY += 16;
+    // 1. Location (Location, City, Country)
+    if (cv.locationLabel?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Location", leftPadding, leftY);
+      leftY += 8.5;
+      const h = writeCvText(document, cv.locationLabel.trim(), "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.8, color: "#ffffff", lineGap: 1 });
+      leftY += Math.max(13, h + 3);
     }
 
-    if (cv.phone) {
-      document.font("Bold").fontSize(7.5).fillColor("#94a3b8").text("Phone Number", leftPadding, leftY);
-      leftY += 9;
-      const phoneDisplay = formatLetterPhone(cv.phone);
-      document.font("Bold").fontSize(8.5).fillColor("#ffffff").text(phoneDisplay, leftPadding, leftY, { width: leftInnerWidth });
-      leftY += 16;
+    // 2. Phone
+    if (cv.phone?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Phone Number", leftPadding, leftY);
+      leftY += 8.5;
+      const phoneDisplay = formatLetterPhone(cv.phone.trim());
+      document.font("Bold").fontSize(8).fillColor("#ffffff").text(phoneDisplay, leftPadding, leftY, { width: leftInnerWidth });
+      leftY += 13.5;
     }
 
-    if (cv.contactEmail) {
-      document.font("Bold").fontSize(7.5).fillColor("#94a3b8").text("Email", leftPadding, leftY);
-      leftY += 9;
-      document.font("Regular").fontSize(7.5).fillColor("#e2e8f0").text(cv.contactEmail, leftPadding, leftY, { width: leftInnerWidth, lineBreak: true });
-      leftY += 16;
+    // 3. Email
+    if (cv.contactEmail?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Email", leftPadding, leftY);
+      leftY += 8.5;
+      document.font("Regular").fontSize(7.2).fillColor("#ffffff").text(cv.contactEmail.trim(), leftPadding, leftY, { width: leftInnerWidth, lineBreak: true });
+      leftY += 13.5;
+    }
+
+    // 4. Date of Birth
+    if (cv.dateOfBirth?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Date of Birth", leftPadding, leftY);
+      leftY += 8.5;
+      document.font("Regular").fontSize(7.8).fillColor("#ffffff").text(cv.dateOfBirth.trim(), leftPadding, leftY, { width: leftInnerWidth });
+      leftY += 13.5;
+    }
+
+    // 5. Religion
+    if (cv.religion?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Religion", leftPadding, leftY);
+      leftY += 8.5;
+      writeCvText(document, cv.religion.trim(), "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.8, color: "#ffffff" });
+      leftY += 13.5;
+    }
+
+    // 6. Gender
+    if (cv.gender?.trim()) {
+      document.font("Bold").fontSize(7.2).fillColor("#cfe0f5").text("Gender", leftPadding, leftY);
+      leftY += 8.5;
+      const genderDisplay = cv.gender.trim().charAt(0).toUpperCase() + cv.gender.trim().slice(1);
+      document.font("Regular").fontSize(7.8).fillColor("#ffffff").text(genderDisplay, leftPadding, leftY, { width: leftInnerWidth });
+      leftY += 13.5;
     }
 
     // Divider
-    document.save().lineWidth(0.6).strokeColor("#274563").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-    leftY += 14;
+    document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    leftY += 11;
 
     // Section: SUBJECT EXPERTISE
     const subjects = (cv.subjects ?? []).filter(Boolean);
     if (subjects.length > 0) {
-      document.font("Heavy").fontSize(8).fillColor("#38bdf8").text("SUBJECT EXPERTISE", leftPadding, leftY, { characterSpacing: 1.1 });
-      leftY += 13;
+      document.font("Heavy").fontSize(8).fillColor("#ffffff").text("SUBJECT EXPERTISE", leftPadding, leftY, { characterSpacing: 1.1 });
+      leftY += 11;
 
-      const subjectBadges = subjects.slice(0, 7);
+      const subjectBadges = subjects.slice(0, 6);
       subjectBadges.forEach(subj => {
-        document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 16, 4).fill("#1c3b5b").restore();
-        writeCvText(document, subj, "Bold", leftPadding + 6, leftY + 3.5, leftInnerWidth - 12, { size: 7.5, color: "#f8fafc" });
-        leftY += 19;
+        document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 15, 3.5).fill("rgba(255, 255, 255, 0.15)").restore();
+        writeCvText(document, subj, "Bold", leftPadding + 6, leftY + 3, leftInnerWidth - 12, { size: 7.2, color: "#ffffff" });
+        leftY += 17.5;
       });
-      leftY += 4;
-      document.save().lineWidth(0.6).strokeColor("#274563").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-      leftY += 12;
+      leftY += 2;
+      document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+      leftY += 10;
     }
 
     // Section: PREFERRED CLASSES
     const levels = (cv.levels ?? []).filter(Boolean);
     if (levels.length > 0) {
-      document.font("Heavy").fontSize(8).fillColor("#38bdf8").text("PREFERRED CLASSES", leftPadding, leftY, { characterSpacing: 1.1 });
-      leftY += 13;
+      document.font("Heavy").fontSize(8).fillColor("#ffffff").text("PREFERRED CLASSES", leftPadding, leftY, { characterSpacing: 1.1 });
+      leftY += 10;
       const levelText = levels.slice(0, 5).join(", ");
-      writeCvText(document, levelText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 8, color: "#f1f5f9", lineGap: 1.5 });
-      leftY += 22;
-      document.save().lineWidth(0.6).strokeColor("#274563").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-      leftY += 12;
+      const h = writeCvText(document, levelText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.6, color: "#ffffff", lineGap: 1.2 });
+      leftY += Math.max(14, h) + 6;
+      document.save().lineWidth(0.6).strokeColor("rgba(255, 255, 255, 0.20)").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+      leftY += 10;
     }
 
-    // Section: TUITION MODES
+    // Section: TUITION DELIVERY
     const modes = (cv.tuitionTypes ?? []).filter(Boolean);
     if (modes.length > 0) {
-      document.font("Heavy").fontSize(8).fillColor("#38bdf8").text("TUITION DELIVERY", leftPadding, leftY, { characterSpacing: 1.1 });
-      leftY += 13;
+      document.font("Heavy").fontSize(8).fillColor("#ffffff").text("TUITION DELIVERY", leftPadding, leftY, { characterSpacing: 1.1 });
+      leftY += 10;
       const modeLabels: Record<string, string> = { home: "Home Tuition", online: "Online Tuition", group: "Group Tuition", package: "Package Tuition" };
       const modeText = modes.map(m => modeLabels[m] ?? m).join(" & ");
-      writeCvText(document, modeText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 8, color: "#f1f5f9" });
-      leftY += 20;
+      writeCvText(document, modeText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.6, color: "#ffffff" });
+      leftY += 16;
     }
 
     // Rating Badge at bottom of left column
     if (cv.ratingAverage && cv.ratingAverage > 0) {
-      const bottomRatingY = pageHeight - 44;
-      document.save().roundedRect(leftPadding, bottomRatingY, leftInnerWidth, 24, 6).fill("#0d2033").restore();
+      const bottomRatingY = pageHeight - 40;
+      document.save().roundedRect(leftPadding, bottomRatingY, leftInnerWidth, 22, 5).fill("#073b6e").restore();
       const stars = "★".repeat(Math.round(cv.ratingAverage)) + "☆".repeat(5 - Math.round(cv.ratingAverage));
-      document.font("Bold").fontSize(9).fillColor("#f59e0b");
+      document.font("Bold").fontSize(8.5).fillColor("#fbbf24");
       const revText = cv.reviewCount ? ` (${cv.reviewCount} reviews)` : "";
-      document.text(`${cv.ratingAverage.toFixed(1)} ${stars}${revText}`, leftPadding, bottomRatingY + 6.5, { width: leftInnerWidth, align: "center" });
+      document.text(`${cv.ratingAverage.toFixed(1)} ${stars}${revText}`, leftPadding, bottomRatingY + 5.5, { width: leftInnerWidth, align: "center" });
     }
 
     // ==========================================
-    // RIGHT COLUMN CONTENT (Width: 400.28, Inset: 26)
+    // RIGHT COLUMN CONTENT (Width: 400.28, Inset: 24)
     // ==========================================
-    const rightPadding = 26;
+    const rightPadding = 24;
     const rightInnerWidth = rightColWidth - rightPadding * 2;
     const rightContentLeft = rightColLeft + rightPadding;
-    let rightY = 32;
+    const footerTop = pageHeight - 84;
+    let rightY = 28;
 
     // Header Logo & Brand Watermark at top right
-    drawCradle(document, rightContentLeft + rightInnerWidth - 42, rightY - 6, 26 / 48);
+    drawCradle(document, rightContentLeft + rightInnerWidth - 40, rightY - 4, 25 / 48);
 
     // Tutor Name
-    writeCvText(document, cv.name, "Heavy", rightContentLeft, rightY, rightInnerWidth - 55, { size: 18, color: "#0f2137", lineGap: 2 });
-    rightY += 25;
+    writeCvText(document, cv.name, "Heavy", rightContentLeft, rightY, rightInnerWidth - 50, { size: 17, color: "#0f2137", lineGap: 1.5 });
+    rightY += 23;
 
     // Headline / Tagline
-    const headline = cv.headline?.trim() || [cv.highestEducation, cv.institution].filter(Boolean).join(" · ") || "Dedicated & Experienced Tutor";
-    writeCvText(document, headline, "Bold", rightContentLeft, rightY, rightInnerWidth, { size: 10, color: "#0b5fa8", lineGap: 1.5 });
-    rightY += 19;
+    const headline = cv.headline?.trim() || [cv.highestEducation, cv.institution].filter(Boolean).join(" · ") || "";
+    if (headline) {
+      writeCvText(document, headline, "Bold", rightContentLeft, rightY, rightInnerWidth, { size: 9.5, color: "#0d5fae", lineGap: 1.2 });
+      rightY += 17;
+    }
 
     // Divider
-    document.save().lineWidth(1).strokeColor("#e2e8f0").moveTo(rightContentLeft, rightY).lineTo(rightContentLeft + rightInnerWidth, rightY).stroke().restore();
-    rightY += 14;
+    document.save().lineWidth(0.8).strokeColor("#e2e8f0").moveTo(rightContentLeft, rightY).lineTo(rightContentLeft + rightInnerWidth, rightY).stroke().restore();
+    rightY += 12;
 
-    // Section: ABOUT / PROFESSIONAL SUMMARY
-    const bioText = cv.aboutMe?.trim() || "Passionate educator committed to providing high-quality, personalized tutoring. Focused on conceptual clarity, student engagement, and consistent academic progress.";
-    document.font("Heavy").fontSize(8.5).fillColor("#0b5fa8").text("PROFESSIONAL SUMMARY", rightContentLeft, rightY, { characterSpacing: 1.1 });
-    rightY += 13;
-    writeCvText(document, bioText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8.5, color: "#334155", lineGap: 2.2 });
-    rightY += Math.min(65, Math.max(34, document.heightOfString(bioText, { width: rightInnerWidth, lineGap: 2.2 }))) + 12;
+    // ------------------------------------------
+    // SECTION: PROFESSIONAL SUMMARY (Only if filled)
+    // ------------------------------------------
+    const bioText = cv.aboutMe?.trim();
+    if (bioText) {
+      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("PROFESSIONAL SUMMARY", rightContentLeft, rightY, { characterSpacing: 1.1 });
+      rightY += 11;
+      const bioHeight = writeCvText(document, bioText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155", lineGap: 1.8 });
+      rightY += Math.min(50, Math.max(14, bioHeight)) + 9;
+    }
 
-    // Section: EDUCATIONAL QUALIFICATIONS
-    document.font("Heavy").fontSize(8.5).fillColor("#0b5fa8").text("EDUCATIONAL BACKGROUND", rightContentLeft, rightY, { characterSpacing: 1.1 });
-    rightY += 13;
+    // ------------------------------------------
+    // SECTION: EDUCATIONAL BACKGROUND (Masters, Honours, HSC, SSC detailed)
+    // ------------------------------------------
+    const rawEduList = (cv.educationRecords ?? []).filter(e => e.qualificationLevel || e.degreeExamTitle || e.instituteName);
+    const sortedEduList = [...rawEduList].sort((a, b) => {
+      const rankA = getEducationLevelRank(a.qualificationLevel || a.degreeExamTitle);
+      const rankB = getEducationLevelRank(b.qualificationLevel || b.degreeExamTitle);
+      if (rankA !== rankB) return rankA - rankB;
+      return (b.passingYear ?? b.studyEndYear ?? 0) - (a.passingYear ?? a.studyEndYear ?? 0);
+    });
 
-    const educationList = (cv.educationRecords ?? []).filter(e => e.qualificationLevel || e.degreeExamTitle || e.instituteName);
+    if (sortedEduList.length > 0) {
+      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("EDUCATIONAL BACKGROUND", rightContentLeft, rightY, { characterSpacing: 1.1 });
+      rightY += 11;
 
-    if (educationList.length === 0) {
-      // Fallback to highest education fields if records are not itemized
-      const fallbackEdu = [cv.highestEducation, cv.institution, cv.education].filter(Boolean).join(" · ") || "Degree details available upon request.";
-      writeCvText(document, fallbackEdu, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8.5, color: "#334155" });
-      rightY += 22;
-    } else {
-      // Display up to 4 education records neatly
-      const recordsToDisplay = educationList.slice(0, 4);
-      recordsToDisplay.forEach((edu, idx) => {
-        // Degree / Level & Major
-        const titleParts = [edu.degreeExamTitle || edu.qualificationLevel, edu.majorGroup ? `(${edu.majorGroup})` : null].filter(Boolean).join(" ");
-        const title = titleParts || "Qualification";
-        const yearPart = edu.passingYear ? `Year: ${edu.passingYear}` : edu.currentlyStudying ? "Currently Studying" : (edu.studyStartYear && edu.studyEndYear ? `${edu.studyStartYear} – ${edu.studyEndYear}` : null);
-        const resultPart = edu.resultGpa ? `GPA: ${edu.resultGpa}` : null;
+      // Show up to 4 qualification levels (Masters, Honours, HSC, SSC)
+      const recordsToDisplay = sortedEduList.slice(0, 4);
+      recordsToDisplay.forEach((edu) => {
+        const level = edu.qualificationLevel?.trim();
+        const degree = edu.degreeExamTitle?.trim();
+        let title = degree || level || "Qualification";
+        if (level && degree && !degree.toLowerCase().includes(level.toLowerCase())) {
+          title = `${level} - ${degree}`;
+        }
+        if (edu.majorGroup?.trim()) {
+          title += ` (${edu.majorGroup.trim()})`;
+        }
+
+        const yearPart = edu.passingYear
+          ? `Year: ${edu.passingYear}`
+          : edu.currentlyStudying
+            ? "Currently Studying"
+            : edu.studyStartYear && edu.studyEndYear
+              ? `${edu.studyStartYear} – ${edu.studyEndYear}`
+              : edu.studyStartYear
+                ? `${edu.studyStartYear} – Present`
+                : null;
+        const resultPart = edu.resultGpa ? `GPA: ${edu.resultGpa.trim()}` : null;
         const metaRight = [resultPart, yearPart].filter(Boolean).join("  ·  ");
 
         // Small bullet dot
-        document.save().fillColor("#0b5fa8").circle(rightContentLeft + 3, rightY + 5, 2.5).fill().restore();
+        document.save().fillColor("#0d5fae").circle(rightContentLeft + 3, rightY + 4.5, 2.2).fill().restore();
 
-        // Degree title
-        writeCvText(document, title, "Bold", rightContentLeft + 12, rightY, rightInnerWidth - 110, { size: 9, color: "#0f2137" });
+        // Degree Title
+        writeCvText(document, title, "Bold", rightContentLeft + 11, rightY, rightInnerWidth - 110, { size: 8.5, color: "#0f2137" });
 
         // Meta on the right (GPA / Year)
         if (metaRight) {
-          document.font("Bold").fontSize(8).fillColor("#0b5fa8");
-          document.text(metaRight, rightContentLeft + 12, rightY, { width: rightInnerWidth - 12, align: "right", lineBreak: false });
+          document.font("Bold").fontSize(7.6).fillColor("#0d5fae");
+          document.text(metaRight, rightContentLeft + 11, rightY, { width: rightInnerWidth - 11, align: "right", lineBreak: false });
         }
-        rightY += 12.5;
+        rightY += 11;
 
-        // Institute name
-        if (edu.instituteName) {
-          writeCvText(document, edu.instituteName, "Regular", rightContentLeft + 12, rightY, rightInnerWidth - 12, { size: 8, color: "#475569" });
-          rightY += 12;
+        // Institute & Curriculum Details
+        const instituteDetails = [edu.instituteName?.trim(), edu.curriculum?.trim()].filter(Boolean).join("  ·  ");
+        if (instituteDetails) {
+          writeCvText(document, instituteDetails, "Regular", rightContentLeft + 11, rightY, rightInnerWidth - 11, { size: 7.6, color: "#475569" });
+          rightY += 10.5;
         }
 
-        if (idx < recordsToDisplay.length - 1) {
-          rightY += 3;
-        }
+        rightY += 2.5;
       });
-      rightY += 10;
+      rightY += 7;
+    } else {
+      // Fallback only if highestEducation or institution exists
+      const fallbackEdu = [cv.highestEducation, cv.institution, cv.education].filter(Boolean).join(" · ").trim();
+      if (fallbackEdu) {
+        document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("EDUCATIONAL BACKGROUND", rightContentLeft, rightY, { characterSpacing: 1.1 });
+        rightY += 11;
+        writeCvText(document, fallbackEdu, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155" });
+        rightY += 16;
+      }
     }
 
-    // Section: TEACHING EXPERIENCE & HIGHLIGHTS
-    document.font("Heavy").fontSize(8.5).fillColor("#0b5fa8").text("TEACHING EXPERIENCE & HIGHLIGHTS", rightContentLeft, rightY, { characterSpacing: 1.1 });
-    rightY += 13;
+    // ------------------------------------------
+    // SECTION: TEACHING EXPERIENCE & HIGHLIGHTS (Only if filled)
+    // ------------------------------------------
+    const hasExpDetails = Boolean(
+      (cv.teachingExperienceYears !== undefined && cv.teachingExperienceYears !== null) ||
+      cv.priorTeachingExperience?.trim() ||
+      cv.teachingApproach?.trim() ||
+      cv.specialExpertise?.trim()
+    );
 
-    // Stat boxes
-    const expYears = cv.teachingExperienceYears ?? 2;
-    const statBoxWidth = (rightInnerWidth - 12) / 2;
-    const statBoxHeight = 36;
+    if (hasExpDetails) {
+      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("TEACHING EXPERIENCE & METHODOLOGY", rightContentLeft, rightY, { characterSpacing: 1.1 });
+      rightY += 11;
 
-    // Box 1: Experience Years
-    document.save().roundedRect(rightContentLeft, rightY, statBoxWidth, statBoxHeight, 5).fill("#f1f5f9").restore();
-    document.font("Heavy").fontSize(13).fillColor("#0b5fa8").text(`${expYears}+ Years`, rightContentLeft + 10, rightY + 5, { width: statBoxWidth - 20 });
-    document.font("Regular").fontSize(7.5).fillColor("#475569").text("Hands-on Tutoring Experience", rightContentLeft + 10, rightY + 21, { width: statBoxWidth - 20 });
+      // Compact Stat boxes
+      const expYears = cv.teachingExperienceYears ?? 0;
+      const statBoxWidth = (rightInnerWidth - 10) / 2;
+      const statBoxHeight = 31;
 
-    // Box 2: Verification Status / Method
-    document.save().roundedRect(rightContentLeft + statBoxWidth + 12, rightY, statBoxWidth, statBoxHeight, 5).fill("#f1f5f9").restore();
-    document.font("Heavy").fontSize(13).fillColor("#15803d").text("100% Verified", rightContentLeft + statBoxWidth + 22, rightY + 5, { width: statBoxWidth - 20 });
-    document.font("Regular").fontSize(7.5).fillColor("#475569").text("Documents & Credentials Checked", rightContentLeft + statBoxWidth + 22, rightY + 21, { width: statBoxWidth - 20 });
+      // Box 1: Experience Years
+      document.save().roundedRect(rightContentLeft, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
+      document.font("Heavy").fontSize(11).fillColor("#0d5fae").text(`${expYears}+ Years`, rightContentLeft + 8, rightY + 3.5, { width: statBoxWidth - 16 });
+      document.font("Regular").fontSize(7.2).fillColor("#475569").text("Tutoring Experience", rightContentLeft + 8, rightY + 17, { width: statBoxWidth - 16 });
 
-    rightY += statBoxHeight + 11;
+      // Box 2: Verification Status
+      document.save().roundedRect(rightContentLeft + statBoxWidth + 10, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
+      document.font("Heavy").fontSize(11).fillColor("#15803d").text(cv.verified ? "100% Verified" : "Registered Profile", rightContentLeft + statBoxWidth + 18, rightY + 3.5, { width: statBoxWidth - 16 });
+      document.font("Regular").fontSize(7.2).fillColor("#475569").text("Credentials & Identity Checked", rightContentLeft + statBoxWidth + 18, rightY + 17, { width: statBoxWidth - 16 });
 
-    // Prior teaching note or expertise
-    const expNote = cv.priorTeachingExperience?.trim() || cv.specialExpertise?.trim() || "Experienced in guiding students for school/college exams, board curriculum, and problem-solving techniques.";
-    writeCvText(document, expNote, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#334155", lineGap: 1.8 });
-    rightY += Math.min(48, Math.max(24, document.heightOfString(expNote, { width: rightInnerWidth, lineGap: 1.8 }))) + 12;
+      rightY += statBoxHeight + 7;
 
-    // Section: PREFERRED TUITION AREAS
+      // Teacher's own prior teaching experience note
+      if (cv.priorTeachingExperience?.trim()) {
+        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Experience Highlights:", rightContentLeft, rightY);
+        rightY += 9;
+        const h = writeCvText(document, cv.priorTeachingExperience.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+        rightY += Math.min(36, Math.max(12, h)) + 5;
+      }
+
+      // Teacher's own teaching approach / methodology
+      if (cv.teachingApproach?.trim()) {
+        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Teaching Methodology & Approach:", rightContentLeft, rightY);
+        rightY += 9;
+        const h = writeCvText(document, cv.teachingApproach.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+        rightY += Math.min(34, Math.max(12, h)) + 5;
+      }
+
+      // Teacher's special expertise
+      if (cv.specialExpertise?.trim() && cv.specialExpertise.trim() !== cv.priorTeachingExperience?.trim()) {
+        document.font("Bold").fontSize(7.6).fillColor("#0f2137").text("Special Expertise:", rightContentLeft, rightY);
+        rightY += 9;
+        const h = writeCvText(document, cv.specialExpertise.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+        rightY += Math.min(28, Math.max(12, h)) + 5;
+      }
+
+      rightY += 4;
+    }
+
+    // ------------------------------------------
+    // SECTION: WHY CHOOSE ME (Only if filled)
+    // ------------------------------------------
+    if (cv.whyChooseMe?.trim()) {
+      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("WHY CHOOSE ME", rightContentLeft, rightY, { characterSpacing: 1.1 });
+      rightY += 10.5;
+      const h = writeCvText(document, cv.whyChooseMe.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#334155", lineGap: 1.6 });
+      rightY += Math.min(36, Math.max(12, h)) + 7;
+    }
+
+    // ------------------------------------------
+    // SECTION: PREFERRED TUITION AREAS (Only if filled)
+    // ------------------------------------------
     const areas = (cv.preferredLocations ?? []).filter(Boolean);
-    if (areas.length > 0) {
-      document.font("Heavy").fontSize(8.5).fillColor("#0b5fa8").text("PREFERRED TUITION AREAS", rightContentLeft, rightY, { characterSpacing: 1.1 });
-      rightY += 12;
-      const areaString = areas.join("  •  ");
-      writeCvText(document, areaString, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 8, color: "#1e293b", lineGap: 1.5 });
-      rightY += 20;
+    if (areas.length > 0 && rightY < footerTop - 40) {
+      document.font("Heavy").fontSize(8.5).fillColor("#0d5fae").text("PREFERRED TUITION AREAS", rightContentLeft, rightY, { characterSpacing: 1.1 });
+      rightY += 10.5;
+      const areaString = areas.slice(0, 10).join("  •  ");
+      writeCvText(document, areaString, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.6, color: "#1e293b", lineGap: 1.4 });
+      rightY += 15;
     }
 
     // ==========================================
     // FOOTER: VERIFICATION SEAL & QR CODE
     // ==========================================
-    const footerTop = pageHeight - 88;
     document.save().lineWidth(0.8).strokeColor("#cbd5e1").moveTo(rightContentLeft, footerTop).lineTo(rightContentLeft + rightInnerWidth, footerTop).stroke().restore();
 
-    const qrSize = 58;
+    const qrSize = 56;
     const qrX = rightContentLeft + rightInnerWidth - qrSize;
-    const qrY = footerTop + 12;
+    const qrY = footerTop + 10;
     const profileUrl = cv.publicProfileUrl || `https://${SITE_ADDRESS}/tutors/${cv.tutorId}`;
 
     drawQrCode(document, profileUrl, qrX, qrY, qrSize, "#0f2137");
 
     // Authority Seal & Verification Info
-    const sealRadius = 22;
+    const sealRadius = 21;
     const sealCenterX = rightContentLeft + sealRadius;
-    const sealCenterY = footerTop + 14 + sealRadius;
+    const sealCenterY = footerTop + 12 + sealRadius;
 
-    document.save().lineWidth(1.2).strokeColor("#0b5fa8").circle(sealCenterX, sealCenterY, sealRadius).stroke().restore();
-    document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor("#0b5fa8").circle(sealCenterX, sealCenterY, sealRadius - 3.5).stroke().undash().restore();
-    const cradleScale = 24 / 48;
+    document.save().lineWidth(1.2).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius).stroke().restore();
+    document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius - 3.5).stroke().undash().restore();
+    const cradleScale = 22 / 48;
     drawCradle(document, sealCenterX - 24 * cradleScale, sealCenterY - 24 * cradleScale, cradleScale, 1.2);
 
-    const sealTextLeft = sealCenterX + sealRadius + 10;
-    const sealTextWidth = qrX - sealTextLeft - 10;
+    const sealTextLeft = sealCenterX + sealRadius + 9;
+    const sealTextWidth = qrX - sealTextLeft - 8;
 
-    document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS BD", sealTextLeft, footerTop + 14, { width: sealTextWidth });
-    document.font("Bold").fontSize(7.5).fillColor("#15803d").text("OFFICIALLY VERIFIED PROFILE", sealTextLeft, footerTop + 25, { width: sealTextWidth });
-    document.font("Regular").fontSize(7).fillColor("#64748b").text(`Scan QR code or visit ${SITE_ADDRESS} to verify background, certificates and reviews.`, sealTextLeft, footerTop + 36, { width: sealTextWidth, lineGap: 1.5 });
+    document.font("Heavy").fontSize(8.2).fillColor("#0f2137").text("CONNECT TUTORS BD", sealTextLeft, footerTop + 12, { width: sealTextWidth });
+    document.font("Bold").fontSize(7.2).fillColor("#15803d").text("OFFICIALLY VERIFIED PROFILE", sealTextLeft, footerTop + 22.5, { width: sealTextWidth });
+    document.font("Regular").fontSize(6.8).fillColor("#64748b").text(`Scan QR code or visit ${SITE_ADDRESS} to verify background, certificates and reviews.`, sealTextLeft, footerTop + 33, { width: sealTextWidth, lineGap: 1.4 });
 
     document.end();
   });
 }
+
