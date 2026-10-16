@@ -11,15 +11,30 @@ export type TutorCvPreviewModalProps = {
   onClose: () => void;
   tutorName?: string;
   tutorNumber?: number | string | null;
+  tutorId?: string;
 };
 
-export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber }: TutorCvPreviewModalProps) {
+export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber, tutorId }: TutorCvPreviewModalProps) {
   if (!isOpen) return null;
 
-  const cvQuery = trpc.tutor.getMyCvPdf.useQuery(undefined, {
-    enabled: isOpen,
-    staleTime: 60_000,
-  });
+  const myCvQuery = trpc.tutor?.getMyCvPdf?.useQuery
+    ? trpc.tutor.getMyCvPdf.useQuery(undefined, {
+        enabled: isOpen && !tutorId,
+        staleTime: 60_000,
+      })
+    : ({ data: undefined, isLoading: false, error: null } as any);
+
+  const adminCvQuery = trpc.admin?.getTutorCvPdf?.useQuery
+    ? trpc.admin.getTutorCvPdf.useQuery(
+        { tutorId: tutorId ?? "" },
+        {
+          enabled: isOpen && Boolean(tutorId),
+          staleTime: 60_000,
+        }
+      )
+    : ({ data: undefined, isLoading: false, error: null } as any);
+
+  const cvQuery = tutorId ? adminCvQuery : myCvQuery;
 
   const bytes = useMemo(() => (cvQuery.data?.pdfBase64 ? base64ToBytes(cvQuery.data.pdfBase64) : null), [cvQuery.data?.pdfBase64]);
   const pagesRef = useRef<HTMLDivElement>(null);

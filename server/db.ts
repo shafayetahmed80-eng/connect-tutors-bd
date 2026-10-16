@@ -2104,6 +2104,25 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
   };
 }
 
+/**
+ * Generates the official 1-page Tutor CV & Biodata PDF for Admin inspection.
+ */
+export async function getTutorCvPdfForAdmin(input: { tutorId: string }): Promise<{ fileName: string; pdfBase64: string }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database unavailable");
+  const [owner] = await database
+    .select({ userId: tutors.userId })
+    .from(tutors)
+    .where(eq(tutors.id, input.tutorId))
+    .limit(1);
+
+  if (!owner || owner.userId == null) {
+    throw new Error("Tutor profile not found");
+  }
+
+  return await getTutorCvPdfByUserId(owner.userId);
+}
+
 export async function saveTutorProfilePhotoKey(userId: number, key: string) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");

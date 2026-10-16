@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ getTutorProfileForAdmin: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({
+  getTutorProfileForAdmin: vi.fn(),
+  getTutorCvPdfForAdmin: vi.fn(),
+}));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -58,5 +61,35 @@ describe("admin.getTutorProfile", () => {
 
     const tutor = { ...adminUser, role: "tutor" as const };
     await expect(createCaller(tutor).admin.getTutorProfile({ tutorId: "tutor-175" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("admin.getTutorCvPdf", () => {
+  it("returns base64 pdf and file name for valid tutorId", async () => {
+    dbMocks.getTutorCvPdfForAdmin.mockResolvedValue({
+      fileName: "Connect-Tutors-CV-84210-Tania-Sultana.pdf",
+      pdfBase64: "JVBERi0xLjQK",
+    });
+
+    const result = await createCaller().admin.getTutorCvPdf({ tutorId: "tutor-175" });
+
+    expect(dbMocks.getTutorCvPdfForAdmin).toHaveBeenCalledWith({ tutorId: "tutor-175" });
+    expect(result).toEqual({
+      fileName: "Connect-Tutors-CV-84210-Tania-Sultana.pdf",
+      pdfBase64: "JVBERi0xLjQK",
+    });
+  });
+
+  it("rejects non-admin callers and throws NOT_FOUND on error", async () => {
+    dbMocks.getTutorCvPdfForAdmin.mockRejectedValue(new Error("Tutor profile not found"));
+
+    await expect(createCaller().admin.getTutorCvPdf({ tutorId: "tutor-unknown" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+
+    const tutor = { ...adminUser, role: "tutor" as const };
+    await expect(createCaller(tutor).admin.getTutorCvPdf({ tutorId: "tutor-175" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

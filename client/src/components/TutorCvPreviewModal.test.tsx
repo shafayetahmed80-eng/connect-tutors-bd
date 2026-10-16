@@ -21,6 +21,19 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    admin: {
+      getTutorCvPdf: {
+        useQuery: vi.fn().mockReturnValue({
+          data: {
+            fileName: "Connect-Tutors-CV-84210-Test.pdf",
+            pdfBase64: "JVBERi0xLjQK",
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+    },
   },
 }));
 
@@ -31,7 +44,7 @@ vi.mock("@/lib/pdfPreview", () => ({
 }));
 
 describe("TutorCvPreviewModal", () => {
-  it("renders when open and displays modal header and action buttons", () => {
+  it("renders when open and displays modal header and action buttons in tutor mode", () => {
     render(
       <TutorCvPreviewModal
         isOpen={true}
@@ -46,6 +59,22 @@ describe("TutorCvPreviewModal", () => {
     expect(screen.getByRole("button", { name: /Download PDF/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Print/i })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /Close/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders when open in admin mode with tutorId", () => {
+    render(
+      <TutorCvPreviewModal
+        isOpen={true}
+        onClose={vi.fn()}
+        tutorId="tutor-175"
+        tutorName="Md. Rashedul Islam"
+        tutorNumber={84210}
+      />
+    );
+
+    expect(screen.getByText("Official Tutor CV & Biodata")).toBeTruthy();
+    expect(screen.getByText("Tutor ID: 84210")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download PDF/i })).toBeTruthy();
   });
 
   it("does not render when isOpen is false", () => {
