@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   isOwner: true,
   templates: null as unknown,
   savedTemplates: null as unknown,
+  postStatusInput: null as unknown,
   liveData: {
     items: [
       {
@@ -32,9 +33,23 @@ const mocks = vi.hoisted(() => ({
         notes: "Careful attention needed in Physics.",
         status: "matched",
         publicationState: "published",
+        isFacebookPosted: false,
+        facebookPostedAt: null as Date | null,
+        facebookPostedByAdminId: null as number | null,
+        facebookPostedByAdminName: null as string | null,
         createdAt: new Date("2026-10-15T10:00:00.000Z"),
       },
     ],
+    counts: {
+      pending: 0,
+      live: 1,
+      appointed: 0,
+      confirmed: 0,
+      closed: 0,
+      cancelled: 0,
+    },
+    livePostedCount: 0,
+    liveUnpostedCount: 1,
     total: 1,
     page: 1,
     pageSize: 20,
@@ -90,6 +105,16 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setFacebookPostStatus: {
+        useMutation: (opts?: { onSuccess?: () => void }) => ({
+          mutate: (input: unknown, callbacks?: { onSuccess?: () => void }) => {
+            mocks.postStatusInput = input;
+            callbacks?.onSuccess?.();
+            opts?.onSuccess?.();
+          },
+          isPending: false,
+        }),
+      },
       listPostedJobs: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -126,6 +151,11 @@ describe("AdminFacebookPostsContent", () => {
     mocks.isOwner = true;
     mocks.templates = null;
     mocks.savedTemplates = null;
+    mocks.postStatusInput = null;
+    mocks.liveData.items[0].isFacebookPosted = false;
+    mocks.liveData.items[0].facebookPostedAt = null;
+    mocks.liveData.items[0].facebookPostedByAdminId = null;
+    mocks.liveData.items[0].facebookPostedByAdminName = null;
     localStorage.clear();
     Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
     Object.assign(navigator, {
@@ -377,6 +407,108 @@ describe("AdminFacebookPostsContent", () => {
     expect(mocks.lastInput).toMatchObject({
       query: "Physics",
       page: 1,
+    });
+  });
+
+  it("renders FB Status column with Not Posted badge and toggles to Posted on click", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const notPostedBadge = screen.getByRole("button", { name: /Toggle Facebook post status for job/i });
+    expect(notPostedBadge).toBeDefined();
+
+    fireEvent.click(notPostedBadge);
+
+    expect(mocks.postStatusInput).toEqual({
+      requestIds: [101],
+      isPosted: true,
+    });
+  });
+
+  it("renders Posted badge when isFacebookPosted is true and toggles to Unposted on click", async () => {
+    const originalItems = mocks.liveData.items;
+    mocks.liveData = {
+      ...mocks.liveData,
+      items: [
+        {
+          ...originalItems[0],
+          isFacebookPosted: true,
+          facebookPostedAt: new Date(Date.now() - 3600000), // 1h ago
+          facebookPostedByAdminId: 1,
+          facebookPostedByAdminName: "Shafayet Admin",
+        },
+      ],
+    };
+
+    render(<AdminFacebookPostsContent />);
+
+    const postedBadge = screen.getByRole("button", { name: /Toggle Facebook post status for job/i });
+    expect(postedBadge).toBeDefined();
+    expect(screen.getByText("1h ago")).toBeDefined();
+
+    fireEvent.click(postedBadge);
+
+    expect(mocks.postStatusInput).toEqual({
+      requestIds: [101],
+      isPosted: false,
+    });
+
+    // Reset back
+    mocks.liveData = { ...mocks.liveData, items: originalItems };
+  });
+
+  it("filters live jobs by Facebook post status when clicking status filter buttons", () => {
+    render(<AdminFacebookPostsContent />);
+
+    // Default is all
+    expect(mocks.lastInput).toMatchObject({
+      stage: "live",
+      facebookPosted: "all",
+    });
+
+    // Click Not Posted filter button
+    const notPostedFilterBtn = screen.getByRole("button", { name: /Filter: Not Posted/i });
+    fireEvent.click(notPostedFilterBtn);
+
+    expect(mocks.lastInput).toMatchObject({
+      stage: "live",
+      facebookPosted: "not_posted",
+      page: 1,
+    });
+
+    // Click Posted filter button
+    const postedFilterBtn = screen.getByRole("button", { name: /Filter: Posted/i });
+    fireEvent.click(postedFilterBtn);
+
+    expect(mocks.lastInput).toMatchObject({
+      stage: "live",
+      facebookPosted: "posted",
+      page: 1,
+    });
+  });
+
+  it("automatically marks copied single tuition and bulk tuitions as Posted when autoMarkOnCopy is enabled", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    // Single copy auto-marks
+    const copyBtn = screen.getByRole("button", { name: /Copy English inline post for job/i });
+    fireEvent.click(copyBtn);
+
+    await waitFor(() => {
+      expect(mocks.postStatusInput).toEqual({
+        requestIds: [101],
+        isPosted: true,
+      });
+    });
+
+    // Bulk copy auto-marks
+    const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
+    fireEvent.click(copyAllBtn);
+
+    await waitFor(() => {
+      expect(mocks.postStatusInput).toEqual({
+        requestIds: [101],
+        isPosted: true,
+      });
     });
   });
 });

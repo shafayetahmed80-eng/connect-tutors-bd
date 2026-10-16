@@ -26,7 +26,7 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, Copy, Eye, FileText, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
@@ -88,6 +88,22 @@ function saveTemplatesToStorage(templates: FacebookPostCustomTemplate) {
   } catch {}
 }
 
+function formatRelativeTime(dateInput: Date | string | null | undefined): string {
+  if (!dateInput) return "";
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export function AdminFacebookPostsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -96,6 +112,9 @@ export function AdminFacebookPostsContent() {
   const [previewFormat, setPreviewFormat] = useState<"full" | "inline">("full");
   const [isBulkCopying, setIsBulkCopying] = useState(false);
   const [isBulkCopied, setIsBulkCopied] = useState(false);
+  const [fbPostFilter, setFbPostFilter] = useState<"all" | "posted" | "not_posted">("all");
+  const [autoMarkOnCopy, setAutoMarkOnCopy] = useState(true);
+
   const [selectedBulkFormat, setSelectedBulkFormat] = useState<FacebookPostBulkFormat>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(BULK_FORMAT_STORAGE_KEY);
@@ -151,6 +170,15 @@ export function AdminFacebookPostsContent() {
     },
   });
 
+  const setPostStatusMutation = trpc.admin.setFacebookPostStatus.useMutation({
+    onSuccess: () => {
+      utils.admin.listPostedJobs.invalidate();
+    },
+    onError: err => {
+      toast.error(err.message || "স্ট্যাটাস পরিবর্তন করতে ব্যর্থ হয়েছে।");
+    },
+  });
+
   // Filters for live posted jobs
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
   const filterOptionsQuery = trpc.admin.jobFilterOptions.useQuery({ postedBy: "all" }, { retry: false });
@@ -197,7 +225,12 @@ export function AdminFacebookPostsContent() {
     pageSize: PAGE_SIZE,
     postedBy: "all",
     filters: filterPanel.input,
+    facebookPosted: fbPostFilter,
   });
+
+  const counts = (jobs.data?.counts as Record<string, number> | undefined) ?? {};
+  const livePostedCount = jobs.data?.livePostedCount ?? 0;
+  const liveUnpostedCount = jobs.data?.liveUnpostedCount ?? 0;
 
   const items = jobs.data?.items ?? [];
   type LiveJob = (typeof items)[number];
@@ -245,8 +278,33 @@ export function AdminFacebookPostsContent() {
       pageSize: Math.min(max, 100),
       postedBy: "all",
       filters: filterPanel.input,
+      facebookPosted: fbPostFilter,
     });
     return res.items as LiveJob[];
+  };
+
+  const handleTogglePostStatus = (job: LiveJob) => {
+    const nextStatus = !job.isFacebookPosted;
+    const code = jobIdForRequest(job.id);
+    setPostStatusMutation.mutate(
+      { requestIds: [job.id], isPosted: nextStatus },
+      {
+        onSuccess: () => {
+          if (nextStatus) {
+            toast.success(`Job ${code} marked as Posted to Facebook`, {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  setPostStatusMutation.mutate({ requestIds: [job.id], isPosted: false });
+                },
+              },
+            });
+          } else {
+            toast.info(`Job ${code} marked as Not Posted`);
+          }
+        },
+      }
+    );
   };
 
   const handleCopyAllFiltered = async () => {
@@ -272,7 +330,27 @@ export function AdminFacebookPostsContent() {
         setIsBulkCopied(true);
         setTimeout(() => setIsBulkCopied(false), 2500);
         const formatLabel = BULK_FORMAT_OPTIONS.find(f => f.id === selectedBulkFormat)?.shortLabel || selectedBulkFormat;
-        toast.success(`${list.length}টি লাইভ টিউশন (${formatLabel}) ক্লিপবোর্ডে কপি হয়েছে!`);
+
+        if (autoMarkOnCopy) {
+          const idsToMark = list.map(j => j.id);
+          setPostStatusMutation.mutate(
+            { requestIds: idsToMark, isPosted: true },
+            {
+              onSuccess: () => {
+                toast.success(`${list.length}টি লাইভ টিউশন (${formatLabel}) কপি হয়েছে ও 'Posted' হিসেবে চিহ্নিত করা হয়েছে!`, {
+                  action: {
+                    label: "Undo",
+                    onClick: () => {
+                      setPostStatusMutation.mutate({ requestIds: idsToMark, isPosted: false });
+                    },
+                  },
+                });
+              },
+            }
+          );
+        } else {
+          toast.success(`${list.length}টি লাইভ টিউশন (${formatLabel}) ক্লিপবোর্ডে কপি হয়েছে!`);
+        }
       } else {
         toast.error("টেক্সট কপি করতে ব্যর্থ হয়েছে।");
       }
@@ -326,7 +404,26 @@ export function AdminFacebookPostsContent() {
     if (ok) {
       setCopiedId(job.id);
       setTimeout(() => setCopiedId(null), 2500);
-      toast.success(`Job ${code} details copied in English inline format!`);
+
+      if (autoMarkOnCopy && !job.isFacebookPosted) {
+        setPostStatusMutation.mutate(
+          { requestIds: [job.id], isPosted: true },
+          {
+            onSuccess: () => {
+              toast.success(`Job ${code} copied & marked as Posted to Facebook!`, {
+                action: {
+                  label: "Undo",
+                  onClick: () => {
+                    setPostStatusMutation.mutate({ requestIds: [job.id], isPosted: false });
+                  },
+                },
+              });
+            },
+          }
+        );
+      } else {
+        toast.success(`Job ${code} details copied in English inline format!`);
+      }
     } else {
       toast.error("টেক্সট কপি করতে ব্যর্থ হয়েছে।");
     }
@@ -477,6 +574,78 @@ export function AdminFacebookPostsContent() {
       ),
     },
     {
+      key: "fbStatus",
+      label: "FB Status",
+      cellClassName: "whitespace-nowrap",
+      cell: job => {
+        const isPosted = Boolean(job.isFacebookPosted);
+        const postedAgo = formatRelativeTime(job.facebookPostedAt);
+        const adminName = job.facebookPostedByAdminName || "Admin";
+        const code = jobIdForRequest(job.id);
+
+        if (isPosted) {
+          return (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleTogglePostStatus(job)}
+                aria-label={`Toggle Facebook post status for job ${code}`}
+                title={`Marked as Posted by ${adminName} (${postedAgo || "earlier"}). Click to unmark.`}
+                className="group inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-2xs font-bold text-emerald-800 shadow-2xs hover:bg-emerald-100 hover:border-emerald-400 transition active:scale-95 cursor-pointer"
+              >
+                <CheckCircle2 className="size-3 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <span>Posted</span>
+              </button>
+              {postedAgo ? (
+                <span className="text-[10px] text-j-ink-faint hidden lg:inline" title={`Posted by ${adminName}`}>
+                  {postedAgo}
+                </span>
+              ) : null}
+            </div>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={() => handleTogglePostStatus(job)}
+            aria-label={`Toggle Facebook post status for job ${code}`}
+            title="Click to mark as Posted to Facebook"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs font-semibold text-slate-600 shadow-2xs hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 transition active:scale-95 cursor-pointer"
+          >
+            <Circle className="size-3 text-slate-400 group-hover:text-slate-600" />
+            <span>Not Posted</span>
+          </button>
+        );
+      },
+      cardCell: job => {
+        const isPosted = Boolean(job.isFacebookPosted);
+        const postedAgo = formatRelativeTime(job.facebookPostedAt);
+        const code = jobIdForRequest(job.id);
+
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleTogglePostStatus(job)}
+              aria-label={`Toggle Facebook post status for job ${code}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs font-bold border transition ${
+                isPosted
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
+            >
+              {isPosted ? <CheckCircle2 className="size-3 text-emerald-600" /> : <Circle className="size-3 text-slate-400" />}
+              <span>{isPosted ? "FB Posted" : "Not Posted"}</span>
+            </button>
+            {isPosted && postedAgo ? (
+              <span className="text-2xs text-j-ink-faint">({postedAgo})</span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
       key: "actions",
       label: "Facebook Post",
       place: "action",
@@ -560,6 +729,99 @@ export function AdminFacebookPostsContent() {
         matchingCaption="matching live tuitions"
         panelLabel="Live tuition filters"
       />
+
+      {/* Facebook Post Status Filter & Stats Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-j-border bg-white p-3.5 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-2xs font-bold text-j-ink-soft uppercase tracking-wider flex items-center gap-1.5 mr-1">
+            <Share2 className="size-3.5 text-[#1877f2]" />
+            <span>FB Status:</span>
+          </span>
+
+          <button
+            type="button"
+            aria-label="Filter: All Live"
+            onClick={() => {
+              setFbPostFilter("all");
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              fbPostFilter === "all"
+                ? "bg-j-ink text-white shadow-2xs"
+                : "bg-slate-100 text-j-ink-soft hover:bg-slate-200 hover:text-j-ink"
+            }`}
+          >
+            <span>All Live</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                fbPostFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700 font-semibold"
+              }`}
+            >
+              {counts.live ?? totalMatching}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Filter: Not Posted"
+            onClick={() => {
+              setFbPostFilter("not_posted");
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              fbPostFilter === "not_posted"
+                ? "bg-amber-600 text-white shadow-2xs"
+                : "bg-amber-50 text-amber-800 border border-amber-200/60 hover:bg-amber-100/70"
+            }`}
+          >
+            <Circle className="size-3" />
+            <span>Not Posted</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                fbPostFilter === "not_posted" ? "bg-white/20 text-white" : "bg-amber-200/70 text-amber-900 font-semibold"
+              }`}
+            >
+              {liveUnpostedCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Filter: Posted"
+            onClick={() => {
+              setFbPostFilter("posted");
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              fbPostFilter === "posted"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "bg-emerald-50 text-emerald-800 border border-emerald-200/60 hover:bg-emerald-100/70"
+            }`}
+          >
+            <CheckCircle2 className="size-3" />
+            <span>Posted</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                fbPostFilter === "posted" ? "bg-white/20 text-white" : "bg-emerald-200/70 text-emerald-900 font-semibold"
+              }`}
+            >
+              {livePostedCount}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-2xs font-semibold text-j-ink-soft hover:text-j-ink transition">
+            <input
+              type="checkbox"
+              checked={autoMarkOnCopy}
+              onChange={e => setAutoMarkOnCopy(e.target.checked)}
+              className="size-3.5 rounded border-j-border text-[#1877f2] focus:ring-0 cursor-pointer"
+            />
+            <span>কপি করার পর স্বয়ংক্রিয়ভাবে 'Posted' চিহ্নিত করুন</span>
+          </label>
+        </div>
+      </div>
 
       {/* Bulk Copy Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-j-border bg-gradient-to-r from-sky-50/50 via-white to-blue-50/40 p-4 shadow-2xs">

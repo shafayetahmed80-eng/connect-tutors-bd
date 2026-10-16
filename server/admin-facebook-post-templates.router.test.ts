@@ -5,6 +5,7 @@ const dbMocks = vi.hoisted(() => ({
   getFacebookPostTemplates: vi.fn(),
   saveFacebookPostTemplates: vi.fn(),
   resetFacebookPostTemplates: vi.fn(),
+  setFacebookPostStatus: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -95,4 +96,38 @@ describe("admin facebook post templates", () => {
       code: "FORBIDDEN",
     });
   });
+
+  it("allows both Owner and Staff Admin to update facebook post status", async () => {
+    dbMocks.setFacebookPostStatus.mockResolvedValue({ success: true, count: 2 });
+
+    // Owner can set
+    await expect(
+      createCaller(owner).admin.setFacebookPostStatus({ requestIds: [101, 102], isPosted: true })
+    ).resolves.toEqual({ success: true, count: 2 });
+    expect(dbMocks.setFacebookPostStatus).toHaveBeenCalledWith([101, 102], true, owner.id);
+
+    // Staff admin can set
+    await expect(
+      createCaller(staffAdmin).admin.setFacebookPostStatus({ requestIds: [101], isPosted: false })
+    ).resolves.toEqual({ success: true, count: 2 });
+    expect(dbMocks.setFacebookPostStatus).toHaveBeenCalledWith([101], false, staffAdmin.id);
+
+    // Non-admin is rejected
+    await expect(
+      createCaller({ ...owner, role: "tutor" as const }).admin.setFacebookPostStatus({ requestIds: [101], isPosted: true })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects invalid requestIds for setFacebookPostStatus", async () => {
+    // Empty array rejected
+    await expect(
+      createCaller(owner).admin.setFacebookPostStatus({ requestIds: [], isPosted: true })
+    ).rejects.toThrow();
+
+    // Negative ID rejected
+    await expect(
+      createCaller(owner).admin.setFacebookPostStatus({ requestIds: [-5], isPosted: true })
+    ).rejects.toThrow();
+  });
 });
+

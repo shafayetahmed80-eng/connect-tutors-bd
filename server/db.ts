@@ -129,6 +129,7 @@ import {
   type TutorRequestPublicationState,
   adminPushPreferences,
   facebookPostTemplates,
+  tutorRequestFacebookPosts,
 } from "../drizzle/schema";
 import {
   DEFAULT_BULK_FOOTER,
@@ -7907,6 +7908,8 @@ export type AdminPostedJobFilters = {
   stages?: AdminTuitionStage[];
   /** The Admin's filter panel; narrows the cards and every stage's count. */
   filters?: AdminJobFilters;
+  /** Filter live tuition posts by Facebook posted status */
+  facebookPosted?: "all" | "posted" | "not_posted";
 };
 
 /**
@@ -10288,10 +10291,13 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       confirmed: sql<string>`coalesce(sum(case when ${stageCondition("confirmed")} then 1 else 0 end), 0)`,
       closed: sql<string>`coalesce(sum(case when ${stageCondition("closed")} then 1 else 0 end), 0)`,
       cancelled: sql<string>`coalesce(sum(case when ${stageCondition("cancelled")} then 1 else 0 end), 0)`,
+      livePosted: sql<string>`coalesce(sum(case when ${stageCondition("live")} and ${isNotNull(tutorRequestFacebookPosts.requestId)} then 1 else 0 end), 0)`,
+      liveUnposted: sql<string>`coalesce(sum(case when ${stageCondition("live")} and ${isNull(tutorRequestFacebookPosts.requestId)} then 1 else 0 end), 0)`,
     })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .leftJoin(tutorRequestFacebookPosts, eq(tutorRequestFacebookPosts.requestId, tutorRequests.id))
     .where(scope);
   const counts: Record<AdminTuitionStage, number> = {
     pending: Number(countRow?.pending ?? 0),
@@ -10302,6 +10308,13 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     cancelled: Number(countRow?.cancelled ?? 0),
   };
 
+  const fbPostCondition =
+    filters.facebookPosted === "posted"
+      ? isNotNull(tutorRequestFacebookPosts.requestId)
+      : filters.facebookPosted === "not_posted"
+        ? isNull(tutorRequestFacebookPosts.requestId)
+        : undefined;
+
   // Applied Tutors asks for Confirmed and means every Confirmed tuition, the Closed ones too.
   const listedStages = filters.stages?.flatMap((stage): AdminTuitionStage[] => (stage === "confirmed" ? ["confirmed", "closed"] : [stage]));
   const conditions = [
@@ -10309,14 +10322,23 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     ...(listedStages?.length
       ? [or(...listedStages.map(stageCondition))!]
       : filters.stage === "all" ? [] : [stageCondition(filters.stage)]),
+    ...(fbPostCondition ? [fbPostCondition] : []),
   ];
   const where = conditions.length ? and(...conditions) : undefined;
   const offset = (filters.page - 1) * filters.pageSize;
+  const fbAdminUsers = alias(users, "fb_admin_users");
   const items = await database
-    .select(adminPostedJobFields)
+    .select({
+      ...adminPostedJobFields,
+      facebookPostedAt: tutorRequestFacebookPosts.postedAt,
+      facebookPostedByAdminId: tutorRequestFacebookPosts.postedByAdminId,
+      facebookPostedByAdminName: fbAdminUsers.name,
+    })
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .leftJoin(tutorRequestFacebookPosts, eq(tutorRequestFacebookPosts.requestId, tutorRequests.id))
+    .leftJoin(fbAdminUsers, eq(fbAdminUsers.id, tutorRequestFacebookPosts.postedByAdminId))
     .where(where)
     .orderBy(desc(tutorRequests.createdAt))
     .limit(filters.pageSize)
@@ -10326,6 +10348,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .from(tutorRequests)
     .innerJoin(users, eq(users.id, tutorRequests.guardianUserId))
     .innerJoin(guardianProfiles, eq(guardianProfiles.userId, tutorRequests.guardianUserId))
+    .leftJoin(tutorRequestFacebookPosts, eq(tutorRequestFacebookPosts.requestId, tutorRequests.id))
     .where(where);
   const total = Number(totals[0]?.value ?? 0);
   const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
@@ -10352,8 +10375,14 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       appointmentRequested: appointmentRequestedIds.has(item.id),
       guardianRequest: guardianRequests.get(item.id) ?? null,
       guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
+      isFacebookPosted: Boolean(item.facebookPostedAt),
+      facebookPostedAt: item.facebookPostedAt ?? null,
+      facebookPostedByAdminId: item.facebookPostedByAdminId ?? null,
+      facebookPostedByAdminName: item.facebookPostedByAdminName ?? null,
     })),
     counts,
+    livePostedCount: Number(countRow?.livePosted ?? 0),
+    liveUnpostedCount: Number(countRow?.liveUnposted ?? 0),
     total,
     page: filters.page,
     pageSize: filters.pageSize,
@@ -11805,4 +11834,46 @@ export async function resetFacebookPostTemplates(): Promise<void> {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   await database.delete(facebookPostTemplates).where(eq(facebookPostTemplates.id, "default"));
+}
+
+/**
+ * Sets Facebook post status for one or more tuition requests.
+ * Can be called by any admin (owner or staff).
+ */
+export async function setFacebookPostStatus(
+  requestIds: number[],
+  isPosted: boolean,
+  adminUserId: number,
+): Promise<{ success: boolean; count: number }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  const uniqueIds = Array.from(new Set(requestIds.filter(id => id > 0)));
+  if (!uniqueIds.length) return { success: true, count: 0 };
+
+  if (isPosted) {
+    const now = new Date();
+    for (const reqId of uniqueIds) {
+      await database
+        .insert(tutorRequestFacebookPosts)
+        .values({
+          requestId: reqId,
+          postedAt: now,
+          postedByAdminId: adminUserId,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            postedAt: now,
+            postedByAdminId: adminUserId,
+            updatedAt: now,
+          },
+        });
+    }
+  } else {
+    await database
+      .delete(tutorRequestFacebookPosts)
+      .where(inArray(tutorRequestFacebookPosts.requestId, uniqueIds));
+  }
+
+  return { success: true, count: uniqueIds.length };
 }
