@@ -17,6 +17,7 @@ import { ChevronRight, FileText, Search, Wallet } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
 import SearchInput from "@/components/SearchInput";
+import { PhoneContact } from "@/components/PhoneContact";
 import { useState } from "react";
 import { Link } from "wouter";
 import { JobIdTag } from "@/components/JobIdTag";
@@ -137,7 +138,13 @@ export function AdminConfirmedJobsContent({ stage = "confirmed" }: { /** Closed 
     { key: "postedBy", label: "Posted By", place: "head", cell: job => <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /> },
     { key: "tutorNumber", label: "Tutor ID", cell: job => <span className="font-mono text-2xs text-j-ink-muted">{job.tutorNumber ?? notSet}</span> },
     { key: "tutorName", label: "Name", cell: job => <span className="font-bold text-j-ink">{job.tutorName}</span> },
-    { key: "tutorPhone", label: "Mobile", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{job.tutorPhone || notSet}</span> },
+    {
+      key: "tutorPhone",
+      label: "Mobile",
+      cellClassName: "whitespace-nowrap",
+      cell: job => job.tutorPhone ? <PhoneContact phone={job.tutorPhone} size="table" showCopy={false} formatDisplay={false} /> : notSet,
+      cardCell: job => job.tutorPhone ? <PhoneContact phone={job.tutorPhone} size="card" showCopy={false} formatDisplay={false} /> : notSet,
+    },
     { key: "appointedAt", label: "Appointed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.appointedAt) ?? notSet}</span> },
     { key: "confirmedAt", label: "Confirmed", cellClassName: "whitespace-nowrap", cell: job => <span className="text-j-ink-strong">{onDate(job.confirmedAt) ?? notSet}</span> },
     // The day the last payment was made - when the tuition became Closed.

@@ -186,3 +186,5 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
   </span>;
 }
 
+export default PhoneContact;
+
