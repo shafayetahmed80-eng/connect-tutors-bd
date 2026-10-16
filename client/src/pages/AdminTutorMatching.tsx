@@ -202,7 +202,7 @@ export function AdminTutorMatchingContent({ requestId }: { requestId: number }) 
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Posted By <PostTypeBadge postedByAdmin={job.postedByAdmin} format="short" /></span>
         <span className="inline-flex items-center gap-1.5 text-[#173d60]">Tuition Status <TuitionStatus job={{ ...job, tutorId: job.appointedTutorId }} /></span>
       </>}>
-        <JobFact icon="phone" value={job.guardianPhone ? <PhoneContact phone={job.guardianPhone} size="table" showCopy={false} formatDisplay={false} className="col-span-2 lg:col-span-1" /> : "Not given"} wide />
+        <JobFact icon={job.guardianPhone ? undefined : "phone"} value={job.guardianPhone ? <PhoneContact phone={job.guardianPhone} size="table" showCopy={false} formatDisplay={false} className="col-span-2 lg:col-span-1" /> : "Not given"} wide />
       </AppliedJobFacts> : <div className="min-w-0 flex-1" />}
 
       {guardianRequest?.type === "cancel_tuition"

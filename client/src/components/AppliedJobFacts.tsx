@@ -14,14 +14,14 @@ import { JobIdTag } from "@/components/JobIdTag";
  * the strip is one flowing line again, so each fact keeps to one line there.
  */
 export function JobFact({ icon, value, wide = false, tone }: {
-  icon: RecordIconName;
+  icon?: RecordIconName;
   value: ReactNode;
   wide?: boolean;
   /** A text colour class that the icon and the words both take, in place of the strip's usual two. */
   tone?: string;
 }) {
   return <span className={`inline-flex min-w-0 items-start gap-1.5 lg:items-center ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
-    <RecordIcon name={icon} size={12} className={`mt-px shrink-0 lg:mt-0 ${tone ?? "text-[#8fb4d0]"}`} />
+    {icon ? <RecordIcon name={icon} size={12} className={`mt-px shrink-0 lg:mt-0 ${tone ?? "text-[#8fb4d0]"}`} /> : null}
     <span className={`min-w-0 break-words lg:truncate ${tone ?? "text-[#173d60]"}`}>{value}</span>
   </span>;
 }

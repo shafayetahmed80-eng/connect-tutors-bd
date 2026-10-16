@@ -227,7 +227,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
         <JobDetailRow icon={<School size={12} />} label="Institute" value={formatInstituteName(openJob.instituteName)} muted={!openJob.instituteName?.trim()} />
         <JobDetailRow icon={<MapPin size={12} />} label="Heard via" value={formatRequestSource(openJob.heardAboutUs)} muted={!openJob.heardAboutUs} />
         <JobDetailRow icon={<UserRound size={12} />} label="Guardian" value={openJob.guardianName || "Not given"} muted={!openJob.guardianName} />
-        <JobDetailRow icon={<Phone size={12} />} label="Guardian phone" value={openJob.guardianPhone ? <PhoneContact phone={openJob.guardianPhone} size="table" showCopy={false} formatDisplay={false} /> : "Not given"} muted={!openJob.guardianPhone} />
+        <JobDetailRow icon={<Phone size={12} />} label="Guardian phone" value={openJob.guardianPhone ? <PhoneContact phone={openJob.guardianPhone} size="table" showCopy={false} formatDisplay={false} showPhoneIcon={false} /> : "Not given"} muted={!openJob.guardianPhone} />
         <div className="sm:col-span-2"><TuitionHistory requestId={openJob.id} /></div>
       </>}
       action={<>

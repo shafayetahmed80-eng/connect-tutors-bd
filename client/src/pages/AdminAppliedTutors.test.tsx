@@ -158,6 +158,11 @@ describe("Admin Applied Tutors page", () => {
     expect(screen.getByText("History, Home Economics")).toBeTruthy();
     expect(screen.getByText("3 days / week")).toBeTruthy();
     expect(screen.getByText("+8801674936203")).toBeTruthy();
+    const callLink = screen.getByRole("link", { name: "Call +880 1674 936203" });
+    expect(callLink).toBeTruthy();
+    // Exactly one phone icon (inside call link) and one WhatsApp icon; no duplicate phone icon
+    const phoneFact = callLink.closest(".col-span-2");
+    expect(phoneFact?.querySelectorAll(".phone-contact-icon").length).toBe(1);
     // Right after the Job ID: who put the tuition up, then where it stands.
     const postedBy = screen.getByText("Posted By");
     const status = screen.getByText("Tuition Status");
