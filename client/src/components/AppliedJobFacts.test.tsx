@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import AppliedJobFacts, { type AppliedJobSummary } from "./AppliedJobFacts";
+import AppliedJobFacts, { JobFact, type AppliedJobSummary } from "./AppliedJobFacts";
 
 const job = (preferredGender: AppliedJobSummary["preferredGender"], extra: Partial<AppliedJobSummary> = {}): AppliedJobSummary => ({
   id: 1,
@@ -95,5 +95,19 @@ describe("the Tutoring Time in the tuition strip", () => {
       Boolean(screen.getByText(earlier).compareDocumentPosition(screen.getByText(later)) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(follows("3 days / week", "4:30 PM")).toBe(true);
     expect(follows("4:30 PM", "Guardian number")).toBe(true);
+  });
+});
+
+describe("JobFact", () => {
+  it("renders with an icon when icon name is provided", () => {
+    const { container } = render(<JobFact icon="phone" value="+8801712345678" />);
+    expect(screen.getByText("+8801712345678")).toBeTruthy();
+    expect(container.querySelector("svg")).toBeTruthy();
+  });
+
+  it("renders without an icon when icon is omitted or undefined", () => {
+    const { container } = render(<JobFact value="+8801712345678" />);
+    expect(screen.getByText("+8801712345678")).toBeTruthy();
+    expect(container.querySelector("svg")).toBeNull();
   });
 });

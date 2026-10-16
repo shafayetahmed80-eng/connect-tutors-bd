@@ -153,6 +153,15 @@ describe("PhoneContact", () => {
     expect(screen.getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Copy/i })).toBeNull();
   });
+
+  it("omits the phone icon when showPhoneIcon is set to false", () => {
+    const { container } = render(<PhoneContact phone="+8801712345678" showPhoneIcon={false} />);
+    const callLink = screen.getByRole("link", { name: "Call +880 1712 345678" });
+    expect(callLink).toBeTruthy();
+    expect(callLink.querySelector(".phone-contact-icon")).toBeNull();
+    // WhatsApp icon is still present
+    expect(container.querySelector(".phone-contact-wa")).toBeTruthy();
+  });
 });
 
 

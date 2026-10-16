@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
  * A number that is not a Bangladesh mobile is written as it came, with no
  * links, rather than point at one that would not connect.
  */
-export function PhoneContact({ phone, size = "table", className, showCopy = true, formatDisplay = true }: {
+export function PhoneContact({ phone, size = "table", className, showCopy = true, formatDisplay = true, showPhoneIcon = true }: {
   phone: string;
   /** `table` for a row; `card` for a phone card, where each link is at least thumb-sized. */
   size?: "table" | "card";
@@ -31,6 +31,8 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
   showCopy?: boolean;
   /** Whether to format display with spaces (+880 1XXX XXXXXX) or keep original raw text. Defaults to true. */
   formatDisplay?: boolean;
+  /** Whether to render the phone handset icon inside the call link. Defaults to true. */
+  showPhoneIcon?: boolean;
 }) {
   const [isCalling, setIsCalling] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
@@ -117,19 +119,21 @@ export function PhoneContact({ phone, size = "table", className, showCopy = true
         card ? "min-h-10 text-[13px]" : "min-h-8 text-sm",
       )}
     >
-      {isCalling ? (
-        <Check
-          aria-hidden="true"
-          size={13}
-          className="phone-contact-icon shrink-0 text-j-ok transition-all duration-200"
-        />
-      ) : (
-        <Phone
-          aria-hidden="true"
-          size={13}
-          className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
-        />
-      )}
+      {showPhoneIcon ? (
+        isCalling ? (
+          <Check
+            aria-hidden="true"
+            size={13}
+            className="phone-contact-icon shrink-0 text-j-ok transition-all duration-200"
+          />
+        ) : (
+          <Phone
+            aria-hidden="true"
+            size={13}
+            className="phone-contact-icon shrink-0 text-[#8fb4d0] transition-all duration-200 group-hover:text-[#1680c2] group-hover:-rotate-12"
+          />
+        )
+      ) : null}
       {formatDisplay ? links.display : phone}
     </a>
     <a
