@@ -228,7 +228,7 @@ export function AdminFacebookPostsContent() {
     facebookPosted: fbPostFilter,
   });
 
-  const counts = jobs.data?.counts ?? {};
+  const counts = (jobs.data?.counts as Record<string, number> | undefined) ?? {};
   const livePostedCount = jobs.data?.livePostedCount ?? 0;
   const liveUnpostedCount = jobs.data?.liveUnpostedCount ?? 0;
 
