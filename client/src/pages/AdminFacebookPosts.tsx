@@ -13,15 +13,44 @@ import { formatDaysPerWeek, formatNotes, formatPostedDate, formatStudentCount, f
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
 import {
+  DEFAULT_BULK_FOOTER,
+  DEFAULT_BULK_HEADER,
+  DEFAULT_SINGLE_FOOTER,
+  DEFAULT_SINGLE_HEADER,
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
+  type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, Copy, Eye, FileText, Layers, Share2, Sparkles } from "lucide-react";
+import { Check, Copy, Eye, FileText, Layers, RotateCcw, Share2, Sliders, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
+const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
+
+function loadSavedTemplates(): FacebookPostCustomTemplate {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return {
+    bulkHeader: DEFAULT_BULK_HEADER,
+    bulkFooter: DEFAULT_BULK_FOOTER,
+    singleHeader: DEFAULT_SINGLE_HEADER,
+    singleFooter: DEFAULT_SINGLE_FOOTER,
+  };
+}
+
+function saveTemplatesToStorage(templates: FacebookPostCustomTemplate) {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+    }
+  } catch {}
+}
 
 export function AdminFacebookPostsContent() {
   const [query, setQuery] = useState("");
@@ -32,6 +61,15 @@ export function AdminFacebookPostsContent() {
   const [isBulkCopying, setIsBulkCopying] = useState(false);
   const [isBulkCopied, setIsBulkCopied] = useState(false);
   const [bulkPreviewData, setBulkPreviewData] = useState<{ text: string; count: number } | null>(null);
+
+  // Dynamic template customization state
+  const [templates, setTemplates] = useState<FacebookPostCustomTemplate>(loadSavedTemplates);
+  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [editingTab, setEditingTab] = useState<"bulk" | "single">("bulk");
+  const [editBulkHeader, setEditBulkHeader] = useState(templates.bulkHeader || DEFAULT_BULK_HEADER);
+  const [editBulkFooter, setEditBulkFooter] = useState(templates.bulkFooter || DEFAULT_BULK_FOOTER);
+  const [editSingleHeader, setEditSingleHeader] = useState(templates.singleHeader || DEFAULT_SINGLE_HEADER);
+  const [editSingleFooter, setEditSingleFooter] = useState(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
 
   const utils = trpc.useUtils();
 
@@ -100,7 +138,7 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        window.location.origin,
+        { origin: window.location.origin, template: templates },
       );
       const ok = await copyToClipboard(bulkText);
       if (ok) {
@@ -128,7 +166,7 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        window.location.origin,
+        { origin: window.location.origin, template: templates },
       );
       setBulkPreviewData({ text: bulkText, count: list.length });
     } catch {
@@ -404,6 +442,21 @@ export function AdminFacebookPostsContent() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={() => {
+              setEditBulkHeader(templates.bulkHeader || DEFAULT_BULK_HEADER);
+              setEditBulkFooter(templates.bulkFooter || DEFAULT_BULK_FOOTER);
+              setEditSingleHeader(templates.singleHeader || DEFAULT_SINGLE_HEADER);
+              setEditSingleFooter(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
+              setIsCustomizeModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
+            title="Customize Header & Footer Text"
+          >
+            <Sliders className="size-3.5" />
+            <span>Customize Template</span>
+          </button>
+          <button
+            type="button"
             onClick={handlePreviewBulk}
             disabled={isBulkCopying || totalMatching === 0}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
@@ -512,7 +565,7 @@ export function AdminFacebookPostsContent() {
             <div className="rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
               {previewFormat === "english"
                 ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
-                : buildFacebookPostText(previewJob, window.location.origin)}
+                : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates })}
             </div>
           </ModalBody>
           <ModalFooter>
@@ -522,7 +575,7 @@ export function AdminFacebookPostsContent() {
                 const text =
                   previewFormat === "english"
                     ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
-                    : buildFacebookPostText(previewJob, window.location.origin);
+                    : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates });
                 await copyToClipboard(text);
                 toast.success("পোস্ট টেক্সট ক্লিপবোর্ডে কপি হয়েছে!");
                 setPreviewJob(null);
@@ -582,6 +635,208 @@ export function AdminFacebookPostsContent() {
           </ModalFooter>
         </Modal>
       ) : null}
+
+      {/* Customize Template Modal */}
+      {isCustomizeModalOpen ? (
+        <Modal onClose={() => setIsCustomizeModalOpen(false)}>
+          <ModalHeader title="Customize Facebook Post Template" />
+          <ModalBody>
+            <div className="space-y-4">
+              {/* Format Selector Tabs */}
+              <div className="flex items-center gap-2 border-b border-j-border pb-2.5">
+                <span className="text-2xs font-semibold uppercase tracking-wider text-j-ink-soft">
+                  Template:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditingTab("bulk")}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    editingTab === "bulk"
+                      ? "bg-[#1877f2] text-white"
+                      : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
+                  }`}
+                >
+                  Bulk Post (English)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingTab("single")}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    editingTab === "single"
+                      ? "bg-[#1877f2] text-white"
+                      : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
+                  }`}
+                >
+                  Single Post (Bengali)
+                </button>
+              </div>
+
+              {editingTab === "bulk" ? (
+                <div className="space-y-3.5">
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-j-ink">
+                        Bulk Post Header Text
+                      </label>
+                      <span className="text-2xs text-j-ink-soft">
+                        Placeholders: <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;count&#125;</code>, <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;website&#125;</code>
+                      </span>
+                    </div>
+                    <textarea
+                      value={editBulkHeader}
+                      onChange={e => setEditBulkHeader(e.target.value)}
+                      rows={5}
+                      className="w-full rounded-xl border border-j-border bg-white p-3 font-mono text-xs leading-relaxed text-j-ink shadow-2xs focus:border-[#1877f2] focus:outline-none"
+                      placeholder="Enter header text for bulk post..."
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-j-ink">
+                        Bulk Post Footer Text
+                      </label>
+                      <span className="text-2xs text-j-ink-soft">
+                        Placeholders: <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;website&#125;</code>, <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;count&#125;</code>
+                      </span>
+                    </div>
+                    <textarea
+                      value={editBulkFooter}
+                      onChange={e => setEditBulkFooter(e.target.value)}
+                      rows={5}
+                      className="w-full rounded-xl border border-j-border bg-white p-3 font-mono text-xs leading-relaxed text-j-ink shadow-2xs focus:border-[#1877f2] focus:outline-none"
+                      placeholder="Enter footer text for bulk post..."
+                    />
+                  </div>
+
+                  {/* Live Preview */}
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold text-j-ink-soft">
+                      Live Preview (Bulk Post):
+                    </p>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-j-border bg-j-border-light/30 p-3 font-mono text-2xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
+                      {buildEnglishBulkFacebookPostText(
+                        items.slice(0, 2).map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
+                        {
+                          origin: window.location.origin,
+                          template: { bulkHeader: editBulkHeader, bulkFooter: editBulkFooter },
+                        },
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-j-ink">
+                        Single Post Header Text
+                      </label>
+                      <span className="text-2xs text-j-ink-soft">
+                        Placeholders: <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;jobId&#125;</code>
+                      </span>
+                    </div>
+                    <textarea
+                      value={editSingleHeader}
+                      onChange={e => setEditSingleHeader(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-xl border border-j-border bg-white p-3 font-mono text-xs leading-relaxed text-j-ink shadow-2xs focus:border-[#1877f2] focus:outline-none"
+                      placeholder="Enter header text for single post..."
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-j-ink">
+                        Single Post Footer Text
+                      </label>
+                      <span className="text-2xs text-j-ink-soft">
+                        Placeholders: <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;applyUrl&#125;</code>, <code className="rounded bg-sky-50 px-1 text-sky-700">&#123;jobId&#125;</code>
+                      </span>
+                    </div>
+                    <textarea
+                      value={editSingleFooter}
+                      onChange={e => setEditSingleFooter(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-xl border border-j-border bg-white p-3 font-mono text-xs leading-relaxed text-j-ink shadow-2xs focus:border-[#1877f2] focus:outline-none"
+                      placeholder="Enter footer text for single post..."
+                    />
+                  </div>
+
+                  {/* Live Preview */}
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold text-j-ink-soft">
+                      Live Preview (Single Job):
+                    </p>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-j-border bg-j-border-light/30 p-3 font-mono text-2xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
+                      {items[0]
+                        ? buildFacebookPostText(
+                            { ...items[0], jobId: jobIdForRequest(items[0].id), origin: window.location.origin },
+                            {
+                              origin: window.location.origin,
+                              template: { singleHeader: editSingleHeader, singleFooter: editSingleFooter },
+                            },
+                          )
+                        : "No sample live tuition available for preview."}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <div className="flex w-full flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (editingTab === "bulk") {
+                    setEditBulkHeader(DEFAULT_BULK_HEADER);
+                    setEditBulkFooter(DEFAULT_BULK_FOOTER);
+                  } else {
+                    setEditSingleHeader(DEFAULT_SINGLE_HEADER);
+                    setEditSingleFooter(DEFAULT_SINGLE_FOOTER);
+                  }
+                  toast.info("ডিফল্ট টেমপ্লেট রিসেট করা হয়েছে। সেভ করতে 'Save Changes' চাপুন।");
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink-soft hover:bg-j-border-light/60 hover:text-j-ink transition"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Reset to Default</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated: FacebookPostCustomTemplate = {
+                      bulkHeader: editBulkHeader,
+                      bulkFooter: editBulkFooter,
+                      singleHeader: editSingleHeader,
+                      singleFooter: editSingleFooter,
+                    };
+                    setTemplates(updated);
+                    saveTemplatesToStorage(updated);
+                    toast.success("ফেসবুক পোস্ট টেমপ্লেট সফলভাবে সংরক্ষিত হয়েছে!");
+                    setIsCustomizeModalOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#1877f2] bg-[#1877f2] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#166fe5]"
+                >
+                  <Check className="size-3.5" />
+                  <span>Save Changes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomizeModalOpen(false)}
+                  className="rounded-lg border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </ModalFooter>
+        </Modal>
+      ) : null}
+
     </div>
   );
 }
