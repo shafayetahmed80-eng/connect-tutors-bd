@@ -1835,6 +1835,27 @@ export const adminMessageTemplates = mysqlTable(
 export type AdminMessageTemplate = typeof adminMessageTemplates.$inferSelect;
 export type InsertAdminMessageTemplate = typeof adminMessageTemplates.$inferInsert;
 
+/** Reusable Facebook post templates (Owner-configurable) for bulk and single tuition posts. */
+export const facebookPostTemplates = mysqlTable(
+  "facebook_post_templates",
+  {
+    id: varchar("id", { length: 32 }).primaryKey(),
+    bulkHeader: text("bulkHeader"),
+    bulkFooter: text("bulkFooter"),
+    singleHeader: text("singleHeader"),
+    singleFooter: text("singleFooter"),
+    updatedByAdminId: int("updatedByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.updatedByAdminId], foreignColumns: [users.id], name: "fpt_updated_by_fk" }),
+  ]
+);
+
+export type FacebookPostTemplateRow = typeof facebookPostTemplates.$inferSelect;
+export type InsertFacebookPostTemplateRow = typeof facebookPostTemplates.$inferInsert;
+
 /**
  * One row per browser the Admin allowed push notifications on. `endpoint` is
  * the push service URL the browser vendor assigns; `p256dh`/`auth` are the
