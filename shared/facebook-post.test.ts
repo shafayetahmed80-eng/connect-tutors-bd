@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildFacebookPostText } from "./facebook-post";
+import {
+  buildEnglishBulkFacebookPostText,
+  buildEnglishJobDetailsInline,
+  buildFacebookPostText,
+} from "./facebook-post";
 
 describe("buildFacebookPostText", () => {
   it("generates a complete formatted Facebook post text with all details", () => {
@@ -70,3 +74,92 @@ describe("buildFacebookPostText", () => {
     expect(text).not.toContain("Should be omitted for online");
   });
 });
+
+describe("buildEnglishJobDetailsInline", () => {
+  it("formats single tuition details side-by-side with pipe (|) in English", () => {
+    const line = buildEnglishJobDetailsInline({
+      id: 1042,
+      jobId: "CT-1042",
+      classCourse: "Class 9",
+      curriculumType: "English Medium",
+      subjects: ["Math", "Physics"],
+      tuitionType: "home",
+      tuitionLocationLabel: "Dhanmondi, Dhaka",
+      addressDetails: "Road 27",
+      budgetAmount: 8000,
+      daysPerWeek: 3,
+      tutoringTime: "6:00 PM",
+      preferredGender: "male",
+      instituteName: "BUET/DU",
+      studentCount: 1,
+      studentGender: "male",
+      notes: "Experience preferred",
+    });
+
+    expect(line).toBe(
+      "Job #CT-1042 | Class 9 (English Medium) | Math, Physics | Dhanmondi, Dhaka (Road 27) | 8,000 BDT/month | 3 Days/week, 6:00 PM | Male Tutor (BUET/DU) | 1 Student (Male) | Notes: Experience preferred | Apply: https://connecttutorsbd.com/job-board?job=CT-1042",
+    );
+  });
+
+  it("handles online and missing fields gracefully in English inline format", () => {
+    const line = buildEnglishJobDetailsInline({
+      id: 99,
+      jobId: "CT-0099",
+      classCourse: "HSC 1st Year",
+      tuitionType: "online",
+      subjects: null,
+      budgetAmount: 0,
+      daysPerWeek: 0,
+    });
+
+    expect(line).toContain("Job #CT-0099");
+    expect(line).toContain("HSC 1st Year");
+    expect(line).toContain("All Subjects");
+    expect(line).toContain("Online");
+    expect(line).toContain("Salary Negotiable");
+    expect(line).toContain("Flexible Days");
+    expect(line).toContain("Any Tutor");
+    expect(line).toContain("Apply: https://connecttutorsbd.com/job-board?job=CT-0099");
+    expect(line).not.toContain("undefined");
+    expect(line).not.toContain("null");
+  });
+});
+
+describe("buildEnglishBulkFacebookPostText", () => {
+  it("formats multiple tuitions into a ready-to-publish English Facebook post", () => {
+    const post = buildEnglishBulkFacebookPostText([
+      {
+        id: 1,
+        jobId: "CT-1001",
+        classCourse: "Class 9",
+        curriculumType: "English Medium",
+        subjects: ["Math"],
+        tuitionLocationLabel: "Gulshan, Dhaka",
+        budgetAmount: 10000,
+        daysPerWeek: 3,
+      },
+      {
+        id: 2,
+        jobId: "CT-1002",
+        classCourse: "Class 6",
+        category: "Bangla Medium",
+        subjects: ["All Subjects"],
+        tuitionLocationLabel: "Uttara, Dhaka",
+        budgetAmount: 6000,
+        daysPerWeek: 4,
+      },
+    ]);
+
+    expect(post).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴");
+    expect(post).toContain("Total 2 Tuitions Available right now.");
+    expect(post).toContain("1. Job #CT-1001 | Class 9 (English Medium)");
+    expect(post).toContain("2. Job #CT-1002 | Class 6 (Bangla Medium)");
+    expect(post).toContain("https://connecttutorsbd.com/job-board");
+  });
+
+  it("returns a clean message if list is empty", () => {
+    const post = buildEnglishBulkFacebookPostText([]);
+    expect(post).toBe("No live tuitions match the current criteria.");
+  });
+});
+

@@ -99,3 +99,115 @@ export function buildFacebookPostText(job: FacebookPostJobInput, origin = "https
 
   return lines.join("\n");
 }
+
+/**
+ * Formats a single tuition's details side-by-side in English separated by pipe (|).
+ * Example:
+ * Job #1024 | Class 9 (English Medium) | Math, Physics | Dhanmondi, Dhaka | 8,000 BDT/month | 3 Days/week | Male Tutor (BUET) | Apply: https://connecttutorsbd.com/job-board?job=1024
+ */
+export function buildEnglishJobDetailsInline(
+  job: FacebookPostJobInput,
+  origin = "https://connecttutorsbd.com",
+): string {
+  const code = job.jobId || jobIdForRequest(job.id);
+  const parts: string[] = [];
+
+  // 1. Job ID
+  parts.push(`Job #${code}`);
+
+  // 2. Class & Medium
+  const classText = job.classCourse?.trim() || "General";
+  const medium = job.curriculumType?.trim() || job.category?.trim();
+  parts.push(medium ? `${classText} (${medium})` : classText);
+
+  // 3. Subjects
+  const subs = formatSubjects(job.subjects);
+  parts.push(subs && subs !== "Not set" ? subs : "All Subjects");
+
+  // 4. Location
+  let loc = job.tuitionType === "online"
+    ? "Online"
+    : (job.tuitionLocationLabel ?? job.locationText ?? "Location not specified");
+  if (job.addressDetails?.trim() && job.tuitionType !== "online") {
+    loc += ` (${job.addressDetails.trim()})`;
+  }
+  parts.push(loc);
+
+  // 5. Salary
+  const salary = job.budgetAmount !== null && job.budgetAmount !== undefined && job.budgetAmount > 0
+    ? `${Math.round(job.budgetAmount).toLocaleString("en-US")} BDT/month`
+    : "Salary Negotiable";
+  parts.push(salary);
+
+  // 6. Schedule (Days / Week & Time)
+  const days = job.daysPerWeek && job.daysPerWeek > 0
+    ? `${job.daysPerWeek} ${job.daysPerWeek === 1 ? "Day" : "Days"}/week`
+    : "Flexible Days";
+  const time = job.tutoringTime?.trim();
+  parts.push(time ? `${days}, ${time}` : days);
+
+  // 7. Tutor Preference
+  let tutorPref = "Any Tutor";
+  if (job.preferredGender === "male") tutorPref = "Male Tutor";
+  else if (job.preferredGender === "female") tutorPref = "Female Tutor";
+  if (job.instituteName?.trim()) {
+    tutorPref += ` (${job.instituteName.trim()})`;
+  }
+  parts.push(tutorPref);
+
+  // 8. Student Info
+  const count = job.studentCount && job.studentCount > 0 ? `${job.studentCount} ${job.studentCount === 1 ? "Student" : "Students"}` : null;
+  const gender = job.studentGender === "male" ? "Male" : job.studentGender === "female" ? "Female" : null;
+  if (count && gender) {
+    parts.push(`${count} (${gender})`);
+  } else if (count) {
+    parts.push(count);
+  } else if (gender) {
+    parts.push(`${gender} Student`);
+  }
+
+  // 9. Notes (if any special requirements)
+  const rawNotes = job.notes?.trim();
+  if (rawNotes && rawNotes.toLowerCase() !== "no special requirements") {
+    parts.push(`Notes: ${rawNotes}`);
+  }
+
+  // 10. Direct link
+  const cleanOrigin = origin.replace(/\/+$/, "");
+  parts.push(`Apply: ${cleanOrigin}/job-board?job=${encodeURIComponent(code)}`);
+
+  return parts.join(" | ");
+}
+
+/**
+ * Builds a bulk Facebook post in English with all filtered tuitions listed side-by-side in pipe format.
+ */
+export function buildEnglishBulkFacebookPostText(
+  jobs: FacebookPostJobInput[],
+  origin = "https://connecttutorsbd.com",
+): string {
+  if (jobs.length === 0) {
+    return "No live tuitions match the current criteria.";
+  }
+
+  const cleanOrigin = origin.replace(/\/+$/, "");
+  const jobBoardUrl = `${cleanOrigin}/job-board`;
+
+  const lines = [
+    "🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    `📢 Total ${jobs.length} ${jobs.length === 1 ? "Tuition Available" : "Tuitions Available"} right now.`,
+    "👉 Tutors can view details and apply directly online for FREE!",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    ...jobs.map((job, idx) => `${idx + 1}. ${buildEnglishJobDetailsInline(job, cleanOrigin)}\n`),
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "📌 Browse all available tuition jobs and apply online:",
+    jobBoardUrl,
+    "",
+    "🌐 Connect Tutors BD — The Most Trusted & 100% Free Application Platform for Tutors",
+  ];
+
+  return lines.join("\n");
+}
+
