@@ -31,26 +31,49 @@ export type FacebookPostCustomTemplate = {
   singleFooter?: string;
 };
 
-export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴
+export type FacebookPostBulkFormat =
+  | "emoji-line"
+  | "mobile-card"
+  | "key-priority"
+  | "area-grouped";
+
+export interface BuildBulkPostOptions {
+  origin?: string;
+  template?: FacebookPostCustomTemplate;
+  format?: FacebookPostBulkFormat;
+}
+
+export interface BuildJobDetailsInlineOptions {
+  origin?: string;
+  includeApplyUrl?: boolean;
+}
+
+export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📢 Total {count} Tuitions Available right now.
 👉 Tutors can view details and apply directly online for FREE!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 export const DEFAULT_BULK_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 Browse all available tuition jobs and apply online:
-{website}
+🚀 HOW TO APPLY (100% FREE & DIRECT):
+👉 Visit Job Board: {website}
+🔍 Search using the "Job ID" to view full details
+⚡ Apply in 1-Click • Zero Media Fees • Direct Guardian Contact
 
-🌐 Connect Tutors BD — The Most Trusted & 100% Free Application Platform for Tutors`;
+🌐 Connect Tutors — The Most Trusted Digital Tuition Platform
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-export const DEFAULT_SINGLE_HEADER = `🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors BD) 🔴
+export const DEFAULT_SINGLE_HEADER = `🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors) 🔴
 ━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━
-👉 বিস্তারিত দেখে সরাসরি অনলাইনে আবেদন করতে ভিজিট করুন:
+🚀 আবেদন করার নিয়ম (সম্পূর্ণ ফ্রি):
+👉 সরাসরি আবেদন লিংক:
 {applyUrl}
+⚡ কোনো মিডিয়া ফি নেই • সরাসরি অভিভাবকদের সাথে সংযোগ
 
-🌐 কানেক্ট টিউটরস — কোনো মিডিয়া নয়, ১০০% স্মার্ট ও বিশ্বস্ত ডিজিটাল টিউশন প্ল্যাটফর্ম`;
+🌐 কানেক্ট টিউটরস (Connect Tutors) — ১০০% বিশ্বস্ত ও স্মার্ট ডিজিটাল প্ল্যাটফর্ম
+━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 /**
  * Replaces placeholders like {count}, {website}, {applyUrl}, {jobId} with actual values.
@@ -148,90 +171,223 @@ export function buildFacebookPostText(
 }
 
 /**
- * Formats a single tuition's details side-by-side in English separated by pipe (|).
- * Example:
- * Job #1024 | Class 9 (English Medium) | Math, Physics | Dhanmondi, Dhaka | 8,000 BDT/month | 3 Days/week | Male Tutor (BUET) | Apply: https://connecttutorsbd.com/job-board?job=1024
+ * Extracts and formats all normalized English fields for a tuition job.
  */
-export function buildEnglishJobDetailsInline(
-  job: FacebookPostJobInput,
-  origin = "https://connecttutorsbd.com",
-): string {
+export function extractJobEnglishFields(job: FacebookPostJobInput) {
   const code = job.jobId || jobIdForRequest(job.id);
-  const parts: string[] = [];
-
-  // 1. Job ID
-  parts.push(`Job #${code}`);
-
-  // 2. Class & Medium
   const classText = job.classCourse?.trim() || "General";
   const medium = job.curriculumType?.trim() || job.category?.trim();
-  parts.push(medium ? `${classText} (${medium})` : classText);
+  const classWithMedium = medium ? `${classText} (${medium})` : classText;
 
-  // 3. Subjects
-  const subs = formatSubjects(job.subjects);
-  parts.push(subs && subs !== "Not set" ? subs : "All Subjects");
+  const rawSubs = formatSubjects(job.subjects);
+  const subjects = rawSubs && rawSubs !== "Not set" ? rawSubs : "All Subjects";
 
-  // 4. Location
   let loc = job.tuitionType === "online"
     ? "Online"
     : (job.tuitionLocationLabel ?? job.locationText ?? "Location not specified");
   if (job.addressDetails?.trim() && job.tuitionType !== "online") {
     loc += ` (${job.addressDetails.trim()})`;
   }
-  parts.push(loc);
 
-  // 5. Salary
   const salary = job.budgetAmount !== null && job.budgetAmount !== undefined && job.budgetAmount > 0
     ? `${Math.round(job.budgetAmount).toLocaleString("en-US")} BDT/month`
     : "Salary Negotiable";
-  parts.push(salary);
 
-  // 6. Schedule (Days / Week & Time)
   const days = job.daysPerWeek && job.daysPerWeek > 0
     ? `${job.daysPerWeek} ${job.daysPerWeek === 1 ? "Day" : "Days"}/week`
     : "Flexible Days";
   const time = job.tutoringTime?.trim();
-  parts.push(time ? `${days}, ${time}` : days);
+  const schedule = time ? `${days}, ${time}` : days;
 
-  // 7. Tutor Preference
   let tutorPref = "Any Tutor";
   if (job.preferredGender === "male") tutorPref = "Male Tutor";
   else if (job.preferredGender === "female") tutorPref = "Female Tutor";
   if (job.instituteName?.trim()) {
     tutorPref += ` (${job.instituteName.trim()})`;
   }
-  parts.push(tutorPref);
 
-  // 8. Student Info
   const count = job.studentCount && job.studentCount > 0 ? `${job.studentCount} ${job.studentCount === 1 ? "Student" : "Students"}` : null;
   const gender = job.studentGender === "male" ? "Male" : job.studentGender === "female" ? "Female" : null;
+  let studentInfo: string | null = null;
   if (count && gender) {
-    parts.push(`${count} (${gender})`);
+    studentInfo = `${count} (${gender})`;
   } else if (count) {
-    parts.push(count);
+    studentInfo = count;
   } else if (gender) {
-    parts.push(`${gender} Student`);
+    studentInfo = `${gender} Student`;
   }
 
-  // 9. Notes (if any special requirements)
   const rawNotes = job.notes?.trim();
-  if (rawNotes && rawNotes.toLowerCase() !== "no special requirements") {
-    parts.push(`Notes: ${rawNotes}`);
+  const notes = rawNotes && rawNotes.toLowerCase() !== "no special requirements" ? rawNotes : null;
+
+  return {
+    code,
+    classWithMedium,
+    subjects,
+    loc,
+    salary,
+    schedule,
+    tutorPref,
+    studentInfo,
+    notes,
+  };
+}
+
+/**
+ * Formats a single tuition's details side-by-side in English.
+ * Default: "Job ID: CT-1042 | Class 9 (English Medium) | Math, Physics | ..."
+ * Without individual apply URL unless explicitly enabled.
+ */
+export function buildEnglishJobDetailsInline(
+  job: FacebookPostJobInput,
+  optionsOrOrigin: string | BuildJobDetailsInlineOptions = "https://connecttutorsbd.com",
+): string {
+  const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
+  const options = typeof optionsOrOrigin === "object" ? optionsOrOrigin : {};
+  const includeApplyUrl = options.includeApplyUrl ?? false;
+
+  const f = extractJobEnglishFields(job);
+  const parts: string[] = [
+    `Job ID: ${f.code}`,
+    f.classWithMedium,
+    f.subjects,
+    f.loc,
+    f.salary,
+    f.schedule,
+    f.tutorPref,
+  ];
+  if (f.studentInfo) {
+    parts.push(f.studentInfo);
   }
-
-  // 10. Direct link
-  const cleanOrigin = origin.replace(/\/+$/, "");
-  parts.push(`Apply: ${cleanOrigin}/job-board?job=${encodeURIComponent(code)}`);
-
+  if (f.notes) {
+    parts.push(`Notes: ${f.notes}`);
+  }
+  if (includeApplyUrl) {
+    const cleanOrigin = origin.replace(/\/+$/, "");
+    parts.push(`Apply: ${cleanOrigin}/job-board?job=${encodeURIComponent(f.code)}`);
+  }
   return parts.join(" | ");
 }
 
 /**
- * Builds a bulk Facebook post in English with all filtered tuitions listed side-by-side in pipe format.
+ * Format 1: Iconic Emoji (1-Line)
+ * Example: 1. 📌 Job ID: 1024 | 🔹 Class 9 (English Medium) | 📚 Math, Physics | 📍 Dhanmondi | 💰 8,000 BDT/month | 🗓️ 3 Days/week | 🎓 Male Tutor
+ */
+export function formatJobEmojiLine(job: FacebookPostJobInput, index?: number): string {
+  const f = extractJobEnglishFields(job);
+  const prefix = typeof index === "number" ? `${index}. ` : "";
+  const parts: string[] = [
+    `📌 Job ID: ${f.code}`,
+    `🔹 ${f.classWithMedium}`,
+    `📚 ${f.subjects}`,
+    `📍 ${f.loc}`,
+    `💰 ${f.salary}`,
+    `🗓️ ${f.schedule}`,
+    `🎓 ${f.tutorPref}`,
+  ];
+  if (f.studentInfo) {
+    parts.push(`👨‍🎓 ${f.studentInfo}`);
+  }
+  if (f.notes) {
+    parts.push(`📋 Notes: ${f.notes}`);
+  }
+  return `${prefix}${parts.join(" | ")}`;
+}
+
+/**
+ * Format 2: Mobile Card (2-Line)
+ * Line 1: 1. 📌 Job ID: 1024 • Class 9 (English Medium) • 📚 Math, Physics
+ * Line 2:    📍 Dhanmondi | 💰 8,000 BDT/month | 🗓️ 3 Days/week | 🎓 Male Tutor
+ */
+export function formatJobMobileCard(job: FacebookPostJobInput, index?: number): string {
+  const f = extractJobEnglishFields(job);
+  const prefix = typeof index === "number" ? `${index}. ` : "";
+  const line1 = `${prefix}📌 Job ID: ${f.code} • ${f.classWithMedium} • 📚 ${f.subjects}`;
+
+  const line2Parts: string[] = [
+    `📍 ${f.loc}`,
+    `💰 ${f.salary}`,
+    `🗓️ ${f.schedule}`,
+    `🎓 ${f.tutorPref}`,
+  ];
+  if (f.studentInfo) {
+    line2Parts.push(`👨‍🎓 ${f.studentInfo}`);
+  }
+  if (f.notes) {
+    line2Parts.push(`📋 Notes: ${f.notes}`);
+  }
+  const indent = typeof index === "number" ? "   " : "";
+  const line2 = `${indent}${line2Parts.join(" | ")}`;
+  return `${line1}\n${line2}`;
+}
+
+/**
+ * Format 3: Key Priority (High-Contrast)
+ * Example: 1. [Job ID: 1024] 🎯 MATH, PHYSICS 📍 DHANMONDI | Class 9 (English Medium) | 💰 8,000 BDT/month | ...
+ */
+export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number): string {
+  const f = extractJobEnglishFields(job);
+  const prefix = typeof index === "number" ? `${index}. ` : "";
+  const parts: string[] = [
+    `${prefix}[Job ID: ${f.code}] 🎯 ${f.subjects.toUpperCase()} 📍 ${f.loc.toUpperCase()}`,
+    f.classWithMedium,
+    `💰 ${f.salary}`,
+    `🗓️ ${f.schedule}`,
+    `🎓 ${f.tutorPref}`,
+  ];
+  if (f.studentInfo) {
+    parts.push(`👨‍🎓 ${f.studentInfo}`);
+  }
+  if (f.notes) {
+    parts.push(`📋 Notes: ${f.notes}`);
+  }
+  return parts.join(" | ");
+}
+
+/**
+ * Formats a single item under an area heading in Format 4: Area Grouped.
+ * Omits repeating the location since the area header already shows it.
+ */
+export function formatJobAreaItem(job: FacebookPostJobInput, index: number): string {
+  const f = extractJobEnglishFields(job);
+  const parts: string[] = [
+    `${index}. Job ID: ${f.code}`,
+    f.classWithMedium,
+    f.subjects,
+    `💰 ${f.salary}`,
+    `🗓️ ${f.schedule}`,
+    `🎓 ${f.tutorPref}`,
+  ];
+  if (f.studentInfo) {
+    parts.push(`👨‍🎓 ${f.studentInfo}`);
+  }
+  if (f.notes) {
+    parts.push(`📋 Notes: ${f.notes}`);
+  }
+  return parts.join(" | ");
+}
+
+/**
+ * Helper to determine area group title for a job.
+ */
+export function getJobAreaKey(job: FacebookPostJobInput): string {
+  if (job.tuitionType === "online") return "🌐 ONLINE TUITIONS";
+  const raw = (job.tuitionLocationLabel ?? job.locationText ?? "").trim();
+  if (!raw) return "📍 OTHER LOCATIONS";
+  return `📍 ${raw.toUpperCase()}`;
+}
+
+/**
+ * Builds a bulk Facebook post in English with all filtered tuitions.
+ * Supports 4 distinct high-converting formats:
+ * - "emoji-line" (default)
+ * - "mobile-card"
+ * - "key-priority"
+ * - "area-grouped"
  */
 export function buildEnglishBulkFacebookPostText(
   jobs: FacebookPostJobInput[],
-  optionsOrOrigin: string | { origin?: string; template?: FacebookPostCustomTemplate } = "https://connecttutorsbd.com",
+  optionsOrOrigin: string | BuildBulkPostOptions = "https://connecttutorsbd.com",
 ): string {
   if (jobs.length === 0) {
     return "No live tuitions match the current criteria.";
@@ -239,6 +395,7 @@ export function buildEnglishBulkFacebookPostText(
 
   const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
   const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
+  const format: FacebookPostBulkFormat = typeof optionsOrOrigin === "object" && optionsOrOrigin.format ? optionsOrOrigin.format : "emoji-line";
 
   const cleanOrigin = origin.replace(/\/+$/, "");
   const jobBoardUrl = `${cleanOrigin}/job-board`;
@@ -255,9 +412,38 @@ export function buildEnglishBulkFacebookPostText(
   const header = renderTemplateText(rawHeader, vars);
   const footer = renderTemplateText(rawFooter, vars);
 
-  const jobItems = jobs.map((job, idx) => `${idx + 1}. ${buildEnglishJobDetailsInline(job, cleanOrigin)}\n`);
+  let bodyContent = "";
 
-  return [header, "", ...jobItems, footer].join("\n");
+  if (format === "mobile-card") {
+    bodyContent = jobs.map((job, idx) => formatJobMobileCard(job, idx + 1)).join("\n\n");
+  } else if (format === "key-priority") {
+    bodyContent = jobs.map((job, idx) => formatJobKeyPriority(job, idx + 1)).join("\n");
+  } else if (format === "area-grouped") {
+    const groups: Record<string, FacebookPostJobInput[]> = {};
+    for (const job of jobs) {
+      const area = getJobAreaKey(job);
+      if (!groups[area]) groups[area] = [];
+      groups[area].push(job);
+    }
+    const groupBlocks: string[] = [];
+    let counter = 1;
+    const areas = Object.keys(groups);
+    for (const area of areas) {
+      const areaJobs = groups[area];
+      const items = areaJobs.map((job: FacebookPostJobInput) => {
+        const itemStr = formatJobAreaItem(job, counter);
+        counter++;
+        return itemStr;
+      });
+      groupBlocks.push(`${area}:\n${items.join("\n")}`);
+    }
+    bodyContent = groupBlocks.join("\n\n");
+  } else {
+    // "emoji-line" (default)
+    bodyContent = jobs.map((job, idx) => formatJobEmojiLine(job, idx + 1)).join("\n");
+  }
+
+  return [header, "", bodyContent, "", footer].join("\n");
 }
 
 

@@ -3,6 +3,10 @@ import {
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
+  formatJobAreaItem,
+  formatJobEmojiLine,
+  formatJobKeyPriority,
+  formatJobMobileCard,
 } from "./facebook-post";
 
 describe("buildFacebookPostText", () => {
@@ -27,7 +31,7 @@ describe("buildFacebookPostText", () => {
       notes: "গণিতে ভালো দখল থাকতে হবে।",
     });
 
-    expect(text).toContain("🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors BD) 🔴");
+    expect(text).toContain("🔴 নতুন টিউশন অফার — কানেক্ট টিউটরস (Connect Tutors) 🔴");
     expect(text).toContain("📌 জব আইডি: CT-1024");
     expect(text).toContain("📚 শ্রেণি/কোর্স: Class 9 (Edexcel)");
     expect(text).toContain("📝 বিষয়সমূহ: Math, Physics, Chemistry");
@@ -38,7 +42,9 @@ describe("buildFacebookPostText", () => {
     expect(text).toContain("👨‍🎓 শিক্ষার্থীর তথ্য: 1 student (Male)");
     expect(text).toContain("🎓 টিউটর অগ্রাধিকার: Female টিউটর (DU / BUET preferred)");
     expect(text).toContain("📋 বিশেষ শর্তাবলী: গণিতে ভালো দখল থাকতে হবে।");
+    expect(text).toContain("🚀 আবেদন করার নিয়ম (সম্পূর্ণ ফ্রি):");
     expect(text).toContain("https://connecttutorsbd.com/job-board?job=CT-1024");
+    expect(text).toContain("কানেক্ট টিউটরস (Connect Tutors)");
   });
 
   it("handles missing/optional fields gracefully without undefined or null", () => {
@@ -76,7 +82,7 @@ describe("buildFacebookPostText", () => {
 });
 
 describe("buildEnglishJobDetailsInline", () => {
-  it("formats single tuition details side-by-side with pipe (|) in English", () => {
+  it("formats single tuition details with Job ID prefix and no apply link by default", () => {
     const line = buildEnglishJobDetailsInline({
       id: 1042,
       jobId: "CT-1042",
@@ -97,8 +103,25 @@ describe("buildEnglishJobDetailsInline", () => {
     });
 
     expect(line).toBe(
-      "Job #CT-1042 | Class 9 (English Medium) | Math, Physics | Dhanmondi, Dhaka (Road 27) | 8,000 BDT/month | 3 Days/week, 6:00 PM | Male Tutor (BUET/DU) | 1 Student (Male) | Notes: Experience preferred | Apply: https://connecttutorsbd.com/job-board?job=CT-1042",
+      "Job ID: CT-1042 | Class 9 (English Medium) | Math, Physics | Dhanmondi, Dhaka (Road 27) | 8,000 BDT/month | 3 Days/week, 6:00 PM | Male Tutor (BUET/DU) | 1 Student (Male) | Notes: Experience preferred",
     );
+  });
+
+  it("includes apply link if includeApplyUrl option is explicitly true", () => {
+    const line = buildEnglishJobDetailsInline(
+      {
+        id: 1042,
+        jobId: "CT-1042",
+        classCourse: "Class 9",
+      },
+      {
+        origin: "https://connecttutorsbd.com",
+        includeApplyUrl: true,
+      },
+    );
+
+    expect(line).toContain("Job ID: CT-1042");
+    expect(line).toContain("Apply: https://connecttutorsbd.com/job-board?job=CT-1042");
   });
 
   it("handles online and missing fields gracefully in English inline format", () => {
@@ -112,49 +135,84 @@ describe("buildEnglishJobDetailsInline", () => {
       daysPerWeek: 0,
     });
 
-    expect(line).toContain("Job #CT-0099");
+    expect(line).toContain("Job ID: CT-0099");
     expect(line).toContain("HSC 1st Year");
     expect(line).toContain("All Subjects");
     expect(line).toContain("Online");
     expect(line).toContain("Salary Negotiable");
     expect(line).toContain("Flexible Days");
     expect(line).toContain("Any Tutor");
-    expect(line).toContain("Apply: https://connecttutorsbd.com/job-board?job=CT-0099");
     expect(line).not.toContain("undefined");
     expect(line).not.toContain("null");
   });
 });
 
-describe("buildEnglishBulkFacebookPostText", () => {
-  it("formats multiple tuitions into a ready-to-publish English Facebook post", () => {
-    const post = buildEnglishBulkFacebookPostText([
-      {
-        id: 1,
-        jobId: "CT-1001",
-        classCourse: "Class 9",
-        curriculumType: "English Medium",
-        subjects: ["Math"],
-        tuitionLocationLabel: "Gulshan, Dhaka",
-        budgetAmount: 10000,
-        daysPerWeek: 3,
-      },
-      {
-        id: 2,
-        jobId: "CT-1002",
-        classCourse: "Class 6",
-        category: "Bangla Medium",
-        subjects: ["All Subjects"],
-        tuitionLocationLabel: "Uttara, Dhaka",
-        budgetAmount: 6000,
-        daysPerWeek: 4,
-      },
-    ]);
+describe("buildEnglishBulkFacebookPostText formats", () => {
+  const sampleJobs = [
+    {
+      id: 1,
+      jobId: "CT-1001",
+      classCourse: "Class 9",
+      curriculumType: "English Medium",
+      subjects: ["Math"],
+      tuitionLocationLabel: "Gulshan, Dhaka",
+      budgetAmount: 10000,
+      daysPerWeek: 3,
+    },
+    {
+      id: 2,
+      jobId: "CT-1002",
+      classCourse: "Class 6",
+      category: "Bangla Medium",
+      subjects: ["All Subjects"],
+      tuitionLocationLabel: "Uttara, Dhaka",
+      budgetAmount: 6000,
+      daysPerWeek: 4,
+    },
+  ];
 
-    expect(post).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴");
+  it("Format 1 (emoji-line): formats into iconic emoji 1-line list with unique apply link", () => {
+    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
+      format: "emoji-line",
+    });
+
+    expect(post).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴");
     expect(post).toContain("Total 2 Tuitions Available right now.");
-    expect(post).toContain("1. Job #CT-1001 | Class 9 (English Medium)");
-    expect(post).toContain("2. Job #CT-1002 | Class 6 (Bangla Medium)");
-    expect(post).toContain("https://connecttutorsbd.com/job-board");
+    expect(post).toContain("1. 📌 Job ID: CT-1001 | 🔹 Class 9 (English Medium) | 📚 Math | 📍 Gulshan, Dhaka");
+    expect(post).toContain("2. 📌 Job ID: CT-1002 | 🔹 Class 6 (Bangla Medium) | 📚 All Subjects | 📍 Uttara, Dhaka");
+    expect(post).toContain("🚀 HOW TO APPLY (100% FREE & DIRECT):");
+    expect(post).toContain("👉 Visit Job Board: https://connecttutorsbd.com/job-board");
+    expect(post).toContain("🔍 Search using the \"Job ID\" to view full details");
+    expect(post).toContain("🌐 Connect Tutors — The Most Trusted Digital Tuition Platform");
+  });
+
+  it("Format 2 (mobile-card): formats into 2-line cards per tuition", () => {
+    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
+      format: "mobile-card",
+    });
+
+    expect(post).toContain("1. 📌 Job ID: CT-1001 • Class 9 (English Medium) • 📚 Math\n   📍 Gulshan, Dhaka | 💰 10,000 BDT/month");
+    expect(post).toContain("2. 📌 Job ID: CT-1002 • Class 6 (Bangla Medium) • 📚 All Subjects\n   📍 Uttara, Dhaka | 💰 6,000 BDT/month");
+  });
+
+  it("Format 3 (key-priority): puts subjects and location upfront in high-contrast", () => {
+    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
+      format: "key-priority",
+    });
+
+    expect(post).toContain("1. [Job ID: CT-1001] 🎯 MATH 📍 GULSHAN, DHAKA | Class 9 (English Medium)");
+    expect(post).toContain("2. [Job ID: CT-1002] 🎯 ALL SUBJECTS 📍 UTTARA, DHAKA | Class 6 (Bangla Medium)");
+  });
+
+  it("Format 4 (area-grouped): groups tuitions by area headers", () => {
+    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
+      format: "area-grouped",
+    });
+
+    expect(post).toContain("📍 GULSHAN, DHAKA:");
+    expect(post).toContain("1. Job ID: CT-1001 | Class 9 (English Medium) | Math | 💰 10,000 BDT/month");
+    expect(post).toContain("📍 UTTARA, DHAKA:");
+    expect(post).toContain("2. Job ID: CT-1002 | Class 6 (Bangla Medium) | All Subjects | 💰 6,000 BDT/month");
   });
 
   it("returns a clean message if list is empty", () => {
@@ -183,7 +241,7 @@ describe("buildEnglishBulkFacebookPostText", () => {
     );
 
     expect(post).toContain("🔥 HOT TUITIONS (1 AVAILABLE) 🔥\nWelcome tutors!");
-    expect(post).toContain("1. Job #CT-2001");
+    expect(post).toContain("Job ID: CT-2001");
     expect(post).toContain("Apply now at https://connecttutorsbd.com/job-board | Contact Support");
   });
 });
@@ -201,16 +259,17 @@ describe("buildFacebookPostText with custom template", () => {
       {
         origin: "https://connecttutorsbd.com",
         template: {
-          singleHeader: "⚡ টিউশন নোটিশ: {jobId} ⚡",
+          singleHeader: "⚡ টিউশন নোটিউটর: {jobId} ⚡",
           singleFooter: "আবেদন লিংক: {applyUrl}",
         },
       },
     );
 
-    expect(post).toContain("⚡ টিউশন নোটিশ: CT-0077 ⚡");
+    expect(post).toContain("⚡ টিউশন নোটিউটর: CT-0077 ⚡");
     expect(post).toContain("📌 জব আইডি: CT-0077");
     expect(post).toContain("আবেদন লিংক: https://connecttutorsbd.com/job-board?job=CT-0077");
   });
 });
+
 
 
