@@ -9,6 +9,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { LoadingCradle } from "@/components/BrandMark";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
+import { EMPTY_JOB_FILTER_OPTIONS } from "@/components/JobFilterFields";
 import { formatDaysPerWeek, formatNotes, formatPostedDate, formatStudentCount, formatStudentGender, formatSubjects, formatTutorPreference } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
@@ -20,6 +21,8 @@ import {
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
+  type FacebookBulkHeaderFilterOptions,
+  type FacebookPostBulkFormat,
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
@@ -28,6 +31,39 @@ import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
+const BULK_FORMAT_STORAGE_KEY = "connect_tutors_fb_bulk_format_v1";
+
+export const BULK_FORMAT_OPTIONS: {
+  id: FacebookPostBulkFormat;
+  label: string;
+  shortLabel: string;
+  desc: string;
+}[] = [
+  {
+    id: "emoji-line",
+    label: "📌 Iconic Emoji (1-Line)",
+    shortLabel: "Iconic (1-Line)",
+    desc: "ইমোজি ও পাইপ সেপারেটর দিয়ে প্রতি টিউশন ১ লাইনে",
+  },
+  {
+    id: "mobile-card",
+    label: "📱 Mobile Card (2-Line)",
+    shortLabel: "Mobile (2-Line)",
+    desc: "মোবাইলে পড়ার সুবিধার্থে ২ লাইনের কার্ড লেআউট",
+  },
+  {
+    id: "key-priority",
+    label: "🎯 Key Priority (Contrast)",
+    shortLabel: "Key Priority",
+    desc: "বিষয় ও এলাকাকে শুরুতে হাইলাইট করে দ্রুত নজরে আনা",
+  },
+  {
+    id: "area-grouped",
+    label: "🗺️ Area Grouped",
+    shortLabel: "Area Grouped",
+    desc: "এলাকা ও লোকেশন অনুযায়ী স্বয়ংক্রিয়ভাবে আলাদা গ্রুপ করা",
+  },
+];
 
 function loadSavedTemplates(): FacebookPostCustomTemplate {
   try {
@@ -57,10 +93,25 @@ export function AdminFacebookPostsContent() {
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [previewJob, setPreviewJob] = useState<FacebookPostJobInput | null>(null);
-  const [previewFormat, setPreviewFormat] = useState<"english" | "bengali">("english");
+  const [previewFormat, setPreviewFormat] = useState<"full" | "inline">("full");
   const [isBulkCopying, setIsBulkCopying] = useState(false);
   const [isBulkCopied, setIsBulkCopied] = useState(false);
-  const [bulkPreviewData, setBulkPreviewData] = useState<{ text: string; count: number } | null>(null);
+  const [selectedBulkFormat, setSelectedBulkFormat] = useState<FacebookPostBulkFormat>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(BULK_FORMAT_STORAGE_KEY);
+      if (saved === "emoji-line" || saved === "mobile-card" || saved === "key-priority" || saved === "area-grouped") {
+        return saved;
+      }
+    }
+    return "emoji-line";
+  });
+
+  const handleBulkFormatChange = (fmt: FacebookPostBulkFormat) => {
+    setSelectedBulkFormat(fmt);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(BULK_FORMAT_STORAGE_KEY, fmt);
+    }
+  };
 
   const utils = trpc.useUtils();
 
@@ -102,6 +153,43 @@ export function AdminFacebookPostsContent() {
 
   // Filters for live posted jobs
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const filterOptionsQuery = trpc.admin.jobFilterOptions.useQuery({ postedBy: "all" }, { retry: false });
+  const filterOptions = filterOptionsQuery.data ?? EMPTY_JOB_FILTER_OPTIONS;
+
+  const getActiveBulkFilterOptions = (): FacebookBulkHeaderFilterOptions => {
+    const applied = filterPanel.applied;
+
+    let cityName: string | undefined;
+    if (applied.cityId) {
+      const foundCity = filterOptions.cities?.find(c => c.id === applied.cityId);
+      cityName = foundCity?.label || applied.cityId;
+    }
+
+    let locationNames: string[] | undefined;
+    if (applied.locationIds && applied.locationIds.length > 0) {
+      const locSet = new Set(applied.locationIds);
+      const names: string[] = [];
+      if (filterOptions.locationsByCity) {
+        for (const list of Object.values(filterOptions.locationsByCity)) {
+          for (const loc of list) {
+            if (locSet.has(loc.id)) {
+              names.push(loc.label);
+            }
+          }
+        }
+      }
+      locationNames = names.length > 0 ? names : applied.locationIds;
+    }
+
+    return {
+      tuitionTypes: applied.tuitionTypes.length > 0 ? applied.tuitionTypes : undefined,
+      categories: applied.categories.length > 0 ? applied.categories : undefined,
+      preferredTutorGender: applied.preferredTutorGender || undefined,
+      cityName,
+      locationNames,
+    };
+  };
+
   const jobs = trpc.admin.listPostedJobs.useQuery({
     stage: "live",
     query,
@@ -113,6 +201,13 @@ export function AdminFacebookPostsContent() {
 
   const items = jobs.data?.items ?? [];
   type LiveJob = (typeof items)[number];
+
+  const [bulkPreviewData, setBulkPreviewData] = useState<{
+    text: string;
+    count: number;
+    jobs: LiveJob[];
+    format: FacebookPostBulkFormat;
+  } | null>(null);
 
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
@@ -165,13 +260,19 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        { origin: window.location.origin, template: templates },
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          filterOptions: getActiveBulkFilterOptions(),
+        },
       );
       const ok = await copyToClipboard(bulkText);
       if (ok) {
         setIsBulkCopied(true);
         setTimeout(() => setIsBulkCopied(false), 2500);
-        toast.success(`${list.length}টি লাইভ টিউশনের ইংরেজি পোস্ট ফরম্যাট ক্লিপবোর্ডে কপি হয়েছে!`);
+        const formatLabel = BULK_FORMAT_OPTIONS.find(f => f.id === selectedBulkFormat)?.shortLabel || selectedBulkFormat;
+        toast.success(`${list.length}টি লাইভ টিউশন (${formatLabel}) ক্লিপবোর্ডে কপি হয়েছে!`);
       } else {
         toast.error("টেক্সট কপি করতে ব্যর্থ হয়েছে।");
       }
@@ -193,9 +294,19 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        { origin: window.location.origin, template: templates },
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          filterOptions: getActiveBulkFilterOptions(),
+        },
       );
-      setBulkPreviewData({ text: bulkText, count: list.length });
+      setBulkPreviewData({
+        text: bulkText,
+        count: list.length,
+        jobs: list,
+        format: selectedBulkFormat,
+      });
     } catch {
       toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
     } finally {
@@ -392,7 +503,7 @@ export function AdminFacebookPostsContent() {
             <button
               type="button"
               onClick={() => {
-                setPreviewFormat("english");
+                setPreviewFormat("full");
                 setPreviewJob({ ...job, jobId: code, origin: window.location.origin });
               }}
               aria-label={`Preview Facebook post for job ${code}`}
@@ -461,12 +572,34 @@ export function AdminFacebookPostsContent() {
               Facebook Post Bulk Generator
             </h2>
             <p className="text-2xs text-j-ink-soft">
-              ফিল্টার অনুযায়ী সবগুলো লাইভ টিউশন একবারে ইংরেজিতে পাশাপাশি (Pipe | ফরম্যাটে) কপি করুন।
+              ফিল্টার অনুযায়ী সবগুলো লাইভ টিউশন একবারে একাধিক আকর্ষণীয় ফরম্যাটে কপি করুন।
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Format Selector Dropdown */}
+          <div className="flex items-center gap-1.5 rounded-xl border border-j-border bg-white px-2.5 py-1.5 shadow-2xs">
+            <label htmlFor="fb-bulk-format-select" className="text-2xs font-semibold text-j-ink-soft whitespace-nowrap flex items-center gap-1 cursor-pointer">
+              <Sparkles className="size-3 text-amber-500" />
+              <span>Format:</span>
+            </label>
+            <select
+              id="fb-bulk-format-select"
+              aria-label="Facebook post format"
+              value={selectedBulkFormat}
+              onChange={e => handleBulkFormatChange(e.target.value as FacebookPostBulkFormat)}
+              className="bg-transparent text-xs font-bold text-j-ink focus:outline-none cursor-pointer pr-1"
+              title="Select Facebook Post Bulk Format"
+            >
+              {BULK_FORMAT_OPTIONS.map(opt => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {isOwner ? (
             <button
               type="button"
@@ -564,35 +697,35 @@ export function AdminFacebookPostsContent() {
               <span className="text-2xs font-semibold text-j-ink-soft uppercase tracking-wider">Format:</span>
               <button
                 type="button"
-                onClick={() => setPreviewFormat("english")}
+                onClick={() => setPreviewFormat("full")}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                  previewFormat === "english"
+                  previewFormat === "full"
                     ? "bg-[#1877f2] text-white"
                     : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
                 }`}
               >
-                English (Inline Side-by-side)
+                Full Post (Area Grouped)
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewFormat("bengali")}
+                onClick={() => setPreviewFormat("inline")}
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                  previewFormat === "bengali"
+                  previewFormat === "inline"
                     ? "bg-[#1877f2] text-white"
                     : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
                 }`}
               >
-                Bengali (Detailed Post)
+                Inline Line Only
               </button>
             </div>
 
             <p className="mb-2 text-xs text-j-ink-soft">
-              {previewFormat === "english"
-                ? "জবের তথ্যগুলো ইংরেজিতে পাশাপাশি সাজানো হয়েছে:"
-                : "ফেসবুক গ্রুপ বা পেইজে বিস্তারিত পোস্ট করার উপযোগী ফরম্যাট:"}
+              {previewFormat === "inline"
+                ? "শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য:"
+                : "ফেসবুক গ্রুপ বা পেজে পোস্ট করার উপযোগী সম্পূর্ণ ইংরেজি পোস্ট:"}
             </p>
             <div className="rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
-              {previewFormat === "english"
+              {previewFormat === "inline"
                 ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
                 : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates })}
             </div>
@@ -602,7 +735,7 @@ export function AdminFacebookPostsContent() {
               type="button"
               onClick={async () => {
                 const text =
-                  previewFormat === "english"
+                  previewFormat === "inline"
                     ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
                     : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates });
                 await copyToClipboard(text);
@@ -634,8 +767,48 @@ export function AdminFacebookPostsContent() {
             }`}
           />
           <ModalBody>
+            {/* Format Switcher Pills */}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-j-border pb-2.5">
+              <span className="text-2xs font-bold text-j-ink-soft uppercase tracking-wider">
+                Select Format:
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {BULK_FORMAT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      handleBulkFormatChange(opt.id);
+                      const updatedText = buildEnglishBulkFacebookPostText(
+                        bulkPreviewData.jobs.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
+                        {
+                          origin: window.location.origin,
+                          template: templates,
+                          format: opt.id,
+                          filterOptions: getActiveBulkFilterOptions(),
+                        },
+                      );
+                      setBulkPreviewData({
+                        ...bulkPreviewData,
+                        format: opt.id,
+                        text: updatedText,
+                      });
+                    }}
+                    className={`px-2.5 py-1 text-2xs font-bold rounded-lg transition ${
+                      bulkPreviewData.format === opt.id
+                        ? "bg-[#1877f2] text-white shadow-2xs"
+                        : "bg-white text-j-ink border border-j-border hover:bg-j-border-light/60"
+                    }`}
+                  >
+                    {opt.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <p className="mb-2 text-xs text-j-ink-soft">
-              সবগুলো ফিল্টার করা লাইভ টিউশন ইংরেজিতে পাশাপাশি (Pipe |) ফরম্যাটে রেডি করা হয়েছে:
+              {BULK_FORMAT_OPTIONS.find(f => f.id === bulkPreviewData.format)?.desc ||
+                "ফিল্টার করা লাইভ টিউশন ফরম্যাট রেডি করা হয়েছে:"}
             </p>
             <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
               {bulkPreviewData.text}
@@ -646,7 +819,8 @@ export function AdminFacebookPostsContent() {
               type="button"
               onClick={async () => {
                 await copyToClipboard(bulkPreviewData.text);
-                toast.success("সবগুলো টিউশনের পোস্ট টেক্সট ক্লিপবোর্ডে কপি হয়েছে!");
+                const formatLabel = BULK_FORMAT_OPTIONS.find(f => f.id === bulkPreviewData.format)?.shortLabel || bulkPreviewData.format;
+                toast.success(`সবগুলো টিউশনের পোস্ট টেক্সট (${formatLabel}) ক্লিপবোর্ডে কপি হয়েছে!`);
                 setBulkPreviewData(null);
               }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[#1877f2] bg-[#1877f2] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#166fe5]"

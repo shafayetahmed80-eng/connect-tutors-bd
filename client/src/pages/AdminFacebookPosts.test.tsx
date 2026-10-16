@@ -186,7 +186,7 @@ describe("AdminFacebookPostsContent", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
-    expect(calledText).toContain("Job #");
+    expect(calledText).toContain("Job ID: ");
     expect(calledText).toContain("Class 10 (National Curriculum)");
     expect(calledText).toContain("Higher Math, Physics");
     expect(calledText).toContain("Dhanmondi, Dhaka (Road 8/A)");
@@ -194,14 +194,15 @@ describe("AdminFacebookPostsContent", () => {
     expect(calledText).toContain("3 Days/week, 6:00 PM");
     expect(calledText).toContain("Female Tutor (BUET / DU)");
     expect(calledText).toContain("1 Student (Male)");
-    expect(calledText).toContain("Apply:");
+    // Should not include redundant apply link per job
+    expect(calledText).not.toContain("Apply:");
 
     await waitFor(() => {
       expect(screen.getByText("Copied!")).toBeDefined();
     });
   });
 
-  it("copies all filtered tuitions in English side-by-side format via 'Copy All Filtered'", async () => {
+  it("copies all filtered tuitions via 'Copy All Filtered' with Job ID and Connect Tutors", async () => {
     render(<AdminFacebookPostsContent />);
 
     const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
@@ -214,15 +215,19 @@ describe("AdminFacebookPostsContent", () => {
     });
 
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(calledText).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS BD 🔴");
+    expect(calledText).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴");
     expect(calledText).toContain("Total 1");
-    expect(calledText).toContain("1. Job #");
+    expect(calledText).toContain("Job ID: ");
     expect(calledText).toContain("Higher Math, Physics");
     expect(calledText).toContain("9,000 BDT/month");
+    expect(calledText).toContain("🚀 How to Apply:");
     expect(calledText).toContain("/job-board");
+    expect(calledText).toContain("Connect Tutors — The Most Trusted Digital Tuition Platform");
+    expect(calledText).not.toContain("100% FREE");
+    expect(calledText).not.toContain("Zero Media Fees");
   });
 
-  it("opens bulk preview modal when 'Preview Bulk' button is clicked", async () => {
+  it("opens bulk preview modal and allows switching formats live via pills", async () => {
     render(<AdminFacebookPostsContent />);
 
     const previewBulkBtn = screen.getByRole("button", { name: /Preview Bulk/i });
@@ -232,10 +237,45 @@ describe("AdminFacebookPostsContent", () => {
       expect(screen.getByText(/Bulk Facebook Post Preview/i)).toBeDefined();
     });
 
+    // Initial format is Iconic (1-Line)
+    expect(screen.getByRole("button", { name: /Iconic \(1-Line\)/i })).toBeDefined();
+
+    // Switch to Mobile Card (2-Line)
+    const mobileBtn = screen.getByRole("button", { name: /Mobile \(2-Line\)/i });
+    fireEvent.click(mobileBtn);
+
+    // Switch to Key Priority
+    const keyPriorityBtn = screen.getByRole("button", { name: /Key Priority/i });
+    fireEvent.click(keyPriorityBtn);
+
+    // Switch to Area Grouped
+    const areaGroupedBtn = screen.getByRole("button", { name: /Area Grouped/i });
+    fireEvent.click(areaGroupedBtn);
+
     const copyModalBtn = screen.getByRole("button", { name: /Copy All to Clipboard/i });
     fireEvent.click(copyModalBtn);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
+  });
+
+  it("allows selecting format from top toolbar dropdown", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    const formatSelect = screen.getByLabelText(/Facebook post format/i) as HTMLSelectElement;
+    expect(formatSelect).toBeDefined();
+
+    fireEvent.change(formatSelect, { target: { value: "mobile-card" } });
+    expect(formatSelect.value).toBe("mobile-card");
+
+    const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
+    fireEvent.click(copyAllBtn);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalled();
+    });
+
+    const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledText).toContain("•");
   });
 
   it("opens single preview modal and allows toggling format", async () => {
@@ -246,11 +286,11 @@ describe("AdminFacebookPostsContent", () => {
 
     expect(screen.getByText(/Facebook Post Preview/i)).toBeDefined();
 
-    // Toggle Bengali format
-    const bnBtn = screen.getByRole("button", { name: /Bengali \(Detailed Post\)/i });
-    fireEvent.click(bnBtn);
+    // Toggle inline format
+    const inlineBtn = screen.getByRole("button", { name: /Inline Line Only/i });
+    fireEvent.click(inlineBtn);
 
-    expect(screen.getByText(/ফেসবুক গ্রুপ বা পেইজে বিস্তারিত পোস্ট করার উপযোগী ফরম্যাট/i)).toBeDefined();
+    expect(screen.getByText(/শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য/i)).toBeDefined();
 
     const copyModalBtn = screen.getByRole("button", { name: /Copy to Clipboard/i });
     fireEvent.click(copyModalBtn);
