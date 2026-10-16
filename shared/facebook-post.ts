@@ -37,10 +37,19 @@ export type FacebookPostBulkFormat =
   | "key-priority"
   | "area-grouped";
 
+export interface FacebookBulkHeaderFilterOptions {
+  tuitionTypes?: string[];
+  categories?: string[];
+  preferredTutorGender?: "" | "male" | "female" | "any";
+  cityName?: string;
+  locationNames?: string[];
+}
+
 export interface BuildBulkPostOptions {
   origin?: string;
   template?: FacebookPostCustomTemplate;
   format?: FacebookPostBulkFormat;
+  filterOptions?: FacebookBulkHeaderFilterOptions;
 }
 
 export interface BuildJobDetailsInlineOptions {
@@ -52,7 +61,7 @@ export const ITEM_DIVIDER = "─────────────────
 
 export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📢 Total {count} Tuitions Available right now.
+{headline}
 🔍 Search using "Job ID" on our website to view full details.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
@@ -342,6 +351,73 @@ export function getJobAreaKey(job: FacebookPostJobInput): string {
 }
 
 /**
+ * Builds a dynamic, high-converting headline based on active search/filter criteria.
+ * Order: 📢 Total {count} ➔ [🌐 Tuition Type] ➔ [🔹 Category] ➔ [🎓 Tutor Preference] ➔ Tuitions Available ➔ [At 📍 City (Locations) Area] ➔ right now.
+ * Example: 📢 Total 8 🔹 Bangla Medium 🎓 Female Tuitions Available At 📍 Dhaka City (Dhanmondi + Mohammadpur + Shyamoli) Area right now.
+ */
+export function buildDynamicBulkHeadline(
+  count: number,
+  filters?: FacebookBulkHeaderFilterOptions,
+): string {
+  const parts: string[] = [`📢 Total ${count}`];
+
+  // 1. Tuition Type
+  if (filters?.tuitionTypes && filters.tuitionTypes.length > 0) {
+    const typeParts: string[] = [];
+    for (const t of filters.tuitionTypes) {
+      if (t === "online") typeParts.push("🌐 Online");
+      else if (t === "home") typeParts.push("🏠 Home Tuition");
+      else if (t === "group") typeParts.push("👥 Group Tuition");
+      else if (t.trim()) typeParts.push(t.trim());
+    }
+    if (typeParts.length > 0) {
+      parts.push(typeParts.join(" + "));
+    }
+  }
+
+  // 2. Category
+  if (filters?.categories && filters.categories.length > 0) {
+    const cleanCats = filters.categories.map(c => c.trim()).filter(Boolean);
+    if (cleanCats.length > 0) {
+      parts.push(`🔹 ${cleanCats.join(" + ")}`);
+    }
+  }
+
+  // 3. Tutor Preference
+  if (filters?.preferredTutorGender) {
+    if (filters.preferredTutorGender === "female") {
+      parts.push("🎓 Female");
+    } else if (filters.preferredTutorGender === "male") {
+      parts.push("🎓 Male");
+    }
+  }
+
+  // 4. Tuitions Available
+  parts.push(count === 1 ? "Tuition Available" : "Tuitions Available");
+
+  // 5. City and Locations
+  const rawCity = filters?.cityName?.trim();
+  const rawLocs = filters?.locationNames?.map(l => l.trim()).filter(Boolean) ?? [];
+
+  if (rawCity || rawLocs.length > 0) {
+    let locStr = "At 📍";
+    if (rawCity) {
+      const cityFormatted = /city$/i.test(rawCity) ? rawCity : `${rawCity} City`;
+      locStr += ` ${cityFormatted}`;
+    }
+    if (rawLocs.length > 0) {
+      locStr += ` (${rawLocs.join(" + ")}) Area`;
+    }
+    parts.push(locStr);
+  }
+
+  // 6. Suffix
+  parts.push("right now.");
+
+  return parts.join(" ");
+}
+
+/**
  * Builds a bulk Facebook post in English with all filtered tuitions.
  * Supports 4 distinct high-converting formats:
  * - "emoji-line" (default)
@@ -360,15 +436,24 @@ export function buildEnglishBulkFacebookPostText(
   const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
   const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
   const format: FacebookPostBulkFormat = typeof optionsOrOrigin === "object" && optionsOrOrigin.format ? optionsOrOrigin.format : "emoji-line";
+  const filterOptions = typeof optionsOrOrigin === "object" ? optionsOrOrigin.filterOptions : undefined;
 
   const cleanOrigin = origin.replace(/\/+$/, "");
   const jobBoardUrl = `${cleanOrigin}/job-board`;
 
-  const rawHeader = template?.bulkHeader?.trim() || DEFAULT_BULK_HEADER;
+  const headline = buildDynamicBulkHeadline(jobs.length, filterOptions);
+
+  let rawHeader = template?.bulkHeader?.trim() || DEFAULT_BULK_HEADER;
+  if (!rawHeader.includes("{headline}")) {
+    if (rawHeader.includes("📢 Total {count} Tuitions Available right now.")) {
+      rawHeader = rawHeader.replace("📢 Total {count} Tuitions Available right now.", "{headline}");
+    }
+  }
   const rawFooter = template?.bulkFooter?.trim() || DEFAULT_BULK_FOOTER;
 
   const vars = {
     count: jobs.length,
+    headline,
     website: jobBoardUrl,
     origin: cleanOrigin,
   };

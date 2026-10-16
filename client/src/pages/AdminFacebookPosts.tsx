@@ -9,6 +9,7 @@ import { TutorListPager } from "@/components/TutorListPager";
 import { LoadingCradle } from "@/components/BrandMark";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
+import { EMPTY_JOB_FILTER_OPTIONS } from "@/components/JobFilterFields";
 import { formatDaysPerWeek, formatNotes, formatPostedDate, formatStudentCount, formatStudentGender, formatSubjects, formatTutorPreference } from "@shared/job-card";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import { jobIdForRequest } from "@shared/job-id";
@@ -20,6 +21,7 @@ import {
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
+  type FacebookBulkHeaderFilterOptions,
   type FacebookPostBulkFormat,
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
@@ -151,6 +153,43 @@ export function AdminFacebookPostsContent() {
 
   // Filters for live posted jobs
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
+  const filterOptionsQuery = trpc.admin.jobFilterOptions.useQuery({ postedBy: "all" }, { retry: false });
+  const filterOptions = filterOptionsQuery.data ?? EMPTY_JOB_FILTER_OPTIONS;
+
+  const getActiveBulkFilterOptions = (): FacebookBulkHeaderFilterOptions => {
+    const applied = filterPanel.applied;
+
+    let cityName: string | undefined;
+    if (applied.cityId) {
+      const foundCity = filterOptions.cities?.find(c => c.id === applied.cityId);
+      cityName = foundCity?.label || applied.cityId;
+    }
+
+    let locationNames: string[] | undefined;
+    if (applied.locationIds && applied.locationIds.length > 0) {
+      const locSet = new Set(applied.locationIds);
+      const names: string[] = [];
+      if (filterOptions.locationsByCity) {
+        for (const list of Object.values(filterOptions.locationsByCity)) {
+          for (const loc of list) {
+            if (locSet.has(loc.id)) {
+              names.push(loc.label);
+            }
+          }
+        }
+      }
+      locationNames = names.length > 0 ? names : applied.locationIds;
+    }
+
+    return {
+      tuitionTypes: applied.tuitionTypes.length > 0 ? applied.tuitionTypes : undefined,
+      categories: applied.categories.length > 0 ? applied.categories : undefined,
+      preferredTutorGender: applied.preferredTutorGender || undefined,
+      cityName,
+      locationNames,
+    };
+  };
+
   const jobs = trpc.admin.listPostedJobs.useQuery({
     stage: "live",
     query,
@@ -221,7 +260,12 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        { origin: window.location.origin, template: templates, format: selectedBulkFormat },
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          filterOptions: getActiveBulkFilterOptions(),
+        },
       );
       const ok = await copyToClipboard(bulkText);
       if (ok) {
@@ -250,7 +294,12 @@ export function AdminFacebookPostsContent() {
       }
       const bulkText = buildEnglishBulkFacebookPostText(
         list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-        { origin: window.location.origin, template: templates, format: selectedBulkFormat },
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          filterOptions: getActiveBulkFilterOptions(),
+        },
       );
       setBulkPreviewData({
         text: bulkText,
@@ -732,7 +781,12 @@ export function AdminFacebookPostsContent() {
                       handleBulkFormatChange(opt.id);
                       const updatedText = buildEnglishBulkFacebookPostText(
                         bulkPreviewData.jobs.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
-                        { origin: window.location.origin, template: templates, format: opt.id },
+                        {
+                          origin: window.location.origin,
+                          template: templates,
+                          format: opt.id,
+                          filterOptions: getActiveBulkFilterOptions(),
+                        },
                       );
                       setBulkPreviewData({
                         ...bulkPreviewData,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ITEM_DIVIDER,
+  buildDynamicBulkHeadline,
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
@@ -275,5 +276,82 @@ describe("buildFacebookPostText with custom template", () => {
     expect(post).toContain("⚡ TUITION NOTICE: CT-0077 ⚡");
     expect(post).toContain("Job ID: CT-0077");
     expect(post).toContain("Apply Link: https://connecttutorsbd.com/job-board?job=CT-0077");
+  });
+});
+
+describe("buildDynamicBulkHeadline", () => {
+  it("formats all selected filters in the exact user-specified sequence and format", () => {
+    const headline = buildDynamicBulkHeadline(8, {
+      categories: ["Bangla Medium"],
+      preferredTutorGender: "female",
+      cityName: "Dhaka",
+      locationNames: ["Dhanmondi", "Mohammadpur", "Shyamoli"],
+    });
+
+    expect(headline).toBe(
+      "📢 Total 8 🔹 Bangla Medium 🎓 Female Tuitions Available At 📍 Dhaka City (Dhanmondi + Mohammadpur + Shyamoli) Area right now.",
+    );
+  });
+
+  it("handles tuition type (online) with category and gender", () => {
+    const headline = buildDynamicBulkHeadline(4, {
+      tuitionTypes: ["online"],
+      categories: ["English Medium"],
+      preferredTutorGender: "male",
+    });
+
+    expect(headline).toBe(
+      "📢 Total 4 🌐 Online 🔹 English Medium 🎓 Male Tuitions Available right now.",
+    );
+  });
+
+  it("handles multiple categories with plus separator", () => {
+    const headline = buildDynamicBulkHeadline(6, {
+      categories: ["Bangla Medium", "English Version"],
+      cityName: "Chittagong",
+    });
+
+    expect(headline).toBe(
+      "📢 Total 6 🔹 Bangla Medium + English Version Tuitions Available At 📍 Chittagong City right now.",
+    );
+  });
+
+  it("handles singular count (1 tuition available)", () => {
+    const headline = buildDynamicBulkHeadline(1, {
+      preferredTutorGender: "female",
+    });
+
+    expect(headline).toBe("📢 Total 1 🎓 Female Tuition Available right now.");
+  });
+
+  it("falls back to default headline when no filters are set", () => {
+    const headline = buildDynamicBulkHeadline(20);
+    expect(headline).toBe("📢 Total 20 Tuitions Available right now.");
+  });
+
+  it("renders dynamic headline inside buildEnglishBulkFacebookPostText header", () => {
+    const post = buildEnglishBulkFacebookPostText(
+      [
+        {
+          id: 1,
+          jobId: "CT-101",
+          classCourse: "Class 9",
+          tuitionLocationLabel: "Dhanmondi",
+          budgetAmount: 8000,
+        },
+      ],
+      {
+        filterOptions: {
+          categories: ["Bangla Medium"],
+          preferredTutorGender: "female",
+          cityName: "Dhaka",
+          locationNames: ["Dhanmondi"],
+        },
+      },
+    );
+
+    expect(post).toContain(
+      "📢 Total 1 🔹 Bangla Medium 🎓 Female Tuition Available At 📍 Dhaka City (Dhanmondi) Area right now.",
+    );
   });
 });
