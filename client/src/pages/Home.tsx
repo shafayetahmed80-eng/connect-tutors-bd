@@ -56,7 +56,8 @@ export default function Home() {
 
 function HomeContent() {
   const [mode, setMode] = useState<"home" | "online">("home");
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaqId, setOpenFaqId] = useState<string | null>("how-to-find");
+  const [faqFilter, setFaqFilter] = useState<"all" | "guardian" | "tutor">("all");
   const t = useSiteContentResolver();
   const { hero, proof, tuition, belief, journey, stories, faq, finalCta } = homeCopy;
   // Everything below the hero settles in as it is scrolled to; the hero has its own entrance.
@@ -173,12 +174,71 @@ function HomeContent() {
               <p>{t("home.faq.description", faq.description)}</p>
               <Link href="/contact" className="text-action">{t("home.faq.action", faq.action)} <ArrowRight size={18} /></Link>
             </div>
-            <div className="faq-list">{faq.items.map((item, index) => <article className={`faq-item ${openFaq === index ? "faq-open" : ""}`} key={item.id}>
-              <button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)} aria-expanded={openFaq === index}>
-                <span>{t(`home.faq.${item.id}.question`, item.question)}</span><ChevronDown size={20} />
-              </button>
-              {openFaq === index && <p>{t(`home.faq.${item.id}.answer`, item.answer)}</p>}
-            </article>)}</div>
+            <div className="faq-list">
+              <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="FAQ audience filter">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={faqFilter === "all"}
+                  onClick={() => { setFaqFilter("all"); setOpenFaqId(faq.items[0]?.id ?? null); }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    faqFilter === "all"
+                      ? "bg-[#1677e8] text-white shadow-xs"
+                      : "border border-[#dbe8f1] bg-white text-j-ink-muted hover:border-[#1677e8] hover:text-[#1677e8]"
+                  }`}
+                >
+                  All Questions
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={faqFilter === "guardian"}
+                  onClick={() => { setFaqFilter("guardian"); setOpenFaqId("how-to-find"); }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    faqFilter === "guardian"
+                      ? "bg-[#1677e8] text-white shadow-xs"
+                      : "border border-[#dbe8f1] bg-white text-j-ink-muted hover:border-[#1677e8] hover:text-[#1677e8]"
+                  }`}
+                >
+                  For Guardians
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={faqFilter === "tutor"}
+                  onClick={() => { setFaqFilter("tutor"); setOpenFaqId("tutor-join"); }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    faqFilter === "tutor"
+                      ? "bg-[#1677e8] text-white shadow-xs"
+                      : "border border-[#dbe8f1] bg-white text-j-ink-muted hover:border-[#1677e8] hover:text-[#1677e8]"
+                  }`}
+                >
+                  For Tutors
+                </button>
+              </div>
+
+              {faq.items
+                .filter(item => {
+                  if (faqFilter === "all") return true;
+                  return (item as { category?: string }).category === faqFilter;
+                })
+                .map(item => {
+                  const isOpen = openFaqId === item.id;
+                  return (
+                    <article className={`faq-item ${isOpen ? "faq-open" : ""}`} key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqId(isOpen ? null : item.id)}
+                        aria-expanded={isOpen}
+                      >
+                        <span>{t(`home.faq.${item.id}.question`, item.question)}</span>
+                        <ChevronDown size={20} />
+                      </button>
+                      {isOpen && <p>{t(`home.faq.${item.id}.answer`, item.answer)}</p>}
+                    </article>
+                  );
+                })}
+            </div>
           </div>
         </section>
 
