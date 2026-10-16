@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -23,7 +23,7 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, Copy, Eye, FileText, Layers, RotateCcw, Share2, Sliders, Sparkles } from "lucide-react";
+import { Check, Copy, Eye, FileText, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
@@ -62,7 +62,17 @@ export function AdminFacebookPostsContent() {
   const [isBulkCopied, setIsBulkCopied] = useState(false);
   const [bulkPreviewData, setBulkPreviewData] = useState<{ text: string; count: number } | null>(null);
 
-  // Dynamic template customization state
+  const utils = trpc.useUtils();
+
+  // Check if current user is Project Owner
+  const workspaceAccess = trpc.admin.getWorkspaceAccess.useQuery(undefined, { retry: false });
+  const isOwner = Boolean(workspaceAccess.data?.isOwner);
+
+  // Dynamic template customization state (synced with database and cached in localStorage)
+  const templatesQuery = trpc.admin.getFacebookPostTemplates.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+
   const [templates, setTemplates] = useState<FacebookPostCustomTemplate>(loadSavedTemplates);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [editingTab, setEditingTab] = useState<"bulk" | "single">("bulk");
@@ -71,7 +81,24 @@ export function AdminFacebookPostsContent() {
   const [editSingleHeader, setEditSingleHeader] = useState(templates.singleHeader || DEFAULT_SINGLE_HEADER);
   const [editSingleFooter, setEditSingleFooter] = useState(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
 
-  const utils = trpc.useUtils();
+  useEffect(() => {
+    if (templatesQuery.data) {
+      setTemplates(templatesQuery.data);
+      saveTemplatesToStorage(templatesQuery.data);
+    }
+  }, [templatesQuery.data]);
+
+  const saveMutation = trpc.admin.saveFacebookPostTemplates.useMutation({
+    onSuccess: () => {
+      utils.admin.getFacebookPostTemplates.invalidate();
+    },
+  });
+
+  const resetMutation = trpc.admin.resetFacebookPostTemplates.useMutation({
+    onSuccess: () => {
+      utils.admin.getFacebookPostTemplates.invalidate();
+    },
+  });
 
   // Filters for live posted jobs
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
@@ -440,21 +467,23 @@ export function AdminFacebookPostsContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setEditBulkHeader(templates.bulkHeader || DEFAULT_BULK_HEADER);
-              setEditBulkFooter(templates.bulkFooter || DEFAULT_BULK_FOOTER);
-              setEditSingleHeader(templates.singleHeader || DEFAULT_SINGLE_HEADER);
-              setEditSingleFooter(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
-              setIsCustomizeModalOpen(true);
-            }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
-            title="Customize Header & Footer Text"
-          >
-            <Sliders className="size-3.5" />
-            <span>Customize Template</span>
-          </button>
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditBulkHeader(templates.bulkHeader || DEFAULT_BULK_HEADER);
+                setEditBulkFooter(templates.bulkFooter || DEFAULT_BULK_FOOTER);
+                setEditSingleHeader(templates.singleHeader || DEFAULT_SINGLE_HEADER);
+                setEditSingleFooter(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
+                setIsCustomizeModalOpen(true);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
+              title="Customize Header & Footer Text (Project Owner Only)"
+            >
+              <Sliders className="size-3.5" />
+              <span>Customize Template</span>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handlePreviewBulk}
@@ -639,7 +668,11 @@ export function AdminFacebookPostsContent() {
       {/* Customize Template Modal */}
       {isCustomizeModalOpen ? (
         <Modal onClose={() => setIsCustomizeModalOpen(false)}>
-          <ModalHeader title="Customize Facebook Post Template" />
+          <ModalHeader
+            eyebrow="Owner Only"
+            title="Customize Facebook Post Template"
+            meta="শুধুমাত্র প্রজেক্ট ওনার (Project Owner) এই হেডার ও ফুটার পরিবর্তন করতে পারবেন। সকল এডমিনের জন্য এটি কার্যকর হবে।"
+          />
           <ModalBody>
             <div className="space-y-4">
               {/* Format Selector Tabs */}
@@ -788,7 +821,12 @@ export function AdminFacebookPostsContent() {
             <div className="flex w-full flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
+                disabled={resetMutation.isPending || !isOwner}
+                onClick={async () => {
+                  if (!isOwner) {
+                    toast.error("শুধুমাত্র প্রজেক্ট ওনার (Project Owner) টেমপ্লেট পরিবর্তন করতে পারবেন।");
+                    return;
+                  }
                   if (editingTab === "bulk") {
                     setEditBulkHeader(DEFAULT_BULK_HEADER);
                     setEditBulkFooter(DEFAULT_BULK_FOOTER);
@@ -796,9 +834,9 @@ export function AdminFacebookPostsContent() {
                     setEditSingleHeader(DEFAULT_SINGLE_HEADER);
                     setEditSingleFooter(DEFAULT_SINGLE_FOOTER);
                   }
-                  toast.info("ডিফল্ট টেমপ্লেট রিসেট করা হয়েছে। সেভ করতে 'Save Changes' চাপুন।");
+                  toast.info("ডিফল্ট টেমপ্লেট রিসেট করা হয়েছে। ডাটাবেজে স্থায়ী করতে 'Save Changes' চাপুন।");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink-soft hover:bg-j-border-light/60 hover:text-j-ink transition"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink-soft hover:bg-j-border-light/60 hover:text-j-ink transition disabled:opacity-50"
               >
                 <RotateCcw className="size-3.5" />
                 <span>Reset to Default</span>
@@ -807,21 +845,31 @@ export function AdminFacebookPostsContent() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
+                  disabled={saveMutation.isPending || !isOwner}
+                  onClick={async () => {
+                    if (!isOwner) {
+                      toast.error("শুধুমাত্র প্রজেক্ট ওনার (Project Owner) টেমপ্লেট পরিবর্তন করতে পারবেন।");
+                      return;
+                    }
                     const updated: FacebookPostCustomTemplate = {
-                      bulkHeader: editBulkHeader,
-                      bulkFooter: editBulkFooter,
-                      singleHeader: editSingleHeader,
-                      singleFooter: editSingleFooter,
+                      bulkHeader: editBulkHeader.trim() || DEFAULT_BULK_HEADER,
+                      bulkFooter: editBulkFooter.trim() || DEFAULT_BULK_FOOTER,
+                      singleHeader: editSingleHeader.trim() || DEFAULT_SINGLE_HEADER,
+                      singleFooter: editSingleFooter.trim() || DEFAULT_SINGLE_FOOTER,
                     };
-                    setTemplates(updated);
-                    saveTemplatesToStorage(updated);
-                    toast.success("ফেসবুক পোস্ট টেমপ্লেট সফলভাবে সংরক্ষিত হয়েছে!");
-                    setIsCustomizeModalOpen(false);
+                    try {
+                      await saveMutation.mutateAsync(updated);
+                      setTemplates(updated);
+                      saveTemplatesToStorage(updated);
+                      toast.success("ফেসবুক পোস্ট টেমপ্লেট সফলভাবে সংরক্ষিত হয়েছে!");
+                      setIsCustomizeModalOpen(false);
+                    } catch (err: any) {
+                      toast.error(err?.message || "টেমপ্লেট সংরক্ষণ করতে ব্যর্থ হয়েছে।");
+                    }
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#1877f2] bg-[#1877f2] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#166fe5]"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#1877f2] bg-[#1877f2] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#166fe5] disabled:opacity-50"
                 >
-                  <Check className="size-3.5" />
+                  {saveMutation.isPending ? <LoadingCradle className="size-3.5" /> : <Check className="size-3.5" />}
                   <span>Save Changes</span>
                 </button>
                 <button

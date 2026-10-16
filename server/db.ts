@@ -128,7 +128,15 @@ import {
   type UserRole,
   type TutorRequestPublicationState,
   adminPushPreferences,
+  facebookPostTemplates,
 } from "../drizzle/schema";
+import {
+  DEFAULT_BULK_FOOTER,
+  DEFAULT_BULK_HEADER,
+  DEFAULT_SINGLE_FOOTER,
+  DEFAULT_SINGLE_HEADER,
+  type FacebookPostCustomTemplate,
+} from "@shared/facebook-post";
 import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
 import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
 import {
@@ -11725,4 +11733,76 @@ export async function getAdminLoginId(userId: number) {
     .where(eq(adminCredentials.userId, userId))
     .limit(1);
   return row?.loginId ?? null;
+}
+
+/** Active Facebook post templates. If none configured by the Owner, falls back to default constants. */
+export async function getFacebookPostTemplates(): Promise<FacebookPostCustomTemplate> {
+  const database = await getDb();
+  if (!database) {
+    return {
+      bulkHeader: DEFAULT_BULK_HEADER,
+      bulkFooter: DEFAULT_BULK_FOOTER,
+      singleHeader: DEFAULT_SINGLE_HEADER,
+      singleFooter: DEFAULT_SINGLE_FOOTER,
+    };
+  }
+  const [row] = await database
+    .select({
+      bulkHeader: facebookPostTemplates.bulkHeader,
+      bulkFooter: facebookPostTemplates.bulkFooter,
+      singleHeader: facebookPostTemplates.singleHeader,
+      singleFooter: facebookPostTemplates.singleFooter,
+    })
+    .from(facebookPostTemplates)
+    .where(eq(facebookPostTemplates.id, "default"))
+    .limit(1);
+
+  if (!row) {
+    return {
+      bulkHeader: DEFAULT_BULK_HEADER,
+      bulkFooter: DEFAULT_BULK_FOOTER,
+      singleHeader: DEFAULT_SINGLE_HEADER,
+      singleFooter: DEFAULT_SINGLE_FOOTER,
+    };
+  }
+
+  return {
+    bulkHeader: row.bulkHeader ?? DEFAULT_BULK_HEADER,
+    bulkFooter: row.bulkFooter ?? DEFAULT_BULK_FOOTER,
+    singleHeader: row.singleHeader ?? DEFAULT_SINGLE_HEADER,
+    singleFooter: row.singleFooter ?? DEFAULT_SINGLE_FOOTER,
+  };
+}
+
+/** Save custom templates configured by the Owner Admin. */
+export async function saveFacebookPostTemplates(templates: FacebookPostCustomTemplate, adminUserId: number): Promise<void> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  await database
+    .insert(facebookPostTemplates)
+    .values({
+      id: "default",
+      bulkHeader: templates.bulkHeader?.trim() || DEFAULT_BULK_HEADER,
+      bulkFooter: templates.bulkFooter?.trim() || DEFAULT_BULK_FOOTER,
+      singleHeader: templates.singleHeader?.trim() || DEFAULT_SINGLE_HEADER,
+      singleFooter: templates.singleFooter?.trim() || DEFAULT_SINGLE_FOOTER,
+      updatedByAdminId: adminUserId,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        bulkHeader: templates.bulkHeader?.trim() || DEFAULT_BULK_HEADER,
+        bulkFooter: templates.bulkFooter?.trim() || DEFAULT_BULK_FOOTER,
+        singleHeader: templates.singleHeader?.trim() || DEFAULT_SINGLE_HEADER,
+        singleFooter: templates.singleFooter?.trim() || DEFAULT_SINGLE_FOOTER,
+        updatedByAdminId: adminUserId,
+      },
+    });
+}
+
+/** Reset custom templates to defaults (Owner-only). */
+export async function resetFacebookPostTemplates(): Promise<void> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(facebookPostTemplates).where(eq(facebookPostTemplates.id, "default"));
 }

@@ -7,6 +7,9 @@ import { AdminFacebookPostsContent } from "./AdminFacebookPosts";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   fetchFn: vi.fn(),
+  isOwner: true,
+  templates: null as unknown,
+  savedTemplates: null as unknown,
   liveData: {
     items: [
       {
@@ -49,9 +52,44 @@ vi.mock("@/lib/trpc", () => ({
           invalidate: vi.fn(),
           fetch: mocks.fetchFn,
         },
+        getFacebookPostTemplates: {
+          invalidate: vi.fn(),
+        },
       },
     }),
     admin: {
+      getWorkspaceAccess: {
+        useQuery: () => ({
+          data: { isOwner: mocks.isOwner, userId: 1, name: "Owner Admin" },
+          isLoading: false,
+        }),
+      },
+      getFacebookPostTemplates: {
+        useQuery: () => ({
+          data: mocks.templates,
+          isLoading: false,
+        }),
+      },
+      saveFacebookPostTemplates: {
+        useMutation: (opts?: { onSuccess?: () => void }) => ({
+          mutateAsync: async (input: unknown) => {
+            mocks.savedTemplates = input;
+            opts?.onSuccess?.();
+            return { success: true };
+          },
+          isPending: false,
+        }),
+      },
+      resetFacebookPostTemplates: {
+        useMutation: (opts?: { onSuccess?: () => void }) => ({
+          mutateAsync: async () => {
+            mocks.savedTemplates = null;
+            opts?.onSuccess?.();
+            return { success: true };
+          },
+          isPending: false,
+        }),
+      },
       listPostedJobs: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
@@ -78,12 +116,17 @@ vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
 describe("AdminFacebookPostsContent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.isOwner = true;
+    mocks.templates = null;
+    mocks.savedTemplates = null;
+    localStorage.clear();
     Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
     Object.assign(navigator, {
       clipboard: {
@@ -245,6 +288,43 @@ describe("AdminFacebookPostsContent", () => {
       const calls = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls;
       const lastCallText = calls[calls.length - 1][0];
       expect(lastCallText).toContain("🔥 CUSTOM TUITION HEADER (1) 🔥");
+    });
+
+    expect(mocks.savedTemplates).toMatchObject({
+      bulkHeader: "🔥 CUSTOM TUITION HEADER ({count}) 🔥",
+    });
+  });
+
+  it("hides 'Customize Template' button for regular (non-owner) admins", () => {
+    mocks.isOwner = false;
+    render(<AdminFacebookPostsContent />);
+
+    // Regular admin sees Preview and Copy All Filtered
+    expect(screen.getByRole("button", { name: /Preview Bulk/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Copy All Filtered/i })).toBeDefined();
+
+    // But Customize Template button is hidden
+    expect(screen.queryByRole("button", { name: /Customize Template/i })).toBeNull();
+  });
+
+  it("applies server-configured templates for regular admins when copying", async () => {
+    mocks.isOwner = false;
+    mocks.templates = {
+      bulkHeader: "🌟 SERVER OWNER HEADER ({count}) 🌟",
+      bulkFooter: "📞 OWNER FOOTER",
+      singleHeader: "📢 OWNER SINGLE",
+      singleFooter: "🌐 OWNER APPLY",
+    };
+
+    render(<AdminFacebookPostsContent />);
+
+    const copyAllBtn = screen.getByRole("button", { name: /Copy All Filtered/i });
+    fireEvent.click(copyAllBtn);
+
+    await waitFor(() => {
+      const calls = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallText = calls[calls.length - 1][0];
+      expect(lastCallText).toContain("🌟 SERVER OWNER HEADER (1) 🌟");
     });
   });
 

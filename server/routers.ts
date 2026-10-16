@@ -2486,6 +2486,21 @@ export const appRouter = router({
     deleteMessageTemplate: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => db.deleteAdminMessageTemplate(input)),
+    /** Reusable Facebook post templates: readable by any Admin for copying/previewing posts. */
+    getFacebookPostTemplates: adminProcedure.query(() => db.getFacebookPostTemplates()),
+    /** Facebook post templates: customizable ONLY by the Project Owner Admin. */
+    saveFacebookPostTemplates: ownerAdminProcedure
+      .input(
+        z.object({
+          bulkHeader: z.string().trim().max(3000).optional(),
+          bulkFooter: z.string().trim().max(3000).optional(),
+          singleHeader: z.string().trim().max(3000).optional(),
+          singleFooter: z.string().trim().max(3000).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) => db.saveFacebookPostTemplates(input, ctx.user.id)),
+    /** Reset Facebook post templates to defaults (Owner-only). */
+    resetFacebookPostTemplates: ownerAdminProcedure.mutation(() => db.resetFacebookPostTemplates()),
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
     getChatPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
     getPushPublicKey: adminProcedure.query(() => db.getChatPushPublicKey()),
