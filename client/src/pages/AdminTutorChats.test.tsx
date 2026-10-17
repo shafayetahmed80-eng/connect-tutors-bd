@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -749,4 +749,71 @@ describe("the card and filter panel over the conversations", () => {
 
     expect(screen.getAllByText("পেমেন্ট ইস্যু").length).toBeGreaterThan(0);
   });
+
+  it("restores unsent draft from localStorage and displays indicator in Admin thread", async () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One" })];
+    window.localStorage.setItem("connect_tutors_chat_draft_admin_t1", "Unsent admin draft message");
+
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    await waitFor(() => {
+      const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+      expect(box.value).toBe("Unsent admin draft message");
+    });
+    expect(screen.getByTestId("chat-draft-restored-indicator")).toBeTruthy();
+
+    const clearBtn = screen.getByRole("button", { name: "খসড়া মুছুন" });
+    fireEvent.click(clearBtn);
+
+    const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+    expect(box.value).toBe("");
+    expect(screen.queryByTestId("chat-draft-restored-indicator")).toBeNull();
+  });
+
+  it("loads last sent admin message on ArrowUp when composer is empty", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One" })];
+    state.threadMessages = [
+      message({ id: 50, senderRole: "admin", body: "Last instruction sent by Admin" }),
+    ];
+
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    const box = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "" } });
+
+    fireEvent.keyDown(box, { key: "ArrowUp" });
+    expect(box.value).toBe("Last instruction sent by Admin");
+  });
+
+  it("opens forward modal in Admin thread and forwards to another tutor thread", () => {
+    state.threads = [
+      thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 }),
+      thread({ tutorId: "t2", tutorName: "Tutor Two", tutorNumber: 102 }),
+    ];
+    state.threadMessages = [
+      message({ id: 55, senderRole: "tutor", body: "Need rescheduling for Saturday" }),
+    ];
+
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    // Click on message bubble to open action menu
+    const bubble = screen.getByText("Need rescheduling for Saturday");
+    fireEvent.click(bubble);
+
+    const forwardBtn = screen.getByRole("button", { name: "মেসেজ ফরওয়ার্ড করুন" });
+    expect(forwardBtn).toBeTruthy();
+    fireEvent.click(forwardBtn);
+
+    expect(screen.getByText("মেসেজ ফরওয়ার্ড করুন")).toBeTruthy();
+    // Forward to Tutor Two thread
+    const targetThreadBtn = within(screen.getByRole("dialog")).getByRole("button", { name: /Tutor Two/ });
+    fireEvent.click(targetThreadBtn);
+
+    // Verify localStorage draft for target tutor was written
+    expect(window.localStorage.getItem("connect_tutors_chat_draft_admin_t2")).toContain("Need rescheduling for Saturday");
+  });
 });
+
