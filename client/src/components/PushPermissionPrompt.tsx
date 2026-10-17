@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
 import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
-import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
+import { describePushSetupFailure, subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
 
 /** "Not now" keeps the prompt away for a week; a browser that has answered (Allow or Block) is never asked again. */
 export const PUSH_PROMPT_SNOOZE_KEY = "connect-push-prompt-until";
@@ -68,8 +68,8 @@ export function PushPromptDialog({ shouldOpen, publicKey, save, snoozeKey, body,
         announcePushRegistrationChange();
       }
       setOpen(false);
-    } catch {
-      toast.error("Could not enable notifications.");
+    } catch (error) {
+      toast.error(describePushSetupFailure(error));
       snoozeForAWeek(snoozeKey);
       setOpen(false);
     } finally {

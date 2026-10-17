@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { useAdminPushSubscribed } from "@/hooks/useAdminPushSubscribed";
 import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
-import { subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
+import { PushSetupError, describePushSetupFailure, subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
 
 export function AdminPushHeaderPopover() {
   const supported = supportsWebPush();
@@ -70,8 +70,8 @@ export function AdminPushHeaderPopover() {
         announcePushRegistrationChange();
         toast.success("ব্রাউজার নোটিফিকেশন চালু হয়েছে!");
       }
-    } catch {
-      toast.error("নোটিফিকেশন চালু/বন্ধ করতে সমস্যা হয়েছে।");
+    } catch (error) {
+      toast.error(error instanceof PushSetupError ? describePushSetupFailure(error) : "নোটিফিকেশন চালু/বন্ধ করতে সমস্যা হয়েছে।");
     } finally {
       setBusy(false);
     }

@@ -41,6 +41,7 @@ vi.mock("wouter", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from "sonner";
 import { AdminPushHeaderPopover } from "./AdminPushHeaderPopover";
 
 function stubServiceWorker(subscription: unknown) {
@@ -114,5 +115,23 @@ describe("AdminPushHeaderPopover", () => {
 
     expect(await screen.findByRole("button")).toBeTruthy();
     expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("shows which step failed when this browser cannot be turned on", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const failing = { name: "AbortError", message: "Registration failed - push service error" };
+    Object.defineProperty(window.navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        getRegistration: vi.fn().mockResolvedValue({ pushManager: { getSubscription: vi.fn().mockResolvedValue(null) } }),
+        ready: Promise.resolve({ pushManager: { subscribe: vi.fn().mockRejectedValue(failing), getSubscription: vi.fn() } }),
+      },
+    });
+    isPushSubscribed.mockResolvedValue({ subscribed: false });
+
+    render(<AdminPushHeaderPopover />);
+    fireEvent.click(screen.getAllByRole("switch")[0]);
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("AbortError")));
   });
 });
