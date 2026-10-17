@@ -58,6 +58,8 @@ export const COMBINED_POSTER_THEMES: CombinedPosterTheme[] = ["navy", "emerald",
 export const MAX_COMBINED_TUITIONS = 4;
 /** The tall list's longest run of tuitions. */
 export const MAX_TALL_TUITIONS = 12;
+/** The Facebook video's longest run of tuitions (lib/facebook-video.ts); here so the page can count without loading the video. */
+export const MAX_VIDEO_TUITIONS = 30;
 
 /** The fields a poster reads from an Admin posted-job row. */
 export type FacebookPosterJob = {

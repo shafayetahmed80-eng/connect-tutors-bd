@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { AdminJobFilterBar, useAdminJobFilters } from "@/components/AdminJobFilters";
 import RecordTable, { type RecordColumn } from "@/components/RecordTable";
@@ -26,11 +26,14 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users, X } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Film, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
 import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
-import { MAX_TALL_TUITIONS, type FacebookPosterJob } from "@/lib/facebook-poster";
+import { MAX_TALL_TUITIONS, MAX_VIDEO_TUITIONS, type FacebookPosterJob } from "@/lib/facebook-poster";
+
+// Loaded only when an Admin opens it, so the video's drawing code is never part of what every visitor downloads.
+const FacebookVideoModal = lazy(() => import("@/components/FacebookVideoModal"));
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
@@ -283,6 +286,9 @@ export function AdminFacebookPostsContent() {
   const [bulkPosterJobs, setBulkPosterJobs] = useState<PosterLiveJob[] | null>(null);
   // Whether the open bulk poster holds hand-picked tuitions rather than the filtered list.
   const [bulkPosterPicked, setBulkPosterPicked] = useState(false);
+  const [videoJobs, setVideoJobs] = useState<PosterLiveJob[] | null>(null);
+  // Whether the video is of hand-picked tuitions, which its caption's headline must not describe by the filters.
+  const [videoPicked, setVideoPicked] = useState(false);
   // The tuitions ticked for the bulk poster, in the order they were ticked: the order they are drawn in.
   const [picked, setPicked] = useState<Map<number, LiveJob>>(() => new Map());
 
@@ -502,6 +508,29 @@ export function AdminFacebookPostsContent() {
       setBulkPosterJobs(list.map(posterJobOf));
     } catch {
       toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
+    } finally {
+      setIsBulkCopying(false);
+    }
+  };
+
+  const handleGenerateVideo = async () => {
+    if (isBulkCopying) return;
+    if (picked.size > 0) {
+      setVideoPicked(true);
+      setVideoJobs(Array.from(picked.values()).map(posterJobOf));
+      return;
+    }
+    setIsBulkCopying(true);
+    try {
+      const list = (await fetchFilteredJobs(MAX_VIDEO_TUITIONS)).slice(0, MAX_VIDEO_TUITIONS);
+      if (list.length === 0) {
+        toast.error("ভিডিও তৈরি করার জন্য কোনো লাইভ টিউশন নেই।");
+        return;
+      }
+      setVideoPicked(false);
+      setVideoJobs(list.map(posterJobOf));
+    } catch {
+      toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
     } finally {
       setIsBulkCopying(false);
     }
@@ -1113,6 +1142,16 @@ export function AdminFacebookPostsContent() {
             <ImageIcon className="size-3.5 text-[#1877f2]" />
             <span>{picked.size > 0 ? `Bulk Poster (${picked.size} picked)` : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}</span>
           </button>
+          <button
+            type="button"
+            onClick={handleGenerateVideo}
+            disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
+            title="A Facebook video of the tuitions you ticked, or of the filtered ones (up to thirty), Area Grouped, rising up the frame"
+          >
+            <Film className="size-3.5 text-[#1877f2]" />
+            <span>{picked.size > 0 ? `Video (${picked.size} picked)` : `Video (${Math.min(totalMatching, MAX_VIDEO_TUITIONS)})`}</span>
+          </button>
           {picked.size > 0 ? (
             <button
               type="button"
@@ -1613,6 +1652,23 @@ export function AdminFacebookPostsContent() {
           includeHashtags,
         })}
       />
+
+      {videoJobs && videoJobs.length > 0 ? (
+        <Suspense fallback={null}>
+          <FacebookVideoModal
+            onClose={() => setVideoJobs(null)}
+            jobs={videoJobs}
+            caption={shown => buildEnglishBulkFacebookPostText(videoJobs.slice(0, shown), {
+              origin: window.location.origin,
+              template: templates,
+              // The video is Area Grouped, so its caption is too, whatever format the page has chosen.
+              format: "area-grouped",
+              filterOptions: videoPicked ? undefined : getActiveBulkFilterOptions(),
+              includeHashtags,
+            })}
+          />
+        </Suspense>
+      ) : null}
 
       {/* Facebook Group Helper Modal */}
       <FacebookGroupHelperModal

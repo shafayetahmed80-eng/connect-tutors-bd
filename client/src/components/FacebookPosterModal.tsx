@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 const PREFS_KEY = "connect_tutors_fb_poster_prefs_v1";
 
-type PosterPrefs = {
+export type PosterPrefs = {
   locale: PosterLocale;
   size: PosterSize;
   singleTheme: SinglePosterTheme;
@@ -39,7 +39,7 @@ type PosterPrefs = {
 };
 
 /** What is stored as the ground when the Admin chose Auto. */
-const AUTO = "auto";
+export const AUTO = "auto";
 
 /** The Auto swatch: the curriculum colours in one disc, since it is every one of them. */
 const AUTO_SWATCH = "conic-gradient(#0e2442 0 25%, #0e3b43 0 50%, #0b3d2e 0 75%, #3a0b17 0)";
@@ -47,7 +47,7 @@ const AUTO_SWATCH = "conic-gradient(#0e2442 0 25%, #0e3b43 0 50%, #0b3d2e 0 75%,
 const DEFAULT_PREFS: PosterPrefs = { locale: "bn", size: "square", singleTheme: "navy", combinedTheme: "navy", ground: null };
 
 /** What is stored, or null when nothing is or the browser will not say (a private window). */
-function readStoredPrefs(): PosterPrefs | null {
+export function readStoredPrefs(): PosterPrefs | null {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null") as Partial<PosterPrefs> | null;
     if (!saved) return null;
@@ -63,9 +63,9 @@ function readStoredPrefs(): PosterPrefs | null {
   }
 }
 
-const readPrefs = () => readStoredPrefs() ?? DEFAULT_PREFS;
+export const readPrefs = () => readStoredPrefs() ?? DEFAULT_PREFS;
 
-function savePrefs(prefs: PosterPrefs) {
+export function savePrefs(prefs: PosterPrefs) {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
   } catch {
@@ -105,7 +105,7 @@ const labelClass = "text-xs font-semibold text-j-ink-soft sm:w-20 sm:shrink-0";
  * phone the choices share the row's width equally and never wrap; `detail` is
  * the small print after a label (a size's pixels), which a phone has no room for.
  */
-function ChoiceRow<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; label: string; detail?: string; swatch?: string }>; onChange: (value: T) => void }) {
+export function ChoiceRow<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; label: string; detail?: string; swatch?: string }>; onChange: (value: T) => void }) {
   return (
     <div className={rowClass}>
       <span className={labelClass}>{label}</span>

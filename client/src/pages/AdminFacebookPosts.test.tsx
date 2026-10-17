@@ -137,6 +137,18 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+// The video window draws on a canvas jsdom does not have; its own tests cover it. Here it shows what the page hands it.
+vi.mock("@/components/FacebookVideoModal", () => ({
+  default: ({ jobs, caption, onClose }: { jobs: Array<{ jobId: string }>; caption?: (shown: number) => string; onClose: () => void }) => (
+    <div role="dialog" aria-label="Facebook Video">
+      <h2>Facebook Video</h2>
+      <p data-testid="video-jobs">{jobs.map(item => item.jobId).join(",")}</p>
+      <pre data-testid="video-caption">{caption?.(jobs.length)}</pre>
+      <button type="button" onClick={onClose}>Close video</button>
+    </div>
+  ),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -556,6 +568,21 @@ describe("AdminFacebookPostsContent", () => {
     for (const name of [/Navy/i, /Emerald/i, /Crimson/i, /Mist/i]) expect(themes.getByRole("radio", { name })).toBeDefined();
     expect(themes.queryByRole("radio", { name: /Cream/i })).toBeNull();
     expect(screen.getByRole("radio", { name: /Tall list/i })).toBeDefined();
+  });
+
+  it("opens the Facebook video of the filtered tuitions, with an Area Grouped caption whatever format the page has chosen", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Video \(1\)/ }));
+
+    expect(await screen.findByRole("heading", { name: "Facebook Video" })).toBeDefined();
+    expect(screen.getByTestId("video-jobs").textContent).toBe("6900");
+    const caption = screen.getByTestId("video-caption").textContent ?? "";
+    expect(caption).toContain("📌 Job ID: 6900");
+    // The area heading of the Area Grouped format, underlined.
+    expect(caption).toMatch(/📍 #\S+\n─+/);
+    fireEvent.click(screen.getByRole("button", { name: "Close video" }));
+    expect(screen.queryByRole("heading", { name: "Facebook Video" })).toBeNull();
   });
 
   it("toggles smart hashtags on and off and persists preference", () => {
