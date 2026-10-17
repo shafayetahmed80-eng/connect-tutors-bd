@@ -17,6 +17,8 @@ build/
 # IDE and editor files
 .vscode/
 .idea/
+.chrome-debug-profile/
+.browser-session/
 *.swp
 *.swo
 *~

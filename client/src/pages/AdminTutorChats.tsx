@@ -132,22 +132,22 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
     onSuccess: () => {
       setLabel("");
       setDraftBody("");
-      void utils.admin.listChatQuickReplies.invalidate();
-      void utils.admin.listMessageTemplates.invalidate();
+      void utils.admin.listChatQuickReplies?.invalidate?.();
+      void utils.admin.listMessageTemplates?.invalidate?.();
       toast.success("Saved as template.");
     },
     onError: error => toast.error(error.message),
   });
   const remove = trpc.admin.deleteChatQuickReply.useMutation({
     onSuccess: () => {
-      void utils.admin.listChatQuickReplies.invalidate();
-      void utils.admin.listMessageTemplates.invalidate();
+      void utils.admin.listChatQuickReplies?.invalidate?.();
+      void utils.admin.listMessageTemplates?.invalidate?.();
     },
   });
   const removeTemplate = trpc.admin.deleteMessageTemplate.useMutation({
     onSuccess: () => {
-      void utils.admin.listChatQuickReplies.invalidate();
-      void utils.admin.listMessageTemplates.invalidate();
+      void utils.admin.listChatQuickReplies?.invalidate?.();
+      void utils.admin.listMessageTemplates?.invalidate?.();
     },
   });
 
@@ -172,51 +172,78 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
     <button type="button" onClick={() => setOpen(value => !value)} aria-label="Quick replies" aria-expanded={open} className="grid h-control w-10 shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
       <ListPlus className="size-4" />
     </button>
-    {open ? <div className="absolute bottom-12 left-0 z-10 w-72 rounded-xl border border-j-border bg-white p-2 shadow-lg">
-      <div className="flex items-center justify-between px-1 pb-1.5">
-        <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Quick replies &amp; Templates</p>
-        <button type="button" onClick={() => setManaging(value => !value)} className="text-2xs font-bold text-j-accent">{managing ? "Done" : "Manage"}</button>
-      </div>
-
-      {currentDraft?.trim() && !managing ? (
-        <div className="mb-2 border-b border-j-border pb-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setLabel(currentDraft.slice(0, 30).trim());
-              setDraftBody(currentDraft.trim());
-              setManaging(true);
-            }}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-2xs font-bold text-[#1267c8] hover:bg-sky-100"
-          >
-            <BookmarkPlus className="size-3" />
-            <span>Save current message as template</span>
-          </button>
+    {open ? <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] sm:hidden"
+        onClick={() => { setOpen(false); setManaging(false); }}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:bottom-12 sm:left-0 sm:z-10 sm:max-h-none sm:w-80 sm:rounded-xl sm:p-2 sm:shadow-lg">
+        <div className="flex items-center justify-between px-1 pb-2 sm:pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <BookmarkPlus className="size-3.5 text-j-accent sm:hidden" />
+            <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Quick replies &amp; Templates</p>
+            <span className="rounded-full bg-j-surface-muted px-1.5 py-0.5 text-3xs font-semibold tabular-nums text-j-ink-muted">
+              {items.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setManaging(value => !value)} className="text-2xs font-bold text-j-accent hover:underline">{managing ? "Done" : "Manage"}</button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setManaging(false); }}
+              aria-label="Close"
+              className="rounded-lg p-1 text-j-ink-muted hover:bg-j-surface-sunken hover:text-j-ink sm:hidden"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
         </div>
-      ) : null}
 
-      <div className="max-h-56 space-y-1 overflow-y-auto">
-        {items.length === 0 ? <p className="px-1.5 py-2 text-xs text-j-ink-muted">No quick replies yet.</p> : null}
-        {items.map(item => <div key={item.id} className="flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 hover:bg-j-surface-sunken">
-          <button type="button" onClick={() => { onInsert(item.body); setOpen(false); }} className="min-w-0 flex-1 text-left">
-            <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
-            <p className="truncate text-2xs text-j-ink-muted">{item.body}</p>
-          </button>
-          {managing ? <button type="button" onClick={() => {
-            if (item.isTemplate) {
-              removeTemplate.mutate({ id: item.numId });
-            } else {
-              remove.mutate({ id: item.numId });
-            }
-          }} aria-label={`Delete ${item.label}`} className="shrink-0 text-2xs font-bold text-red-600">Delete</button> : null}
-        </div>)}
+        {currentDraft?.trim() && !managing ? (
+          <div className="mb-2 border-b border-j-border pb-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setLabel(currentDraft.slice(0, 30).trim());
+                setDraftBody(currentDraft.trim());
+                setManaging(true);
+              }}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-2xs font-bold text-[#1267c8] hover:bg-sky-100 transition-colors"
+            >
+              <BookmarkPlus className="size-3" />
+              <span>Save current message as template</span>
+            </button>
+          </div>
+        ) : null}
+
+        <div className="max-h-56 space-y-1 overflow-y-auto overscroll-contain pr-0.5">
+          {items.length === 0 ? <p className="px-1.5 py-3 text-center text-xs text-j-ink-muted">No quick replies yet.</p> : null}
+          {items.map(item => <div key={item.id} className="flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 hover:bg-j-surface-sunken transition-colors">
+            <button type="button" onClick={() => { onInsert(item.body); setOpen(false); }} className="min-w-0 flex-1 text-left">
+              <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
+              <p className="truncate text-2xs text-j-ink-muted">{item.body}</p>
+            </button>
+            {managing ? <button type="button" onClick={() => {
+              if (item.isTemplate) {
+                removeTemplate.mutate({ id: item.numId });
+              } else {
+                remove.mutate({ id: item.numId });
+              }
+            }} aria-label={`Delete ${item.label}`} className="shrink-0 rounded px-1 py-0.5 text-2xs font-bold text-red-600 hover:bg-red-50">Delete</button> : null}
+          </div>)}
+        </div>
+        {managing ? <form onSubmit={submitNew} className="mt-2 space-y-2 border-t border-j-border pt-2">
+          <p className="text-2xs font-bold text-j-ink-soft">Add new quick reply</p>
+          <input value={label} onChange={event => setLabel(event.target.value)} placeholder="Short label" maxLength={60} className="h-control w-full rounded-xl border border-j-border px-2.5 text-xs outline-none focus:border-j-accent focus:ring-1 focus:ring-j-accent/20" />
+          <Textarea value={draftBody} onChange={event => setDraftBody(event.target.value)} placeholder="Reply text…" rows={2} className="text-xs rounded-xl" />
+          <Button type="submit" size="sm" disabled={!label.trim() || !draftBody.trim() || create.isPending} className="w-full h-8 rounded-xl text-xs font-semibold">
+            {create.isPending ? "Saving…" : "Add quick reply"}
+          </Button>
+        </form> : null}
       </div>
-      {managing ? <form onSubmit={submitNew} className="mt-2 space-y-1.5 border-t border-j-border pt-2">
-        <input value={label} onChange={event => setLabel(event.target.value)} placeholder="Short label" maxLength={60} className="h-control w-full rounded-lg border border-j-border px-2 text-xs outline-none focus:border-j-accent" />
-        <Textarea value={draftBody} onChange={event => setDraftBody(event.target.value)} placeholder="Reply text" rows={2} className="text-xs" />
-        <Button type="submit" size="sm" disabled={!label.trim() || !draftBody.trim() || create.isPending} className="w-full">Add quick reply</Button>
-      </form> : null}
-    </div> : null}
+    </> : null}
   </div>;
 }
 
@@ -228,8 +255,8 @@ function SaveMessageAsTemplateModal({ body, onClose }: { body: string; onClose: 
   const create = trpc.admin.createChatQuickReply.useMutation({
     onSuccess: () => {
       toast.success("Saved as template.");
-      void utils.admin.listChatQuickReplies.invalidate();
-      void utils.admin.listMessageTemplates.invalidate();
+      void utils.admin.listChatQuickReplies?.invalidate?.();
+      void utils.admin.listMessageTemplates?.invalidate?.();
       onClose();
     },
     onError: err => toast.error(err.message),
@@ -262,7 +289,7 @@ function SaveMessageAsTemplateModal({ body, onClose }: { body: string; onClose: 
             <Textarea
               value={messageBody}
               onChange={e => setMessageBody(e.target.value)}
-              rows={4}
+              rows={3}
               maxLength={2000}
               required
               className="mt-1 text-xs"
@@ -270,8 +297,8 @@ function SaveMessageAsTemplateModal({ body, onClose }: { body: string; onClose: 
           </div>
         </ModalBody>
         <ModalFooter>
-          <button type="button" onClick={onClose} className="h-control rounded-xl border border-j-border px-4 text-xs font-bold text-j-ink-soft">Cancel</button>
-          <Button type="submit" disabled={!label.trim() || !messageBody.trim() || create.isPending} className="h-control rounded-xl text-xs">
+          <button type="button" onClick={onClose} className="h-control flex-1 sm:flex-none rounded-xl border border-j-border px-4 text-xs font-bold text-j-ink-soft">Cancel</button>
+          <Button type="submit" disabled={!label.trim() || !messageBody.trim() || create.isPending} className="h-control flex-1 sm:flex-none rounded-xl text-xs">
             {create.isPending ? "Saving…" : "Save Template"}
           </Button>
         </ModalFooter>
@@ -578,15 +605,15 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
             {message.attachmentUrl ? <AttachmentView url={message.attachmentUrl} contentType={message.attachmentContentType} /> : null}
             <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5 px-1">
+          <div className="mt-0.5 flex items-center gap-2 px-1">
             <button
               type="button"
               onClick={() => react.mutate({ tutorId, messageId: message.id })}
               aria-pressed={message.adminReacted}
               aria-label={message.adminReacted ? "Remove your 👍" : "React with 👍"}
-              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.adminReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
+              className={`flex min-h-[28px] min-w-[28px] items-center justify-center gap-1 rounded-full px-2 py-0.5 text-2xs font-bold transition-colors ${message.adminReacted ? "bg-j-accent/10 text-j-accent" : "text-j-ink-faint hover:bg-j-surface-sunken hover:text-j-ink-soft"}`}
             >
-              <ThumbsUp className="size-3" fill={message.adminReacted ? "currentColor" : "none"} />
+              <ThumbsUp className="size-3.5" fill={message.adminReacted ? "currentColor" : "none"} />
             </button>
             {message.body ? (
               <button
@@ -594,9 +621,9 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                 onClick={() => setSavingTemplateBody(message.body)}
                 title="Save this message as template"
                 aria-label="Save this message as template"
-                className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold text-j-ink-faint hover:text-j-accent"
+                className="flex min-h-[28px] items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold text-j-ink-faint transition-colors hover:bg-j-surface-sunken hover:text-j-accent active:bg-j-surface-muted"
               >
-                <BookmarkPlus className="size-3" />
+                <BookmarkPlus className="size-3.5" />
                 <span className="hidden sm:inline">Save as template</span>
               </button>
             ) : null}

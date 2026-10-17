@@ -148,28 +148,44 @@ export function AdminMessageTemplatesMenu({
       )}
 
       {open ? (
-        <div
-          className={`absolute z-30 w-80 rounded-2xl border border-j-border bg-white p-3 shadow-xl ${
-            dropUp ? "bottom-12" : "top-full mt-1.5"
-          } ${align === "right" ? "right-0" : "left-0"}`}
-        >
-          <div className="flex items-center justify-between border-b border-j-border pb-2">
-            <div className="flex items-center gap-1.5">
-              <BookmarkPlus className="size-4 text-j-accent" />
-              <p className="text-xs font-bold text-j-ink">Saved Templates</p>
-              <span className="rounded-full bg-j-surface-muted px-1.5 py-0.2 text-3xs font-semibold tabular-nums text-j-ink-muted">
-                {allTemplates.length}
-              </span>
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] sm:hidden"
+            onClick={() => { setOpen(false); setCreating(false); }}
+            aria-hidden="true"
+          />
+          <div
+            className={`fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:z-30 sm:max-h-none sm:w-80 sm:rounded-2xl sm:p-3 sm:shadow-xl ${
+              dropUp ? "sm:bottom-12" : "sm:top-full sm:mt-1.5"
+            } ${align === "right" ? "sm:right-0" : "sm:left-0"}`}
+          >
+            <div className="flex items-center justify-between border-b border-j-border pb-2">
+              <div className="flex items-center gap-1.5">
+                <BookmarkPlus className="size-4 text-j-accent" />
+                <p className="text-xs font-bold text-j-ink">Saved Templates</p>
+                <span className="rounded-full bg-j-surface-muted px-1.5 py-0.2 text-3xs font-semibold tabular-nums text-j-ink-muted">
+                  {allTemplates.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreating(val => !val)}
+                  className="inline-flex items-center gap-1 text-2xs font-bold text-j-accent hover:underline"
+                >
+                  {creating ? <X className="size-3" /> : <Plus className="size-3" />}
+                  {creating ? "Cancel" : "New"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); setCreating(false); }}
+                  aria-label="Close"
+                  className="rounded-lg p-1 text-j-ink-muted hover:bg-j-surface-sunken hover:text-j-ink sm:hidden"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setCreating(val => !val)}
-              className="inline-flex items-center gap-1 text-2xs font-bold text-j-accent hover:underline"
-            >
-              {creating ? <X className="size-3" /> : <Plus className="size-3" />}
-              {creating ? "Cancel" : "New"}
-            </button>
-          </div>
 
           {creating ? (
             <form onSubmit={handleCreateSubmit} className="mt-2.5 space-y-2 border-b border-j-border pb-2.5">
@@ -261,7 +277,8 @@ export function AdminMessageTemplatesMenu({
             )}
           </div>
         </div>
-      ) : null}
+      </>
+    ) : null}
     </div>
   );
 }

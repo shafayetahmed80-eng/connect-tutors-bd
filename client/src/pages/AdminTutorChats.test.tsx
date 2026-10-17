@@ -398,6 +398,39 @@ describe("the Admin's Tutor chat list", () => {
     expect(box.value).toContain("Please share your payment reference number.");
   });
 
+  it("supports mobile-friendly template dropdown with close button and backdrop dismissal", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.quickReplies = [{ id: 1, label: "Payment help", body: "Please share payment ref." }];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    // Open quick replies
+    fireEvent.click(screen.getByRole("button", { name: "Quick replies" }));
+    expect(screen.getByText("Quick replies & Templates")).toBeTruthy();
+
+    // Close button dismisses the menu
+    const closeBtn = screen.getByRole("button", { name: "Close" });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText("Quick replies & Templates")).toBeNull();
+  });
+
+  it("opens SaveMessageAsTemplateModal from message action button and saves template", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [message({ id: 12, body: "Here is the tuition confirmation details." })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    // Click Save as template on message
+    fireEvent.click(screen.getByRole("button", { name: "Save this message as template" }));
+    expect(screen.getByText("Save as Template")).toBeTruthy();
+    expect(screen.getByDisplayValue("Here is the tuition confirmation details.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Template" }));
+    expect(state.createQuickReply).toHaveBeenCalled();
+  });
+
   it("lets an Admin react to a message, and shows the Tutor's own reaction", () => {
     state.threads = [thread()];
     state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
