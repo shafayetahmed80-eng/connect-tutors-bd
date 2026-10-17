@@ -20,6 +20,7 @@ vi.mock("@/hooks/useChatSocket", () => ({
     state.onSocketFrame = onFrame;
     return state.sendFrame;
   },
+  useOnlineStatus: () => true,
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -154,6 +155,32 @@ describe("the Tutor's Admin chat panel", () => {
   it("displays the 30-day auto-delete privacy and security banner", () => {
     render(<TutorAdminChatPanel />);
     expect(screen.getByText(/গোপনীয়তা ও সুরক্ষার স্বার্থে চ্যাট হিস্ট্রি এবং শেয়ার করা ফাইলসমূহ ৩০ দিন পর স্বয়ংক্রিয়ভাবে মুছে যায়/)).toBeTruthy();
+  });
+
+  it("paginates messages when exceeding page size and reveals earlier messages on click", () => {
+    state.messages = Array.from({ length: 35 }, (_, i) =>
+      message({ id: i + 1, body: `Message number ${i + 1}`, createdAt: `2026-09-25T10:${String(i).padStart(2, "0")}:00.000Z` })
+    );
+    render(<TutorAdminChatPanel />);
+
+    const loadMoreButton = screen.getByRole("button", { name: /Load earlier messages/ });
+    expect(loadMoreButton).toBeTruthy();
+    expect(screen.getByText(/Load earlier messages \(5 more\)/)).toBeTruthy();
+    expect(screen.queryByText("Message number 1")).toBeNull();
+    expect(screen.getByText("Message number 35")).toBeTruthy();
+
+    fireEvent.click(loadMoreButton);
+    expect(screen.getByText("Message number 1")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Load earlier messages/ })).toBeNull();
+  });
+
+  it("renders optimistic outbox entry while sending", () => {
+    render(<TutorAdminChatPanel />);
+    const textarea = screen.getByPlaceholderText("Write a message…");
+    fireEvent.change(textarea, { target: { value: "Optimistic pending message" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(state.send).toHaveBeenCalled();
   });
 });
 
