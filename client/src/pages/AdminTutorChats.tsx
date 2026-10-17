@@ -19,6 +19,7 @@ import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, TutorPeekProfile
 import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
 import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
 import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
+import { ChatDocumentCard, ChatDropzoneOverlay, ChatMediaGallery, ClipboardImagePreviewChip, parseImageUrls } from "@/components/chat/ChatAttachments";
 import { motion } from "framer-motion";
 import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -40,26 +41,13 @@ function formatChatTime(value: string | Date) {
 }
 
 function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
-  if (contentType?.startsWith("image/")) {
-    return (
-      <button
-        type="button"
-        onClick={() => onImageClick?.(url)}
-        className="group relative mt-1.5 block max-w-full overflow-hidden rounded-lg cursor-pointer text-left focus:outline-hidden focus:ring-2 focus:ring-white/50"
-        title="Click to view full image"
-        aria-label="View attachment image in full screen"
-      >
-        <img src={url} alt="Attachment" className="max-h-60 w-full object-cover transition-transform duration-200 group-hover:scale-102" />
-        <span className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-3xs font-semibold text-white backdrop-blur-xs opacity-0 transition-opacity group-hover:opacity-100">
-          <Maximize2 size={10} /> Full View
-        </span>
-      </button>
-    );
+  if (contentType?.startsWith("image/") || url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
+    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} />;
   }
   if (contentType?.startsWith("audio/")) {
     return <ChatVoiceNotePlayer url={url} dark={own} />;
   }
-  return <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-current/20 px-2.5 py-1.5 text-xs font-bold underline"><Paperclip size={13} /> Attachment</a>;
+  return <ChatDocumentCard url={url} own={own} />;
 }
 
 /** How busy the inbox is right now - how many threads are waiting on a reply, and how fast Admins have actually been answering. */
@@ -466,6 +454,9 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [editedMessages, setEditedMessages] = useState<Record<number, string>>({});
   const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
+  const dragCounter = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -578,9 +569,72 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     }
   }, [isOnline]);
 
-  const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); submitMessage(); };
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    dragCounter.current = 0;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const processed = file.type.startsWith("image/") ? await compressImage(file) : file;
+      await uploadAndSend(processed);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          const processed = await compressImage(file);
+          setPastedImageFile(processed);
+          toast.success("ছবি ক্লিপবোর্ড থেকে যুক্ত হয়েছে");
+          return;
+        }
+      }
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (pastedImageFile) {
+      const fileToUpload = pastedImageFile;
+      setPastedImageFile(null);
+      await uploadAndSend(fileToUpload);
+      return;
+    }
+    submitMessage();
+  };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitMessage(); }
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSubmit(event); }
   };
 
   const uploadAndSend = async (file: File) => {
@@ -622,7 +676,14 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     }
   };
 
-  return <div className="flex h-full min-h-0 flex-col">
+  return <div
+    onDragEnter={handleDragEnter}
+    onDragLeave={handleDragLeave}
+    onDragOver={handleDragOver}
+    onDrop={handleDrop}
+    className="relative flex h-full min-h-0 flex-col"
+  >
+    <ChatDropzoneOverlay isDragging={isDraggingOver} />
     <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#dce9f1] px-4 py-3">
       <div className="flex min-w-0 items-center gap-2.5">
         {onBack ? <button type="button" onClick={onBack} aria-label="Back to Tutor list" className="grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-soft hover:bg-j-surface-sunken max-sm:size-10"><ArrowLeft size={18} /></button> : null}
@@ -890,6 +951,11 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     </div>
 
     <div className="border-t border-[#dce9f1]">
+      {pastedImageFile ? (
+        <div className="p-3 pb-0">
+          <ClipboardImagePreviewChip file={pastedImageFile} onRemove={() => setPastedImageFile(null)} />
+        </div>
+      ) : null}
       <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="admin" />
       {uploadProgress !== null
         ? <div className="h-0.5 w-full bg-j-surface-muted">
@@ -921,12 +987,13 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
               value={body}
               onChange={event => { setBody(event.target.value); onTyping(); }}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               maxLength={CHAT_MESSAGE_MAX}
               rows={2}
               placeholder="Reply as Admin…"
               className="min-h-9 flex-1 resize-none"
             />
-            <ChatSendButton ariaLabel="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+            <ChatSendButton ariaLabel="Send reply" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
           </>
         )}
       </form>
