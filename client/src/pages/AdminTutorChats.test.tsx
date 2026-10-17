@@ -313,6 +313,17 @@ describe("the Admin's Tutor chat list", () => {
     expect(screen.getByRole("img", { name: "Attachment" })).toBeTruthy();
   });
 
+  it("shows a voice note with ChatVoiceNotePlayer and header sound toggle", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
+    state.threadMessages = [message({ body: "", attachmentUrl: "https://example.test/audio.webm", attachmentContentType: "audio/webm" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    expect(screen.getByRole("region", { name: "Voice note player" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /chat sound alerts/i })).toBeTruthy();
+  });
+
   it("searches the open conversation locally and highlights keyword with mark", () => {
     state.threads = [thread()];
     state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };

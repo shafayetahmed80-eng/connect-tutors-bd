@@ -11,6 +11,7 @@ import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
 import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, type QuotedMessage } from "@/components/chat/ChatProductivity";
 import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
+import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
 import SearchInput from "@/components/SearchInput";
 import { Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -36,7 +37,7 @@ function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function AttachmentView({ url, contentType, onImageClick }: { url: string; contentType: string | null; onImageClick?: (url: string) => void }) {
+function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
   if (contentType?.startsWith("image/")) {
     return (
       <button
@@ -54,7 +55,7 @@ function AttachmentView({ url, contentType, onImageClick }: { url: string; conte
     );
   }
   if (contentType?.startsWith("audio/")) {
-    return <audio controls src={url} className="mt-1.5 h-9 w-full max-w-[220px]" />;
+    return <ChatVoiceNotePlayer url={url} dark={own} />;
   }
   return <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-current/20 px-2.5 py-1.5 text-xs font-bold underline"><Paperclip size={13} /> Attachment</a>;
 }
@@ -80,6 +81,7 @@ export function TutorAdminChatPanel() {
   const [emojisByMessage, setEmojisByMessage] = useState<Record<number, string>>({});
   const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasMarkedRead = useRef(false);
   const lastTypingPingAt = useRef(0);
@@ -124,6 +126,13 @@ export function TutorAdminChatPanel() {
   const adminLastReadAt = threadQuery.data?.adminLastReadAt ? new Date(threadQuery.data.adminLastReadAt).getTime() : null;
   const lastOwnMessageId = [...allMessages].reverse().find(message => message.senderRole === "tutor")?.id;
   const adminIsTyping = adminTypingUntil > now;
+
+  const latestMessage = allMessages[allMessages.length - 1];
+  const isLatestFromPeer = latestMessage?.senderRole === "admin";
+  const { muted, toggleMute } = useChatSoundAlert({
+    messageCount: allMessages.length,
+    isLatestFromPeer,
+  });
 
   useEffect(() => {
     if (hasMarkedRead.current || threadQuery.isLoading) return;
@@ -265,6 +274,7 @@ export function TutorAdminChatPanel() {
           </span>
           {contact.display}
         </a>
+        <ChatSoundToggle muted={muted} onToggle={toggleMute} />
       </div>
     </header>
 
@@ -283,7 +293,7 @@ export function TutorAdminChatPanel() {
       <span>গোপনীয়তা ও সুরক্ষার স্বার্থে চ্যাট হিস্ট্রি এবং শেয়ার করা ফাইলসমূহ ৩০ দিন পর স্বয়ংক্রিয়ভাবে মুছে যায়।</span>
     </div>
 
-    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+    <div ref={scrollContainerRef} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
       {threadQuery.isLoading
         ? <p className="pt-8 text-center text-sm font-semibold text-j-ink-muted">Loading your conversation…</p>
         : null}
@@ -326,6 +336,7 @@ export function TutorAdminChatPanel() {
                   <AttachmentView
                     url={message.attachmentUrl}
                     contentType={message.attachmentContentType}
+                    own={own}
                     onImageClick={setLightboxUrl}
                   />
                 ) : null}
@@ -352,7 +363,9 @@ export function TutorAdminChatPanel() {
                   <span>Reply</span>
                 </button>
                 {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
-                {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
+                {own ? (
+                  <MessageStatusTicks status={seen ? "seen" : "delivered"} />
+                ) : null}
               </div>
             </ChatAnimatedBubble>
           </React.Fragment>
@@ -366,7 +379,7 @@ export function TutorAdminChatPanel() {
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
               {item.status === "sending" ? (
                 <>
-                  <Loader2 className="size-2.5 animate-spin" />
+                  <MessageStatusTicks status="sending" />
                   <span>Sending…</span>
                 </>
               ) : (
@@ -396,6 +409,10 @@ export function TutorAdminChatPanel() {
         </ChatAnimatedBubble>
       ))}
       {adminIsTyping ? <ChatTypingIndicator senderRole="admin" /> : null}
+      <ScrollToBottomFloatingButton
+        containerRef={scrollContainerRef}
+        onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+      />
       <div ref={bottomRef} />
     </div>
 
