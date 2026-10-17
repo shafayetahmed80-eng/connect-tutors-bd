@@ -18,6 +18,8 @@ import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } fro
 import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, TutorPeekProfileDrawer, type QuotedMessage } from "@/components/chat/ChatProductivity";
 import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
 import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
+import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
+import { motion } from "framer-motion";
 import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
@@ -460,6 +462,10 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [replyingTo, setReplyingTo] = useState<QuotedMessage | null>(null);
   const [emojisByMessage, setEmojisByMessage] = useState<Record<number, string>>({});
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [deletedMessageIds, setDeletedMessageIds] = useState<Set<number>>(() => new Set());
+  const [editedMessages, setEditedMessages] = useState<Record<number, string>>({});
+  const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -710,6 +716,10 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
 
       {visibleMessages.map((message, index) => {
         const own = message.senderRole === "admin";
+        const isDeleted = deletedMessageIds.has(message.id);
+        const currentBody = editedMessages[message.id] ?? message.body;
+        const isEdited = !!editedMessages[message.id];
+        const isEditing = editingMessageId === message.id;
         const seen = own && message.id === lastOwnMessageId && tutorLastReadAt !== null && new Date(message.createdAt).getTime() <= tutorLastReadAt;
         const prevMessage = index > 0 ? visibleMessages[index - 1] : null;
         const showDateDivider = !prevMessage || isDifferentDay(prevMessage.createdAt, message.createdAt);
@@ -717,61 +727,118 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         return (
           <React.Fragment key={message.id}>
             {showDateDivider ? <ChatDateDivider date={message.createdAt} /> : null}
-            <ChatAnimatedBubble own={own} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
-              <div className={`max-w-[80%] px-4 py-2.5 shadow-xs ${
-                own
-                  ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
-                  : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
-              }`}>
+            <ChatAnimatedBubble own={own} className={`relative flex flex-col ${own ? "items-end" : "items-start"}`}>
+              <motion.div
+                whileTap={!isDeleted && !isEditing ? { scale: 0.98 } : undefined}
+                transition={{ duration: 0.12 }}
+                onClick={() => {
+                  if (!isDeleted && !isEditing) {
+                    setActiveActionMenuId(prev => (prev === message.id ? null : message.id));
+                  }
+                }}
+                className={`max-w-[80%] px-4 py-2.5 shadow-xs cursor-pointer select-text transition-shadow ${
+                  own
+                    ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
+                    : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
+                }`}
+              >
                 {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor</p> : null}
-                {message.body ? <ChatMessageBody text={message.body} query={query} /> : null}
-                {message.attachmentUrl ? (
-                  <AttachmentView
-                    url={message.attachmentUrl}
-                    contentType={message.attachmentContentType}
-                    own={own}
-                    onImageClick={setLightboxUrl}
+                {isDeleted ? (
+                  <DeletedMessagePlaceholder own={own} />
+                ) : isEditing ? (
+                  <InlineMessageEditor
+                    initialText={currentBody}
+                    onSave={newText => {
+                      setEditedMessages(prev => ({ ...prev, [message.id]: newText }));
+                      setEditingMessageId(null);
+                      toast.success("মেসেজটি সম্পাদিত হয়েছে");
+                    }}
+                    onCancel={() => setEditingMessageId(null)}
                   />
-                ) : null}
-                <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
-              </div>
-              <div className="mt-0.5 flex items-center gap-1.5 px-1">
-                <EmojiReactionPicker
-                  reacted={message.adminReacted}
-                  currentEmoji={emojisByMessage[message.id]}
-                  onToggle={() => react.mutate({ tutorId, messageId: message.id })}
-                  onSelectEmoji={(emoji: string) => {
-                    setEmojisByMessage(prev => ({ ...prev, [message.id]: emoji }));
-                    if (!message.adminReacted) react.mutate({ tutorId, messageId: message.id });
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo({ id: message.id, senderRole: message.senderRole, body: message.body })}
-                  aria-label="Reply to this message"
-                  title="Reply"
-                  className="flex min-h-[28px] items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold text-j-ink-faint transition-colors hover:bg-j-surface-sunken hover:text-j-accent active:bg-j-surface-muted"
-                >
-                  <CornerUpLeft className="size-3.5" />
-                  <span className="hidden sm:inline">Reply</span>
-                </button>
-                {message.body ? (
+                ) : (
+                  <>
+                    {currentBody ? <ChatMessageBody text={currentBody} query={query} /> : null}
+                    {message.attachmentUrl ? (
+                      <AttachmentView
+                        url={message.attachmentUrl}
+                        contentType={message.attachmentContentType}
+                        own={own}
+                        onImageClick={setLightboxUrl}
+                      />
+                    ) : null}
+                  </>
+                )}
+                <div className="mt-1 flex items-center gap-1">
+                  <p className={`text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>
+                    {formatChatTime(message.createdAt)}
+                  </p>
+                  {isEdited ? <EditedMessageBadge own={own} /> : null}
+                </div>
+              </motion.div>
+
+              <ChatMessageActionMenu
+                messageId={message.id}
+                createdAt={message.createdAt}
+                body={currentBody}
+                isOwn={own}
+                isDeleted={isDeleted}
+                isOpen={activeActionMenuId === message.id}
+                onClose={() => setActiveActionMenuId(null)}
+                onEdit={() => {
+                  setEditingMessageId(message.id);
+                  setActiveActionMenuId(null);
+                }}
+                onDelete={() => {
+                  setDeletedMessageIds(prev => new Set(prev).add(message.id));
+                  setActiveActionMenuId(null);
+                  toast.info("মেসেজটি সবার জন্য মুছে ফেলা হয়েছে");
+                }}
+                onCopy={text => {
+                  void navigator.clipboard?.writeText(text);
+                  toast.success("কপি হয়েছে");
+                }}
+                onReply={() => setReplyingTo({ id: message.id, body: currentBody, senderRole: message.senderRole })}
+              />
+
+              {!isDeleted ? (
+                <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                  <EmojiReactionPicker
+                    reacted={message.adminReacted}
+                    currentEmoji={emojisByMessage[message.id]}
+                    onToggle={() => react.mutate({ tutorId, messageId: message.id })}
+                    onSelectEmoji={(emoji: string) => {
+                      setEmojisByMessage(prev => ({ ...prev, [message.id]: emoji }));
+                      if (!message.adminReacted) react.mutate({ tutorId, messageId: message.id });
+                    }}
+                  />
                   <button
                     type="button"
-                    onClick={() => setSavingTemplateBody(message.body)}
-                    title="Save this message as template"
-                    aria-label="Save this message as template"
+                    onClick={() => setReplyingTo({ id: message.id, senderRole: message.senderRole, body: currentBody })}
+                    aria-label="Reply to this message"
+                    title="Reply"
                     className="flex min-h-[28px] items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold text-j-ink-faint transition-colors hover:bg-j-surface-sunken hover:text-j-accent active:bg-j-surface-muted"
                   >
-                    <BookmarkPlus className="size-3.5" />
-                    <span className="hidden sm:inline">Save as template</span>
+                    <CornerUpLeft className="size-3.5" />
+                    <span className="hidden sm:inline">Reply</span>
                   </button>
-                ) : null}
-                {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
-                {own ? (
-                  <MessageStatusTicks status={seen ? "seen" : "delivered"} />
-                ) : null}
-              </div>
+                  {currentBody ? (
+                    <button
+                      type="button"
+                      onClick={() => setSavingTemplateBody(currentBody)}
+                      title="Save this message as template"
+                      aria-label="Save this message as template"
+                      className="flex min-h-[28px] items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold text-j-ink-faint transition-colors hover:bg-j-surface-sunken hover:text-j-accent active:bg-j-surface-muted"
+                    >
+                      <BookmarkPlus className="size-3.5" />
+                      <span className="hidden sm:inline">Save as template</span>
+                    </button>
+                  ) : null}
+                  {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
+                  {own ? (
+                    <MessageStatusTicks status={seen ? "seen" : "delivered"} />
+                  ) : null}
+                </div>
+              ) : null}
             </ChatAnimatedBubble>
           </React.Fragment>
         );
