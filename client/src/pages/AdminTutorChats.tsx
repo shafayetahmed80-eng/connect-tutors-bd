@@ -15,7 +15,8 @@ import { trpc } from "@/lib/trpc";
 import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
-import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
+import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, TutorPeekProfileDrawer, type QuotedMessage } from "@/components/chat/ChatProductivity";
+import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -454,6 +455,9 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [notesOpen, setNotesOpen] = useState(false);
   const [savingTemplateBody, setSavingTemplateBody] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<QuotedMessage | null>(null);
+  const [emojisByMessage, setEmojisByMessage] = useState<Record<number, string>>({});
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const markedTutorId = useRef<string | null>(null);
@@ -518,8 +522,16 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   }, [visibleMessages.length, outbox.length]);
 
   const submitMessage = (retryTempId?: string, retryBody?: string) => {
-    const text = retryBody ?? body.trim();
+    let text = retryBody ?? body.trim();
     if (!text) return;
+
+    if (!retryTempId && replyingTo) {
+      const quoteSender = replyingTo.senderRole === "admin" ? "Admin" : "Tutor";
+      const snippet = (replyingTo.body || "Attachment").slice(0, 100).replace(/\n/g, " ");
+      text = `> [Replying to ${quoteSender}]: "${snippet}"\n\n${text}`;
+      setReplyingTo(null);
+    }
+
     const tempId = retryTempId || `admin-temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     if (!retryTempId) {
       setBody("");
@@ -625,6 +637,16 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {tutor ? (
+          <button
+            type="button"
+            onClick={() => setProfileDrawerOpen(true)}
+            aria-label="View Tutor Profile"
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+          >
+            <UserCheck size={13} /> Profile
+          </button>
+        ) : null}
         <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
           <StickyNote size={13} /> Notes
           {hasNoteAlert ? <span aria-label="New note" className="absolute -right-1 -top-1 size-2 rounded-full bg-j-accent" /> : null}
@@ -691,7 +713,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                   : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
               }`}>
                 {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor</p> : null}
-                {message.body ? <ChatAutoLink text={message.body} /> : null}
+                {message.body ? <ChatMessageBody text={message.body} query={query} /> : null}
                 {message.attachmentUrl ? (
                   <AttachmentView
                     url={message.attachmentUrl}
@@ -701,15 +723,25 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                 ) : null}
                 <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
               </div>
-              <div className="mt-0.5 flex items-center gap-2 px-1">
+              <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                <EmojiReactionPicker
+                  reacted={message.adminReacted}
+                  currentEmoji={emojisByMessage[message.id]}
+                  onToggle={() => react.mutate({ tutorId, messageId: message.id })}
+                  onSelectEmoji={(emoji: string) => {
+                    setEmojisByMessage(prev => ({ ...prev, [message.id]: emoji }));
+                    if (!message.adminReacted) react.mutate({ tutorId, messageId: message.id });
+                  }}
+                />
                 <button
                   type="button"
-                  onClick={() => react.mutate({ tutorId, messageId: message.id })}
-                  aria-pressed={message.adminReacted}
-                  aria-label={message.adminReacted ? "Remove your 👍" : "React with 👍"}
-                  className={`flex min-h-[28px] min-w-[28px] items-center justify-center gap-1 rounded-full px-2 py-0.5 text-2xs font-bold transition-colors ${message.adminReacted ? "bg-j-accent/10 text-j-accent" : "text-j-ink-faint hover:bg-j-surface-sunken hover:text-j-ink-soft"}`}
+                  onClick={() => setReplyingTo({ id: message.id, senderRole: message.senderRole, body: message.body })}
+                  aria-label="Reply to this message"
+                  title="Reply"
+                  className="flex min-h-[28px] items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold text-j-ink-faint transition-colors hover:bg-j-surface-sunken hover:text-j-accent active:bg-j-surface-muted"
                 >
-                  <ThumbsUp className="size-3.5" fill={message.adminReacted ? "currentColor" : "none"} />
+                  <CornerUpLeft className="size-3.5" />
+                  <span className="hidden sm:inline">Reply</span>
                 </button>
                 {message.body ? (
                   <button
@@ -773,6 +805,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     </div>
 
     <div className="border-t border-[#dce9f1]">
+      <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="admin" />
       {uploadProgress !== null
         ? <div className="h-0.5 w-full bg-j-surface-muted">
             <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
@@ -819,6 +852,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
 
     {notesOpen ? <ChatNotesModal tutorId={tutorId} onClose={() => setNotesOpen(false)} /> : null}
     {savingTemplateBody ? <SaveMessageAsTemplateModal body={savingTemplateBody} onClose={() => setSavingTemplateBody(null)} /> : null}
+    {profileDrawerOpen && tutor ? <TutorPeekProfileDrawer tutor={tutor} onClose={() => setProfileDrawerOpen(false)} /> : null}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
   </div>;
 }

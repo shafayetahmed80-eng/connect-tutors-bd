@@ -144,12 +144,21 @@ describe("the Tutor's Admin chat panel", () => {
     expect(screen.getByText("Admin is typing…")).toBeTruthy();
   });
 
-  it("searches the loaded conversation locally", () => {
+  it("searches the loaded conversation locally and highlights the matched keyword with mark", () => {
     state.messages = [message({ id: 1, body: "About my profile" }), message({ id: 2, body: "About payment" })];
     render(<TutorAdminChatPanel />);
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "payment" } });
     expect(screen.queryByText("About my profile")).toBeNull();
-    expect(screen.getByText("About payment")).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.textContent === "About payment" && el?.tagName.toLowerCase() === "div")).toBeTruthy();
+    expect(screen.getByText("payment").tagName).toBe("MARK");
+  });
+
+  it("allows replying to a message and shows reply preview bar", () => {
+    state.messages = [message({ id: 1, body: "Hello tutor" })];
+    render(<TutorAdminChatPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Reply to this message" }));
+    expect(screen.getByText("Replying to Admin")).toBeTruthy();
+    expect(screen.getAllByText("Hello tutor").length).toBeGreaterThanOrEqual(2);
   });
 
   it("displays the 30-day auto-delete privacy and security banner", () => {
