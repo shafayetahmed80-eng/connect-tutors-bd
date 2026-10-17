@@ -276,3 +276,69 @@ describe("the caption that goes with a poster", () => {
     expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual(["Copy caption", "Copy image", "Download PNG"]);
   });
 });
+
+describe("the Auto colour", () => {
+  const about = (id: number, category: string) => ({ ...job(id), category });
+
+  it("is offered as a swatch beside the design's own colour, and is not chosen at first", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "English Version")} />);
+    const swatch = group("Colour").getByRole("radio", { name: "Auto" });
+    expect(swatch.getAttribute("aria-checked")).toBe("false");
+    expect(swatch.getAttribute("title")).toBe("Auto: the colour of the curriculum");
+  });
+
+  it("draws one tuition on its curriculum's colour", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "English Version")} />);
+
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+
+    expect(lastSingle().ground).toBe("#0e3b43");
+    expect(group("Colour").getByRole("radio", { name: "Auto" }).getAttribute("aria-checked")).toBe("true");
+    // The colour it settled on is the one the box shows, not typed text.
+    const box = screen.getByRole("textbox", { name: "Colour code" }) as HTMLInputElement;
+    expect(box.value).toBe("");
+    expect(box.placeholder).toBe("#0e3b43");
+    expect(stored().ground).toBe("auto");
+  });
+
+  it("draws a poster of tuitions all in one curriculum on its colour, and of mixed ones on the design's own", () => {
+    const same = [about(1, "Bangla Medium"), about(2, "Bangla Medium"), about(3, "Bangla Medium")];
+    const view = render(<FacebookPosterModal isOpen onClose={() => {}} jobs={same} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    expect(lastCombined().ground).toBe("#0b3d2e");
+    view.unmount();
+
+    const mixed = [about(1, "Bangla Medium"), about(2, "English Medium")];
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={mixed} />);
+    expect(lastCombined().ground).toBeNull();
+    expect((screen.getByRole("textbox", { name: "Colour code" }) as HTMLInputElement).placeholder).toBe("#RRGGBB");
+  });
+
+  it("reads only the tuitions the poster shows: four in a square, all of them in the tall list", () => {
+    const fiveThenAnother = [...Array.from({ length: 4 }, (_, index) => about(index + 1, "Bangla Medium")), about(5, "English Medium")];
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={fiveThenAnother} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    // The fifth is not on a square poster, so the four that are decide.
+    expect(lastCombined().ground).toBe("#0b3d2e");
+
+    fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
+    expect(lastCombined().ground).toBeNull();
+  });
+
+  it("stays chosen across windows and reloads, and gives way to any other colour picked", () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ground: "auto" }));
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "Bangla Medium")} />);
+    expect(lastSingle().ground).toBe("#0b3d2e");
+
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Rose" }));
+    expect(lastSingle().ground).toBe("#f7e3e7");
+    expect(group("Colour").getByRole("radio", { name: "Auto" }).getAttribute("aria-checked")).toBe("false");
+    expect(stored().ground).toBe("#f7e3e7");
+  });
+
+  it("is a curriculum with no colour of its own on the neutral slate", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "Test Preparation")} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    expect(lastSingle().ground).toBe("#1e293b");
+  });
+});

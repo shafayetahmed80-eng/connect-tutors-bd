@@ -7,6 +7,7 @@ import {
   combinedPosterInput,
   copyCanvasImageToClipboard,
   downloadCanvasImage,
+  autoPosterGround,
   MAX_TALL_TUITIONS,
   posterDimensions,
   posterFileName,
@@ -378,6 +379,39 @@ describe("a ground colour picked by the Admin", () => {
     drawn.texts = [];
     renderSingleTuitionPoster(document.createElement("canvas"), job(113), { theme: "navy", size: "square", locale: "bn", ground: "#0e2442" });
     expect(allText()).toBe(shipped);
+  });
+});
+
+describe("the Auto ground", () => {
+  const about = (category: string, over: Partial<FacebookPosterJob> = {}) => job(1, {
+    category,
+    learningNeeds: [{ category, curriculumType: null, classes: [{ classCourse: "Class 8", subjects: ["Mathematics"] }] }],
+    ...over,
+  });
+
+  it("is the curriculum's colour when every tuition on the poster is about one curriculum", () => {
+    expect(autoPosterGround([about("English Version")])).toBe("#0e3b43");
+    expect(autoPosterGround([about("Bangla Medium"), about("Bangla Medium")])).toBe("#0b3d2e");
+  });
+
+  it("is the design's own colour (null) when the tuitions are about several curricula", () => {
+    expect(autoPosterGround([about("Bangla Medium"), about("English Medium")])).toBeNull();
+  });
+
+  it("counts every curriculum of a tuition that asks for two", () => {
+    const two = job(1, { learningNeeds: [
+      { category: "English Medium", curriculumType: null, classes: [{ classCourse: "Class 3", subjects: ["Maths"] }] },
+      { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 6", subjects: ["Maths"] }] },
+    ] });
+    expect(autoPosterGround([two])).toBeNull();
+  });
+
+  it("reads a tuition kept in the old single-curriculum columns too", () => {
+    expect(autoPosterGround([job(1, { learningNeeds: null, category: "Madrasa Medium", classCourse: "Class 5", subjects: JSON.stringify(["Arabic"]) })])).toBe("#2e1a47");
+  });
+
+  it("has no ground for no tuitions", () => {
+    expect(autoPosterGround([])).toBeNull();
   });
 });
 

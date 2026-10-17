@@ -5,6 +5,7 @@ import { JobIdTag } from "@/components/JobIdTag";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
+  autoPosterGround,
   COMBINED_POSTER_THEMES,
   copyCanvasImageToClipboard,
   downloadCanvasImage,
@@ -33,9 +34,15 @@ type PosterPrefs = {
   size: PosterSize;
   singleTheme: SinglePosterTheme;
   combinedTheme: CombinedPosterTheme;
-  /** The ground colour the Admin picked, or null for the design's own colours. */
+  /** The ground colour the Admin picked, "auto" for the curriculum's own, or null for the design's own colours. */
   ground: string | null;
 };
+
+/** What is stored as the ground when the Admin chose Auto. */
+const AUTO = "auto";
+
+/** The Auto swatch: the curriculum colours in one disc, since it is every one of them. */
+const AUTO_SWATCH = "conic-gradient(#0e2442 0 25%, #0e3b43 0 50%, #0b3d2e 0 75%, #3a0b17 0)";
 
 const DEFAULT_PREFS: PosterPrefs = { locale: "bn", size: "square", singleTheme: "navy", combinedTheme: "navy", ground: null };
 
@@ -49,7 +56,7 @@ function readStoredPrefs(): PosterPrefs | null {
       size: saved.size === "landscape" || saved.size === "tall" ? saved.size : "square",
       singleTheme: SINGLE_POSTER_THEMES.includes(saved.singleTheme as SinglePosterTheme) ? (saved.singleTheme as SinglePosterTheme) : "navy",
       combinedTheme: COMBINED_POSTER_THEMES.includes(saved.combinedTheme as CombinedPosterTheme) ? (saved.combinedTheme as CombinedPosterTheme) : "navy",
-      ground: typeof saved.ground === "string" ? normalizeHex(saved.ground) : null,
+      ground: saved.ground === AUTO ? AUTO : typeof saved.ground === "string" ? normalizeHex(saved.ground) : null,
     };
   } catch {
     return null;
@@ -126,20 +133,28 @@ function ChoiceRow<T extends string>({ label, value, options, onChange }: { labe
  * Admin picks. The poster behind it redraws with every change, and the colours
  * on it follow (see lib/poster/palette.ts).
  */
-export function PosterColourRow({ ground, defaultGround, onChange }: { ground: string | null; defaultGround: string; onChange: (ground: string | null) => void }) {
-  const preset = ground ? GROUND_PRESETS.find(item => item.hex === ground) : undefined;
-  const custom = Boolean(ground) && !preset;
-  const [draft, setDraft] = useState(ground ?? "");
+export function PosterColourRow({ ground, defaultGround, resolvedAuto = null, onChange }: {
+  ground: string | null;
+  defaultGround: string;
+  /** What Auto resolves to for this poster, shown in the colour box while Auto is chosen. */
+  resolvedAuto?: string | null;
+  onChange: (ground: string | null) => void;
+}) {
+  const auto = ground === AUTO;
+  const hex = auto ? null : ground;
+  const preset = hex ? GROUND_PRESETS.find(item => item.hex === hex) : undefined;
+  const custom = Boolean(hex) && !preset;
+  const [draft, setDraft] = useState(hex ?? "");
 
   // A swatch or the picker changed the colour from outside the text box.
   useEffect(() => {
-    setDraft(ground ?? "");
-  }, [ground]);
+    setDraft(hex ?? "");
+  }, [hex]);
 
   const commitDraft = (text: string) => {
     setDraft(text);
-    const hex = normalizeHex(text);
-    if (hex) onChange(hex);
+    const typed = normalizeHex(text);
+    if (typed) onChange(typed);
   };
 
   const swatch = (selected: boolean) =>
@@ -161,28 +176,38 @@ export function PosterColourRow({ ground, defaultGround, onChange }: { ground: s
         >
           <span aria-hidden="true" className="absolute h-px w-[140%] -rotate-45 bg-white/80 mix-blend-difference" />
         </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={auto}
+          aria-label="Auto"
+          title="Auto: the colour of the curriculum"
+          onClick={() => onChange(AUTO)}
+          className={swatch(auto)}
+          style={{ background: AUTO_SWATCH }}
+        />
         {GROUND_PRESETS.map(item => (
           <button
             key={item.hex}
             type="button"
             role="radio"
-            aria-checked={ground === item.hex}
+            aria-checked={hex === item.hex}
             aria-label={item.label}
             title={item.label}
             onClick={() => onChange(item.hex)}
-            className={swatch(ground === item.hex)}
+            className={swatch(hex === item.hex)}
             style={{ backgroundColor: item.hex }}
           />
         ))}
         <label
           title="Custom colour"
           className={cn(swatch(custom), "relative cursor-pointer overflow-hidden")}
-          style={{ background: custom && ground ? ground : "conic-gradient(#f44, #fd4, #4d6, #4cf, #64f, #f4c, #f44)" }}
+          style={{ background: custom && hex ? hex : "conic-gradient(#f44, #fd4, #4d6, #4cf, #64f, #f4c, #f44)" }}
         >
           <input
             type="color"
             aria-label="Custom colour"
-            value={ground ?? defaultGround}
+            value={hex ?? resolvedAuto ?? defaultGround}
             onChange={event => onChange(normalizeHex(event.target.value))}
             className="absolute inset-0 size-full cursor-pointer opacity-0"
           />
@@ -194,10 +219,10 @@ export function PosterColourRow({ ground, defaultGround, onChange }: { ground: s
           autoComplete="off"
           spellCheck={false}
           maxLength={7}
-          placeholder="#RRGGBB"
+          placeholder={auto && resolvedAuto ? resolvedAuto : "#RRGGBB"}
           value={draft}
           onChange={event => commitDraft(event.target.value)}
-          onBlur={() => setDraft(ground ?? "")}
+          onBlur={() => setDraft(hex ?? "")}
           className="h-control w-28 rounded-xl border border-j-border bg-white px-3 text-xs font-semibold tabular-nums text-j-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2]/40"
         />
       </div>
@@ -229,6 +254,10 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
   const theme: SinglePosterTheme | CombinedPosterTheme = isCombined ? (size === "tall" ? "mist" : prefs.combinedTheme) : prefs.singleTheme;
   const shown = isCombined ? Math.min(jobs!.length, size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS) : 0;
   const needsSerif = theme === "mist";
+  // The tuitions this window draws, which Auto reads the curriculum from.
+  const drawn = isCombined ? jobs!.slice(0, shown) : job ? [job] : [];
+  const resolvedAuto = autoPosterGround(drawn);
+  const ground = prefs.ground === AUTO ? resolvedAuto : prefs.ground;
 
   // The page holds two of these windows (one tuition, and the bulk poster), each with its own state.
   // A window reads what is stored when it opens, and a change is made on what is stored now rather
@@ -263,13 +292,13 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
     const canvas = canvasRef.current;
     if (!isOpen || !canvas) return;
     try {
-      if (isCombined) renderCombinedTuitionsPoster(canvas, jobs!, { theme: theme as CombinedPosterTheme, size, locale: prefs.locale, ground: prefs.ground });
-      else if (job) renderSingleTuitionPoster(canvas, job, { theme: theme as SinglePosterTheme, size, locale: prefs.locale, ground: prefs.ground });
+      if (isCombined) renderCombinedTuitionsPoster(canvas, jobs!, { theme: theme as CombinedPosterTheme, size, locale: prefs.locale, ground });
+      else if (job) renderSingleTuitionPoster(canvas, job, { theme: theme as SinglePosterTheme, size, locale: prefs.locale, ground });
     } catch (error) {
       console.error("Poster render failed", error);
       toast.error("পোস্টার তৈরি করতে সমস্যা হয়েছে।");
     }
-  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size]);
+  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size, ground]);
 
   if (!isOpen || (!job && !isCombined)) return null;
 
@@ -337,7 +366,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
             options={themeOptions}
             onChange={next => (isCombined ? update({ combinedTheme: next as CombinedPosterTheme }) : update({ singleTheme: next as SinglePosterTheme }))}
           />
-          <PosterColourRow ground={prefs.ground} defaultGround={THEME_LABELS[theme].swatch} onChange={ground => update({ ground })} />
+          <PosterColourRow ground={prefs.ground} defaultGround={THEME_LABELS[theme].swatch} resolvedAuto={resolvedAuto} onChange={next => update({ ground: next })} />
         </div>
         <div className="mt-4 flex justify-center rounded-2xl border border-j-border bg-j-border-light/40 p-3">
           <canvas
