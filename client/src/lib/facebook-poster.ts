@@ -6,22 +6,28 @@ import {
   cityOf,
   classesText,
   curriculaText,
+  curriculumGroup,
   daysPhrase,
   daysValue,
   POSTER_WORDS,
   posterDate,
   salaryText,
+  subjectChips,
   subjectsText,
   timeValue,
   tuitionCount,
+  tutorKind,
   tutorValue,
   type PosterLocale,
 } from "@shared/poster-copy";
 import { PUBLIC_SITE_HOST, PUBLIC_SITE_ORIGIN } from "@shared/public-site";
 import { drawCombinedLandscape, drawCombinedSquare } from "./poster/combined-layouts";
+import { drawMistCombinedLandscape, drawMistCombinedSquare, drawMistSingleLandscape, drawMistSingleSquare, drawMistTall, mistTallHeight } from "./poster/mist-layouts";
+import { normalizeHex } from "./poster/palette";
 import { drawSingleLandscape, drawSingleSquare } from "./poster/single-layouts";
 import {
   POSTER_SIZES,
+  TALL_POSTER_WIDTH,
   type CombinedPosterInput,
   type CombinedPosterTheme,
   type PosterSize,
@@ -30,21 +36,27 @@ import {
 } from "./poster/types";
 
 export { loadPosterFonts } from "./poster/canvas-kit";
+export { normalizeHex };
+export { MIST_DEFAULT_GROUND } from "./poster/mist-layouts";
 export type { CombinedPosterTheme, PosterSize, SinglePosterTheme } from "./poster/types";
 export type { PosterLocale } from "@shared/poster-copy";
 
 /**
  * Facebook posters for the Admin Facebook Posts page: one tuition (Navy,
- * Cream) or up to four (Navy, Emerald, Crimson), square 1080×1080 or
- * landscape 1200×675, in Bangla or English, drawn on a canvas and saved as PNG.
+ * Cream, Mist) or up to four (Navy, Emerald, Crimson, Mist), square 1080×1080
+ * or landscape 1200×675 - and up to twelve in Mist's tall list - in Bangla or
+ * English, drawn on a canvas and saved as PNG. Any design can be drawn on a
+ * ground colour the Admin picks (`ground`); without one it keeps its own.
  *
  * Only public facts reach a poster — the same ones the Job Board shows. The
  * Guardian's address note and institute name are never read here.
  */
 
-export const SINGLE_POSTER_THEMES: SinglePosterTheme[] = ["navy", "cream"];
-export const COMBINED_POSTER_THEMES: CombinedPosterTheme[] = ["navy", "emerald", "crimson"];
+export const SINGLE_POSTER_THEMES: SinglePosterTheme[] = ["navy", "cream", "mist"];
+export const COMBINED_POSTER_THEMES: CombinedPosterTheme[] = ["navy", "emerald", "crimson", "mist"];
 export const MAX_COMBINED_TUITIONS = 4;
+/** The tall list's longest run of tuitions. */
+export const MAX_TALL_TUITIONS = 12;
 
 /** The fields a poster reads from an Admin posted-job row. */
 export type FacebookPosterJob = {
@@ -86,11 +98,17 @@ export function toPosterTuition(job: FacebookPosterJob, locale: PosterLocale, sh
     time: timeValue(job.tutoringTime, locale),
     tutor: tutorValue(job.preferredGender, locale),
     salary: salaryText(job.budgetAmount, locale),
+    tutorKind: tutorKind(job.preferredGender),
+    tutorPill: POSTER_WORDS[locale].tutorPill[tutorKind(job.preferredGender)],
+    subjectChips: subjectChips(needs, locale),
+    group: curriculumGroup(needs, locale),
+    areaLine: rowArea,
+    weekPhrase: daysPhrase(job.daysPerWeek, locale),
   };
 }
 
-export function combinedPosterInput(jobs: FacebookPosterJob[], locale: PosterLocale, now = new Date()): CombinedPosterInput {
-  const shown = jobs.slice(0, MAX_COMBINED_TUITIONS);
+export function combinedPosterInput(jobs: FacebookPosterJob[], locale: PosterLocale, now = new Date(), limit = MAX_COMBINED_TUITIONS): CombinedPosterInput {
+  const shown = jobs.slice(0, limit);
   const cities = new Set(shown.map(job => cityOf(job)));
   const sharedCity = cities.size === 1 ? Array.from(cities)[0] : null;
   const count = tuitionCount(shown.length, locale);
@@ -108,18 +126,34 @@ export function combinedPosterInput(jobs: FacebookPosterJob[], locale: PosterLoc
   };
 }
 
-function prepare(canvas: HTMLCanvasElement, size: PosterSize): CanvasRenderingContext2D | null {
-  const { width, height } = POSTER_SIZES[size];
+function prepare(canvas: HTMLCanvasElement, width: number, height: number): CanvasRenderingContext2D | null {
   canvas.width = width;
   canvas.height = height;
   return canvas.getContext("2d");
 }
 
-export type SinglePosterOptions = { theme: SinglePosterTheme; size: PosterSize; locale: PosterLocale };
-export type CombinedPosterOptions = { theme: CombinedPosterTheme; size: PosterSize; locale: PosterLocale; now?: Date };
+/**
+ * The pixels a poster is drawn in. A tall one is as high as its rows need, so
+ * it takes the jobs it will hold.
+ */
+export function posterDimensions(size: PosterSize, jobs: FacebookPosterJob[] = [], locale: PosterLocale = "en"): { width: number; height: number } {
+  if (size !== "tall") return POSTER_SIZES[size];
+  return { width: TALL_POSTER_WIDTH, height: mistTallHeight(combinedPosterInput(jobs, locale, undefined, MAX_TALL_TUITIONS)) };
+}
+
+/** The ground colour as a clean hex, or null - no colour picked, or one that is not a colour - for the design's own. */
+function groundOf(ground: string | null | undefined): string | null {
+  return ground ? normalizeHex(ground) : null;
+}
+
+export type SinglePosterOptions = { theme: SinglePosterTheme; size: PosterSize; locale: PosterLocale; ground?: string | null };
+export type CombinedPosterOptions = { theme: CombinedPosterTheme; size: PosterSize; locale: PosterLocale; ground?: string | null; now?: Date };
 
 export function renderSingleTuitionPoster(canvas: HTMLCanvasElement, job: FacebookPosterJob, options: SinglePosterOptions) {
-  const ctx = prepare(canvas, options.size);
+  // One tuition has no tall list: it is drawn square.
+  const size = options.size === "tall" ? "square" : options.size;
+  const { width, height } = POSTER_SIZES[size];
+  const ctx = prepare(canvas, width, height);
   if (!ctx) return;
   const input = {
     locale: options.locale,
@@ -127,16 +161,37 @@ export function renderSingleTuitionPoster(canvas: HTMLCanvasElement, job: Facebo
     url: buildJobShareUrl(PUBLIC_SITE_ORIGIN, job.jobId),
     host: PUBLIC_SITE_HOST,
   };
-  if (options.size === "square") drawSingleSquare(ctx, input, options.theme);
-  else drawSingleLandscape(ctx, input, options.theme);
+  const ground = groundOf(options.ground);
+  if (options.theme === "mist") {
+    if (size === "square") drawMistSingleSquare(ctx, input, ground);
+    else drawMistSingleLandscape(ctx, input, ground);
+    return;
+  }
+  if (size === "square") drawSingleSquare(ctx, input, options.theme, ground);
+  else drawSingleLandscape(ctx, input, options.theme, ground);
 }
 
 export function renderCombinedTuitionsPoster(canvas: HTMLCanvasElement, jobs: FacebookPosterJob[], options: CombinedPosterOptions) {
-  const ctx = prepare(canvas, options.size);
+  const ground = groundOf(options.ground);
+  if (options.size === "tall") {
+    // The tall list is Mist's alone, whatever design was asked for.
+    const input = combinedPosterInput(jobs, options.locale, options.now, MAX_TALL_TUITIONS);
+    const ctx = prepare(canvas, TALL_POSTER_WIDTH, mistTallHeight(input));
+    if (!ctx) return;
+    drawMistTall(ctx, input, ground);
+    return;
+  }
+  const { width, height } = POSTER_SIZES[options.size];
+  const ctx = prepare(canvas, width, height);
   if (!ctx) return;
   const input = combinedPosterInput(jobs, options.locale, options.now);
-  if (options.size === "square") drawCombinedSquare(ctx, input, options.theme);
-  else drawCombinedLandscape(ctx, input, options.theme);
+  if (options.theme === "mist") {
+    if (options.size === "square") drawMistCombinedSquare(ctx, input, ground);
+    else drawMistCombinedLandscape(ctx, input, ground);
+    return;
+  }
+  if (options.size === "square") drawCombinedSquare(ctx, input, options.theme, ground);
+  else drawCombinedLandscape(ctx, input, options.theme, ground);
 }
 
 /** `connect-tutors-6912-navy-bn-square.png`, `connect-tutors-4-tuitions-crimson-en-landscape.png`. */

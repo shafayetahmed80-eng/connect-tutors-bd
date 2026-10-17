@@ -12,12 +12,19 @@ import {
   measure,
   strokeRoundedRect,
   type PosterIcon,
+  type SealColors,
 } from "./canvas-kit";
-import type { SinglePosterInput, SinglePosterTheme } from "./types";
+import { derivePalette, type OnDeep } from "./palette";
+import type { ClassicSingleTheme, SinglePosterInput } from "./types";
 
 /**
  * The one-tuition posters: Navy and Cream, square and landscape. The
  * measurements follow the approved mockups (Tuition Poster Mockup canvas).
+ *
+ * Every colour comes from a `SingleTokens`: the shipped hand-tuned set for the
+ * design as it has always looked, or - when an Admin picks a ground colour -
+ * the set derived from that colour (see `palette.ts`). The layout never names a
+ * colour, so both draw the same poster.
  */
 
 type SingleTokens = {
@@ -29,17 +36,22 @@ type SingleTokens = {
   hair: string;
   wordmarkSecond: string;
   kicker: string;
+  /** The map-pin before the place. */
+  pin: string;
+  /** The cradle mark drawn straight on the ground (Cream draws it on a tile). */
+  cradle: string;
+  /** Cream's blue brand tile. */
+  tile: string;
   pill: { fill?: string; border?: string; ink: string };
-  seal: { ring: string; center: string; detail: string; innerAlpha: number };
+  seal: SealColors;
   qrDark: string;
-  /** Cream keeps the salary and QR on a navy band. */
-  band?: string;
-  bandSoft?: string;
+  /** The landscape panel (Navy) and the bottom band (Cream): a dark surface with light text. */
+  deep: OnDeep;
   watermark: { color: string; alpha: number };
   grain: { alpha: number; blend: GlobalCompositeOperation };
 };
 
-const TOKENS: Record<SinglePosterTheme, SingleTokens> = {
+const SHIPPED: Record<ClassicSingleTheme, SingleTokens> = {
   navy: {
     ground: "#0E2442",
     ink: "#FFFFFF",
@@ -49,9 +61,13 @@ const TOKENS: Record<SinglePosterTheme, SingleTokens> = {
     hair: "rgba(255,255,255,0.16)",
     wordmarkSecond: "#8CC4FF",
     kicker: "#FFC24D",
+    pin: "#FFC24D",
+    cradle: "#FFFFFF",
+    tile: "#0B5FA8",
     pill: { border: "rgba(255,255,255,0.24)", ink: "#C3D1E2" },
     seal: { ring: "#FFC24D", center: "#FFFFFF", detail: "#FFC24D", innerAlpha: 0.6 },
     qrDark: "#0E2442",
+    deep: { fill: "#091A31", stroke: "rgba(255,255,255,0.08)", ink: "#FFFFFF", soft: "#C3D1E2", detail: "#8CC4FF", accent: "#FFC24D", hair: "rgba(255,255,255,0.14)" },
     watermark: { color: "#FFFFFF", alpha: 0.035 },
     grain: { alpha: 0.07, blend: "soft-light" },
   },
@@ -64,15 +80,47 @@ const TOKENS: Record<SinglePosterTheme, SingleTokens> = {
     hair: "rgba(16,40,73,0.14)",
     wordmarkSecond: "#1677E8",
     kicker: "#0B5FA8",
+    pin: "#0B5FA8",
+    cradle: "#102849",
+    tile: "#0B5FA8",
     pill: { fill: "#EAF5FF", ink: "#34506F" },
     seal: { ring: "#102849", center: "#102849", detail: "#0B5FA8", innerAlpha: 0.5 },
     qrDark: "#102849",
-    band: "#102849",
-    bandSoft: "#C3D1E2",
+    deep: { fill: "#102849", stroke: "rgba(255,255,255,0.08)", ink: "#FFFFFF", soft: "#C3D1E2", detail: "#8CC4FF", accent: "#FFC24D", hair: "rgba(255,255,255,0.14)" },
     watermark: { color: "#0B5FA8", alpha: 0.045 },
     grain: { alpha: 0.05, blend: "multiply" },
   },
 };
+
+/** The tokens for a design drawn on the Admin's own ground colour. */
+function derivedTokens(theme: ClassicSingleTheme, ground: string): SingleTokens {
+  const p = derivePalette(ground, theme === "navy" ? "panel" : "deep");
+  const navy = theme === "navy";
+  return {
+    ground: p.ground,
+    ink: p.ink,
+    soft: p.soft,
+    icon: p.detail,
+    accent: p.accent,
+    hair: p.hair,
+    wordmarkSecond: p.detail,
+    kicker: navy ? p.accent : p.detail,
+    pin: navy ? p.accent : p.detail,
+    cradle: p.cradle,
+    tile: p.tile,
+    pill: p.dark ? { border: "rgba(255,255,255,0.24)", ink: p.soft } : { fill: p.tint, ink: p.soft },
+    seal: p.dark ? { ring: p.accent, center: p.ink, detail: p.accent, innerAlpha: 0.6 } : { ring: p.ink, center: p.ink, detail: p.detail, innerAlpha: 0.5 },
+    qrDark: p.qrDark,
+    deep: p.deep,
+    watermark: p.watermark,
+    grain: p.grain,
+  };
+}
+
+/** The design's own colours, or - given a ground colour - the ones derived from it. */
+export function singleTokens(theme: ClassicSingleTheme, ground?: string | null): SingleTokens {
+  return ground ? derivedTokens(theme, ground) : SHIPPED[theme];
+}
 
 const kickerTracking = (locale: SinglePosterInput["locale"]) => (locale === "bn" ? 0.02 : 0.14);
 
@@ -83,15 +131,16 @@ function background(ctx: CanvasRenderingContext2D, width: number, height: number
 }
 
 /** The brand: the cradle (in a blue tile on Cream) and the wordmark. */
-function brand(ctx: CanvasRenderingContext2D, theme: SinglePosterTheme, t: SingleTokens, x: number, cy: number, markWidth: number, tile: number, wordSize: number) {
+function brand(ctx: CanvasRenderingContext2D, theme: ClassicSingleTheme, t: SingleTokens, x: number, cy: number, markWidth: number, tile: number, wordSize: number) {
   if (theme === "cream") {
-    fillRoundedRect(ctx, x, cy - tile / 2, tile, tile, tile * 0.26, "#0B5FA8");
+    fillRoundedRect(ctx, x, cy - tile / 2, tile, tile, tile * 0.26, t.tile);
     const w = tile * 0.74;
-    drawCradle(ctx, x + (tile - w) / 2, cy - (w * 32) / 48 / 2, w, "#FFFFFF", t.accent, 1.6);
+    // The tile is always deep, so its cradle is white with a gold lifted ball.
+    drawCradle(ctx, x + (tile - w) / 2, cy - (w * 32) / 48 / 2, w, "#FFFFFF", t.deep.accent, 1.6);
     drawWordmark(ctx, x + tile + 18, cy, wordSize, t.ink, t.wordmarkSecond);
     return;
   }
-  drawCradle(ctx, x, cy - (markWidth * 32) / 48 / 2, markWidth, "#FFFFFF", t.accent);
+  drawCradle(ctx, x, cy - (markWidth * 32) / 48 / 2, markWidth, t.cradle, t.accent);
   drawWordmark(ctx, x + markWidth + 18, cy, wordSize, t.ink, t.wordmarkSecond);
 }
 
@@ -159,11 +208,9 @@ function factRow(ctx: CanvasRenderingContext2D, input: SinglePosterInput, t: Sin
 
 function placeLine(ctx: CanvasRenderingContext2D, input: SinglePosterInput, t: SingleTokens, x: number, cy: number, iconSize: number, size: number, maxWidth: number) {
   if (!input.tuition.area) return;
-  drawIcon(ctx, "pin", x, cy - iconSize / 2, iconSize, theme(t) === "cream" ? t.icon : t.accent);
+  drawIcon(ctx, "pin", x, cy - iconSize / 2, iconSize, t.pin);
   drawText(ctx, input.tuition.area, x + iconSize + 14, cy, { size, weight: 500, color: t.ink, maxWidth: maxWidth - iconSize - 14 });
 }
-
-const theme = (t: SingleTokens): SinglePosterTheme => (t === TOKENS.cream ? "cream" : "navy");
 
 /** QR tile with its caption centred under it; `centerX` is the column's centre, `bottom` the caption's foot. */
 function qrWithCaption(ctx: CanvasRenderingContext2D, input: SinglePosterInput, centerX: number, tileTop: number, tile: number, padding: number, radius: number, dark: string, captionColor: string, captionGap: number) {
@@ -171,8 +218,8 @@ function qrWithCaption(ctx: CanvasRenderingContext2D, input: SinglePosterInput, 
   drawText(ctx, POSTER_WORDS[input.locale].scanToApply, centerX, tileTop + tile + captionGap + 15.5, { size: 24, weight: 600, color: captionColor, align: "center" });
 }
 
-export function drawSingleSquare(ctx: CanvasRenderingContext2D, input: SinglePosterInput, themeId: SinglePosterTheme) {
-  const t = TOKENS[themeId];
+export function drawSingleSquare(ctx: CanvasRenderingContext2D, input: SinglePosterInput, themeId: ClassicSingleTheme, ground?: string | null) {
+  const t = singleTokens(themeId, ground);
   const W = 1080;
   const left = 80;
   const right = 1000;
@@ -204,22 +251,22 @@ export function drawSingleSquare(ctx: CanvasRenderingContext2D, input: SinglePos
   const words = POSTER_WORDS[input.locale];
   if (cream) {
     const bandTop = 788;
-    ctx.fillStyle = t.band!;
+    ctx.fillStyle = t.deep.fill;
     ctx.fillRect(0, bandTop, W, W - bandTop);
-    ctx.fillStyle = t.accent;
+    ctx.fillStyle = t.deep.accent;
     ctx.fillRect(0, bandTop, W, 6);
     const tile = 192;
     const qrTop = bandTop + (292 - (tile + 10 + 31)) / 2;
     const qrCenter = right - tile / 2;
-    qrWithCaption(ctx, input, qrCenter, qrTop, tile, 14, 18, t.qrDark, "#FFFFFF", 10);
+    qrWithCaption(ctx, input, qrCenter, qrTop, tile, 14, 18, t.qrDark, t.deep.ink, 10);
     const salaryMax = qrCenter - tile / 2 - 32 - left;
     if (input.tuition.salary) {
       const top = bandTop + (292 - 197) / 2;
-      drawText(ctx, words.salaryLabel, left, top + 17, { size: 26, weight: 500, color: t.bandSoft! });
-      drawText(ctx, input.tuition.salary, left, top + 34 + 58, { size: 108, weight: 800, color: t.accent, maxWidth: salaryMax, tracking: -0.01 });
-      drawText(ctx, input.host, left, top + 34 + 117 + 10 + 18, { size: 28, weight: 600, color: "#FFFFFF" });
+      drawText(ctx, words.salaryLabel, left, top + 17, { size: 26, weight: 500, color: t.deep.soft });
+      drawText(ctx, input.tuition.salary, left, top + 34 + 58, { size: 108, weight: 800, color: t.deep.accent, maxWidth: salaryMax, tracking: -0.01 });
+      drawText(ctx, input.host, left, top + 34 + 117 + 10 + 18, { size: 28, weight: 600, color: t.deep.ink });
     } else {
-      drawText(ctx, input.host, left, bandTop + 146, { size: 34, weight: 700, color: "#FFFFFF" });
+      drawText(ctx, input.host, left, bandTop + 146, { size: 34, weight: 700, color: t.deep.ink });
     }
     return;
   }
@@ -236,8 +283,8 @@ export function drawSingleSquare(ctx: CanvasRenderingContext2D, input: SinglePos
   drawText(ctx, input.host, left, 1002, { size: 28, weight: 600, color: t.ink });
 }
 
-export function drawSingleLandscape(ctx: CanvasRenderingContext2D, input: SinglePosterInput, themeId: SinglePosterTheme) {
-  const t = TOKENS[themeId];
+export function drawSingleLandscape(ctx: CanvasRenderingContext2D, input: SinglePosterInput, themeId: ClassicSingleTheme, ground?: string | null) {
+  const t = singleTokens(themeId, ground);
   const W = 1200;
   const H = 675;
   const cream = themeId === "cream";
@@ -270,29 +317,28 @@ export function drawSingleLandscape(ctx: CanvasRenderingContext2D, input: Single
   const panelX = cream ? 800 : 756;
   const panelW = cream ? 400 : 380;
   if (cream) {
-    ctx.fillStyle = t.band!;
+    ctx.fillStyle = t.deep.fill;
     ctx.fillRect(panelX, 0, panelW, H);
-    ctx.fillStyle = t.accent;
+    ctx.fillStyle = t.deep.accent;
     ctx.fillRect(panelX, 0, panelW, 6);
   } else {
-    fillRoundedRect(ctx, panelX, 56, panelW, 563, 28, "#091A31");
-    strokeRoundedRect(ctx, panelX, 56, panelW, 563, 28, "rgba(255,255,255,0.08)", 1);
+    fillRoundedRect(ctx, panelX, 56, panelW, 563, 28, t.deep.fill);
+    strokeRoundedRect(ctx, panelX, 56, panelW, 563, 28, t.deep.stroke, 1);
   }
   const cx = panelX + panelW / 2;
-  const soft = cream ? t.bandSoft! : t.soft;
   const hasSalary = Boolean(input.tuition.salary);
   const blockHeight = (hasSalary ? 31 + 92 + 49 : 0) + 196 + 12 + 31 + 4 + 31;
   let y = (H - blockHeight) / 2;
   if (hasSalary) {
-    drawText(ctx, words.salaryLabel, cx, y + 15.5, { size: 24, weight: 500, color: soft, align: "center" });
-    drawText(ctx, input.tuition.salary!, cx, y + 31 + 46, { size: 80, weight: 800, color: t.accent, align: "center", maxWidth: panelW - 56, tracking: -0.01 });
+    drawText(ctx, words.salaryLabel, cx, y + 15.5, { size: 24, weight: 500, color: t.deep.soft, align: "center" });
+    drawText(ctx, input.tuition.salary!, cx, y + 31 + 46, { size: 80, weight: 800, color: t.deep.accent, align: "center", maxWidth: panelW - 56, tracking: -0.01 });
     y += 31 + 92 + 24;
-    hairline(ctx, panelX + 32, y, panelX + panelW - 32, y, "rgba(255,255,255,0.14)");
+    hairline(ctx, panelX + 32, y, panelX + panelW - 32, y, t.deep.hair);
     y += 25;
   }
   drawQrTile(ctx, input.url, cx - 98, y, 196, t.qrDark, 14, 18);
   y += 196 + 12;
-  drawText(ctx, words.scanToApply, cx, y + 15.5, { size: 24, weight: 600, color: "#FFFFFF", align: "center" });
+  drawText(ctx, words.scanToApply, cx, y + 15.5, { size: 24, weight: 600, color: t.deep.ink, align: "center" });
   y += 31 + 4;
-  drawText(ctx, input.host, cx, y + 15.5, { size: 24, weight: 600, color: "#8CC4FF", align: "center" });
+  drawText(ctx, input.host, cx, y + 15.5, { size: 24, weight: 600, color: t.deep.detail, align: "center" });
 }

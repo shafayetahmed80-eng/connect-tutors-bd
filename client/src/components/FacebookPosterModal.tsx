@@ -9,6 +9,10 @@ import {
   downloadCanvasImage,
   loadPosterFonts,
   MAX_COMBINED_TUITIONS,
+  MAX_TALL_TUITIONS,
+  MIST_DEFAULT_GROUND,
+  normalizeHex,
+  posterDimensions,
   posterFileName,
   renderCombinedTuitionsPoster,
   renderSingleTuitionPoster,
@@ -23,9 +27,16 @@ import { cn } from "@/lib/utils";
 
 const PREFS_KEY = "connect_tutors_fb_poster_prefs_v1";
 
-type PosterPrefs = { locale: PosterLocale; size: PosterSize; singleTheme: SinglePosterTheme; combinedTheme: CombinedPosterTheme };
+type PosterPrefs = {
+  locale: PosterLocale;
+  size: PosterSize;
+  singleTheme: SinglePosterTheme;
+  combinedTheme: CombinedPosterTheme;
+  /** The ground colour the Admin picked, or null for the design's own colours. */
+  ground: string | null;
+};
 
-const DEFAULT_PREFS: PosterPrefs = { locale: "bn", size: "square", singleTheme: "navy", combinedTheme: "navy" };
+const DEFAULT_PREFS: PosterPrefs = { locale: "bn", size: "square", singleTheme: "navy", combinedTheme: "navy", ground: null };
 
 function readPrefs(): PosterPrefs {
   try {
@@ -33,9 +44,10 @@ function readPrefs(): PosterPrefs {
     if (!saved) return DEFAULT_PREFS;
     return {
       locale: saved.locale === "en" ? "en" : "bn",
-      size: saved.size === "landscape" ? "landscape" : "square",
+      size: saved.size === "landscape" || saved.size === "tall" ? saved.size : "square",
       singleTheme: SINGLE_POSTER_THEMES.includes(saved.singleTheme as SinglePosterTheme) ? (saved.singleTheme as SinglePosterTheme) : "navy",
       combinedTheme: COMBINED_POSTER_THEMES.includes(saved.combinedTheme as CombinedPosterTheme) ? (saved.combinedTheme as CombinedPosterTheme) : "navy",
+      ground: typeof saved.ground === "string" ? normalizeHex(saved.ground) : null,
     };
   } catch {
     return DEFAULT_PREFS;
@@ -55,13 +67,31 @@ const THEME_LABELS: Record<SinglePosterTheme | CombinedPosterTheme, { label: str
   cream: { label: "Cream", swatch: "#FFFEFA" },
   emerald: { label: "Emerald", swatch: "#0B3D2E" },
   crimson: { label: "Crimson", swatch: "#A3122F" },
+  mist: { label: "Mist", swatch: MIST_DEFAULT_GROUND },
 };
+
+/** Colours to start from: deep ones first, then light ones. Anything else is the Custom swatch. */
+const GROUND_PRESETS: Array<{ label: string; hex: string }> = [
+  { label: "Navy", hex: "#0e2442" },
+  { label: "Emerald", hex: "#0b3d2e" },
+  { label: "Crimson", hex: "#3a0b17" },
+  { label: "Plum", hex: "#2e1a47" },
+  { label: "Teal", hex: "#0e3b43" },
+  { label: "Slate", hex: "#1e293b" },
+  { label: "Mist", hex: "#e2eef3" },
+  { label: "Cream", hex: "#fffefa" },
+  { label: "Rose", hex: "#f7e3e7" },
+  { label: "Sage", hex: "#ddebdd" },
+  { label: "Sand", hex: "#f1e7d3" },
+];
+
+const labelClass = "w-20 shrink-0 text-xs font-semibold text-j-ink-soft";
 
 /** One labelled row of choices, read by a screen reader as a radio group. */
 function ChoiceRow<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; label: string; swatch?: string }>; onChange: (value: T) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-20 shrink-0 text-xs font-semibold text-j-ink-soft">{label}</span>
+      <span className={labelClass}>{label}</span>
       <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
         {options.map(option => {
           const selected = option.value === value;
@@ -87,16 +117,103 @@ function ChoiceRow<T extends string>({ label, value, options, onChange }: { labe
   );
 }
 
+/**
+ * The ground colour: the design's own, one of the presets, or any colour the
+ * Admin picks. The poster behind it redraws with every change, and the colours
+ * on it follow (see lib/poster/palette.ts).
+ */
+export function PosterColourRow({ ground, defaultGround, onChange }: { ground: string | null; defaultGround: string; onChange: (ground: string | null) => void }) {
+  const preset = ground ? GROUND_PRESETS.find(item => item.hex === ground) : undefined;
+  const custom = Boolean(ground) && !preset;
+  const [draft, setDraft] = useState(ground ?? "");
+
+  // A swatch or the picker changed the colour from outside the text box.
+  useEffect(() => {
+    setDraft(ground ?? "");
+  }, [ground]);
+
+  const commitDraft = (text: string) => {
+    setDraft(text);
+    const hex = normalizeHex(text);
+    if (hex) onChange(hex);
+  };
+
+  const swatch = (selected: boolean) =>
+    cn("inline-grid size-9 shrink-0 place-items-center rounded-full border border-black/15 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2]/50", selected && "ring-2 ring-[#1877f2] ring-offset-2");
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={labelClass}>Colour</span>
+      <div role="radiogroup" aria-label="Colour" className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={ground === null}
+          aria-label="Design's own colour"
+          title="Design's own colour"
+          onClick={() => onChange(null)}
+          className={cn(swatch(ground === null), "relative overflow-hidden")}
+          style={{ backgroundColor: defaultGround }}
+        >
+          <span aria-hidden="true" className="absolute h-px w-[140%] -rotate-45 bg-white/80 mix-blend-difference" />
+        </button>
+        {GROUND_PRESETS.map(item => (
+          <button
+            key={item.hex}
+            type="button"
+            role="radio"
+            aria-checked={ground === item.hex}
+            aria-label={item.label}
+            title={item.label}
+            onClick={() => onChange(item.hex)}
+            className={swatch(ground === item.hex)}
+            style={{ backgroundColor: item.hex }}
+          />
+        ))}
+        <label
+          title="Custom colour"
+          className={cn(swatch(custom), "relative cursor-pointer overflow-hidden")}
+          style={{ background: custom && ground ? ground : "conic-gradient(#f44, #fd4, #4d6, #4cf, #64f, #f4c, #f44)" }}
+        >
+          <input
+            type="color"
+            aria-label="Custom colour"
+            value={ground ?? defaultGround}
+            onChange={event => onChange(normalizeHex(event.target.value))}
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+          />
+        </label>
+        <input
+          type="text"
+          aria-label="Colour code"
+          inputMode="text"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={7}
+          placeholder="#RRGGBB"
+          value={draft}
+          onChange={event => commitDraft(event.target.value)}
+          onBlur={() => setDraft(ground ?? "")}
+          className="h-control w-28 rounded-xl border border-j-border bg-white px-3 text-xs font-semibold tabular-nums text-j-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2]/40"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: boolean; onClose: () => void; job?: FacebookPosterJob | null; jobs?: FacebookPosterJob[] | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [prefs, setPrefs] = useState<PosterPrefs>(readPrefs);
-  const [fontsReady, setFontsReady] = useState(false);
+  const [fonts, setFonts] = useState({ sans: false, serif: false });
   const [isCopying, setIsCopying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const combinedJobs = jobs?.slice(0, MAX_COMBINED_TUITIONS) ?? [];
-  const isCombined = combinedJobs.length > 0;
-  const theme = isCombined ? prefs.combinedTheme : prefs.singleTheme;
+  const isCombined = Boolean(jobs && jobs.length > 0);
+  // One tuition has no tall list; a tall list is Mist's alone.
+  const size: PosterSize = !isCombined && prefs.size === "tall" ? "square" : prefs.size;
+  const theme: SinglePosterTheme | CombinedPosterTheme = isCombined ? (size === "tall" ? "mist" : prefs.combinedTheme) : prefs.singleTheme;
+  const shown = isCombined ? Math.min(jobs!.length, size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS) : 0;
+  const needsSerif = theme === "mist";
 
   const update = (patch: Partial<PosterPrefs>) => {
     setPrefs(current => {
@@ -107,35 +224,33 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: bo
   };
 
   useEffect(() => {
-    if (!isOpen || fontsReady) return;
+    if (!isOpen || (fonts.sans && (!needsSerif || fonts.serif))) return;
     let alive = true;
-    void loadPosterFonts().then(() => {
-      if (alive) setFontsReady(true);
+    void loadPosterFonts(4000, { serif: needsSerif }).then(() => {
+      if (alive) setFonts(current => ({ sans: true, serif: current.serif || needsSerif }));
     });
     return () => {
       alive = false;
     };
-  }, [isOpen, fontsReady]);
+  }, [isOpen, fonts, needsSerif]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!isOpen || !canvas) return;
     try {
-      if (isCombined) renderCombinedTuitionsPoster(canvas, combinedJobs, { theme: prefs.combinedTheme, size: prefs.size, locale: prefs.locale });
-      else if (job) renderSingleTuitionPoster(canvas, job, { theme: prefs.singleTheme, size: prefs.size, locale: prefs.locale });
+      if (isCombined) renderCombinedTuitionsPoster(canvas, jobs!, { theme: theme as CombinedPosterTheme, size, locale: prefs.locale, ground: prefs.ground });
+      else if (job) renderSingleTuitionPoster(canvas, job, { theme: theme as SinglePosterTheme, size, locale: prefs.locale, ground: prefs.ground });
     } catch (error) {
       console.error("Poster render failed", error);
       toast.error("পোস্টার তৈরি করতে সমস্যা হয়েছে।");
     }
-    // combinedJobs is derived from jobs on every render; jobs is the real input.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, fontsReady, prefs, job, jobs, isCombined]);
+  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size]);
 
   if (!isOpen || (!job && !isCombined)) return null;
 
   const fileName = isCombined
-    ? posterFileName({ count: combinedJobs.length }, theme, prefs.locale, prefs.size)
-    : posterFileName({ jobId: job!.jobId }, theme, prefs.locale, prefs.size);
+    ? posterFileName({ count: shown }, theme, prefs.locale, size)
+    : posterFileName({ jobId: job!.jobId }, theme, prefs.locale, size);
 
   const handleDownload = async () => {
     const canvas = canvasRef.current;
@@ -165,32 +280,40 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: bo
     toast.error("ছবি কপি করা যায়নি। ডাউনলোড করে নিন।");
   };
 
-  const themeOptions = (isCombined ? COMBINED_POSTER_THEMES : SINGLE_POSTER_THEMES).map(id => ({ value: id, ...THEME_LABELS[id] }));
+  const themeIds: Array<SinglePosterTheme | CombinedPosterTheme> = size === "tall" ? ["mist"] : isCombined ? COMBINED_POSTER_THEMES : SINGLE_POSTER_THEMES;
+  const themeOptions = themeIds.map(id => ({ value: id, ...THEME_LABELS[id] }));
+  const sizeOptions: Array<{ value: PosterSize; label: string }> = [
+    { value: "square", label: "Square 1080×1080" },
+    { value: "landscape", label: "Landscape 1200×675" },
+    ...(isCombined ? [{ value: "tall" as const, label: "Tall list" }] : []),
+  ];
+  const { width, height } = posterDimensions(size, isCombined ? jobs! : [], prefs.locale);
 
   return (
     <Modal onClose={onClose} kind="facebook-poster">
       <ModalHeader
         title={isCombined ? "Facebook Multi-Tuition Banner" : "Facebook Poster"}
-        meta={isCombined ? `${combinedJobs.length} ${combinedJobs.length === 1 ? "tuition" : "tuitions"}` : <JobIdTag jobId={job!.jobId} colon={false} copyable={false} />}
+        meta={isCombined ? `${shown} ${shown === 1 ? "tuition" : "tuitions"}` : <JobIdTag jobId={job!.jobId} colon={false} copyable={false} />}
       />
       <ModalBody>
         <div className="space-y-2.5">
           <ChoiceRow label="Language" value={prefs.locale} options={[{ value: "bn", label: "বাংলা" }, { value: "en", label: "English" }]} onChange={locale => update({ locale })} />
-          <ChoiceRow label="Size" value={prefs.size} options={[{ value: "square", label: "Square 1080×1080" }, { value: "landscape", label: "Landscape 1200×675" }]} onChange={size => update({ size })} />
+          <ChoiceRow label="Size" value={size} options={sizeOptions} onChange={next => update({ size: next })} />
           <ChoiceRow
             label="Theme"
             value={theme}
             options={themeOptions}
             onChange={next => (isCombined ? update({ combinedTheme: next as CombinedPosterTheme }) : update({ singleTheme: next as SinglePosterTheme }))}
           />
+          <PosterColourRow ground={prefs.ground} defaultGround={THEME_LABELS[theme].swatch} onChange={ground => update({ ground })} />
         </div>
         <div className="mt-4 flex justify-center rounded-2xl border border-j-border bg-j-border-light/40 p-3">
           <canvas
             ref={canvasRef}
             role="img"
             aria-label={isCombined ? "Multi-tuition poster preview" : `Poster preview for job ${job!.jobId}`}
-            className="h-auto max-h-[52vh] w-auto max-w-full rounded-lg shadow-sm"
-            style={{ aspectRatio: prefs.size === "square" ? "1 / 1" : "16 / 9" }}
+            className={cn("h-auto w-auto max-w-full rounded-lg shadow-sm", size === "tall" ? "max-h-[60vh]" : "max-h-[52vh]")}
+            style={{ aspectRatio: `${width} / ${height}` }}
           />
         </div>
       </ModalBody>

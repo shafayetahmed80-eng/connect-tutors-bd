@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminFacebookPostsContent } from "./AdminFacebookPosts";
@@ -512,7 +512,7 @@ describe("AdminFacebookPostsContent", () => {
     });
   });
 
-  it("opens the one-tuition poster with language, size and the two single themes", () => {
+  it("opens the one-tuition poster with language, size, the three single themes and a colour", () => {
     render(<AdminFacebookPostsContent />);
 
     fireEvent.click(screen.getByRole("button", { name: /Generate social poster for job/i }));
@@ -522,9 +522,12 @@ describe("AdminFacebookPostsContent", () => {
     expect(screen.getByRole("radio", { name: "English" })).toBeDefined();
     expect(screen.getByRole("radio", { name: /Square 1080×1080/i })).toBeDefined();
     expect(screen.getByRole("radio", { name: /Landscape 1200×675/i })).toBeDefined();
-    expect(screen.getByRole("radio", { name: /Navy/i })).toBeDefined();
-    expect(screen.getByRole("radio", { name: /Cream/i })).toBeDefined();
-    expect(screen.queryByRole("radio", { name: /Emerald/i })).toBeNull();
+    const themes = within(screen.getByRole("radiogroup", { name: "Theme" }));
+    for (const name of [/Navy/i, /Cream/i, /Mist/i]) expect(themes.getByRole("radio", { name })).toBeDefined();
+    expect(themes.queryByRole("radio", { name: /Emerald/i })).toBeNull();
+    // One tuition has no tall list.
+    expect(screen.queryByRole("radio", { name: /Tall list/i })).toBeNull();
+    expect(screen.getByRole("radiogroup", { name: "Colour" })).toBeDefined();
     expect(screen.getByRole("button", { name: /Download PNG/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /Copy image/i })).toBeDefined();
 
@@ -536,14 +539,16 @@ describe("AdminFacebookPostsContent", () => {
     expect(screen.queryByRole("heading", { name: /Facebook Poster/i })).toBeNull();
   });
 
-  it("opens the combined poster with the three combined themes", async () => {
+  it("opens the combined poster with the four combined themes and the tall list", async () => {
     render(<AdminFacebookPostsContent />);
 
     fireEvent.click(screen.getByRole("button", { name: /Bulk Poster/i }));
 
     expect(await screen.findByRole("heading", { name: /Facebook Multi-Tuition Banner/i })).toBeDefined();
-    for (const name of [/Navy/i, /Emerald/i, /Crimson/i]) expect(screen.getByRole("radio", { name })).toBeDefined();
-    expect(screen.queryByRole("radio", { name: /Cream/i })).toBeNull();
+    const themes = within(screen.getByRole("radiogroup", { name: "Theme" }));
+    for (const name of [/Navy/i, /Emerald/i, /Crimson/i, /Mist/i]) expect(themes.getByRole("radio", { name })).toBeDefined();
+    expect(themes.queryByRole("radio", { name: /Cream/i })).toBeNull();
+    expect(screen.getByRole("radio", { name: /Tall list/i })).toBeDefined();
   });
 
   it("toggles smart hashtags on and off and persists preference", () => {

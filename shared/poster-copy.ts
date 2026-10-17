@@ -204,6 +204,33 @@ export function curriculaText(needs: LearningNeed[], locale: PosterLocale, max =
   return joinWithMore(names, max, locale, " / ");
 }
 
+/**
+ * The curriculum a tuition is filed under on a grouped list: its first need's.
+ * `key` is the stored English name (two tuitions of one curriculum share it);
+ * `label` is what the list's section says.
+ */
+export function curriculumGroup(needs: LearningNeed[], locale: PosterLocale): { key: string; label: string } {
+  const first = needs.map(need => clean(need.category)).find(Boolean);
+  if (!first) return { key: "other", label: locale === "bn" ? "অন্যান্য" : "Other" };
+  return { key: first, label: curriculumLabel(first, locale) };
+}
+
+/** The subjects, one chip each: at most `max`, then one "+২টি" chip for the rest. */
+export function subjectChips(needs: LearningNeed[], locale: PosterLocale, max = 3): string[] {
+  const subjects = uniqueSubjects(needs).map(item => subjectLabel(item, locale));
+  if (!subjects.length) return [locale === "bn" ? "সকল বিষয়" : "All subjects"];
+  if (subjects.length <= max) return subjects;
+  const rest = subjects.length - max;
+  return [...subjects.slice(0, max), locale === "bn" ? `+${toBanglaDigits(rest)}টি` : `+${rest} more`];
+}
+
+/** The preferred tutor as the kind the Mist poster colours by. */
+export function tutorKind(preferredGender: string | null | undefined): "male" | "female" | "any" {
+  if (preferredGender === "female") return "female";
+  if (preferredGender === "male") return "male";
+  return "any";
+}
+
 /** The subjects line: "গণিত · পদার্থবিজ্ঞান · রসায়ন", at most `max`, then "+২টি". */
 export function subjectsText(needs: LearningNeed[], locale: PosterLocale, max = 4, separator = " · "): string {
   const subjects = uniqueSubjects(needs).map(item => subjectLabel(item, locale));
@@ -326,6 +353,8 @@ export const POSTER_WORDS = {
     crimsonKicker: "জরুরি",
     crimsonTitle: "আজই শিক্ষক প্রয়োজন",
     applyNow: "এখনই আবেদন করুন",
+    mistTitle: "টিউশন বেছে নিন",
+    tutorPill: { male: "পুরুষ শিক্ষক", female: "মহিলা শিক্ষক", any: "পুরুষ / মহিলা" },
   },
   en: {
     kicker: "TUTOR NEEDED",
@@ -343,5 +372,7 @@ export const POSTER_WORDS = {
     crimsonKicker: "URGENT",
     crimsonTitle: "Tutors needed today",
     applyNow: "Apply now",
+    mistTitle: "Choose your tuition",
+    tutorPill: { male: "MALE TUTOR", female: "FEMALE TUTOR", any: "MALE / FEMALE" },
   },
 } as const;
