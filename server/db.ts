@@ -7333,6 +7333,12 @@ export async function isAdminPushSubscribed(adminId: number, endpoint: string) {
 export async function notifyAdminPushEvent(event: AdminPushEvent) {
   const database = await getDb();
   if (!database) return { sent: 0 };
+  // Another Admin's own request is the Project Owner's alone to answer, so only the Owner's devices hear of it.
+  if (event.type === "account_change" && event.requestRole === "admin") {
+    const owner = ENV.ownerOpenId ? await getUserByOpenId(ENV.ownerOpenId) : undefined;
+    if (!owner) return { sent: 0 };
+    return notifyAdminsOfEvent(database, event, { onlyAdminId: owner.id });
+  }
   return notifyAdminsOfEvent(database, event);
 }
 
@@ -7394,6 +7400,18 @@ export async function subscribeToPushNotifications(input: { userId: number; endp
     await database.insert(pushSubscriptions).values(input);
   }
   return { subscribed: true as const };
+}
+
+/** Whether this very browser (its `endpoint`) is registered for this user's alerts - not merely whether the browser holds some push subscription. */
+export async function isPushSubscribedForUser(input: { userId: number; endpoint: string }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select({ id: pushSubscriptions.id })
+    .from(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.userId, input.userId), eq(pushSubscriptions.endpoint, input.endpoint)))
+    .limit(1);
+  return { subscribed: Boolean(row) };
 }
 
 /** Only removes a row the signed-in user actually owns - never a client-supplied id for someone else's. */

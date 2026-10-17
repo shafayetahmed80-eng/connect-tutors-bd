@@ -7,6 +7,7 @@ const dbMocks = vi.hoisted(() => ({
   setGuardianApplicantShortlist: vi.fn(),
   requestGuardianAppointment: vi.fn(),
   withdrawGuardianAppointmentRequest: vi.fn(),
+  notifyAdminPushEvent: vi.fn(async () => ({ sent: 0 })),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -102,6 +103,17 @@ describe("a Guardian's actions on an applicant", () => {
     await expect(createCaller().tutorRequests.withdrawAppointmentRequest(applicant)).resolves.toEqual({ withdrawn: true });
     expect(dbMocks.requestGuardianAppointment).toHaveBeenCalledWith({ guardianUserId: 77, ...applicant });
     expect(dbMocks.withdrawGuardianAppointmentRequest).toHaveBeenCalledWith({ guardianUserId: 77, ...applicant });
+  });
+
+  it("tells the Admins' phones a Guardian asked to appoint a Tutor, and sends nothing when it was refused", async () => {
+    dbMocks.requestGuardianAppointment.mockResolvedValueOnce({ outcome: "requested" });
+    await createCaller().tutorRequests.requestAppointment(applicant);
+    expect(dbMocks.notifyAdminPushEvent).toHaveBeenCalledWith({ type: "guardian_request", requestId: 13, kind: "appoint", guardianName: "Rina Akter" });
+
+    dbMocks.notifyAdminPushEvent.mockClear();
+    dbMocks.requestGuardianAppointment.mockResolvedValueOnce({ outcome: "refused", reason: "another_requested" });
+    await expect(createCaller().tutorRequests.requestAppointment(applicant)).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(dbMocks.notifyAdminPushEvent).not.toHaveBeenCalled();
   });
 
   it("is a 404 for an applicant the Guardian cannot reach", async () => {

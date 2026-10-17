@@ -12,7 +12,6 @@ import { useAdminChatSocket, useOnlineStatus } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { compressImage } from "@/lib/compressImage";
 import { trpc } from "@/lib/trpc";
-import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
 import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, TutorPeekProfileDrawer, type QuotedMessage } from "@/components/chat/ChatProductivity";
@@ -40,7 +39,7 @@ import {
   useChatKeyboardShortcuts,
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
-import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -79,72 +78,6 @@ function ChatStatsStrip() {
     <span className="text-j-ink-faint">·</span>
     <span>{stats.avgResponseMinutes !== null ? `~${stats.avgResponseMinutes} min avg. reply (30d)` : "Not enough replies yet for an average"}</span>
   </p>;
-}
-
-/** Lets an Admin turn on desktop push alerts for a new Tutor message - useful exactly when this tab is not the one they are looking at. Renders nothing on a deployment with no VAPID keys configured, or a browser that cannot do push. */
-function ChatPushToggle() {
-  const keyQuery = trpc.admin.getChatPushPublicKey.useQuery();
-  const subscribeMutation = trpc.admin.subscribeChatPush.useMutation();
-  const unsubscribeMutation = trpc.admin.unsubscribeChatPush.useMutation();
-  const [subscribed, setSubscribed] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const supported = supportsWebPush();
-
-  useEffect(() => {
-    if (!supported) return;
-    void (async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const existing = await registration?.pushManager.getSubscription();
-      setSubscribed(Boolean(existing));
-    })();
-  }, [supported]);
-
-  if (!supported || !keyQuery.data?.publicKey) return null;
-  const publicKey = keyQuery.data.publicKey;
-
-  const enable = async () => {
-    setBusy(true);
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("The browser did not return a usable subscription.");
-      await subscribeMutation.mutateAsync({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth });
-      setSubscribed(true);
-      toast.success("Desktop alerts are on for this browser.");
-    } catch {
-      toast.error("Could not enable desktop alerts.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const disable = async () => {
-    setBusy(true);
-    try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const existing = await registration?.pushManager.getSubscription();
-      if (existing) {
-        await unsubscribeMutation.mutateAsync({ endpoint: existing.endpoint });
-        await existing.unsubscribe();
-      }
-      setSubscribed(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return <button
-    type="button"
-    disabled={busy}
-    onClick={() => void (subscribed ? disable() : enable())}
-    aria-pressed={subscribed}
-    className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-2xs font-bold disabled:opacity-50 ${subscribed ? "border-j-accent bg-j-accent-wash text-j-accent" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
-  >
-    <BellRing size={13} /> {subscribed ? "Desktop alerts on" : "Enable desktop alerts"}
-  </button>;
 }
 
 /** A shared library of canned replies any Admin can drop straight into the composer, managed from the same dropdown. */
@@ -1249,7 +1182,6 @@ export function AdminTutorChatsContent() {
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <ChatStatsStrip />
-      <ChatPushToggle />
     </div>
     {threadOpenOnPhone ? null : <AdminRequestFilterBar
       filters={panel}

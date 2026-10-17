@@ -32,6 +32,8 @@ vi.mock("@/lib/trpc", () => ({
             notifyPayments: true,
             notifyRegistrations: true,
             notifyChat: true,
+            notifyGuardianRequests: true,
+            notifyAccountChanges: true,
           },
         }),
       },
@@ -154,7 +156,7 @@ describe("AdminPushNotificationSettings", () => {
     render(<AdminPushNotificationSettings />);
 
     await waitFor(() => {
-      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" });
+      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" }, { staleTime: 0 });
     });
     // The only button on the card is the test button, which shows only for a registered browser.
     expect(screen.queryAllByRole("button")).toHaveLength(0);
@@ -172,5 +174,19 @@ describe("AdminPushNotificationSettings", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("403"));
     });
+  });
+
+  it("has switches for the Guardian-request and account-change alerts, each saved under its own key", async () => {
+    stubServiceWorker({ endpoint: "https://push.example/admin-sub", keys: { p256dh: "p256", auth: "authkey" } });
+
+    render(<AdminPushNotificationSettings />);
+    await waitFor(() => expect((screen.getAllByRole("switch")[6] as HTMLButtonElement).disabled).toBe(false));
+    // The browser's own switch, then the five alerts there already were, then the two new ones.
+    expect(screen.getAllByRole("switch")).toHaveLength(8);
+
+    fireEvent.click(screen.getAllByRole("switch")[6]);
+    await waitFor(() => expect(updatePushPreferences).toHaveBeenCalledWith({ notifyGuardianRequests: false }));
+    fireEvent.click(screen.getAllByRole("switch")[7]);
+    await waitFor(() => expect(updatePushPreferences).toHaveBeenCalledWith({ notifyAccountChanges: false }));
   });
 });

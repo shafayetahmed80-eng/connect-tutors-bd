@@ -3,10 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { subscribe, unsubscribe } = vi.hoisted(() => ({ subscribe: vi.fn(), unsubscribe: vi.fn() }));
+const { subscribe, unsubscribe, isSubscribed } = vi.hoisted(() => ({ subscribe: vi.fn(), unsubscribe: vi.fn(), isSubscribed: vi.fn() }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({ pushNotifications: { isSubscribed: { fetch: isSubscribed } } }),
     pushNotifications: {
       getPublicKey: { useQuery: () => ({ data: { publicKey: "public-key" } }) },
       subscribe: { useMutation: () => ({ mutateAsync: subscribe }) },
@@ -81,5 +82,24 @@ describe("PushNotificationToggle", () => {
     fireEvent.click(screen.getByRole("switch"));
     expect(screen.queryByRole("heading", { name: "নোটিফিকেশন চালু করবেন?" })).toBeNull();
     await waitFor(() => expect(subscribe).toHaveBeenCalled());
+  });
+
+  it("reads off for a browser that holds a subscription the server has no row for under this account, and on once the server knows it", async () => {
+    stubNotification("granted");
+    const held = { endpoint: "https://push.example/made-elsewhere", keys: { p256dh: "p", auth: "a" } };
+    Object.defineProperty(window.navigator, "serviceWorker", {
+      configurable: true,
+      value: { getRegistration: vi.fn().mockResolvedValue({ pushManager: { getSubscription: vi.fn().mockResolvedValue(held) } }), ready: Promise.resolve({ pushManager: { subscribe: vi.fn() } }) },
+    });
+    isSubscribed.mockResolvedValue({ subscribed: false });
+
+    const { unmount } = render(<PushNotificationToggle />);
+    await waitFor(() => expect(isSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" }, { staleTime: 0 }));
+    expect(screen.getByText("Off for this browser")).toBeTruthy();
+    unmount();
+
+    isSubscribed.mockResolvedValue({ subscribed: true });
+    render(<PushNotificationToggle />);
+    await waitFor(() => expect(screen.getByText("On for this browser")).toBeTruthy());
   });
 });

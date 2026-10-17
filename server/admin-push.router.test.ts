@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ isAdminPushSubscribed: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ isAdminPushSubscribed: vi.fn(), isPushSubscribedForUser: vi.fn() }));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -41,5 +41,20 @@ describe("admin.isPushSubscribed", () => {
     await expect(createCaller({ ...adminUser, role: "guardian" as const }).admin.isPushSubscribed({ endpoint: "https://push.example/abc" }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.isAdminPushSubscribed).not.toHaveBeenCalled();
+  });
+});
+
+describe("pushNotifications.isSubscribed", () => {
+  it("asks about the signed-in account and the browser's own endpoint, for a Tutor or Guardian alike", async () => {
+    dbMocks.isPushSubscribedForUser.mockResolvedValue({ subscribed: false });
+
+    await expect(createCaller({ ...adminUser, id: 77, role: "guardian" as const }).pushNotifications.isSubscribed({ endpoint: " https://push.example/abc " })).resolves.toEqual({ subscribed: false });
+
+    expect(dbMocks.isPushSubscribedForUser).toHaveBeenCalledWith({ userId: 77, endpoint: "https://push.example/abc" });
+  });
+
+  it("refuses anyone who is not signed in", async () => {
+    await expect(createCaller(null).pushNotifications.isSubscribed({ endpoint: "https://push.example/abc" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(dbMocks.isPushSubscribedForUser).not.toHaveBeenCalled();
   });
 });

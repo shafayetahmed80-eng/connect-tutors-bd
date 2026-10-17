@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   withdrawGuardianTuitionRequest: vi.fn(),
   approveGuardianTuitionRequestByAdmin: vi.fn(),
   declineGuardianTuitionRequestByAdmin: vi.fn(),
+  notifyAdminPushEvent: vi.fn(async () => ({ sent: 0 })),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -39,6 +40,23 @@ describe("tutorRequests.requestTuitionChange", () => {
     expect(dbMocks.createGuardianTuitionRequest).toHaveBeenCalledWith({
       requestId: 13, type: "remove_tutor", tutorId: "tutor-175", reason: "The demo class did not suit us", guardianUserId: 77,
     });
+  });
+
+  it("tells the Admins' phones which kind of request came in, and who from", async () => {
+    dbMocks.createGuardianTuitionRequest.mockResolvedValue({ outcome: "requested", id: 5 });
+    const named = appRouter.createCaller({ ...context, user: { openId: "guardian-77", id: 77, role: "guardian", name: "Rina Akter" } } as unknown as TrpcContext);
+
+    await named.tutorRequests.requestTuitionChange({ requestId: 13, type: "cancel_tuition", reason: "Moving city" });
+
+    expect(dbMocks.notifyAdminPushEvent).toHaveBeenCalledWith({ type: "guardian_request", requestId: 13, kind: "cancel_tuition", guardianName: "Rina Akter" });
+  });
+
+  it("sends no Admin alert for a request that was refused", async () => {
+    dbMocks.createGuardianTuitionRequest.mockResolvedValue({ outcome: "refused", reason: "request_waiting" });
+
+    await expect(guardian.tutorRequests.requestTuitionChange({ requestId: 13, type: "cancel_tuition", reason: "Moving city" })).rejects.toBeTruthy();
+
+    expect(dbMocks.notifyAdminPushEvent).not.toHaveBeenCalled();
   });
 
   it("explains a refusal as a conflict, in the Guardian's words", async () => {

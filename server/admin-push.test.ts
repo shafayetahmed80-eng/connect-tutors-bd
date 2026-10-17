@@ -254,3 +254,58 @@ describe("Admin Web Push Notification Service", () => {
     });
   });
 });
+
+describe("Guardian-request and account-change alerts", () => {
+  it("names the job and sends each kind of Guardian request to the screen that answers it", () => {
+    const screens = { appoint: "appoint", confirm: "confirm", remove_tutor: "cancel", cancel_tuition: "cancel" } as const;
+    for (const [kind, screen] of Object.entries(screens)) {
+      const { payload, category } = formatAdminPushPayload({ type: "guardian_request", requestId: 13, kind: kind as keyof typeof screens, guardianName: "Rina Akter" });
+
+      expect(category).toBe("guardian_request");
+      expect(payload.url).toBe(`/admin/guardian-requests/${screen}`);
+      expect(payload.title).toContain("6812");
+      expect(payload.body).toContain("Rina Akter");
+      expect(payload.tag).toBe(`admin-greq-${kind}-13`);
+    }
+  });
+
+  it("says who asked for which account change, and opens the change-requests queue", () => {
+    const { payload, category } = formatAdminPushPayload({ type: "account_change", requestRole: "tutor", changeType: "mobile", personName: "Karim Uddin" });
+
+    expect(category).toBe("account_change");
+    expect(payload.url).toBe("/admin/change-requests");
+    expect(payload.body).toContain("Karim Uddin");
+  });
+
+  it("falls back to a general word when the name is not known", () => {
+    const guardian = formatAdminPushPayload({ type: "guardian_request", requestId: 1, kind: "confirm" }).payload;
+    const change = formatAdminPushPayload({ type: "account_change", requestRole: "guardian", changeType: "name" }).payload;
+
+    expect(guardian.body).not.toContain("null");
+    expect(change.body).not.toContain("undefined");
+  });
+
+  it("sends to one Admin's devices only when asked to", async () => {
+    vi.mocked(chatPush.sendWebPushNotification).mockResolvedValue({ ok: true, gone: false });
+    const mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockResolvedValue([
+        { id: 1, adminId: 10, endpoint: "https://push.example.com/other-admin", p256dh: "k", auth: "a", prefValue: null },
+        { id: 2, adminId: 20, endpoint: "https://push.example.com/owner", p256dh: "k", auth: "a", prefValue: true },
+      ]),
+      delete: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue({}),
+    };
+
+    const result = await notifyAdminsOfEvent(mockDb as any, { type: "account_change", requestRole: "admin", changeType: "name", personName: "Some Admin" }, { onlyAdminId: 20 });
+
+    expect(result.sent).toBe(1);
+    expect(chatPush.sendWebPushNotification).toHaveBeenCalledTimes(1);
+    expect(chatPush.sendWebPushNotification).toHaveBeenCalledWith(expect.objectContaining({ endpoint: "https://push.example.com/owner" }), expect.anything());
+  });
+
+  it("starts every Admin with both new alerts on", () => {
+    expect(DEFAULT_ADMIN_PUSH_PREFERENCES).toMatchObject({ notifyGuardianRequests: true, notifyAccountChanges: true });
+  });
+});

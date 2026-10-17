@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   listOwnAccountChangeRequests: vi.fn(),
   isMobileTakenByAnotherAccount: vi.fn(),
   createAccountChangeRequest: vi.fn(),
+  notifyAdminPushEvent: vi.fn(async () => ({ sent: 0 })),
   withdrawAccountChangeRequest: vi.fn(),
   updateOwnerAdminContact: vi.fn(),
   listAccountChangeRequestsForAdmin: vi.fn(),
@@ -135,6 +136,18 @@ describe("account.requestChange", () => {
     dbMocks.createAccountChangeRequest.mockResolvedValue({ outcome: "requested", id: 10 });
     await expect(createCaller(guardianUser).account.requestChange({ type: "name", value: "Rina Begum" })).resolves.toEqual({ requested: true, id: 10 });
     expect(dbMocks.checkPhoneVerificationCode).not.toHaveBeenCalled();
+  });
+
+  it("tells the Admins' phones who asked for what, and stays silent when the request was refused", async () => {
+    dbMocks.getAccountChangeContextByUserId.mockResolvedValue(guardianContext);
+    dbMocks.createAccountChangeRequest.mockResolvedValueOnce({ outcome: "requested", id: 21 });
+    await createCaller(guardianUser).account.requestChange({ type: "name", value: "Rina Begum" });
+    expect(dbMocks.notifyAdminPushEvent).toHaveBeenCalledWith({ type: "account_change", requestRole: "guardian", changeType: "name", personName: "Rina Akter" });
+
+    dbMocks.notifyAdminPushEvent.mockClear();
+    dbMocks.createAccountChangeRequest.mockResolvedValueOnce({ outcome: "refused", reason: "request_waiting" });
+    await expect(createCaller(guardianUser).account.requestChange({ type: "name", value: "Rina Begum" })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(dbMocks.notifyAdminPushEvent).not.toHaveBeenCalled();
   });
 
   it("refuses with the rule's own words, before anything is stored", async () => {
