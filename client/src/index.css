@@ -650,6 +650,18 @@
   box-shadow: 0 0 0 2px var(--header-bell-ring, #ffffff);
 }
 .sb-header .header-bell-count { --header-bell-ring: var(--sb-panel-top, #0d5fae); }
+/* Admin: a plain amber dot on the bell, same corner and ring, while this browser gets no Admin alerts. */
+.header-bell-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background-color: #fbbf24;
+  box-shadow: 0 0 0 2px var(--header-bell-ring, #ffffff);
+}
+.sb-header .header-bell-dot { --header-bell-ring: var(--sb-panel-top, #0d5fae); }
 @keyframes header-bell-swing {
   0% { transform: rotate(0deg); }
   15% { transform: rotate(16deg); }

@@ -39,7 +39,8 @@ function mergeIntoOne(previous, incoming) {
 
 async function showPush(data) {
   const title = data.title || "Connect Tutors";
-  const common = { icon: "/pwa-192x192.png", badge: "/pwa-64x64.png" };
+  // The buzz is short on purpose; whether the alert also pops over the screen is the phone's own notification setting.
+  const common = { icon: "/pwa-192x192.png", badge: "/pwa-64x64.png", vibrate: [200, 100, 200] };
   if (!data.tag) {
     return self.registration.showNotification(title, { body: data.body || "New notification", data: { url: data.url || null }, ...common });
   }

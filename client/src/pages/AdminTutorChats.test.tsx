@@ -19,7 +19,6 @@ const state = vi.hoisted(() => ({
   claimedByAdminName: null as string | null,
   archivedAt: null as string | null,
   stats: { awaitingReplyCount: 0, avgResponseMinutes: null as number | null },
-  pushPublicKey: null as string | null,
   quickReplies: [] as any[],
   notes: [] as any[],
   send: vi.fn(),
@@ -80,9 +79,6 @@ vi.mock("@/lib/trpc", () => ({
       releaseTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.release(input); options.onSuccess?.(); }, isPending: false }) },
       reopenTutorChatThread: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.reopen(input); options.onSuccess?.(); }, isPending: false }) },
       getTutorChatStats: { useQuery: () => ({ data: state.stats }) },
-      getChatPushPublicKey: { useQuery: () => ({ data: { publicKey: state.pushPublicKey } }) },
-      subscribeChatPush: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
-      unsubscribeChatPush: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
       listChatQuickReplies: { useQuery: (_input: unknown, options?: { enabled?: boolean }) => ({ data: options?.enabled === false ? undefined : { items: state.quickReplies } }) },
       createChatQuickReply: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.createQuickReply(input); options.onSuccess?.(); }, isPending: false }) },
       updateChatQuickReply: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -118,7 +114,6 @@ afterEach(() => {
   state.claimedByAdminName = null;
   state.archivedAt = null;
   state.stats = { awaitingReplyCount: 0, avgResponseMinutes: null };
-  state.pushPublicKey = null;
   state.quickReplies = [];
   state.notes = [];
   state.send.mockReset();

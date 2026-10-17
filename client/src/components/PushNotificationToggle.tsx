@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
+import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
+import { usePushSubscribed } from "@/hooks/usePushSubscribed";
 import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
 
 /**
@@ -16,19 +18,10 @@ export function PushNotificationToggle() {
   const keyQuery = trpc.pushNotifications.getPublicKey.useQuery();
   const subscribeMutation = trpc.pushNotifications.subscribe.useMutation();
   const unsubscribeMutation = trpc.pushNotifications.unsubscribe.useMutation();
-  const [subscribed, setSubscribed] = useState(false);
+  const supported = supportsWebPush();
+  const [subscribed, setSubscribed] = usePushSubscribed(supported);
   const [busy, setBusy] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
-  const supported = supportsWebPush();
-
-  useEffect(() => {
-    if (!supported) return;
-    void (async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const existing = await registration?.pushManager.getSubscription();
-      setSubscribed(Boolean(existing));
-    })();
-  }, [supported]);
 
   if (!supported || !keyQuery.data?.publicKey) return null;
   const publicKey = keyQuery.data.publicKey;
@@ -39,6 +32,7 @@ export function PushNotificationToggle() {
       const outcome = await subscribeThisBrowser(publicKey, subscription => subscribeMutation.mutateAsync(subscription));
       if (outcome === "denied") return;
       setSubscribed(true);
+      announcePushRegistrationChange();
       toast.success("Notifications are on for this browser.");
     } catch {
       toast.error("Could not enable notifications.");
@@ -57,6 +51,7 @@ export function PushNotificationToggle() {
         await existing.unsubscribe();
       }
       setSubscribed(false);
+      announcePushRegistrationChange();
     } finally {
       setBusy(false);
     }

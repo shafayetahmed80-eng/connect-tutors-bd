@@ -17,6 +17,14 @@ export const accountChangeTypeLabels: Record<AccountChangeType, string> = {
   close_account: "Account delete",
 };
 
+/** The same four, in the words an Admin's phone alert uses. */
+export const accountChangeTypeBengaliLabels: Record<AccountChangeType, string> = {
+  name: "নাম পরিবর্তন",
+  mobile: "মোবাইল নম্বর পরিবর্তন",
+  verification: "প্রোফাইল ভেরিফিকেশন",
+  close_account: "অ্যাকাউন্ট মুছে ফেলা",
+};
+
 export const ACCOUNT_CHANGE_NAME_MIN = 2;
 export const ACCOUNT_CHANGE_NAME_MAX = 120;
 export const ACCOUNT_CHANGE_REASON_MIN = 3;

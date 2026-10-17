@@ -1,3 +1,4 @@
+import { AdminPushPermissionPrompt } from "@/components/AdminPushPermissionPrompt";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -168,6 +169,8 @@ export type WorkspaceHeaderIdentity = {
   notifications?: { unreadCount: number | undefined; path: string };
   /** Custom notification dropdown content (e.g., Admin web push controls). */
   customNotificationsContent?: React.ReactNode;
+  /** Sits on the corner of the bell itself (Admin: a dot while this browser gets no alerts). */
+  notificationsIndicator?: React.ReactNode;
 };
 
 export function getDashboardAvatarInitials(name: string, fallback = "?") {
@@ -399,6 +402,7 @@ export default function DashboardLayout({
         {children}
       </DashboardLayoutContent>
       {sidebarPanel === "tutor" || sidebarPanel === "guardian" ? <PushPermissionPrompt /> : null}
+      {sidebarPanel === "admin" ? <AdminPushPermissionPrompt /> : null}
       </SiteContentProvider>
       </SiteContentProvider>
     </SidebarProvider>
@@ -868,6 +872,7 @@ function WorkspaceHeader({
                 <Bell className="size-[19px]" aria-hidden="true" />
               </span>
               {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}
+              {identity.notificationsIndicator}
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-2xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>

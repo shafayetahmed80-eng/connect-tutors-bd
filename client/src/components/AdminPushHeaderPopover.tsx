@@ -5,6 +5,7 @@ import { Bell, CheckCircle2, Settings, Sparkles, AlertCircle } from "lucide-reac
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { useAdminPushSubscribed } from "@/hooks/useAdminPushSubscribed";
+import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
 import { subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
 
 export function AdminPushHeaderPopover() {
@@ -55,6 +56,7 @@ export function AdminPushHeaderPopover() {
           await existing.unsubscribe();
         }
         setSubscribed(false);
+        announcePushRegistrationChange();
         toast.success("নোটিফিকেশন বন্ধ করা হয়েছে।");
       } else {
         const outcome = await subscribeThisBrowser(publicKey, sub => subscribeMutation.mutateAsync(sub));
@@ -65,6 +67,7 @@ export function AdminPushHeaderPopover() {
         }
         setPermissionDenied(false);
         setSubscribed(true);
+        announcePushRegistrationChange();
         toast.success("ব্রাউজার নোটিফিকেশন চালু হয়েছে!");
       }
     } catch {
@@ -102,8 +105,10 @@ export function AdminPushHeaderPopover() {
         prefs.notifyPayments,
         prefs.notifyRegistrations,
         prefs.notifyChat,
+        prefs.notifyGuardianRequests,
+        prefs.notifyAccountChanges,
       ].filter(Boolean).length
-    : 5;
+    : 7;
 
   return (
     <div className="space-y-3.5">
@@ -131,7 +136,7 @@ export function AdminPushHeaderPopover() {
           <div>
             <p className="text-xs font-semibold text-j-ink">এই ডিভাইসে নোটিফিকেশন</p>
             <p className="text-2xs text-j-ink-soft">
-              {subscribed ? `${activeCount}/৫টি ক্যাটাগরি চালু আছে` : "চালু করতে সুইচ অন করুন"}
+              {subscribed ? `${activeCount}/৭টি ক্যাটাগরি চালু আছে` : "চালু করতে সুইচ অন করুন"}
             </p>
           </div>
         </div>

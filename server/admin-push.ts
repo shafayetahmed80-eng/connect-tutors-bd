@@ -3,13 +3,17 @@ import type { getDb } from "./db";
 import { adminPushPreferences, adminPushSubscriptions } from "../drizzle/schema";
 import { sendWebPushNotification } from "./chat-push";
 import type { PushPayload } from "@shared/push-messages";
+import { jobIdForRequest } from "@shared/job-id";
+import { accountChangeTypeBengaliLabels, type AccountChangeType } from "@shared/account-change-requests";
 
 export type AdminPushCategory =
   | "tuition_request"
   | "tutor_application"
   | "payment_report"
   | "tutor_registration"
-  | "tutor_chat";
+  | "tutor_chat"
+  | "guardian_request"
+  | "account_change";
 
 export type AdminPushPreferences = {
   notifyTuitions: boolean;
@@ -17,6 +21,8 @@ export type AdminPushPreferences = {
   notifyPayments: boolean;
   notifyRegistrations: boolean;
   notifyChat: boolean;
+  notifyGuardianRequests: boolean;
+  notifyAccountChanges: boolean;
 };
 
 export const DEFAULT_ADMIN_PUSH_PREFERENCES: AdminPushPreferences = {
@@ -25,6 +31,8 @@ export const DEFAULT_ADMIN_PUSH_PREFERENCES: AdminPushPreferences = {
   notifyPayments: true,
   notifyRegistrations: true,
   notifyChat: true,
+  notifyGuardianRequests: true,
+  notifyAccountChanges: true,
 };
 
 export type AdminPushEvent =
@@ -58,7 +66,32 @@ export type AdminPushEvent =
       tutorId: string;
       tutorName?: string | null;
       preview?: string | null;
+    }
+  | {
+      /** A Guardian asks an Admin to appoint a Tutor, confirm the appointed one, remove the Tutor, or cancel the tuition. */
+      type: "guardian_request";
+      requestId: number;
+      kind: GuardianRequestAlertKind;
+      guardianName?: string | null;
+    }
+  | {
+      type: "account_change";
+      requestRole: "guardian" | "tutor" | "admin";
+      changeType: AccountChangeType;
+      personName?: string | null;
     };
+
+export type GuardianRequestAlertKind = "appoint" | "confirm" | "remove_tutor" | "cancel_tuition";
+
+/** What the lock-screen line says and which Admin screen answers it. Removing a Tutor and cancelling the tuition share the Cancel Requests screen. */
+const guardianRequestCopy: Record<GuardianRequestAlertKind, { title: string; asked: string; screen: "appoint" | "confirm" | "cancel" }> = {
+  appoint: { title: "অ্যাপয়েন্টমেন্টের অনুরোধ", asked: "একজন টিউটরকে অ্যাপয়েন্ট করার অনুরোধ করেছেন", screen: "appoint" },
+  confirm: { title: "টিউশন কনফার্মের অনুরোধ", asked: "টিউশন কনফার্ম করার অনুরোধ করেছেন", screen: "confirm" },
+  remove_tutor: { title: "টিউটর সরানোর অনুরোধ", asked: "অ্যাপয়েন্ট করা টিউটরকে সরানোর অনুরোধ করেছেন", screen: "cancel" },
+  cancel_tuition: { title: "টিউশন বাতিলের অনুরোধ", asked: "টিউশন বাতিলের অনুরোধ করেছেন", screen: "cancel" },
+};
+
+const accountChangeRoleLabels = { guardian: "অভিভাবক", tutor: "টিউটর", admin: "অ্যাডমিন" } as const;
 
 export function formatAdminPushPayload(event: AdminPushEvent): { payload: PushPayload; category: AdminPushCategory } {
   switch (event.type) {
@@ -132,7 +165,35 @@ export function formatAdminPushPayload(event: AdminPushEvent): { payload: PushPa
         },
       };
     }
+    case "guardian_request":
+      return { category: "guardian_request", payload: formatGuardianRequestPayload(event) };
+    case "account_change":
+      return { category: "account_change", payload: formatAccountChangePayload(event) };
   }
+}
+
+export function formatGuardianRequestPayload(event: Extract<AdminPushEvent, { type: "guardian_request" }>): PushPayload {
+  const copy = guardianRequestCopy[event.kind];
+  const screen = `/admin/guardian-requests/${copy.screen}`;
+  return {
+    title: `${copy.title} (জব #${jobIdForRequest(event.requestId)})`,
+    body: `${event.guardianName || "অভিভাবক"} ${copy.asked}। উত্তর দিন।`,
+    url: screen,
+    tag: `admin-greq-${event.kind}-${event.requestId}`,
+    groupTitle: "{n}টি নতুন অভিভাবকের অনুরোধ",
+    groupUrl: screen,
+  };
+}
+
+export function formatAccountChangePayload(event: Extract<AdminPushEvent, { type: "account_change" }>): PushPayload {
+  return {
+    title: "অ্যাকাউন্ট পরিবর্তনের অনুরোধ",
+    body: `${event.personName || "একজন ব্যবহারকারী"} (${accountChangeRoleLabels[event.requestRole]}) ${accountChangeTypeBengaliLabels[event.changeType]} চেয়েছেন।`,
+    url: "/admin/change-requests",
+    tag: `admin-change-${event.requestRole}-${event.changeType}`,
+    groupTitle: "{n}টি নতুন অ্যাকাউন্ট পরিবর্তনের অনুরোধ",
+    groupUrl: "/admin/change-requests",
+  };
 }
 
 function categoryToPrefKey(category: AdminPushCategory): keyof AdminPushPreferences {
@@ -147,12 +208,17 @@ function categoryToPrefKey(category: AdminPushCategory): keyof AdminPushPreferen
       return "notifyRegistrations";
     case "tutor_chat":
       return "notifyChat";
+    case "guardian_request":
+      return "notifyGuardianRequests";
+    case "account_change":
+      return "notifyAccountChanges";
   }
 }
 
 type DatabaseInstance = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-export async function notifyAdminsOfEvent(database: DatabaseInstance, event: AdminPushEvent) {
+/** `onlyAdminId` narrows the alert to one Admin's devices - another Admin's own requests are the Project Owner's alone. */
+export async function notifyAdminsOfEvent(database: DatabaseInstance, event: AdminPushEvent, options: { onlyAdminId?: number } = {}) {
   try {
     const { payload, category } = formatAdminPushPayload(event);
     const prefKey = categoryToPrefKey(category);
@@ -172,7 +238,7 @@ export async function notifyAdminsOfEvent(database: DatabaseInstance, event: Adm
     if (subscriptions.length === 0) return { sent: 0 };
 
     // Subscriptions where pref is null (default true) or explicitly true:
-    const active = subscriptions.filter(sub => sub.prefValue !== false);
+    const active = subscriptions.filter(sub => sub.prefValue !== false && (options.onlyAdminId === undefined || sub.adminId === options.onlyAdminId));
     if (active.length === 0) return { sent: 0 };
 
     const results = await Promise.all(
@@ -209,6 +275,8 @@ export async function getAdminPushPreferences(database: DatabaseInstance, adminI
     notifyPayments: Boolean(row.notifyPayments),
     notifyRegistrations: Boolean(row.notifyRegistrations),
     notifyChat: Boolean(row.notifyChat),
+    notifyGuardianRequests: Boolean(row.notifyGuardianRequests),
+    notifyAccountChanges: Boolean(row.notifyAccountChanges),
   };
 }
 
@@ -224,6 +292,8 @@ export async function updateAdminPushPreferences(
     notifyPayments: updates.notifyPayments ?? current.notifyPayments,
     notifyRegistrations: updates.notifyRegistrations ?? current.notifyRegistrations,
     notifyChat: updates.notifyChat ?? current.notifyChat,
+    notifyGuardianRequests: updates.notifyGuardianRequests ?? current.notifyGuardianRequests,
+    notifyAccountChanges: updates.notifyAccountChanges ?? current.notifyAccountChanges,
   };
 
   await database

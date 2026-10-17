@@ -25,6 +25,8 @@ vi.mock("@/lib/trpc", () => ({
             notifyPayments: true,
             notifyRegistrations: true,
             notifyChat: true,
+            notifyGuardianRequests: true,
+            notifyAccountChanges: true,
           },
         }),
       },
@@ -99,7 +101,7 @@ describe("AdminPushHeaderPopover", () => {
     render(<AdminPushHeaderPopover />);
 
     await waitFor(() => {
-      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" });
+      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" }, { staleTime: 0 });
     });
     expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("false");
     expect(screen.queryAllByRole("button")).toHaveLength(0);

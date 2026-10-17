@@ -38,7 +38,9 @@ export async function sendWebPushNotification(subscription: WebPushSubscriptionK
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-      JSON.stringify(withPushGrouping(payload))
+      JSON.stringify(withPushGrouping(payload)),
+      // "high" asks the push service to wake a sleeping phone now rather than batch the alert with others.
+      { urgency: "high" }
     );
     return { ok: true as const, gone: false, notConfigured: false as const, statusCode: undefined };
   } catch (error) {

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Bell } from "lucide-react";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
+import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
 import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
 
 /** "Not now" keeps the prompt away for a week; a browser that has answered (Allow or Block) is never asked again. */
@@ -11,40 +12,49 @@ export const PUSH_PROMPT_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A beat after the dashboard opens, so it does not land on top of the page while it is still drawing. */
 const PROMPT_DELAY_MS = 1800;
 
-function snoozedUntil() {
+function snoozedUntil(snoozeKey: string) {
   try {
-    return Number(window.localStorage.getItem(PUSH_PROMPT_SNOOZE_KEY)) || 0;
+    return Number(window.localStorage.getItem(snoozeKey)) || 0;
   } catch {
     return 0;
   }
 }
 
-function snoozeForAWeek() {
+function snoozeForAWeek(snoozeKey: string) {
   try {
-    window.localStorage.setItem(PUSH_PROMPT_SNOOZE_KEY, String(Date.now() + PUSH_PROMPT_SNOOZE_MS));
+    window.localStorage.setItem(snoozeKey, String(Date.now() + PUSH_PROMPT_SNOOZE_MS));
   } catch {
     // Without storage the prompt simply comes back next visit.
   }
 }
 
-function PushPermissionPromptDialog() {
-  const keyQuery = trpc.pushNotifications.getPublicKey.useQuery(undefined, { retry: false });
-  const subscribeMutation = trpc.pushNotifications.subscribe.useMutation();
+/**
+ * The one "turn on notifications?" dialog, for every panel. `shouldOpen` is the
+ * panel's own judgement (a Tutor's browser never asked; an Admin's browser the
+ * server does not know); this adds the beat before it shows and the one-week
+ * "Not now".
+ */
+export function PushPromptDialog({ shouldOpen, publicKey, save, snoozeKey, body, successMessage }: {
+  shouldOpen: boolean;
+  publicKey: string | null;
+  save: (subscription: { endpoint: string; p256dh: string; auth: string }) => Promise<unknown>;
+  snoozeKey: string;
+  body: string;
+  successMessage: string;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const publicKey = keyQuery.data?.publicKey ?? null;
 
   useEffect(() => {
-    // Permission still "default" means this browser was never asked, so it cannot hold a subscription either.
-    if (!publicKey || Notification.permission !== "default" || snoozedUntil() > Date.now()) return;
+    if (!publicKey || !shouldOpen || snoozedUntil(snoozeKey) > Date.now()) return;
     const timer = setTimeout(() => setOpen(true), PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [publicKey]);
+  }, [publicKey, shouldOpen, snoozeKey]);
 
   if (!open || !publicKey) return null;
 
   const notNow = () => {
-    snoozeForAWeek();
+    snoozeForAWeek(snoozeKey);
     setOpen(false);
   };
 
@@ -52,12 +62,15 @@ function PushPermissionPromptDialog() {
   const turnOn = async () => {
     setBusy(true);
     try {
-      const outcome = await subscribeThisBrowser(publicKey, subscription => subscribeMutation.mutateAsync(subscription));
-      if (outcome === "subscribed") toast.success("Notifications are on for this browser.");
+      const outcome = await subscribeThisBrowser(publicKey, save);
+      if (outcome === "subscribed") {
+        toast.success(successMessage);
+        announcePushRegistrationChange();
+      }
       setOpen(false);
     } catch {
       toast.error("Could not enable notifications.");
-      snoozeForAWeek();
+      snoozeForAWeek(snoozeKey);
       setOpen(false);
     } finally {
       setBusy(false);
@@ -69,10 +82,7 @@ function PushPermissionPromptDialog() {
     <ModalBody>
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#dff2ff] text-j-accent"><Bell size={18} aria-hidden="true" /></span>
-        <p className="text-sm leading-6 text-j-ink-soft">
-          চালু করলে অ্যাপয়েন্টমেন্ট, লেটার বা কোনো সিদ্ধান্তের মতো গুরুত্বপূর্ণ আপডেট ফোনের লক স্ক্রিনেও নোটিফিকেশন হিসেবে আসবে।
-          এরপর ব্রাউজার একটা অনুমতি চাইবে, সেখানে Allow করুন।
-        </p>
+        <p className="text-sm leading-6 text-j-ink-soft">{body}</p>
       </div>
     </ModalBody>
     <ModalFooter>
@@ -80,6 +90,22 @@ function PushPermissionPromptDialog() {
       <button type="button" onClick={() => void turnOn()} disabled={busy} className="h-control rounded-xl bg-j-accent px-4 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-60">চালু করুন</button>
     </ModalFooter>
   </Modal>;
+}
+
+function PushPermissionPromptDialog() {
+  const keyQuery = trpc.pushNotifications.getPublicKey.useQuery(undefined, { retry: false });
+  const subscribeMutation = trpc.pushNotifications.subscribe.useMutation();
+  const publicKey = keyQuery.data?.publicKey ?? null;
+
+  // Permission still "default" means this browser was never asked, so it cannot hold a subscription either.
+  return <PushPromptDialog
+    shouldOpen={Notification.permission === "default"}
+    publicKey={publicKey}
+    save={subscription => subscribeMutation.mutateAsync(subscription)}
+    snoozeKey={PUSH_PROMPT_SNOOZE_KEY}
+    body="চালু করলে অ্যাপয়েন্টমেন্ট, লেটার বা কোনো সিদ্ধান্তের মতো গুরুত্বপূর্ণ আপডেট ফোনের লক স্ক্রিনেও নোটিফিকেশন হিসেবে আসবে। এরপর ব্রাউজার একটা অনুমতি চাইবে, সেখানে Allow করুন।"
+    successMessage="Notifications are on for this browser."
+  />;
 }
 
 /**

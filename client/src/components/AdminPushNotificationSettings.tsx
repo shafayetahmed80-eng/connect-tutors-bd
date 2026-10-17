@@ -8,12 +8,15 @@ import {
   CreditCard,
   UserCheck,
   MessageSquare,
+  ClipboardList,
+  UserCog,
   AlertCircle,
   Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { useAdminPushSubscribed } from "@/hooks/useAdminPushSubscribed";
+import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
 import { subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
 
 export function AdminPushNotificationSettings() {
@@ -71,6 +74,7 @@ export function AdminPushNotificationSettings() {
           await existing.unsubscribe();
         }
         setSubscribed(false);
+        announcePushRegistrationChange();
         toast.success("এই ডিভাইসে নোটিফিকেশন বন্ধ করা হয়েছে।");
       } else {
         const outcome = await subscribeThisBrowser(publicKey, sub => subscribeMutation.mutateAsync(sub));
@@ -81,6 +85,7 @@ export function AdminPushNotificationSettings() {
         }
         setPermissionDenied(false);
         setSubscribed(true);
+        announcePushRegistrationChange();
         toast.success("এই ডিভাইসে নোটিফিকেশন সফলভাবে চালু হয়েছে!");
       }
     } catch (err) {
@@ -91,7 +96,7 @@ export function AdminPushNotificationSettings() {
     }
   };
 
-  const handleCategoryToggle = async (key: "notifyTuitions" | "notifyApplications" | "notifyPayments" | "notifyRegistrations" | "notifyChat", currentValue: boolean) => {
+  const handleCategoryToggle = async (key: "notifyTuitions" | "notifyApplications" | "notifyPayments" | "notifyRegistrations" | "notifyChat" | "notifyGuardianRequests" | "notifyAccountChanges", currentValue: boolean) => {
     const nextValue = !currentValue;
     try {
       await updatePreferencesMutation.mutateAsync({ [key]: nextValue });
@@ -128,6 +133,8 @@ export function AdminPushNotificationSettings() {
     notifyPayments: true,
     notifyRegistrations: true,
     notifyChat: true,
+    notifyGuardianRequests: true,
+    notifyAccountChanges: true,
   };
 
   const categories = [
@@ -170,6 +177,22 @@ export function AdminPushNotificationSettings() {
       title: "টিউটর চ্যাট মেসেজ",
       desc: "টিউটর অ্যাডমিন সাপোর্টে নতুন মেসেজ পাঠালে সাথে সাথে নোটিফিকেশন আসবে।",
       value: prefs.notifyChat,
+    },
+    {
+      key: "notifyGuardianRequests" as const,
+      icon: ClipboardList,
+      iconTone: "bg-rose-50 text-rose-600",
+      title: "গার্ডিয়ানের টিউশন অনুরোধ",
+      desc: "অভিভাবক টিউটর অ্যাপয়েন্ট, কনফার্ম, সরানো বা টিউশন বাতিলের অনুরোধ করলে নোটিফিকেশন আসবে।",
+      value: prefs.notifyGuardianRequests,
+    },
+    {
+      key: "notifyAccountChanges" as const,
+      icon: UserCog,
+      iconTone: "bg-slate-100 text-slate-600",
+      title: "অ্যাকাউন্ট পরিবর্তনের অনুরোধ",
+      desc: "টিউটর বা অভিভাবক নাম, মোবাইল নম্বর, ভেরিফিকেশন বা অ্যাকাউন্ট মুছে ফেলার অনুরোধ করলে নোটিফিকেশন আসবে।",
+      value: prefs.notifyAccountChanges,
     },
   ];
 

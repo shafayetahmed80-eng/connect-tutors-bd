@@ -1816,6 +1816,7 @@ export const appRouter = router({
       });
       if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: accountChangeRefusalMessages.request_waiting });
       if (phoneCodeId !== null) await db.consumePhoneVerificationCode(phoneCodeId);
+      void db.notifyAdminPushEvent({ type: "account_change", requestRole: context.role, changeType: input.type, personName: ctx.user.name || null }).catch(() => {});
       return { requested: true as const, id: result.id };
     }),
     /** Sends the SMS code that proves the person holds the new mobile they are asking for. */
@@ -2537,6 +2538,8 @@ export const appRouter = router({
         notifyPayments: z.boolean().optional(),
         notifyRegistrations: z.boolean().optional(),
         notifyChat: z.boolean().optional(),
+        notifyGuardianRequests: z.boolean().optional(),
+        notifyAccountChanges: z.boolean().optional(),
       }))
       .mutation(({ ctx, input }) => db.updateAdminPushPreferences(ctx.user.id, input)),
     sendTestPush: adminProcedure.mutation(({ ctx }) => db.sendTestAdminPushNotification(ctx.user.id)),
@@ -3115,6 +3118,10 @@ export const appRouter = router({
     unsubscribe: protectedProcedure
       .input(z.object({ endpoint: z.string().trim().min(1) }))
       .mutation(({ ctx, input }) => db.unsubscribeFromPushNotifications({ userId: ctx.user.id, endpoint: input.endpoint })),
+    /** Whether this browser is registered for the signed-in user's alerts. The browser alone cannot say: it may hold a subscription made for something else. */
+    isSubscribed: protectedProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1) }))
+      .query(({ ctx, input }) => db.isPushSubscribedForUser({ userId: ctx.user.id, endpoint: input.endpoint })),
   }),
   tutorRequests: router({
     assigned: activeTutorProcedure.query(({ ctx }) => db.listTutorAssignedRequests(ctx.user.id)),
@@ -3161,6 +3168,7 @@ export const appRouter = router({
         const result = await db.requestGuardianAppointment({ guardianUserId: ctx.user.id, ...input });
         if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This applicant is unavailable." });
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: appointmentRefusalMessages[result.reason] });
+        void db.notifyAdminPushEvent({ type: "guardian_request", requestId: input.requestId, kind: "appoint", guardianName: ctx.user.name || null }).catch(() => {});
         return { requested: true as const };
       }),
     withdrawAppointmentRequest: guardianProcedure
@@ -3190,6 +3198,7 @@ export const appRouter = router({
         const result = await db.createGuardianTuitionRequest({ ...input, guardianUserId: ctx.user.id });
         if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "This tuition is unavailable." });
         if (result.outcome === "refused") throw new TRPCError({ code: "CONFLICT", message: guardianTuitionRequestRefusalMessages[result.reason] });
+        void db.notifyAdminPushEvent({ type: "guardian_request", requestId: input.requestId, kind: input.type, guardianName: ctx.user.name || null }).catch(() => {});
         return { requested: true as const };
       }),
     withdrawTuitionChange: guardianProcedure

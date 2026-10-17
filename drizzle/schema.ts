@@ -1913,6 +1913,8 @@ export const adminPushPreferences = mysqlTable(
     notifyPayments: boolean("notifyPayments").default(true).notNull(),
     notifyRegistrations: boolean("notifyRegistrations").default(true).notNull(),
     notifyChat: boolean("notifyChat").default(true).notNull(),
+    notifyGuardianRequests: boolean("notifyGuardianRequests").default(true).notNull(),
+    notifyAccountChanges: boolean("notifyAccountChanges").default(true).notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [

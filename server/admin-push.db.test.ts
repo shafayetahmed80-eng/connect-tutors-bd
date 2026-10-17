@@ -6,7 +6,7 @@ const chatPushMocks = vi.hoisted(() => ({ sendWebPushNotification: vi.fn(), getW
 vi.mock("./chat-push", () => chatPushMocks);
 
 import { ENV } from "./_core/env";
-import { getDb, isAdminPushSubscribed, notifyAdminPushEvent, sendPushToOwner } from "./db";
+import { getDb, isAdminPushSubscribed, isPushSubscribedForUser, notifyAdminPushEvent, sendPushToOwner } from "./db";
 
 const runId = `${Date.now()}`;
 const endpointOf = (name: string) => `https://push.example/${runId}/${name}`;
@@ -14,6 +14,7 @@ const delivered = () => chatPushMocks.sendWebPushNotification.mock.calls.map(([s
 
 let adminAllOn: number;
 let adminTuitionsOff: number;
+let adminRequestsOff: number;
 let ownerId: number;
 const createdUserIds: number[] = [];
 const originalOwnerOpenId = ENV.ownerOpenId;
@@ -34,9 +35,11 @@ async function addAdminDevice(adminId: number, name: string) {
 beforeAll(async () => {
   adminAllOn = await createUser("all-on");
   adminTuitionsOff = await createUser("tuitions-off");
+  adminRequestsOff = await createUser("requests-off");
   ownerId = await createUser("owner");
   const database = await getDb();
   await database!.insert(adminPushPreferences).values({ adminId: adminTuitionsOff, notifyTuitions: false });
+  await database!.insert(adminPushPreferences).values({ adminId: adminRequestsOff, notifyGuardianRequests: false, notifyAccountChanges: false });
   ENV.ownerOpenId = `test-admin-push-owner-${runId}`;
 });
 
@@ -99,5 +102,45 @@ describe("Admin alerts against the real database", () => {
     await sendPushToOwner({ title: "t", body: "b", url: "/admin/security" });
 
     await expect(isAdminPushSubscribed(ownerId, endpointOf("owner-gone-phone"))).resolves.toEqual({ subscribed: false });
+  });
+});
+
+describe("Guardian-request and account-change alerts against the real database", () => {
+  it("reach every Admin device except one whose Admin switched that kind off, using the new columns", async () => {
+    await addAdminDevice(adminRequestsOff, "requests-off-phone");
+
+    await notifyAdminPushEvent({ type: "guardian_request", requestId: 13, kind: "confirm", guardianName: "Rina Akter" });
+    expect(delivered()).toContain(endpointOf("all-on-phone"));
+    expect(delivered()).not.toContain(endpointOf("requests-off-phone"));
+
+    chatPushMocks.sendWebPushNotification.mockClear();
+    await notifyAdminPushEvent({ type: "account_change", requestRole: "tutor", changeType: "name", personName: "Karim Uddin" });
+    expect(delivered()).toContain(endpointOf("all-on-phone"));
+    expect(delivered()).not.toContain(endpointOf("requests-off-phone"));
+
+    chatPushMocks.sendWebPushNotification.mockClear();
+    await notifyAdminPushEvent({ type: "tutor_chat", tutorId: "tutor-1", tutorName: "Test", preview: "hi" });
+    expect(delivered()).toContain(endpointOf("requests-off-phone"));
+  });
+
+  it("keeps another Admin's own request to the Project Owner's devices", async () => {
+    await addAdminDevice(ownerId, "owner-alerts-phone");
+
+    await notifyAdminPushEvent({ type: "account_change", requestRole: "admin", changeType: "mobile", personName: "Some Admin" });
+
+    // The Owner may hold other devices from the tests above; what matters is that no other Admin's device heard of it.
+    expect(delivered()).toContain(endpointOf("owner-alerts-phone"));
+    expect(delivered()).not.toContain(endpointOf("all-on-phone"));
+    expect(delivered()).not.toContain(endpointOf("tuitions-off-phone"));
+    expect(delivered()).not.toContain(endpointOf("requests-off-phone"));
+  });
+
+  it("tells a Tutor or Guardian whether this very browser is registered under their own account", async () => {
+    const database = await getDb();
+    await database!.insert(pushSubscriptions).values({ userId: adminAllOn, endpoint: endpointOf("account-phone"), p256dh: "p256dh", auth: "auth" });
+
+    await expect(isPushSubscribedForUser({ userId: adminAllOn, endpoint: endpointOf("account-phone") })).resolves.toEqual({ subscribed: true });
+    await expect(isPushSubscribedForUser({ userId: adminTuitionsOff, endpoint: endpointOf("account-phone") })).resolves.toEqual({ subscribed: false });
+    await expect(isPushSubscribedForUser({ userId: adminAllOn, endpoint: endpointOf("never-seen") })).resolves.toEqual({ subscribed: false });
   });
 });

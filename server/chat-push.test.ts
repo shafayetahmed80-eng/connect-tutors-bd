@@ -24,6 +24,12 @@ describe("sending a phone push", () => {
     expect(sent()).toMatchObject({ title: "অ্যাডমিনের মেসেজ", body: "hello", url: ADMIN_CHAT_PUSH_URL, tag: "admin-chat", groupTitle: "অ্যাডমিনের {n}টি মেসেজ", groupUrl: ADMIN_CHAT_PUSH_URL });
   });
 
+  it("asks the push service to deliver at once, so a sleeping phone is woken", async () => {
+    await sendWebPushNotification(subscription, { title: "t", body: "b" });
+
+    expect(sendNotification.mock.calls[0]![2]).toEqual({ urgency: "high" });
+  });
+
   it("sends a push that opens somewhere unknown exactly as it was given", async () => {
     await sendWebPushNotification(subscription, { title: "t", body: "b", url: "/somewhere" });
 
