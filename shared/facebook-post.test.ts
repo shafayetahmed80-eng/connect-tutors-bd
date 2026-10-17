@@ -354,4 +354,45 @@ describe("buildDynamicBulkHeadline", () => {
       "📢 Total 1 🔹 Bangla Medium 🎓 Female Tuition Available At 📍 Dhaka City (Dhanmondi) Area right now.",
     );
   });
+
+  it("appends smart hashtags to single post when includeHashtags is true", () => {
+    const post = buildFacebookPostText(
+      {
+        id: 1,
+        jobId: "CT-101",
+        classCourse: "Class 10",
+        category: "English Medium",
+        tuitionLocationLabel: "Dhanmondi, Dhaka",
+        budgetAmount: 10000,
+      },
+      {
+        includeHashtags: true,
+      },
+    );
+
+    expect(post).toContain("#ConnectTutors");
+    expect(post).toContain("#DhanmondiTuition");
+    expect(post).toContain("#EnglishMediumTutors");
+  });
+
+  it("appends smart hashtags to bulk post when includeHashtags is true", () => {
+    const post = buildEnglishBulkFacebookPostText(
+      [
+        {
+          id: 1,
+          jobId: "CT-101",
+          classCourse: "Class 10",
+          category: "English Medium",
+          tuitionLocationLabel: "Dhanmondi, Dhaka",
+          budgetAmount: 10000,
+        },
+      ],
+      {
+        includeHashtags: true,
+      },
+    );
+
+    expect(post).toContain("#ConnectTutors");
+    expect(post).toContain("#DhanmondiTuition");
+  });
 });

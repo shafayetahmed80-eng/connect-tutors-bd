@@ -1,6 +1,17 @@
 import { formatDaysPerWeek, formatLocation, formatNotes, formatStudentCount, formatStudentGender, formatSubjects, formatTutorPreference } from "./job-card";
 import { formatSalaryAmount } from "./salary-amount";
 import { jobIdForRequest } from "./job-id";
+import {
+  formatHashtags,
+  generateBulkSmartHashtags,
+  generateSmartHashtags,
+} from "./facebook-hashtags";
+
+export {
+  formatHashtags,
+  generateBulkSmartHashtags,
+  generateSmartHashtags,
+};
 
 export type FacebookPostJobInput = {
   id: number;
@@ -45,16 +56,24 @@ export interface FacebookBulkHeaderFilterOptions {
   locationNames?: string[];
 }
 
+export interface BuildSinglePostOptions {
+  origin?: string;
+  template?: FacebookPostCustomTemplate;
+  includeHashtags?: boolean;
+}
+
 export interface BuildBulkPostOptions {
   origin?: string;
   template?: FacebookPostCustomTemplate;
   format?: FacebookPostBulkFormat;
   filterOptions?: FacebookBulkHeaderFilterOptions;
+  includeHashtags?: boolean;
 }
 
 export interface BuildJobDetailsInlineOptions {
   origin?: string;
   includeApplyUrl?: boolean;
+  includeHashtags?: boolean;
 }
 
 export const ITEM_DIVIDER = "────────────────────────────────────────";
@@ -106,10 +125,11 @@ export function renderTemplateText(
  */
 export function buildFacebookPostText(
   job: FacebookPostJobInput,
-  optionsOrOrigin: string | { origin?: string; template?: FacebookPostCustomTemplate } = "https://connecttutorsbd.com",
+  optionsOrOrigin: string | BuildSinglePostOptions = "https://connecttutorsbd.com",
 ): string {
   const origin = typeof optionsOrOrigin === "string" ? optionsOrOrigin : (optionsOrOrigin.origin || "https://connecttutorsbd.com");
   const template = typeof optionsOrOrigin === "object" ? optionsOrOrigin.template : undefined;
+  const includeHashtags = typeof optionsOrOrigin === "object" ? Boolean(optionsOrOrigin.includeHashtags) : false;
 
   const code = job.jobId || jobIdForRequest(job.id);
   const cleanOrigin = origin.replace(/\/+$/, "");
@@ -141,7 +161,15 @@ export function buildFacebookPostText(
   const jobLine = parts.join("  |  ");
   const body = `${areaHeading}\n${jobLine}\n${ITEM_DIVIDER}`;
 
-  return [header, "", body, "", footer].join("\n");
+  const postBlocks = [header, "", body, "", footer];
+  if (includeHashtags) {
+    const hashtags = formatHashtags(generateSmartHashtags(job));
+    if (hashtags) {
+      postBlocks.push("", hashtags);
+    }
+  }
+
+  return postBlocks.join("\n");
 }
 
 /**
@@ -239,7 +267,14 @@ export function buildEnglishJobDetailsInline(
     const cleanOrigin = origin.replace(/\/+$/, "");
     parts.push(`Apply: ${cleanOrigin}/job-board?job=${encodeURIComponent(f.code)}`);
   }
-  return parts.join("  |  ");
+  let line = parts.join("  |  ");
+  if (options.includeHashtags) {
+    const hashtags = formatHashtags(generateSmartHashtags(job));
+    if (hashtags) {
+      line += `\n${hashtags}`;
+    }
+  }
+  return line;
 }
 
 /**
@@ -498,7 +533,16 @@ export function buildEnglishBulkFacebookPostText(
       .join("\n");
   }
 
-  return [header, "", bodyContent, "", footer].join("\n");
+  const postBlocks = [header, "", bodyContent, "", footer];
+  const includeHashtags = typeof optionsOrOrigin === "object" ? Boolean(optionsOrOrigin.includeHashtags) : false;
+  if (includeHashtags) {
+    const hashtags = formatHashtags(generateBulkSmartHashtags(jobs));
+    if (hashtags) {
+      postBlocks.push("", hashtags);
+    }
+  }
+
+  return postBlocks.join("\n");
 }
 
 
