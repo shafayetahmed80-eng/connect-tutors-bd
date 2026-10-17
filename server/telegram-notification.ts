@@ -42,11 +42,16 @@ export function buildGuardianRequestTelegramMessage(input: GuardianRequestTelegr
   ].join("\n");
 }
 
-/** A plain one-line alert to the Admin chat - for operational trouble such as the SMS balance running out. */
+/** Both the bot token and a numeric chat id (a group's is negative) - otherwise nothing is sent to Telegram at all. */
+export function isTelegramAdminConfigured() {
+  return Boolean(ENV.telegramBotToken && ENV.telegramChatId && /^-?\d+$/.test(ENV.telegramChatId));
+}
+
+/** A plain alert to the Admin chat - Admin activity alerts, and operational trouble such as the SMS balance running out. */
 export async function sendTelegramAdminText(text: string) {
   const token = ENV.telegramBotToken;
   const chatId = ENV.telegramChatId;
-  if (!token || !chatId || !/^-?\d+$/.test(chatId)) return false;
+  if (!isTelegramAdminConfigured()) return false;
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",

@@ -64,7 +64,7 @@ import {
   policyBodySchema,
   policyPageKeySchema,
 } from "./site-content";
-import { notifyTelegramAdmin } from "./telegram-notification";
+import { isTelegramAdminConfigured, notifyTelegramAdmin } from "./telegram-notification";
 import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsInputSchema, refineLearningNeeds, withLegacyLearningNeeds } from "./learning-needs-input";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -3338,7 +3338,8 @@ export const appRouter = router({
         monthlyBudget,
         locationText,
       }, needs.learningNeeds);
-      const notificationDelivered = await notifyTelegramAdmin({
+      // The Owner's "new tuition request" switch covers this Telegram message as well as the phone alert.
+      const notificationDelivered = isTelegramAdminConfigured() && await db.ownerAllowsAdminAlert("tuition_request") && await notifyTelegramAdmin({
         requestId: result.id,
         category: needs.category,
         classCourse: needs.classCourse,

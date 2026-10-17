@@ -1,7 +1,9 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { getDb } from "./db";
-import { adminPushPreferences, adminPushSubscriptions } from "../drizzle/schema";
+import { adminPushPreferences, adminPushSubscriptions, users } from "../drizzle/schema";
+import { ENV } from "./_core/env";
 import { sendWebPushNotification } from "./chat-push";
+import { isTelegramAdminConfigured, sendTelegramAdminText } from "./telegram-notification";
 import type { PushPayload } from "@shared/push-messages";
 import { jobIdForRequest } from "@shared/job-id";
 import { accountChangeTypeBengaliLabels, type AccountChangeType } from "@shared/account-change-requests";
@@ -221,43 +223,80 @@ type DatabaseInstance = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export async function notifyAdminsOfEvent(database: DatabaseInstance, event: AdminPushEvent, options: { onlyAdminId?: number } = {}) {
   try {
     const { payload, category } = formatAdminPushPayload(event);
-    const prefKey = categoryToPrefKey(category);
-
-    const subscriptions = await database
-      .select({
-        id: adminPushSubscriptions.id,
-        adminId: adminPushSubscriptions.adminId,
-        endpoint: adminPushSubscriptions.endpoint,
-        p256dh: adminPushSubscriptions.p256dh,
-        auth: adminPushSubscriptions.auth,
-        prefValue: adminPushPreferences[prefKey],
-      })
-      .from(adminPushSubscriptions)
-      .leftJoin(adminPushPreferences, eq(adminPushPreferences.adminId, adminPushSubscriptions.adminId));
-
-    if (subscriptions.length === 0) return { sent: 0 };
-
-    // Subscriptions where pref is null (default true) or explicitly true:
-    const active = subscriptions.filter(sub => sub.prefValue !== false && (options.onlyAdminId === undefined || sub.adminId === options.onlyAdminId));
-    if (active.length === 0) return { sent: 0 };
-
-    const results = await Promise.all(
-      active.map(async sub => ({
-        id: sub.id,
-        result: await sendWebPushNotification(sub, payload),
-      }))
-    );
-
-    const goneIds = results.filter(row => row.result.gone).map(row => row.id);
-    if (goneIds.length > 0) {
-      await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
-    }
-
-    return { sent: results.filter(r => r.result.ok).length };
+    const [push] = await Promise.all([
+      pushToAdminDevices(database, payload, category, options),
+      sendAdminEventToTelegram(database, event, payload, category, options).catch(error => {
+        console.error("Failed to send the Admin Telegram alert:", error);
+        return false;
+      }),
+    ]);
+    return push;
   } catch (err) {
     console.error("Failed to notify admins of push event:", err);
     return { sent: 0 };
   }
+}
+
+async function pushToAdminDevices(database: DatabaseInstance, payload: PushPayload, category: AdminPushCategory, options: { onlyAdminId?: number }) {
+  const prefKey = categoryToPrefKey(category);
+  const subscriptions = await database
+    .select({
+      id: adminPushSubscriptions.id,
+      adminId: adminPushSubscriptions.adminId,
+      endpoint: adminPushSubscriptions.endpoint,
+      p256dh: adminPushSubscriptions.p256dh,
+      auth: adminPushSubscriptions.auth,
+      prefValue: adminPushPreferences[prefKey],
+    })
+    .from(adminPushSubscriptions)
+    .leftJoin(adminPushPreferences, eq(adminPushPreferences.adminId, adminPushSubscriptions.adminId));
+
+  if (subscriptions.length === 0) return { sent: 0 };
+
+  // Subscriptions where pref is null (default true) or explicitly true:
+  const active = subscriptions.filter(sub => sub.prefValue !== false && (options.onlyAdminId === undefined || sub.adminId === options.onlyAdminId));
+  if (active.length === 0) return { sent: 0 };
+
+  const results = await Promise.all(
+    active.map(async sub => ({
+      id: sub.id,
+      result: await sendWebPushNotification(sub, payload),
+    }))
+  );
+
+  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
+  if (goneIds.length > 0) {
+    await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
+  }
+
+  return { sent: results.filter(r => r.result.ok).length };
+}
+
+/**
+ * The Admin Telegram chat is one place, not one Admin, so the Project Owner's own
+ * switches decide what reaches it - the same switches as the Owner's phone alerts.
+ * No Owner account yet means nothing has been switched off.
+ */
+export async function ownerAllowsAdminAlert(database: DatabaseInstance, category: AdminPushCategory) {
+  if (!ENV.ownerOpenId) return true;
+  const [owner] = await database.select({ id: users.id }).from(users).where(eq(users.openId, ENV.ownerOpenId)).limit(1);
+  if (!owner) return true;
+  const preferences = await getAdminPushPreferences(database, owner.id);
+  return preferences[categoryToPrefKey(category)];
+}
+
+/** The phone alert's own words, with the full link so a tap in Telegram opens the right Admin screen. */
+export function formatAdminTelegramMessage(payload: PushPayload) {
+  return [`🔔 ${payload.title}`, payload.body, payload.url ? `${ENV.publicSiteUrl}${payload.url}` : null].filter(Boolean).join("\n");
+}
+
+async function sendAdminEventToTelegram(database: DatabaseInstance, event: AdminPushEvent, payload: PushPayload, category: AdminPushCategory, options: { onlyAdminId?: number }) {
+  if (!isTelegramAdminConfigured()) return false;
+  // The chat is shared with other Admins, so an alert meant for one Admin (the Owner) stays off it.
+  // A new tuition request already sends its own, fuller Telegram message when it is made.
+  if (options.onlyAdminId !== undefined || event.type === "tuition_request") return false;
+  if (!(await ownerAllowsAdminAlert(database, category))) return false;
+  return sendTelegramAdminText(formatAdminTelegramMessage(payload));
 }
 
 export async function getAdminPushPreferences(database: DatabaseInstance, adminId: number): Promise<AdminPushPreferences> {

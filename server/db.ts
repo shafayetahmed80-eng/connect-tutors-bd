@@ -146,6 +146,8 @@ import {
   updateAdminPushPreferences as updateAdminPushPreferencesDb,
   sendTestAdminPushNotification as sendTestAdminPushNotificationDb,
   isAdminPushSubscribed as isAdminPushSubscribedDb,
+  ownerAllowsAdminAlert as ownerAllowsAdminAlertDb,
+  type AdminPushCategory,
   type AdminPushEvent,
   type AdminPushPreferences,
 } from "./admin-push";
@@ -7322,6 +7324,13 @@ export async function sendTestAdminPushNotification(adminId: number) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   return sendTestAdminPushNotificationDb(database, adminId);
+}
+
+/** Whether the Project Owner's switches let this kind of Admin alert reach the shared Telegram chat. */
+export async function ownerAllowsAdminAlert(category: AdminPushCategory) {
+  const database = await getDb();
+  if (!database) return true;
+  return ownerAllowsAdminAlertDb(database, category);
 }
 
 export async function isAdminPushSubscribed(adminId: number, endpoint: string) {

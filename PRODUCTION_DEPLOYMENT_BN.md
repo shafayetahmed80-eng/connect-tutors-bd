@@ -62,8 +62,8 @@ cPanel Node.js App-এর **Environment Variables** section-এ যোগ কর
 | `DATABASE_URL` | আবশ্যক | আপনার production MySQL connection string |
 | `JWT_SECRET` | আবশ্যক | একটা লম্বা, র‍্যান্ডম, গোপন string — কমপক্ষে ৩২ অক্ষর (session cookie ও Admin 2FA সাইনিং-এর জন্য)। না দিলে বা ছোট হলে সার্ভার চালুই হবে না, লগে কারণ লেখা থাকবে |
 | `LOCAL_STORAGE_DIR` | ঐচ্ছিক | ছবি রাখার path, না দিলে ডিফল্ট `<app-root>/private-uploads` ব্যবহার হবে |
-| `TELEGRAM_BOT_TOKEN` | ঐচ্ছিক | নতুন request notification পেতে চাইলে |
-| `TELEGRAM_CHAT_ID` | ঐচ্ছিক | উপরেরটার সাথে জোড়ায় লাগে |
+| `TELEGRAM_BOT_TOKEN` | ঐচ্ছিক | Admin-দের Telegram গ্রুপে অ্যালার্ট: নতুন টিউশন, টিউটরের আবেদন, পেমেন্ট রিপোর্ট, টিউটর রেজিস্ট্রেশন, চ্যাট, গার্ডিয়ানের অনুরোধ আর অ্যাকাউন্ট পরিবর্তন। কোনটা যাবে তা Owner-এর Settings > Notifications-এর সুইচ ঠিক করে। বসানোর সাহায্য: `node scripts/telegram-setup.mjs` |
+| `TELEGRAM_CHAT_ID` | ঐচ্ছিক | উপরেরটার সাথে জোড়ায় লাগে। গ্রুপের নম্বর `-` দিয়ে শুরু হয়; `node scripts/telegram-setup.mjs` চালালে কপি করার লাইনটা দেখায়, `--test` দিলে গ্রুপে একটা পরীক্ষার মেসেজ যায় |
 | `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | ঐচ্ছিক | শুধু Google Maps-এর মতো optional feature চালু রাখতে চাইলে |
 | `OWNER_OPEN_ID` | **আবশ্যক** | ধাপ ৭-এর owner-admin স্ক্রিপ্ট এটা প্রিন্ট করে দেয়; না দিলে কেউ Owner-only পেজ (Admin Security, Dynamic Section) দেখতে পাবে না |
 | `SMS_API_KEY` / `SMS_SENDER_ID` | **আবশ্যক (লাইভে)** | BulkSMSBD-র কী ও Sender ID। Guardian/Tutor রেজিস্ট্রেশনের কোড, লগইন কোড আর পাসওয়ার্ড রিসেটের এসএমএস এদের উপর নির্ভর করে। লাইভে (`NODE_ENV=production`) এগুলো না থাকলে কোড আর যায় না, রেজিস্ট্রেশনই আটকে যায় — শুধু সার্ভার চালু হওয়ার সময় লগে সতর্কবার্তা আসে |

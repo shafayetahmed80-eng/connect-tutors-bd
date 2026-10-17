@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   formatAdminPushPayload,
+  formatAdminTelegramMessage,
   notifyAdminsOfEvent,
   getAdminPushPreferences,
   updateAdminPushPreferences,
@@ -307,5 +308,15 @@ describe("Guardian-request and account-change alerts", () => {
 
   it("starts every Admin with both new alerts on", () => {
     expect(DEFAULT_ADMIN_PUSH_PREFERENCES).toMatchObject({ notifyGuardianRequests: true, notifyAccountChanges: true });
+  });
+});
+
+describe("the Admin Telegram message", () => {
+  it("carries the phone alert's words and the full link to the Admin screen", () => {
+    const { payload } = formatAdminPushPayload({ type: "guardian_request", requestId: 13, kind: "confirm", guardianName: "Rina Akter" });
+
+    const message = formatAdminTelegramMessage(payload);
+
+    expect(message.split("\n")).toEqual([`🔔 ${payload.title}`, payload.body, "https://connecttutorsbd.com/admin/guardian-requests/confirm"]);
   });
 });
