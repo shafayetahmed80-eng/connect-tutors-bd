@@ -288,6 +288,117 @@ export function formatLocationHashtag(locationText: string | null | undefined): 
 }
 
 /**
+ * Normalizes only the area/location name (without city) into an uppercase hashtag.
+ * e.g., "Mohammadpur, Dhaka" -> "#MOHAMMADPUR"
+ * "Uttara Sector 12, Dhaka" -> "#UTTARA_SECTOR_12"
+ * "Mirpur DOHS, Dhaka" -> "#MIRPUR_DOHS"
+ * "Online" -> "#ONLINE"
+ */
+export function formatLocationOnlyHashtag(jobOrLocation: FacebookPostJobInput | string | null | undefined): string {
+  if (!jobOrLocation) return "#BANGLADESH";
+  let rawLoc = typeof jobOrLocation === "string" ? jobOrLocation : (jobOrLocation.tuitionLocationLabel ?? jobOrLocation.locationText ?? "");
+  if (typeof jobOrLocation === "object" && jobOrLocation.tuitionType === "online") {
+    return "#ONLINE";
+  }
+  if (rawLoc.includes(",")) {
+    rawLoc = rawLoc.split(",")[0].trim() || rawLoc;
+  }
+  const clean = rawLoc
+    .trim()
+    .replace(/\bR\/A\b/gi, "RA")
+    .replace(/[,/\\-]+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .toUpperCase();
+  return `#${clean || "LOCATION"}`;
+}
+
+/**
+ * Resolves curriculum type / category to standard shortcode:
+ * BM (Bangla Medium), EM (English Medium / Edexcel / Cambridge), EV (English Version), etc.
+ */
+export function getCurriculumShortCode(job: FacebookPostJobInput): string {
+  const combined = `${job.curriculumType || ""} ${job.category || ""}`.toLowerCase();
+  if (combined.includes("bangla") || combined.includes("bengali") || combined.includes("bm")) {
+    return "BM";
+  }
+  if (combined.includes("english version") || combined.includes("ev")) {
+    return "EV";
+  }
+  if (
+    combined.includes("english medium") ||
+    combined.includes("cambridge") ||
+    combined.includes("edexcel") ||
+    combined.includes("british") ||
+    combined.includes("o level") ||
+    combined.includes("a level") ||
+    combined.includes("em")
+  ) {
+    return "EM";
+  }
+  if (combined.includes("madrasah") || combined.includes("madrasha")) {
+    return "Madrasah";
+  }
+  if (combined.includes("admission")) {
+    return "Admission";
+  }
+  return (job.curriculumType || job.category || "").trim();
+}
+
+/**
+ * Formats class name with prefix and curriculum code:
+ * "Class 3" (Bangla Medium) -> "🔹 Class- 3 BM"
+ * "Standard 3" (English Medium) -> "🔹 Standard- 3 EM"
+ * "Class 5" (English Version) -> "🔹 Class- 5 EV"
+ */
+export function formatCompactClass(job: FacebookPostJobInput): string {
+  const rawClass = (job.classCourse || "General").trim();
+  const shortCode = getCurriculumShortCode(job);
+
+  const match = rawClass.match(/^(Class|Standard|Grade|Year)\s*[-:]?\s*(.+)$/i);
+  let prefix = "Class";
+  let classVal = rawClass;
+
+  if (match) {
+    prefix = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+    classVal = match[2].trim();
+  }
+
+  const codePart = shortCode ? ` ${shortCode}` : "";
+  return `🔹 ${prefix}- ${classVal}${codePart}`;
+}
+
+/**
+ * Formats subjects in parentheses separated by '+':
+ * ["Physics", "Chemistry"] -> "(Physics + Chemistry)"
+ * "All" / null -> "(All Subjects)"
+ */
+export function formatCompactSubjects(subjects: unknown): string {
+  let list: string[] = [];
+  if (Array.isArray(subjects)) {
+    list = subjects.map(s => s.trim()).filter(Boolean);
+  } else if (typeof subjects === "string") {
+    try {
+      const parsed = JSON.parse(subjects);
+      if (Array.isArray(parsed)) {
+        list = parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+      } else {
+        list = subjects.split(/[,+]/).map(s => s.trim()).filter(Boolean);
+      }
+    } catch {
+      list = subjects.split(/[,+]/).map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  if (list.length === 0 || (list.length === 1 && (list[0].toLowerCase() === "all" || list[0].toLowerCase() === "all subjects"))) {
+    return "(All Subjects)";
+  }
+
+  return `(${list.join(" + ")})`;
+}
+
+/**
  * Formats location as an uppercase hashtag with optional address in parentheses.
  * e.g., "📍 #MOHAMMADPUR_DHAKA (Housing Society)" or "📍 #MOHAMMADPUR_DHAKA"
  */
@@ -347,28 +458,23 @@ export const formatJobEmojiLine = formatJobStandardCard;
 export const formatJobMobileCard = formatJobStandardCard;
 
 /**
- * Format 3: Key Priority (High-Contrast)
- * Example: 1. [Job ID: 1024] 🎓 MALE TUTOR 🎯 MATH, PHYSICS  |  Class 9 (English Medium)  |  📍 #DHANMONDI_DHAKA  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
+ * Format 3: Gender Grouped (Compact 1-Line)
+ * Example: 📌 Job ID: 6821, 📍 #MOHAMMADPUR 🔹 Class- 3 BM, (Physics + Chemistry), 4D, 5,000 BDT
  */
-export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number): string {
+export function formatJobGenderCompact(job: FacebookPostJobInput, _index?: number): string {
   const f = extractJobEnglishFields(job);
-  const prefix = typeof index === "number" ? `${index}. ` : "";
-  const locWithTag = formatLocationWithAddress(job);
-  const parts: string[] = [
-    `${prefix}[Job ID: ${f.code}] 🎓 ${f.tutorPref.toUpperCase()} 🎯 ${f.subjects.toUpperCase()}`,
-    f.classWithMedium,
-    locWithTag,
-    `🗓️ ${f.schedule}`,
-    `💰 ${f.salary}`,
-  ];
-  if (f.studentInfo) {
-    parts.push(`👨‍🎓 ${f.studentInfo}`);
-  }
-  if (f.notes) {
-    parts.push(`📋 Notes: ${f.notes}`);
-  }
-  return parts.join("  |  ");
+  const locTag = formatLocationOnlyHashtag(job);
+  const classText = formatCompactClass(job);
+  const subsText = formatCompactSubjects(job.subjects);
+  const daysText = job.daysPerWeek && job.daysPerWeek > 0 ? `${job.daysPerWeek}D` : "Flexible";
+  const salaryText = job.budgetAmount !== null && job.budgetAmount !== undefined && job.budgetAmount > 0
+    ? `${Math.round(job.budgetAmount).toLocaleString("en-US")} BDT`
+    : "Negotiable";
+
+  return `📌 Job ID: ${f.code}, 📍 ${locTag} ${classText}, ${subsText}, ${daysText}, ${salaryText}`;
 }
+
+export const formatJobKeyPriority = formatJobGenderCompact;
 
 /**
  * Formats a single item under an area heading in Format 4: Area Grouped.
@@ -544,9 +650,39 @@ export function buildEnglishBulkFacebookPostText(
     }
     bodyContent = groupBlocks.join("\n\n");
   } else if (format === "key-priority") {
-    bodyContent = jobs
-      .map((job, idx) => `${formatJobKeyPriority(job, idx + 1)}\n${ITEM_DIVIDER}`)
-      .join("\n\n");
+    // Format 3: Gender Grouped (Compact)
+    const maleJobs: FacebookPostJobInput[] = [];
+    const femaleJobs: FacebookPostJobInput[] = [];
+    const anyJobs: FacebookPostJobInput[] = [];
+
+    for (const job of jobs) {
+      if (job.preferredGender === "male") {
+        maleJobs.push(job);
+      } else if (job.preferredGender === "female") {
+        femaleJobs.push(job);
+      } else {
+        anyJobs.push(job);
+      }
+    }
+
+    const groupSections: string[] = [];
+
+    if (maleJobs.length > 0) {
+      const items = maleJobs.map(j => formatJobGenderCompact(j)).join("\n\n");
+      groupSections.push(`👨‍🏫 Male Tuition Jobs\n${ITEM_DIVIDER}\n${items}`);
+    }
+
+    if (femaleJobs.length > 0) {
+      const items = femaleJobs.map(j => formatJobGenderCompact(j)).join("\n\n");
+      groupSections.push(`👩‍🏫 Female Tuition Jobs\n${ITEM_DIVIDER}\n${items}`);
+    }
+
+    if (anyJobs.length > 0) {
+      const items = anyJobs.map(j => formatJobGenderCompact(j)).join("\n\n");
+      groupSections.push(`👥 Male/Female Tuition Jobs\n${ITEM_DIVIDER}\n${items}`);
+    }
+
+    bodyContent = groupSections.join("\n\n");
   } else if (format === "area-grouped") {
     const groups: Record<string, FacebookPostJobInput[]> = {};
     for (const job of jobs) {
