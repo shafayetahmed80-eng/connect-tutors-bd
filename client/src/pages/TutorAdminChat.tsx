@@ -15,6 +15,14 @@ import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBotto
 import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
 import { ChatDocumentCard, ChatDropzoneOverlay, ChatMediaGallery, ClipboardImagePreviewChip, parseImageUrls } from "@/components/chat/ChatAttachments";
 import { ChatEmergencyCallWhatsAppActions, ChatOutOfOfficeBanner, ChatTuitionJobCard, PinnedJobBanner, ShareJobModal, extractJobIdsFromText } from "@/components/chat/ChatTuitionActions";
+import {
+  ChatDraftRestoredIndicator,
+  ChatForwardModal,
+  ChatShortcutsHelpPill,
+  copyMessageToClipboard,
+  useChatDraftPersistence,
+  useChatKeyboardShortcuts,
+} from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
 import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
@@ -77,12 +85,19 @@ export function TutorAdminChatPanel() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
   const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
+  const [forwardMessageBody, setForwardMessageBody] = useState<string | null>(null);
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
     try {
       return localStorage.getItem("chat_pinned_job_tutor") || null;
     } catch {
       return null;
     }
+  });
+
+  const { hasRestoredDraft, clearDraft } = useChatDraftPersistence({
+    threadKey: "tutor_main",
+    body,
+    setBody,
   });
 
   const handleTogglePin = (id: string) => {
@@ -100,6 +115,7 @@ export function TutorAdminChatPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const hasMarkedRead = useRef(false);
   const lastTypingPingAt = useRef(0);
 
@@ -141,8 +157,21 @@ export function TutorAdminChatPanel() {
 
   const eligible = threadQuery.data?.eligible ?? false;
   const adminLastReadAt = threadQuery.data?.adminLastReadAt ? new Date(threadQuery.data.adminLastReadAt).getTime() : null;
-  const lastOwnMessageId = [...allMessages].reverse().find(message => message.senderRole === "tutor")?.id;
+  const lastOwnMessage = [...allMessages].reverse().find(message => message.senderRole === "tutor" && !deletedMessageIds.has(message.id));
+  const lastOwnMessageId = lastOwnMessage?.id;
+  const lastOwnMessageBody = lastOwnMessage?.body;
   const adminIsTyping = adminTypingUntil > now;
+
+  const { handleComposerKeyDown } = useChatKeyboardShortcuts({
+    body,
+    setBody,
+    lastOwnMessageBody,
+    onCancelEdit: () => setEditingMessageId(null),
+    onCancelReply: () => setReplyingTo(null),
+    onCancelActionMenu: () => setActiveActionMenuId(null),
+    searchInputRef,
+    onSubmit: () => void handleSubmit(),
+  });
 
   const latestMessage = allMessages[allMessages.length - 1];
   const isLatestFromPeer = latestMessage?.senderRole === "admin";
@@ -265,8 +294,8 @@ export function TutorAdminChatPanel() {
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (pastedImageFile) {
       const fileToUpload = pastedImageFile;
       setPastedImageFile(null);
@@ -276,7 +305,7 @@ export function TutorAdminChatPanel() {
     submitMessage();
   };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSubmit(event); }
+    handleComposerKeyDown(event);
   };
 
   const uploadAndSend = async (file: File) => {
@@ -352,6 +381,7 @@ export function TutorAdminChatPanel() {
 
     <div className="border-b border-[#dce9f1] p-3">
       <SearchInput
+        ref={searchInputRef}
         value={query}
         onChange={setQuery}
         placeholder="Search"
@@ -477,8 +507,11 @@ export function TutorAdminChatPanel() {
                   toast.info("মেসেজটি সবার জন্য মুছে ফেলা হয়েছে");
                 }}
                 onCopy={text => {
-                  void navigator.clipboard?.writeText(text);
-                  toast.success("কপি হয়েছে");
+                  copyMessageToClipboard(text);
+                }}
+                onForward={(msgId, text) => {
+                  setForwardMessageBody(text);
+                  setActiveActionMenuId(null);
                 }}
                 onReply={() => setReplyingTo({ id: message.id, body: currentBody, senderRole: message.senderRole })}
               />
@@ -572,6 +605,10 @@ export function TutorAdminChatPanel() {
             </div>
           ) : null}
           <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="tutor" />
+          <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 pt-2">
+            {hasRestoredDraft ? <ChatDraftRestoredIndicator onClear={clearDraft} /> : <div />}
+            <ChatShortcutsHelpPill />
+          </div>
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
             {voiceRecorder.recording ? (
@@ -623,6 +660,13 @@ export function TutorAdminChatPanel() {
       <ShareJobModal
         onSelectJob={jobTag => setBody(prev => (prev ? `${prev} ${jobTag}` : jobTag))}
         onClose={() => setShareJobModalOpen(false)}
+      />
+    ) : null}
+    {forwardMessageBody ? (
+      <ChatForwardModal
+        messageBody={forwardMessageBody}
+        onClose={() => setForwardMessageBody(null)}
+        onForwardToComposer={(text: string) => setBody(prev => (prev ? `${prev}\n${text}` : text))}
       />
     ) : null}
   </section>;

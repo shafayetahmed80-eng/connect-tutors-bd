@@ -31,6 +31,14 @@ import {
   type ChatPriorityTag,
   CHAT_PRIORITY_CONFIG,
 } from "@/components/chat/ChatTuitionActions";
+import {
+  ChatDraftRestoredIndicator,
+  ChatForwardModal,
+  ChatShortcutsHelpPill,
+  copyMessageToClipboard,
+  useChatDraftPersistence,
+  useChatKeyboardShortcuts,
+} from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -483,7 +491,29 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
 }
 
 /** One Tutor's conversation. Any Admin may reply, so a reply never signs itself with the Admin's name. */
-function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, onNotesViewed, priorityTag, onSetPriorityTag }: { tutorId: string; onBack?: () => void; tutorIsTyping: boolean; onTyping: () => void; hasNoteAlert: boolean; onNotesViewed: () => void; priorityTag?: ChatPriorityTag | null; onSetPriorityTag?: (tag: ChatPriorityTag) => void }) {
+function ThreadPanel({
+  tutorId,
+  onBack,
+  tutorIsTyping,
+  onTyping,
+  hasNoteAlert,
+  onNotesViewed,
+  priorityTag,
+  onSetPriorityTag,
+  availableThreads = [],
+  onForwardToThread,
+}: {
+  tutorId: string;
+  onBack?: () => void;
+  tutorIsTyping: boolean;
+  onTyping: () => void;
+  hasNoteAlert: boolean;
+  onNotesViewed: () => void;
+  priorityTag?: ChatPriorityTag | null;
+  onSetPriorityTag?: (tag: ChatPriorityTag) => void;
+  availableThreads?: Array<{ tutorId: string; tutorName: string; tutorNumber: number | null }>;
+  onForwardToThread?: (targetTutorId: string, text: string) => void;
+}) {
   const utils = trpc.useUtils();
   const threadQuery = trpc.admin.getTutorChatThread.useQuery({ tutorId }, { refetchInterval: CHAT_POLL_MS });
   const [body, setBody] = useState("");
@@ -502,12 +532,19 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
   const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
+  const [forwardMessageBody, setForwardMessageBody] = useState<string | null>(null);
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(`chat_pinned_job_admin_${tutorId}`) || null;
     } catch {
       return null;
     }
+  });
+
+  const { hasRestoredDraft, clearDraft } = useChatDraftPersistence({
+    threadKey: `admin_${tutorId}`,
+    body,
+    setBody,
   });
 
   const handleTogglePin = (id: string) => {
@@ -524,6 +561,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const markedTutorId = useRef<string | null>(null);
   const starterFilledFor = useRef<string | null>(null);
 
@@ -561,7 +599,20 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
 
   const tutor = threadQuery.data?.tutor;
   const tutorLastReadAt = threadQuery.data?.tutorLastReadAt ? new Date(threadQuery.data.tutorLastReadAt).getTime() : null;
-  const lastOwnMessageId = [...allMessages].reverse().find(message => message.senderRole === "admin")?.id;
+  const lastOwnMessage = [...allMessages].reverse().find(message => message.senderRole === "admin" && !deletedMessageIds.has(message.id));
+  const lastOwnMessageId = lastOwnMessage?.id;
+  const lastOwnMessageBody = lastOwnMessage?.body;
+
+  const { handleComposerKeyDown } = useChatKeyboardShortcuts({
+    body,
+    setBody,
+    lastOwnMessageBody,
+    onCancelEdit: () => setEditingMessageId(null),
+    onCancelReply: () => setReplyingTo(null),
+    onCancelActionMenu: () => setActiveActionMenuId(null),
+    searchInputRef,
+    onSubmit: () => void handleSubmit(),
+  });
   const claimedByAdminName = threadQuery.data?.claimedByAdminName ?? null;
   const archivedAt = threadQuery.data?.archivedAt ?? null;
 
@@ -687,8 +738,8 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (pastedImageFile) {
       const fileToUpload = pastedImageFile;
       setPastedImageFile(null);
@@ -698,7 +749,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     submitMessage();
   };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSubmit(event); }
+    handleComposerKeyDown(event);
   };
 
   const uploadAndSend = async (file: File) => {
@@ -807,6 +858,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
             </button>}
         <div className="hidden shrink-0 sm:block">
           <SearchInput
+            ref={searchInputRef}
             value={query}
             onChange={setQuery}
             onClear={() => setQuery("")}
@@ -940,8 +992,11 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                   toast.info("মেসেজটি সবার জন্য মুছে ফেলা হয়েছে");
                 }}
                 onCopy={text => {
-                  void navigator.clipboard?.writeText(text);
-                  toast.success("কপি হয়েছে");
+                  copyMessageToClipboard(text);
+                }}
+                onForward={(msgId, text) => {
+                  setForwardMessageBody(text);
+                  setActiveActionMenuId(null);
                 }}
                 onReply={() => setReplyingTo({ id: message.id, body: currentBody, senderRole: message.senderRole })}
               />
@@ -1042,6 +1097,10 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         </div>
       ) : null}
       <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="admin" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 pt-2">
+        {hasRestoredDraft ? <ChatDraftRestoredIndicator onClear={clearDraft} /> : <div />}
+        <ChatShortcutsHelpPill />
+      </div>
       {uploadProgress !== null
         ? <div className="h-0.5 w-full bg-j-surface-muted">
             <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
@@ -1102,6 +1161,15 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
       <ShareJobModal
         onSelectJob={jobTag => setBody(prev => (prev ? `${prev} ${jobTag}` : jobTag))}
         onClose={() => setShareJobModalOpen(false)}
+      />
+    ) : null}
+    {forwardMessageBody ? (
+      <ChatForwardModal
+        messageBody={forwardMessageBody}
+        onClose={() => setForwardMessageBody(null)}
+        onForwardToComposer={(text: string) => setBody(prev => (prev ? `${prev}\n${text}` : text))}
+        adminThreads={availableThreads}
+        onForwardToThread={onForwardToThread}
       />
     ) : null}
   </div>;
@@ -1198,14 +1266,47 @@ export function AdminTutorChatsContent() {
     {isMobile
       ? <div className={frameClassName}>
           {selectedTutorId
-            ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} priorityTag={priorityTagsByTutor[selectedTutorId] ?? null} onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)} />
+            ? <ThreadPanel
+                tutorId={selectedTutorId}
+                onBack={() => setSelectedTutorId(null)}
+                tutorIsTyping={tutorIsTyping}
+                onTyping={onTyping}
+                hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)}
+                onNotesViewed={onNotesViewed}
+                priorityTag={priorityTagsByTutor[selectedTutorId] ?? null}
+                onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)}
+                availableThreads={threads.map(t => ({ tutorId: t.tutorId, tutorName: t.tutorName, tutorNumber: t.tutorNumber }))}
+                onForwardToThread={(targetTutorId, text) => {
+                  setSelectedTutorId(targetTutorId);
+                  try {
+                    localStorage.setItem(`connect_tutors_chat_draft_admin_${targetTutorId}`, text);
+                  } catch {}
+                  toast.success("ফরওয়ার্ড করা হয়েছে");
+                }}
+              />
             : <ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} />}
         </div>
       : <div className={`grid min-h-0 grid-cols-[320px_1fr] ${frameClassName}`}>
           <div className="min-h-0 border-r border-[#dce9f1]"><ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} /></div>
           <div className="min-h-0">
             {selectedTutorId
-              ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} priorityTag={priorityTagsByTutor[selectedTutorId] ?? null} onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)} />
+              ? <ThreadPanel
+                  tutorId={selectedTutorId}
+                  tutorIsTyping={tutorIsTyping}
+                  onTyping={onTyping}
+                  hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)}
+                  onNotesViewed={onNotesViewed}
+                  priorityTag={priorityTagsByTutor[selectedTutorId] ?? null}
+                  onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)}
+                  availableThreads={threads.map(t => ({ tutorId: t.tutorId, tutorName: t.tutorName, tutorNumber: t.tutorNumber }))}
+                  onForwardToThread={(targetTutorId, text) => {
+                    setSelectedTutorId(targetTutorId);
+                    try {
+                      localStorage.setItem(`connect_tutors_chat_draft_admin_${targetTutorId}`, text);
+                    } catch {}
+                    toast.success("ফরওয়ার্ড করা হয়েছে");
+                  }}
+                />
               : <p className="grid h-full place-items-center px-6 text-center text-sm text-j-ink-muted">Select a Tutor to view the conversation.</p>}
           </div>
         </div>}

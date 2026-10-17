@@ -331,6 +331,60 @@ describe("the Tutor's Admin chat panel", () => {
     const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
     expect(textarea.value).toContain("#JOB-6801");
   });
+
+  it("restores unsent draft from localStorage and displays indicator", async () => {
+    window.localStorage.setItem("connect_tutors_chat_draft_tutor_main", "Previous unsaved tutor note");
+    render(<TutorAdminChatPanel />);
+
+    await waitFor(() => {
+      const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+      expect(textarea.value).toBe("Previous unsaved tutor note");
+    });
+    expect(screen.getByTestId("chat-draft-restored-indicator")).toBeTruthy();
+
+    const clearBtn = screen.getByRole("button", { name: "খসড়া মুছুন" });
+    fireEvent.click(clearBtn);
+
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("");
+    expect(screen.queryByTestId("chat-draft-restored-indicator")).toBeNull();
+  });
+
+  it("loads last sent message on ArrowUp when composer is empty", () => {
+    state.messages = [
+      message({ id: 10, senderRole: "tutor", body: "Need an update on the tuition appointment" }),
+    ];
+    render(<TutorAdminChatPanel />);
+
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("");
+
+    fireEvent.keyDown(textarea, { key: "ArrowUp" });
+    expect(textarea.value).toBe("Need an update on the tuition appointment");
+  });
+
+  it("opens forward modal from message action menu and appends to composer", () => {
+    state.messages = [
+      message({ id: 12, senderRole: "admin", body: "Your tuition has been confirmed for tomorrow" }),
+    ];
+    render(<TutorAdminChatPanel />);
+
+    // Click on message bubble to open action menu
+    const bubble = screen.getByText("Your tuition has been confirmed for tomorrow");
+    fireEvent.click(bubble);
+
+    const forwardBtn = screen.getByRole("button", { name: "মেসেজ ফরওয়ার্ড করুন" });
+    expect(forwardBtn).toBeTruthy();
+    fireEvent.click(forwardBtn);
+
+    expect(screen.getByText("মেসেজ ফরওয়ার্ড করুন")).toBeTruthy();
+    const addToComposerBtn = screen.getByRole("button", { name: "বর্তমান মেসেজ বক্সে যুক্ত করুন" });
+    fireEvent.click(addToComposerBtn);
+
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toContain("Your tuition has been confirmed for tomorrow");
+  });
 });
+
 
 

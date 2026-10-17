@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Edit3, MoreHorizontal, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Edit3, Forward, MoreHorizontal, RotateCcw, Trash2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const EDIT_DELETE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
@@ -32,6 +32,7 @@ export interface ChatMessageActionMenuProps {
   onEdit?: (messageId: number, currentBody: string) => void;
   onDelete?: (messageId: number) => void;
   onCopy?: (text: string) => void;
+  onForward?: (messageId: number, body: string) => void;
   onReply?: (messageId: number) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -49,6 +50,7 @@ export function ChatMessageActionMenu({
   onEdit,
   onDelete,
   onCopy,
+  onForward,
   onReply,
   isOpen,
   onClose,
@@ -126,6 +128,22 @@ export function ChatMessageActionMenu({
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-2xs font-semibold text-j-ink hover:bg-j-surface-sunken transition-colors"
           >
             <span>কপি</span>
+          </button>
+        ) : null}
+
+        {onForward && body ? (
+          <button
+            type="button"
+            onClick={() => {
+              onForward(messageId, body);
+              onClose();
+            }}
+            aria-label="মেসেজ ফরওয়ার্ড করুন"
+            title="মেসেজ ফরওয়ার্ড করুন"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-2xs font-semibold text-j-ink hover:bg-j-surface-sunken transition-colors"
+          >
+            <Forward size={12} />
+            <span>ফরওয়ার্ড</span>
           </button>
         ) : null}
 
