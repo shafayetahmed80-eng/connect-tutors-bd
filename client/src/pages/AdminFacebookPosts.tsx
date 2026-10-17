@@ -26,7 +26,7 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
 import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
@@ -118,6 +118,25 @@ function formatRelativeTime(dateInput: Date | string | null | undefined): string
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/**
+ * The tick that puts a tuition on the bulk poster. A picked one shows where it
+ * stands in the poster (1, 2, 3 ...), because the order ticked is the order drawn.
+ */
+function PickBox({ checked, order, jobId, onChange, card = false }: { checked: boolean; order: number; jobId: string; onChange: () => void; card?: boolean }) {
+  return (
+    <label className={`inline-flex cursor-pointer items-center gap-1.5 ${card ? "min-h-10 min-w-10" : ""}`}>
+      <input
+        type="checkbox"
+        aria-label={`Pick job ${jobId} for the poster`}
+        checked={checked}
+        onChange={onChange}
+        className={`cursor-pointer accent-[#1877f2] ${card ? "size-5" : "size-4"}`}
+      />
+      {checked ? <span aria-hidden="true" className="min-w-4 text-center text-2xs font-bold tabular-nums text-[#1877f2]">{order}</span> : null}
+    </label>
+  );
 }
 
 export function AdminFacebookPostsContent() {
@@ -250,6 +269,8 @@ export function AdminFacebookPostsContent() {
 
   const items = jobs.data?.items ?? [];
   type LiveJob = (typeof items)[number];
+  /** A live tuition as a poster reads it: the row, with its Job ID and the site's address. */
+  type PosterLiveJob = LiveJob & FacebookPosterJob & { origin: string };
 
   const [bulkPreviewData, setBulkPreviewData] = useState<{
     text: string;
@@ -258,8 +279,12 @@ export function AdminFacebookPostsContent() {
     format: FacebookPostBulkFormat;
   } | null>(null);
 
-  const [posterJob, setPosterJob] = useState<FacebookPosterJob | null>(null);
-  const [bulkPosterJobs, setBulkPosterJobs] = useState<FacebookPosterJob[] | null>(null);
+  const [posterJob, setPosterJob] = useState<PosterLiveJob | null>(null);
+  const [bulkPosterJobs, setBulkPosterJobs] = useState<PosterLiveJob[] | null>(null);
+  // Whether the open bulk poster holds hand-picked tuitions rather than the filtered list.
+  const [bulkPosterPicked, setBulkPosterPicked] = useState(false);
+  // The tuitions ticked for the bulk poster, in the order they were ticked: the order they are drawn in.
+  const [picked, setPicked] = useState<Map<number, LiveJob>>(() => new Map());
 
   const [includeHashtags, setIncludeHashtags] = useState<boolean>(() => loadSavedIncludeHashtags());
   const [isGroupHelperOpen, setIsGroupHelperOpen] = useState(false);
@@ -419,8 +444,52 @@ export function AdminFacebookPostsContent() {
     }
   };
 
+  const posterJobOf = (j: LiveJob): PosterLiveJob => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin });
+
+  const tooManyPicked = () => toast.error(`পোস্টারের জন্য সর্বোচ্চ ${MAX_TALL_TUITIONS}টি টিউশন বাছা যায়।`);
+
+  const togglePick = (job: LiveJob) => {
+    if (!picked.has(job.id) && picked.size >= MAX_TALL_TUITIONS) {
+      tooManyPicked();
+      return;
+    }
+    setPicked(current => {
+      const next = new Map(current);
+      if (next.has(job.id)) next.delete(job.id);
+      else next.set(job.id, job);
+      return next;
+    });
+  };
+
+  const allOnPagePicked = items.length > 0 && items.every(job => picked.has(job.id));
+  const someOnPagePicked = items.some(job => picked.has(job.id));
+
+  /** Ticks every tuition on this page, or - when they all are - lets them all go. */
+  const togglePage = () => {
+    const next = new Map(picked);
+    if (allOnPagePicked) {
+      for (const job of items) next.delete(job.id);
+    } else {
+      for (const job of items) {
+        if (next.has(job.id)) continue;
+        if (next.size >= MAX_TALL_TUITIONS) {
+          tooManyPicked();
+          break;
+        }
+        next.set(job.id, job);
+      }
+    }
+    setPicked(next);
+  };
+
   const handleGenerateBulkPoster = async () => {
     if (isBulkCopying) return;
+    // Ticked tuitions are the poster, in the order they were ticked: nothing to fetch.
+    if (picked.size > 0) {
+      setBulkPosterPicked(true);
+      setBulkPosterJobs(Array.from(picked.values()).map(posterJobOf));
+      return;
+    }
     setIsBulkCopying(true);
     try {
       // Up to twelve: the tall list holds them all, the square and landscape posters take the first four.
@@ -429,9 +498,8 @@ export function AdminFacebookPostsContent() {
         toast.error("পোস্টার তৈরি করার জন্য কোনো লাইভ টিউশন নেই।");
         return;
       }
-      setBulkPosterJobs(
-        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin }))
-      );
+      setBulkPosterPicked(false);
+      setBulkPosterJobs(list.map(posterJobOf));
     } catch {
       toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
     } finally {
@@ -482,7 +550,30 @@ export function AdminFacebookPostsContent() {
     }
   };
 
+  /** Where a tuition stands in the pick, from 1, or 0 when it is not picked. */
+  const pickOrder = (id: number) => (picked.has(id) ? Array.from(picked.keys()).indexOf(id) + 1 : 0);
+
   const columns: RecordColumn<LiveJob>[] = [
+    {
+      key: "pick",
+      label: "Pick for the poster",
+      place: "head",
+      headingHidden: true,
+      headCell: (
+        <input
+          type="checkbox"
+          aria-label="Pick every tuition on this page for the poster"
+          checked={allOnPagePicked}
+          ref={box => {
+            if (box) box.indeterminate = someOnPagePicked && !allOnPagePicked;
+          }}
+          onChange={togglePage}
+          className="size-4 cursor-pointer accent-[#1877f2]"
+        />
+      ),
+      cell: job => <PickBox checked={picked.has(job.id)} order={pickOrder(job.id)} jobId={jobIdForRequest(job.id)} onChange={() => togglePick(job)} />,
+      cardCell: job => <PickBox card checked={picked.has(job.id)} order={pickOrder(job.id)} jobId={jobIdForRequest(job.id)} onChange={() => togglePick(job)} />,
+    },
     {
       key: "jobId",
       label: "Job ID",
@@ -737,7 +828,7 @@ export function AdminFacebookPostsContent() {
             <button
               type="button"
               onClick={() => {
-                setPosterJob({ ...job, jobId: code });
+                setPosterJob({ ...job, jobId: code, origin: window.location.origin });
               }}
               aria-label={`Generate social poster for job ${code}`}
               className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-[#1877f2] hover:bg-sky-50 hover:border-sky-300 transition"
@@ -1015,13 +1106,24 @@ export function AdminFacebookPostsContent() {
           <button
             type="button"
             onClick={handleGenerateBulkPoster}
-            disabled={isBulkCopying || totalMatching === 0}
+            disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-            title="Facebook poster for the filtered tuitions: four in a square or landscape image, up to twelve in the tall list"
+            title="Facebook poster for the tuitions you ticked, or for the filtered ones: four in a square or landscape image, up to twelve in the tall list"
           >
             <ImageIcon className="size-3.5 text-[#1877f2]" />
-            <span>Bulk Poster ({Math.min(totalMatching, MAX_TALL_TUITIONS)})</span>
+            <span>{picked.size > 0 ? `Bulk Poster (${picked.size} picked)` : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}</span>
           </button>
+          {picked.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setPicked(new Map())}
+              aria-label="Clear the tuitions picked for the poster"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink-soft hover:bg-j-border-light/60 transition"
+            >
+              <X className="size-3.5" />
+              <span>Clear</span>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handleCopyAllFiltered}
@@ -1072,6 +1174,7 @@ export function AdminFacebookPostsContent() {
               : "No live tuitions currently available on the Job Board."
           }
           tableClassName="min-w-[85rem]"
+          rowClassName={job => (picked.has(job.id) ? "bg-sky-50/70" : undefined)}
         />
       ) : null}
 

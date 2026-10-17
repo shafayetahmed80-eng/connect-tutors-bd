@@ -118,6 +118,38 @@ describe("RecordTable", () => {
     expect(within(salaryPair).getByText("BDT 8,000")).toBeTruthy();
   });
 
+  it("puts a control in a heading in place of the label, which then is not drawn beside it", () => {
+    const withBox: RecordColumn<Row>[] = [
+      { key: "pick", label: "Pick", headingHidden: true, headCell: <input type="checkbox" aria-label="Pick them all" />, cell: row => <input type="checkbox" aria-label={`Pick ${row.jobId}`} /> },
+      ...columns.slice(0, 3),
+    ];
+    render(<RecordTable caption="Your tuitions" columns={withBox} rows={rows} rowKey={row => row.id} empty="No tuition yet." />);
+
+    const heading = screen.getAllByRole("columnheader")[0];
+    expect(within(heading).getByRole("checkbox", { name: "Pick them all" })).toBeTruthy();
+    expect(heading.textContent).toBe("");
+    // The rows keep their own.
+    expect(screen.getByRole("checkbox", { name: "Pick 6801" })).toBeTruthy();
+  });
+
+  it("adds a row's own classes to its table row and to its phone card", () => {
+    const tint = (row: Row) => (row.id === 2 ? "bg-sky-50/70" : undefined);
+    const { unmount } = render(<RecordTable caption="Your tuitions" columns={columns} rows={rows} rowKey={row => row.id} empty="None" rowClassName={tint} />);
+    const bodyRows = screen.getAllByRole("row").slice(1);
+    expect(bodyRows[0].className).not.toContain("bg-sky-50/70");
+    expect(bodyRows[1].className).toContain("bg-sky-50/70");
+    // The row keeps what it always has.
+    expect(bodyRows[1].className).toContain("hover:bg-j-surface-sunken/60");
+    unmount();
+
+    onAPhone();
+    render(<RecordTable caption="Your tuitions" columns={columns} rows={rows} rowKey={row => row.id} empty="None" rowClassName={tint} />);
+    const cards = screen.getAllByRole("listitem");
+    expect(cards[0].className).not.toContain("bg-sky-50/70");
+    expect(cards[1].className).toContain("bg-sky-50/70");
+    expect(cards[1].className).toContain("rounded-xl");
+  });
+
   it("says the same thing about an empty list in both shapes", () => {
     renderTable([]);
     expect(screen.getByText("No tuition yet.")).toBeTruthy();
