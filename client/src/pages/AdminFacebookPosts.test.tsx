@@ -512,30 +512,38 @@ describe("AdminFacebookPostsContent", () => {
     });
   });
 
-  it("opens single tuition social poster modal with BTPA-077 and ratio controls", () => {
+  it("opens the one-tuition poster with language, size and the two single themes", () => {
     render(<AdminFacebookPostsContent />);
 
-    const posterBtn = screen.getByRole("button", { name: /Generate social poster for job/i });
-    expect(posterBtn).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Generate social poster for job/i }));
 
-    fireEvent.click(posterBtn);
-
-    expect(screen.getByRole("heading", { name: /Facebook Social Poster/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /1:1 Square \(1080×1080\)/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /16:9 Landscape \(1200×675\)/i })).toBeDefined();
-    expect(screen.getAllByText(/BTPA-077/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("heading", { name: /Facebook Poster/i })).toBeDefined();
+    expect(screen.getByRole("radio", { name: "বাংলা" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "English" })).toBeDefined();
+    expect(screen.getByRole("radio", { name: /Square 1080×1080/i })).toBeDefined();
+    expect(screen.getByRole("radio", { name: /Landscape 1200×675/i })).toBeDefined();
+    expect(screen.getByRole("radio", { name: /Navy/i })).toBeDefined();
+    expect(screen.getByRole("radio", { name: /Cream/i })).toBeDefined();
+    expect(screen.queryByRole("radio", { name: /Emerald/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Download PNG/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Copy Image/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Copy image/i })).toBeDefined();
 
-    // Click landscape ratio
-    const landscapeBtn = screen.getByRole("button", { name: /16:9 Landscape \(1200×675\)/i });
-    fireEvent.click(landscapeBtn);
+    fireEvent.click(screen.getByRole("radio", { name: /Landscape 1200×675/i }));
+    expect(screen.getByRole("radio", { name: /Landscape 1200×675/i }).getAttribute("aria-checked")).toBe("true");
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_poster_prefs_v1") ?? "{}").size).toBe("landscape");
 
-    // Close modal
-    const closeBtn = screen.getByRole("button", { name: /Close modal/i });
-    fireEvent.click(closeBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("heading", { name: /Facebook Poster/i })).toBeNull();
+  });
 
-    expect(screen.queryByRole("heading", { name: /Facebook Social Poster/i })).toBeNull();
+  it("opens the combined poster with the three combined themes", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Bulk Poster/i }));
+
+    expect(await screen.findByRole("heading", { name: /Facebook Multi-Tuition Banner/i })).toBeDefined();
+    for (const name of [/Navy/i, /Emerald/i, /Crimson/i]) expect(screen.getByRole("radio", { name })).toBeDefined();
+    expect(screen.queryByRole("radio", { name: /Cream/i })).toBeNull();
   });
 
   it("toggles smart hashtags on and off and persists preference", () => {
