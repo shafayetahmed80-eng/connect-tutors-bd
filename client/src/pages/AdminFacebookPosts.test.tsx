@@ -274,8 +274,8 @@ describe("AdminFacebookPostsContent", () => {
     const categoryBtn = screen.getByRole("button", { name: /Category Grouped/i });
     fireEvent.click(categoryBtn);
 
-    // Switch to Key Priority
-    const keyPriorityBtn = screen.getByRole("button", { name: /Key Priority/i });
+    // Switch to Gender Grouped
+    const keyPriorityBtn = screen.getByRole("button", { name: /Gender Grouped/i });
     fireEvent.click(keyPriorityBtn);
 
     // Switch to Area Grouped

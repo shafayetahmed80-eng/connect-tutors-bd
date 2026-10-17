@@ -69,9 +69,9 @@ export const BULK_FORMAT_OPTIONS: {
   },
   {
     id: "key-priority",
-    label: "🎯 Key Priority",
-    shortLabel: "Key Priority",
-    desc: "বিষয় ও এলাকাকে শুরুতে হাইলাইট করে দ্রুত নজরে আনা",
+    label: "👨‍🏫 Gender Grouped (Compact)",
+    shortLabel: "Gender Grouped",
+    desc: "টিউটর জেন্ডার অনুযায়ী গ্রুপ (Male / Female / Any) এবং ১-লাইন কম্প্যাক্ট কার্ড",
   },
   {
     id: "area-grouped",

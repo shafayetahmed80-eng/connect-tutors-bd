@@ -214,13 +214,29 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     expect(post).toContain(ITEM_DIVIDER);
   });
 
-  it("Format 3 (key-priority): puts tutor pref and subjects upfront with hashtag location", () => {
-    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
-      format: "key-priority",
-    });
+  it("Format 3 (key-priority / Gender Grouped): groups by tutor gender with icons and compact 1-line cards", () => {
+    const post = buildEnglishBulkFacebookPostText(
+      [
+        ...sampleJobs,
+        {
+          id: 3,
+          jobId: "CT-1003",
+          classCourse: "Standard 3",
+          curriculumType: "Cambridge",
+          subjects: ["English", "Math"],
+          tuitionLocationLabel: "Mohammadpur, Dhaka",
+          budgetAmount: 8000,
+          daysPerWeek: 5,
+        },
+      ],
+      {
+        format: "key-priority",
+      },
+    );
 
-    expect(post).toContain("1. [Job ID: CT-1001] 🎓 FEMALE TUTOR 🎯 MATH  |  Class 9 (English Medium)  |  📍 #GULSHAN_DHAKA  |  🗓️ 3 Days/week  |  💰 10,000 BDT/month");
-    expect(post).toContain("2. [Job ID: CT-1002] 🎓 MALE TUTOR 🎯 ALL SUBJECTS  |  Class 6 (Bangla Medium)  |  📍 #UTTARA_DHAKA  |  🗓️ 4 Days/week  |  💰 6,000 BDT/month");
+    expect(post).toContain("👨‍🏫 Male Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1002, 📍 #UTTARA 🔹 Class- 6 BM, (All Subjects), 4D, 6,000 BDT");
+    expect(post).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1001, 📍 #GULSHAN 🔹 Class- 9 EM, (Math), 3D, 10,000 BDT");
+    expect(post).toContain("👥 Male/Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1003, 📍 #MOHAMMADPUR 🔹 Standard- 3 EM, (English + Math), 5D, 8,000 BDT");
     expect(post).toContain(ITEM_DIVIDER);
   });
 
@@ -265,11 +281,16 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
   });
 
   it("separates every two tuitions with a blank line after the divider across bulk formats", () => {
-    const formats = ["emoji-line", "mobile-card", "key-priority", "area-grouped"] as const;
+    const formats = ["emoji-line", "mobile-card", "area-grouped"] as const;
     for (const format of formats) {
       const post = buildEnglishBulkFacebookPostText(sampleJobs, { format });
       expect(post).toContain(`${ITEM_DIVIDER}\n\n`);
     }
+
+    // Format 3 (Gender Grouped) uses blank lines between compact items without repeating divider
+    const genderPost = buildEnglishBulkFacebookPostText(sampleJobs, { format: "key-priority" });
+    expect(genderPost).toContain("👨‍🏫 Male Tuition Jobs\n──────────────────────────");
+    expect(genderPost).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────");
   });
 
   it("returns a clean message if list is empty", () => {
