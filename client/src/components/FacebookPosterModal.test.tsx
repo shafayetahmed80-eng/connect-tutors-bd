@@ -269,11 +269,87 @@ describe("the caption that goes with a poster", () => {
     expect(toasts.success).not.toHaveBeenCalled();
   });
 
-  it("keeps the caption button beside the image buttons in one row that can wrap", () => {
+  it("keeps the caption button beside the image buttons in one row", () => {
     render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
     const row = screen.getByRole("button", { name: /Copy caption/ }).parentElement!;
-    expect(row.className).toContain("flex-wrap");
     expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual(["Copy caption", "Copy image", "Download PNG"]);
+  });
+});
+
+describe("the poster window on a phone", () => {
+  const footer = () => screen.getByRole("button", { name: "Download PNG" }).parentElement!;
+
+  it("puts the two copy buttons side by side over a Download PNG that has the next line to itself", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+    expect(footer().className).toContain("grid-cols-2");
+    expect(screen.getByRole("button", { name: "Download PNG" }).className).toContain("col-span-2");
+  });
+
+  it("splits the line between Copy image and Download PNG where there is no caption to copy", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    expect(footer().className).toContain("grid-cols-2");
+    expect(screen.getByRole("button", { name: "Download PNG" }).className).not.toContain("col-span-2");
+  });
+
+  it("shares each row's width equally among its choices, so none wraps to a line of its own", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} />);
+    for (const name of ["Language", "Size", "Theme"]) {
+      const choices = screen.getByRole("radiogroup", { name });
+      expect(choices.className, name).toContain("grid-flow-col");
+      expect(choices.className, name).toContain("auto-cols-fr");
+    }
+  });
+
+  it("keeps the size in pixels for a laptop and names the sizes plainly", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} />);
+    const square = group("Size").getByRole("radio", { name: /Square/ });
+    expect(square.textContent).toBe("Square 1080×1080");
+    expect(square.querySelector('span[class~="max-sm:hidden"]')?.textContent).toBe("1080×1080");
+    expect(group("Size").getByRole("radio", { name: "Tall list" }).textContent).toBe("Tall list");
+  });
+
+  it("runs the swatches along one line and gives the custom colour and its code a line of their own", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const swatches = group("Colour").getAllByRole("radio");
+    expect(swatches).toHaveLength(13);
+    const strip = swatches[0].parentElement!;
+    expect(strip.className).toContain("overflow-x-auto");
+    for (const swatch of swatches) expect(swatch.parentElement).toBe(strip);
+
+    const code = screen.getByRole("textbox", { name: "Colour code" });
+    expect(code.parentElement).not.toBe(strip);
+    expect(code.parentElement).toBe(screen.getByLabelText("Custom colour").closest("label")!.parentElement);
+  });
+
+  it("folds the settings away behind a bar that names the choices made, and opens them on a tap", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const bar = screen.getByRole("button", { name: /^Settings/ });
+    const settings = document.getElementById("poster-settings")!;
+
+    expect(bar.getAttribute("aria-expanded")).toBe("false");
+    expect(bar.getAttribute("aria-controls")).toBe("poster-settings");
+    expect(settings.className).toContain("max-sm:hidden");
+    expect(bar.textContent).toContain("বাংলা · Square · Navy");
+
+    fireEvent.click(bar);
+    expect(bar.getAttribute("aria-expanded")).toBe("true");
+    expect(settings.className).not.toContain("max-sm:hidden");
+
+    fireEvent.click(group("Language").getByRole("radio", { name: "English" }));
+    fireEvent.click(group("Theme").getByRole("radio", { name: "Cream" }));
+    expect(bar.textContent).toContain("English · Square · Cream");
+
+    fireEvent.click(bar);
+    expect(bar.getAttribute("aria-expanded")).toBe("false");
+    expect(settings.className).toContain("max-sm:hidden");
+  });
+
+  it("holds the poster first and in view above the settings", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const preview = screen.getByRole("img", { name: /Poster preview/ }).parentElement!.parentElement!;
+    expect(preview.className).toContain("order-1");
+    expect(preview.className).toContain("max-sm:sticky");
+    expect(document.getElementById("poster-settings")!.className).toContain("order-3");
   });
 });
 
