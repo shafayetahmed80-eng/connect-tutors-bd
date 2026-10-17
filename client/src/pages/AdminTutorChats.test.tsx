@@ -652,4 +652,41 @@ describe("the card and filter panel over the conversations", () => {
     fireEvent.click(loadMore);
     expect(screen.getByText("Admin message 1")).toBeTruthy();
   });
+
+  it("renders date dividers, auto-links, and image lightbox in ThreadPanel", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "t-1", tutorName: "Amina Rahman", tutorNumber: 101 };
+    state.threadMessages = [
+      {
+        id: 1,
+        senderRole: "tutor",
+        body: "Visit https://connecttutorsbd.com for info",
+        attachmentUrl: null,
+        attachmentContentType: null,
+        tutorReacted: false,
+        adminReacted: false,
+        createdAt: "2026-10-10T10:00:00.000Z",
+      },
+      {
+        id: 2,
+        senderRole: "admin",
+        body: "Attached screenshot",
+        attachmentUrl: "https://example.com/screenshot.png",
+        attachmentContentType: "image/png",
+        tutorReacted: false,
+        adminReacted: false,
+        createdAt: "2026-10-11T11:00:00.000Z",
+      },
+    ];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Amina Rahman/ }));
+
+    expect(screen.getByText("10 Oct 2026")).toBeTruthy();
+    expect(screen.getByText("11 Oct 2026")).toBeTruthy();
+    const link = screen.getByRole("link", { name: /connecttutorsbd.com/ });
+    expect(link.getAttribute("href")).toBe("https://connecttutorsbd.com");
+
+    fireEvent.click(screen.getByRole("button", { name: "View attachment image in full screen" }));
+    expect(screen.getByRole("dialog", { name: "Attachment Preview" })).toBeTruthy();
+  });
 });
