@@ -145,6 +145,7 @@ import {
   getAdminPushPreferences as getAdminPushPreferencesDb,
   updateAdminPushPreferences as updateAdminPushPreferencesDb,
   sendTestAdminPushNotification as sendTestAdminPushNotificationDb,
+  isAdminPushSubscribed as isAdminPushSubscribedDb,
   type AdminPushEvent,
   type AdminPushPreferences,
 } from "./admin-push";
@@ -7323,6 +7324,12 @@ export async function sendTestAdminPushNotification(adminId: number) {
   return sendTestAdminPushNotificationDb(database, adminId);
 }
 
+export async function isAdminPushSubscribed(adminId: number, endpoint: string) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  return isAdminPushSubscribedDb(database, adminId, endpoint);
+}
+
 export async function notifyAdminPushEvent(event: AdminPushEvent) {
   const database = await getDb();
   if (!database) return { sent: 0 };
@@ -7419,11 +7426,26 @@ export async function sendPushToUser(userId: number | null, payload: { title: st
   if (goneIds.length > 0) await database.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, goneIds));
 }
 
-/** The Project Owner's phone, for security alerts. Does nothing until the Owner has turned notifications on in Settings. */
+/**
+ * The Project Owner's phone, for security alerts. Does nothing until the Owner has turned notifications on in Settings.
+ * The Owner's Settings switch now registers the browser as an Admin alert device (`admin_push_subscriptions`), not as a
+ * plain account device, so both lists are used - a browser in both gets the alert once.
+ */
 export async function sendPushToOwner(payload: { title: string; body: string; url: string }) {
   if (!ENV.ownerOpenId) return;
   const owner = await getUserByOpenId(ENV.ownerOpenId);
-  await sendPushToUser(owner?.id ?? null, payload);
+  if (!owner) return;
+  await sendPushToUser(owner.id, payload);
+  const database = await getDb();
+  if (!database) return;
+  const accountEndpoints = new Set(
+    (await database.select({ endpoint: pushSubscriptions.endpoint }).from(pushSubscriptions).where(eq(pushSubscriptions.userId, owner.id))).map(row => row.endpoint),
+  );
+  const adminDevices = (await database.select().from(adminPushSubscriptions).where(eq(adminPushSubscriptions.adminId, owner.id))).filter(row => !accountEndpoints.has(row.endpoint));
+  if (adminDevices.length === 0) return;
+  const results = await Promise.all(adminDevices.map(async subscription => ({ id: subscription.id, result: await sendWebPushNotification(subscription, payload) })));
+  const goneIds = results.filter(row => row.result.gone).map(row => row.id);
+  if (goneIds.length > 0) await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
 }
 
 /** `tutor_notifications` is keyed by `tutorId`, not `users.id` - this resolves that join once so every call site can just name the Tutor. */

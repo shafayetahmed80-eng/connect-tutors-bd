@@ -33,13 +33,23 @@ describe("sending a phone push", () => {
   it("sends nothing, and keeps the subscription, when the server has no push keys", async () => {
     delete process.env.VAPID_PUBLIC_KEY;
 
-    await expect(sendWebPushNotification(subscription, { title: "t", body: "b" })).resolves.toEqual({ ok: false, gone: false });
+    await expect(sendWebPushNotification(subscription, { title: "t", body: "b" })).resolves.toEqual({ ok: false, gone: false, notConfigured: true });
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
   it("reports a subscription the browser has dropped, so it can be deleted", async () => {
     sendNotification.mockRejectedValue({ statusCode: 410 });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    await expect(sendWebPushNotification(subscription, { title: "t", body: "b" })).resolves.toEqual({ ok: false, gone: true });
+    await expect(sendWebPushNotification(subscription, { title: "t", body: "b" })).resolves.toEqual({ ok: false, gone: true, notConfigured: false, statusCode: 410 });
+  });
+
+  it("keeps a subscription the push service refused, and says why in the server log", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    sendNotification.mockRejectedValue(Object.assign(new Error("invalid JWT provided"), { statusCode: 403 }));
+
+    await expect(sendWebPushNotification(subscription, { title: "t", body: "b" })).resolves.toEqual({ ok: false, gone: false, notConfigured: false, statusCode: 403 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("403"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("push.example"));
   });
 });

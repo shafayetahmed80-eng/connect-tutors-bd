@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { Bell, CheckCircle2, Settings, Sparkles, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
-import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
+import { useAdminPushSubscribed } from "@/hooks/useAdminPushSubscribed";
+import { subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
 
 export function AdminPushHeaderPopover() {
   const supported = supportsWebPush();
@@ -14,7 +15,7 @@ export function AdminPushHeaderPopover() {
   const preferencesQuery = trpc.admin.getPushPreferences.useQuery();
   const sendTestMutation = trpc.admin.sendTestPush.useMutation();
 
-  const [subscribed, setSubscribed] = useState(false);
+  const [subscribed, setSubscribed] = useAdminPushSubscribed(supported);
   const [busy, setBusy] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -24,11 +25,6 @@ export function AdminPushHeaderPopover() {
     if (typeof Notification !== "undefined" && Notification.permission === "denied") {
       setPermissionDenied(true);
     }
-    void (async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const existing = await registration?.pushManager.getSubscription();
-      setSubscribed(Boolean(existing));
-    })();
   }, [supported]);
 
   if (!supported) {
@@ -89,7 +85,7 @@ export function AdminPushHeaderPopover() {
       if (result.sent > 0) {
         toast.success("টেস্ট নোটিফিকেশন পাঠানো হয়েছে!");
       } else {
-        toast.error("কোনো সক্রিয় সাবস্ক্রিপশন পাওয়া যায়নি।");
+        toast.error(testPushFailureMessage(result));
       }
     } catch {
       toast.error("টেস্ট পাঠাতে ব্যর্থ হয়েছে।");

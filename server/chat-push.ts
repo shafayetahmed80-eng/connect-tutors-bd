@@ -28,17 +28,29 @@ export function getWebPushPublicKey() {
 
 export type WebPushSubscriptionKeys = { endpoint: string; p256dh: string; auth: string };
 
-/** Sends one push message; `gone: true` means the browser has dropped this subscription, so the caller should delete its row. */
+/**
+ * Sends one push message; `gone: true` means the browser has dropped this subscription, so the caller should delete its row.
+ * A failure carries the push service's `statusCode` (403 = the VAPID key does not match the one the browser subscribed
+ * with, 410 = gone) and is written to the server log, so a push that never arrives can be traced instead of vanishing.
+ */
 export async function sendWebPushNotification(subscription: WebPushSubscriptionKeys, payload: PushPayload) {
-  if (!vapidConfigured()) return { ok: false as const, gone: false };
+  if (!vapidConfigured()) return { ok: false as const, gone: false, notConfigured: true as const, statusCode: undefined };
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
       JSON.stringify(withPushGrouping(payload))
     );
-    return { ok: true as const, gone: false };
+    return { ok: true as const, gone: false, notConfigured: false as const, statusCode: undefined };
   } catch (error) {
     const statusCode = (error as { statusCode?: number } | null)?.statusCode;
-    return { ok: false as const, gone: statusCode === 404 || statusCode === 410 };
+    const gone = statusCode === 404 || statusCode === 410;
+    let host = "unknown";
+    try {
+      host = new URL(subscription.endpoint).host;
+    } catch {
+      // A malformed endpoint is logged as unknown; the failure itself is what matters.
+    }
+    console.warn(`[web-push] send failed (${statusCode ?? "no status"}) via ${host}${gone ? " - subscription gone, removing it" : ""}: ${(error as Error | null)?.message ?? error}`);
+    return { ok: false as const, gone, notConfigured: false as const, statusCode };
   }
 }

@@ -24,9 +24,25 @@ export async function subscribeThisBrowser(
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return "denied";
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+  const options = { userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) };
+  let subscription: PushSubscription;
+  try {
+    subscription = await registration.pushManager.subscribe(options);
+  } catch (error) {
+    // A subscription made against an older server key blocks a new one until it is dropped.
+    if ((error as { name?: string } | null)?.name !== "InvalidStateError") throw error;
+    await (await registration.pushManager.getSubscription())?.unsubscribe();
+    subscription = await registration.pushManager.subscribe(options);
+  }
   const json = subscription.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("The browser did not return a usable subscription.");
   await save({ endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth });
   return "subscribed";
+}
+
+/** What a failed test push tells the Admin: the real reason, not always "no subscription". */
+export function testPushFailureMessage(result: { reason: "ok" | "no_subscription" | "not_configured" | "rejected"; statusCode?: number }) {
+  if (result.reason === "not_configured") return "সার্ভারে পুশ নোটিফিকেশনের চাবি (VAPID) বসানো নেই।";
+  if (result.reason === "rejected") return `ব্রাউজারের পুশ সার্ভিস নোটিফিকেশন নেয়নি (কোড ${result.statusCode ?? "?"})। সুইচটি বন্ধ করে আবার চালু করুন।`;
+  return "কোনো সক্রিয় সাবস্ক্রিপশন পাওয়া যায়নি। সুইচটি পুনরায় চালু করুন।";
 }

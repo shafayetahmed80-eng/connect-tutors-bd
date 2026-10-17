@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { subscribePush, unsubscribePush, updatePushPreferences, sendTestPush, invalidate } = vi.hoisted(() => ({
+const { subscribePush, unsubscribePush, updatePushPreferences, sendTestPush, invalidate, isPushSubscribed } = vi.hoisted(() => ({
+  isPushSubscribed: vi.fn(),
   subscribePush: vi.fn(),
   unsubscribePush: vi.fn(),
   updatePushPreferences: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       admin: {
         getPushPreferences: { invalidate },
+        isPushSubscribed: { fetch: isPushSubscribed },
       },
     }),
     admin: {
@@ -41,6 +43,7 @@ vi.mock("@/lib/trpc", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from "sonner";
 import { AdminPushNotificationSettings } from "./AdminPushNotificationSettings";
 
 function stubServiceWorker(subscription: unknown) {
@@ -74,6 +77,7 @@ describe("AdminPushNotificationSettings", () => {
     subscribePush.mockResolvedValue(undefined);
     unsubscribePush.mockResolvedValue(undefined);
     sendTestPush.mockResolvedValue({ sent: 1, reason: "ok" });
+    isPushSubscribed.mockResolvedValue({ subscribed: true });
     stubNotification("default");
     stubServiceWorker(null);
   });
@@ -104,6 +108,8 @@ describe("AdminPushNotificationSettings", () => {
       toJSON: () => ({ endpoint: "https://push.example/admin-sub", keys: { p256dh: "p256", auth: "authkey" } }),
     };
     stubServiceWorker(dummySub);
+    // The browser holds a subscription (made elsewhere), but the server has no Admin record of it.
+    isPushSubscribed.mockResolvedValue({ subscribed: false });
 
     render(<AdminPushNotificationSettings />);
     const switches = screen.getAllByRole("switch");
@@ -138,6 +144,33 @@ describe("AdminPushNotificationSettings", () => {
 
     await waitFor(() => {
       expect(sendTestPush).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not call this browser subscribed just because it holds some push subscription", async () => {
+    stubServiceWorker({ endpoint: "https://push.example/made-elsewhere", keys: { p256dh: "p256", auth: "authkey" } });
+    isPushSubscribed.mockResolvedValue({ subscribed: false });
+
+    render(<AdminPushNotificationSettings />);
+
+    await waitFor(() => {
+      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" });
+    });
+    // The only button on the card is the test button, which shows only for a registered browser.
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("says why a test notification did not go out", async () => {
+    stubServiceWorker({ endpoint: "https://push.example/admin-sub", keys: { p256dh: "p256", auth: "authkey" } });
+    sendTestPush.mockResolvedValue({ sent: 0, reason: "rejected", statusCode: 403 });
+
+    render(<AdminPushNotificationSettings />);
+    const testButton = await screen.findByRole("button");
+    fireEvent.click(testButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("403"));
     });
   });
 });

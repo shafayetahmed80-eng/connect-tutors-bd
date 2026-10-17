@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { subscribePush, unsubscribePush, sendTestPush } = vi.hoisted(() => ({
+const { subscribePush, unsubscribePush, sendTestPush, isPushSubscribed } = vi.hoisted(() => ({
+  isPushSubscribed: vi.fn(),
   subscribePush: vi.fn(),
   unsubscribePush: vi.fn(),
   sendTestPush: vi.fn(),
@@ -11,6 +12,7 @@ const { subscribePush, unsubscribePush, sendTestPush } = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({ admin: { isPushSubscribed: { fetch: isPushSubscribed } } }),
     admin: {
       getPushPublicKey: { useQuery: () => ({ data: { publicKey: "public-key" } }) },
       subscribePush: { useMutation: () => ({ mutateAsync: subscribePush }) },
@@ -70,6 +72,7 @@ describe("AdminPushHeaderPopover", () => {
     subscribePush.mockResolvedValue(undefined);
     unsubscribePush.mockResolvedValue(undefined);
     sendTestPush.mockResolvedValue({ sent: 1, reason: "ok" });
+    isPushSubscribed.mockResolvedValue({ subscribed: true });
     stubNotification("default");
     stubServiceWorker(null);
   });
@@ -87,5 +90,27 @@ describe("AdminPushHeaderPopover", () => {
       expect(screen.getByText("এই ডিভাইসে নোটিফিকেশন")).toBeTruthy();
       expect(screen.getByText("ক্যাটাগরি ও সেটিংস")).toBeTruthy();
     });
+  });
+
+  it("shows the test button only for a browser the server has registered", async () => {
+    stubServiceWorker({ endpoint: "https://push.example/made-elsewhere", keys: { p256dh: "p256", auth: "authkey" } });
+    isPushSubscribed.mockResolvedValue({ subscribed: false });
+
+    render(<AdminPushHeaderPopover />);
+
+    await waitFor(() => {
+      expect(isPushSubscribed).toHaveBeenCalledWith({ endpoint: "https://push.example/made-elsewhere" });
+    });
+    expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("shows the test button once the server confirms this browser", async () => {
+    stubServiceWorker({ endpoint: "https://push.example/admin-sub", keys: { p256dh: "p256", auth: "authkey" } });
+
+    render(<AdminPushHeaderPopover />);
+
+    expect(await screen.findByRole("button")).toBeTruthy();
+    expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("true");
   });
 });
