@@ -4,6 +4,11 @@ import { adminPushPreferences, adminPushSubscriptions, pushSubscriptions, users 
 
 const chatPushMocks = vi.hoisted(() => ({ sendWebPushNotification: vi.fn(), getWebPushPublicKey: vi.fn(() => "test-public-key") }));
 vi.mock("./chat-push", () => chatPushMocks);
+const telegramMocks = vi.hoisted(() => ({ configured: false, sendTelegramAdminText: vi.fn(async () => true) }));
+vi.mock("./telegram-notification", async importOriginal => {
+  const actual = await importOriginal<typeof import("./telegram-notification")>();
+  return { ...actual, isTelegramAdminConfigured: () => telegramMocks.configured, sendTelegramAdminText: telegramMocks.sendTelegramAdminText };
+});
 
 import { ENV } from "./_core/env";
 import { getDb, isAdminPushSubscribed, isPushSubscribedForUser, notifyAdminPushEvent, sendPushToOwner } from "./db";
@@ -142,5 +147,55 @@ describe("Guardian-request and account-change alerts against the real database",
     await expect(isPushSubscribedForUser({ userId: adminAllOn, endpoint: endpointOf("account-phone") })).resolves.toEqual({ subscribed: true });
     await expect(isPushSubscribedForUser({ userId: adminTuitionsOff, endpoint: endpointOf("account-phone") })).resolves.toEqual({ subscribed: false });
     await expect(isPushSubscribedForUser({ userId: adminAllOn, endpoint: endpointOf("never-seen") })).resolves.toEqual({ subscribed: false });
+  });
+});
+
+describe("Admin alerts in the Telegram chat, against the real database", () => {
+  beforeEach(() => {
+    telegramMocks.configured = true;
+    telegramMocks.sendTelegramAdminText.mockClear();
+  });
+
+  afterAll(() => {
+    telegramMocks.configured = false;
+  });
+
+  it("sends a Guardian request to the chat with the link to the screen that answers it", async () => {
+    await notifyAdminPushEvent({ type: "guardian_request", requestId: 13, kind: "remove_tutor", guardianName: "Rina Akter" });
+
+    expect(telegramMocks.sendTelegramAdminText).toHaveBeenCalledTimes(1);
+    const [text] = telegramMocks.sendTelegramAdminText.mock.calls[0] as unknown as [string];
+    expect(text).toContain("Rina Akter");
+    expect(text).toContain("/admin/guardian-requests/cancel");
+  });
+
+  it("sends nothing for a new tuition request (it has its own fuller message) or for an alert kept to the Owner", async () => {
+    await notifyAdminPushEvent({ type: "tuition_request", requestId: 7, classCourse: "Class 9", guardianName: "Test", locationText: null });
+    await notifyAdminPushEvent({ type: "account_change", requestRole: "admin", changeType: "mobile", personName: "Some Admin" });
+
+    expect(telegramMocks.sendTelegramAdminText).not.toHaveBeenCalled();
+  });
+
+  it("follows the Owner's switches, not another Admin's", async () => {
+    const database = await getDb();
+    // Another Admin turning chat alerts off changes nothing for the shared chat.
+    await notifyAdminPushEvent({ type: "tutor_chat", tutorId: "tutor-1", tutorName: "Test", preview: "hi" });
+    expect(telegramMocks.sendTelegramAdminText).toHaveBeenCalledTimes(1);
+
+    telegramMocks.sendTelegramAdminText.mockClear();
+    await database!.insert(adminPushPreferences).values({ adminId: ownerId, notifyChat: false });
+    await notifyAdminPushEvent({ type: "tutor_chat", tutorId: "tutor-1", tutorName: "Test", preview: "hi" });
+    expect(telegramMocks.sendTelegramAdminText).not.toHaveBeenCalled();
+
+    await notifyAdminPushEvent({ type: "account_change", requestRole: "tutor", changeType: "name", personName: "Karim Uddin" });
+    expect(telegramMocks.sendTelegramAdminText).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends nothing at all while no Telegram chat is set up", async () => {
+    telegramMocks.configured = false;
+
+    await notifyAdminPushEvent({ type: "account_change", requestRole: "tutor", changeType: "name", personName: "Karim Uddin" });
+
+    expect(telegramMocks.sendTelegramAdminText).not.toHaveBeenCalled();
   });
 });
