@@ -25,20 +25,22 @@ import {
   type PreparedReel,
   type ReelSize,
   type ReelSpeed,
+  type ReelStyle,
 } from "@/lib/facebook-video";
 import { useSiteContact } from "@/lib/siteContent";
 import { cn } from "@/lib/utils";
 
 const VIDEO_PREFS_KEY = "connect_tutors_fb_video_prefs_v1";
 
-type VideoPrefs = { size: ReelSize; speed: ReelSpeed; opening: boolean; closing: boolean };
-const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", speed: "slow", opening: true, closing: true };
+type VideoPrefs = { size: ReelSize; style: ReelStyle; speed: ReelSpeed; opening: boolean; closing: boolean };
+const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", style: "scroll", speed: "slow", opening: true, closing: true };
 
 function readVideoPrefs(): VideoPrefs {
   try {
     const saved = JSON.parse(localStorage.getItem(VIDEO_PREFS_KEY) ?? "null") as Partial<VideoPrefs> | null;
     return {
       size: saved?.size === "feed" || saved?.size === "square" ? saved.size : "reels",
+      style: saved?.style === "slides" ? "slides" : "scroll",
       speed: saved?.speed === "normal" || saved?.speed === "fast" ? saved.speed : "slow",
       opening: saved?.opening !== false,
       closing: saved?.closing !== false,
@@ -60,7 +62,7 @@ type Mode = "idle" | "playing" | "recording";
 
 /**
  * The Facebook video: the tuitions the page found, Area Grouped, rising up the
- * frame, in the poster's language and ground colour (the two are shared with
+ * frame in one run (Scroll) or in pages that turn (Slides), in the poster's language and ground colour (the two are shared with
  * the poster window, so a colour picked there is here too). Play shows it in
  * the window; Download video records it and saves the file.
  */
@@ -134,7 +136,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     setSeconds(0);
     let prepared: PreparedReel | null = null;
     try {
-      prepared = prepareReel(reelInput(shown, locale, whatsapp), { size: videoPrefs.size, speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing, ground });
+      prepared = prepareReel(reelInput(shown, locale, whatsapp), { size: videoPrefs.size, style: videoPrefs.style, speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing, ground });
     } catch (error) {
       console.error("Video render failed", error);
       toast.error("ভিডিও তৈরি করতে সমস্যা হয়েছে।");
@@ -150,7 +152,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
       if (ctx) drawReelFrame(ctx, prepared, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `shown` is read through its ids
-  }, [fontsReady, jobKey, locale, videoPrefs.size, ground, whatsapp]);
+  }, [fontsReady, jobKey, locale, videoPrefs.size, videoPrefs.style, ground, whatsapp]);
 
   useEffect(() => {
     const current = reelRef.current;
@@ -204,7 +206,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     try {
       const result = await recordReel(canvas, current, { signal: controller.signal, onFrame: progress });
       if (result) {
-        downloadVideo(result.blob, videoFileName(shown.length, videoPrefs.size, locale, videoExtension(result.mimeType)));
+        downloadVideo(result.blob, videoFileName(shown.length, videoPrefs.size, locale, videoExtension(result.mimeType), videoPrefs.style));
         toast.success("ভিডিও ডাউনলোড হয়েছে।");
       } else if (!controller.signal.aborted) {
         toast.error("ভিডিও তৈরি করা যায়নি।");
@@ -231,6 +233,10 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     { value: "reels", label: "Reels", detail: "1080×1920" },
     { value: "feed", label: "Feed", detail: "1080×1350" },
     { value: "square", label: "Square", detail: "1080×1080" },
+  ];
+  const styleOptions: Array<{ value: ReelStyle; label: string }> = [
+    { value: "scroll", label: "Scroll" },
+    { value: "slides", label: "Slides" },
   ];
   const onOffOptions: Array<{ value: "on" | "off"; label: string }> = [
     { value: "on", label: "On" },
@@ -271,6 +277,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
           <fieldset disabled={busy} className="order-3 mt-3 space-y-3 disabled:opacity-60 sm:order-1 sm:mt-0 sm:space-y-2.5">
             <ChoiceRow label="Language" value={locale} options={[{ value: "bn" as PosterLocale, label: "বাংলা" }, { value: "en" as PosterLocale, label: "English" }]} onChange={next => updatePoster({ locale: next })} />
             <ChoiceRow label="Size" value={videoPrefs.size} options={sizeOptions} onChange={size => updateVideo({ size })} />
+            <ChoiceRow label="Style" value={videoPrefs.style} options={styleOptions} onChange={style => updateVideo({ style })} />
             <ChoiceRow label="Speed" value={videoPrefs.speed} options={speedOptions} onChange={speed => updateVideo({ speed })} />
             <ChoiceRow label="Opening" value={videoPrefs.opening ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ opening: next === "on" })} />
             <ChoiceRow label="Closing" value={videoPrefs.closing ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ closing: next === "on" })} />

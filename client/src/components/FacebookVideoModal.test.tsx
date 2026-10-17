@@ -77,7 +77,7 @@ describe("the Facebook video window", () => {
 
     expect(screen.getByRole("heading", { name: "Facebook Video" })).toBeDefined();
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:21")).toBeDefined());
-    for (const name of ["Language", "Size", "Speed", "Opening", "Closing", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
+    for (const name of ["Language", "Size", "Style", "Speed", "Opening", "Closing", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
     const sizes = within(screen.getByRole("radiogroup", { name: "Size" }));
     for (const name of [/Reels 1080×1920/, /Feed 1080×1350/, /Square 1080×1080/]) expect(sizes.getByRole("radio", { name })).toBeDefined();
     expect(screen.getByRole("button", { name: /Copy caption/ })).toBeDefined();
@@ -94,7 +94,7 @@ describe("the Facebook video window", () => {
     expect(input.locale).toBe("en");
     expect(input.tuitions).toHaveLength(3);
     expect(input.whatsapp).toBe("+8801516131411");
-    expect(options).toEqual({ size: "reels", speed: "slow", opening: true, closing: true, ground: "#0e2442" });
+    expect(options).toEqual({ size: "reels", style: "scroll", speed: "slow", opening: true, closing: true, ground: "#0e2442" });
   });
 
   it("paints again for another size, and only re-times for another speed, remembering both apart from the poster's choices", async () => {
@@ -110,7 +110,7 @@ describe("the Facebook video window", () => {
     expect(mocks.prepare).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:12")).toBeDefined());
 
-    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", speed: "fast", opening: true, closing: true });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", style: "scroll", speed: "fast", opening: true, closing: true });
     expect(JSON.parse(localStorage.getItem("connect_tutors_fb_poster_prefs_v1") ?? "null")).toBeNull();
   });
 
@@ -128,7 +128,7 @@ describe("the Facebook video window", () => {
     await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "slow", opening: false, closing: false }));
 
     expect(mocks.prepare).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "reels", speed: "slow", opening: false, closing: false });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "reels", style: "scroll", speed: "slow", opening: false, closing: false });
   });
 
   it("starts with both page turns off when they were left off", async () => {
@@ -138,6 +138,40 @@ describe("the Facebook video window", () => {
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
     expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ opening: false, closing: true });
     expect(within(screen.getByRole("radiogroup", { name: "Opening" })).getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("paints the tuitions in pages when Slides is chosen, and again as a scroll when Scroll is, remembering the choice apart from the poster's", async () => {
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
+    expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ style: "scroll" });
+    const style = within(screen.getByRole("radiogroup", { name: "Style" }));
+
+    fireEvent.click(style.getByRole("radio", { name: "Slides" }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
+    expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ style: "slides" });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toMatchObject({ style: "slides" });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_poster_prefs_v1") ?? "null")).toBeNull();
+
+    // The speed and the page turns still only re-time it.
+    fireEvent.click(screen.getByRole("radio", { name: "Fast" }));
+    await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "fast", opening: true, closing: true }));
+    expect(mocks.prepare).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(style.getByRole("radio", { name: "Scroll" }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(3));
+    expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ style: "scroll" });
+  });
+
+  it("starts on Slides when it was left there, and says so in the file's name", async () => {
+    localStorage.setItem("connect_tutors_fb_video_prefs_v1", JSON.stringify({ size: "reels", style: "slides", speed: "slow", opening: true, closing: true }));
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+    expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ style: "slides" });
+    expect(within(screen.getByRole("radiogroup", { name: "Style" })).getByRole("radio", { name: "Slides" }).getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await waitFor(() => expect(mocks.download).toHaveBeenCalled());
+    expect(mocks.download.mock.calls[0]![1]).toBe("connect-tutors-3-tuitions-reels-slides-bn.mp4");
   });
 
   it("shares the language and the colour with the poster window", async () => {

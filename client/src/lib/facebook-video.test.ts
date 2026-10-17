@@ -18,6 +18,7 @@ import { luminance } from "./poster/palette";
 import {
   groupByArea,
   layoutReel,
+  layoutSlides,
   REEL_CROSS_SECONDS,
   REEL_DEFAULT_GLOW,
   REEL_DEFAULT_GROUND,
@@ -29,6 +30,8 @@ import {
   REEL_STRIP_HEIGHT,
   REEL_TURN_ANGLE,
   REEL_TURN_SECONDS,
+  SLIDE_MIN_HOLD,
+  SLIDE_SECONDS_PER_CARD,
   reelGlow,
   reelLook,
   reelOffsetAt,
@@ -36,6 +39,8 @@ import {
   reelStrips,
   reelTimeline,
   reelTitle,
+  slidesTimeline,
+  slideStepAt,
   turnSlices,
 } from "./poster/reel";
 
@@ -380,6 +385,225 @@ describe("what a frame is made of", () => {
 
     expect(drawn.images.length).toBeGreaterThan(100);
     expect(drawn.images.at(-1)).toEqual({ args: [0, 0] });
+  });
+});
+
+describe("how the slides are laid out", () => {
+  const inOnePlace = Array.from({ length: 14 }, (_, index) => job(index + 1));
+  const inManyPlaces = Array.from({ length: 14 }, (_, index) => job(index + 1, { tuitionLocationLabel: index % 5 === 0 ? "Dhanmondi, Dhaka" : index % 2 ? "Mirpur 10, Dhaka" : "Uttara, Dhaka" }));
+  const slidesFor = (jobs: ReturnType<typeof job>[], size: "reels" | "feed" | "square") => layoutSlides(measureCtx(), reelInput(jobs, "en", null), size);
+  const cardIds = (layout: ReturnType<typeof slidesFor>) => layout.pages.flatMap(page => page.blocks.flatMap(block => (block.kind === "card" ? [block.tuition.jobId] : [])));
+
+  it("shows every tuition once, in the order of its place, and never a heading alone at the foot of a page", () => {
+    const layout = slidesFor(inManyPlaces, "feed");
+    const expected = groupByArea(reelInput(inManyPlaces, "en", null).tuitions, "en").flatMap(area => area.items.map(item => item.jobId));
+
+    expect(cardIds(layout)).toEqual(expected);
+    for (const page of layout.pages) {
+      expect(page.blocks[0]!.kind).toBe("area");
+      expect(page.blocks.at(-1)!.kind).toBe("card");
+      expect(page.cards).toBe(page.blocks.filter(block => block.kind === "card").length);
+    }
+  });
+
+  it("holds as many tuitions to a page as the frame takes: more on a tall frame, fewer on a square one", () => {
+    const perPage = (size: "reels" | "feed" | "square") => slidesFor(inOnePlace, size).pages.map(page => page.cards);
+
+    expect(perPage("reels")).toEqual([4, 4, 4, 2]);
+    expect(perPage("feed")).toEqual([2, 2, 2, 2, 2, 2, 2]);
+    expect(perPage("square")).toEqual([2, 2, 2, 2, 2, 2, 2]);
+  });
+
+  it("keeps each page's content clear of the frame's edges and in the middle of it", () => {
+    for (const size of ["reels", "feed", "square"] as const) {
+      const layout = slidesFor(inManyPlaces, size);
+      for (const page of layout.pages) {
+        const top = Math.min(...page.blocks.map(block => block.top));
+        const bottom = Math.max(...page.blocks.map(block => block.top + block.height));
+        expect(top).toBeGreaterThanOrEqual(99);
+        expect(bottom).toBeLessThanOrEqual(layout.frameHeight - 99);
+        expect(Math.abs(top - (layout.frameHeight - bottom))).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("says the place again where its tuitions run on to the next page", () => {
+    const layout = slidesFor(inOnePlace, "reels");
+    const headings = layout.pages.map(page => page.blocks[0]!);
+
+    expect(layout.pages.length).toBeGreaterThan(1);
+    for (const heading of headings) expect(heading).toMatchObject({ kind: "area", area: { label: "Mirpur 10, Dhaka" } });
+  });
+
+  it("opens with the title card and ends with the closing card, each a frame tall", () => {
+    const layout = slidesFor(inOnePlace, "square");
+    expect(layout.title).toMatchObject({ kind: "title", top: 0, height: REEL_SIZES.square.height });
+    expect(layout.end).toMatchObject({ kind: "end", top: 0, height: REEL_SIZES.square.height });
+  });
+});
+
+describe("when each slide is shown", () => {
+  const input = reelInput(Array.from({ length: 9 }, (_, index) => job(index + 1)), "en", null);
+  const layout = layoutSlides(measureCtx(), input, "reels");
+  const pageCount = layout.pages.length;
+
+  it("holds the title, turns to the first page, holds each page for as long as its tuitions take to read, turns between them, shuts the last under the closing card and holds it", () => {
+    const timeline = slidesTimeline(layout, "slow");
+    const { steps } = timeline;
+
+    expect(steps[0]).toMatchObject({ page: 0, to: null, start: 0, end: REEL_HOLD_START });
+    expect(steps[1]).toMatchObject({ page: 0, to: 1, transition: "turn", shut: false });
+    const holds = steps.filter(step => step.transition === null && step.page >= 1 && step.page <= pageCount);
+    expect(holds).toHaveLength(pageCount);
+    holds.forEach((step, index) => {
+      expect(step.end - step.start).toBeCloseTo(Math.max(SLIDE_MIN_HOLD, layout.pages[index]!.cards * SLIDE_SECONDS_PER_CARD.slow));
+    });
+    // Between two pages, each turns away to uncover the next.
+    const between = steps.filter(step => step.to !== null && step.page >= 1 && step.to <= pageCount);
+    expect(between).toHaveLength(pageCount - 1);
+    for (const step of between) expect(step).toMatchObject({ transition: "turn", shut: false, to: step.page + 1 });
+    expect(steps.at(-2)).toMatchObject({ page: pageCount, to: pageCount + 1, transition: "turn", shut: true });
+    expect(steps.at(-1)).toMatchObject({ page: pageCount + 1, to: null });
+    expect(steps.at(-1)!.end - steps.at(-1)!.start).toBeCloseTo(REEL_HOLD_END);
+    // Nothing is skipped or shown twice.
+    steps.slice(1).forEach((step, index) => expect(step.start).toBe(steps[index]!.end));
+    expect(timeline.total).toBe(steps.at(-1)!.end);
+  });
+
+  it("reads longer on a page of more tuitions, and never less than the least a page stays", () => {
+    const timeline = slidesTimeline(layout, "slow");
+    const hold = (page: number) => {
+      const step = timeline.steps.find(candidate => candidate.page === page && candidate.transition === null)!;
+      return step.end - step.start;
+    };
+
+    expect(layout.pages[0]!.cards).toBe(4);
+    expect(hold(1)).toBeCloseTo(4 * SLIDE_SECONDS_PER_CARD.slow);
+    expect(layout.pages.at(-1)!.cards).toBe(1);
+    expect(hold(pageCount)).toBeCloseTo(SLIDE_MIN_HOLD);
+  });
+
+  it("is shorter at a faster speed", () => {
+    const totals = (["slow", "normal", "fast"] as const).map(speed => slidesTimeline(layout, speed).total);
+    expect(totals[0]).toBeGreaterThan(totals[1]!);
+    expect(totals[1]).toBeGreaterThan(totals[2]!);
+  });
+
+  it("fades the title card and the closing card when their turns are off, but always turns the pages between", () => {
+    const faded = slidesTimeline(layout, "slow", { opening: false, closing: false });
+
+    expect(faded.opening).toBe("fade");
+    expect(faded.closing).toBe("fade");
+    expect(faded.steps[1]).toMatchObject({ to: 1, transition: "fade" });
+    expect(faded.steps[1]!.end - faded.steps[1]!.start).toBeCloseTo(REEL_FADE_SECONDS);
+    expect(faded.steps.at(-2)).toMatchObject({ shut: true, transition: "fade" });
+    const between = faded.steps.filter(step => step.to !== null && step.page >= 1 && step.to <= pageCount);
+    for (const step of between) expect(step.transition).toBe("turn");
+    // The two switches are separate.
+    const closingOnly = slidesTimeline(layout, "slow", { opening: false });
+    expect([closingOnly.opening, closingOnly.closing]).toEqual(["fade", "turn"]);
+  });
+
+  it("finds the step at any moment and how far through it, and stays on the last step after the end", () => {
+    const timeline = slidesTimeline(layout, "normal");
+    const turn = timeline.steps[1]!;
+
+    expect(slideStepAt(0, timeline)).toMatchObject({ step: timeline.steps[0], progress: 0 });
+    const middle = slideStepAt((turn.start + turn.end) / 2, timeline);
+    expect(middle.step).toBe(turn);
+    expect(middle.progress).toBeCloseTo(0.5);
+    const after = slideStepAt(timeline.total + 5, timeline);
+    expect(after.step).toBe(timeline.steps.at(-1));
+    expect(after.progress).toBe(1);
+  });
+
+  it("is only the title and the closing card when there are no tuitions to page", () => {
+    const empty = layoutSlides(measureCtx(), reelInput([], "en", null), "reels");
+    const timeline = slidesTimeline(empty, "slow");
+
+    expect(empty.pages).toEqual([]);
+    expect(timeline.steps.map(step => step.page)).toEqual([0, 0, 1]);
+  });
+});
+
+describe("what a slides frame is made of", () => {
+  const prepare = (turns: { opening?: boolean; closing?: boolean } = {}) => {
+    const drawn: Drawn = { texts: [], images: [] };
+    withCanvas(drawn);
+    const reel = prepareReel(reelInput([job(1), job(2), job(3)], "en", "+8801516131411"), { size: "reels", speed: "slow", style: "slides", ...turns })!;
+    const painted = drawn.texts.slice();
+    drawn.images.length = 0;
+    const ctx = mockContext(drawn) as unknown as CanvasRenderingContext2D;
+    return { drawn, reel, ctx, painted };
+  };
+
+  it("paints the title, each page of tuitions and the closing card once each, and never the address or the institute", () => {
+    const { reel, painted } = prepare();
+
+    expect(reel.style).toBe("slides");
+    if (reel.style !== "slides") return;
+    expect(reel.sheets).toHaveLength(reel.layout.pages.length + 2);
+    expect(reel.pages.title).toBe(reel.sheets[0]);
+    expect(reel.pages.end).toBe(reel.sheets.at(-1));
+    const all = painted.join(" | ");
+    for (const expected of ["Total 3 tuitions", "# JOB ID 6800", "# JOB ID 6802", "Apply now", "WhatsApp  +8801516131411"]) expect(all, expected).toContain(expected);
+    expect(painted.filter(text => text === "# JOB ID 6800")).toHaveLength(1);
+    expect(all).not.toContain("Road 8/A");
+    expect(all).not.toContain("Monipur");
+  });
+
+  it("is a single page while one is held", () => {
+    const { drawn, reel, ctx } = prepare();
+
+    drawReelFrame(ctx, reel, 0);
+    expect(drawn.images).toEqual([{ args: [0, 0] }]);
+    drawn.images.length = 0;
+    drawReelFrame(ctx, reel, reel.timeline.total);
+    expect(drawn.images).toEqual([{ args: [0, 0] }]);
+  });
+
+  it("turns a page away over the next one, slice by slice, shaded as one, or lets it fade", () => {
+    const turned = prepare();
+    const turn = turned.reel.timeline as ReturnType<typeof slidesTimeline>;
+    drawReelFrame(turned.ctx, turned.reel, (turn.steps[1]!.start + turn.steps[1]!.end) / 2);
+    // The page beneath, a slice for each stretch of the turning page, and the shaded page laid over.
+    expect(turned.drawn.images.length).toBeGreaterThan(100);
+    expect(turned.drawn.images.at(-1)).toEqual({ args: [0, 0] });
+
+    const faded = prepare({ opening: false });
+    const fade = faded.reel.timeline as ReturnType<typeof slidesTimeline>;
+    drawReelFrame(faded.ctx, faded.reel, (fade.steps[1]!.start + fade.steps[1]!.end) / 2);
+    expect(faded.drawn.images).toHaveLength(2);
+  });
+
+  it("shuts the closing card over the last page the same way", () => {
+    const { drawn, reel, ctx } = prepare();
+    const timeline = reel.timeline as ReturnType<typeof slidesTimeline>;
+    const shut = timeline.steps.at(-2)!;
+    drawReelFrame(ctx, reel, (shut.start + shut.end) / 2);
+
+    expect(drawn.images.length).toBeGreaterThan(100);
+    expect(drawn.images.at(-1)).toEqual({ args: [0, 0] });
+  });
+
+  it("is only re-timed - not repainted - when the speed or a page turn changes, and lets every page go when released", () => {
+    const { reel } = prepare();
+    if (reel.style !== "slides") throw new Error("not slides");
+    const faster = withMotion(reel, { speed: "fast" });
+
+    expect(faster.style).toBe("slides");
+    if (faster.style !== "slides") return;
+    expect(faster.sheets).toBe(reel.sheets);
+    expect(faster.timeline.total).toBeLessThan(reel.timeline.total);
+    releaseReel(reel);
+    for (const sheet of reel.sheets) expect(sheet.width).toBe(0);
+    expect(reel.scratch.width).toBe(0);
+  });
+
+  it("names the file so a slides video is told from a scrolling one", () => {
+    expect(videoFileName(12, "reels", "bn", "mp4")).toBe("connect-tutors-12-tuitions-reels-bn.mp4");
+    expect(videoFileName(12, "reels", "bn", "mp4", "slides")).toBe("connect-tutors-12-tuitions-reels-slides-bn.mp4");
+    expect(videoFileName(1, "square", "en", "webm", "slides")).toBe("connect-tutors-1-tuition-square-slides-en.webm");
   });
 });
 

@@ -3,27 +3,34 @@ import { PUBLIC_SITE_HOST, PUBLIC_SITE_ORIGIN } from "@shared/public-site";
 import { MAX_VIDEO_TUITIONS, toPosterTuition, type FacebookPosterJob } from "./facebook-poster";
 import {
   layoutReel,
+  layoutSlides,
   paintReelBackground,
   paintReelBlock,
   REEL_EDGE_FADE,
   REEL_FPS,
   REEL_SIZES,
   REEL_TURN_ANGLE,
+  reelEase,
   reelLook,
   reelOffsetAt,
   reelPageCovers,
   reelStrips,
   reelTimeline,
+  slidesTimeline,
+  slideStepAt,
   turnSlices,
   type ReelBlock,
   type ReelInput,
   type ReelLayout,
   type ReelSize,
   type ReelSpeed,
+  type ReelStyle,
   type ReelTimeline,
+  type SlidesLayout,
+  type SlidesTimeline,
 } from "./poster/reel";
 
-export { REEL_DEFAULT_GROUND, REEL_SIZES, type ReelSize, type ReelSpeed } from "./poster/reel";
+export { REEL_DEFAULT_GROUND, REEL_SIZES, type ReelSize, type ReelSpeed, type ReelStyle } from "./poster/reel";
 
 /**
  * The Facebook Posts page's video: the filtered tuitions, Area Grouped, rising
@@ -50,18 +57,23 @@ export function reelInput(jobs: FacebookPosterJob[], locale: PosterLocale, whats
   };
 }
 
-/** A reel painted and ready to play: its strips, its backdrop, and how long it runs. */
-export type PreparedReel = {
+/** What every painted reel has: its size, its backdrop, the title and closing cards, and how long it runs. */
+type ReelBase = {
   width: number;
   height: number;
-  layout: ReelLayout;
-  timeline: ReelTimeline;
   background: HTMLCanvasElement;
-  strips: Array<{ top: number; canvas: HTMLCanvasElement }>;
   /** The title card and the closing card, each a whole frame on the backdrop: what turns away and what shuts. */
   pages: { title: HTMLCanvasElement; end: HTMLCanvasElement };
-  /** A frame-sized canvas a page is turned on before it is laid over the list, so it can be shaded as a whole. */
+  /** A frame-sized canvas a page is turned on before it is laid over what it uncovers, so it can be shaded as a whole. */
   scratch: HTMLCanvasElement;
+};
+
+/** The list rising up the frame in one run: painted into strips that move over the backdrop. */
+export type ScrollReel = ReelBase & {
+  style: "scroll";
+  layout: ReelLayout;
+  timeline: ReelTimeline;
+  strips: Array<{ top: number; canvas: HTMLCanvasElement }>;
   /**
    * The backdrop's own top and bottom bands, fading from solid at the frame's
    * edge to clear: laid over the list, they melt it into the ground as it
@@ -69,6 +81,18 @@ export type PreparedReel = {
    */
   fades: { top: HTMLCanvasElement; bottom: HTMLCanvasElement };
 };
+
+/** The list in pages that turn: each page is painted whole, on the backdrop. */
+export type SlidesReel = ReelBase & {
+  style: "slides";
+  layout: SlidesLayout;
+  timeline: SlidesTimeline;
+  /** In the order they are shown: the title card, each page of tuitions, the closing card. */
+  sheets: HTMLCanvasElement[];
+};
+
+/** A reel painted and ready to play. */
+export type PreparedReel = ScrollReel | SlidesReel;
 
 function canvasOf(width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -81,18 +105,45 @@ function canvasOf(width: number, height: number): HTMLCanvasElement {
  * Lays the reel out and paints it: the backdrop once, and the list into
  * strips. Null where the browser gives no 2D canvas (a test without one).
  */
-export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: ReelSpeed; ground?: string | null } & ReelTurns): PreparedReel | null {
+export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: ReelSpeed; ground?: string | null; style?: ReelStyle } & ReelTurns): PreparedReel | null {
   const { width, height } = REEL_SIZES[options.size];
   const measureCtx = canvasOf(width, 8).getContext("2d");
   if (!measureCtx) return null;
   const look = reelLook(options.ground);
-  const layout = layoutReel(measureCtx, input, options.size);
 
   const background = canvasOf(width, height);
   const backgroundCtx = background.getContext("2d");
   if (!backgroundCtx) return null;
   paintReelBackground(backgroundCtx, width, height, look);
 
+  // A page is the backdrop with its blocks on it, opaque, so it can swing over what it uncovers.
+  const page = (blocks: ReelBlock[]) => {
+    const canvas = canvasOf(width, height);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(background, 0, 0);
+      for (const block of blocks) paintReelBlock(ctx, block, look, input, width);
+    }
+    return canvas;
+  };
+
+  if (options.style === "slides") {
+    const layout = layoutSlides(measureCtx, input, options.size);
+    const sheets = [page([layout.title]), ...layout.pages.map(slide => page(slide.blocks)), page([layout.end])];
+    return {
+      style: "slides",
+      width,
+      height,
+      layout,
+      timeline: slidesTimeline(layout, options.speed, options),
+      background,
+      pages: { title: sheets[0]!, end: sheets[sheets.length - 1]! },
+      scratch: canvasOf(width, height),
+      sheets,
+    };
+  }
+
+  const layout = layoutReel(measureCtx, input, options.size);
   // The title and closing cards are pages of their own, so the strips hold only the list - and a strip with none of it is not painted.
   const isList = (block: ReelBlock) => block.kind === "area" || block.kind === "card";
   const strips = reelStrips(layout)
@@ -106,21 +157,12 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
       }
       return { top: strip.top, canvas };
     });
-
-  // A page is the backdrop with its card on it, opaque, so it can swing over the list.
-  const page = (block: ReelBlock) => {
-    const canvas = canvasOf(width, height);
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(background, 0, 0);
-      ctx.translate(0, -block.top);
-      paintReelBlock(ctx, block, look, input, width);
-    }
-    return canvas;
-  };
-  const pages = { title: page(layout.blocks[0]!), end: page(layout.blocks[layout.blocks.length - 1]!) };
+  // The title and closing blocks sit at the strip's two ends; a page paints each at its own top.
+  const card = (block: ReelBlock) => page([{ ...block, top: 0 }]);
+  const pages = { title: card(layout.blocks[0]!), end: card(layout.blocks[layout.blocks.length - 1]!) };
 
   return {
+    style: "scroll",
     width,
     height,
     layout,
@@ -157,13 +199,15 @@ function edgeFades(background: HTMLCanvasElement): { top: HTMLCanvasElement; bot
 
 /** The same painted reel at another speed, or with the pages turned or faded: only the timing changes. */
 export function withMotion(reel: PreparedReel, motion: { speed: ReelSpeed } & ReelTurns): PreparedReel {
+  if (reel.style === "slides") return { ...reel, timeline: slidesTimeline(reel.layout, motion.speed, motion) };
   return { ...reel, timeline: reelTimeline(reel.layout, motion.speed, motion) };
 }
 
-/** Lets the strips go, so a long reel does not hold its memory after the window closes. */
+/** Lets the painted canvases go, so a long reel does not hold its memory after the window closes. */
 export function releaseReel(reel: PreparedReel | null) {
   if (!reel) return;
-  for (const canvas of [reel.background, reel.fades.top, reel.fades.bottom, reel.pages.title, reel.pages.end, reel.scratch, ...reel.strips.map(strip => strip.canvas)]) {
+  const own = reel.style === "slides" ? reel.sheets : [reel.fades.top, reel.fades.bottom, ...reel.strips.map(strip => strip.canvas), reel.pages.title, reel.pages.end];
+  for (const canvas of [reel.background, reel.scratch, ...own]) {
     canvas.width = 0;
     canvas.height = 0;
   }
@@ -224,11 +268,36 @@ function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLC
 }
 
 /**
- * Draws the frame at `t` seconds onto `ctx` (a canvas the reel's size): the title
- * card whole while it is held, else the backdrop, the visible part of each
- * strip, the edge fades, and whichever page is turning (or fading) over them.
+ * A slides frame: the page held, or one page turning (or fading) into the
+ * next. A page turns away to uncover the next; the closing card instead
+ * arrives over the last page, like a cover shut.
+ */
+function drawSlidesFrame(ctx: CanvasRenderingContext2D, reel: SlidesReel, t: number) {
+  const { step, progress } = slideStepAt(t, reel.timeline);
+  if (step.to === null || step.transition === null) {
+    ctx.drawImage(reel.sheets[step.page]!, 0, 0);
+    return;
+  }
+  if (step.shut) {
+    ctx.drawImage(reel.sheets[step.page]!, 0, 0);
+    drawPage(ctx, reel, reel.sheets[step.to]!, reelEase(progress), step.transition);
+    return;
+  }
+  ctx.drawImage(reel.sheets[step.to]!, 0, 0);
+  drawPage(ctx, reel, reel.sheets[step.page]!, 1 - reelEase(progress), step.transition);
+}
+
+/**
+ * Draws the frame at `t` seconds onto `ctx` (a canvas the reel's size): for a
+ * scroll, the title card whole while it is held, else the backdrop, the
+ * visible part of each strip, the edge fades, and whichever page is turning
+ * (or fading) over them; for slides, the page held or turning.
  */
 export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel, t: number) {
+  if (reel.style === "slides") {
+    drawSlidesFrame(ctx, reel, t);
+    return;
+  }
   const { width, height, timeline } = reel;
   const covers = reelPageCovers(t, timeline);
   if (covers.title >= 1) {
@@ -339,9 +408,9 @@ export function videoExtension(mimeType: string): "mp4" | "webm" {
   return mimeType.startsWith("video/mp4") ? "mp4" : "webm";
 }
 
-/** `connect-tutors-12-tuitions-reels-bn.mp4`. */
-export function videoFileName(count: number, size: ReelSize, locale: PosterLocale, extension: "mp4" | "webm"): string {
-  return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}-${locale}.${extension}`;
+/** `connect-tutors-12-tuitions-reels-bn.mp4`, or `…-reels-slides-bn.mp4` for a slides video. */
+export function videoFileName(count: number, size: ReelSize, locale: PosterLocale, extension: "mp4" | "webm", style: ReelStyle = "scroll"): string {
+  return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}${style === "slides" ? "-slides" : ""}-${locale}.${extension}`;
 }
 
 /**
