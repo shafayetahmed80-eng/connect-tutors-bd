@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { getDb } from "./db";
 import { adminPushPreferences, adminPushSubscriptions } from "../drizzle/schema";
 import { sendWebPushNotification } from "./chat-push";
@@ -269,5 +269,19 @@ export async function sendTestAdminPushNotification(database: DatabaseInstance, 
     await database.delete(adminPushSubscriptions).where(inArray(adminPushSubscriptions.id, goneIds));
   }
 
-  return { sent: results.filter(r => r.result.ok).length, reason: "ok" as const };
+  const sent = results.filter(r => r.result.ok).length;
+  if (sent > 0) return { sent, reason: "ok" as const, statusCode: undefined };
+  // Nothing went out: say which of the two ways it can fail, so the screen does not claim "no subscription" when the real trouble is the server's keys or the push service refusing.
+  if (results.every(row => row.result.notConfigured)) return { sent: 0, reason: "not_configured" as const, statusCode: undefined };
+  return { sent: 0, reason: "rejected" as const, statusCode: results.find(row => row.result.statusCode)?.result.statusCode };
+}
+
+/** Whether this very browser (its `endpoint`) is registered on the server to get this Admin's alerts - not merely whether the browser holds some push subscription. */
+export async function isAdminPushSubscribed(database: DatabaseInstance, adminId: number, endpoint: string) {
+  const [row] = await database
+    .select({ id: adminPushSubscriptions.id })
+    .from(adminPushSubscriptions)
+    .where(and(eq(adminPushSubscriptions.adminId, adminId), eq(adminPushSubscriptions.endpoint, endpoint)))
+    .limit(1);
+  return { subscribed: Boolean(row) };
 }

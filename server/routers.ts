@@ -2525,6 +2525,10 @@ export const appRouter = router({
     unsubscribePush: adminProcedure
       .input(z.object({ endpoint: z.string().trim().min(1) }))
       .mutation(({ input }) => db.unsubscribeAdminFromChatPush(input)),
+    /** Whether this browser is registered on the server for this Admin's alerts. The browser alone cannot say: it may hold a subscription made for something else. */
+    isPushSubscribed: adminProcedure
+      .input(z.object({ endpoint: z.string().trim().min(1) }))
+      .query(({ ctx, input }) => db.isAdminPushSubscribed(ctx.user.id, input.endpoint)),
     getPushPreferences: adminProcedure.query(({ ctx }) => db.getAdminPushPreferences(ctx.user.id)),
     updatePushPreferences: adminProcedure
       .input(z.object({

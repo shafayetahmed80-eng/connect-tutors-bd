@@ -161,6 +161,8 @@ Let's Encrypt দিয়ে SSL active করুন, তারপর Force HTT
 
 **Owner-এর ফোনে অ্যালার্ট:** Owner **Settings → Notifications** চালু করলে ফোনে পুশ আসে যখন (১) কোনো Admin নতুন ব্রাউজার/ডিভাইস থেকে সাইন-ইন করে, (২) একটা Admin অ্যাকাউন্টে টানা ৫টা ভুল পাসওয়ার্ড পড়ে। অ্যালার্ট খুললে Admin security পেজ খোলে। এজন্য `VAPID_*` কী বসানো থাকতে হবে (ফোনের পুশ নোটিফিকেশনের ধাপ)।
 
+**ফোনে অ্যালার্ট না এলে:** অ্যাপ ফোল্ডারে এই কমান্ড চালান। এটা শুধু দেখে, কিছু বদলায় না: `source ~/nodevenv/connecttutorsbd_app/24/bin/activate && node scripts/push-status.mjs`। প্রথম লাইনে "Push keys (VAPID) set" **YES** না হলে কী বসাতে হবে ওপরের `VAPID_*` সারিতে লেখা। "Admin phones/browsers the server will alert" **0** হলে ফোনে Admin > Settings > Notifications সুইচ চালু করে টেস্ট বাটন চাপুন।
+
 **পাসওয়ার্ড ভুলে গেলে:** লগইন পেজে "Forgot password?" নেই। অন্য Admin ভুললে Owner তার **Reset credentials** দেন (সে আবার নিজের পাসওয়ার্ড বেছে নেয়)। **Owner নিজে** পাসওয়ার্ড ভুললে সার্ভারে এই কমান্ড (cPanel Terminal, অ্যাপ ফোল্ডারে):
 
 ```bash

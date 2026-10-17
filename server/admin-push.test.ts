@@ -227,5 +227,30 @@ describe("Admin Web Push Notification Service", () => {
         })
       );
     });
+
+    const oneSubscriptionDb = () => ({
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([{ id: 1, adminId: 5, endpoint: "https://push.example.com/sub", p256dh: "k", auth: "a" }]),
+      delete: vi.fn().mockReturnThis(),
+    });
+
+    it("says the server has no push keys, rather than blaming the subscription", async () => {
+      vi.mocked(chatPush.sendWebPushNotification).mockResolvedValue({ ok: false, gone: false, notConfigured: true, statusCode: undefined });
+
+      await expect(sendTestAdminPushNotification(oneSubscriptionDb() as any, 5)).resolves.toMatchObject({ sent: 0, reason: "not_configured" });
+    });
+
+    it("passes on the code the push service refused with", async () => {
+      vi.mocked(chatPush.sendWebPushNotification).mockResolvedValue({ ok: false, gone: false, notConfigured: false, statusCode: 403 });
+
+      await expect(sendTestAdminPushNotification(oneSubscriptionDb() as any, 5)).resolves.toEqual({ sent: 0, reason: "rejected", statusCode: 403 });
+    });
+
+    it("reports no subscription only when the Admin really has none", async () => {
+      const mockDb = { ...oneSubscriptionDb(), where: vi.fn().mockResolvedValue([]) };
+
+      await expect(sendTestAdminPushNotification(mockDb as any, 5)).resolves.toMatchObject({ sent: 0, reason: "no_subscription" });
+    });
   });
 });
