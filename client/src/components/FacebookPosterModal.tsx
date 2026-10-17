@@ -38,10 +38,11 @@ type PosterPrefs = {
 
 const DEFAULT_PREFS: PosterPrefs = { locale: "bn", size: "square", singleTheme: "navy", combinedTheme: "navy", ground: null };
 
-function readPrefs(): PosterPrefs {
+/** What is stored, or null when nothing is or the browser will not say (a private window). */
+function readStoredPrefs(): PosterPrefs | null {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null") as Partial<PosterPrefs> | null;
-    if (!saved) return DEFAULT_PREFS;
+    if (!saved) return null;
     return {
       locale: saved.locale === "en" ? "en" : "bn",
       size: saved.size === "landscape" || saved.size === "tall" ? saved.size : "square",
@@ -50,9 +51,11 @@ function readPrefs(): PosterPrefs {
       ground: typeof saved.ground === "string" ? normalizeHex(saved.ground) : null,
     };
   } catch {
-    return DEFAULT_PREFS;
+    return null;
   }
 }
+
+const readPrefs = () => readStoredPrefs() ?? DEFAULT_PREFS;
 
 function savePrefs(prefs: PosterPrefs) {
   try {
@@ -215,9 +218,19 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: bo
   const shown = isCombined ? Math.min(jobs!.length, size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS) : 0;
   const needsSerif = theme === "mist";
 
+  // The page holds two of these windows (one tuition, and the bulk poster), each with its own state.
+  // A window reads what is stored when it opens, and a change is made on what is stored now rather
+  // than on what it read earlier - so a colour picked in one is there in the other, and neither
+  // writes the other's choices back over.
+  useEffect(() => {
+    const stored = isOpen ? readStoredPrefs() : null;
+    if (stored) setPrefs(stored);
+  }, [isOpen]);
+
   const update = (patch: Partial<PosterPrefs>) => {
+    // Where storage is refused, the window's own state is all there is to build on.
     setPrefs(current => {
-      const next = { ...current, ...patch };
+      const next = { ...(readStoredPrefs() ?? current), ...patch };
       savePrefs(next);
       return next;
     });
