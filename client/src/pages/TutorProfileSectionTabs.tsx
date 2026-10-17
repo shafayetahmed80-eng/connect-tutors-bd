@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSiteContentText, useSiteContentTextStyle } from "@/lib/siteContent";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
@@ -23,6 +23,9 @@ function requiredCount(rows: { optional?: boolean; missing: boolean }[]) {
  * Segmented-control tab bar for the Tutor Profile sections. Text-first (no
  * per-tab icon): a short label plus a quiet filled/required count, or a check
  * once the section is complete. Sticky under the dashboard header.
+ *
+ * On small/mobile screens, fading edge overlays, tactile left/right scroll
+ * cues, and a contextual scroll prompt make off-screen tabs instantly discoverable.
  */
 export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
   sections: TutorProfileReadoutSection[];
@@ -31,6 +34,7 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false });
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   // Which ends still hide a tab, so only those fade - a strip that fits, or
   // one scrolled to an end, shows that end sharp.
@@ -38,8 +42,24 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
     const list = listRef.current;
     if (!list) return;
     const hidden = list.scrollWidth - list.clientWidth;
-    setEdges({ start: list.scrollLeft > 1, end: list.scrollLeft < hidden - 1 });
+    const start = list.scrollLeft > 1;
+    const end = list.scrollLeft < hidden - 1;
+    setEdges({ start, end });
+    if (list.scrollLeft > 20) {
+      setHasScrolled(true);
+    }
   }, []);
+
+  const scrollTabs = useCallback((offset: number) => {
+    const list = listRef.current;
+    if (!list) return;
+    if (typeof list.scrollBy === "function") {
+      list.scrollBy({ left: offset, behavior: "smooth" });
+    } else {
+      list.scrollLeft += offset;
+    }
+    measure();
+  }, [measure]);
 
   useEffect(() => {
     measure();
@@ -57,38 +77,112 @@ export function TutorProfileSectionTabs({ sections, activeTab, onTabChange }: {
     const left = tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2;
     if (typeof list.scrollTo === "function") list.scrollTo({ left, behavior: "smooth" });
     else list.scrollLeft = left;
-  }, [activeTab]);
+    measure();
+  }, [activeTab, measure]);
 
   const fade = edges.start && edges.end
     ? "[mask-image:linear-gradient(to_right,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)]"
     : edges.start ? "[mask-image:linear-gradient(to_right,transparent,#000_1.5rem)]"
     : edges.end ? "[mask-image:linear-gradient(to_left,transparent,#000_1.5rem)]" : "";
 
-  return <div
-    ref={listRef}
-    role="tablist"
-    aria-label="Profile sections"
-    onScroll={measure}
-    className={`nav-tab-outer sticky top-16 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-tp-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${fade}`}
-  >
-    {sections.map(section => <SectionTab
-      key={section.id}
-      section={section}
-      isActive={section.id === activeTab}
-      onSelect={() => onTabChange(section.id)}
-      onKeyDown={event => {
-        // The keys a tab strip answers to: the arrows step, Home and End jump.
-        const index = sections.findIndex(candidate => candidate.id === section.id);
-        const next = event.key === "ArrowRight" ? (index + 1) % sections.length
-          : event.key === "ArrowLeft" ? (index - 1 + sections.length) % sections.length
-            : event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1 : -1;
-        if (next < 0) return;
-        event.preventDefault();
-        onTabChange(sections[next].id);
-        listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
-      }}
-    />)}
-  </div>;
+  return (
+    <div className="sticky top-16 z-20 -mx-1 space-y-1">
+      <div className="relative">
+        {/* Left fading edge overlay & nudge button */}
+        {edges.start && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 flex w-8 sm:w-10 items-center justify-start rounded-l-xl bg-gradient-to-r from-j-surface-sunken via-j-surface-sunken/80 to-transparent pl-1 text-tp-label"
+          >
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Scroll tabs left"
+              onClick={() => scrollTabs(-140)}
+              className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-tp-value shadow-xs ring-1 ring-tp-border/50 transition hover:bg-white hover:text-tp-heading focus:outline-none"
+            >
+              <ChevronLeft size={13} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        <div
+          ref={listRef}
+          role="tablist"
+          aria-label="Profile sections"
+          onScroll={measure}
+          className={`nav-tab-outer flex gap-1 overflow-x-auto rounded-xl border border-tp-border bg-j-surface-sunken/80 p-1 shadow-sm backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${fade}`}
+        >
+          {sections.map(section => (
+            <SectionTab
+              key={section.id}
+              section={section}
+              isActive={section.id === activeTab}
+              onSelect={() => {
+                setHasScrolled(true);
+                onTabChange(section.id);
+              }}
+              onKeyDown={event => {
+                // The keys a tab strip answers to: the arrows step, Home and End jump.
+                const index = sections.findIndex(candidate => candidate.id === section.id);
+                const next = event.key === "ArrowRight" ? (index + 1) % sections.length
+                  : event.key === "ArrowLeft" ? (index - 1 + sections.length) % sections.length
+                    : event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1 : -1;
+                if (next < 0) return;
+                event.preventDefault();
+                setHasScrolled(true);
+                onTabChange(sections[next].id);
+                listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Right fading edge overlay & nudge button */}
+        {edges.end && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 flex w-9 sm:w-11 items-center justify-end rounded-r-xl bg-gradient-to-l from-j-surface-sunken via-j-surface-sunken/85 to-transparent pr-1 text-tp-label"
+          >
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Scroll tabs right"
+              onClick={() => scrollTabs(140)}
+              className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-tp-accent shadow-xs ring-1 ring-tp-border/50 transition hover:bg-white hover:text-tp-heading focus:outline-none motion-safe:animate-pulse"
+            >
+              <ChevronRight size={13} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile scroll hint prompt when tabs are hidden to the right and user hasn't scrolled */}
+      {edges.end && !hasScrolled && (
+        <div
+          data-testid="tab-scroll-prompt"
+          role="status"
+          className="flex items-center justify-between px-1.5 py-0.5 text-2xs font-medium text-tp-label sm:hidden motion-safe:animate-in motion-safe:fade-in duration-200"
+        >
+          <span className="inline-flex items-center gap-1.5 text-tp-label">
+            <span className="h-1.5 w-1.5 rounded-full bg-tp-accent/70 motion-safe:animate-ping" />
+            <span>Swipe for more sections ({sections.length} total)</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              scrollTabs(140);
+              setHasScrolled(true);
+            }}
+            className="inline-flex items-center gap-0.5 font-semibold text-tp-accent hover:underline active:opacity-80"
+          >
+            <span>Scroll</span>
+            <ChevronRight size={12} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
