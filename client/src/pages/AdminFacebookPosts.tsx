@@ -1203,7 +1203,7 @@ export function AdminFacebookPostsContent() {
                     : "bg-j-border-light/60 text-j-ink hover:bg-j-border-light"
                 }`}
               >
-                Full Post (Area Grouped)
+                Full Post (Standard Card)
               </button>
               <button
                 type="button"
@@ -1221,7 +1221,7 @@ export function AdminFacebookPostsContent() {
             <p className="mb-2 text-xs text-j-ink-soft">
               {previewFormat === "inline"
                 ? "শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য:"
-                : "ফেসবুক গ্রুপ বা পেজে পোস্ট করার উপযোগী সম্পূর্ণ ইংরেজি পোস্ট:"}
+                : "ফেসবুক গ্রুপ বা পেজে পোস্ট করার উপযোগী সম্পূর্ণ স্ট্যান্ডার্ড কার্ড পোস্ট:"}
             </p>
             <div className="rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
               {previewFormat === "inline"

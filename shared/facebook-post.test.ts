@@ -12,7 +12,7 @@ import {
 } from "./facebook-post";
 
 describe("buildFacebookPostText", () => {
-  it("generates an English Area-Grouped side-by-side single post with underline divider and apply link", () => {
+  it("generates an English Standard Card single post with hashtag location and apply link", () => {
     const text = buildFacebookPostText({
       id: 1024,
       jobId: "CT-1024",
@@ -34,13 +34,11 @@ describe("buildFacebookPostText", () => {
     });
 
     expect(text).toContain("🔴 NEW TUITION OFFER — CONNECT TUTORS 🔴");
-    expect(text).toContain("📍 #DHANMONDI_DHAKA");
-    expect(text).toContain("Job ID: CT-1024");
-    expect(text).toContain("🎓 Female Tutor (DU / BUET preferred)");
-    expect(text).toContain("Class 9 (Edexcel)");
-    expect(text).toContain("Math, Physics, Chemistry");
-    expect(text).toContain("3 Days/week, 6:00 PM");
-    expect(text).toContain("💰 8,000 BDT/month");
+    expect(text).toContain("📌 Job ID: CT-1024 (Female Tutor (DU / BUET preferred))");
+    expect(text).toContain("📍 #DHANMONDI_DHAKA (Road 27)");
+    expect(text).toContain("🔹 Class- Class 9 (Edexcel)");
+    expect(text).toContain("📚 Subjects- Math, Physics, Chemistry  |  🗓️ 3 Days, 6:00 PM  |  💰 Salary 8,000 BDT/month");
+    expect(text).toContain("\n📋 Notes: Math expert required");
     expect(text).toContain(ITEM_DIVIDER);
     expect(text).toContain("🚀 How to Apply:");
     expect(text).toContain("https://connecttutorsbd.com/job-board?job=CT-1024");
@@ -76,7 +74,7 @@ describe("buildFacebookPostText", () => {
       addressDetails: "Should be omitted for online",
     });
 
-    expect(text).toContain("🌐 #ONLINE_TUITIONS");
+    expect(text).toContain("📍 #ONLINE");
     expect(text).not.toContain("Should be omitted for online");
   });
 });
