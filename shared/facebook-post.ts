@@ -121,7 +121,7 @@ export function renderTemplateText(
 
 /**
  * Builds a clean, professional, high-converting English Facebook post text
- * for a single tuition in Area Grouped side-by-side format.
+ * for a single tuition in Standard Card format.
  */
 export function buildFacebookPostText(
   job: FacebookPostJobInput,
@@ -141,25 +141,8 @@ export function buildFacebookPostText(
   const header = renderTemplateText(rawHeader, { jobId: code, origin: cleanOrigin, applyUrl });
   const footer = renderTemplateText(rawFooter, { jobId: code, origin: cleanOrigin, applyUrl });
 
-  const areaHeading = getJobAreaKey(job);
-  const f = extractJobEnglishFields(job);
-  const parts: string[] = [
-    `Job ID: ${f.code}`,
-    `🎓 ${f.tutorPref}`,
-    f.classWithMedium,
-    f.subjects,
-    `🗓️ ${f.schedule}`,
-    `💰 ${f.salary}`,
-  ];
-  if (f.studentInfo) {
-    parts.push(f.studentInfo);
-  }
-  if (f.notes) {
-    parts.push(`Notes: ${f.notes}`);
-  }
-
-  const jobLine = parts.join("  |  ");
-  const body = `${areaHeading}\n${jobLine}\n${ITEM_DIVIDER}`;
+  const card = formatJobStandardCard(job);
+  const body = `${card}\n${ITEM_DIVIDER}`;
 
   const postBlocks = [header, "", body, "", footer];
   if (includeHashtags) {

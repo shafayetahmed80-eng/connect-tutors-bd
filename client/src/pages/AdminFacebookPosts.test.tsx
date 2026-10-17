@@ -316,11 +316,18 @@ describe("AdminFacebookPostsContent", () => {
 
     expect(screen.getByText(/Facebook Post Preview/i)).toBeDefined();
 
+    const fullBtn = screen.getByRole("button", { name: /Full Post \(Standard Card\)/i });
+    expect(fullBtn).toBeDefined();
+
     // Toggle inline format
     const inlineBtn = screen.getByRole("button", { name: /Inline Line Only/i });
     fireEvent.click(inlineBtn);
 
     expect(screen.getByText(/শুধুমাত্র ১টি লাইনে জবের সংক্ষিপ্ত তথ্য/i)).toBeDefined();
+
+    // Toggle back to Standard Card
+    fireEvent.click(fullBtn);
+    expect(screen.getByText(/ফেসবুক গ্রুপ বা পেজে পোস্ট করার উপযোগী সম্পূর্ণ স্ট্যান্ডার্ড কার্ড পোস্ট/i)).toBeDefined();
 
     const copyModalBtn = screen.getByRole("button", { name: /Copy to Clipboard/i });
     fireEvent.click(copyModalBtn);
