@@ -170,3 +170,49 @@ describe("the poster window's sizes and themes", () => {
     expect(renderers.fonts).toHaveBeenLastCalledWith(4000, { serif: true });
   });
 });
+
+describe("the two poster windows on one page", () => {
+  /** The page mounts both - one tuition and the bulk poster - and opens one at a time. */
+  const page = (open: "single" | "bulk" | "none") => (
+    <>
+      <FacebookPosterModal isOpen={open === "single"} onClose={() => {}} job={job(113)} />
+      <FacebookPosterModal isOpen={open === "bulk"} onClose={() => {}} jobs={jobs} />
+    </>
+  );
+
+  it("shows in one window the colour picked in the other", () => {
+    const view = render(page("single"));
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Rose" }));
+
+    view.rerender(page("bulk"));
+    expect(lastCombined().ground).toBe("#f7e3e7");
+    expect(group("Colour").getByRole("radio", { name: "Rose" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("does not write the other window's choices back over its own", () => {
+    const view = render(page("single"));
+    fireEvent.click(group("Language").getByRole("radio", { name: "English" }));
+    view.rerender(page("bulk"));
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Teal" }));
+
+    // The language chosen first is still stored, and still the one the single window shows.
+    expect(stored()).toMatchObject({ locale: "en", ground: "#0e3b43" });
+    view.rerender(page("single"));
+    expect(lastSingle()).toMatchObject({ locale: "en", ground: "#0e3b43" });
+  });
+
+  it("keeps the choices made in a window whose browser refuses storage", () => {
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    try {
+      render(page("single"));
+      fireEvent.click(group("Colour").getByRole("radio", { name: "Rose" }));
+      fireEvent.click(group("Language").getByRole("radio", { name: "English" }));
+      expect(lastSingle()).toMatchObject({ locale: "en", ground: "#f7e3e7" });
+    } finally {
+      getItem.mockRestore();
+      setItem.mockRestore();
+    }
+  });
+});
+
