@@ -8,9 +8,10 @@ import { useSiteContact } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
+import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
 import SearchInput from "@/components/SearchInput";
-import { Check, Clock, Loader2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Clock, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const CHAT_MESSAGE_MAX = 2000;
@@ -33,9 +34,22 @@ function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function AttachmentView({ url, contentType }: { url: string; contentType: string | null }) {
+function AttachmentView({ url, contentType, onImageClick }: { url: string; contentType: string | null; onImageClick?: (url: string) => void }) {
   if (contentType?.startsWith("image/")) {
-    return <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 block overflow-hidden rounded-lg"><img src={url} alt="Attachment" className="max-h-56 w-full object-cover" /></a>;
+    return (
+      <button
+        type="button"
+        onClick={() => onImageClick?.(url)}
+        className="group relative mt-1.5 block max-w-full overflow-hidden rounded-lg cursor-pointer text-left focus:outline-hidden focus:ring-2 focus:ring-white/50"
+        title="Click to view full image"
+        aria-label="View attachment image in full screen"
+      >
+        <img src={url} alt="Attachment" className="max-h-60 w-full object-cover transition-transform duration-200 group-hover:scale-102" />
+        <span className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-3xs font-semibold text-white backdrop-blur-xs opacity-0 transition-opacity group-hover:opacity-100">
+          <Maximize2 size={10} /> Full View
+        </span>
+      </button>
+    );
   }
   if (contentType?.startsWith("audio/")) {
     return <audio controls src={url} className="mt-1.5 h-9 w-full max-w-[220px]" />;
@@ -59,6 +73,7 @@ export function TutorAdminChatPanel() {
   const [outbox, setOutbox] = useState<OutboxMessage[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>("connecting");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,35 +294,53 @@ export function TutorAdminChatPanel() {
         </div>
       ) : null}
 
-      {visibleMessages.map(message => {
+      {visibleMessages.map((message, index) => {
         const own = message.senderRole === "tutor";
         const seen = own && message.id === lastOwnMessageId && adminLastReadAt !== null && new Date(message.createdAt).getTime() <= adminLastReadAt;
-        return <div key={message.id} className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
-          <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${own ? "bg-j-accent text-white" : "border border-j-border bg-j-surface-muted text-j-ink"}`}>
-            {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p> : null}
-            {message.body ? <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p> : null}
-            {message.attachmentUrl ? <AttachmentView url={message.attachmentUrl} contentType={message.attachmentContentType} /> : null}
-            <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5 px-1">
-            <button
-              type="button"
-              onClick={() => react.mutate({ messageId: message.id })}
-              aria-pressed={message.tutorReacted}
-              aria-label={message.tutorReacted ? "Remove your 👍" : "React with 👍"}
-              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.tutorReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
-            >
-              <ThumbsUp className="size-3" fill={message.tutorReacted ? "currentColor" : "none"} />
-            </button>
-            {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
-            {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
-          </div>
-        </div>;
+        const prevMessage = index > 0 ? visibleMessages[index - 1] : null;
+        const showDateDivider = !prevMessage || isDifferentDay(prevMessage.createdAt, message.createdAt);
+
+        return (
+          <React.Fragment key={message.id}>
+            {showDateDivider ? <ChatDateDivider date={message.createdAt} /> : null}
+            <div className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
+              <div className={`max-w-[80%] px-4 py-2.5 shadow-xs ${
+                own
+                  ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
+                  : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
+              }`}>
+                {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p> : null}
+                {message.body ? <ChatAutoLink text={message.body} /> : null}
+                {message.attachmentUrl ? (
+                  <AttachmentView
+                    url={message.attachmentUrl}
+                    contentType={message.attachmentContentType}
+                    onImageClick={setLightboxUrl}
+                  />
+                ) : null}
+                <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                <button
+                  type="button"
+                  onClick={() => react.mutate({ messageId: message.id })}
+                  aria-pressed={message.tutorReacted}
+                  aria-label={message.tutorReacted ? "Remove your 👍" : "React with 👍"}
+                  className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.tutorReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
+                >
+                  <ThumbsUp className="size-3" fill={message.tutorReacted ? "currentColor" : "none"} />
+                </button>
+                {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
+                {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
+              </div>
+            </div>
+          </React.Fragment>
+        );
       })}
 
       {outbox.map(item => (
         <div key={item.tempId} className="flex animate-in fade-in flex-col items-end">
-          <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-j-accent/80 text-white"}`}>
+          <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-xs shadow-xs ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-gradient-to-br from-j-accent/90 to-[#156cb6]/90 text-white"}`}>
             <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
               {item.status === "sending" ? (
@@ -390,5 +423,6 @@ export function TutorAdminChatPanel() {
           </form>
         </div>
       : <p className="border-t border-[#dce9f1] p-4 text-center text-sm text-j-ink-muted">You can message the Admin team once at least one of your tuitions has been appointed.</p>}
+    <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
   </section>;
 }

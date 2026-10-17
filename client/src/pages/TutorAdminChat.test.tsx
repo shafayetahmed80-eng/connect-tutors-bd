@@ -182,5 +182,30 @@ describe("the Tutor's Admin chat panel", () => {
 
     expect(state.send).toHaveBeenCalled();
   });
+
+  it("renders date dividers between messages on different days", () => {
+    state.messages = [
+      message({ id: 1, body: "Day 1 message", createdAt: "2026-10-10T10:00:00.000Z" }),
+      message({ id: 2, body: "Day 2 message", createdAt: "2026-10-11T10:00:00.000Z" }),
+    ];
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("10 Oct 2026")).toBeTruthy();
+    expect(screen.getByText("11 Oct 2026")).toBeTruthy();
+  });
+
+  it("renders URLs inside messages as clickable auto-links", () => {
+    state.messages = [message({ id: 1, body: "Check https://connecttutorsbd.com now" })];
+    render(<TutorAdminChatPanel />);
+    const link = screen.getByRole("link", { name: /connecttutorsbd.com/ });
+    expect(link).toBeTruthy();
+    expect(link.getAttribute("href")).toBe("https://connecttutorsbd.com");
+  });
+
+  it("opens image lightbox modal on clicking image attachment", () => {
+    state.messages = [message({ id: 1, attachmentUrl: "https://example.com/receipt.jpg", attachmentContentType: "image/jpeg" })];
+    render(<TutorAdminChatPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "View attachment image in full screen" }));
+    expect(screen.getByRole("dialog", { name: "Attachment Preview" })).toBeTruthy();
+  });
 });
 
