@@ -211,16 +211,44 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     expect(post).toContain(ITEM_DIVIDER);
   });
 
-  it("Format 4 (area-grouped): groups tuitions by area headers with underline", () => {
-    const post = buildEnglishBulkFacebookPostText(sampleJobs, {
-      format: "area-grouped",
-    });
+  it("Format 4 (area-grouped): groups tuitions by area headers with matching underline length and multiline cards", () => {
+    const post = buildEnglishBulkFacebookPostText(
+      [
+        ...sampleJobs,
+        {
+          id: 3,
+          jobId: "6806",
+          classCourse: "Standard 1",
+          curriculumType: "British",
+          subjects: ["All"],
+          tuitionLocationLabel: "Mohammadpur, Dhaka",
+          budgetAmount: 7000,
+          daysPerWeek: 5,
+          preferredGender: "female" as const,
+          notes: "O&A Levels Background Tutors Are encouraged to apply",
+        },
+      ],
+      {
+        format: "area-grouped",
+      },
+    );
 
-    expect(post).toContain("📍 GULSHAN, DHAKA");
-    expect(post).toContain("1. Job ID: CT-1001  |  🎓 Female Tutor  |  Class 9 (English Medium)  |  Math  |  🗓️ 3 Days/week  |  💰 10,000 BDT/month");
-    expect(post).toContain("📍 UTTARA, DHAKA");
-    expect(post).toContain("2. Job ID: CT-1002  |  🎓 Male Tutor  |  Class 6 (Bangla Medium)  |  All Subjects  |  🗓️ 4 Days/week  |  💰 6,000 BDT/month");
-    expect(post).toContain(ITEM_DIVIDER);
+    // Dynamic underline matching location length:
+    // "📍 MOHAMMADPUR, DHAKA" has 20 unicode code points -> 20 dashes
+    expect(post).toContain("📍 MOHAMMADPUR, DHAKA\n────────────────────\n\n📌 Job ID: 6806 (Female Tutor)");
+    expect(post).toContain("🔹 Class- Standard 1 (British)");
+    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT/month");
+    expect(post).toContain("\n📋 Notes: O&A Levels Background Tutors Are encouraged to apply");
+    expect(post).toContain("──────────────────────────");
+
+    // Gulshan has 16 unicode code points -> 16 dashes
+    expect(post).toContain("📍 GULSHAN, DHAKA\n────────────────\n\n📌 Job ID: CT-1001 (Female Tutor)");
+    expect(post).toContain("🔹 Class- Class 9 (English Medium)");
+    expect(post).toContain("📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT/month");
+
+    // Divider is 26 characters (shortened to prevent 2-line wrap on mobile)
+    expect(ITEM_DIVIDER).toBe("──────────────────────────");
+    expect(ITEM_DIVIDER.length).toBe(26);
   });
 
   it("separates every two tuitions with a blank line after the divider across bulk formats", () => {

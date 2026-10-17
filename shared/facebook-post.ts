@@ -76,7 +76,7 @@ export interface BuildJobDetailsInlineOptions {
   includeHashtags?: boolean;
 }
 
-export const ITEM_DIVIDER = "────────────────────────────────────────";
+export const ITEM_DIVIDER = "──────────────────────────";
 
 export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -220,7 +220,14 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
   }
 
   const rawNotes = job.notes?.trim();
-  const notes = rawNotes && rawNotes.toLowerCase() !== "no special requirements" ? rawNotes : null;
+  const notes =
+    rawNotes &&
+    rawNotes.toLowerCase() !== "no special requirements" &&
+    rawNotes.toLowerCase() !== "nothing" &&
+    rawNotes.toLowerCase() !== "none" &&
+    rawNotes.toLowerCase() !== "n/a"
+      ? rawNotes
+      : null;
 
   return {
     code,
@@ -354,25 +361,33 @@ export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number):
 
 /**
  * Formats a single item under an area heading in Format 4: Area Grouped.
- * Omits repeating the location since the area header already shows it.
+ * Line 1: 📌 Job ID: 6806 (Female Tutor)
+ * Line 2: 🔹 Class- Standard 1 (British)
+ * Line 3: 📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT/month
+ * Line 4: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
  */
-export function formatJobAreaItem(job: FacebookPostJobInput, index: number): string {
+export function formatJobAreaItem(job: FacebookPostJobInput, _index?: number): string {
   const f = extractJobEnglishFields(job);
-  const parts: string[] = [
-    `${index}. Job ID: ${f.code}`,
-    `🎓 ${f.tutorPref}`,
-    f.classWithMedium,
-    f.subjects,
-    `🗓️ ${f.schedule}`,
-    `💰 ${f.salary}`,
-  ];
-  if (f.studentInfo) {
-    parts.push(`👨‍🎓 ${f.studentInfo}`);
-  }
+
+  const line1 = `📌 Job ID: ${f.code} (${f.tutorPref})`;
+  const line2 = `🔹 Class- ${f.classWithMedium}`;
+
+  const daysText = job.daysPerWeek && job.daysPerWeek > 0
+    ? `${job.daysPerWeek} ${job.daysPerWeek === 1 ? "Day" : "Days"}`
+    : "Flexible Days";
+  const scheduleText = job.tutoringTime?.trim()
+    ? `${daysText}, ${job.tutoringTime.trim()}`
+    : daysText;
+
+  const salaryText = f.salary.startsWith("Salary ") ? f.salary : `Salary ${f.salary}`;
+  const line3 = `📚 Subjects- ${f.subjects}  |  🗓️ ${scheduleText}  |  💰 ${salaryText}`;
+
+  const lines = [line1, line2, line3];
   if (f.notes) {
-    parts.push(`📋 Notes: ${f.notes}`);
+    lines.push(`\n📋 Notes: ${f.notes}`);
   }
-  return parts.join("  |  ");
+
+  return lines.join("\n");
 }
 
 /**
@@ -514,16 +529,14 @@ export function buildEnglishBulkFacebookPostText(
       groups[area].push(job);
     }
     const groupBlocks: string[] = [];
-    let counter = 1;
     const areas = Object.keys(groups);
     for (const area of areas) {
       const areaJobs = groups[area];
+      const underline = "─".repeat(Array.from(area).length);
       const items = areaJobs.map((job: FacebookPostJobInput) => {
-        const itemStr = `${formatJobAreaItem(job, counter)}\n${ITEM_DIVIDER}`;
-        counter++;
-        return itemStr;
+        return `${formatJobAreaItem(job)}\n${ITEM_DIVIDER}`;
       });
-      groupBlocks.push(`${area}\n${items.join("\n\n")}`);
+      groupBlocks.push(`${area}\n${underline}\n\n${items.join("\n\n")}`);
     }
     bodyContent = groupBlocks.join("\n\n");
   } else {
