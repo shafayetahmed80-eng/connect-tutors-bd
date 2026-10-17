@@ -229,5 +229,38 @@ describe("the Tutor's Admin chat panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "View attachment image in full screen" }));
     expect(screen.getByRole("dialog", { name: "Attachment Preview" })).toBeTruthy();
   });
+
+  it("reveals action menu on clicking message bubble and un-sends message within 5 minutes", () => {
+    state.messages = [message({ id: 99, body: "Tutor own message to unsend", senderRole: "tutor", createdAt: new Date().toISOString() })];
+    render(<TutorAdminChatPanel />);
+
+    // Click bubble to open menu
+    fireEvent.click(screen.getByText("Tutor own message to unsend"));
+    expect(screen.getByText("মুছুন")).toBeTruthy();
+
+    // Click Unsend
+    fireEvent.click(screen.getByText("মুছুন"));
+    expect(screen.getByText("[মেসেজটি মুছে ফেলা হয়েছে]")).toBeTruthy();
+    expect(screen.queryByText("Tutor own message to unsend")).toBeNull();
+  });
+
+  it("edits message within 5 minutes and displays (সম্পাদিত) badge", () => {
+    state.messages = [message({ id: 100, body: "Tutor message before edit", senderRole: "tutor", createdAt: new Date().toISOString() })];
+    render(<TutorAdminChatPanel />);
+
+    // Click bubble to open menu
+    fireEvent.click(screen.getByText("Tutor message before edit"));
+    expect(screen.getByText("এডিট")).toBeTruthy();
+
+    // Click Edit
+    fireEvent.click(screen.getByText("এডিট"));
+    const editInput = screen.getByRole("textbox", { name: "Edit message" });
+    fireEvent.change(editInput, { target: { value: "Tutor message after edit" } });
+    fireEvent.click(screen.getByText("সংরক্ষণ করুন"));
+
+    expect(screen.getByText("Tutor message after edit")).toBeTruthy();
+    expect(screen.getByText("(সম্পাদিত)")).toBeTruthy();
+  });
 });
+
 
