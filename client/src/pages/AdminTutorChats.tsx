@@ -16,6 +16,7 @@ import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
 import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, TutorPeekProfileDrawer, type QuotedMessage } from "@/components/chat/ChatProductivity";
+import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
 import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
@@ -706,7 +707,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         return (
           <React.Fragment key={message.id}>
             {showDateDivider ? <ChatDateDivider date={message.createdAt} /> : null}
-            <div className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
+            <ChatAnimatedBubble own={own} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
               <div className={`max-w-[80%] px-4 py-2.5 shadow-xs ${
                 own
                   ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
@@ -758,13 +759,13 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                 {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
                 {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
               </div>
-            </div>
+            </ChatAnimatedBubble>
           </React.Fragment>
         );
       })}
 
       {outbox.map(item => (
-        <div key={item.tempId} className="flex animate-in fade-in flex-col items-end">
+        <ChatAnimatedBubble key={item.tempId} own={true} className="flex flex-col items-end">
           <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-xs shadow-xs ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-gradient-to-br from-j-accent/90 to-[#156cb6]/90 text-white"}`}>
             <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
@@ -797,10 +798,10 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
               </button>
             </div>
           ) : null}
-        </div>
+        </ChatAnimatedBubble>
       ))}
 
-      {tutorIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Tutor is typing…</p> : null}
+      {tutorIsTyping ? <ChatTypingIndicator senderRole="tutor" /> : null}
       <div ref={bottomRef} />
     </div>
 
@@ -813,40 +814,37 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         : null}
       <form onSubmit={handleSubmit} className="flex items-end gap-1.5 p-3 sm:gap-2">
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
-          <Paperclip className="size-4" />
-        </button>
-        {voiceRecorder.supported
-          ? <>
-              {voiceRecorder.recording
-                ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
-                    <X className="size-4" />
-                  </button>
-                : null}
+        {voiceRecorder.recording ? (
+          <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />
+        ) : (
+          <>
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+              <Paperclip className="size-4" />
+            </button>
+            {voiceRecorder.supported ? (
               <button
                 type="button"
                 onClick={handleMic}
                 disabled={uploadProgress !== null}
-                aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
-                className={`grid h-control w-control shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
+                aria-label="Record a voice note"
+                className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50"
               >
-                {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+                <Mic className="size-4" />
               </button>
-            </>
-          : null}
-        <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} currentDraft={body} />
-        <Textarea
-          value={body}
-          onChange={event => { setBody(event.target.value); onTyping(); }}
-          onKeyDown={handleKeyDown}
-          maxLength={CHAT_MESSAGE_MAX}
-          rows={2}
-          placeholder="Reply as Admin…"
-          className="min-h-9 flex-1 resize-none"
-        />
-        <Button type="submit" size="icon" aria-label="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-control w-10 shrink-0 rounded-xl">
-          <Send className="size-4" />
-        </Button>
+            ) : null}
+            <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} currentDraft={body} />
+            <Textarea
+              value={body}
+              onChange={event => { setBody(event.target.value); onTyping(); }}
+              onKeyDown={handleKeyDown}
+              maxLength={CHAT_MESSAGE_MAX}
+              rows={2}
+              placeholder="Reply as Admin…"
+              className="min-h-9 flex-1 resize-none"
+            />
+            <ChatSendButton ariaLabel="Send reply" disabled={!body.trim() || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+          </>
+        )}
       </form>
     </div>
 
