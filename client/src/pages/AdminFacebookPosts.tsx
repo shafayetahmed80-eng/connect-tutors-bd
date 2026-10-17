@@ -30,7 +30,7 @@ import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageI
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
 import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
-import type { FacebookPosterJob } from "@/lib/facebook-poster";
+import { MAX_COMBINED_TUITIONS, type FacebookPosterJob } from "@/lib/facebook-poster";
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
@@ -342,7 +342,7 @@ export function AdminFacebookPostsContent() {
         return;
       }
       const bulkText = buildEnglishBulkFacebookPostText(
-        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id), origin: window.location.origin })),
+        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id) })),
         {
           origin: window.location.origin,
           template: templates,
@@ -423,7 +423,7 @@ export function AdminFacebookPostsContent() {
     if (isBulkCopying) return;
     setIsBulkCopying(true);
     try {
-      const list = await fetchFilteredJobs(4);
+      const list = (await fetchFilteredJobs(MAX_COMBINED_TUITIONS)).slice(0, MAX_COMBINED_TUITIONS);
       if (list.length === 0) {
         toast.error("পোস্টার তৈরি করার জন্য কোনো লাইভ টিউশন নেই।");
         return;
@@ -736,15 +736,11 @@ export function AdminFacebookPostsContent() {
             <button
               type="button"
               onClick={() => {
-                setPosterJob({
-                  ...job,
-                  jobId: code,
-                  origin: window.location.origin,
-                });
+                setPosterJob({ ...job, jobId: code });
               }}
               aria-label={`Generate social poster for job ${code}`}
               className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-[#1877f2] hover:bg-sky-50 hover:border-sky-300 transition"
-              title="Generate Social Media Poster (Banner with QR & BTPA-077)"
+              title="Facebook poster"
             >
               <ImageIcon className="size-3.5" />
             </button>
@@ -1020,10 +1016,10 @@ export function AdminFacebookPostsContent() {
             onClick={handleGenerateBulkPoster}
             disabled={isBulkCopying || totalMatching === 0}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-            title="Generate Social Media Poster for Filtered Tuitions (Up to 4)"
+            title="Facebook poster for the first four filtered tuitions"
           >
             <ImageIcon className="size-3.5 text-[#1877f2]" />
-            <span>Bulk Poster ({Math.min(totalMatching, 4)})</span>
+            <span>Bulk Poster ({Math.min(totalMatching, MAX_COMBINED_TUITIONS)})</span>
           </button>
           <button
             type="button"
