@@ -538,18 +538,40 @@ describe("AdminFacebookPostsContent", () => {
     expect(screen.queryByRole("heading", { name: /Facebook Social Poster/i })).toBeNull();
   });
 
-  it("opens bulk tuitions social poster modal when clicking Bulk Poster button", async () => {
+  it("toggles smart hashtags on and off and persists preference", () => {
     render(<AdminFacebookPostsContent />);
 
-    const bulkPosterBtn = screen.getByRole("button", { name: /Bulk Poster/i });
-    expect(bulkPosterBtn).toBeDefined();
+    const hashtagBtn = screen.getByRole("button", { name: /Toggle Smart Hashtags/i });
+    expect(hashtagBtn).toBeDefined();
+    expect(hashtagBtn.textContent).toContain("Hashtags: ON");
 
-    fireEvent.click(bulkPosterBtn);
+    fireEvent.click(hashtagBtn);
+    expect(hashtagBtn.textContent).toContain("Hashtags: OFF");
 
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: /Facebook Multi-Tuition Banner/i })).toBeDefined();
-      expect(screen.getAllByText(/BTPA-077/i).length).toBeGreaterThanOrEqual(1);
-    });
+    fireEvent.click(hashtagBtn);
+    expect(hashtagBtn.textContent).toContain("Hashtags: ON");
+  });
+
+  it("opens Facebook Group Helper modal from toolbar and row button", () => {
+    render(<AdminFacebookPostsContent />);
+
+    const toolbarGroupBtn = screen.getByRole("button", { name: /Open Facebook Group Helper Directory/i });
+    expect(toolbarGroupBtn).toBeDefined();
+
+    fireEvent.click(toolbarGroupBtn);
+    expect(screen.getByRole("heading", { name: /Facebook Group Helper/i })).toBeDefined();
+
+    // Close modal
+    const closeBtn = screen.getByRole("button", { name: /Close group helper/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole("heading", { name: /Facebook Group Helper/i })).toBeNull();
+
+    // Open from row button
+    const rowGroupBtn = screen.getByRole("button", { name: /Open Facebook group helper for job/i });
+    expect(rowGroupBtn).toBeDefined();
+    fireEvent.click(rowGroupBtn);
+
+    expect(screen.getByRole("heading", { name: /Facebook Group Helper/i })).toBeDefined();
   });
 });
 

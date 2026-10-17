@@ -26,14 +26,28 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
+import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
 import type { FacebookPosterJob } from "@/lib/facebook-poster";
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
 const BULK_FORMAT_STORAGE_KEY = "connect_tutors_fb_bulk_format_v1";
+const HASHTAGS_STORAGE_KEY = "connect_tutors_fb_include_hashtags_v1";
+
+function loadSavedIncludeHashtags(): boolean {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem(HASHTAGS_STORAGE_KEY);
+      if (raw !== null) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch {}
+  return true;
+}
 
 export const BULK_FORMAT_OPTIONS: {
   id: FacebookPostBulkFormat;
@@ -247,6 +261,12 @@ export function AdminFacebookPostsContent() {
   const [posterJob, setPosterJob] = useState<FacebookPosterJob | null>(null);
   const [bulkPosterJobs, setBulkPosterJobs] = useState<FacebookPosterJob[] | null>(null);
 
+  const [includeHashtags, setIncludeHashtags] = useState<boolean>(() => loadSavedIncludeHashtags());
+  const [isGroupHelperOpen, setIsGroupHelperOpen] = useState(false);
+  const [groupHelperPostText, setGroupHelperPostText] = useState<string>("");
+  const [groupHelperLocation, setGroupHelperLocation] = useState<string>("");
+  const [groupHelperCategory, setGroupHelperCategory] = useState<string>("");
+
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -328,6 +348,7 @@ export function AdminFacebookPostsContent() {
           template: templates,
           format: selectedBulkFormat,
           filterOptions: getActiveBulkFilterOptions(),
+          includeHashtags,
         },
       );
       const ok = await copyToClipboard(bulkText);
@@ -382,6 +403,7 @@ export function AdminFacebookPostsContent() {
           template: templates,
           format: selectedBulkFormat,
           filterOptions: getActiveBulkFilterOptions(),
+          includeHashtags,
         },
       );
       setBulkPreviewData({
@@ -418,11 +440,17 @@ export function AdminFacebookPostsContent() {
 
   const handleCopySingleInline = async (job: LiveJob) => {
     const code = jobIdForRequest(job.id);
-    const inlineText = buildEnglishJobDetailsInline({
-      ...job,
-      jobId: code,
-      origin: window.location.origin,
-    });
+    const inlineText = buildEnglishJobDetailsInline(
+      {
+        ...job,
+        jobId: code,
+        origin: window.location.origin,
+      },
+      {
+        origin: window.location.origin,
+        includeHashtags,
+      },
+    );
 
     const ok = await copyToClipboard(inlineText);
     if (ok) {
@@ -720,6 +748,24 @@ export function AdminFacebookPostsContent() {
             >
               <ImageIcon className="size-3.5" />
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const text = buildFacebookPostText(
+                  { ...job, jobId: code, origin: window.location.origin },
+                  { origin: window.location.origin, template: templates, includeHashtags }
+                );
+                setGroupHelperPostText(text);
+                setGroupHelperLocation(job.locationText || job.tuitionLocationLabel || "");
+                setGroupHelperCategory(job.category || job.curriculumType || "");
+                setIsGroupHelperOpen(true);
+              }}
+              aria-label={`Open Facebook group helper for job ${code}`}
+              className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-slate-700 hover:bg-slate-100 hover:text-j-ink transition"
+              title="Open Facebook Group Helper (1-Click Copy & Open Group)"
+            >
+              <Users className="size-3.5" />
+            </button>
           </div>
         );
       },
@@ -918,6 +964,48 @@ export function AdminFacebookPostsContent() {
               <span>Customize Template</span>
             </button>
           ) : null}
+
+          {/* Smart Hashtags Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !includeHashtags;
+              setIncludeHashtags(next);
+              try {
+                localStorage.setItem(HASHTAGS_STORAGE_KEY, JSON.stringify(next));
+              } catch {}
+              toast.info(next ? "Smart Hashtags ON (পোস্টে হ্যাশট্যাগ যুক্ত হবে)" : "Smart Hashtags OFF");
+            }}
+            aria-label="Toggle Smart Hashtags"
+            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition cursor-pointer ${
+              includeHashtags
+                ? "border-sky-300 bg-sky-50 text-[#1877f2] font-bold"
+                : "border-j-border bg-white text-j-ink-soft hover:bg-slate-50"
+            }`}
+            title="Toggle Smart Dynamic Hashtags (#ConnectTutors #AreaTuition etc.)"
+          >
+            <Hash className="size-3.5" />
+            <span>Hashtags: {includeHashtags ? "ON" : "OFF"}</span>
+          </button>
+
+          {/* Facebook Group Helper Directory Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setGroupHelperPostText("");
+              const first = items[0];
+              setGroupHelperLocation(first?.locationText || first?.tuitionLocationLabel || "");
+              setGroupHelperCategory(first?.category || first?.curriculumType || "");
+              setIsGroupHelperOpen(true);
+            }}
+            aria-label="Open Facebook Group Helper Directory"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
+            title="Open Facebook Group Helper & Directory"
+          >
+            <Users className="size-3.5 text-[#1877f2]" />
+            <span>Group Helper</span>
+          </button>
+
           <button
             type="button"
             onClick={handlePreviewBulk}
@@ -1037,8 +1125,8 @@ export function AdminFacebookPostsContent() {
             </p>
             <div className="rounded-xl border border-j-border bg-j-border-light/30 p-4 font-mono text-xs leading-relaxed text-j-ink whitespace-pre-wrap select-all">
               {previewFormat === "inline"
-                ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
-                : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates })}
+                ? buildEnglishJobDetailsInline(previewJob, { origin: window.location.origin, includeHashtags })
+                : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates, includeHashtags })}
             </div>
           </ModalBody>
           <ModalFooter>
@@ -1047,8 +1135,8 @@ export function AdminFacebookPostsContent() {
               onClick={async () => {
                 const text =
                   previewFormat === "inline"
-                    ? buildEnglishJobDetailsInline(previewJob, window.location.origin)
-                    : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates });
+                    ? buildEnglishJobDetailsInline(previewJob, { origin: window.location.origin, includeHashtags })
+                    : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates, includeHashtags });
                 await copyToClipboard(text);
                 toast.success("পোস্ট টেক্সট ক্লিপবোর্ডে কপি হয়েছে!");
                 setPreviewJob(null);
@@ -1057,6 +1145,24 @@ export function AdminFacebookPostsContent() {
             >
               <Copy className="size-3.5" />
               Copy to Clipboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const text =
+                  previewFormat === "inline"
+                    ? buildEnglishJobDetailsInline(previewJob, { origin: window.location.origin, includeHashtags })
+                    : buildFacebookPostText(previewJob, { origin: window.location.origin, template: templates, includeHashtags });
+                setGroupHelperPostText(text);
+                setGroupHelperLocation(previewJob.locationText || previewJob.tuitionLocationLabel || "");
+                setGroupHelperCategory(previewJob.category || previewJob.curriculumType || "");
+                setIsGroupHelperOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3.5 py-2 text-xs font-bold text-[#1877f2] transition hover:bg-sky-100"
+              title="Open Facebook Group Helper with this post"
+            >
+              <Users className="size-3.5" />
+              Open in Group Helper
             </button>
             <button
               type="button"
@@ -1097,6 +1203,7 @@ export function AdminFacebookPostsContent() {
                           template: templates,
                           format: opt.id,
                           filterOptions: getActiveBulkFilterOptions(),
+                          includeHashtags,
                         },
                       );
                       setBulkPreviewData({
@@ -1138,6 +1245,21 @@ export function AdminFacebookPostsContent() {
             >
               <Copy className="size-3.5" />
               Copy All to Clipboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGroupHelperPostText(bulkPreviewData.text);
+                const first = bulkPreviewData.jobs[0];
+                setGroupHelperLocation(first?.locationText || first?.tuitionLocationLabel || "");
+                setGroupHelperCategory(first?.category || first?.curriculumType || "");
+                setIsGroupHelperOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3.5 py-2 text-xs font-bold text-[#1877f2] transition hover:bg-sky-100"
+              title="Open Facebook Group Helper with this bulk post"
+            >
+              <Users className="size-3.5" />
+              Open in Group Helper
             </button>
             <button
               type="button"
@@ -1381,6 +1503,15 @@ export function AdminFacebookPostsContent() {
         isOpen={Boolean(bulkPosterJobs && bulkPosterJobs.length > 0)}
         onClose={() => setBulkPosterJobs(null)}
         jobs={bulkPosterJobs}
+      />
+
+      {/* Facebook Group Helper Modal */}
+      <FacebookGroupHelperModal
+        isOpen={isGroupHelperOpen}
+        onClose={() => setIsGroupHelperOpen(false)}
+        postTextToCopy={groupHelperPostText}
+        activeLocation={groupHelperLocation}
+        activeCategory={groupHelperCategory}
       />
     </div>
   );
