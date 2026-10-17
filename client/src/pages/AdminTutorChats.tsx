@@ -20,8 +20,19 @@ import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecording
 import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
 import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
 import { ChatDocumentCard, ChatDropzoneOverlay, ChatMediaGallery, ClipboardImagePreviewChip, parseImageUrls } from "@/components/chat/ChatAttachments";
+import {
+  ChatOutOfOfficeBanner,
+  ChatPriorityFilterBar,
+  ChatPriorityTagSelector,
+  ChatTuitionJobCard,
+  PinnedJobBanner,
+  ShareJobModal,
+  extractJobIdsFromText,
+  type ChatPriorityTag,
+  CHAT_PRIORITY_CONFIG,
+} from "@/components/chat/ChatTuitionActions";
 import { motion } from "framer-motion";
-import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -360,7 +371,7 @@ type ThreadSortMode = "recent" | "unread" | "mine";
  * unread ones easy to spot. The page reads the list (the card over both panes
  * counts it); this draws it, with its tabs, search and sort.
  */
-function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, query, onQueryChange, threads, loading, narrowed }: {
+function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, query, onQueryChange, threads, loading, narrowed, priorityTagsByTutor = {} }: {
   selectedTutorId: string | null;
   onSelect: (tutorId: string) => void;
   archived: boolean;
@@ -371,18 +382,34 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
   loading: boolean;
   /** The search or the filter panel is narrowing the list. */
   narrowed: boolean;
+  priorityTagsByTutor?: Record<string, ChatPriorityTag>;
 }) {
   const [sortMode, setSortMode] = useState<ThreadSortMode>("recent");
+  const [priorityFilter, setPriorityFilter] = useState<ChatPriorityTag | "all">("all");
   const { user } = useAuth();
   const rawItems = threads;
+
+  const tagCounts = useMemo(() => {
+    const counts: Partial<Record<ChatPriorityTag, number>> = {};
+    for (const t of threads) {
+      const tag = priorityTagsByTutor[t.tutorId];
+      if (tag) counts[tag] = (counts[tag] || 0) + 1;
+    }
+    return counts;
+  }, [threads, priorityTagsByTutor]);
+
   // The server's own order (newest activity first) is always the tiebreaker -
   // `Array.prototype.sort` is stable, so this only ever regroups it, never
   // reshuffles within a group.
   const items = useMemo(() => {
-    if (sortMode === "unread") return [...rawItems].sort((a, b) => Number(b.unreadCount > 0) - Number(a.unreadCount > 0));
-    if (sortMode === "mine" && user) return [...rawItems].sort((a, b) => Number(b.claimedByAdminId === user.id) - Number(a.claimedByAdminId === user.id));
-    return rawItems;
-  }, [rawItems, sortMode, user]);
+    let list = rawItems;
+    if (priorityFilter !== "all") {
+      list = list.filter(item => priorityTagsByTutor[item.tutorId] === priorityFilter);
+    }
+    if (sortMode === "unread") return [...list].sort((a, b) => Number(b.unreadCount > 0) - Number(a.unreadCount > 0));
+    if (sortMode === "mine" && user) return [...list].sort((a, b) => Number(b.claimedByAdminId === user.id) - Number(a.claimedByAdminId === user.id));
+    return list;
+  }, [rawItems, sortMode, user, priorityFilter, priorityTagsByTutor]);
 
   return <div className="flex h-full flex-col">
     <div className="flex shrink-0 border-b border-[#dce9f1]">
@@ -413,32 +440,50 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
         </select>
       </label>
     </div>
+    <ChatPriorityFilterBar
+      selectedTag={priorityFilter}
+      onSelectTag={setPriorityFilter}
+      tagCounts={tagCounts}
+    />
     <div className="min-h-0 flex-1 overflow-y-auto">
       {loading ? <p className="p-4 text-center text-sm font-semibold text-j-ink-muted">Loading conversations…</p> : null}
       {!loading && items.length === 0
-        ? <p className="p-4 text-center text-sm text-j-ink-muted">{narrowed ? "Nothing matches that search." : archived ? "No archived conversations." : "No Tutor has written in yet."}</p>
+        ? <p className="p-4 text-center text-sm text-j-ink-muted">{narrowed || priorityFilter !== "all" ? "Nothing matches that search." : archived ? "No archived conversations." : "No Tutor has written in yet."}</p>
         : null}
-      {items.map(item => <button
-        key={item.tutorId}
-        type="button"
-        onClick={() => onSelect(item.tutorId)}
-        aria-current={selectedTutorId === item.tutorId ? "true" : undefined}
-        className={`flex w-full flex-col gap-0.5 border-b border-[#eef3f7] px-4 py-3 text-left hover:bg-j-surface-sunken ${selectedTutorId === item.tutorId ? "bg-j-accent-wash" : ""}`}
-      >
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-bold text-j-ink">{item.tutorName}</span>
-          {item.unreadCount > 0 ? <span className="shrink-0 rounded-full bg-j-accent px-1.5 py-0.5 text-2xs font-bold text-white">{item.unreadCount > 99 ? "99+" : item.unreadCount}</span> : null}
-        </span>
-        <span className="text-2xs font-semibold text-j-ink-faint">Tutor ID {item.tutorNumber ?? "—"}</span>
-        {item.lastMessagePreview ? <span className="truncate text-xs text-j-ink-soft">{item.lastMessagePreview}</span> : null}
-        {item.claimedByAdminName ? <span className="truncate text-2xs font-semibold text-j-accent">Claimed by {item.claimedByAdminName}</span> : null}
-      </button>)}
+      {items.map(item => {
+        const tag = priorityTagsByTutor[item.tutorId];
+        const tagConfig = tag ? CHAT_PRIORITY_CONFIG[tag] : null;
+        return (
+          <button
+            key={item.tutorId}
+            type="button"
+            onClick={() => onSelect(item.tutorId)}
+            aria-current={selectedTutorId === item.tutorId ? "true" : undefined}
+            className={`flex w-full flex-col gap-0.5 border-b border-[#eef3f7] px-4 py-3 text-left hover:bg-j-surface-sunken ${selectedTutorId === item.tutorId ? "bg-j-accent-wash" : ""}`}
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-bold text-j-ink">{item.tutorName}</span>
+              <span className="flex items-center gap-1.5 shrink-0">
+                {tagConfig ? (
+                  <span className={`rounded-md px-1.5 py-0.2 text-3xs font-extrabold ${tagConfig.badgeClass}`}>
+                    {tagConfig.label}
+                  </span>
+                ) : null}
+                {item.unreadCount > 0 ? <span className="rounded-full bg-j-accent px-1.5 py-0.5 text-2xs font-bold text-white">{item.unreadCount > 99 ? "99+" : item.unreadCount}</span> : null}
+              </span>
+            </span>
+            <span className="text-2xs font-semibold text-j-ink-faint">Tutor ID {item.tutorNumber ?? "—"}</span>
+            {item.lastMessagePreview ? <span className="truncate text-xs text-j-ink-soft">{item.lastMessagePreview}</span> : null}
+            {item.claimedByAdminName ? <span className="truncate text-2xs font-semibold text-j-accent">Claimed by {item.claimedByAdminName}</span> : null}
+          </button>
+        );
+      })}
     </div>
   </div>;
 }
 
 /** One Tutor's conversation. Any Admin may reply, so a reply never signs itself with the Admin's name. */
-function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, onNotesViewed }: { tutorId: string; onBack?: () => void; tutorIsTyping: boolean; onTyping: () => void; hasNoteAlert: boolean; onNotesViewed: () => void }) {
+function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, onNotesViewed, priorityTag, onSetPriorityTag }: { tutorId: string; onBack?: () => void; tutorIsTyping: boolean; onTyping: () => void; hasNoteAlert: boolean; onNotesViewed: () => void; priorityTag?: ChatPriorityTag | null; onSetPriorityTag?: (tag: ChatPriorityTag) => void }) {
   const utils = trpc.useUtils();
   const threadQuery = trpc.admin.getTutorChatThread.useQuery({ tutorId }, { refetchInterval: CHAT_POLL_MS });
   const [body, setBody] = useState("");
@@ -456,6 +501,25 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
+  const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
+  const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`chat_pinned_job_admin_${tutorId}`) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleTogglePin = (id: string) => {
+    setPinnedJobId(prev => {
+      const next = prev === id ? null : id;
+      try {
+        if (next) localStorage.setItem(`chat_pinned_job_admin_${tutorId}`, next);
+        else localStorage.removeItem(`chat_pinned_job_admin_${tutorId}`);
+      } catch {}
+      return next;
+    });
+  };
   const dragCounter = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -724,6 +788,12 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
             <UserCheck size={13} /> Profile
           </button>
         ) : null}
+        {onSetPriorityTag ? (
+          <ChatPriorityTagSelector
+            currentTag={priorityTag ?? null}
+            onSelectTag={onSetPriorityTag}
+          />
+        ) : null}
         <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
           <StickyNote size={13} /> Notes
           {hasNoteAlert ? <span aria-label="New note" className="absolute -right-1 -top-1 size-2 rounded-full bg-j-accent" /> : null}
@@ -750,6 +820,11 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         <ChatSoundToggle muted={muted} onToggle={toggleMute} />
       </div>
     </header>
+
+    <ChatOutOfOfficeBanner />
+    {pinnedJobId ? (
+      <PinnedJobBanner jobId={pinnedJobId} onUnpin={() => handleTogglePin(pinnedJobId)} />
+    ) : null}
 
     {archivedAt ? <p className="flex shrink-0 items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900">
       Archived after 30 days idle.
@@ -779,6 +854,7 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
         const own = message.senderRole === "admin";
         const isDeleted = deletedMessageIds.has(message.id);
         const currentBody = editedMessages[message.id] ?? message.body;
+        const jobIds = !isDeleted ? extractJobIdsFromText(currentBody) : [];
         const isEdited = !!editedMessages[message.id];
         const isEditing = editingMessageId === message.id;
         const seen = own && message.id === lastOwnMessageId && tutorLastReadAt !== null && new Date(message.createdAt).getTime() <= tutorLastReadAt;
@@ -836,6 +912,15 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                   {isEdited ? <EditedMessageBadge own={own} /> : null}
                 </div>
               </motion.div>
+
+              {jobIds.map(jid => (
+                <ChatTuitionJobCard
+                  key={jid}
+                  jobId={jid}
+                  isPinned={pinnedJobId === jid}
+                  onTogglePin={handleTogglePin}
+                />
+              ))}
 
               <ChatMessageActionMenu
                 messageId={message.id}
@@ -982,6 +1067,16 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
                 <Mic className="size-4" />
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setShareJobModalOpen(true)}
+              disabled={uploadProgress !== null}
+              aria-label="টিউশন জব কার্ড শেয়ার করুন"
+              title="টিউশন শেয়ার করুন"
+              className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50"
+            >
+              <Briefcase className="size-4" />
+            </button>
             <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} currentDraft={body} />
             <Textarea
               value={body}
@@ -1003,6 +1098,12 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     {savingTemplateBody ? <SaveMessageAsTemplateModal body={savingTemplateBody} onClose={() => setSavingTemplateBody(null)} /> : null}
     {profileDrawerOpen && tutor ? <TutorPeekProfileDrawer tutor={tutor} onClose={() => setProfileDrawerOpen(false)} /> : null}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
+    {shareJobModalOpen ? (
+      <ShareJobModal
+        onSelectJob={jobTag => setBody(prev => (prev ? `${prev} ${jobTag}` : jobTag))}
+        onClose={() => setShareJobModalOpen(false)}
+      />
+    ) : null}
   </div>;
 }
 
@@ -1017,7 +1118,26 @@ export function AdminTutorChatsContent() {
   const threadsQuery = trpc.admin.listTutorChatThreads.useQuery({ query, page: 1, pageSize: 50, archived, ...panel.input });
   const threads = (threadsQuery.data?.items ?? []) as ChatThreadRow[];
   const narrowed = panel.activeCount > 0 || query.trim().length > 0;
-  const listProps = { query, onQueryChange: setQuery, threads, loading: threadsQuery.isLoading, narrowed };
+  const [priorityTagsByTutor, setPriorityTagsByTutor] = useState<Record<string, ChatPriorityTag>>(() => {
+    try {
+      const stored = localStorage.getItem("admin_chat_priority_tags");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleSetPriorityTag = (tutorId: string, tag: ChatPriorityTag) => {
+    setPriorityTagsByTutor(prev => {
+      const next = { ...prev, [tutorId]: tag };
+      try {
+        localStorage.setItem("admin_chat_priority_tags", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const listProps = { query, onQueryChange: setQuery, threads, loading: threadsQuery.isLoading, narrowed, priorityTagsByTutor };
   const [noteAlertTutorIds, setNoteAlertTutorIds] = useState<ReadonlySet<string>>(new Set());
   const [typingTutorId, setTypingTutorId] = useState<string | null>(null);
   const [typingUntil, setTypingUntil] = useState(0);
@@ -1078,14 +1198,14 @@ export function AdminTutorChatsContent() {
     {isMobile
       ? <div className={frameClassName}>
           {selectedTutorId
-            ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
+            ? <ThreadPanel tutorId={selectedTutorId} onBack={() => setSelectedTutorId(null)} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} priorityTag={priorityTagsByTutor[selectedTutorId] ?? null} onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)} />
             : <ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} />}
         </div>
       : <div className={`grid min-h-0 grid-cols-[320px_1fr] ${frameClassName}`}>
           <div className="min-h-0 border-r border-[#dce9f1]"><ThreadList selectedTutorId={selectedTutorId} onSelect={setSelectedTutorId} archived={archived} onArchivedChange={setArchived} {...listProps} /></div>
           <div className="min-h-0">
             {selectedTutorId
-              ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} />
+              ? <ThreadPanel tutorId={selectedTutorId} tutorIsTyping={tutorIsTyping} onTyping={onTyping} hasNoteAlert={noteAlertTutorIds.has(selectedTutorId)} onNotesViewed={onNotesViewed} priorityTag={priorityTagsByTutor[selectedTutorId] ?? null} onSetPriorityTag={tag => handleSetPriorityTag(selectedTutorId, tag)} />
               : <p className="grid h-full place-items-center px-6 text-center text-sm text-j-ink-muted">Select a Tutor to view the conversation.</p>}
           </div>
         </div>}

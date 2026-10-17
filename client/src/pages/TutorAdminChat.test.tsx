@@ -298,6 +298,39 @@ describe("the Tutor's Admin chat panel", () => {
     expect(screen.getByTestId("chat-dropzone-overlay")).toBeTruthy();
     expect(screen.getByText("এখানে ফাইল বা ছবি ড্রপ করুন")).toBeTruthy();
   });
+
+  it("detects job ID in message, renders ChatTuitionJobCard, and allows pinning", () => {
+    state.messages = [message({ body: "Please check this tuition #JOB-6801" })];
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByTestId("chat-tuition-job-card-6801")).toBeTruthy();
+    expect(screen.getByText("জব #6801")).toBeTruthy();
+    expect(screen.getByText("Member: BTPA - 077")).toBeTruthy();
+
+    const pinBtn = screen.getByRole("button", { name: /জব #6801 উপরে পিন করুন/i });
+    fireEvent.click(pinBtn);
+
+    expect(screen.getByTestId("pinned-job-banner")).toBeTruthy();
+  });
+
+  it("renders WhatsApp launcher and emergency actions in chat header", () => {
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByTestId("chat-emergency-call-whatsapp-actions")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /WhatsApp/i })).toBeTruthy();
+  });
+
+  it("opens ShareJobModal when clicking tuition share button in composer", () => {
+    render(<TutorAdminChatPanel />);
+    const shareBtn = screen.getByRole("button", { name: "টিউশন জব কার্ড শেয়ার করুন" });
+    fireEvent.click(shareBtn);
+
+    expect(screen.getByText("টিউশন জব কার্ড শেয়ার করুন")).toBeTruthy();
+    const jobSuggestion = screen.getByRole("button", { name: /জব #6801/i });
+    fireEvent.click(jobSuggestion);
+
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toContain("#JOB-6801");
+  });
 });
 
 
