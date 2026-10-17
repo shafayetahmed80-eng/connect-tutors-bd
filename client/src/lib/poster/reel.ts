@@ -45,10 +45,23 @@ export const REEL_HOLD_END = 3;
 /** The list comes up to speed, and slows to a stop, over this long rather than starting with a jolt. */
 export const REEL_RAMP = 0.9;
 export const REEL_FPS = 30;
+/** How long the title card turns away like a book's cover, and the closing card shuts like its back cover, by speed. */
+export const REEL_TURN_SECONDS: Record<ReelSpeed, number> = { slow: 1.4, normal: 1.1, fast: 0.9 };
+/** The same change as a soft fade, when the Admin turns the page turn off. */
+export const REEL_FADE_SECONDS = 0.8;
+/** How far a page swings before it is a sliver at the spine: short of edge-on, where the perspective would fold back. */
+export const REEL_TURN_ANGLE = (80 * Math.PI) / 180;
+/** The rows of the list that fade into the ground at the frame's top and bottom, and the room the list keeps clear of them. */
+export const REEL_EDGE_FADE = 150;
+/** A list screen waits this long before it starts to move and after it stops; one that fits the frame stays this long on each side. */
+const LIST_PAUSE = 0.3;
+const LIST_STILL = 1.5;
 /** The video's own ground: the near-black of a code editor, like the sample the Owner sent. */
 export const REEL_DEFAULT_GROUND = "#14161c";
 /** The sample's own glow, red into violet, for the default ground and any colour too grey to give a hue. */
 export const REEL_DEFAULT_GLOW: [string, string] = ["#ff4d5e", "#8b5cf6"];
+/** The same red into violet as pastels, for a light ground too near white to give a hue. */
+export const REEL_LIGHT_NEUTRAL_GLOW: [string, string] = ["#f5a3b5", "#c4b5fd"];
 
 export type ReelInput = {
   locale: PosterLocale;
@@ -86,7 +99,13 @@ export type ReelLook = {
   grain: { alpha: number; blend: GlobalCompositeOperation };
   glowA: string;
   glowB: string;
+  /** How strongly a box's blurred halo and its rim show. */
+  halo: number;
+  rim: number;
+  /** A soft drop shadow under a light box, which a light ground needs to lift it; none on a dark ground. */
+  shadow: string | null;
   card: { fill: string; border: string; ink: string; soft: string; detail: string; accent: string; hair: string };
+  kind: Record<keyof typeof KIND_ON_DARK, { fill: string; ink: string }>;
 };
 
 /**
@@ -94,9 +113,18 @@ export type ReelLook = {
  * navy ground glows teal into violet and a green one green into blue. A grey
  * ground has no hue to lean on, so it - and the video's own ground - takes the
  * sample's red into violet.
+ *
+ * A light ground glows in pastels near its own hue instead: two hues far apart
+ * at full strength flare against a pale ground (lime and orange on Cream).
  */
-export function reelGlow(ground: string, isDefault = false): [string, string] {
-  const { h, s } = hexToHsl(ground);
+export function reelGlow(ground: string, isDefault = false, dark = true): [string, string] {
+  const { h, s, l } = hexToHsl(ground);
+  if (!dark) {
+    // How much colour there really is: a near-white ground can report full saturation.
+    const chroma = s * (1 - Math.abs((2 * l) / 100 - 1));
+    if (chroma < 3) return REEL_LIGHT_NEUTRAL_GLOW;
+    return [hslToHex({ h: (h + 340) % 360, s: 70, l: 74 }), hslToHex({ h: (h + 25) % 360, s: 62, l: 76 })];
+  }
   if (isDefault || s < 12) return REEL_DEFAULT_GLOW;
   return [hslToHex({ h: (h + 325) % 360, s: 90, l: 60 }), hslToHex({ h: (h + 45) % 360, s: 85, l: 66 })];
 }
@@ -105,8 +133,8 @@ export function reelGlow(ground: string, isDefault = false): [string, string] {
 export function reelLook(ground?: string | null): ReelLook {
   const chosen = ground ?? REEL_DEFAULT_GROUND;
   const palette = derivePalette(chosen, "card");
-  const [glowA, glowB] = reelGlow(palette.ground, !ground);
-  return {
+  const [glowA, glowB] = reelGlow(palette.ground, !ground, palette.dark);
+  const shared = {
     ground: palette.ground,
     dark: palette.dark,
     ink: palette.ink,
@@ -119,6 +147,32 @@ export function reelLook(ground?: string | null): ReelLook {
     grain: palette.grain,
     glowA,
     glowB,
+  };
+  if (!palette.dark) {
+    // A light ground gets light boxes: white, lifted by a soft shadow in the ground's hue, with the ground's own dark writing.
+    const { h } = hexToHsl(palette.ground);
+    return {
+      ...shared,
+      halo: 0.32,
+      rim: 0.55,
+      shadow: withAlpha(hslToHex({ h, s: 35, l: 30 }), 0.16),
+      card: {
+        fill: "#ffffff",
+        border: withAlpha(palette.ink, 0.1),
+        ink: palette.ink,
+        soft: palette.soft,
+        detail: palette.detail,
+        accent: palette.accent,
+        hair: withAlpha(palette.ink, 0.12),
+      },
+      kind: KIND_ON_LIGHT,
+    };
+  }
+  return {
+    ...shared,
+    halo: 0.6,
+    rim: 0.85,
+    shadow: null,
     card: {
       fill: palette.deep.fill,
       border: "rgba(255,255,255,0.18)",
@@ -128,15 +182,23 @@ export function reelLook(ground?: string | null): ReelLook {
       accent: palette.deep.accent,
       hair: palette.deep.hair,
     },
+    kind: KIND_ON_DARK,
   };
 }
 
 /** The tutor pill on a card: the Job Board's colours for male, female and either, made light enough for a dark box. */
-const KIND = {
+const KIND_ON_DARK = {
   male: { fill: "rgba(22,163,74,0.24)", ink: "#86efac" },
   female: { fill: "rgba(219,39,119,0.24)", ink: "#f9a8d4" },
   any: { fill: "rgba(124,58,237,0.26)", ink: "#c4b5fd" },
-} as const;
+};
+
+/** The same pills on a white box: the Job Board's own pale fills and deep writing. */
+const KIND_ON_LIGHT = {
+  male: { fill: "#dcfce7", ink: "#15803d" },
+  female: { fill: "#fce7f3", ink: "#be185d" },
+  any: { fill: "#ede9fe", ink: "#6d28d9" },
+};
 
 // ---- Layout ----------------------------------------------------------------
 
@@ -194,6 +256,9 @@ export type ReelLayout = {
   blocks: ReelBlock[];
   /** The whole strip, title card to closing card. */
   height: number;
+  /** Where the places and their tuitions start and end in the strip. */
+  listTop: number;
+  listBottom: number;
 };
 
 /** What a card's foot says on the left: how often and when. */
@@ -229,19 +294,33 @@ export function layoutReel(ctx: CanvasRenderingContext2D, input: ReelInput, size
       y += height;
     });
   });
+  const listBottom = y;
   y += GAP.edge;
   blocks.push({ kind: "end", top: y, height: frameHeight });
-  return { width, frameHeight, blocks, height: y + frameHeight };
+  return { width, frameHeight, blocks, height: y + frameHeight, listTop: frameHeight + GAP.edge, listBottom };
 }
 
 // ---- Timing ----------------------------------------------------------------
 
+/** How the title card leaves and the closing card arrives: turned like a book's cover, or faded. */
+export type ReelTransition = "turn" | "fade";
+
 export type ReelTimeline = {
-  /** How far the strip travels, in pixels: from the title card filling the frame to the closing card filling it. */
+  /** The strip row at the top of the frame while the title leaves: the list's first screen. */
+  from: number;
+  /** How far the list travels from there to its last screen, in pixels (0 when the list fits the frame). */
   distance: number;
+  opening: ReelTransition;
+  closing: ReelTransition;
+  /** The title card is still for this long, then leaves over `openDuration`. */
   holdStart: number;
-  /** Seconds in motion, the two ramps included. */
+  openDuration: number;
+  /** When the list starts to move, and how long it moves for, the two ramps included. */
+  scrollStart: number;
   move: number;
+  /** When the closing card starts to arrive, over `closeDuration`, and how long it stays. */
+  closeStart: number;
+  closeDuration: number;
   holdEnd: number;
   total: number;
   ramp: number;
@@ -249,32 +328,121 @@ export type ReelTimeline = {
   speed: number;
 };
 
-export function reelTimeline(layout: ReelLayout, speed: ReelSpeed): ReelTimeline {
-  const distance = Math.max(0, layout.height - layout.frameHeight);
-  const pxPerSecond = layout.frameHeight / REEL_CROSS_SECONDS[speed];
+/**
+ * When everything happens. The title card is held, then turns away (or fades)
+ * on the list's first screen; the list rises to its last screen; the closing
+ * card then shuts over it (or fades in) and is held.
+ */
+export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, turns: { opening?: boolean; closing?: boolean } = {}): ReelTimeline {
+  const { frameHeight } = layout;
+  // The list keeps clear of the faded bands at the frame's top and bottom; a list that fits stays put, centred.
+  const margin = REEL_EDGE_FADE + 24;
+  const listHeight = layout.listBottom - layout.listTop;
+  let from: number;
+  let to: number;
+  if (listHeight <= frameHeight - margin * 2) {
+    from = to = layout.listTop - (frameHeight - listHeight) / 2;
+  } else {
+    from = layout.listTop - margin;
+    to = layout.listBottom + margin - frameHeight;
+  }
+  const distance = Math.max(0, to - from);
+  const pxPerSecond = frameHeight / REEL_CROSS_SECONDS[speed];
   // A steady run, plus the ramps: each ramp covers half the ground a steady run would in that time.
   const move = distance > 0 ? distance / pxPerSecond + REEL_RAMP : 0;
   const ramp = Math.min(REEL_RAMP, move / 2);
-  return { distance, holdStart: REEL_HOLD_START, move, holdEnd: REEL_HOLD_END, total: REEL_HOLD_START + move + REEL_HOLD_END, ramp, speed: pxPerSecond };
+  const pause = distance > 0 ? LIST_PAUSE : LIST_STILL;
+  const opening: ReelTransition = turns.opening === false ? "fade" : "turn";
+  const closing: ReelTransition = turns.closing === false ? "fade" : "turn";
+  const openDuration = opening === "turn" ? REEL_TURN_SECONDS[speed] : REEL_FADE_SECONDS;
+  const closeDuration = closing === "turn" ? REEL_TURN_SECONDS[speed] : REEL_FADE_SECONDS;
+  const scrollStart = REEL_HOLD_START + openDuration + pause;
+  const closeStart = scrollStart + move + pause;
+  return {
+    from,
+    distance,
+    opening,
+    closing,
+    holdStart: REEL_HOLD_START,
+    openDuration,
+    scrollStart,
+    move,
+    closeStart,
+    closeDuration,
+    holdEnd: REEL_HOLD_END,
+    total: closeStart + closeDuration + REEL_HOLD_END,
+    ramp,
+    speed: pxPerSecond,
+  };
 }
 
 /**
- * How far the strip has risen at `t` seconds: still through the opening hold,
- * then up to speed, steady, down to a stop, and still again to the end.
+ * The strip row at the top of the frame at `t` seconds: the list's first
+ * screen while the title leaves, then up to speed, steady, down to a stop on
+ * its last screen, and still again while the closing card arrives.
  */
 export function reelOffsetAt(t: number, timeline: ReelTimeline): number {
-  const { distance, move, ramp } = timeline;
-  const s = t - timeline.holdStart;
-  if (s <= 0 || distance <= 0) return 0;
-  if (s >= move) return distance;
-  if (ramp <= 0) return (distance * s) / move;
+  const { from, distance, move, ramp } = timeline;
+  const s = t - timeline.scrollStart;
+  if (s <= 0 || distance <= 0) return from;
+  if (s >= move) return from + distance;
+  if (ramp <= 0) return from + (distance * s) / move;
   const top = distance / (move - ramp);
-  if (s < ramp) return (0.5 * top * s * s) / ramp;
+  if (s < ramp) return from + (0.5 * top * s * s) / ramp;
   if (s > move - ramp) {
     const left = move - s;
-    return distance - (0.5 * top * left * left) / ramp;
+    return from + distance - (0.5 * top * left * left) / ramp;
   }
-  return 0.5 * top * ramp + top * (s - ramp);
+  return from + 0.5 * top * ramp + top * (s - ramp);
+}
+
+/** Eases a 0-1 progress in and out. */
+function smooth(progress: number): number {
+  const p = Math.min(1, Math.max(0, progress));
+  return p * p * (3 - 2 * p);
+}
+
+/**
+ * How much of the frame the title card and the closing card cover at `t`
+ * seconds: 1 is the whole frame, 0 is gone. The title card covers it all
+ * until it turns away; the closing card covers none until it arrives.
+ */
+export function reelPageCovers(t: number, timeline: ReelTimeline): { title: number; end: number } {
+  return {
+    title: 1 - smooth((t - timeline.holdStart) / timeline.openDuration),
+    end: smooth((t - timeline.closeStart) / timeline.closeDuration),
+  };
+}
+
+/** The eye's distance from the page, in page widths: near enough to give a swinging page its depth, far enough to keep it from stretching wildly. */
+const TURN_EYE = 4;
+
+export type TurnSlice = { sx: number; sw: number; dx: number; dw: number; scale: number };
+
+/**
+ * A page hinged on the frame's left edge, swung `angle` radians toward the
+ * viewer, as slices to draw: each slice of the flat page (`sx`, `sw`), where it
+ * lands across the frame (`dx`, `dw`), and how much taller it is drawn (`scale`,
+ * for the nearer, free edge). A flat page (angle 0) maps onto itself.
+ */
+export function turnSlices(width: number, angle: number, step = 8): TurnSlice[] {
+  const eye = width * TURN_EYE;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const center = width / 2;
+  const project = (u: number) => {
+    const scale = eye / (eye - u * sin);
+    return { x: center + (u * cos - center) * scale, scale };
+  };
+  const slices: TurnSlice[] = [];
+  let from = project(0);
+  for (let u = 0; u < width; u += step) {
+    const next = Math.min(width, u + step);
+    const to = project(next);
+    slices.push({ sx: u, sw: next - u, dx: from.x, dw: to.x - from.x, scale: (from.scale + to.scale) / 2 });
+    from = to;
+  }
+  return slices;
 }
 
 // ---- Painting --------------------------------------------------------------
@@ -308,7 +476,7 @@ function canBlur(ctx: CanvasRenderingContext2D): boolean {
   return typeof (ctx as { filter?: unknown }).filter === "string";
 }
 
-/** The glowing box: a soft halo in the two glow colours, the dark body, a hairline edge and a glowing rim. */
+/** The glowing box: a soft halo in the two glow colours, the body, a hairline edge and a glowing rim. */
 function glowBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, look: ReelLook) {
   const r = CARD.radius;
   const sweep = ctx.createLinearGradient(x, 0, x + w, 0);
@@ -317,27 +485,35 @@ function glowBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number,
   ctx.save();
   if (canBlur(ctx)) {
     ctx.filter = "blur(26px)";
-    ctx.globalAlpha = look.dark ? 0.6 : 0.5;
+    ctx.globalAlpha = look.halo;
     roundedRectPath(ctx, x - 4, y - 4, w + 8, h + 8, r + 4);
     ctx.fillStyle = sweep;
     ctx.fill();
     ctx.filter = "none";
   } else {
     // Without canvas blur (an older Safari) the halo is a coloured shadow instead.
-    ctx.shadowColor = withAlpha(look.glowB, 0.7);
+    ctx.shadowColor = withAlpha(look.glowB, look.halo + 0.1);
     ctx.shadowBlur = 44;
     roundedRectPath(ctx, x, y, w, h, r);
     ctx.fillStyle = look.card.fill;
     ctx.fill();
   }
   ctx.restore();
+  if (look.shadow) {
+    ctx.save();
+    ctx.shadowColor = look.shadow;
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 14;
+    fillRoundedRect(ctx, x, y, w, h, r, look.card.fill);
+    ctx.restore();
+  }
   fillRoundedRect(ctx, x, y, w, h, r, look.card.fill);
   ctx.save();
   roundedRectPath(ctx, x, y, w, h, r);
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = look.card.border;
   ctx.stroke();
-  ctx.globalAlpha = 0.85;
+  ctx.globalAlpha = look.rim;
   roundedRectPath(ctx, x + 0.5, y + 0.5, w - 1, h - 1, r);
   ctx.lineWidth = 2;
   ctx.strokeStyle = sweep;
@@ -381,7 +557,7 @@ function paintCard(ctx: CanvasRenderingContext2D, block: CardBlock, look: ReelLo
   // The Job ID, and the tutor wanted in a pill at the right.
   const idY = y + CARD.idRow / 2;
   drawText(ctx, `# ${words.jobId} ${tuition.jobId}`, left, idY, { size: 26, weight: 700, color: look.card.detail, tracking: 0.04 });
-  const kind = KIND[tuition.tutorKind];
+  const kind = look.kind[tuition.tutorKind];
   const pillText = tuition.tutorPill;
   const pillWidth = measure(ctx, pillText, 22, 700, input.locale === "en" ? 0.06 : 0) + 36;
   fillRoundedRect(ctx, right - pillWidth, idY - CARD.pillHeight / 2, pillWidth, CARD.pillHeight, CARD.pillHeight / 2, kind.fill);
@@ -478,7 +654,7 @@ function paintEnd(ctx: CanvasRenderingContext2D, block: EndBlock, look: ReelLook
   ctx.save();
   if (canBlur(ctx)) {
     ctx.filter = "blur(30px)";
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = look.dark ? 0.55 : look.halo;
     const halo = ctx.createLinearGradient(center - qr / 2, 0, center + qr / 2, 0);
     halo.addColorStop(0, look.glowA);
     halo.addColorStop(1, look.glowB);

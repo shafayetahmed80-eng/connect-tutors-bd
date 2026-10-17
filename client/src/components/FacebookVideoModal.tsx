@@ -21,7 +21,7 @@ import {
   runReel,
   videoExtension,
   videoFileName,
-  withSpeed,
+  withMotion,
   type PreparedReel,
   type ReelSize,
   type ReelSpeed,
@@ -31,8 +31,8 @@ import { cn } from "@/lib/utils";
 
 const VIDEO_PREFS_KEY = "connect_tutors_fb_video_prefs_v1";
 
-type VideoPrefs = { size: ReelSize; speed: ReelSpeed };
-const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", speed: "slow" };
+type VideoPrefs = { size: ReelSize; speed: ReelSpeed; opening: boolean; closing: boolean };
+const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", speed: "slow", opening: true, closing: true };
 
 function readVideoPrefs(): VideoPrefs {
   try {
@@ -40,6 +40,8 @@ function readVideoPrefs(): VideoPrefs {
     return {
       size: saved?.size === "feed" || saved?.size === "square" ? saved.size : "reels",
       speed: saved?.speed === "normal" || saved?.speed === "fast" ? saved.speed : "slow",
+      opening: saved?.opening !== false,
+      closing: saved?.closing !== false,
     };
   } catch {
     return DEFAULT_VIDEO_PREFS;
@@ -122,7 +124,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     };
   }, []);
 
-  // Painted again whenever what it shows changes; the speed alone only re-times it (below).
+  // Painted again whenever what it shows changes; the speed and the page turns only re-time it (below).
   const jobKey = shown.map(job => job.id).join(",");
   useEffect(() => {
     if (!fontsReady) return;
@@ -132,7 +134,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     setSeconds(0);
     let prepared: PreparedReel | null = null;
     try {
-      prepared = prepareReel(reelInput(shown, locale, whatsapp), { size: videoPrefs.size, speed: videoPrefs.speed, ground });
+      prepared = prepareReel(reelInput(shown, locale, whatsapp), { size: videoPrefs.size, speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing, ground });
     } catch (error) {
       console.error("Video render failed", error);
       toast.error("ভিডিও তৈরি করতে সমস্যা হয়েছে।");
@@ -153,10 +155,10 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
   useEffect(() => {
     const current = reelRef.current;
     if (!current) return;
-    const timed = withSpeed(current, videoPrefs.speed);
+    const timed = withMotion(current, { speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing });
     reelRef.current = timed;
     setReel(timed);
-  }, [videoPrefs.speed]);
+  }, [videoPrefs.speed, videoPrefs.opening, videoPrefs.closing]);
 
   // Closing the window stops a recording and lets the painted strips go.
   useEffect(() => () => {
@@ -230,6 +232,10 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     { value: "feed", label: "Feed", detail: "1080×1350" },
     { value: "square", label: "Square", detail: "1080×1080" },
   ];
+  const onOffOptions: Array<{ value: "on" | "off"; label: string }> = [
+    { value: "on", label: "On" },
+    { value: "off", label: "Off" },
+  ];
   const speedOptions: Array<{ value: ReelSpeed; label: string }> = [
     { value: "slow", label: "Slow" },
     { value: "normal", label: "Normal" },
@@ -266,6 +272,8 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
             <ChoiceRow label="Language" value={locale} options={[{ value: "bn" as PosterLocale, label: "বাংলা" }, { value: "en" as PosterLocale, label: "English" }]} onChange={next => updatePoster({ locale: next })} />
             <ChoiceRow label="Size" value={videoPrefs.size} options={sizeOptions} onChange={size => updateVideo({ size })} />
             <ChoiceRow label="Speed" value={videoPrefs.speed} options={speedOptions} onChange={speed => updateVideo({ speed })} />
+            <ChoiceRow label="Opening" value={videoPrefs.opening ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ opening: next === "on" })} />
+            <ChoiceRow label="Closing" value={videoPrefs.closing ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ closing: next === "on" })} />
             <PosterColourRow ground={posterPrefs.ground} defaultGround={REEL_DEFAULT_GROUND} resolvedAuto={resolvedAuto} onChange={next => updatePoster({ ground: next })} />
           </fieldset>
         </div>
