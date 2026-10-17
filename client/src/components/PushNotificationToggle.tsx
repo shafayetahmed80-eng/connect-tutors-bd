@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
 import { usePushSubscribed } from "@/hooks/usePushSubscribed";
-import { subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
+import { describePushSetupFailure, subscribeThisBrowser, supportsWebPush } from "@/lib/webPush";
 
 /**
  * Lets a Tutor or Guardian turn on push notifications for this browser - the
@@ -34,8 +34,8 @@ export function PushNotificationToggle() {
       setSubscribed(true);
       announcePushRegistrationChange();
       toast.success("Notifications are on for this browser.");
-    } catch {
-      toast.error("Could not enable notifications.");
+    } catch (error) {
+      toast.error(describePushSetupFailure(error));
     } finally {
       setBusy(false);
     }

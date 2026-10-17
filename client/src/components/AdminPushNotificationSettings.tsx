@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { useAdminPushSubscribed } from "@/hooks/useAdminPushSubscribed";
 import { announcePushRegistrationChange } from "@/hooks/useBrowserPushRegistered";
-import { subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
+import { PushSetupError, describePushSetupFailure, subscribeThisBrowser, supportsWebPush, testPushFailureMessage } from "@/lib/webPush";
 
 export function AdminPushNotificationSettings() {
   const supported = supportsWebPush();
@@ -90,7 +90,7 @@ export function AdminPushNotificationSettings() {
       }
     } catch (err) {
       console.error("Push toggle error:", err);
-      toast.error("নোটিফিকেশন সেটিং পরিবর্তন করতে সমস্যা হয়েছে।");
+      toast.error(err instanceof PushSetupError ? describePushSetupFailure(err) : "নোটিফিকেশন সেটিং পরিবর্তন করতে সমস্যা হয়েছে।");
     } finally {
       setBusy(false);
     }
