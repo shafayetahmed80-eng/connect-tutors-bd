@@ -223,6 +223,14 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     expect(post).toContain(ITEM_DIVIDER);
   });
 
+  it("separates every two tuitions with a blank line after the divider across bulk formats", () => {
+    const formats = ["emoji-line", "mobile-card", "key-priority", "area-grouped"] as const;
+    for (const format of formats) {
+      const post = buildEnglishBulkFacebookPostText(sampleJobs, { format });
+      expect(post).toContain(`${ITEM_DIVIDER}\n\n`);
+    }
+  });
+
   it("returns a clean message if list is empty", () => {
     const post = buildEnglishBulkFacebookPostText([]);
     expect(post).toBe("No live tuitions match the current criteria.");
