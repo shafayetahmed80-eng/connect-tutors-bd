@@ -57,19 +57,19 @@ export const BULK_FORMAT_OPTIONS: {
 }[] = [
   {
     id: "emoji-line",
-    label: "📌 Iconic Emoji (1-Line)",
-    shortLabel: "Iconic (1-Line)",
-    desc: "ইমোজি ও পাইপ সেপারেটর দিয়ে প্রতি টিউশন ১ লাইনে",
+    label: "📌 Standard Card",
+    shortLabel: "Standard Card",
+    desc: "প্রতিটি টিউশনে হ্যাশট্যাগ লোকেশন, ক্লাস ও বিষয় সহ মাল্টি-লাইন কার্ড",
   },
   {
     id: "mobile-card",
-    label: "📱 Mobile Card (2-Line)",
-    shortLabel: "Mobile (2-Line)",
-    desc: "মোবাইলে পড়ার সুবিধার্থে ২ লাইনের কার্ড লেআউট",
+    label: "📚 Category Grouped",
+    shortLabel: "Category Grouped",
+    desc: "কারিকুলাম ও ক্যাটাগরি অনুযায়ী স্বয়ংক্রিয়ভাবে আলাদা গ্রুপ করা",
   },
   {
     id: "key-priority",
-    label: "🎯 Key Priority (Contrast)",
+    label: "🎯 Key Priority",
     shortLabel: "Key Priority",
     desc: "বিষয় ও এলাকাকে শুরুতে হাইলাইট করে দ্রুত নজরে আনা",
   },
@@ -77,7 +77,7 @@ export const BULK_FORMAT_OPTIONS: {
     id: "area-grouped",
     label: "🗺️ Area Grouped",
     shortLabel: "Area Grouped",
-    desc: "এলাকা ও লোকেশন অনুযায়ী স্বয়ংক্রিয়ভাবে আলাদা গ্রুপ করা",
+    desc: "এলাকা ও লোকেশন হ্যাশট্যাগ অনুযায়ী স্বয়ংক্রিয়ভাবে আলাদা গ্রুপ করা",
   },
 ];
 

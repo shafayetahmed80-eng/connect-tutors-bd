@@ -285,68 +285,96 @@ export function buildEnglishJobDetailsInline(
 }
 
 /**
- * Format 1: Iconic Emoji (1-Line)
- * Example: 1. 📌 Job ID: 1024  |  🎓 Male Tutor  |  🔹 Class 9 (English Medium)  |  📚 Math, Physics  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
+ * Normalizes a location name into an uppercase hashtag with underscore city connector.
+ * e.g., "Mohammadpur, Dhaka" -> "#MOHAMMADPUR_DHAKA"
+ * "Mirpur DOHS, Dhaka" -> "#MIRPUR_DOHS_DHAKA"
+ * "Bashundhara R/A, Dhaka" -> "#BASHUNDHARA_RA_DHAKA"
+ * "Online" -> "#ONLINE"
  */
-export function formatJobEmojiLine(job: FacebookPostJobInput, index?: number): string {
-  const f = extractJobEnglishFields(job);
-  const prefix = typeof index === "number" ? `${index}. ` : "";
-  const parts: string[] = [
-    `📌 Job ID: ${f.code}`,
-    `🎓 ${f.tutorPref}`,
-    `🔹 ${f.classWithMedium}`,
-    `📚 ${f.subjects}`,
-    `📍 ${f.loc}`,
-    `🗓️ ${f.schedule}`,
-    `💰 ${f.salary}`,
-  ];
-  if (f.studentInfo) {
-    parts.push(`👨‍🎓 ${f.studentInfo}`);
-  }
-  if (f.notes) {
-    parts.push(`📋 Notes: ${f.notes}`);
-  }
-  return `${prefix}${parts.join("  |  ")}`;
+export function formatLocationHashtag(locationText: string | null | undefined): string {
+  if (!locationText) return "#BANGLADESH";
+  const clean = locationText
+    .trim()
+    .replace(/\bR\/A\b/gi, "RA")
+    .replace(/[,/\\-]+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .toUpperCase();
+  return `#${clean || "LOCATION"}`;
 }
 
 /**
- * Format 2: Mobile Card (2-Line)
- * Line 1: 1. 📌 Job ID: 1024 • 🎓 Male Tutor • 🔹 Class 9 (English Medium)
- * Line 2:    📚 Math, Physics  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
+ * Formats location as an uppercase hashtag with optional address in parentheses.
+ * e.g., "📍 #MOHAMMADPUR_DHAKA (Housing Society)" or "📍 #MOHAMMADPUR_DHAKA"
  */
-export function formatJobMobileCard(job: FacebookPostJobInput, index?: number): string {
-  const f = extractJobEnglishFields(job);
-  const prefix = typeof index === "number" ? `${index}. ` : "";
-  const line1 = `${prefix}📌 Job ID: ${f.code} • 🎓 ${f.tutorPref} • 🔹 ${f.classWithMedium}`;
-
-  const line2Parts: string[] = [
-    `📚 ${f.subjects}`,
-    `📍 ${f.loc}`,
-    `🗓️ ${f.schedule}`,
-    `💰 ${f.salary}`,
-  ];
-  if (f.studentInfo) {
-    line2Parts.push(`👨‍🎓 ${f.studentInfo}`);
+export function formatLocationWithAddress(job: FacebookPostJobInput): string {
+  if (job.tuitionType === "online") return "📍 #ONLINE";
+  const rawLoc = (job.tuitionLocationLabel ?? job.locationText ?? "").trim();
+  const tag = formatLocationHashtag(rawLoc || "Dhaka");
+  if (job.addressDetails?.trim()) {
+    return `📍 ${tag} (${job.addressDetails.trim()})`;
   }
-  if (f.notes) {
-    line2Parts.push(`📋 Notes: ${f.notes}`);
-  }
-  const indent = typeof index === "number" ? "   " : "";
-  const line2 = `${indent}${line2Parts.join("  |  ")}`;
-  return `${line1}\n${line2}`;
+  return `📍 ${tag}`;
 }
+
+/**
+ * Helper to determine category group title for a job in Category Grouped format.
+ */
+export function getJobCategoryKey(job: FacebookPostJobInput): string {
+  const raw = (job.category ?? job.curriculumType ?? "").trim();
+  if (!raw) return "📚 GENERAL / OTHER";
+  return `📚 ${raw.toUpperCase()}`;
+}
+
+/**
+ * Format 1: Standard Card (formerly Iconic Emoji)
+ * Line 1: 📌 Job ID: 6806 (Female Tutor)
+ * Line 2: 📍 #MOHAMMADPUR_DHAKA (Housing Society)
+ * Line 3: 🔹 Class- Standard 1 (British)
+ * Line 4: 📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT/month
+ * Line 5: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
+ */
+export function formatJobStandardCard(job: FacebookPostJobInput, _index?: number): string {
+  const f = extractJobEnglishFields(job);
+
+  const line1 = `📌 Job ID: ${f.code} (${f.tutorPref})`;
+  const line2 = formatLocationWithAddress(job);
+  const line3 = `🔹 Class- ${f.classWithMedium}`;
+
+  const daysText = job.daysPerWeek && job.daysPerWeek > 0
+    ? `${job.daysPerWeek} ${job.daysPerWeek === 1 ? "Day" : "Days"}`
+    : "Flexible Days";
+  const scheduleText = job.tutoringTime?.trim()
+    ? `${daysText}, ${job.tutoringTime.trim()}`
+    : daysText;
+
+  const salaryText = f.salary.startsWith("Salary ") ? f.salary : `Salary ${f.salary}`;
+  const line4 = `📚 Subjects- ${f.subjects}  |  🗓️ ${scheduleText}  |  💰 ${salaryText}`;
+
+  const lines = [line1, line2, line3, line4];
+  if (f.notes) {
+    lines.push(`\n📋 Notes: ${f.notes}`);
+  }
+
+  return lines.join("\n");
+}
+
+export const formatJobEmojiLine = formatJobStandardCard;
+export const formatJobMobileCard = formatJobStandardCard;
 
 /**
  * Format 3: Key Priority (High-Contrast)
- * Example: 1. [Job ID: 1024] 🎓 MALE TUTOR 🎯 MATH, PHYSICS  |  Class 9 (English Medium)  |  📍 Dhanmondi  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
+ * Example: 1. [Job ID: 1024] 🎓 MALE TUTOR 🎯 MATH, PHYSICS  |  Class 9 (English Medium)  |  📍 #DHANMONDI_DHAKA  |  🗓️ 3 Days/week  |  💰 8,000 BDT/month
  */
 export function formatJobKeyPriority(job: FacebookPostJobInput, index?: number): string {
   const f = extractJobEnglishFields(job);
   const prefix = typeof index === "number" ? `${index}. ` : "";
+  const locWithTag = formatLocationWithAddress(job);
   const parts: string[] = [
     `${prefix}[Job ID: ${f.code}] 🎓 ${f.tutorPref.toUpperCase()} 🎯 ${f.subjects.toUpperCase()}`,
     f.classWithMedium,
-    `📍 ${f.loc}`,
+    locWithTag,
     `🗓️ ${f.schedule}`,
     `💰 ${f.salary}`,
   ];
@@ -394,10 +422,10 @@ export function formatJobAreaItem(job: FacebookPostJobInput, _index?: number): s
  * Helper to determine area group title for a job.
  */
 export function getJobAreaKey(job: FacebookPostJobInput): string {
-  if (job.tuitionType === "online") return "🌐 ONLINE TUITIONS";
+  if (job.tuitionType === "online") return "🌐 #ONLINE_TUITIONS";
   const raw = (job.tuitionLocationLabel ?? job.locationText ?? "").trim();
-  if (!raw) return "📍 OTHER LOCATIONS";
-  return `📍 ${raw.toUpperCase()}`;
+  if (!raw) return "📍 #OTHER_LOCATIONS";
+  return `📍 ${formatLocationHashtag(raw)}`;
 }
 
 /**
@@ -514,9 +542,24 @@ export function buildEnglishBulkFacebookPostText(
   let bodyContent = "";
 
   if (format === "mobile-card") {
-    bodyContent = jobs
-      .map((job, idx) => `${formatJobMobileCard(job, idx + 1)}\n${ITEM_DIVIDER}`)
-      .join("\n\n");
+    // Format 2: Category Grouped
+    const groups: Record<string, FacebookPostJobInput[]> = {};
+    for (const job of jobs) {
+      const cat = getJobCategoryKey(job);
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(job);
+    }
+    const groupBlocks: string[] = [];
+    const cats = Object.keys(groups);
+    for (const cat of cats) {
+      const catJobs = groups[cat];
+      const underline = "─".repeat(Array.from(cat).length);
+      const items = catJobs.map((job: FacebookPostJobInput) => {
+        return `${formatJobStandardCard(job)}\n${ITEM_DIVIDER}`;
+      });
+      groupBlocks.push(`${cat}\n${underline}\n\n${items.join("\n\n")}`);
+    }
+    bodyContent = groupBlocks.join("\n\n");
   } else if (format === "key-priority") {
     bodyContent = jobs
       .map((job, idx) => `${formatJobKeyPriority(job, idx + 1)}\n${ITEM_DIVIDER}`)
@@ -540,9 +583,9 @@ export function buildEnglishBulkFacebookPostText(
     }
     bodyContent = groupBlocks.join("\n\n");
   } else {
-    // "emoji-line" (default)
+    // "emoji-line" (default) -> Format 1: Standard Card
     bodyContent = jobs
-      .map((job, idx) => `${formatJobEmojiLine(job, idx + 1)}\n${ITEM_DIVIDER}`)
+      .map((job) => `${formatJobStandardCard(job)}\n${ITEM_DIVIDER}`)
       .join("\n\n");
   }
 

@@ -267,12 +267,12 @@ describe("AdminFacebookPostsContent", () => {
       expect(screen.getByText(/Bulk Facebook Post Preview/i)).toBeDefined();
     });
 
-    // Initial format is Iconic (1-Line)
-    expect(screen.getByRole("button", { name: /Iconic \(1-Line\)/i })).toBeDefined();
+    // Initial format is Standard Card
+    expect(screen.getByRole("button", { name: /Standard Card/i })).toBeDefined();
 
-    // Switch to Mobile Card (2-Line)
-    const mobileBtn = screen.getByRole("button", { name: /Mobile \(2-Line\)/i });
-    fireEvent.click(mobileBtn);
+    // Switch to Category Grouped
+    const categoryBtn = screen.getByRole("button", { name: /Category Grouped/i });
+    fireEvent.click(categoryBtn);
 
     // Switch to Key Priority
     const keyPriorityBtn = screen.getByRole("button", { name: /Key Priority/i });
@@ -305,7 +305,7 @@ describe("AdminFacebookPostsContent", () => {
     });
 
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(calledText).toContain("•");
+    expect(calledText).toContain("📌 Job ID: 6900");
   });
 
   it("opens single preview modal and allows toggling format", async () => {
