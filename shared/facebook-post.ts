@@ -501,11 +501,11 @@ export function buildEnglishBulkFacebookPostText(
   if (format === "mobile-card") {
     bodyContent = jobs
       .map((job, idx) => `${formatJobMobileCard(job, idx + 1)}\n${ITEM_DIVIDER}`)
-      .join("\n");
+      .join("\n\n");
   } else if (format === "key-priority") {
     bodyContent = jobs
       .map((job, idx) => `${formatJobKeyPriority(job, idx + 1)}\n${ITEM_DIVIDER}`)
-      .join("\n");
+      .join("\n\n");
   } else if (format === "area-grouped") {
     const groups: Record<string, FacebookPostJobInput[]> = {};
     for (const job of jobs) {
@@ -523,14 +523,14 @@ export function buildEnglishBulkFacebookPostText(
         counter++;
         return itemStr;
       });
-      groupBlocks.push(`${area}\n${items.join("\n")}`);
+      groupBlocks.push(`${area}\n${items.join("\n\n")}`);
     }
     bodyContent = groupBlocks.join("\n\n");
   } else {
     // "emoji-line" (default)
     bodyContent = jobs
       .map((job, idx) => `${formatJobEmojiLine(job, idx + 1)}\n${ITEM_DIVIDER}`)
-      .join("\n");
+      .join("\n\n");
   }
 
   const postBlocks = [header, "", bodyContent, "", footer];
