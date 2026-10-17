@@ -8,17 +8,21 @@ import {
   classesText,
   classLabel,
   curriculaText,
+  curriculumGroup,
   curriculumLabel,
   daysPhrase,
   daysValue,
   joinWithMore,
   lakhGrouping,
+  POSTER_WORDS,
   posterDate,
   salaryText,
+  subjectChips,
   subjectLabel,
   subjectsText,
   timeValue,
   tuitionCount,
+  tutorKind,
   tutorValue,
 } from "./poster-copy";
 
@@ -132,5 +136,50 @@ describe("poster copy: place, days, time, tutor, salary, date", () => {
   it("counts tuitions", () => {
     expect(tuitionCount(4, "bn")).toBe("৪টি টিউশন");
     expect(tuitionCount(1, "en")).toBe("1 tuition");
+  });
+});
+
+describe("poster copy: what the Mist poster files and colours a tuition by", () => {
+  it("files a tuition under its first curriculum, worded for the poster", () => {
+    expect(curriculumGroup(englishVersionClass8, "en")).toEqual({ key: "English Version", label: "English Version" });
+    expect(curriculumGroup(englishVersionClass8, "bn")).toEqual({ key: "English Version", label: "ইংলিশ ভার্সন" });
+    const two: LearningNeed[] = [
+      { category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 5", subjects: ["Bangla"] }] },
+      ...englishVersionClass8,
+    ];
+    expect(curriculumGroup(two, "en").key).toBe("Bangla Medium");
+  });
+
+  it("files a tuition with no curriculum under Other", () => {
+    expect(curriculumGroup([], "en")).toEqual({ key: "other", label: "Other" });
+    expect(curriculumGroup([], "bn")).toEqual({ key: "other", label: "অন্যান্য" });
+  });
+
+  it("gives each subject a chip, at most three, then one chip for the rest", () => {
+    expect(subjectChips(englishVersionClass8, "en")).toEqual(["Mathematics", "Physics", "Chemistry"]);
+    const many: LearningNeed[] = [{ category: "Bangla Medium", curriculumType: null, classes: [{ classCourse: "Class 9", subjects: ["Physics", "Chemistry", "Biology", "Bangla", "English"] }] }];
+    expect(subjectChips(many, "en")).toEqual(["Physics", "Chemistry", "Biology", "+2 more"]);
+    expect(subjectChips(many, "bn")).toEqual(["পদার্থবিজ্ঞান", "রসায়ন", "জীববিজ্ঞান", "+২টি"]);
+    expect(subjectChips(many, "en", 5)).toHaveLength(5);
+  });
+
+  it("reads All as one chip, and no subjects as the same chip", () => {
+    const all: LearningNeed[] = [{ category: "English Medium", curriculumType: null, classes: [{ classCourse: "Play", subjects: ["All"] }] }];
+    expect(subjectChips(all, "en")).toEqual(["All subjects"]);
+    expect(subjectChips(all, "bn")).toEqual(["সকল বিষয়"]);
+    expect(subjectChips([], "en")).toEqual(["All subjects"]);
+  });
+
+  it("reads the preferred tutor as the kind a pill is coloured by", () => {
+    expect(tutorKind("male")).toBe("male");
+    expect(tutorKind("female")).toBe("female");
+    for (const other of ["any", "", null, undefined, "other"]) expect(tutorKind(other)).toBe("any");
+  });
+
+  it("words the pill in both languages for all three kinds", () => {
+    expect(POSTER_WORDS.en.tutorPill).toEqual({ male: "MALE TUTOR", female: "FEMALE TUTOR", any: "MALE / FEMALE" });
+    expect(POSTER_WORDS.bn.tutorPill).toEqual({ male: "পুরুষ শিক্ষক", female: "মহিলা শিক্ষক", any: "পুরুষ / মহিলা" });
+    expect(POSTER_WORDS.en.mistTitle).toBe("Choose your tuition");
+    expect(POSTER_WORDS.bn.mistTitle).toBe("টিউশন বেছে নিন");
   });
 });

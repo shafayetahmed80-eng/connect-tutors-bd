@@ -30,7 +30,7 @@ import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Hash, Image as ImageI
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
 import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
-import { MAX_COMBINED_TUITIONS, type FacebookPosterJob } from "@/lib/facebook-poster";
+import { MAX_TALL_TUITIONS, type FacebookPosterJob } from "@/lib/facebook-poster";
 
 const PAGE_SIZE = 20;
 const TEMPLATE_STORAGE_KEY = "connect_tutors_fb_post_templates_v1";
@@ -423,7 +423,8 @@ export function AdminFacebookPostsContent() {
     if (isBulkCopying) return;
     setIsBulkCopying(true);
     try {
-      const list = (await fetchFilteredJobs(MAX_COMBINED_TUITIONS)).slice(0, MAX_COMBINED_TUITIONS);
+      // Up to twelve: the tall list holds them all, the square and landscape posters take the first four.
+      const list = (await fetchFilteredJobs(MAX_TALL_TUITIONS)).slice(0, MAX_TALL_TUITIONS);
       if (list.length === 0) {
         toast.error("পোস্টার তৈরি করার জন্য কোনো লাইভ টিউশন নেই।");
         return;
@@ -1016,10 +1017,10 @@ export function AdminFacebookPostsContent() {
             onClick={handleGenerateBulkPoster}
             disabled={isBulkCopying || totalMatching === 0}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-            title="Facebook poster for the first four filtered tuitions"
+            title="Facebook poster for the filtered tuitions: four in a square or landscape image, up to twelve in the tall list"
           >
             <ImageIcon className="size-3.5 text-[#1877f2]" />
-            <span>Bulk Poster ({Math.min(totalMatching, MAX_COMBINED_TUITIONS)})</span>
+            <span>Bulk Poster ({Math.min(totalMatching, MAX_TALL_TUITIONS)})</span>
           </button>
           <button
             type="button"

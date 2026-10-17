@@ -11,11 +11,20 @@ import QRCode from "qrcode";
 /** Latin from DM Sans, Bengali from the poster's own Noto Sans Bengali faces (see fonts.css). */
 export const POSTER_FONT_STACK = `"DM Sans", "Poster Bengali", "Noto Sans Bengali", sans-serif`;
 
+/** The Mist poster's serif, for headlines and numbers: Latin and Bangla alike (see fonts.css). */
+export const POSTER_SERIF_STACK = `"Poster Serif", "Noto Serif Bengali", Georgia, serif`;
+
+export type PosterFace = "sans" | "serif";
+
+const faceStack = (face: PosterFace) => (face === "serif" ? POSTER_SERIF_STACK : POSTER_FONT_STACK);
+
 export type TextOptions = {
   size: number;
   weight?: number;
   color: string;
   align?: CanvasTextAlign;
+  /** The typeface; the poster's sans unless it says serif. */
+  face?: PosterFace;
   /** The widest the text may draw. It first shrinks (down to `minSize`), then ends in "…". */
   maxWidth?: number;
   minSize?: number;
@@ -24,13 +33,13 @@ export type TextOptions = {
   alpha?: number;
 };
 
-export function setFont(ctx: CanvasRenderingContext2D, size: number, weight = 600, tracking = 0) {
-  ctx.font = `${weight} ${size}px ${POSTER_FONT_STACK}`;
+export function setFont(ctx: CanvasRenderingContext2D, size: number, weight = 600, tracking = 0, face: PosterFace = "sans") {
+  ctx.font = `${weight} ${size}px ${faceStack(face)}`;
   if ("letterSpacing" in ctx) ctx.letterSpacing = tracking ? `${(tracking * size).toFixed(2)}px` : "0px";
 }
 
-export function measure(ctx: CanvasRenderingContext2D, text: string, size: number, weight = 600, tracking = 0): number {
-  setFont(ctx, size, weight, tracking);
+export function measure(ctx: CanvasRenderingContext2D, text: string, size: number, weight = 600, tracking = 0, face: PosterFace = "sans"): number {
+  setFont(ctx, size, weight, tracking, face);
   return ctx.measureText(text).width;
 }
 
@@ -62,11 +71,12 @@ export function drawText(ctx: CanvasRenderingContext2D, text: string, x: number,
   const tracking = options.tracking ?? 0;
   let size = options.size;
   const minSize = options.minSize ?? Math.round(options.size * 0.8);
-  setFont(ctx, size, weight, tracking);
+  const face = options.face ?? "sans";
+  setFont(ctx, size, weight, tracking, face);
   if (options.maxWidth) {
     while (size > minSize && ctx.measureText(text).width > options.maxWidth) {
       size -= 2;
-      setFont(ctx, size, weight, tracking);
+      setFont(ctx, size, weight, tracking, face);
     }
   }
   const line = options.maxWidth ? ellipsize(ctx, text, options.maxWidth) : text;
@@ -81,8 +91,8 @@ export function drawText(ctx: CanvasRenderingContext2D, text: string, x: number,
 }
 
 /** Breaks text into at most `maxLines` lines of `maxWidth`, the last one ending in "…" if it is cut. */
-export function wrapLines(ctx: CanvasRenderingContext2D, text: string, size: number, weight: number, maxWidth: number, maxLines: number): string[] {
-  setFont(ctx, size, weight);
+export function wrapLines(ctx: CanvasRenderingContext2D, text: string, size: number, weight: number, maxWidth: number, maxLines: number, face: PosterFace = "sans"): string[] {
+  setFont(ctx, size, weight, 0, face);
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
@@ -143,6 +153,63 @@ export function hairline(ctx: CanvasRenderingContext2D, x1: number, y1: number, 
   ctx.stroke();
 }
 
+/** A straight line drawn as dashes: `dash` long, `gap` apart. */
+export function dashedLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, width: number, dash: number, gap: number) {
+  ctx.save();
+  ctx.setLineDash?.([dash, gap]);
+  hairline(ctx, x1, y1, x2, y2, color, width);
+  ctx.restore();
+}
+
+/**
+ * A linear gradient across the box (x, y, w, h) from `angle` degrees - 0 runs
+ * left to right, 90 top to bottom - through `stops` (offset 0 to 1, colour).
+ * Where a canvas cannot make a gradient (tests) the first stop fills it flat.
+ */
+export function gradientFill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, angle: number, stops: Array<[number, string]>): CanvasGradient | string {
+  if (typeof ctx.createLinearGradient !== "function") return stops[0]![1];
+  const radians = (angle * Math.PI) / 180;
+  const dx = Math.cos(radians);
+  const dy = Math.sin(radians);
+  // The gradient line runs through the centre and is as long as the box's projection on it.
+  const half = (Math.abs(w * dx) + Math.abs(h * dy)) / 2;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const gradient = ctx.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
+  for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+  return gradient;
+}
+
+/** A rounded rectangle filled with a gradient (see `gradientFill`). */
+export function fillRoundedGradient(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, angle: number, stops: Array<[number, string]>) {
+  roundedRectPath(ctx, x, y, w, h, r);
+  ctx.fillStyle = gradientFill(ctx, x, y, w, h, angle, stops);
+  ctx.fill();
+}
+
+/** A soft round glow: `color` at the centre fading to nothing at `radius`. */
+export function radialGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, color: string, alpha: number) {
+  if (typeof ctx.createRadialGradient !== "function") return;
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = gradient;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  ctx.restore();
+}
+
+/** A soft shadow under whatever `draw` paints, for a card that sits above the ground. */
+export function withShadow(ctx: CanvasRenderingContext2D, color: string, blur: number, offsetY: number, draw: () => void) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.shadowOffsetY = offsetY;
+  draw();
+  ctx.restore();
+}
+
 /**
  * The Connect Tutors mark (BrandMark.tsx): four balls at rest, the fifth lifted.
  * `x, y` is the top-left of its 48×32 box, scaled to `width`.
@@ -191,9 +258,9 @@ export function drawCradle(ctx: CanvasRenderingContext2D, x: number, y: number, 
 }
 
 /** "Connect Tutors", the second word in its own colour; returns its width. */
-export function drawWordmark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ink: string, second: string): number {
-  const first = drawText(ctx, "Connect ", x, y, { size, weight: 700, color: ink, tracking: -0.02 });
-  const rest = drawText(ctx, "Tutors", x + first, y, { size, weight: 500, color: second, tracking: -0.02 });
+export function drawWordmark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ink: string, second: string, face: PosterFace = "sans"): number {
+  const first = drawText(ctx, "Connect ", x, y, { size, weight: 700, color: ink, tracking: -0.02, face });
+  const rest = drawText(ctx, "Tutors", x + first, y, { size, weight: face === "serif" ? 600 : 500, color: second, tracking: -0.02, face });
   return first + rest;
 }
 
@@ -340,12 +407,16 @@ export function drawGrain(ctx: CanvasRenderingContext2D, width: number, height: 
 }
 
 /** Waits for every face a poster draws, so the first render is not in a fallback font. */
-export async function loadPosterFonts(timeoutMs = 4000): Promise<void> {
+export async function loadPosterFonts(timeoutMs = 4000, options: { serif?: boolean } = {}): Promise<void> {
   if (typeof document === "undefined" || !document.fonts?.load) return;
   const faces = [500, 600, 700, 800].flatMap(weight => [
     document.fonts.load(`${weight} 40px "DM Sans"`, "Connect Tutors 0123456789"),
     document.fonts.load(`${weight} 40px "Poster Bengali"`, "শিক্ষক প্রয়োজন ৳০১২৩৪৫৬৭৮৯"),
   ]);
+  // The serif is only the Mist poster's, so the others never wait for its two files.
+  if (options.serif) {
+    for (const weight of [600, 700, 800]) faces.push(document.fonts.load(`${weight} 40px "Poster Serif"`, "Connect Tutors 0123456789 শিক্ষক প্রয়োজন ৳০১২৩৪৫৬৭৮৯"));
+  }
   await Promise.race([
     Promise.allSettled(faces),
     new Promise(resolve => setTimeout(resolve, timeoutMs)),
