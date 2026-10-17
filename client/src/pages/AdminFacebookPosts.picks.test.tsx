@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   fetchFn: vi.fn(),
   items: [] as Array<Record<string, unknown>>,
-  posters: [] as Array<{ isOpen: boolean; jobs?: Array<{ id: number; jobId: string }> | null; job?: { id: number; jobId: string } | null }>,
+  posters: [] as Array<{ isOpen: boolean; jobs?: Array<{ id: number; jobId: string }> | null; job?: { id: number; jobId: string } | null; caption?: (shown: number) => string }>,
   toastError: vi.fn(),
 }));
 
@@ -235,5 +235,52 @@ describe("picking the tuitions for the bulk poster", () => {
     render(<AdminFacebookPostsContent />);
     fireEvent.click(pickBox(1));
     expect((bulkButton() as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe("the caption the poster window is given", () => {
+  const latest = (open: "single" | "bulk") => {
+    const props = [...mocks.posters].reverse().find(entry => entry.isOpen && (open === "bulk" ? entry.jobs : entry.job));
+    return props!.caption!;
+  };
+
+  it("is the full text post of the one tuition, with its apply link and hashtags", () => {
+    useItems(3);
+    render(<AdminFacebookPostsContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate social poster for job 6801" }));
+
+    const text = latest("single")(1);
+    expect(text).toContain("Job ID: 6801");
+    expect(text).toContain("/job-board?job=6801");
+    expect(text).toContain("#");
+    expect(text).not.toContain("Job ID: 6800");
+  });
+
+  it("is the bulk text of the ticked tuitions, in the order ticked, as many as the poster shows", () => {
+    useItems(6);
+    render(<AdminFacebookPostsContent />);
+    fireEvent.click(pickBox(4));
+    fireEvent.click(pickBox(2));
+    fireEvent.click(pickBox(6));
+    fireEvent.click(bulkButton());
+
+    // Ticked 4th, 2nd and 6th: Job IDs 6803, 6801, 6805.
+    const both = latest("bulk")(2);
+    expect(both.indexOf("Job ID: 6803")).toBeGreaterThan(-1);
+    expect(both.indexOf("Job ID: 6803")).toBeLessThan(both.indexOf("Job ID: 6801"));
+    expect(both).not.toContain("Job ID: 6805");
+    expect(latest("bulk")(3)).toContain("Job ID: 6805");
+  });
+
+  it("is the bulk text of the first four filtered tuitions when none is ticked, never a fifth", async () => {
+    useItems(8);
+    render(<AdminFacebookPostsContent />);
+    fireEvent.click(bulkButton());
+    await screen.findByTestId("bulk-poster");
+
+    const text = latest("bulk")(4);
+    for (const id of [6799 + 1, 6799 + 2, 6799 + 3, 6799 + 4]) expect(text).toContain(`Job ID: ${id}`);
+    expect(text).not.toContain("Job ID: 6804");
   });
 });

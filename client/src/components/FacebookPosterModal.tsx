@@ -1,8 +1,9 @@
-import { Copy, Download } from "lucide-react";
+import { Copy, Download, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { JobIdTag } from "@/components/JobIdTag";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { copyToClipboard } from "@/lib/copyToClipboard";
 import {
   COMBINED_POSTER_THEMES,
   copyCanvasImageToClipboard,
@@ -204,7 +205,18 @@ export function PosterColourRow({ ground, defaultGround, onChange }: { ground: s
   );
 }
 
-export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: boolean; onClose: () => void; job?: FacebookPosterJob | null; jobs?: FacebookPosterJob[] | null }) {
+export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
+  isOpen: boolean;
+  onClose: () => void;
+  job?: FacebookPosterJob | null;
+  jobs?: FacebookPosterJob[] | null;
+  /**
+   * The text post that goes with this poster, given how many tuitions the poster
+   * holds (one for a single tuition; four in a square or landscape, up to twelve in
+   * the tall list). Where the page gives none, the window has no caption button.
+   */
+  caption?: (shown: number) => string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [prefs, setPrefs] = useState<PosterPrefs>(readPrefs);
   const [fonts, setFonts] = useState({ sans: false, serif: false });
@@ -275,6 +287,13 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: bo
     else toast.error("পোস্টারের ছবি তৈরি করা যায়নি।");
   };
 
+  const handleCopyCaption = async () => {
+    if (!caption) return;
+    const copied = await copyToClipboard(caption(isCombined ? shown : 1));
+    if (copied) toast.success("ক্যাপশন কপি হয়েছে। ছবির সাথে পেস্ট করুন।");
+    else toast.error("ক্যাপশন কপি করা যায়নি।");
+  };
+
   const handleCopy = async () => {
     const canvas = canvasRef.current;
     if (!canvas || isCopying) return;
@@ -331,24 +350,37 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs }: { isOpen: bo
         </div>
       </ModalBody>
       <ModalFooter>
-        <button
-          type="button"
-          onClick={handleCopy}
-          disabled={isCopying}
-          className="inline-flex h-control items-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60 disabled:opacity-60"
-        >
-          <Copy className="size-3.5" strokeWidth={1.5} />
-          Copy image
-        </button>
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={isSaving}
-          className="inline-flex h-control items-center gap-1.5 rounded-xl border border-[#1877f2] bg-[#1877f2] px-4 text-xs font-bold text-white transition hover:bg-[#166fe5] disabled:opacity-60"
-        >
-          <Download className="size-3.5" strokeWidth={1.5} />
-          Download PNG
-        </button>
+        {/* Three buttons do not fit a phone in one line, so they wrap. */}
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+          {caption ? (
+            <button
+              type="button"
+              onClick={handleCopyCaption}
+              className="inline-flex h-control items-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60"
+            >
+              <FileText className="size-3.5" strokeWidth={1.5} />
+              Copy caption
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={isCopying}
+            className="inline-flex h-control items-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60 disabled:opacity-60"
+          >
+            <Copy className="size-3.5" strokeWidth={1.5} />
+            Copy image
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={isSaving}
+            className="inline-flex h-control items-center gap-1.5 rounded-xl border border-[#1877f2] bg-[#1877f2] px-4 text-xs font-bold text-white transition hover:bg-[#166fe5] disabled:opacity-60"
+          >
+            <Download className="size-3.5" strokeWidth={1.5} />
+            Download PNG
+          </button>
+        </div>
       </ModalFooter>
     </Modal>
   );

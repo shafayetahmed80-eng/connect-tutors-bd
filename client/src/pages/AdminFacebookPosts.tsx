@@ -1597,12 +1597,21 @@ export function AdminFacebookPostsContent() {
         isOpen={Boolean(posterJob)}
         onClose={() => setPosterJob(null)}
         job={posterJob}
+        caption={() => (posterJob ? buildFacebookPostText(posterJob, { origin: window.location.origin, template: templates, includeHashtags }) : "")}
       />
 
       <FacebookPosterModal
         isOpen={Boolean(bulkPosterJobs && bulkPosterJobs.length > 0)}
         onClose={() => setBulkPosterJobs(null)}
         jobs={bulkPosterJobs}
+        caption={shown => buildEnglishBulkFacebookPostText((bulkPosterJobs ?? []).slice(0, shown), {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          // Ticked tuitions are not what the filters describe, so the headline does not borrow them.
+          filterOptions: bulkPosterPicked ? undefined : getActiveBulkFilterOptions(),
+          includeHashtags,
+        })}
       />
 
       {/* Facebook Group Helper Modal */}

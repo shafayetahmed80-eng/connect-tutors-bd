@@ -9,7 +9,8 @@ const renderers = vi.hoisted(() => ({
   fonts: vi.fn(async () => {}),
 }));
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock("sonner", () => ({ toast: toasts }));
 vi.mock("@/lib/facebook-poster", async importOriginal => {
   const actual = await importOriginal<typeof import("@/lib/facebook-poster")>();
   return { ...actual, renderSingleTuitionPoster: renderers.single, renderCombinedTuitionsPoster: renderers.combined, loadPosterFonts: renderers.fonts };
@@ -31,6 +32,9 @@ beforeEach(() => {
   renderers.single.mockClear();
   renderers.combined.mockClear();
   renderers.fonts.mockClear();
+  toasts.success.mockClear();
+  toasts.error.mockClear();
+  toasts.info.mockClear();
 });
 afterEach(cleanup);
 
@@ -216,3 +220,59 @@ describe("the two poster windows on one page", () => {
   });
 });
 
+describe("the caption that goes with a poster", () => {
+  const writeText = vi.fn();
+  beforeEach(() => {
+    writeText.mockReset().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  it("has no caption button where the page gives no caption", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    expect(screen.queryByRole("button", { name: /Copy caption/ })).toBeNull();
+  });
+
+  it("copies the text post of one tuition, asked for one", async () => {
+    const caption = vi.fn(() => "Job ID: 6912 | Female Tutor | Class 8");
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={caption} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+
+    await vi.waitFor(() => expect(toasts.success).toHaveBeenCalled());
+    expect(caption).toHaveBeenCalledWith(1);
+    expect(writeText).toHaveBeenCalledWith("Job ID: 6912 | Female Tutor | Class 8");
+    expect(toasts.success).toHaveBeenCalledWith("ক্যাপশন কপি হয়েছে। ছবির সাথে পেস্ট করুন।");
+  });
+
+  it("asks for the text of as many tuitions as the poster holds: four in a square, all in the tall list", async () => {
+    const caption = vi.fn((shown: number) => `post of ${shown}`);
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} caption={caption} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 4"));
+
+    fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 6"));
+    expect(caption.mock.calls.map(call => call[0])).toEqual([4, 6]);
+  });
+
+  it("says so when nothing could be copied", async () => {
+    writeText.mockRejectedValue(new Error("blocked"));
+    const execCommand = vi.fn(() => false);
+    Object.assign(document, { execCommand });
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+
+    await vi.waitFor(() => expect(toasts.error).toHaveBeenCalledWith("ক্যাপশন কপি করা যায়নি।"));
+    expect(toasts.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps the caption button beside the image buttons in one row that can wrap", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+    const row = screen.getByRole("button", { name: /Copy caption/ }).parentElement!;
+    expect(row.className).toContain("flex-wrap");
+    expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual(["Copy caption", "Copy image", "Download PNG"]);
+  });
+});
