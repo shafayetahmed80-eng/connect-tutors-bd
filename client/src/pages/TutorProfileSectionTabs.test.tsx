@@ -43,6 +43,42 @@ describe("the profile's section tabs", () => {
     rerender(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
     expect(list.className).toContain("mask-image:linear-gradient(to_right,transparent,#000_1.5rem)]");
   });
+
+  it("shows scroll prompt and right cue button when tabs overflow to the right", () => {
+    const { rerender } = render(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+    const list = screen.getByRole("tablist");
+    setWidths(list, 600, 360, 0);
+    list.dispatchEvent(new Event("scroll"));
+    rerender(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+
+    expect(screen.getByTestId("tab-scroll-prompt")).toBeTruthy();
+    expect(screen.getByText(/Swipe for more sections/)).toBeTruthy();
+    expect(screen.getByLabelText("Scroll tabs right")).toBeTruthy();
+  });
+
+  it("hides the scroll prompt once the user scrolls past the threshold", () => {
+    const { rerender } = render(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+    const list = screen.getByRole("tablist");
+    setWidths(list, 600, 360, 0);
+    list.dispatchEvent(new Event("scroll"));
+    rerender(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+    expect(screen.queryByTestId("tab-scroll-prompt")).toBeTruthy();
+
+    setWidths(list, 600, 360, 50);
+    list.dispatchEvent(new Event("scroll"));
+    rerender(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+    expect(screen.queryByTestId("tab-scroll-prompt")).toBeNull();
+  });
+
+  it("shows the left scroll cue button when scrolled away from start", () => {
+    const { rerender } = render(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+    const list = screen.getByRole("tablist");
+    setWidths(list, 600, 360, 100);
+    list.dispatchEvent(new Event("scroll"));
+    rerender(<TutorProfileSectionTabs sections={sections} activeTab="a" onTabChange={() => {}} />);
+
+    expect(screen.getByLabelText("Scroll tabs left")).toBeTruthy();
+  });
 });
 
 describe("the section tabs from a keyboard", () => {
