@@ -37,6 +37,11 @@ export type RecordColumn<Row> = {
   cardInline?: boolean;
   /** The heading is for screen readers only, as an icon-only column's is. */
   headingHidden?: boolean;
+  /**
+   * A control that stands in the heading in place of the label - a select-all
+   * checkbox. It must name itself: the label is not drawn beside it.
+   */
+  headCell?: ReactNode;
   /** A small icon in front of the label, in the heading and on a card alike. */
   labelIcon?: ReactNode;
   /** Restyles the label - the heading and the card's caption - for a column that should stand apart from the rest. */
@@ -77,6 +82,8 @@ export type RecordTableProps<Row> = {
    * If unset or undefined, all action controls are shown directly on the card.
    */
   maxCardActions?: number;
+  /** Extra classes for one row - the table's row and the phone's card alike - such as a tint for a picked one. */
+  rowClassName?: (row: Row, index: number) => string | undefined;
 };
 
 /** Steps beyond this many rows would make the last ones wait too long to arrive. */
@@ -99,7 +106,7 @@ function columnLabel<Row>(column: RecordColumn<Row>, isCard: boolean = false) {
     : text;
 }
 
-function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance, maxCardActions }: RecordTableProps<Row>) {
+function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance, maxCardActions, rowClassName }: RecordTableProps<Row>) {
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -134,7 +141,7 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
   return <ul aria-label={caption} className="space-y-2.5">
     {rows.map((row, index) => {
       const entrance = rowEntranceProps(animateEntrance, index);
-      return <li key={rowKey(row, index)} className={`rounded-xl border border-j-border bg-white p-3.5 shadow-sm ${entrance.className}`} style={entrance.style}>
+      return <li key={rowKey(row, index)} className={cn("rounded-xl border border-j-border bg-white p-3.5 shadow-sm", entrance.className, rowClassName?.(row, index))} style={entrance.style}>
       {head.length > 0 ? <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
         {head.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}
       </div> : null}
@@ -200,7 +207,7 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
 }
 
 export default function RecordTable<Row>(props: RecordTableProps<Row>) {
-  const { caption, columns, rows, rowKey, empty, tableClassName = "", plain = false, animateEntrance } = props;
+  const { caption, columns, rows, rowKey, empty, tableClassName = "", plain = false, animateEntrance, rowClassName } = props;
   const isMobile = useIsMobile();
 
   if (isMobile) return <RecordCards {...props} />;
@@ -211,14 +218,14 @@ export default function RecordTable<Row>(props: RecordTableProps<Row>) {
       <thead>
         <tr className="border-b border-j-border text-left text-2xs font-bold uppercase tracking-wide text-j-ink-muted">
           {columns.map(column => <th key={column.key} scope="col" className={cn("px-3 py-2.5", column.labelClassName, column.headClassName)}>
-            {column.headingHidden ? <span className="sr-only">{column.label}</span> : columnLabel(column)}
+            {column.headCell ?? (column.headingHidden ? <span className="sr-only">{column.label}</span> : columnLabel(column))}
           </th>)}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, index) => {
           const entrance = rowEntranceProps(animateEntrance, index);
-          return <tr key={rowKey(row, index)} className={`border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60 ${entrance.className}`} style={entrance.style}>
+          return <tr key={rowKey(row, index)} className={cn("border-b border-[#eef4f9] last:border-b-0 hover:bg-j-surface-sunken/60", entrance.className, rowClassName?.(row, index))} style={entrance.style}>
             {columns.map(column => <td key={column.key} className={`px-3 py-2.5 align-top ${column.cellClassName ?? ""}`}>{column.cell(row, index)}</td>)}
           </tr>;
         })}

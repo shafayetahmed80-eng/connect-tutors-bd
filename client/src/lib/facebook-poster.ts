@@ -21,6 +21,7 @@ import {
   type PosterLocale,
 } from "@shared/poster-copy";
 import { PUBLIC_SITE_HOST, PUBLIC_SITE_ORIGIN } from "@shared/public-site";
+import { autoGroundForCurricula } from "./poster/auto-ground";
 import { drawCombinedLandscape, drawCombinedSquare } from "./poster/combined-layouts";
 import { drawMistCombinedLandscape, drawMistCombinedSquare, drawMistSingleLandscape, drawMistSingleSquare, drawMistTall, mistTallHeight } from "./poster/mist-layouts";
 import { normalizeHex } from "./poster/palette";
@@ -79,6 +80,15 @@ function needsOf(job: FacebookPosterJob): LearningNeed[] {
   if (job.learningNeeds?.length) return job.learningNeeds;
   const subjects = Array.isArray(job.subjects) ? JSON.stringify(job.subjects) : job.subjects ?? "";
   return learningNeedsFromLegacy({ category: job.category ?? "", classCourse: job.classCourse ?? "", subjects, curriculumType: job.curriculumType ?? null });
+}
+
+/**
+ * The ground an Auto poster of these tuitions is drawn on: their curriculum's
+ * colour when they are all about one, or null - the design's own - when they
+ * are about several. A tuition with two curricula counts for both.
+ */
+export function autoPosterGround(jobs: FacebookPosterJob[]): string | null {
+  return autoGroundForCurricula(jobs.flatMap(job => needsOf(job).map(need => need.category)));
 }
 
 /** One job, worded for the poster. `shortArea` drops the city when the poster's header already names it. */

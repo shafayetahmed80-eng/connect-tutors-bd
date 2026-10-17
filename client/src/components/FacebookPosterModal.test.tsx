@@ -9,7 +9,8 @@ const renderers = vi.hoisted(() => ({
   fonts: vi.fn(async () => {}),
 }));
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock("sonner", () => ({ toast: toasts }));
 vi.mock("@/lib/facebook-poster", async importOriginal => {
   const actual = await importOriginal<typeof import("@/lib/facebook-poster")>();
   return { ...actual, renderSingleTuitionPoster: renderers.single, renderCombinedTuitionsPoster: renderers.combined, loadPosterFonts: renderers.fonts };
@@ -31,6 +32,9 @@ beforeEach(() => {
   renderers.single.mockClear();
   renderers.combined.mockClear();
   renderers.fonts.mockClear();
+  toasts.success.mockClear();
+  toasts.error.mockClear();
+  toasts.info.mockClear();
 });
 afterEach(cleanup);
 
@@ -216,3 +220,201 @@ describe("the two poster windows on one page", () => {
   });
 });
 
+describe("the caption that goes with a poster", () => {
+  const writeText = vi.fn();
+  beforeEach(() => {
+    writeText.mockReset().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  it("has no caption button where the page gives no caption", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    expect(screen.queryByRole("button", { name: /Copy caption/ })).toBeNull();
+  });
+
+  it("copies the text post of one tuition, asked for one", async () => {
+    const caption = vi.fn(() => "Job ID: 6912 | Female Tutor | Class 8");
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={caption} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+
+    await vi.waitFor(() => expect(toasts.success).toHaveBeenCalled());
+    expect(caption).toHaveBeenCalledWith(1);
+    expect(writeText).toHaveBeenCalledWith("Job ID: 6912 | Female Tutor | Class 8");
+    expect(toasts.success).toHaveBeenCalledWith("ক্যাপশন কপি হয়েছে। ছবির সাথে পেস্ট করুন।");
+  });
+
+  it("asks for the text of as many tuitions as the poster holds: four in a square, all in the tall list", async () => {
+    const caption = vi.fn((shown: number) => `post of ${shown}`);
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} caption={caption} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 4"));
+
+    fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 6"));
+    expect(caption.mock.calls.map(call => call[0])).toEqual([4, 6]);
+  });
+
+  it("says so when nothing could be copied", async () => {
+    writeText.mockRejectedValue(new Error("blocked"));
+    const execCommand = vi.fn(() => false);
+    Object.assign(document, { execCommand });
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+
+    await vi.waitFor(() => expect(toasts.error).toHaveBeenCalledWith("ক্যাপশন কপি করা যায়নি।"));
+    expect(toasts.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps the caption button beside the image buttons in one row", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+    const row = screen.getByRole("button", { name: /Copy caption/ }).parentElement!;
+    expect(within(row).getAllByRole("button").map(button => button.textContent)).toEqual(["Copy caption", "Copy image", "Download PNG"]);
+  });
+});
+
+describe("the poster window on a phone", () => {
+  const footer = () => screen.getByRole("button", { name: "Download PNG" }).parentElement!;
+
+  it("puts the two copy buttons side by side over a Download PNG that has the next line to itself", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} caption={() => "text"} />);
+    expect(footer().className).toContain("grid-cols-2");
+    expect(screen.getByRole("button", { name: "Download PNG" }).className).toContain("col-span-2");
+  });
+
+  it("splits the line between Copy image and Download PNG where there is no caption to copy", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    expect(footer().className).toContain("grid-cols-2");
+    expect(screen.getByRole("button", { name: "Download PNG" }).className).not.toContain("col-span-2");
+  });
+
+  it("shares each row's width equally among its choices, so none wraps to a line of its own", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} />);
+    for (const name of ["Language", "Size", "Theme"]) {
+      const choices = screen.getByRole("radiogroup", { name });
+      expect(choices.className, name).toContain("grid-flow-col");
+      expect(choices.className, name).toContain("auto-cols-fr");
+    }
+  });
+
+  it("keeps the size in pixels for a laptop and names the sizes plainly", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} />);
+    const square = group("Size").getByRole("radio", { name: /Square/ });
+    expect(square.textContent).toBe("Square 1080×1080");
+    expect(square.querySelector('span[class~="max-sm:hidden"]')?.textContent).toBe("1080×1080");
+    expect(group("Size").getByRole("radio", { name: "Tall list" }).textContent).toBe("Tall list");
+  });
+
+  it("runs the swatches along one line and gives the custom colour and its code a line of their own", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const swatches = group("Colour").getAllByRole("radio");
+    expect(swatches).toHaveLength(13);
+    const strip = swatches[0].parentElement!;
+    expect(strip.className).toContain("overflow-x-auto");
+    for (const swatch of swatches) expect(swatch.parentElement).toBe(strip);
+
+    const code = screen.getByRole("textbox", { name: "Colour code" });
+    expect(code.parentElement).not.toBe(strip);
+    expect(code.parentElement).toBe(screen.getByLabelText("Custom colour").closest("label")!.parentElement);
+  });
+
+  it("folds the settings away behind a bar that names the choices made, and opens them on a tap", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const bar = screen.getByRole("button", { name: /^Settings/ });
+    const settings = document.getElementById("poster-settings")!;
+
+    expect(bar.getAttribute("aria-expanded")).toBe("false");
+    expect(bar.getAttribute("aria-controls")).toBe("poster-settings");
+    expect(settings.className).toContain("max-sm:hidden");
+    expect(bar.textContent).toContain("বাংলা · Square · Navy");
+
+    fireEvent.click(bar);
+    expect(bar.getAttribute("aria-expanded")).toBe("true");
+    expect(settings.className).not.toContain("max-sm:hidden");
+
+    fireEvent.click(group("Language").getByRole("radio", { name: "English" }));
+    fireEvent.click(group("Theme").getByRole("radio", { name: "Cream" }));
+    expect(bar.textContent).toContain("English · Square · Cream");
+
+    fireEvent.click(bar);
+    expect(bar.getAttribute("aria-expanded")).toBe("false");
+    expect(settings.className).toContain("max-sm:hidden");
+  });
+
+  it("holds the poster first and in view above the settings", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
+    const preview = screen.getByRole("img", { name: /Poster preview/ }).parentElement!.parentElement!;
+    expect(preview.className).toContain("order-1");
+    expect(preview.className).toContain("max-sm:sticky");
+    expect(document.getElementById("poster-settings")!.className).toContain("order-3");
+  });
+});
+
+describe("the Auto colour", () => {
+  const about = (id: number, category: string) => ({ ...job(id), category });
+
+  it("is offered as a swatch beside the design's own colour, and is not chosen at first", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "English Version")} />);
+    const swatch = group("Colour").getByRole("radio", { name: "Auto" });
+    expect(swatch.getAttribute("aria-checked")).toBe("false");
+    expect(swatch.getAttribute("title")).toBe("Auto: the colour of the curriculum");
+  });
+
+  it("draws one tuition on its curriculum's colour", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "English Version")} />);
+
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+
+    expect(lastSingle().ground).toBe("#0e3b43");
+    expect(group("Colour").getByRole("radio", { name: "Auto" }).getAttribute("aria-checked")).toBe("true");
+    // The colour it settled on is the one the box shows, not typed text.
+    const box = screen.getByRole("textbox", { name: "Colour code" }) as HTMLInputElement;
+    expect(box.value).toBe("");
+    expect(box.placeholder).toBe("#0e3b43");
+    expect(stored().ground).toBe("auto");
+  });
+
+  it("draws a poster of tuitions all in one curriculum on its colour, and of mixed ones on the design's own", () => {
+    const same = [about(1, "Bangla Medium"), about(2, "Bangla Medium"), about(3, "Bangla Medium")];
+    const view = render(<FacebookPosterModal isOpen onClose={() => {}} jobs={same} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    expect(lastCombined().ground).toBe("#0b3d2e");
+    view.unmount();
+
+    const mixed = [about(1, "Bangla Medium"), about(2, "English Medium")];
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={mixed} />);
+    expect(lastCombined().ground).toBeNull();
+    expect((screen.getByRole("textbox", { name: "Colour code" }) as HTMLInputElement).placeholder).toBe("#RRGGBB");
+  });
+
+  it("reads only the tuitions the poster shows: four in a square, all of them in the tall list", () => {
+    const fiveThenAnother = [...Array.from({ length: 4 }, (_, index) => about(index + 1, "Bangla Medium")), about(5, "English Medium")];
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={fiveThenAnother} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    // The fifth is not on a square poster, so the four that are decide.
+    expect(lastCombined().ground).toBe("#0b3d2e");
+
+    fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
+    expect(lastCombined().ground).toBeNull();
+  });
+
+  it("stays chosen across windows and reloads, and gives way to any other colour picked", () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ground: "auto" }));
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "Bangla Medium")} />);
+    expect(lastSingle().ground).toBe("#0b3d2e");
+
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Rose" }));
+    expect(lastSingle().ground).toBe("#f7e3e7");
+    expect(group("Colour").getByRole("radio", { name: "Auto" }).getAttribute("aria-checked")).toBe("false");
+    expect(stored().ground).toBe("#f7e3e7");
+  });
+
+  it("is a curriculum with no colour of its own on the neutral slate", () => {
+    render(<FacebookPosterModal isOpen onClose={() => {}} job={about(1, "Test Preparation")} />);
+    fireEvent.click(group("Colour").getByRole("radio", { name: "Auto" }));
+    expect(lastSingle().ground).toBe("#1e293b");
+  });
+});
