@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -118,7 +118,7 @@ describe("the Tutor's Admin chat panel", () => {
   it("shows a non-image attachment as a file link", () => {
     state.messages = [message({ body: "", attachmentUrl: "https://example.test/file.pdf", attachmentContentType: "application/pdf" })];
     render(<TutorAdminChatPanel />);
-    expect(screen.getByRole("link", { name: /Attachment/ })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /Attachment/ })[0]).toBeTruthy();
   });
 
   it("renders voice note with ChatVoiceNotePlayer and speed options", () => {
@@ -260,6 +260,43 @@ describe("the Tutor's Admin chat panel", () => {
 
     expect(screen.getByText("Tutor message after edit")).toBeTruthy();
     expect(screen.getByText("(সম্পাদিত)")).toBeTruthy();
+  });
+
+  it("handles clipboard image paste and renders clipboard preview chip", async () => {
+    render(<TutorAdminChatPanel />);
+    const textarea = screen.getByPlaceholderText("Write a message…");
+    const file = new File(["dummy"], "pasted-screenshot.png", { type: "image/png" });
+
+    fireEvent.paste(textarea, {
+      clipboardData: {
+        items: [
+          {
+            type: "image/png",
+            getAsFile: () => file,
+          },
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("clipboard-image-preview-chip")).toBeTruthy();
+    });
+    expect(screen.getByText("pasted-screenshot.png")).toBeTruthy();
+  });
+
+  it("activates drag-drop overlay on drag enter", () => {
+    const { container } = render(<TutorAdminChatPanel />);
+    const section = container.querySelector("section");
+    expect(section).toBeTruthy();
+
+    fireEvent.dragEnter(section!, {
+      dataTransfer: {
+        items: [{ kind: "file", type: "image/png" }],
+      },
+    });
+
+    expect(screen.getByTestId("chat-dropzone-overlay")).toBeTruthy();
+    expect(screen.getByText("এখানে ফাইল বা ছবি ড্রপ করুন")).toBeTruthy();
   });
 });
 

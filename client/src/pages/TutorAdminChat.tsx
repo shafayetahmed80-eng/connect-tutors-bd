@@ -13,6 +13,7 @@ import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, type QuotedMessa
 import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
 import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
 import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
+import { ChatDocumentCard, ChatDropzoneOverlay, ChatMediaGallery, ClipboardImagePreviewChip, parseImageUrls } from "@/components/chat/ChatAttachments";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
 import { Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
@@ -40,26 +41,13 @@ function formatChatTime(value: string | Date) {
 }
 
 function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
-  if (contentType?.startsWith("image/")) {
-    return (
-      <button
-        type="button"
-        onClick={() => onImageClick?.(url)}
-        className="group relative mt-1.5 block max-w-full overflow-hidden rounded-lg cursor-pointer text-left focus:outline-hidden focus:ring-2 focus:ring-white/50"
-        title="Click to view full image"
-        aria-label="View attachment image in full screen"
-      >
-        <img src={url} alt="Attachment" className="max-h-60 w-full object-cover transition-transform duration-200 group-hover:scale-102" />
-        <span className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-3xs font-semibold text-white backdrop-blur-xs opacity-0 transition-opacity group-hover:opacity-100">
-          <Maximize2 size={10} /> Full View
-        </span>
-      </button>
-    );
+  if (contentType?.startsWith("image/") || url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
+    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} />;
   }
   if (contentType?.startsWith("audio/")) {
     return <ChatVoiceNotePlayer url={url} dark={own} />;
   }
-  return <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-current/20 px-2.5 py-1.5 text-xs font-bold underline"><Paperclip size={13} /> Attachment</a>;
+  return <ChatDocumentCard url={url} own={own} />;
 }
 
 /**
@@ -85,6 +73,9 @@ export function TutorAdminChatPanel() {
   const [editedMessages, setEditedMessages] = useState<Record<number, string>>({});
   const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
+  const dragCounter = useRef(0);
   const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -200,9 +191,72 @@ export function TutorAdminChatPanel() {
     }
   }, [isOnline]);
 
-  const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); submitMessage(); };
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    dragCounter.current = 0;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const processed = file.type.startsWith("image/") ? await compressImage(file) : file;
+      await uploadAndSend(processed);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          const processed = await compressImage(file);
+          setPastedImageFile(processed);
+          toast.success("ছবি ক্লিপবোর্ড থেকে যুক্ত হয়েছে");
+          return;
+        }
+      }
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (pastedImageFile) {
+      const fileToUpload = pastedImageFile;
+      setPastedImageFile(null);
+      await uploadAndSend(fileToUpload);
+      return;
+    }
+    submitMessage();
+  };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitMessage(); }
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSubmit(event); }
   };
 
   const uploadAndSend = async (file: File) => {
@@ -243,7 +297,14 @@ export function TutorAdminChatPanel() {
     }
   };
 
-  return <section className="flex h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]">
+  return <section
+    onDragEnter={handleDragEnter}
+    onDragLeave={handleDragLeave}
+    onDragOver={handleDragOver}
+    onDrop={handleDrop}
+    className="relative flex h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
+  >
+    <ChatDropzoneOverlay isDragging={isDraggingOver} />
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce9f1] px-4 py-3">
       <div className="brand-logo flex items-center gap-2" style={{ fontSize: "17px" }}>
         <BrandMark />
@@ -490,6 +551,11 @@ export function TutorAdminChatPanel() {
                 <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
               </div>
             : null}
+          {pastedImageFile ? (
+            <div className="p-3 pb-0">
+              <ClipboardImagePreviewChip file={pastedImageFile} onRemove={() => setPastedImageFile(null)} />
+            </div>
+          ) : null}
           <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="tutor" />
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
@@ -515,12 +581,13 @@ export function TutorAdminChatPanel() {
                   value={body}
                   onChange={event => { setBody(event.target.value); pingTyping(); }}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   maxLength={CHAT_MESSAGE_MAX}
                   rows={2}
                   placeholder="Write a message…"
                   className="min-h-9 flex-1 resize-none"
                 />
-                <ChatSendButton ariaLabel="Send message" disabled={!body.trim() || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+                <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
               </>
             )}
           </form>
