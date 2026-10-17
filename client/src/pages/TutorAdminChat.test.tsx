@@ -121,6 +121,19 @@ describe("the Tutor's Admin chat panel", () => {
     expect(screen.getByRole("link", { name: /Attachment/ })).toBeTruthy();
   });
 
+  it("renders voice note with ChatVoiceNotePlayer and speed options", () => {
+    state.messages = [message({ id: 1, body: "", attachmentUrl: "https://example.com/audio.webm", attachmentContentType: "audio/webm" })];
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByRole("region", { name: "Voice note player" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Play voice note" })).toBeTruthy();
+  });
+
+  it("renders header sound alert toggle", () => {
+    render(<TutorAdminChatPanel />);
+    const soundBtn = screen.getByRole("button", { name: /chat sound alerts/i });
+    expect(soundBtn).toBeTruthy();
+  });
+
   it("marks the Tutor's own last message Seen once the Admin has read up to it", () => {
     state.messages = [message({ id: 1, senderRole: "tutor", body: "I have a question", createdAt: "2026-09-25T10:00:00.000Z" })];
     state.adminLastReadAt = "2026-09-25T10:05:00.000Z";
