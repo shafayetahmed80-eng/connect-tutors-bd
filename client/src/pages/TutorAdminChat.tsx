@@ -14,9 +14,10 @@ import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecording
 import { ChatSoundToggle, ChatVoiceNotePlayer, MessageStatusTicks, ScrollToBottomFloatingButton, useChatSoundAlert } from "@/components/chat/ChatRealtimeUX";
 import { ChatMessageActionMenu, DeletedMessagePlaceholder, EditedMessageBadge, InlineMessageEditor, isWithinFiveMinutes } from "@/components/chat/ChatMessageLifecycle";
 import { ChatDocumentCard, ChatDropzoneOverlay, ChatMediaGallery, ClipboardImagePreviewChip, parseImageUrls } from "@/components/chat/ChatAttachments";
+import { ChatEmergencyCallWhatsAppActions, ChatOutOfOfficeBanner, ChatTuitionJobCard, PinnedJobBanner, ShareJobModal, extractJobIdsFromText } from "@/components/chat/ChatTuitionActions";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -75,6 +76,25 @@ export function TutorAdminChatPanel() {
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
+  const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
+  const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("chat_pinned_job_tutor") || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleTogglePin = (id: string) => {
+    setPinnedJobId(prev => {
+      const next = prev === id ? null : id;
+      try {
+        if (next) localStorage.setItem("chat_pinned_job_tutor", next);
+        else localStorage.removeItem("chat_pinned_job_tutor");
+      } catch {}
+      return next;
+    });
+  };
   const dragCounter = useRef(0);
   const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -320,30 +340,15 @@ export function TutorAdminChatPanel() {
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
           </span>
         ) : null}
-        <a
-          href={contact.tel}
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            setIsCalling(true);
-            if (callTimerRef.current) clearTimeout(callTimerRef.current);
-            callTimerRef.current = setTimeout(() => setIsCalling(false), 700);
-          }}
-          data-calling={isCalling ? "true" : undefined}
-          aria-label={`Call ${contact.display}`}
-          className="group phone-contact-call flex shrink-0 items-center gap-1.5 text-sm font-bold text-j-accent transition-transform duration-200 active:scale-95"
-        >
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-j-accent-wash text-j-accent">
-            {isCalling ? (
-              <Check size={13} className="text-j-ok animate-in zoom-in-75" />
-            ) : (
-              <Phone size={13} className="phone-contact-icon transition-transform duration-200 group-hover:-rotate-12" />
-            )}
-          </span>
-          {contact.display}
-        </a>
+        <ChatEmergencyCallWhatsAppActions contact={contact} />
         <ChatSoundToggle muted={muted} onToggle={toggleMute} />
       </div>
     </header>
+
+    <ChatOutOfOfficeBanner />
+    {pinnedJobId ? (
+      <PinnedJobBanner jobId={pinnedJobId} onUnpin={() => handleTogglePin(pinnedJobId)} />
+    ) : null}
 
     <div className="border-b border-[#dce9f1] p-3">
       <SearchInput
@@ -386,6 +391,7 @@ export function TutorAdminChatPanel() {
         const own = message.senderRole === "tutor";
         const isDeleted = deletedMessageIds.has(message.id);
         const currentBody = editedMessages[message.id] ?? message.body;
+        const jobIds = !isDeleted ? extractJobIdsFromText(currentBody) : [];
         const isEdited = !!editedMessages[message.id];
         const isEditing = editingMessageId === message.id;
         const seen = own && message.id === lastOwnMessageId && adminLastReadAt !== null && new Date(message.createdAt).getTime() <= adminLastReadAt;
@@ -443,6 +449,15 @@ export function TutorAdminChatPanel() {
                   {isEdited ? <EditedMessageBadge own={own} /> : null}
                 </div>
               </motion.div>
+
+              {jobIds.map(jid => (
+                <ChatTuitionJobCard
+                  key={jid}
+                  jobId={jid}
+                  isPinned={pinnedJobId === jid}
+                  onTogglePin={handleTogglePin}
+                />
+              ))}
 
               <ChatMessageActionMenu
                 messageId={message.id}
@@ -577,6 +592,16 @@ export function TutorAdminChatPanel() {
                     <Mic className="size-4" />
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => setShareJobModalOpen(true)}
+                  disabled={uploadProgress !== null}
+                  aria-label="টিউশন জব কার্ড শেয়ার করুন"
+                  title="টিউশন শেয়ার করুন"
+                  className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50"
+                >
+                  <Briefcase className="size-4" />
+                </button>
                 <Textarea
                   value={body}
                   onChange={event => { setBody(event.target.value); pingTyping(); }}
@@ -594,5 +619,11 @@ export function TutorAdminChatPanel() {
         </div>
       : <p className="border-t border-[#dce9f1] p-4 text-center text-sm text-j-ink-muted">You can message the Admin team once at least one of your tuitions has been appointed.</p>}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
+    {shareJobModalOpen ? (
+      <ShareJobModal
+        onSelectJob={jobTag => setBody(prev => (prev ? `${prev} ${jobTag}` : jobTag))}
+        onClose={() => setShareJobModalOpen(false)}
+      />
+    ) : null}
   </section>;
 }

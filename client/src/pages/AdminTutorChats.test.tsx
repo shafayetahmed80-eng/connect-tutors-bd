@@ -713,4 +713,40 @@ describe("the card and filter panel over the conversations", () => {
     fireEvent.click(screen.getByRole("button", { name: "View attachment image in full screen" }));
     expect(screen.getByRole("dialog", { name: "Attachment Preview" })).toBeTruthy();
   });
+
+  it("filters thread list by priority tag and displays tag badge", () => {
+    state.threads = [
+      thread({ tutorId: "t1", tutorName: "Tutor One" }),
+      thread({ tutorId: "t2", tutorName: "Tutor Two" }),
+    ];
+    window.localStorage.setItem("admin_chat_priority_tags", JSON.stringify({ t1: "urgent" }));
+
+    render(<AdminTutorChatsContent />);
+
+    expect(screen.getByTestId("chat-priority-filter-bar")).toBeTruthy();
+    expect(screen.getByText("Tutor One")).toBeTruthy();
+    expect(screen.getByText("Tutor Two")).toBeTruthy();
+
+    // Click urgent filter chip
+    const filterBar = screen.getByTestId("chat-priority-filter-bar");
+    const urgentChip = within(filterBar).getByRole("button", { name: /জরুরী/ });
+    fireEvent.click(urgentChip);
+
+    expect(screen.getByText("Tutor One")).toBeTruthy();
+    expect(screen.queryByText("Tutor Two")).toBeNull();
+  });
+
+  it("renders priority tag selector in open thread header and assigns tag", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    const tagSelector = screen.getByRole("button", { name: /চ্যাটের প্রায়োরিটি ট্যাগ নির্ধারণ করুন/ });
+    fireEvent.click(tagSelector);
+
+    const paymentOptions = screen.getAllByRole("button", { name: /পেমেন্ট ইস্যু/ });
+    fireEvent.click(paymentOptions[paymentOptions.length - 1]);
+
+    expect(screen.getAllByText("পেমেন্ট ইস্যু").length).toBeGreaterThan(0);
+  });
 });
