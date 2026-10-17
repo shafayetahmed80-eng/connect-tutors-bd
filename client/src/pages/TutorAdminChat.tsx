@@ -9,8 +9,9 @@ import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
+import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, type QuotedMessage } from "@/components/chat/ChatProductivity";
 import SearchInput from "@/components/SearchInput";
-import { Check, Clock, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -74,6 +75,8 @@ export function TutorAdminChatPanel() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>("connecting");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<QuotedMessage | null>(null);
+  const [emojisByMessage, setEmojisByMessage] = useState<Record<number, string>>({});
   const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,8 +143,15 @@ export function TutorAdminChatPanel() {
   };
 
   const submitMessage = (retryId?: string, retryBody?: string) => {
-    const textToSend = (retryBody ?? body).trim();
+    let textToSend = (retryBody ?? body).trim();
     if (!textToSend) return;
+
+    if (!retryId && replyingTo) {
+      const quoteSender = replyingTo.senderRole === "admin" ? "Admin" : "Tutor";
+      const snippet = (replyingTo.body || "Attachment").slice(0, 100).replace(/\n/g, " ");
+      textToSend = `> [Replying to ${quoteSender}]: "${snippet}"\n\n${textToSend}`;
+      setReplyingTo(null);
+    }
 
     const tempId = retryId || `outbox-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -310,7 +320,7 @@ export function TutorAdminChatPanel() {
                   : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
               }`}>
                 {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p> : null}
-                {message.body ? <ChatAutoLink text={message.body} /> : null}
+                {message.body ? <ChatMessageBody text={message.body} query={query} /> : null}
                 {message.attachmentUrl ? (
                   <AttachmentView
                     url={message.attachmentUrl}
@@ -321,14 +331,24 @@ export function TutorAdminChatPanel() {
                 <p className={`mt-1 text-2xs font-semibold ${own ? "text-white/70" : "text-j-ink-faint"}`}>{formatChatTime(message.createdAt)}</p>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                <EmojiReactionPicker
+                  reacted={message.tutorReacted}
+                  currentEmoji={emojisByMessage[message.id]}
+                  onToggle={() => react.mutate({ messageId: message.id })}
+                  onSelectEmoji={emoji => {
+                    setEmojisByMessage(prev => ({ ...prev, [message.id]: emoji }));
+                    if (!message.tutorReacted) react.mutate({ messageId: message.id });
+                  }}
+                />
                 <button
                   type="button"
-                  onClick={() => react.mutate({ messageId: message.id })}
-                  aria-pressed={message.tutorReacted}
-                  aria-label={message.tutorReacted ? "Remove your 👍" : "React with 👍"}
-                  className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-bold ${message.tutorReacted ? "text-j-accent" : "text-j-ink-faint hover:text-j-ink-soft"}`}
+                  onClick={() => setReplyingTo({ id: message.id, body: message.body, senderRole: message.senderRole })}
+                  title="Reply to this message"
+                  aria-label="Reply to this message"
+                  className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold text-j-ink-faint hover:bg-j-surface-sunken hover:text-j-ink-soft transition-colors"
                 >
-                  <ThumbsUp className="size-3" fill={message.tutorReacted ? "currentColor" : "none"} />
+                  <CornerUpLeft className="size-3" />
+                  <span>Reply</span>
                 </button>
                 {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
                 {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
@@ -385,6 +405,7 @@ export function TutorAdminChatPanel() {
                 <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
               </div>
             : null}
+          <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="tutor" />
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">

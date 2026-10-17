@@ -313,7 +313,7 @@ describe("the Admin's Tutor chat list", () => {
     expect(screen.getByRole("img", { name: "Attachment" })).toBeTruthy();
   });
 
-  it("searches the open conversation locally", () => {
+  it("searches the open conversation locally and highlights keyword with mark", () => {
     state.threads = [thread()];
     state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91 };
     state.threadMessages = [message({ id: 1, body: "About my profile" }), message({ id: 2, body: "About payment" })];
@@ -322,7 +322,20 @@ describe("the Admin's Tutor chat list", () => {
 
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "payment" } });
     expect(screen.queryByText("About my profile")).toBeNull();
-    expect(screen.getByText("About payment")).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.textContent === "About payment" && el?.tagName.toLowerCase() === "div")).toBeTruthy();
+    expect(screen.getByText("payment").tagName).toBe("MARK");
+  });
+
+  it("opens tutor peek profile drawer with BTPA verification info", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "tutor-1", tutorName: "Amina Rahman", tutorNumber: 91, phone: "+8801700000000", instituteName: "BUET", departmentName: "CSE" };
+    state.threadMessages = [message({ id: 1, body: "Hello" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByText("Amina Rahman"));
+
+    fireEvent.click(screen.getByRole("button", { name: "View Tutor Profile" }));
+    expect(screen.getByText("Tutor Quick Profile")).toBeTruthy();
+    expect(screen.getByText("Member: BTPA - 077")).toBeTruthy();
   });
 
   it("shows how many threads are awaiting a reply, and the average response time", () => {
