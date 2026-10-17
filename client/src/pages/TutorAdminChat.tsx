@@ -10,6 +10,7 @@ import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import { ChatAutoLink, ChatDateDivider, ImageLightboxModal, isDifferentDay } from "@/components/chat/ChatVisuals";
 import { ChatMessageBody, EmojiReactionPicker, ReplyPreviewBar, type QuotedMessage } from "@/components/chat/ChatProductivity";
+import { ChatAnimatedBubble, ChatSendButton, ChatTypingIndicator, VoiceRecordingBar } from "@/components/chat/ChatMotion";
 import SearchInput from "@/components/SearchInput";
 import { Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -313,7 +314,7 @@ export function TutorAdminChatPanel() {
         return (
           <React.Fragment key={message.id}>
             {showDateDivider ? <ChatDateDivider date={message.createdAt} /> : null}
-            <div className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
+            <ChatAnimatedBubble own={own} className={`flex flex-col ${own ? "items-end" : "items-start"}`}>
               <div className={`max-w-[80%] px-4 py-2.5 shadow-xs ${
                 own
                   ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
@@ -353,13 +354,13 @@ export function TutorAdminChatPanel() {
                 {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
                 {seen ? <span className="text-2xs font-semibold text-j-ink-faint">Seen</span> : null}
               </div>
-            </div>
+            </ChatAnimatedBubble>
           </React.Fragment>
         );
       })}
 
       {outbox.map(item => (
-        <div key={item.tempId} className="flex animate-in fade-in flex-col items-end">
+        <ChatAnimatedBubble key={item.tempId} own={true} className="flex flex-col items-end">
           <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-xs shadow-xs ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-gradient-to-br from-j-accent/90 to-[#156cb6]/90 text-white"}`}>
             <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
@@ -392,9 +393,9 @@ export function TutorAdminChatPanel() {
               </button>
             </div>
           ) : null}
-        </div>
+        </ChatAnimatedBubble>
       ))}
-      {adminIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Admin is typing…</p> : null}
+      {adminIsTyping ? <ChatTypingIndicator senderRole="admin" /> : null}
       <div ref={bottomRef} />
     </div>
 
@@ -408,39 +409,36 @@ export function TutorAdminChatPanel() {
           <ReplyPreviewBar replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} currentRole="tutor" />
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null || voiceRecorder.recording} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
-              <Paperclip className="size-4" />
-            </button>
-            {voiceRecorder.supported
-              ? <>
-                  {voiceRecorder.recording
-                    ? <button type="button" onClick={voiceRecorder.cancel} aria-label="Cancel the recording" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken">
-                        <X className="size-4" />
-                      </button>
-                    : null}
+            {voiceRecorder.recording ? (
+              <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />
+            ) : (
+              <>
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+                  <Paperclip className="size-4" />
+                </button>
+                {voiceRecorder.supported ? (
                   <button
                     type="button"
                     onClick={handleMic}
                     disabled={uploadProgress !== null}
-                    aria-label={voiceRecorder.recording ? "Stop recording and send the voice note" : "Record a voice note"}
-                    className={`grid h-control w-control shrink-0 place-items-center rounded-xl border disabled:opacity-50 ${voiceRecorder.recording ? "animate-pulse border-red-300 bg-red-50 text-red-600" : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"}`}
+                    aria-label="Record a voice note"
+                    className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50"
                   >
-                    {voiceRecorder.recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+                    <Mic className="size-4" />
                   </button>
-                </>
-              : null}
-            <Textarea
-              value={body}
-              onChange={event => { setBody(event.target.value); pingTyping(); }}
-              onKeyDown={handleKeyDown}
-              maxLength={CHAT_MESSAGE_MAX}
-              rows={2}
-              placeholder="Write a message…"
-              className="min-h-9 flex-1 resize-none"
-            />
-            <Button type="submit" size="icon" aria-label="Send message" disabled={!body.trim() || send.isPending || uploadProgress !== null} className="h-control w-control shrink-0 rounded-xl">
-              <Send className="size-4" />
-            </Button>
+                ) : null}
+                <Textarea
+                  value={body}
+                  onChange={event => { setBody(event.target.value); pingTyping(); }}
+                  onKeyDown={handleKeyDown}
+                  maxLength={CHAT_MESSAGE_MAX}
+                  rows={2}
+                  placeholder="Write a message…"
+                  className="min-h-9 flex-1 resize-none"
+                />
+                <ChatSendButton ariaLabel="Send message" disabled={!body.trim() || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+              </>
+            )}
           </form>
         </div>
       : <p className="border-t border-[#dce9f1] p-4 text-center text-sm text-j-ink-muted">You can message the Admin team once at least one of your tuitions has been appointed.</p>}
