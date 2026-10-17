@@ -266,6 +266,19 @@ function footLine(tuition: PosterTuition): string {
   return [tuition.weekPhrase, tuition.time].filter(Boolean).join(" · ");
 }
 
+/** A tuition's box without its place yet: its wrapped text, and how tall that makes it. */
+function measureCard(ctx: CanvasRenderingContext2D, tuition: PosterTuition, width: number): Omit<CardBlock, "kind" | "top"> {
+  const inner = width - SIDE * 2 - CARD.pad * 2;
+  const headline = wrapLines(ctx, [tuition.classes, tuition.curricula].filter(Boolean).join(" · "), CARD.headSize, 800, inner, 2);
+  const subjects = tuition.subjects ? wrapLines(ctx, tuition.subjects, CARD.subjectSize, 600, inner, 2) : [];
+  const foot = footLine(tuition);
+  const height = CARD.pad + CARD.idRow + CARD.gapAfterId
+    + headline.length * CARD.headLine + CARD.gapAfterHead
+    + subjects.length * CARD.subjectLine
+    + CARD.gapBeforeRule + 1 + CARD.gapAfterRule + CARD.footRow + CARD.pad;
+  return { height, tuition, headline, subjects, foot };
+}
+
 /**
  * Where everything goes. The title card and the closing card are each a frame
  * tall, so the video opens on the title alone and ends on the closing card
@@ -273,7 +286,6 @@ function footLine(tuition: PosterTuition): string {
  */
 export function layoutReel(ctx: CanvasRenderingContext2D, input: ReelInput, size: ReelSize): ReelLayout {
   const { width, height: frameHeight } = REEL_SIZES[size];
-  const inner = width - SIDE * 2 - CARD.pad * 2;
   const blocks: ReelBlock[] = [{ kind: "title", top: 0, height: frameHeight }];
   let y = frameHeight + GAP.edge;
   const areas = groupByArea(input.tuitions, input.locale);
@@ -283,21 +295,89 @@ export function layoutReel(ctx: CanvasRenderingContext2D, input: ReelInput, size
     y += AREA.height + GAP.afterArea;
     area.items.forEach((tuition, itemIndex) => {
       if (itemIndex > 0) y += GAP.betweenCards;
-      const headline = wrapLines(ctx, [tuition.classes, tuition.curricula].filter(Boolean).join(" · "), CARD.headSize, 800, inner, 2);
-      const subjects = tuition.subjects ? wrapLines(ctx, tuition.subjects, CARD.subjectSize, 600, inner, 2) : [];
-      const foot = footLine(tuition);
-      const height = CARD.pad + CARD.idRow + CARD.gapAfterId
-        + headline.length * CARD.headLine + CARD.gapAfterHead
-        + subjects.length * CARD.subjectLine
-        + CARD.gapBeforeRule + 1 + CARD.gapAfterRule + CARD.footRow + CARD.pad;
-      blocks.push({ kind: "card", top: y, height, tuition, headline, subjects, foot });
-      y += height;
+      const card = measureCard(ctx, tuition, width);
+      blocks.push({ kind: "card", top: y, ...card });
+      y += card.height;
     });
   });
   const listBottom = y;
   y += GAP.edge;
   blocks.push({ kind: "end", top: y, height: frameHeight });
   return { width, frameHeight, blocks, height: y + frameHeight, listTop: frameHeight + GAP.edge, listBottom };
+}
+
+// ---- Slides ----------------------------------------------------------------
+
+/** How the video is made: the list rising up the frame in one run, or the list in pages that turn. */
+export type ReelStyle = "scroll" | "slides";
+
+/** The room a page keeps clear at its top and bottom, for the boxes' glow. */
+const SLIDE_PAD = 100;
+
+export type SlidePage = {
+  /** What is on the page, placed from the page's own top; a page is one frame tall. */
+  blocks: ReelBlock[];
+  /** How many tuitions it holds. */
+  cards: number;
+};
+
+export type SlidesLayout = {
+  width: number;
+  frameHeight: number;
+  title: ReelBlock;
+  end: ReelBlock;
+  pages: SlidePage[];
+};
+
+/**
+ * The list in pages, as many tuitions to a page as the frame holds. A place
+ * stays with its tuitions: its heading is never left alone at the foot of a
+ * page, and where its tuitions run on to the next page the heading comes
+ * again. The content of each page sits in the middle of the frame.
+ */
+export function layoutSlides(ctx: CanvasRenderingContext2D, input: ReelInput, size: ReelSize): SlidesLayout {
+  const { width, height: frameHeight } = REEL_SIZES[size];
+  const capacity = frameHeight - SLIDE_PAD * 2;
+  const pages: SlidePage[] = [];
+  let current: { blocks: ReelBlock[]; height: number; cards: number } = { blocks: [], height: 0, cards: 0 };
+  const close = () => {
+    if (current.blocks.length === 0) return;
+    const shift = Math.round((frameHeight - current.height) / 2);
+    pages.push({ blocks: current.blocks.map(block => ({ ...block, top: block.top + shift })), cards: current.cards });
+    current = { blocks: [], height: 0, cards: 0 };
+  };
+
+  for (const area of groupByArea(input.tuitions, input.locale)) {
+    // Whether this place's heading is already on the page being filled.
+    let headed = false;
+    for (const tuition of area.items) {
+      const card = measureCard(ctx, tuition, width);
+      const gap = () => (current.blocks.length === 0 ? 0 : headed ? GAP.betweenCards : GAP.betweenAreas);
+      const heading = headed ? 0 : AREA.height + GAP.afterArea;
+      if (current.blocks.length > 0 && current.height + gap() + heading + card.height > capacity) {
+        close();
+        headed = false;
+      }
+      let y = current.height + gap();
+      if (!headed) {
+        current.blocks.push({ kind: "area", top: y, height: AREA.height, area });
+        y += AREA.height + GAP.afterArea;
+        headed = true;
+      }
+      current.blocks.push({ kind: "card", top: y, ...card });
+      current.height = y + card.height;
+      current.cards += 1;
+    }
+  }
+  close();
+
+  return {
+    width,
+    frameHeight,
+    title: { kind: "title", top: 0, height: frameHeight },
+    end: { kind: "end", top: 0, height: frameHeight },
+    pages,
+  };
 }
 
 // ---- Timing ----------------------------------------------------------------
@@ -397,7 +477,7 @@ export function reelOffsetAt(t: number, timeline: ReelTimeline): number {
 }
 
 /** Eases a 0-1 progress in and out. */
-function smooth(progress: number): number {
+export function reelEase(progress: number): number {
   const p = Math.min(1, Math.max(0, progress));
   return p * p * (3 - 2 * p);
 }
@@ -409,8 +489,8 @@ function smooth(progress: number): number {
  */
 export function reelPageCovers(t: number, timeline: ReelTimeline): { title: number; end: number } {
   return {
-    title: 1 - smooth((t - timeline.holdStart) / timeline.openDuration),
-    end: smooth((t - timeline.closeStart) / timeline.closeDuration),
+    title: 1 - reelEase((t - timeline.holdStart) / timeline.openDuration),
+    end: reelEase((t - timeline.closeStart) / timeline.closeDuration),
   };
 }
 
@@ -443,6 +523,80 @@ export function turnSlices(width: number, angle: number, step = 8): TurnSlice[] 
     from = to;
   }
   return slices;
+}
+
+/** How long a page of tuitions stays, for each tuition on it, at each speed; and the least any page stays. */
+export const SLIDE_SECONDS_PER_CARD: Record<ReelSpeed, number> = { slow: 2.5, normal: 1.8, fast: 1.2 };
+export const SLIDE_MIN_HOLD = 3;
+
+/**
+ * One stretch of a slides video: a page held still, or one page turning (or
+ * fading) into another. Pages are numbered as they are shown: 0 is the title
+ * card, 1 to n the pages of tuitions, n + 1 the closing card.
+ */
+export type SlideStep = {
+  start: number;
+  end: number;
+  page: number;
+  /** The page it turns into; null while a page is simply held. */
+  to: number | null;
+  transition: ReelTransition | null;
+  /** The page `to` arrives over `page`, like a cover shut, rather than `page` leaving to uncover it. */
+  shut: boolean;
+};
+
+export type SlidesTimeline = {
+  steps: SlideStep[];
+  total: number;
+  opening: ReelTransition;
+  closing: ReelTransition;
+};
+
+/**
+ * When each page is shown. The title card is held and turns to the first page;
+ * each page is held for as long as its tuitions take to read, then turns to the
+ * next; the last page is shut under the closing card, which is held. Pages
+ * always turn; the two switches choose a turn or a fade only for the title
+ * card leaving and the closing card arriving.
+ */
+export function slidesTimeline(layout: SlidesLayout, speed: ReelSpeed, turns: { opening?: boolean; closing?: boolean } = {}): SlidesTimeline {
+  const opening: ReelTransition = turns.opening === false ? "fade" : "turn";
+  const closing: ReelTransition = turns.closing === false ? "fade" : "turn";
+  const steps: SlideStep[] = [];
+  let t = 0;
+  const still = (page: number, seconds: number) => {
+    steps.push({ start: t, end: t + seconds, page, to: null, transition: null, shut: false });
+    t += seconds;
+  };
+  const change = (page: number, to: number, transition: ReelTransition, shut = false) => {
+    const seconds = transition === "turn" ? REEL_TURN_SECONDS[speed] : REEL_FADE_SECONDS;
+    steps.push({ start: t, end: t + seconds, page, to, transition, shut });
+    t += seconds;
+  };
+
+  const count = layout.pages.length;
+  still(0, REEL_HOLD_START);
+  if (count === 0) {
+    change(0, 1, opening);
+    still(1, REEL_HOLD_END);
+  } else {
+    change(0, 1, opening);
+    layout.pages.forEach((page, index) => {
+      still(index + 1, Math.max(SLIDE_MIN_HOLD, page.cards * SLIDE_SECONDS_PER_CARD[speed]));
+      if (index < count - 1) change(index + 1, index + 2, "turn");
+    });
+    change(count, count + 1, closing, true);
+    still(count + 1, REEL_HOLD_END);
+  }
+  return { steps, total: t, opening, closing };
+}
+
+/** The step a slides video is in at `t` seconds, and how far through it (0-1). */
+export function slideStepAt(t: number, timeline: SlidesTimeline): { step: SlideStep; progress: number } {
+  const last = timeline.steps[timeline.steps.length - 1]!;
+  const step = timeline.steps.find(candidate => t < candidate.end) ?? last;
+  const length = step.end - step.start;
+  return { step, progress: length > 0 ? Math.min(1, Math.max(0, (t - step.start) / length)) : 1 };
 }
 
 // ---- Painting --------------------------------------------------------------
