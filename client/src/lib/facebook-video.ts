@@ -5,12 +5,17 @@ import {
   layoutReel,
   paintReelBackground,
   paintReelBlock,
+  REEL_EDGE_FADE,
   REEL_FPS,
   REEL_SIZES,
+  REEL_TURN_ANGLE,
   reelLook,
   reelOffsetAt,
+  reelPageCovers,
   reelStrips,
   reelTimeline,
+  turnSlices,
+  type ReelBlock,
   type ReelInput,
   type ReelLayout,
   type ReelSize,
@@ -53,6 +58,10 @@ export type PreparedReel = {
   timeline: ReelTimeline;
   background: HTMLCanvasElement;
   strips: Array<{ top: number; canvas: HTMLCanvasElement }>;
+  /** The title card and the closing card, each a whole frame on the backdrop: what turns away and what shuts. */
+  pages: { title: HTMLCanvasElement; end: HTMLCanvasElement };
+  /** A frame-sized canvas a page is turned on before it is laid over the list, so it can be shaded as a whole. */
+  scratch: HTMLCanvasElement;
   /**
    * The backdrop's own top and bottom bands, fading from solid at the frame's
    * edge to clear: laid over the list, they melt it into the ground as it
@@ -72,7 +81,7 @@ function canvasOf(width: number, height: number): HTMLCanvasElement {
  * Lays the reel out and paints it: the backdrop once, and the list into
  * strips. Null where the browser gives no 2D canvas (a test without one).
  */
-export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: ReelSpeed; ground?: string | null }): PreparedReel | null {
+export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: ReelSpeed; ground?: string | null } & ReelTurns): PreparedReel | null {
   const { width, height } = REEL_SIZES[options.size];
   const measureCtx = canvasOf(width, 8).getContext("2d");
   if (!measureCtx) return null;
@@ -84,59 +93,153 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
   if (!backgroundCtx) return null;
   paintReelBackground(backgroundCtx, width, height, look);
 
-  const strips = reelStrips(layout).map(strip => {
-    const canvas = canvasOf(width, strip.height);
+  // The title and closing cards are pages of their own, so the strips hold only the list - and a strip with none of it is not painted.
+  const isList = (block: ReelBlock) => block.kind === "area" || block.kind === "card";
+  const strips = reelStrips(layout)
+    .filter(strip => strip.blocks.some(isList))
+    .map(strip => {
+      const canvas = canvasOf(width, strip.height);
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.translate(0, -strip.top);
+        for (const block of strip.blocks.filter(isList)) paintReelBlock(ctx, block, look, input, width);
+      }
+      return { top: strip.top, canvas };
+    });
+
+  // A page is the backdrop with its card on it, opaque, so it can swing over the list.
+  const page = (block: ReelBlock) => {
+    const canvas = canvasOf(width, height);
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.translate(0, -strip.top);
-      for (const block of strip.blocks) paintReelBlock(ctx, block, look, input, width);
+      ctx.drawImage(background, 0, 0);
+      ctx.translate(0, -block.top);
+      paintReelBlock(ctx, block, look, input, width);
     }
-    return { top: strip.top, canvas };
-  });
+    return canvas;
+  };
+  const pages = { title: page(layout.blocks[0]!), end: page(layout.blocks[layout.blocks.length - 1]!) };
 
-  return { width, height, layout, timeline: reelTimeline(layout, options.speed), background, strips, fades: edgeFades(background) };
+  return {
+    width,
+    height,
+    layout,
+    timeline: reelTimeline(layout, options.speed, options),
+    background,
+    strips,
+    pages,
+    scratch: canvasOf(width, height),
+    fades: edgeFades(background),
+  };
 }
 
-/** How far the list's edges fade into the ground as they meet the top and bottom of the frame. */
-const EDGE_FADE = 150;
+/** Whether the title card turns away like a book's cover and the closing card shuts like its back cover; otherwise each fades. */
+export type ReelTurns = { opening?: boolean; closing?: boolean };
 
 /** The backdrop's top and bottom bands, each fading out away from its edge. */
 function edgeFades(background: HTMLCanvasElement): { top: HTMLCanvasElement; bottom: HTMLCanvasElement } {
   const { width, height } = background;
   const band = (fromTop: boolean) => {
-    const canvas = canvasOf(width, EDGE_FADE);
+    const canvas = canvasOf(width, REEL_EDGE_FADE);
     const ctx = canvas.getContext("2d");
     if (!ctx) return canvas;
-    ctx.drawImage(background, 0, fromTop ? 0 : height - EDGE_FADE, width, EDGE_FADE, 0, 0, width, EDGE_FADE);
+    ctx.drawImage(background, 0, fromTop ? 0 : height - REEL_EDGE_FADE, width, REEL_EDGE_FADE, 0, 0, width, REEL_EDGE_FADE);
     ctx.globalCompositeOperation = "destination-in";
-    const mask = ctx.createLinearGradient(0, 0, 0, EDGE_FADE);
+    const mask = ctx.createLinearGradient(0, 0, 0, REEL_EDGE_FADE);
     mask.addColorStop(0, fromTop ? "rgba(0,0,0,1)" : "rgba(0,0,0,0)");
     mask.addColorStop(1, fromTop ? "rgba(0,0,0,0)" : "rgba(0,0,0,1)");
     ctx.fillStyle = mask;
-    ctx.fillRect(0, 0, width, EDGE_FADE);
+    ctx.fillRect(0, 0, width, REEL_EDGE_FADE);
     return canvas;
   };
   return { top: band(true), bottom: band(false) };
 }
 
-/** The same painted reel at another speed: only the timing changes. */
-export function withSpeed(reel: PreparedReel, speed: ReelSpeed): PreparedReel {
-  return { ...reel, timeline: reelTimeline(reel.layout, speed) };
+/** The same painted reel at another speed, or with the pages turned or faded: only the timing changes. */
+export function withMotion(reel: PreparedReel, motion: { speed: ReelSpeed } & ReelTurns): PreparedReel {
+  return { ...reel, timeline: reelTimeline(reel.layout, motion.speed, motion) };
 }
 
 /** Lets the strips go, so a long reel does not hold its memory after the window closes. */
 export function releaseReel(reel: PreparedReel | null) {
   if (!reel) return;
-  for (const canvas of [reel.background, reel.fades.top, reel.fades.bottom, ...reel.strips.map(strip => strip.canvas)]) {
+  for (const canvas of [reel.background, reel.fades.top, reel.fades.bottom, reel.pages.title, reel.pages.end, reel.scratch, ...reel.strips.map(strip => strip.canvas)]) {
     canvas.width = 0;
     canvas.height = 0;
   }
 }
 
-/** Draws the frame at `t` seconds onto `ctx` (a canvas the reel's size): the backdrop, the visible part of each strip, the edge fades. */
-export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel, t: number) {
-  const offset = Math.round(reelOffsetAt(t, reel.timeline));
+/**
+ * A page laid over the frame at `cover` (1 is the whole frame, 0 is gone):
+ * swung on the frame's left edge like a book's cover, shaded as it turns and
+ * casting a shadow on what it uncovers - or, in a fade, just let through.
+ */
+function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLCanvasElement, cover: number, transition: "turn" | "fade") {
   const { width, height } = reel;
+  if (transition === "fade") {
+    ctx.globalAlpha = cover;
+    ctx.drawImage(page, 0, 0);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const angle = (1 - cover) * REEL_TURN_ANGLE;
+  const sin = Math.sin(angle);
+  const slices = turnSlices(width, angle);
+  const free = slices[slices.length - 1]!;
+  const freeX = free.dx + free.dw;
+
+  // The shadow the page casts on what it uncovers, and the one the spine leaves.
+  const cast = ctx.createLinearGradient(freeX, 0, freeX + 150, 0);
+  cast.addColorStop(0, `rgba(0,0,0,${0.3 * sin})`);
+  cast.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = cast;
+  ctx.fillRect(freeX, 0, 150, height);
+  const spine = ctx.createLinearGradient(0, 0, 46, 0);
+  spine.addColorStop(0, `rgba(0,0,0,${0.18 * sin})`);
+  spine.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = spine;
+  ctx.fillRect(0, 0, 46, height);
+
+  // The page itself, a slice at a time, drawn apart so it can be shaded as one.
+  const scratch = reel.scratch.getContext("2d");
+  if (!scratch) return;
+  scratch.globalCompositeOperation = "source-over";
+  scratch.clearRect(0, 0, width, height);
+  for (const slice of slices) {
+    const drawn = height * slice.scale;
+    // A little wider than its place, so no seam shows between slices.
+    scratch.drawImage(page, slice.sx, 0, slice.sw, height, slice.dx, (height - drawn) / 2, Math.max(1, slice.dw) + 0.75, drawn);
+  }
+  scratch.globalCompositeOperation = "source-atop";
+  const shade = scratch.createLinearGradient(0, 0, Math.max(freeX, 1), 0);
+  shade.addColorStop(0, "rgba(0,0,0,0)");
+  shade.addColorStop(1, `rgba(0,0,0,${0.4 * sin})`);
+  scratch.fillStyle = shade;
+  scratch.fillRect(0, 0, width, height);
+  scratch.globalCompositeOperation = "source-over";
+  // The last of the turn is a sliver at the spine; it fades rather than pops.
+  ctx.globalAlpha = Math.min(1, cover / 0.15);
+  ctx.drawImage(reel.scratch, 0, 0);
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Draws the frame at `t` seconds onto `ctx` (a canvas the reel's size): the title
+ * card whole while it is held, else the backdrop, the visible part of each
+ * strip, the edge fades, and whichever page is turning (or fading) over them.
+ */
+export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel, t: number) {
+  const { width, height, timeline } = reel;
+  const covers = reelPageCovers(t, timeline);
+  if (covers.title >= 1) {
+    ctx.drawImage(reel.pages.title, 0, 0);
+    return;
+  }
+  if (covers.end >= 1) {
+    ctx.drawImage(reel.pages.end, 0, 0);
+    return;
+  }
+  const offset = Math.round(reelOffsetAt(t, timeline));
   ctx.drawImage(reel.background, 0, 0);
   for (const strip of reel.strips) {
     // Only the rows of the strip that fall inside the frame are copied.
@@ -147,6 +250,8 @@ export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel,
   }
   ctx.drawImage(reel.fades.top, 0, 0);
   ctx.drawImage(reel.fades.bottom, 0, height - reel.fades.bottom.height);
+  if (covers.title > 0) drawPage(ctx, reel, reel.pages.title, covers.title, timeline.opening);
+  if (covers.end > 0) drawPage(ctx, reel, reel.pages.end, covers.end, timeline.closing);
 }
 
 /** "0:43", "1:12". */

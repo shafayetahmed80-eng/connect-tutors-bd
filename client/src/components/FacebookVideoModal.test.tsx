@@ -6,7 +6,7 @@ import type { FacebookPosterJob } from "@/lib/facebook-poster";
 
 const mocks = vi.hoisted(() => ({
   prepare: vi.fn(),
-  withSpeed: vi.fn(),
+  withMotion: vi.fn(),
   record: vi.fn(),
   run: vi.fn(),
   download: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("@/lib/facebook-video", async importOriginal => {
   return {
     ...actual,
     prepareReel: mocks.prepare,
-    withSpeed: mocks.withSpeed,
+    withMotion: mocks.withMotion,
     recordReel: mocks.record,
     runReel: mocks.run,
     downloadVideo: mocks.download,
@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.canRecord.mockReturnValue(true);
   mocks.prepare.mockImplementation(() => reel(21.1));
-  mocks.withSpeed.mockImplementation((current: { timeline: { total: number } }, speed: string) => ({ ...current, timeline: { total: speed === "fast" ? 12 : 21.1 } }));
+  mocks.withMotion.mockImplementation((current: { timeline: { total: number } }, motion: { speed: string; opening?: boolean }) => ({ ...current, timeline: { total: (motion.speed === "fast" ? 12 : 21.1) - (motion.opening === false ? 0.5 : 0) } }));
   mocks.run.mockResolvedValue(true);
   mocks.record.mockResolvedValue({ blob: new Blob(["video"], { type: "video/mp4" }), mimeType: "video/mp4;codecs=avc1.640028" });
 });
@@ -77,7 +77,7 @@ describe("the Facebook video window", () => {
 
     expect(screen.getByRole("heading", { name: "Facebook Video" })).toBeDefined();
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:21")).toBeDefined());
-    for (const name of ["Language", "Size", "Speed", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
+    for (const name of ["Language", "Size", "Speed", "Opening", "Closing", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
     const sizes = within(screen.getByRole("radiogroup", { name: "Size" }));
     for (const name of [/Reels 1080×1920/, /Feed 1080×1350/, /Square 1080×1080/]) expect(sizes.getByRole("radio", { name })).toBeDefined();
     expect(screen.getByRole("button", { name: /Copy caption/ })).toBeDefined();
@@ -94,7 +94,7 @@ describe("the Facebook video window", () => {
     expect(input.locale).toBe("en");
     expect(input.tuitions).toHaveLength(3);
     expect(input.whatsapp).toBe("+8801516131411");
-    expect(options).toEqual({ size: "reels", speed: "slow", ground: "#0e2442" });
+    expect(options).toEqual({ size: "reels", speed: "slow", opening: true, closing: true, ground: "#0e2442" });
   });
 
   it("paints again for another size, and only re-times for another speed, remembering both apart from the poster's choices", async () => {
@@ -106,12 +106,38 @@ describe("the Facebook video window", () => {
     expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ size: "feed" });
 
     fireEvent.click(screen.getByRole("radio", { name: "Fast" }));
-    await waitFor(() => expect(mocks.withSpeed).toHaveBeenLastCalledWith(expect.anything(), "fast"));
+    await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "fast", opening: true, closing: true }));
     expect(mocks.prepare).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:12")).toBeDefined());
 
-    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", speed: "fast" });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", speed: "fast", opening: true, closing: true });
     expect(JSON.parse(localStorage.getItem("connect_tutors_fb_poster_prefs_v1") ?? "null")).toBeNull();
+  });
+
+  it("turns the opening and the closing page turn on and off apart, re-timing the video without painting it again, and remembers both", async () => {
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
+    const opening = within(screen.getByRole("radiogroup", { name: "Opening" }));
+    const closing = within(screen.getByRole("radiogroup", { name: "Closing" }));
+    expect(opening.getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+    expect(closing.getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(opening.getByRole("radio", { name: "Off" }));
+    await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "slow", opening: false, closing: true }));
+    fireEvent.click(closing.getByRole("radio", { name: "Off" }));
+    await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "slow", opening: false, closing: false }));
+
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "reels", speed: "slow", opening: false, closing: false });
+  });
+
+  it("starts with both page turns off when they were left off", async () => {
+    localStorage.setItem("connect_tutors_fb_video_prefs_v1", JSON.stringify({ size: "reels", speed: "slow", opening: false, closing: true }));
+    open();
+
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+    expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ opening: false, closing: true });
+    expect(within(screen.getByRole("radiogroup", { name: "Opening" })).getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("shares the language and the colour with the poster window", async () => {
