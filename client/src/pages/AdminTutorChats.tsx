@@ -8,12 +8,13 @@ import RecentSearches from "@/components/RecentSearches";
 import SearchInput from "@/components/SearchInput";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
-import { useAdminChatSocket } from "@/hooks/useChatSocket";
+import { useAdminChatSocket, useOnlineStatus } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { compressImage } from "@/lib/compressImage";
 import { trpc } from "@/lib/trpc";
 import { supportsWebPush, urlBase64ToUint8Array } from "@/lib/webPush";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
-import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, ListPlus, Mic, Paperclip, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BellRing, BookmarkPlus, Clock, ListPlus, Loader2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ const CHAT_MESSAGE_MAX = 2000;
 // A slow fallback only - the WebSocket carries the real "something arrived" signal.
 const CHAT_POLL_MS = 20000;
 const TYPING_EXPIRES_MS = 3000;
+const PAGE_SIZE = 30;
 const STARTER_MESSAGE = "Hi, this is the Connect Tutors Admin team. Let us know if you have any questions about your profile, tuitions, or account.";
 
 type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
@@ -465,6 +467,15 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     const trimmed = query.trim().toLowerCase();
     return trimmed ? allMessages.filter(message => message.body.toLowerCase().includes(trimmed)) : allMessages;
   }, [allMessages, query]);
+  const isOnline = useOnlineStatus();
+  const [outbox, setOutbox] = useState<{ tempId: string; body: string; status: "sending" | "failed" }[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const visibleMessages = useMemo(() => {
+    if (query.trim()) return messages;
+    return messages.slice(Math.max(0, messages.length - visibleCount));
+  }, [messages, visibleCount, query]);
+
   const tutor = threadQuery.data?.tutor;
   const tutorLastReadAt = threadQuery.data?.tutorLastReadAt ? new Date(threadQuery.data.tutorLastReadAt).getTime() : null;
   const lastOwnMessageId = [...allMessages].reverse().find(message => message.senderRole === "admin")?.id;
@@ -489,13 +500,41 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [visibleMessages.length, outbox.length]);
 
-  const submitMessage = () => {
-    const trimmed = body.trim();
-    if (!trimmed || send.isPending) return;
-    send.mutate({ tutorId, body: trimmed });
+  const submitMessage = (retryTempId?: string, retryBody?: string) => {
+    const text = retryBody ?? body.trim();
+    if (!text) return;
+    const tempId = retryTempId || `admin-temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    if (!retryTempId) {
+      setBody("");
+      setOutbox(prev => [...prev, { tempId, body: text, status: "sending" }]);
+    } else {
+      setOutbox(prev => prev.map(m => m.tempId === tempId ? { ...m, status: "sending" } : m));
+    }
+
+    send.mutate(
+      { tutorId, body: text },
+      {
+        onSuccess: async () => {
+          setOutbox(prev => prev.filter(m => m.tempId !== tempId));
+          await Promise.all([utils.admin.getTutorChatThread.invalidate({ tutorId }), refreshLists()]);
+        },
+        onError: () => {
+          setOutbox(prev => prev.map(m => m.tempId === tempId ? { ...m, status: "failed" } : m));
+          toast.error("Message could not be sent. Check connection or tap retry.");
+        },
+      }
+    );
   };
+
+  // Auto-retry failed outbox messages when back online
+  useEffect(() => {
+    if (isOnline && outbox.some(m => m.status === "failed")) {
+      outbox.filter(m => m.status === "failed").forEach(m => submitMessage(m.tempId, m.body));
+    }
+  }, [isOnline]);
+
   const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); submitMessage(); };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitMessage(); }
@@ -508,7 +547,9 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
       formData.append("file", file);
       formData.append("tutorId", tutorId);
       const result = await uploadFileWithProgress("/api/chat/attachment", formData, setUploadProgress);
-      send.mutate({ tutorId, body: body.trim(), attachmentKey: result.key, attachmentContentType: result.contentType });
+      send.mutate({ tutorId, body: body.trim(), attachmentKey: result.key, attachmentContentType: result.contentType }, {
+        onSuccess: async () => { setBody(""); await Promise.all([utils.admin.getTutorChatThread.invalidate({ tutorId }), refreshLists()]); },
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to upload the attachment.");
     } finally {
@@ -520,7 +561,8 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    await uploadAndSend(file);
+    const processedFile = await compressImage(file);
+    await uploadAndSend(processedFile);
   };
 
   const voiceRecorder = useVoiceRecorder();
@@ -557,6 +599,15 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
               {tutor.departmentName ? <p className="truncate text-2xs font-semibold text-j-ink-soft">{tutor.departmentName}</p> : null}
             </div>
           : null}
+        {!isOnline ? (
+          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-3xs font-bold text-amber-800">
+            <WifiOff className="size-2.5" /> Offline
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-3xs font-bold text-emerald-700" title="Connected in real-time">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+          </span>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
@@ -594,8 +645,22 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
 
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
       {threadQuery.isLoading ? <p className="pt-8 text-center text-sm font-semibold text-j-ink-muted">Loading the conversation…</p> : null}
-      {!threadQuery.isLoading && messages.length === 0 ? <p className="pt-8 text-center text-sm text-j-ink-muted">{query ? "Nothing matches that search." : "No messages yet."}</p> : null}
-      {messages.map(message => {
+      {!threadQuery.isLoading && messages.length === 0 && outbox.length === 0 ? <p className="pt-8 text-center text-sm text-j-ink-muted">{query ? "Nothing matches that search." : "No messages yet."}</p> : null}
+
+      {messages.length > visibleCount && !query.trim() ? (
+        <div className="py-1 text-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-j-border bg-white px-3 py-1 text-2xs font-semibold text-j-ink-soft shadow-xs hover:bg-j-surface-sunken transition-colors"
+          >
+            <Clock size={12} />
+            <span>Load earlier messages ({messages.length - visibleCount} more)</span>
+          </button>
+        </div>
+      ) : null}
+
+      {visibleMessages.map(message => {
         const own = message.senderRole === "admin";
         const seen = own && message.id === lastOwnMessageId && tutorLastReadAt !== null && new Date(message.createdAt).getTime() <= tutorLastReadAt;
         return <div key={message.id} className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
@@ -632,6 +697,44 @@ function ThreadPanel({ tutorId, onBack, tutorIsTyping, onTyping, hasNoteAlert, o
           </div>
         </div>;
       })}
+
+      {outbox.map(item => (
+        <div key={item.tempId} className="flex animate-in fade-in flex-col items-end">
+          <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-j-accent/80 text-white"}`}>
+            <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
+            <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
+              {item.status === "sending" ? (
+                <>
+                  <Loader2 className="size-2.5 animate-spin" />
+                  <span>Sending…</span>
+                </>
+              ) : (
+                <span className="font-bold text-red-700">Failed to send</span>
+              )}
+            </div>
+          </div>
+          {item.status === "failed" ? (
+            <div className="mt-1 flex items-center gap-2 px-1">
+              <button
+                type="button"
+                onClick={() => submitMessage(item.tempId, item.body)}
+                className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-2xs font-bold text-red-700 hover:bg-red-200 transition-colors"
+              >
+                <RotateCcw className="size-2.5" />
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutbox(prev => prev.filter(m => m.tempId !== item.tempId))}
+                className="text-2xs font-semibold text-j-ink-faint hover:text-j-ink-soft"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ))}
+
       {tutorIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Tutor is typing…</p> : null}
       <div ref={bottomRef} />
     </div>

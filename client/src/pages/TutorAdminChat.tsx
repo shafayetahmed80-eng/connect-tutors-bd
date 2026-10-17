@@ -1,14 +1,15 @@
 import { BrandMark, brandWordmark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useTutorChatSocket } from "@/hooks/useChatSocket";
+import { useTutorChatSocket, useOnlineStatus, type ChatConnectionStatus } from "@/hooks/useChatSocket";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { compressImage } from "@/lib/compressImage";
 import { useSiteContact } from "@/lib/siteContent";
 import { trpc } from "@/lib/trpc";
 import { getCurrentTutorPortalToken } from "@/lib/tutorPortalSession";
 import { uploadFileWithProgress } from "@/lib/uploadWithProgress";
 import SearchInput from "@/components/SearchInput";
-import { Check, Mic, Paperclip, Phone, Send, ShieldCheck, Square, ThumbsUp, X } from "lucide-react";
+import { Check, Clock, Loader2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,8 +18,16 @@ const CHAT_MESSAGE_MAX = 2000;
 const CHAT_POLL_MS = 20000;
 const TYPING_PING_MS = 2000;
 const TYPING_EXPIRES_MS = 3000;
+const PAGE_SIZE = 30;
 
 type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
+
+type OutboxMessage = {
+  tempId: string;
+  body: string;
+  status: "sending" | "failed";
+  createdAt: number;
+};
 
 function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -47,6 +56,10 @@ export function TutorAdminChatPanel() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [adminTypingUntil, setAdminTypingUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [outbox, setOutbox] = useState<OutboxMessage[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>("connecting");
+  const isOnline = useOnlineStatus();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasMarkedRead = useRef(false);
@@ -63,10 +76,14 @@ export function TutorAdminChatPanel() {
   const callTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const portalToken = getCurrentTutorPortalToken();
-  const sendFrame = useTutorChatSocket(portalToken, frame => {
-    if (frame.type === "message") void utils.tutorAdminChat.thread.invalidate();
-    else if (frame.type === "typing") setAdminTypingUntil(Date.now() + TYPING_EXPIRES_MS);
-  });
+  const sendFrame = useTutorChatSocket(
+    portalToken,
+    frame => {
+      if (frame.type === "message") void utils.tutorAdminChat.thread.invalidate();
+      else if (frame.type === "typing") setAdminTypingUntil(Date.now() + TYPING_EXPIRES_MS);
+    },
+    setConnectionStatus
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -78,6 +95,12 @@ export function TutorAdminChatPanel() {
     const trimmed = query.trim().toLowerCase();
     return trimmed ? allMessages.filter(message => message.body.toLowerCase().includes(trimmed)) : allMessages;
   }, [allMessages, query]);
+
+  const visibleMessages = useMemo(() => {
+    if (query.trim()) return messages;
+    return messages.slice(-visibleCount);
+  }, [messages, visibleCount, query]);
+
   const eligible = threadQuery.data?.eligible ?? false;
   const adminLastReadAt = threadQuery.data?.adminLastReadAt ? new Date(threadQuery.data.adminLastReadAt).getTime() : null;
   const lastOwnMessageId = [...allMessages].reverse().find(message => message.senderRole === "tutor")?.id;
@@ -92,7 +115,7 @@ export function TutorAdminChatPanel() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [visibleMessages.length, outbox.length]);
 
   const pingTyping = () => {
     const nowMs = Date.now();
@@ -101,11 +124,41 @@ export function TutorAdminChatPanel() {
     sendFrame({ type: "typing" });
   };
 
-  const submitMessage = () => {
-    const trimmed = body.trim();
-    if (!trimmed || send.isPending) return;
-    send.mutate({ body: trimmed });
+  const submitMessage = (retryId?: string, retryBody?: string) => {
+    const textToSend = (retryBody ?? body).trim();
+    if (!textToSend) return;
+
+    const tempId = retryId || `outbox-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    if (!retryId) {
+      setOutbox(prev => [...prev, { tempId, body: textToSend, status: "sending", createdAt: Date.now() }]);
+      setBody("");
+    } else {
+      setOutbox(prev => prev.map(m => m.tempId === tempId ? { ...m, status: "sending" } : m));
+    }
+
+    send.mutate(
+      { body: textToSend },
+      {
+        onSuccess: async () => {
+          setOutbox(prev => prev.filter(m => m.tempId !== tempId));
+          await utils.tutorAdminChat.thread.invalidate();
+        },
+        onError: error => {
+          setOutbox(prev => prev.map(m => m.tempId === tempId ? { ...m, status: "failed" } : m));
+          toast.error(error.message);
+        },
+      }
+    );
   };
+
+  // Auto-retry failed outbox messages when back online
+  useEffect(() => {
+    if (isOnline && outbox.some(m => m.status === "failed")) {
+      outbox.filter(m => m.status === "failed").forEach(m => submitMessage(m.tempId, m.body));
+    }
+  }, [isOnline]);
+
   const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); submitMessage(); };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitMessage(); }
@@ -117,7 +170,9 @@ export function TutorAdminChatPanel() {
       const formData = new FormData();
       formData.append("file", file);
       const result = await uploadFileWithProgress("/api/chat/attachment", formData, setUploadProgress);
-      send.mutate({ body: body.trim(), attachmentKey: result.key, attachmentContentType: result.contentType });
+      send.mutate({ body: body.trim(), attachmentKey: result.key, attachmentContentType: result.contentType }, {
+        onSuccess: async () => { setBody(""); await utils.tutorAdminChat.thread.invalidate(); },
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to upload the attachment.");
     } finally {
@@ -129,7 +184,8 @@ export function TutorAdminChatPanel() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    await uploadAndSend(file);
+    const processedFile = await compressImage(file);
+    await uploadAndSend(processedFile);
   };
 
   const voiceRecorder = useVoiceRecorder();
@@ -148,31 +204,42 @@ export function TutorAdminChatPanel() {
 
   return <section className="flex h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce9f1] px-4 py-3">
-      <div className="brand-logo flex items-center" style={{ fontSize: "17px" }}>
+      <div className="brand-logo flex items-center gap-2" style={{ fontSize: "17px" }}>
         <BrandMark />
         <span className="brand-wordmark flex"><strong>{brandWordmark.primary}</strong><em>{brandWordmark.secondary}</em></span>
       </div>
-      <a
-        href={contact.tel}
-        onClick={(e) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-          setIsCalling(true);
-          if (callTimerRef.current) clearTimeout(callTimerRef.current);
-          callTimerRef.current = setTimeout(() => setIsCalling(false), 700);
-        }}
-        data-calling={isCalling ? "true" : undefined}
-        aria-label={`Call ${contact.display}`}
-        className="group phone-contact-call flex shrink-0 items-center gap-1.5 text-sm font-bold text-j-accent transition-transform duration-200 active:scale-95"
-      >
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-j-accent-wash text-j-accent">
-          {isCalling ? (
-            <Check size={13} className="text-j-ok animate-in zoom-in-75" />
-          ) : (
-            <Phone size={13} className="phone-contact-icon transition-transform duration-200 group-hover:-rotate-12" />
-          )}
-        </span>
-        {contact.display}
-      </a>
+      <div className="flex items-center gap-2.5">
+        {!isOnline ? (
+          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-3xs font-bold text-amber-800">
+            <WifiOff className="size-2.5" /> Offline
+          </span>
+        ) : connectionStatus === "connected" ? (
+          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-3xs font-bold text-emerald-700" title="Connected in real-time">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+          </span>
+        ) : null}
+        <a
+          href={contact.tel}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            setIsCalling(true);
+            if (callTimerRef.current) clearTimeout(callTimerRef.current);
+            callTimerRef.current = setTimeout(() => setIsCalling(false), 700);
+          }}
+          data-calling={isCalling ? "true" : undefined}
+          aria-label={`Call ${contact.display}`}
+          className="group phone-contact-call flex shrink-0 items-center gap-1.5 text-sm font-bold text-j-accent transition-transform duration-200 active:scale-95"
+        >
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-j-accent-wash text-j-accent">
+            {isCalling ? (
+              <Check size={13} className="text-j-ok animate-in zoom-in-75" />
+            ) : (
+              <Phone size={13} className="phone-contact-icon transition-transform duration-200 group-hover:-rotate-12" />
+            )}
+          </span>
+          {contact.display}
+        </a>
+      </div>
     </header>
 
     <div className="border-b border-[#dce9f1] p-3">
@@ -195,11 +262,24 @@ export function TutorAdminChatPanel() {
         ? <p className="pt-8 text-center text-sm font-semibold text-j-ink-muted">Loading your conversation…</p>
         : null}
 
-      {!threadQuery.isLoading && messages.length === 0
+      {!threadQuery.isLoading && messages.length === 0 && outbox.length === 0
         ? <p className="pt-8 text-center text-sm text-j-ink-muted">{query ? "Nothing matches that search." : "No messages yet. Write to the Admin team below."}</p>
         : null}
 
-      {messages.map(message => {
+      {messages.length > visibleCount && !query.trim() ? (
+        <div className="py-1 text-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-j-border bg-white px-3 py-1 text-2xs font-semibold text-j-ink-soft shadow-xs hover:bg-j-surface-sunken transition-colors"
+          >
+            <Clock size={12} />
+            <span>Load earlier messages ({messages.length - visibleCount} more)</span>
+          </button>
+        </div>
+      ) : null}
+
+      {visibleMessages.map(message => {
         const own = message.senderRole === "tutor";
         const seen = own && message.id === lastOwnMessageId && adminLastReadAt !== null && new Date(message.createdAt).getTime() <= adminLastReadAt;
         return <div key={message.id} className={`flex animate-in fade-in slide-in-from-bottom-1 flex-col duration-200 motion-reduce:animate-none ${own ? "items-end" : "items-start"}`}>
@@ -224,6 +304,43 @@ export function TutorAdminChatPanel() {
           </div>
         </div>;
       })}
+
+      {outbox.map(item => (
+        <div key={item.tempId} className="flex animate-in fade-in flex-col items-end">
+          <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-j-accent/80 text-white"}`}>
+            <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
+            <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
+              {item.status === "sending" ? (
+                <>
+                  <Loader2 className="size-2.5 animate-spin" />
+                  <span>Sending…</span>
+                </>
+              ) : (
+                <span className="font-bold text-red-700">Failed to send</span>
+              )}
+            </div>
+          </div>
+          {item.status === "failed" ? (
+            <div className="mt-1 flex items-center gap-2 px-1">
+              <button
+                type="button"
+                onClick={() => submitMessage(item.tempId, item.body)}
+                className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-2xs font-bold text-red-700 hover:bg-red-200 transition-colors"
+              >
+                <RotateCcw className="size-2.5" />
+                <span>Retry</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutbox(prev => prev.filter(m => m.tempId !== item.tempId))}
+                className="text-2xs text-j-ink-faint hover:text-j-ink-soft"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ))}
       {adminIsTyping ? <p className="text-2xs font-semibold italic text-j-ink-faint">Admin is typing…</p> : null}
       <div ref={bottomRef} />
     </div>

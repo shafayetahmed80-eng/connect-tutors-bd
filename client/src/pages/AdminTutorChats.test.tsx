@@ -44,6 +44,7 @@ vi.mock("@/hooks/useChatSocket", () => ({
     state.onSocketFrame = onFrame;
     return state.sendFrame;
   },
+  useOnlineStatus: () => true,
 }));
 vi.mock("@/hooks/useVoiceRecorder", () => ({ useVoiceRecorder: () => ({ recording: false, start: vi.fn(), stop: vi.fn(), cancel: vi.fn(), supported: false }) }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: 42, name: "Test Admin", role: "admin" as const } }) }));
@@ -623,5 +624,32 @@ describe("the card and filter panel over the conversations", () => {
     render(<AdminTutorChatsContent />);
     fireEvent.change(screen.getByLabelText("Sort conversations"), { target: { value: "unread" } });
     expect(state.threadsQueryInput).toEqual({ query: "", page: 1, pageSize: 50, archived: false });
+  });
+
+  it("paginates earlier messages and renders live connection badge in thread panel", () => {
+    state.threads = [thread()];
+    state.threadTutor = { tutorId: "t-1", tutorName: "Amina Rahman", tutorNumber: 101 };
+    state.threadMessages = Array.from({ length: 35 }, (_, i) => ({
+      id: i + 1,
+      senderRole: "tutor",
+      body: `Admin message ${i + 1}`,
+      attachmentUrl: null,
+      attachmentContentType: null,
+      tutorReacted: false,
+      adminReacted: false,
+      createdAt: `2026-09-25T10:${String(i).padStart(2, "0")}:00.000Z`,
+    }));
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Amina Rahman/ }));
+
+    expect(screen.getByText("Live")).toBeTruthy();
+    const loadMore = screen.getByRole("button", { name: /Load earlier messages/ });
+    expect(loadMore).toBeTruthy();
+    expect(screen.getByText(/Load earlier messages \(5 more\)/)).toBeTruthy();
+    expect(screen.queryByText("Admin message 1")).toBeNull();
+    expect(screen.getByText("Admin message 35")).toBeTruthy();
+
+    fireEvent.click(loadMore);
+    expect(screen.getByText("Admin message 1")).toBeTruthy();
   });
 });

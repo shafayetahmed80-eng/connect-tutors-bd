@@ -29,10 +29,11 @@ function registerTutorSocket(tutorId: string, socket: ChatSocket) {
     set?.delete(socket);
     if (set && set.size === 0) tutorSockets.delete(tutorId);
   });
-  // The only client-to-server frame this channel understands: a typing ping,
-  // relayed straight to the Admin side with no state kept about it here.
+  // The client-to-server frames this channel understands: typing and keepalive ping
   socket.on("message", raw => {
-    if (parseClientFrame(raw)?.type === "typing") notifyAdminsOfTyping(tutorId);
+    const frame = parseClientFrame(raw);
+    if (frame?.type === "typing") notifyAdminsOfTyping(tutorId);
+    else if (frame?.type === "ping") send(socket, { type: "pong" });
   });
 }
 
@@ -42,6 +43,7 @@ function registerAdminSocket(socket: ChatSocket) {
   socket.on("message", raw => {
     const frame = parseClientFrame(raw);
     if (frame?.type === "typing" && frame.tutorId) notifyTutorOfTyping(frame.tutorId);
+    else if (frame?.type === "ping") send(socket, { type: "pong" });
   });
 }
 
