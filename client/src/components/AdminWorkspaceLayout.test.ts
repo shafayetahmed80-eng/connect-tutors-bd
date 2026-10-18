@@ -119,7 +119,19 @@ describe("Admin workspace navigation", () => {
     const sections = buildAdminWorkspaceNavigation(true)
       .map(item => item.sectionLabel)
       .filter((label, index, all) => label !== all[index - 1]);
-    expect(sections).toEqual(["Operations", "Dynamic Section", "Owner controls", "Account"]);
+    expect(sections).toEqual(["Operations", "Image Section", "Dynamic Section", "Owner controls", "Account"]);
+  });
+
+  it("gives every Admin, not only the Owner, the Image Section right after Operations", () => {
+    const sections = (isOwner: boolean) => buildAdminWorkspaceNavigation(isOwner)
+      .map(item => item.sectionLabel)
+      .filter((label, index, all) => label !== all[index - 1]);
+    expect(sections(false)).toEqual(["Operations", "Image Section", "Account"]);
+    expect(buildAdminWorkspaceNavigation(false).filter(item => item.sectionLabel === "Image Section").map(item => [item.label, item.path])).toEqual([
+      ["Poster", "/admin/images/poster"],
+      ["Banner", "/admin/images/banner"],
+      ["Logo", "/admin/images/logo"],
+    ]);
   });
 
   it("keeps Owner-only security management in the Owner navigation boundary", () => {

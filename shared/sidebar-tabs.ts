@@ -99,7 +99,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
     fontPx: SHIPPED_ROW_FONT_PX,
     paddingPx: SHIPPED_ROW_PADDING_PX,
     heightPx: SHIPPED_ROW_HEIGHT_PX,
-    groups: ["Operations", "Dynamic Section", "Owner controls", "Account"],
+    groups: ["Operations", "Image Section", "Dynamic Section", "Owner controls", "Account"],
     subgroups: ["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"],
     items: [
       ["/admin/dashboard", "Overview"],
@@ -119,6 +119,9 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/guardian-requests/appoint", "Appoint Requests"],
       ["/admin/guardian-requests/confirm", "Confirm Requests"],
       ["/admin/guardian-requests/cancel", "Cancel Requests"],
+      ["/admin/images/poster", "Poster"],
+      ["/admin/images/banner", "Banner"],
+      ["/admin/images/logo", "Logo"],
       ["/admin/dynamic", "Section guide"],
       ["/admin/dynamic/tutor-profile", "Tutor Profile"],
       ["/admin/dynamic/guardian-profile", "Guardian Profile"],
