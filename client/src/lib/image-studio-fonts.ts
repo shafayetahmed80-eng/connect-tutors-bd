@@ -183,3 +183,8 @@ export function loadStudioFont(id: string): Promise<void> {
   loading.set(id, promise);
   return promise;
 }
+
+/** The files a family ships, for a place that embeds them (the logo's SVG) rather than loading them by name. */
+export function studioFontFiles(id: string): readonly { weight: number; url: string; unicodeRange?: string }[] {
+  return filesFor(id) ?? [];
+}
