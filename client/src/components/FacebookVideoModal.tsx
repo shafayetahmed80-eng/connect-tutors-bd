@@ -36,8 +36,8 @@ import { cn } from "@/lib/utils";
 
 const VIDEO_PREFS_KEY = "connect_tutors_fb_video_prefs_v1";
 
-type VideoPrefs = { size: ReelSize; style: ReelStyle; speed: ReelSpeed; opening: boolean; closing: boolean; music: boolean };
-const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", style: "scroll", speed: "slow", opening: true, closing: true, music: true };
+type VideoPrefs = { size: ReelSize; style: ReelStyle; speed: ReelSpeed; opening: boolean; closing: boolean; badge: boolean; music: boolean };
+const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", style: "scroll", speed: "slow", opening: true, closing: true, badge: true, music: true };
 
 function readVideoPrefs(): VideoPrefs {
   try {
@@ -48,6 +48,7 @@ function readVideoPrefs(): VideoPrefs {
       speed: saved?.speed === "normal" || saved?.speed === "fast" ? saved.speed : "slow",
       opening: saved?.opening !== false,
       closing: saved?.closing !== false,
+      badge: saved?.badge !== false,
       music: saved?.music !== false,
     };
   } catch {
@@ -174,7 +175,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     setSeconds(0);
     let prepared: PreparedReel | null = null;
     try {
-      prepared = prepareReel(reelInput(shown, locale, whatsapp), { size: videoPrefs.size, style: videoPrefs.style, speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing, ground });
+      prepared = prepareReel({ ...reelInput(shown, locale, whatsapp), badge: videoPrefs.badge }, { size: videoPrefs.size, style: videoPrefs.style, speed: videoPrefs.speed, opening: videoPrefs.opening, closing: videoPrefs.closing, ground });
     } catch (error) {
       console.error("Video render failed", error);
       toast.error("ভিডিও তৈরি করতে সমস্যা হয়েছে।");
@@ -190,7 +191,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
       if (ctx) drawReelFrame(ctx, prepared, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `shown` is read through its ids
-  }, [fontsReady, jobKey, locale, videoPrefs.size, videoPrefs.style, ground, whatsapp]);
+  }, [fontsReady, jobKey, locale, videoPrefs.size, videoPrefs.style, videoPrefs.badge, ground, whatsapp]);
 
   useEffect(() => {
     const current = reelRef.current;
@@ -344,6 +345,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
             <ChoiceRow label="Speed" value={videoPrefs.speed} options={speedOptions} onChange={speed => updateVideo({ speed })} />
             <ChoiceRow label="Opening" value={videoPrefs.opening ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ opening: next === "on" })} />
             <ChoiceRow label="Closing" value={videoPrefs.closing ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ closing: next === "on" })} />
+            <ChoiceRow label="Badge" value={videoPrefs.badge ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ badge: next === "on" })} />
             <ChoiceRow label="Music" value={videoPrefs.music ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ music: next === "on" })} />
             <PosterColourRow ground={posterPrefs.ground} defaultGround={REEL_DEFAULT_GROUND} resolvedAuto={resolvedAuto} onChange={next => updatePoster({ ground: next })} />
           </fieldset>

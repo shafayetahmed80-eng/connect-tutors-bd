@@ -47,6 +47,7 @@ import {
   REEL_STRIP_PAD,
   REEL_TURN_ANGLE,
   REEL_TURN_SECONDS,
+  paintReelBlock,
   SLIDE_MIN_HOLD,
   SLIDE_SECONDS_PER_CARD,
   reelGlow,
@@ -1247,5 +1248,89 @@ describe("saving the video", () => {
     expect(warn).toHaveBeenCalled();
     expect(saved.cancelled).toBe(1);
     saved.failAt = null;
+  });
+});
+
+describe("the BTPA seal", () => {
+  /** A title card painted on its own, with what it writes and where its last scaled drawing (the seal) was put. */
+  function paintTitle(size: "reels" | "feed" | "square", badge: boolean, ground: string | null = null) {
+    const { width, height } = REEL_SIZES[size];
+    const written: Array<{ text: string; fill: string }> = [];
+    const moves: Array<{ kind: "translate" | "scale"; args: number[] }> = [];
+    const ctx = mockContext({ texts: [], images: [] });
+    ctx.fillText = (text: string) => {
+      written.push({ text, fill: String(ctx.fillStyle) });
+    };
+    ctx.translate = (...args: number[]) => {
+      moves.push({ kind: "translate", args });
+    };
+    ctx.scale = (...args: number[]) => {
+      moves.push({ kind: "scale", args });
+    };
+    const input = { ...reelInput([job(1)], "en", null), badge };
+    const look = reelLook(ground);
+    const mark = paintReelBlock(ctx as never, { kind: "title", top: 0, height }, look, input, width)!;
+    const lastScale = moves.map(move => move.kind).lastIndexOf("scale");
+    const seal = badge ? { x: moves[lastScale - 1]!.args[0]!, y: moves[lastScale - 1]!.args[1]!, side: moves[lastScale]!.args[0]! * 132 } : null;
+    return { written, mark, seal, look, width, height };
+  }
+
+  it("is on the video's title card unless it is switched off", () => {
+    expect(reelInput([job(1)], "en", null).badge).toBe(true);
+    const on = paintTitle("reels", true).written.map(entry => entry.text);
+    expect(on).toContain("BTPA");
+    expect(on).toContain("MEMBER 077");
+    const off = paintTitle("reels", false).written.map(entry => entry.text);
+    expect(off).not.toContain("BTPA");
+    expect(off).not.toContain("MEMBER 077");
+  });
+
+  it("sits in the middle under the date, inside the rows Facebook leaves clear, on every size", () => {
+    for (const size of ["reels", "feed", "square"] as const) {
+      const { seal, mark, width, height } = paintTitle(size, true);
+      const { top, bottom } = REEL_SAFE[size];
+      expect(seal!.x).toBe(width / 2);
+      expect(seal!.y + seal!.side / 2).toBeLessThanOrEqual(height - bottom);
+      expect(mark.y).toBeGreaterThan(top);
+      // Below the logo, which is the highest thing on the card.
+      expect(seal!.y - seal!.side / 2).toBeGreaterThan(mark.y + (mark.width * 32) / 48);
+    }
+  });
+
+  it("is smaller on a smaller frame, so the square one has room for it", () => {
+    const sides = (["reels", "feed", "square"] as const).map(size => paintTitle(size, true).seal!.side);
+    expect(sides[0]).toBeGreaterThan(sides[1]!);
+    expect(sides[1]).toBeGreaterThan(sides[2]!);
+  });
+
+  it("lifts the rest of the card to make room, and leaves the card exactly as it was without it", () => {
+    for (const size of ["reels", "feed", "square"] as const) {
+      expect(paintTitle(size, true).mark.y).toBeLessThan(paintTitle(size, false).mark.y);
+    }
+    // Without the seal the logo is where it always was: 230 above the middle of the clear rows.
+    const { top, bottom } = REEL_SAFE.reels;
+    expect(paintTitle("reels", false).mark.y).toBeCloseTo(top + (1920 - top - bottom) / 2 - 230 - (104 * 32) / 48 / 2, 5);
+  });
+
+  it("is gold with a white middle on a dark ground, and the ground's own ink on a light one", () => {
+    const dark = paintTitle("reels", true, "#0e2442");
+    expect(dark.written.find(entry => entry.text === "BTPA")!.fill).toBe("#FFFFFF");
+    expect(dark.written.find(entry => entry.text === "MEMBER 077")!.fill).toBe("#FFC24D");
+    const light = paintTitle("reels", true, "#e2eef3");
+    expect(light.written.find(entry => entry.text === "BTPA")!.fill).toBe(light.look.ink);
+    expect(light.written.find(entry => entry.text === "BTPA")!.fill).not.toBe("#FFFFFF");
+  });
+
+  it("is on the front cover with the title card, in a scroll and in slides, and on neither when it is off", () => {
+    for (const style of ["scroll", "slides"] as const) {
+      const on = { texts: [] as string[], images: [] };
+      withCanvas(on);
+      prepareReel(reelInput([job(1), job(2)], "en", null), { size: "reels", speed: "slow", style });
+      expect(on.texts).toContain("BTPA");
+      const off = { texts: [] as string[], images: [] };
+      withCanvas(off);
+      prepareReel({ ...reelInput([job(1), job(2)], "en", null), badge: false }, { size: "reels", speed: "slow", style });
+      expect(off.texts).not.toContain("BTPA");
+    }
   });
 });

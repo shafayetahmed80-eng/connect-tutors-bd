@@ -60,6 +60,7 @@ export function reelInput(jobs: FacebookPosterJob[], locale: PosterLocale, whats
     url: `${PUBLIC_SITE_ORIGIN}/job-board`,
     boardAddress: `${PUBLIC_SITE_HOST}/job-board`,
     whatsapp: whatsapp?.trim() || null,
+    badge: true,
   };
 }
 
