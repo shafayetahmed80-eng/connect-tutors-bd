@@ -382,23 +382,26 @@ export function layoutSlides(ctx: CanvasRenderingContext2D, input: ReelInput, si
 
 // ---- Timing ----------------------------------------------------------------
 
-/** How the title card leaves and the closing card arrives: turned like a book's cover, or faded. */
+/** How a page of the slides leaves or arrives: turned like a book's page, or faded. */
 export type ReelTransition = "turn" | "fade";
 
+/** How the title card leaves and the closing card arrives in a scroll: rising with the list, or faded. */
+export type ScrollEnd = "rise" | "fade";
+
 export type ReelTimeline = {
-  /** The strip row at the top of the frame while the title leaves: the list's first screen. */
+  /** The strip row at the top of the frame when the list starts to move. */
   from: number;
-  /** How far the list travels from there to its last screen, in pixels (0 when the list fits the frame). */
+  /** How far it travels from there, in pixels (0 when there is nothing to move). */
   distance: number;
-  opening: ReelTransition;
-  closing: ReelTransition;
-  /** The title card is still for this long, then leaves over `openDuration`. */
+  opening: ScrollEnd;
+  closing: ScrollEnd;
+  /** The title card is still for this long; a faded one then fades over `openDuration` (0 when it rises). */
   holdStart: number;
   openDuration: number;
-  /** When the list starts to move, and how long it moves for, the two ramps included. */
+  /** When the strip starts to move, and how long it moves for, the two ramps included. */
   scrollStart: number;
   move: number;
-  /** When the closing card starts to arrive, over `closeDuration`, and how long it stays. */
+  /** When a faded closing card starts to come in, over `closeDuration` (0 when it rises), and how long it then stays. */
   closeStart: number;
   closeDuration: number;
   holdEnd: number;
@@ -409,38 +412,42 @@ export type ReelTimeline = {
 };
 
 /**
- * When everything happens. The title card is held, then turns away (or fades)
- * on the list's first screen; the list rises to its last screen; the closing
- * card then shuts over it (or fades in) and is held.
+ * When everything happens in a scroll. The title card is held, then either
+ * rises away with the list (it is the top of the strip) or fades into the
+ * list's first screen; the list rises; then the closing card either rises in
+ * under it until it fills the frame (it is the foot of the strip) or fades in
+ * over the list's last screen; and it is held.
  */
-export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, turns: { opening?: boolean; closing?: boolean } = {}): ReelTimeline {
+export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, ends: { opening?: boolean; closing?: boolean } = {}): ReelTimeline {
   const { frameHeight } = layout;
-  // The list keeps clear of the faded bands at the frame's top and bottom; a list that fits stays put, centred.
+  const opening: ScrollEnd = ends.opening === false ? "fade" : "rise";
+  const closing: ScrollEnd = ends.closing === false ? "fade" : "rise";
+  // The list's first and last screens, kept clear of the faded bands at the frame's top and bottom; a list that fits stays put, centred.
   const margin = REEL_EDGE_FADE + 24;
   const listHeight = layout.listBottom - layout.listTop;
-  let from: number;
-  let to: number;
+  let first: number;
+  let last: number;
   if (listHeight <= frameHeight - margin * 2) {
-    from = to = layout.listTop - (frameHeight - listHeight) / 2;
+    first = last = layout.listTop - (frameHeight - listHeight) / 2;
   } else {
-    from = layout.listTop - margin;
-    to = layout.listBottom + margin - frameHeight;
+    first = layout.listTop - margin;
+    last = layout.listBottom + margin - frameHeight;
   }
-  // Whole rows where the list is still, so it is crisp; it moves in fractions of a row between.
-  from = Math.round(from);
-  to = Math.round(to);
+  // A rising title starts at the top of the strip; a rising closing card ends filling the frame at its foot.
+  // Whole rows where the strip is still, so it is crisp; it moves in fractions of a row between.
+  const from = Math.round(opening === "rise" ? 0 : first);
+  const to = Math.round(closing === "rise" ? layout.height - frameHeight : last);
   const distance = Math.max(0, to - from);
   const pxPerSecond = frameHeight / REEL_CROSS_SECONDS[speed];
   // A steady run, plus the ramps: each ramp covers half the ground a steady run would in that time.
   const move = distance > 0 ? distance / pxPerSecond + REEL_RAMP : 0;
   const ramp = Math.min(REEL_RAMP, move / 2);
+  // A list that is faded to and from waits a moment on its screen; one that fits the frame stays long enough to read.
   const pause = distance > 0 ? LIST_PAUSE : LIST_STILL;
-  const opening: ReelTransition = turns.opening === false ? "fade" : "turn";
-  const closing: ReelTransition = turns.closing === false ? "fade" : "turn";
-  const openDuration = opening === "turn" ? REEL_TURN_SECONDS[speed] : REEL_FADE_SECONDS;
-  const closeDuration = closing === "turn" ? REEL_TURN_SECONDS[speed] : REEL_FADE_SECONDS;
-  const scrollStart = REEL_HOLD_START + openDuration + pause;
-  const closeStart = scrollStart + move + pause;
+  const openDuration = opening === "fade" ? REEL_FADE_SECONDS : 0;
+  const closeDuration = closing === "fade" ? REEL_FADE_SECONDS : 0;
+  const scrollStart = REEL_HOLD_START + (opening === "fade" ? openDuration + pause : 0);
+  const closeStart = scrollStart + move + (closing === "fade" ? pause : 0);
   return {
     from,
     distance,
@@ -460,9 +467,9 @@ export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, turns: { open
 }
 
 /**
- * The strip row at the top of the frame at `t` seconds: the list's first
- * screen while the title leaves, then up to speed, steady, down to a stop on
- * its last screen, and still again while the closing card arrives.
+ * The strip row at the top of the frame at `t` seconds: still through the
+ * opening, then up to speed, steady, down to a stop, and still again to the
+ * end.
  */
 export function reelOffsetAt(t: number, timeline: ReelTimeline): number {
   const { from, distance, move, ramp } = timeline;
@@ -486,14 +493,14 @@ export function reelEase(progress: number): number {
 }
 
 /**
- * How much of the frame the title card and the closing card cover at `t`
- * seconds: 1 is the whole frame, 0 is gone. The title card covers it all
- * until it turns away; the closing card covers none until it arrives.
+ * How much of the frame a faded title card and a faded closing card cover at
+ * `t` seconds: 1 is the whole frame, 0 is none. A card that rises is part of
+ * the strip instead, so it never covers anything.
  */
 export function reelPageCovers(t: number, timeline: ReelTimeline): { title: number; end: number } {
   return {
-    title: 1 - reelEase((t - timeline.holdStart) / timeline.openDuration),
-    end: reelEase((t - timeline.closeStart) / timeline.closeDuration),
+    title: timeline.opening === "fade" ? 1 - reelEase((t - timeline.holdStart) / timeline.openDuration) : 0,
+    end: timeline.closing === "fade" ? reelEase((t - timeline.closeStart) / timeline.closeDuration) : 0,
   };
 }
 
