@@ -1978,7 +1978,6 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
     academicAchievement: profile.academicAchievement,
     aboutMe: profile.aboutMe || profile.about,
     preferredLocations: preferredLocationNames,
-    publicProfileUrl: `https://connecttutorsbd.com/tutors/${profile.tutorId}`,
   };
 
   const pdfBuffer = await renderTutorCvPdf(cvDoc);

@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import PDFDocument from "pdfkit";
-import QRCode from "qrcode";
 import {
-  SITE_ADDRESS,
   colour,
   drawCradle,
   formatLetterPhone,
@@ -87,7 +85,6 @@ export type TutorCvDocument = {
   academicAchievement?: string | null;
   aboutMe?: string | null;
   preferredLocations?: string[];
-  publicProfileUrl?: string | null;
 };
 
 export function tutorCvFileName(tutorNumber: number | string | null, name: string) {
@@ -388,21 +385,6 @@ export function drawSidebarContactItem(
   }
 
   return Math.max(iconBoxSize + 4.5, 8.5 + valueH + 3.5);
-}
-
-/** Draws a QR code as sharp vector squares. */
-export function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number, y: number, size: number, qrColor = "#0f2137") {
-  const { modules } = QRCode.create(text, { errorCorrectionLevel: "M" });
-  const cell = size / modules.size;
-  document.save().fillColor(qrColor);
-  for (let row = 0; row < modules.size; row += 1) {
-    for (let column = 0; column < modules.size; column += 1) {
-      if (modules.get(row, column)) {
-        document.rect(x + column * cell, y + row * cell, cell + 0.05, cell + 0.05);
-      }
-    }
-  }
-  document.fill().restore();
 }
 
 /**
@@ -1038,24 +1020,17 @@ function drawCvRightColumn(
   return { endY: y };
 }
 
-/** The seal, a line on what the QR is for, the QR and, on a CV of several pages, the page number. */
-function drawCvFooter(document: PDFKit.PDFDocument, cv: TutorCvDocument, statusInfo: TutorCvStatusInfo, page: number, pageCount: number) {
-  const rightContentLeft = CV_CONTENT_LEFT;
-  const rightInnerWidth = CV_CONTENT_WIDTH;
+/** The seal, the status of the profile and, on a CV of several pages, the page number. */
+function drawCvFooter(document: PDFKit.PDFDocument, statusInfo: TutorCvStatusInfo, page: number, pageCount: number) {
+  const left = CV_CONTENT_LEFT;
+  const width = CV_CONTENT_WIDTH;
   const footerTop = CV_FOOTER_TOP;
 
-  document.save().lineWidth(0.8).strokeColor("#cbd5e1").moveTo(rightContentLeft, footerTop).lineTo(rightContentLeft + rightInnerWidth, footerTop).stroke().restore();
+  document.save().lineWidth(0.8).strokeColor("#cbd5e1").moveTo(left, footerTop).lineTo(left + width, footerTop).stroke().restore();
 
-  const qrSize = 56;
-  const qrX = rightContentLeft + rightInnerWidth - qrSize;
-  const qrY = footerTop + 10;
-  const profileUrl = cv.publicProfileUrl || `https://${SITE_ADDRESS}/tutors/${cv.tutorId}`;
-
-  drawQrCode(document, profileUrl, qrX, qrY, qrSize, "#0f2137");
-
-  // Authority Seal & Verification Info
+  // Authority Seal
   const sealRadius = 21;
-  const sealCenterX = rightContentLeft + sealRadius;
+  const sealCenterX = left + sealRadius;
   const sealCenterY = footerTop + 12 + sealRadius;
 
   document.save().lineWidth(1.2).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius).stroke().restore();
@@ -1064,13 +1039,12 @@ function drawCvFooter(document: PDFKit.PDFDocument, cv: TutorCvDocument, statusI
   drawCradle(document, sealCenterX - 24 * cradleScale, sealCenterY - 24 * cradleScale, cradleScale, 1.2);
 
   const sealTextLeft = sealCenterX + sealRadius + 9;
-  const sealTextWidth = qrX - sealTextLeft - 8;
+  const sealTextWidth = left + width - sealTextLeft;
 
-  document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS", sealTextLeft, footerTop + 12, { width: sealTextWidth });
-  document.font("Bold").fontSize(7.2).fillColor(statusInfo.statColor).text(statusInfo.sealStatus, sealTextLeft, footerTop + 22.5, { width: sealTextWidth });
-  document.font("Regular").fontSize(6.8).fillColor("#64748b").text(`Scan QR code or visit ${SITE_ADDRESS} to verify background, certificates and reviews.`, sealTextLeft, footerTop + 33, { width: sealTextWidth, lineGap: 1.4 });
+  document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS", sealTextLeft, footerTop + 23, { width: sealTextWidth, lineBreak: false });
+  document.font("Bold").fontSize(7.2).fillColor(statusInfo.statColor).text(statusInfo.sealStatus, sealTextLeft, footerTop + 34.5, { width: sealTextWidth, lineBreak: false });
   if (pageCount > 1) {
-    document.font("SemiBold").fontSize(6.8).fillColor("#64748b").text(`Page ${page} of ${pageCount}`, sealTextLeft, footerTop + 62, { width: sealTextWidth, lineBreak: false });
+    document.font("SemiBold").fontSize(7.2).fillColor("#64748b").text(`Page ${page} of ${pageCount}`, left, footerTop + 29, { width, align: "right", lineBreak: false });
   }
 }
 
@@ -1139,7 +1113,7 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     const { count } = document.bufferedPageRange();
     for (let page = 0; page < count; page += 1) {
       document.switchToPage(page);
-      drawCvFooter(document, cv, statusInfo, page + 1, count);
+      drawCvFooter(document, statusInfo, page + 1, count);
     }
 
     document.end();

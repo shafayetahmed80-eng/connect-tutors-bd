@@ -278,6 +278,18 @@ describe("the CV layout", () => {
     expect(text).toContain("Bangladesh Agricultural University");
   });
 
+  it("has no QR code and no line about verifying in its footer - only the seal, the status and, on several pages, the page number", async () => {
+    for (const cv of [ownerCv, longCv]) {
+      const pages = await readCvPages(await renderTutorCvPdf(cv));
+      for (const page of pages) {
+        const footer = page.filter(box => box.y >= FOOTER_TOP);
+        const text = textOf(footer);
+        expect(text).toContain("CONNECT TUTORS");
+        for (const gone of ["Scan", "QR", "verify", "certificates", "connecttutorsbd.com"]) expect(text, gone).not.toContain(gone);
+      }
+    }
+  });
+
   it("keeps a CV that fits on one page, and draws no page number on it", async () => {
     const pages = await readCvPages(await renderTutorCvPdf(ownerCv));
     expect(pages).toHaveLength(1);
