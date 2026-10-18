@@ -155,4 +155,12 @@ describe("TutorProfileIdentityRail", () => {
     renderRail({ onOpenCvModal: undefined });
     expect(screen.queryByRole("button", { name: /Download CV \(PDF\)/i })).toBeNull();
   });
+
+  it("says View CV, not Download, for a draft profile - whose CV can be looked at but not saved", () => {
+    const onOpenCvModal = vi.fn();
+    renderRail({ onOpenCvModal, cvViewOnly: true });
+    expect(screen.queryByRole("button", { name: /Download CV \(PDF\)/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /View CV/i }));
+    expect(onOpenCvModal).toHaveBeenCalledOnce();
+  });
 });

@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import PDFDocument from "pdfkit";
-import QRCode from "qrcode";
 import {
-  SITE_ADDRESS,
   colour,
   drawCradle,
   formatLetterPhone,
@@ -28,6 +26,20 @@ export const cvFontFiles = {
 } as const;
 
 export type CvFont = "Regular" | "Medium" | "SemiBold" | "Bold" | "Heavy";
+
+const cvFontBuffers = new Map<string, Buffer>();
+
+/** Loads the CV fonts into a document; the files are read once and shared by every document made after. */
+function registerCvFonts(document: PDFKit.PDFDocument) {
+  for (const [name, file] of Object.entries(cvFontFiles)) {
+    let buffer = cvFontBuffers.get(name);
+    if (!buffer) {
+      buffer = readFileSync(file);
+      cvFontBuffers.set(name, buffer);
+    }
+    document.registerFont(name, buffer);
+  }
+}
 
 export type TutorCvEducationRecord = {
   qualificationLevel?: string | null;
@@ -73,7 +85,6 @@ export type TutorCvDocument = {
   academicAchievement?: string | null;
   aboutMe?: string | null;
   preferredLocations?: string[];
-  publicProfileUrl?: string | null;
 };
 
 export function tutorCvFileName(tutorNumber: number | string | null, name: string) {
@@ -90,6 +101,8 @@ export type TutorCvStatusInfo = {
   statSubtitle: string;
   sealStatus: string;
   statColor: string;
+  /** At least one of the Tutor's tuitions is Confirmed (the platform's Verified rule). */
+  isVerified: boolean;
 };
 
 export function resolveTutorCvStatus(profileStatus?: string | null, verified?: boolean): TutorCvStatusInfo {
@@ -103,6 +116,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Credentials & Identity Checked",
       sealStatus: "OFFICIALLY VERIFIED PROFILE",
       statColor: "#15803d",
+      isVerified: true,
     };
   }
   // 2. Approved profile
@@ -114,6 +128,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Admin Reviewed & Approved",
       sealStatus: "OFFICIALLY APPROVED PROFILE",
       statColor: "#0284c7",
+      isVerified: false,
     };
   }
   // 3. Pending review
@@ -125,6 +140,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Profile Submitted for Review",
       sealStatus: "PROFILE UNDER REVIEW",
       statColor: "#b45309",
+      isVerified: false,
     };
   }
   // 4. Draft profile
@@ -135,6 +151,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
     statSubtitle: "Profile Details In Progress",
     sealStatus: "OFFICIAL TUTOR BIODATA",
     statColor: "#475569",
+    isVerified: false,
   };
 }
 
@@ -376,22 +393,12 @@ export function drawSidebarContactItem(
   return Math.max(iconBoxSize + 4.5, 8.5 + valueH + 3.5);
 }
 
-/** Draws a QR code as sharp vector squares. */
-export function drawQrCode(document: PDFKit.PDFDocument, text: string, x: number, y: number, size: number, qrColor = "#0f2137") {
-  const { modules } = QRCode.create(text, { errorCorrectionLevel: "M" });
-  const cell = size / modules.size;
-  document.save().fillColor(qrColor);
-  for (let row = 0; row < modules.size; row += 1) {
-    for (let column = 0; column < modules.size; column += 1) {
-      if (modules.get(row, column)) {
-        document.rect(x + column * cell, y + row * cell, cell + 0.05, cell + 0.05);
-      }
-    }
-  }
-  document.fill().restore();
-}
-
-/** Renders multi-script text with fallback to Noto Sans Bengali when Bengali characters are present and returns height. */
+/**
+ * Renders multi-script text with fallback to Noto Sans Bengali when Bengali
+ * characters are present, and returns the height it really took (wrapped lines
+ * and Bengali runs included) - the next block starts below that, never at a
+ * guessed height.
+ */
 export function writeCvText(
   document: PDFKit.PDFDocument,
   text: string,
@@ -401,33 +408,138 @@ export function writeCvText(
   width: number,
   options?: { size?: number; color?: string; align?: "left" | "center" | "right"; lineGap?: number },
 ): number {
-  const runs = splitScriptRuns(text);
   const size = options?.size ?? 9;
   const lineGap = options?.lineGap ?? 1.5;
   const color = options?.color ?? "#0f2137";
   const align = options?.align ?? "left";
 
-  document.fontSize(size).fillColor(color);
-  runs.forEach((run, index) => {
-    const isBengali = run.bengali;
-    const fontName = isBengali
-      ? (font === "Regular" || font === "Medium" ? "Bengali" : "BengaliBold")
-      : font;
-    document.font(fontName);
-    const textOpts: PDFKit.Mixins.TextOptions = {
-      width,
-      lineGap,
-      align,
-      continued: index < runs.length - 1,
-    };
-    if (index === 0) {
-      document.text(run.text, x, y, textOpts);
-    } else {
-      document.text(run.text, textOpts);
+  // Each line of the text is written on its own: a line end that fell between a Bengali and an English run
+  // would otherwise be swallowed and two lines would run together.
+  let cursorY = y;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) {
+      document.font(font).fontSize(size);
+      cursorY += document.heightOfString("A", { width, lineGap });
+      continue;
     }
-  });
+    const runs = splitScriptRuns(line);
+    document.fontSize(size).fillColor(color);
+    runs.forEach((run, index) => {
+      const fontName = run.bengali
+        ? (font === "Regular" || font === "Medium" ? "Bengali" : "BengaliBold")
+        : font;
+      document.font(fontName);
+      const textOpts: PDFKit.Mixins.TextOptions = {
+        width,
+        lineGap,
+        align,
+        continued: index < runs.length - 1,
+      };
+      if (index === 0) {
+        document.text(run.text, x, cursorY, textOpts);
+      } else {
+        document.text(run.text, textOpts);
+      }
+    });
+    cursorY = document.y;
+  }
 
-  return document.heightOfString(text, { width, lineGap });
+  return Math.max(0, cursorY - y);
+}
+
+/** How tall `text` would be at this width, measured without drawing it. */
+export function measureCvText(
+  document: PDFKit.PDFDocument,
+  text: string,
+  font: CvFont,
+  width: number,
+  size: number,
+  lineGap = 1.5,
+): number {
+  if (!text) return 0;
+  let total = 0;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) {
+      document.font(font).fontSize(size);
+      total += document.heightOfString("A", { width, lineGap });
+      continue;
+    }
+    const fonts = new Set<string>();
+    for (const run of splitScriptRuns(line)) {
+      fonts.add(run.bengali ? (font === "Regular" || font === "Medium" ? "Bengali" : "BengaliBold") : font);
+    }
+    let height = 0;
+    fonts.forEach(name => {
+      document.font(name).fontSize(size);
+      height = Math.max(height, document.heightOfString(line, { width, lineGap }));
+    });
+    total += height;
+  }
+  return total;
+}
+
+/**
+ * A Tutor's own text, tidied for the page: Windows line ends become one kind,
+ * a star or dash bullet becomes a dot, trailing spaces go, and a run of blank
+ * lines becomes one.
+ */
+export function tidyCvText(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map(line => line.replace(/\s+$/g, "").replace(/^(\s*)[*-]\s+/, "$1• "))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Cuts `text` after the most it can hold in `maxHeight` - at a space or a line
+ * end, not in the middle of a word - and hands back the rest, so a long text
+ * can carry on at the top of the next page.
+ */
+export function splitCvTextToHeight(
+  document: PDFKit.PDFDocument,
+  text: string,
+  font: CvFont,
+  width: number,
+  size: number,
+  lineGap: number,
+  maxHeight: number,
+): { head: string; tail: string } {
+  if (measureCvText(document, text, font, width, size, lineGap) <= maxHeight) return { head: text, tail: "" };
+  let low = 0;
+  let high = text.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (measureCvText(document, text.slice(0, middle).trimEnd(), font, width, size, lineGap) <= maxHeight) low = middle;
+    else high = middle - 1;
+  }
+  let cut = low;
+  if (cut < text.length) {
+    const boundary = Math.max(text.lastIndexOf("\n", cut), text.lastIndexOf(" ", cut));
+    if (boundary > 0 && boundary > cut - 80) cut = boundary;
+  }
+  return { head: text.slice(0, cut).trimEnd(), tail: text.slice(cut).trimStart() };
+}
+
+/** One line of text that must stay one line: it shrinks a little, then ends in an ellipsis. */
+function fitCvLine(
+  document: PDFKit.PDFDocument,
+  text: string,
+  font: CvFont,
+  width: number,
+  startSize: number,
+  minSize: number,
+): { text: string; size: number } {
+  let size = startSize;
+  const oneLine = (candidate: string, candidateSize: number) => measureCvText(document, candidate, font, width, candidateSize, 0) <= candidateSize * 1.6;
+  while (size > minSize && !oneLine(text, size)) size = Math.max(minSize, size - 0.4);
+  if (oneLine(text, size)) return { text, size };
+  let kept = text;
+  while (kept.length > 1 && !oneLine(`${kept.trimEnd()}…`, size)) kept = kept.slice(0, -1);
+  return { text: `${kept.trimEnd()}…`, size };
 }
 
 function getEducationLevelRank(level?: string | null): number {
@@ -440,14 +552,536 @@ function getEducationLevelRank(level?: string | null): number {
   return 5;
 }
 
+// ==========================================
+// PAGE GEOMETRY (A4, in points)
+// ==========================================
+const CV_PAGE = { width: 595.28, height: 841.89 } as const;
+const CV_SIDEBAR_WIDTH = 195;
+const CV_SIDEBAR_PADDING = 18;
+const CV_SIDEBAR_INNER = CV_SIDEBAR_WIDTH - CV_SIDEBAR_PADDING * 2;
+const CV_FOOTER_HEIGHT = 84;
+const CV_FOOTER_TOP = CV_PAGE.height - CV_FOOTER_HEIGHT;
+const CV_CONTENT_LEFT = CV_SIDEBAR_WIDTH + 24;
+const CV_CONTENT_WIDTH = CV_PAGE.width - CV_SIDEBAR_WIDTH - 48;
+const CV_FIRST_TOP = 28;
+/** The lowest a block of the right column may end: a little above the footer rule. */
+const CV_CONTENT_LIMIT = CV_FOOTER_TOP - 12;
+
+/** The blue sidebar and the thin bar above the right column, drawn first on every page. */
+function drawCvPageShell(document: PDFKit.PDFDocument) {
+  const sidebarGradient = document.linearGradient(0, 0, 0, CV_PAGE.height);
+  sidebarGradient.stop(0, "#0d5fae");
+  sidebarGradient.stop(1, "#0a4c8c");
+  document.save();
+  document.rect(0, 0, CV_SIDEBAR_WIDTH, CV_PAGE.height).fill(sidebarGradient);
+  document.restore();
+
+  document.save();
+  document.rect(CV_SIDEBAR_WIDTH, 0, CV_PAGE.width - CV_SIDEBAR_WIDTH, 5).fill("#0d5fae");
+  document.restore();
+}
+
+/** Photo (or monogram), status badge and Tutor ID at the top of the sidebar; returns where the sidebar goes on. */
+function drawCvSidebarIdentity(document: PDFKit.PDFDocument, cv: TutorCvDocument, statusInfo: TutorCvStatusInfo): number {
+  let leftY = 30;
+  const photoDiameter = 76;
+  const photoRadius = photoDiameter / 2;
+  const photoCenterX = CV_SIDEBAR_PADDING + CV_SIDEBAR_INNER / 2;
+  const photoCenterY = leftY + photoRadius;
+
+  let photoDrawn = false;
+  if (cv.photoBuffer && cv.photoBuffer.length > 0) {
+    try {
+      document.save();
+      document.circle(photoCenterX, photoCenterY, photoRadius).clip();
+      document.image(cv.photoBuffer, photoCenterX - photoRadius, photoCenterY - photoRadius, {
+        width: photoDiameter,
+        height: photoDiameter,
+        fit: [photoDiameter, photoDiameter],
+        align: "center",
+        valign: "center",
+      });
+      document.restore();
+      // White border ring around photo
+      document.save().lineWidth(2).strokeColor("#ffffff").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
+      photoDrawn = true;
+    } catch {
+      photoDrawn = false;
+    }
+  }
+
+  if (!photoDrawn) {
+    // Monogram avatar with website brand tones
+    document.save().fillColor("#093d70").circle(photoCenterX, photoCenterY, photoRadius).fill().restore();
+    document.save().lineWidth(2).strokeColor("#60a5fa").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
+    const initials = cv.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(p => Array.from(p)[0]?.toUpperCase() ?? "")
+      .join("") || "T";
+    document.font(/[\u0980-\u09FF]/.test(initials) ? "BengaliBold" : "Heavy").fontSize(24).fillColor("#ffffff");
+    document.text(initials, photoCenterX - 30, photoCenterY - 13, { width: 60, align: "center", lineBreak: false });
+  }
+
+  leftY += photoDiameter + 10;
+
+  // Status Badge
+  const badgeWidth = 118;
+  const badgeHeight = 20;
+  const badgeX = photoCenterX - badgeWidth / 2;
+  document.save();
+  document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 10).fill(statusInfo.badgeBg);
+  document.font("Bold").fontSize(7.4).fillColor("#ffffff");
+  const badgeHasCheck = statusInfo.badgeText.startsWith("✓");
+  const badgeLabel = statusInfo.badgeText.replace(/^✓\s*/, "");
+  if (badgeHasCheck) {
+    const labelWidth = document.widthOfString(badgeLabel, { characterSpacing: 0.6 });
+    const markSize = 8;
+    const startX = badgeX + (badgeWidth - (markSize + 5 + labelWidth)) / 2;
+    drawCheckMark(document, startX, leftY + (badgeHeight - markSize) / 2, markSize, "#ffffff");
+    document.text(badgeLabel, startX + markSize + 5, leftY + 5.5, { characterSpacing: 0.6, lineBreak: false });
+  } else {
+    document.text(badgeLabel, badgeX, leftY + 5.5, {
+      width: badgeWidth,
+      align: "center",
+      characterSpacing: 0.6,
+      lineBreak: false,
+    });
+  }
+  document.restore();
+
+  leftY += badgeHeight + 8;
+
+  // Tutor ID Tag
+  const tutorIdDisplay = cv.tutorNumber ? `TUTOR ID: ${cv.tutorNumber}` : `ID: ${cv.tutorId}`;
+  document.font("SemiBold").fontSize(8.5).fillColor("#dbeafe");
+  document.text(tutorIdDisplay, CV_SIDEBAR_PADDING, leftY, { width: CV_SIDEBAR_INNER, align: "center", characterSpacing: 0.8 });
+  leftY += 16;
+
+  // Divider
+  document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(CV_SIDEBAR_PADDING, leftY).lineTo(CV_SIDEBAR_WIDTH - CV_SIDEBAR_PADDING, leftY).stroke().restore();
+  return leftY + 12;
+}
+
+/** Contact, subjects, classes, delivery and rating: the rest of the first page's sidebar. */
+function drawCvSidebarDetails(document: PDFKit.PDFDocument, cv: TutorCvDocument, startY: number) {
+  const leftPadding = CV_SIDEBAR_PADDING;
+  const leftInnerWidth = CV_SIDEBAR_INNER;
+  const leftColWidth = CV_SIDEBAR_WIDTH;
+  let leftY = startY;
+
+  // Section: CONTACT & PERSONAL
+  document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("CONTACT & PERSONAL", leftPadding, leftY, { characterSpacing: 1.0 });
+  leftY += 13;
+
+  // 1. Location (Location, City, Country) with Vector Pin Icon
+  if (cv.locationLabel?.trim()) {
+    leftY += drawSidebarContactItem(document, drawPinIcon, "Location", cv.locationLabel.trim(), leftPadding, leftY, leftInnerWidth);
+  }
+
+  // 2. Phone with Vector Phone Icon
+  if (cv.phone?.trim()) {
+    const phoneDisplay = formatLetterPhone(cv.phone.trim());
+    leftY += drawSidebarContactItem(document, drawPhoneIcon, "Phone Number", phoneDisplay, leftPadding, leftY, leftInnerWidth, true);
+  }
+
+  // 3. Email with Vector Envelope Icon
+  if (cv.contactEmail?.trim()) {
+    leftY += drawSidebarContactItem(document, drawMailIcon, "Email", cv.contactEmail.trim(), leftPadding, leftY, leftInnerWidth);
+  }
+
+  // 4. Date of Birth with Vector Calendar Icon
+  if (cv.dateOfBirth?.trim()) {
+    leftY += drawSidebarContactItem(document, drawCalendarIcon, "Date of Birth", cv.dateOfBirth.trim(), leftPadding, leftY, leftInnerWidth);
+  }
+
+  // 5. Religion with Vector Faith/Star Icon
+  if (cv.religion?.trim()) {
+    leftY += drawSidebarContactItem(document, drawReligionIcon, "Religion", cv.religion.trim(), leftPadding, leftY, leftInnerWidth);
+  }
+
+  // 6. Gender with Vector Identity Icon
+  if (cv.gender?.trim()) {
+    const genderDisplay = cv.gender.trim().charAt(0).toUpperCase() + cv.gender.trim().slice(1);
+    leftY += drawSidebarContactItem(document, drawGenderIcon, "Gender", genderDisplay, leftPadding, leftY, leftInnerWidth);
+  }
+
+  // Divider
+  document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+  leftY += 11;
+
+  // Section: SUBJECT EXPERTISE
+  const subjects = (cv.subjects ?? []).filter(Boolean);
+  if (subjects.length > 0) {
+    document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("SUBJECT EXPERTISE", leftPadding, leftY, { characterSpacing: 1.0 });
+    leftY += 11;
+
+    const subjectBadges = subjects.slice(0, 6);
+    subjectBadges.forEach(subj => {
+      document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 15, 3.5).fill("#14589c").restore();
+      // A long subject name shrinks to fit the badge instead of wrapping over the next one.
+      const fitted = fitCvLine(document, subj, "SemiBold", leftInnerWidth - 12, 7.2, 5.6);
+      writeCvText(document, fitted.text, "SemiBold", leftPadding + 6, leftY + 3, leftInnerWidth - 12, { size: fitted.size, color: "#ffffff" });
+      leftY += 17.5;
+    });
+    leftY += 2;
+    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    leftY += 10;
+  }
+
+  // Section: PREFERRED CLASSES
+  const levels = (cv.levels ?? []).filter(Boolean);
+  if (levels.length > 0) {
+    document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("PREFERRED CLASSES", leftPadding, leftY, { characterSpacing: 1.0 });
+    leftY += 10;
+    const levelText = levels.slice(0, 5).join(", ");
+    const h = writeCvText(document, levelText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.5, color: "#ffffff", lineGap: 1.2 });
+    leftY += Math.max(14, h) + 6;
+    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
+    leftY += 10;
+  }
+
+  // Section: TUITION DELIVERY
+  const modes = (cv.tuitionTypes ?? []).filter(Boolean);
+  if (modes.length > 0) {
+    document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("TUITION DELIVERY", leftPadding, leftY, { characterSpacing: 1.0 });
+    leftY += 10;
+    const modeLabels: Record<string, string> = { home: "Home Tuition", online: "Online Tuition", group: "Group Tuition", package: "Package Tuition" };
+    const modeText = modes.map(m => modeLabels[m] ?? m).join(" & ");
+    writeCvText(document, modeText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.5, color: "#ffffff" });
+  }
+
+  // Rating Badge at bottom of left column
+  if (cv.ratingAverage && cv.ratingAverage > 0) {
+    const bottomRatingY = CV_PAGE.height - 40;
+    document.save().roundedRect(leftPadding, bottomRatingY, leftInnerWidth, 22, 5).fill("#073b6e").restore();
+    const filled = Math.round(cv.ratingAverage);
+    const averageText = cv.ratingAverage.toFixed(1);
+    const reviewText = cv.reviewCount ? `(${cv.reviewCount} reviews)` : "";
+    const starSize = 9;
+    const starStep = starSize + 1.5;
+    document.font("Bold").fontSize(8.5);
+    const averageWidth = document.widthOfString(averageText);
+    const reviewWidth = reviewText ? document.widthOfString(reviewText) : 0;
+    const rowWidth = averageWidth + 6 + starStep * 5 + (reviewText ? 4 + reviewWidth : 0);
+    let rowX = leftPadding + (leftInnerWidth - rowWidth) / 2;
+    document.fillColor("#fbbf24").text(averageText, rowX, bottomRatingY + 5.5, { lineBreak: false });
+    rowX += averageWidth + 6;
+    for (let star = 0; star < 5; star += 1) {
+      drawStarMedalIcon(document, rowX + star * starStep, bottomRatingY + (22 - starSize) / 2, starSize, star < filled ? "#fbbf24" : "#4d78a8");
+    }
+    if (reviewText) {
+      document.font("Bold").fontSize(8.5).fillColor("#fbbf24").text(reviewText, rowX + starStep * 5 + 4, bottomRatingY + 5.5, { lineBreak: false });
+    }
+  }
+}
+
+/** A check mark drawn as lines: the CV font has no check-mark glyph. */
+function drawCheckMark(document: PDFKit.PDFDocument, x: number, y: number, size: number, color: string) {
+  document.save().lineWidth(size * 0.17).lineCap("round").lineJoin("round").strokeColor(color)
+    .moveTo(x + size * 0.12, y + size * 0.55)
+    .lineTo(x + size * 0.4, y + size * 0.82)
+    .lineTo(x + size * 0.88, y + size * 0.2)
+    .stroke()
+    .restore();
+}
+
+/** Logo and "Connect Tutors" at the top right of the right column. */
+function drawCvBrandMark(document: PDFKit.PDFDocument, brandY: number) {
+  const brandBlockWidth = 120;
+  const brandBlockX = CV_CONTENT_LEFT + CV_CONTENT_WIDTH - brandBlockWidth;
+  drawCradle(document, brandBlockX, brandY + 1, 22 / 48);
+  document.font("Bold").fontSize(10).fillColor("#0d5fae").text("Connect Tutors", brandBlockX + 25, brandY, { lineBreak: false });
+  document.font("SemiBold").fontSize(6.2).fillColor("#64748b").text("OFFICIAL TUTOR BIODATA", brandBlockX + 25, brandY + 12.5, { characterSpacing: 0.8, lineBreak: false });
+}
+
+/** What the right column of a second page starts with: the brand mark, the Tutor's name, a rule. Returns where the content begins. */
+function drawCvContinuationHeader(document: PDFKit.PDFDocument, cv: TutorCvDocument): number {
+  drawCvBrandMark(document, CV_FIRST_TOP - 2);
+  const nameHeight = writeCvText(document, cv.name, "Heavy", CV_CONTENT_LEFT, CV_FIRST_TOP, CV_CONTENT_WIDTH - 130, { size: 12.5, color: "#0f2137", lineGap: 1.2 });
+  const ruleY = Math.max(CV_FIRST_TOP + nameHeight + 8, 54);
+  document.save().lineWidth(0.8).strokeColor("#e2e8f0").moveTo(CV_CONTENT_LEFT, ruleY).lineTo(CV_CONTENT_LEFT + CV_CONTENT_WIDTH, ruleY).stroke().restore();
+  return ruleY + 12;
+}
+
+type CvLayoutOptions = {
+  /** 1 = the type sizes the design was drawn at; a little less pulls a CV that spills a few lines back onto one page. */
+  scale: number;
+  /** Starts the next page and returns where its content begins. Null measures only: nothing ever breaks to a new page. */
+  newPage: (() => number) | null;
+};
+
 /**
- * Builds a sleek, modern, professional 1-page A4 Tutor CV and Biodata PDF.
- * Uses exact A4 dimensions: 595.28 x 841.89 points.
+ * The right column, from the name to the last section. Every block starts
+ * below what the one before really took, and a long text carries on at the top
+ * of the next page; a section the Tutor left empty is simply not there.
+ * Returns where the content ended on its last page.
+ */
+function drawCvRightColumn(
+  document: PDFKit.PDFDocument,
+  cv: TutorCvDocument,
+  statusInfo: TutorCvStatusInfo,
+  options: CvLayoutOptions,
+): { endY: number } {
+  const left = CV_CONTENT_LEFT;
+  const width = CV_CONTENT_WIDTH;
+  const k = options.scale;
+  const breakable = options.newPage !== null;
+  let y = CV_FIRST_TOP;
+
+  const nextPage = () => {
+    y = options.newPage ? options.newPage() : y;
+  };
+  /** Moves to the next page when `needed` points do not fit under what is drawn. */
+  const room = (needed: number) => {
+    if (breakable && y + needed > CV_CONTENT_LIMIT) nextPage();
+  };
+  const lineHeight = (size: number, gap: number) => measureCvText(document, "Ag", "Regular", width, size, gap);
+
+  /** Writes a long text, carrying on at the top of the next page where it runs out of room. */
+  const flow = (text: string, x: number, w: number, size: number, gap: number, color: string) => {
+    let rest = text;
+    let loops = 0;
+    while (rest && loops < 12) {
+      loops += 1;
+      const available = CV_CONTENT_LIMIT - y;
+      if (!breakable || measureCvText(document, rest, "Regular", w, size, gap) <= available) {
+        y += writeCvText(document, rest, "Regular", x, y, w, { size, color, lineGap: gap });
+        return;
+      }
+      const { head, tail } = available >= lineHeight(size, gap) * 2
+        ? splitCvTextToHeight(document, rest, "Regular", w, size, gap, available)
+        : { head: "", tail: rest };
+      if (head) y += writeCvText(document, head, "Regular", x, y, w, { size, color, lineGap: gap });
+      nextPage();
+      rest = tail;
+    }
+  };
+
+  const section = (title: string, icon: (doc: PDFKit.PDFDocument, x: number, y: number, size: number, color: string) => void) => {
+    // A heading never ends a page on its own: it needs a couple of lines under it.
+    room(24 + 26);
+    y += drawSectionHeader(document, title, icon, left, y, width);
+  };
+
+  // Header: brand mark, name, headline
+  drawCvBrandMark(document, y - 2);
+
+  let nameSize = 16.5;
+  if (measureCvText(document, cv.name, "Heavy", width - 130, nameSize, 1.5) > nameSize * 3.2) nameSize = 13.5;
+  const nameHeight = writeCvText(document, cv.name, "Heavy", left, y, width - 130, { size: nameSize, color: "#0f2137", lineGap: 1.5 });
+  y += Math.max(23, nameHeight + 2);
+
+  const headline = cv.headline?.trim() || [cv.highestEducation, cv.institution].filter(Boolean).join(" · ") || "";
+  if (headline) {
+    const headlineHeight = writeCvText(document, headline, "SemiBold", left, y, width, { size: 9.2, color: "#0d5fae", lineGap: 1.2 });
+    y += headlineHeight + 4;
+  }
+
+  document.save().lineWidth(0.8).strokeColor("#e2e8f0").moveTo(left, y).lineTo(left + width, y).stroke().restore();
+  y += 12;
+
+  // PROFESSIONAL SUMMARY - only what the Tutor wrote about themselves
+  const summaryText = tidyCvText(cv.aboutMe);
+  if (summaryText) {
+    section("PROFESSIONAL SUMMARY", drawSummaryIcon);
+    flow(summaryText, left, width, 7.8 * k, 2.0 * k, "#334155");
+    y += 9;
+  }
+
+  // EDUCATIONAL BACKGROUND
+  const rawEduList = (cv.educationRecords ?? []).filter(e => e.qualificationLevel || e.degreeExamTitle || e.instituteName);
+  const sortedEduList = [...rawEduList].sort((a, b) => {
+    const rankA = getEducationLevelRank(a.qualificationLevel || a.degreeExamTitle);
+    const rankB = getEducationLevelRank(b.qualificationLevel || b.degreeExamTitle);
+    if (rankA !== rankB) return rankA - rankB;
+    return (b.passingYear ?? b.studyEndYear ?? 0) - (a.passingYear ?? a.studyEndYear ?? 0);
+  });
+
+  if (sortedEduList.length > 0) {
+    section("EDUCATIONAL BACKGROUND", drawGradCapIcon);
+
+    // Up to 4 qualification levels (Masters, Honours, HSC, SSC)
+    sortedEduList.slice(0, 4).forEach(edu => {
+      const level = edu.qualificationLevel?.trim();
+      const degree = edu.degreeExamTitle?.trim();
+      let title = degree || level || "Qualification";
+      if (level && degree && !degree.toLowerCase().includes(level.toLowerCase())) {
+        title = `${level} - ${degree}`;
+      }
+      if (edu.majorGroup?.trim()) {
+        title += ` (${edu.majorGroup.trim()})`;
+      }
+
+      const yearPart = edu.passingYear
+        ? `Year: ${edu.passingYear}`
+        : edu.currentlyStudying
+          ? "Currently Studying"
+          : edu.studyStartYear && edu.studyEndYear
+            ? `${edu.studyStartYear} – ${edu.studyEndYear}`
+            : edu.studyStartYear
+              ? `${edu.studyStartYear} – Present`
+              : null;
+      const resultPart = edu.resultGpa ? `GPA: ${edu.resultGpa.trim()}` : null;
+      const metaRight = [resultPart, yearPart].filter(Boolean).join("  ·  ");
+      const instituteDetails = [edu.instituteName?.trim(), edu.curriculum?.trim()].filter(Boolean).join("  ·  ");
+
+      // The title takes what the right-hand GPA and year leave, and wraps to a second line when it must.
+      document.font("SemiBold").fontSize(7.5);
+      const metaWidth = metaRight ? document.widthOfString(metaRight) : 0;
+      const titleWidth = width - 11 - (metaWidth ? metaWidth + 14 : 0);
+      const titleHeight = measureCvText(document, title, "SemiBold", titleWidth, 8.4, 1.5);
+      const instituteHeight = instituteDetails ? measureCvText(document, instituteDetails, "Regular", width - 11, 7.5, 1.5) : 0;
+      room(Math.max(11, titleHeight) + (instituteHeight ? Math.max(10.5, instituteHeight) : 0) + 2.5);
+
+      // Mini graduation diamond bullet
+      document.save().fillColor("#0d5fae").polygon(
+        [left + 3, y + 2],
+        [left + 5.5, y + 4.5],
+        [left + 3, y + 7],
+        [left + 0.5, y + 4.5],
+      ).fill().restore();
+
+      const drawnTitle = writeCvText(document, title, "SemiBold", left + 11, y, titleWidth, { size: 8.4, color: "#0f2137" });
+
+      // Meta on the right (GPA / Year)
+      if (metaRight) {
+        document.font("SemiBold").fontSize(7.5).fillColor("#0d5fae");
+        document.text(metaRight, left + 11, y, { width: width - 11, align: "right", lineBreak: false });
+      }
+      y += Math.max(11, drawnTitle);
+
+      if (instituteDetails) {
+        y += Math.max(10.5, writeCvText(document, instituteDetails, "Regular", left + 11, y, width - 11, { size: 7.5, color: "#475569" }));
+      }
+
+      y += 2.5;
+    });
+    y += 7;
+  } else {
+    const fallbackEdu = [cv.highestEducation, cv.institution, cv.education].filter(Boolean).join(" · ").trim();
+    if (fallbackEdu) {
+      section("EDUCATIONAL BACKGROUND", drawGradCapIcon);
+      flow(fallbackEdu, left, width, 7.8 * k, 1.8 * k, "#334155");
+      y += 8;
+    }
+  }
+
+  // TEACHING EXPERIENCE & METHODOLOGY - the years if the Tutor gave them, and each note the Tutor wrote
+  const years = cv.teachingExperienceYears && cv.teachingExperienceYears > 0 ? cv.teachingExperienceYears : null;
+  const notes: Array<{ label: string; text: string }> = [];
+  const experienceNote = tidyCvText(cv.priorTeachingExperience);
+  const approachNote = tidyCvText(cv.teachingApproach);
+  const expertiseNote = tidyCvText(cv.specialExpertise);
+  if (experienceNote) notes.push({ label: "Experience Highlights:", text: experienceNote });
+  if (approachNote) notes.push({ label: "Teaching Methodology & Approach:", text: approachNote });
+  if (expertiseNote && expertiseNote !== experienceNote) notes.push({ label: "Special Expertise:", text: expertiseNote });
+
+  const statBoxHeight = 31;
+  const drawStatBoxes = (boxes: Array<{ title: string; subtitle: string; color: string; size: number }>) => {
+    if (boxes.length === 0) return;
+    room(statBoxHeight + 7);
+    const statBoxWidth = (width - 10 * (boxes.length - 1)) / boxes.length;
+    boxes.forEach((box, index) => {
+      const boxX = left + index * (statBoxWidth + 10);
+      document.save().roundedRect(boxX, y, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
+      document.font("Heavy").fontSize(box.size).fillColor(box.color).text(box.title, boxX + 8, y + 3.5, { width: statBoxWidth - 16 });
+      document.font("Medium").fontSize(7.2).fillColor("#475569").text(box.subtitle, boxX + 8, y + 17, { width: statBoxWidth - 16 });
+    });
+    y += statBoxHeight + 7;
+  };
+  // "100% Verified" is said only of a verified Tutor - one with at least one Confirmed tuition; no other status gets a box.
+  const verifiedBoxes = statusInfo.isVerified ? [{ title: statusInfo.statTitle, subtitle: statusInfo.statSubtitle, color: statusInfo.statColor, size: 10.5 }] : [];
+
+  if (years !== null || notes.length > 0) {
+    section("TEACHING EXPERIENCE & METHODOLOGY", drawBriefcaseIcon);
+
+    drawStatBoxes([
+      ...(years !== null ? [{ title: `${years}+ Years`, subtitle: "Tutoring Experience", color: "#0d5fae", size: 11 }] : []),
+      ...verifiedBoxes,
+    ]);
+
+    for (const note of notes) {
+      // The label stays with the first lines of its text.
+      room(9 + lineHeight(7.5 * k, 1.8 * k) * 2);
+      document.font("SemiBold").fontSize(7.6).fillColor("#0f2137").text(note.label, left, y);
+      y += 9;
+      flow(note.text, left, width, 7.5 * k, 1.8 * k, "#334155");
+      y += 5;
+    }
+    y += 4;
+  } else if (statusInfo.isVerified) {
+    // Nothing to say about experience, but a verified Tutor is still shown to be verified.
+    drawStatBoxes(verifiedBoxes);
+  }
+
+  // WHY CHOOSE ME - only if the Tutor wrote it
+  const whyText = tidyCvText(cv.whyChooseMe);
+  if (whyText) {
+    section("WHY CHOOSE ME", drawStarMedalIcon);
+    flow(whyText, left, width, 7.5 * k, 1.8 * k, "#334155");
+    y += 7;
+  }
+
+  // PREFERRED TUITION AREAS
+  const areas = (cv.preferredLocations ?? []).filter(Boolean);
+  if (areas.length > 0) {
+    section("PREFERRED TUITION AREAS", drawAreasIcon);
+    flow(areas.slice(0, 10).join("  •  "), left, width, 7.5 * k, 1.4 * k, "#1e293b");
+    y += 6;
+  }
+
+  return { endY: y };
+}
+
+/** The seal, the status of the profile and, on a CV of several pages, the page number. */
+function drawCvFooter(document: PDFKit.PDFDocument, statusInfo: TutorCvStatusInfo, page: number, pageCount: number) {
+  const left = CV_CONTENT_LEFT;
+  const width = CV_CONTENT_WIDTH;
+  const footerTop = CV_FOOTER_TOP;
+
+  document.save().lineWidth(0.8).strokeColor("#cbd5e1").moveTo(left, footerTop).lineTo(left + width, footerTop).stroke().restore();
+
+  // Authority Seal
+  const sealRadius = 21;
+  const sealCenterX = left + sealRadius;
+  const sealCenterY = footerTop + 12 + sealRadius;
+
+  document.save().lineWidth(1.2).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius).stroke().restore();
+  document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius - 3.5).stroke().undash().restore();
+  const cradleScale = 22 / 48;
+  drawCradle(document, sealCenterX - 24 * cradleScale, sealCenterY - 24 * cradleScale, cradleScale, 1.2);
+
+  const sealTextLeft = sealCenterX + sealRadius + 9;
+  const sealTextWidth = left + width - sealTextLeft;
+
+  document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS", sealTextLeft, footerTop + 23, { width: sealTextWidth, lineBreak: false });
+  document.font("Bold").fontSize(7.2).fillColor(statusInfo.statColor).text(statusInfo.sealStatus, sealTextLeft, footerTop + 34.5, { width: sealTextWidth, lineBreak: false });
+  if (pageCount > 1) {
+    document.font("SemiBold").fontSize(7.2).fillColor("#64748b").text(`Page ${page} of ${pageCount}`, left, footerTop + 29, { width, align: "right", lineBreak: false });
+  }
+}
+
+/** A throwaway document, tall enough that nothing in it breaks to a new page, to measure a layout before it is drawn for real. */
+function createCvScratchDocument(): PDFKit.PDFDocument {
+  const scratch = new PDFDocument({ size: [CV_PAGE.width, 8000], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+  scratch.on("data", () => {});
+  registerCvFonts(scratch);
+  return scratch;
+}
+
+/**
+ * Builds the Tutor CV & Biodata PDF on A4: one page when it all fits, a second
+ * page - the same sidebar, the same footer - when it does not. Nothing is cut
+ * short, and anything the Tutor left empty is not mentioned.
+ * Exact A4 dimensions: 595.28 x 841.89 points.
  */
 export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
   const document = new PDFDocument({
     size: "A4",
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    bufferPages: true,
     info: {
       Title: `Tutor CV - ${cv.name}`,
       Author: "Connect Tutors",
@@ -462,431 +1096,41 @@ export async function renderTutorCvPdf(cv: TutorCvDocument): Promise<Buffer> {
     document.on("end", () => resolve(Buffer.concat(chunks)));
     document.on("error", reject);
 
-    // Register vector fonts
-    for (const [name, file] of Object.entries(cvFontFiles)) {
-      document.registerFont(name, readFileSync(file));
-    }
-
-    const pageWidth = document.page.width;
-    const pageHeight = document.page.height;
-    const leftColWidth = 195;
-    const rightColWidth = pageWidth - leftColWidth;
-    const rightColLeft = leftColWidth;
-
-    // 1. Draw Left Sidebar using Website's Brand Sidebar Gradient (#0d5fae -> #0a4c8c)
-    const sidebarGradient = document.linearGradient(0, 0, 0, pageHeight);
-    sidebarGradient.stop(0, "#0d5fae");
-    sidebarGradient.stop(1, "#0a4c8c");
-    document.save();
-    document.rect(0, 0, leftColWidth, pageHeight).fill(sidebarGradient);
-    document.restore();
-
-    // 2. Draw Top Accent Bar across right column
-    document.save();
-    document.rect(leftColWidth, 0, rightColWidth, 5).fill("#0d5fae");
-    document.restore();
-
-    // ==========================================
-    // LEFT COLUMN CONTENT (Width: 195, Inset: 18)
-    // ==========================================
-    const leftPadding = 18;
-    const leftInnerWidth = leftColWidth - leftPadding * 2;
-    let leftY = 30;
-
-    // Photo or Monogram Avatar
-    const photoDiameter = 76;
-    const photoRadius = photoDiameter / 2;
-    const photoCenterX = leftPadding + leftInnerWidth / 2;
-    const photoCenterY = leftY + photoRadius;
-
-    let photoDrawn = false;
-    if (cv.photoBuffer && cv.photoBuffer.length > 0) {
-      try {
-        document.save();
-        document.circle(photoCenterX, photoCenterY, photoRadius).clip();
-        document.image(cv.photoBuffer, photoCenterX - photoRadius, photoCenterY - photoRadius, {
-          width: photoDiameter,
-          height: photoDiameter,
-          fit: [photoDiameter, photoDiameter],
-          align: "center",
-          valign: "center",
-        });
-        document.restore();
-        // White border ring around photo
-        document.save().lineWidth(2).strokeColor("#ffffff").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
-        photoDrawn = true;
-      } catch {
-        photoDrawn = false;
-      }
-    }
-
-    if (!photoDrawn) {
-      // Monogram avatar with website brand tones
-      document.save().fillColor("#093d70").circle(photoCenterX, photoCenterY, photoRadius).fill().restore();
-      document.save().lineWidth(2).strokeColor("#60a5fa").circle(photoCenterX, photoCenterY, photoRadius).stroke().restore();
-      const initials = cv.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(p => p.charAt(0).toUpperCase())
-        .join("") || "T";
-      document.font("Heavy").fontSize(24).fillColor("#ffffff");
-      document.text(initials, photoCenterX - 30, photoCenterY - 13, { width: 60, align: "center", lineBreak: false });
-    }
-
-    leftY += photoDiameter + 10;
-
-    // Dynamic Status Info (Verified / Approved Profile / Draft Profile / Under Review)
+    registerCvFonts(document);
     const statusInfo = resolveTutorCvStatus(cv.profileStatus, cv.verified);
 
-    // Status Badge
-    const badgeWidth = 118;
-    const badgeHeight = 20;
-    const badgeX = photoCenterX - badgeWidth / 2;
-    document.save();
-    document.roundedRect(badgeX, leftY, badgeWidth, badgeHeight, 10).fill(statusInfo.badgeBg);
-    document.font("Bold").fontSize(7.4).fillColor("#ffffff");
-    document.text(statusInfo.badgeText, badgeX, leftY + 5.5, {
-      width: badgeWidth,
-      align: "center",
-      characterSpacing: 0.6,
-      lineBreak: false,
-    });
-    document.restore();
-
-    leftY += badgeHeight + 8;
-
-    // Tutor ID Tag
-    const tutorIdDisplay = cv.tutorNumber ? `TUTOR ID: ${cv.tutorNumber}` : `ID: ${cv.tutorId}`;
-    document.font("SemiBold").fontSize(8.5).fillColor("#dbeafe");
-    document.text(tutorIdDisplay, leftPadding, leftY, { width: leftInnerWidth, align: "center", characterSpacing: 0.8 });
-    leftY += 16;
-
-    // Divider
-    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-    leftY += 12;
-
-    // Section: CONTACT & PERSONAL
-    document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("CONTACT & PERSONAL", leftPadding, leftY, { characterSpacing: 1.0 });
-    leftY += 13;
-
-    // 1. Location (Location, City, Country) with Vector Pin Icon
-    if (cv.locationLabel?.trim()) {
-      leftY += drawSidebarContactItem(document, drawPinIcon, "Location", cv.locationLabel.trim(), leftPadding, leftY, leftInnerWidth);
+    // A CV that spills a few lines past the first page is drawn a touch smaller instead of leaving them alone on a second one.
+    let scale = 1;
+    const scratch = createCvScratchDocument();
+    const natural = drawCvRightColumn(scratch, cv, statusInfo, { scale: 1, newPage: null }).endY;
+    if (natural > CV_CONTENT_LIMIT && natural - CV_CONTENT_LIMIT < (CV_CONTENT_LIMIT - CV_FIRST_TOP) * 0.14) {
+      const smaller = drawCvRightColumn(scratch, cv, statusInfo, { scale: 0.92, newPage: null }).endY;
+      if (smaller <= CV_CONTENT_LIMIT) scale = 0.92;
     }
+    scratch.end();
 
-    // 2. Phone with Vector Phone Icon
-    if (cv.phone?.trim()) {
-      const phoneDisplay = formatLetterPhone(cv.phone.trim());
-      leftY += drawSidebarContactItem(document, drawPhoneIcon, "Phone Number", phoneDisplay, leftPadding, leftY, leftInnerWidth, true);
-    }
+    // Page 1: the sidebar, then the right column
+    drawCvPageShell(document);
+    const sidebarY = drawCvSidebarIdentity(document, cv, statusInfo);
+    drawCvSidebarDetails(document, cv, sidebarY);
 
-    // 3. Email with Vector Envelope Icon
-    if (cv.contactEmail?.trim()) {
-      leftY += drawSidebarContactItem(document, drawMailIcon, "Email", cv.contactEmail.trim(), leftPadding, leftY, leftInnerWidth);
-    }
-
-    // 4. Date of Birth with Vector Calendar Icon
-    if (cv.dateOfBirth?.trim()) {
-      leftY += drawSidebarContactItem(document, drawCalendarIcon, "Date of Birth", cv.dateOfBirth.trim(), leftPadding, leftY, leftInnerWidth);
-    }
-
-    // 5. Religion with Vector Faith/Star Icon
-    if (cv.religion?.trim()) {
-      leftY += drawSidebarContactItem(document, drawReligionIcon, "Religion", cv.religion.trim(), leftPadding, leftY, leftInnerWidth);
-    }
-
-    // 6. Gender with Vector Identity Icon
-    if (cv.gender?.trim()) {
-      const genderDisplay = cv.gender.trim().charAt(0).toUpperCase() + cv.gender.trim().slice(1);
-      leftY += drawSidebarContactItem(document, drawGenderIcon, "Gender", genderDisplay, leftPadding, leftY, leftInnerWidth);
-    }
-
-    // Divider
-    document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-    leftY += 11;
-
-    // Section: SUBJECT EXPERTISE
-    const subjects = (cv.subjects ?? []).filter(Boolean);
-    if (subjects.length > 0) {
-      document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("SUBJECT EXPERTISE", leftPadding, leftY, { characterSpacing: 1.0 });
-      leftY += 11;
-
-      const subjectBadges = subjects.slice(0, 6);
-      subjectBadges.forEach(subj => {
-        document.save().roundedRect(leftPadding, leftY, leftInnerWidth, 15, 3.5).fill("#14589c").restore();
-        writeCvText(document, subj, "SemiBold", leftPadding + 6, leftY + 3, leftInnerWidth - 12, { size: 7.2, color: "#ffffff" });
-        leftY += 17.5;
-      });
-      leftY += 2;
-      document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-      leftY += 10;
-    }
-
-    // Section: PREFERRED CLASSES
-    const levels = (cv.levels ?? []).filter(Boolean);
-    if (levels.length > 0) {
-      document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("PREFERRED CLASSES", leftPadding, leftY, { characterSpacing: 1.0 });
-      leftY += 10;
-      const levelText = levels.slice(0, 5).join(", ");
-      const h = writeCvText(document, levelText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.5, color: "#ffffff", lineGap: 1.2 });
-      leftY += Math.max(14, h) + 6;
-      document.save().lineWidth(0.6).strokeColor("#2773be").moveTo(leftPadding, leftY).lineTo(leftColWidth - leftPadding, leftY).stroke().restore();
-      leftY += 10;
-    }
-
-    // Section: TUITION DELIVERY
-    const modes = (cv.tuitionTypes ?? []).filter(Boolean);
-    if (modes.length > 0) {
-      document.font("Bold").fontSize(7.8).fillColor("#ffffff").text("TUITION DELIVERY", leftPadding, leftY, { characterSpacing: 1.0 });
-      leftY += 10;
-      const modeLabels: Record<string, string> = { home: "Home Tuition", online: "Online Tuition", group: "Group Tuition", package: "Package Tuition" };
-      const modeText = modes.map(m => modeLabels[m] ?? m).join(" & ");
-      writeCvText(document, modeText, "Regular", leftPadding, leftY, leftInnerWidth, { size: 7.5, color: "#ffffff" });
-      leftY += 16;
-    }
-
-    // Rating Badge at bottom of left column
-    if (cv.ratingAverage && cv.ratingAverage > 0) {
-      const bottomRatingY = pageHeight - 40;
-      document.save().roundedRect(leftPadding, bottomRatingY, leftInnerWidth, 22, 5).fill("#073b6e").restore();
-      const stars = "★".repeat(Math.round(cv.ratingAverage)) + "☆".repeat(5 - Math.round(cv.ratingAverage));
-      document.font("Bold").fontSize(8.5).fillColor("#fbbf24");
-      const revText = cv.reviewCount ? ` (${cv.reviewCount} reviews)` : "";
-      document.text(`${cv.ratingAverage.toFixed(1)} ${stars}${revText}`, leftPadding, bottomRatingY + 5.5, { width: leftInnerWidth, align: "center" });
-    }
-
-    // ==========================================
-    // RIGHT COLUMN CONTENT (Width: 400.28, Inset: 24)
-    // ==========================================
-    const rightPadding = 24;
-    const rightInnerWidth = rightColWidth - rightPadding * 2;
-    const rightContentLeft = rightColLeft + rightPadding;
-    const footerTop = pageHeight - 84;
-    let rightY = 28;
-
-    // Header Logo & Brand Watermark at top right: Logo + "Connect Tutors"
-    const brandBlockWidth = 120;
-    const brandBlockX = rightContentLeft + rightInnerWidth - brandBlockWidth;
-    const brandY = rightY - 2;
-    drawCradle(document, brandBlockX, brandY + 1, 22 / 48);
-    document.font("Bold").fontSize(10).fillColor("#0d5fae").text("Connect Tutors", brandBlockX + 25, brandY, { lineBreak: false });
-    document.font("SemiBold").fontSize(6.2).fillColor("#64748b").text("OFFICIAL TUTOR BIODATA", brandBlockX + 25, brandY + 12.5, { characterSpacing: 0.8, lineBreak: false });
-
-    // Tutor Name
-    writeCvText(document, cv.name, "Heavy", rightContentLeft, rightY, rightInnerWidth - 130, { size: 16.5, color: "#0f2137", lineGap: 1.5 });
-    rightY += 23;
-
-    // Headline / Tagline
-    const headline = cv.headline?.trim() || [cv.highestEducation, cv.institution].filter(Boolean).join(" · ") || "";
-    if (headline) {
-      writeCvText(document, headline, "SemiBold", rightContentLeft, rightY, rightInnerWidth, { size: 9.2, color: "#0d5fae", lineGap: 1.2 });
-      rightY += 17;
-    }
-
-    // Divider
-    document.save().lineWidth(0.8).strokeColor("#e2e8f0").moveTo(rightContentLeft, rightY).lineTo(rightContentLeft + rightInnerWidth, rightY).stroke().restore();
-    rightY += 12;
-
-    // ------------------------------------------
-    // SECTION: PROFESSIONAL SUMMARY (with vector icon header)
-    // ------------------------------------------
-    const summaryText = cv.aboutMe?.trim() || (cv.headline?.trim()
-      ? `${cv.headline.trim()}. Dedicated educator committed to developing strong conceptual clarity, student engagement, and consistent academic progress.`
-      : "Dedicated and passionate educator committed to delivering high-quality, personalized tutoring. Focused on strengthening fundamentals, problem-solving skills, and academic excellence.");
-
-    rightY += drawSectionHeader(document, "PROFESSIONAL SUMMARY", drawSummaryIcon, rightContentLeft, rightY, rightInnerWidth);
-    const bioHeight = writeCvText(document, summaryText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.8, color: "#334155", lineGap: 2.0 });
-    rightY += Math.min(48, Math.max(14, bioHeight)) + 9;
-
-    // ------------------------------------------
-    // SECTION: EDUCATIONAL BACKGROUND (Masters, Honours, HSC, SSC detailed with graduation icon header)
-    // ------------------------------------------
-    const rawEduList = (cv.educationRecords ?? []).filter(e => e.qualificationLevel || e.degreeExamTitle || e.instituteName);
-    const sortedEduList = [...rawEduList].sort((a, b) => {
-      const rankA = getEducationLevelRank(a.qualificationLevel || a.degreeExamTitle);
-      const rankB = getEducationLevelRank(b.qualificationLevel || b.degreeExamTitle);
-      if (rankA !== rankB) return rankA - rankB;
-      return (b.passingYear ?? b.studyEndYear ?? 0) - (a.passingYear ?? a.studyEndYear ?? 0);
+    drawCvRightColumn(document, cv, statusInfo, {
+      scale,
+      newPage: () => {
+        document.addPage();
+        drawCvPageShell(document);
+        drawCvSidebarIdentity(document, cv, statusInfo);
+        return drawCvContinuationHeader(document, cv);
+      },
     });
 
-    if (sortedEduList.length > 0) {
-      rightY += drawSectionHeader(document, "EDUCATIONAL BACKGROUND", drawGradCapIcon, rightContentLeft, rightY, rightInnerWidth);
-
-      // Show up to 4 qualification levels (Masters, Honours, HSC, SSC)
-      const recordsToDisplay = sortedEduList.slice(0, 4);
-      recordsToDisplay.forEach((edu) => {
-        const level = edu.qualificationLevel?.trim();
-        const degree = edu.degreeExamTitle?.trim();
-        let title = degree || level || "Qualification";
-        if (level && degree && !degree.toLowerCase().includes(level.toLowerCase())) {
-          title = `${level} - ${degree}`;
-        }
-        if (edu.majorGroup?.trim()) {
-          title += ` (${edu.majorGroup.trim()})`;
-        }
-
-        const yearPart = edu.passingYear
-          ? `Year: ${edu.passingYear}`
-          : edu.currentlyStudying
-            ? "Currently Studying"
-            : edu.studyStartYear && edu.studyEndYear
-              ? `${edu.studyStartYear} – ${edu.studyEndYear}`
-              : edu.studyStartYear
-                ? `${edu.studyStartYear} – Present`
-                : null;
-        const resultPart = edu.resultGpa ? `GPA: ${edu.resultGpa.trim()}` : null;
-        const metaRight = [resultPart, yearPart].filter(Boolean).join("  ·  ");
-
-        // Mini graduation diamond bullet
-        document.save().fillColor("#0d5fae").polygon(
-          [rightContentLeft + 3, rightY + 2],
-          [rightContentLeft + 5.5, rightY + 4.5],
-          [rightContentLeft + 3, rightY + 7],
-          [rightContentLeft + 0.5, rightY + 4.5]
-        ).fill().restore();
-
-        // Degree Title
-        writeCvText(document, title, "SemiBold", rightContentLeft + 11, rightY, rightInnerWidth - 110, { size: 8.4, color: "#0f2137" });
-
-        // Meta on the right (GPA / Year)
-        if (metaRight) {
-          document.font("SemiBold").fontSize(7.5).fillColor("#0d5fae");
-          document.text(metaRight, rightContentLeft + 11, rightY, { width: rightInnerWidth - 11, align: "right", lineBreak: false });
-        }
-        rightY += 11;
-
-        // Institute & Curriculum Details
-        const instituteDetails = [edu.instituteName?.trim(), edu.curriculum?.trim()].filter(Boolean).join("  ·  ");
-        if (instituteDetails) {
-          writeCvText(document, instituteDetails, "Regular", rightContentLeft + 11, rightY, rightInnerWidth - 11, { size: 7.5, color: "#475569" });
-          rightY += 10.5;
-        }
-
-        rightY += 2.5;
-      });
-      rightY += 7;
-    } else {
-      // Fallback only if highestEducation or institution exists
-      const fallbackEdu = [cv.highestEducation, cv.institution, cv.education].filter(Boolean).join(" · ").trim();
-      if (fallbackEdu) {
-        rightY += drawSectionHeader(document, "EDUCATIONAL BACKGROUND", drawGradCapIcon, rightContentLeft, rightY, rightInnerWidth);
-        writeCvText(document, fallbackEdu, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.8, color: "#334155", lineGap: 1.8 });
-        rightY += 16;
-      }
+    // The footer goes on every page, now that the number of pages is known.
+    const { count } = document.bufferedPageRange();
+    for (let page = 0; page < count; page += 1) {
+      document.switchToPage(page);
+      drawCvFooter(document, statusInfo, page + 1, count);
     }
-
-    // ------------------------------------------
-    // SECTION: TEACHING EXPERIENCE & METHODOLOGY (with briefcase icon header)
-    // ------------------------------------------
-    rightY += drawSectionHeader(document, "TEACHING EXPERIENCE & METHODOLOGY", drawBriefcaseIcon, rightContentLeft, rightY, rightInnerWidth);
-
-    // Compact Stat boxes
-    const expYears = cv.teachingExperienceYears ?? 2;
-    const statBoxWidth = (rightInnerWidth - 10) / 2;
-    const statBoxHeight = 31;
-
-    // Box 1: Experience Years
-    document.save().roundedRect(rightContentLeft, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
-    document.font("Heavy").fontSize(11).fillColor("#0d5fae").text(`${expYears}+ Years`, rightContentLeft + 8, rightY + 3.5, { width: statBoxWidth - 16 });
-    document.font("Medium").fontSize(7.2).fillColor("#475569").text("Tutoring Experience", rightContentLeft + 8, rightY + 17, { width: statBoxWidth - 16 });
-
-    // Box 2: Verification / Profile Status (Dynamic)
-    document.save().roundedRect(rightContentLeft + statBoxWidth + 10, rightY, statBoxWidth, statBoxHeight, 4).fill("#f1f5f9").restore();
-    document.font("Heavy").fontSize(10.5).fillColor(statusInfo.statColor).text(statusInfo.statTitle, rightContentLeft + statBoxWidth + 18, rightY + 3.5, { width: statBoxWidth - 16 });
-    document.font("Medium").fontSize(7.2).fillColor("#475569").text(statusInfo.statSubtitle, rightContentLeft + statBoxWidth + 18, rightY + 17, { width: statBoxWidth - 16 });
-
-    rightY += statBoxHeight + 7;
-
-    let hasCustomExpNote = false;
-
-    // Teacher's own prior teaching experience note
-    if (cv.priorTeachingExperience?.trim()) {
-      hasCustomExpNote = true;
-      document.font("SemiBold").fontSize(7.6).fillColor("#0f2137").text("Experience Highlights:", rightContentLeft, rightY);
-      rightY += 9;
-      const h = writeCvText(document, cv.priorTeachingExperience.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#334155", lineGap: 1.8 });
-      rightY += Math.min(34, Math.max(12, h)) + 5;
-    }
-
-    // Teacher's own teaching approach / methodology
-    if (cv.teachingApproach?.trim()) {
-      hasCustomExpNote = true;
-      document.font("SemiBold").fontSize(7.6).fillColor("#0f2137").text("Teaching Methodology & Approach:", rightContentLeft, rightY);
-      rightY += 9;
-      const h = writeCvText(document, cv.teachingApproach.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#334155", lineGap: 1.8 });
-      rightY += Math.min(32, Math.max(12, h)) + 5;
-    }
-
-    // Teacher's special expertise
-    if (cv.specialExpertise?.trim() && cv.specialExpertise.trim() !== cv.priorTeachingExperience?.trim()) {
-      hasCustomExpNote = true;
-      document.font("SemiBold").fontSize(7.6).fillColor("#0f2137").text("Special Expertise:", rightContentLeft, rightY);
-      rightY += 9;
-      const h = writeCvText(document, cv.specialExpertise.trim(), "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#334155", lineGap: 1.8 });
-      rightY += Math.min(26, Math.max(12, h)) + 5;
-    }
-
-    // If teacher has not entered custom notes, show structured teaching highlights
-    if (!hasCustomExpNote) {
-      const fallbackExp = "Experienced in academic tutoring, personalized lesson planning, syllabus coverage, and preparing students for school, board, and admission examinations with regular assessments and progress tracking.";
-      const h = writeCvText(document, fallbackExp, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#334155", lineGap: 1.8 });
-      rightY += Math.min(32, Math.max(12, h)) + 5;
-    }
-
-    rightY += 4;
-
-    // ------------------------------------------
-    // SECTION: WHY CHOOSE ME (with star icon header)
-    // ------------------------------------------
-    rightY += drawSectionHeader(document, "WHY CHOOSE ME", drawStarMedalIcon, rightContentLeft, rightY, rightInnerWidth);
-
-    const whyText = cv.whyChooseMe?.trim() || "• Conceptual and student-focused teaching methodology.\n• Regular practice tests, homework tracking, and performance evaluation.\n• Patient mentorship, doubt clearance, and clear communication with guardians.";
-
-    const whyHeight = writeCvText(document, whyText, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#334155", lineGap: 1.8 });
-    rightY += Math.min(36, Math.max(14, whyHeight)) + 7;
-
-    // ------------------------------------------
-    // SECTION: PREFERRED TUITION AREAS (Only if filled, with compass icon header)
-    // ------------------------------------------
-    const areas = (cv.preferredLocations ?? []).filter(Boolean);
-    if (areas.length > 0 && rightY < footerTop - 40) {
-      rightY += drawSectionHeader(document, "PREFERRED TUITION AREAS", drawAreasIcon, rightContentLeft, rightY, rightInnerWidth);
-      const areaString = areas.slice(0, 10).join("  •  ");
-      writeCvText(document, areaString, "Regular", rightContentLeft, rightY, rightInnerWidth, { size: 7.5, color: "#1e293b", lineGap: 1.4 });
-      rightY += 15;
-    }
-
-    // ==========================================
-    // FOOTER: VERIFICATION SEAL & QR CODE
-    // ==========================================
-    document.save().lineWidth(0.8).strokeColor("#cbd5e1").moveTo(rightContentLeft, footerTop).lineTo(rightContentLeft + rightInnerWidth, footerTop).stroke().restore();
-
-    const qrSize = 56;
-    const qrX = rightContentLeft + rightInnerWidth - qrSize;
-    const qrY = footerTop + 10;
-    const profileUrl = cv.publicProfileUrl || `https://${SITE_ADDRESS}/tutors/${cv.tutorId}`;
-
-    drawQrCode(document, profileUrl, qrX, qrY, qrSize, "#0f2137");
-
-    // Authority Seal & Verification Info
-    const sealRadius = 21;
-    const sealCenterX = rightContentLeft + sealRadius;
-    const sealCenterY = footerTop + 12 + sealRadius;
-
-    document.save().lineWidth(1.2).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius).stroke().restore();
-    document.save().lineWidth(0.6).dash(2, { space: 2 }).strokeColor("#0d5fae").circle(sealCenterX, sealCenterY, sealRadius - 3.5).stroke().undash().restore();
-    const cradleScale = 22 / 48;
-    drawCradle(document, sealCenterX - 24 * cradleScale, sealCenterY - 24 * cradleScale, cradleScale, 1.2);
-
-    const sealTextLeft = sealCenterX + sealRadius + 9;
-    const sealTextWidth = qrX - sealTextLeft - 8;
-
-    document.font("Heavy").fontSize(8.5).fillColor("#0f2137").text("CONNECT TUTORS", sealTextLeft, footerTop + 12, { width: sealTextWidth });
-    document.font("Bold").fontSize(7.2).fillColor(statusInfo.statColor).text(statusInfo.sealStatus, sealTextLeft, footerTop + 22.5, { width: sealTextWidth });
-    document.font("Regular").fontSize(6.8).fillColor("#64748b").text(`Scan QR code or visit ${SITE_ADDRESS} to verify background, certificates and reviews.`, sealTextLeft, footerTop + 33, { width: sealTextWidth, lineGap: 1.4 });
 
     document.end();
   });
 }
-

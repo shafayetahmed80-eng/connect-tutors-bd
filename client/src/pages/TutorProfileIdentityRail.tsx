@@ -69,6 +69,7 @@ export function TutorProfileIdentityRail({
   onTogglePreview,
   rating,
   onOpenCvModal,
+  cvViewOnly,
 }: {
   name: string;
   tutorNumber: number | null | undefined;
@@ -98,8 +99,10 @@ export function TutorProfileIdentityRail({
   onTogglePreview: () => void;
   /** The Guardians' star rating; shows only once someone has rated. */
   rating?: TutorRatingSummary | null;
-  /** Opens the professional 1-page CV preview & download modal */
+  /** Opens the professional CV preview & download modal */
   onOpenCvModal?: () => void;
+  /** A draft profile's CV can be viewed but not downloaded, so the button says View. */
+  cvViewOnly?: boolean;
 }) {
   const hasPhoto = Boolean(photoUrl) && !photoPreviewFailed;
   // Phones only: from `lg` up the list is always on screen and this is unused.
@@ -240,7 +243,7 @@ export function TutorProfileIdentityRail({
         onClick={onOpenCvModal}
         className={`mt-2.5 rounded-xl bg-emerald-600 font-semibold text-white shadow-xs transition hover:bg-emerald-700 active:scale-[0.99] ${tutorProfileResponsiveClasses.completionActionButton}`}
       >
-        <FileText size={15} aria-hidden={true} /> Download CV (PDF)
+        <FileText size={15} aria-hidden={true} /> {cvViewOnly ? "View CV" : "Download CV (PDF)"}
       </Button>
     ) : null}
   </section>;

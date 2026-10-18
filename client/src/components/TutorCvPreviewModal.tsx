@@ -60,6 +60,8 @@ export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber, t
 
   const loading = cvQuery.isLoading || (bytes !== null && drawing === "waiting");
   const ready = bytes && cvQuery.data ? { bytes, fileName: cvQuery.data.fileName } : null;
+  // A draft profile's CV is shown here but cannot be saved or printed.
+  const canSave = cvQuery.data?.downloadable !== false;
 
   const handlePrint = () => {
     if (!ready) return;
@@ -99,7 +101,7 @@ export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber, t
         {loading ? (
           <div className="flex min-h-80 flex-col items-center justify-center gap-3 text-sm text-j-ink-soft">
             <LoadingCradle />
-            <p className="font-medium">Generating your official 1-page CV & Biodata…</p>
+            <p className="font-medium">Generating your official CV & Biodata…</p>
           </div>
         ) : null}
 
@@ -115,7 +117,7 @@ export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber, t
         {drawing === "failed" ? (
           <div role="alert" className="m-4 rounded-xl border border-j-border bg-white p-6 text-center text-sm text-j-ink-soft">
             <p className="font-semibold text-j-ink">Preview could not be displayed on this browser directly.</p>
-            <p className="mt-1 text-xs text-j-ink-muted">Please click Download PDF below to view your official document.</p>
+            {canSave ? <p className="mt-1 text-xs text-j-ink-muted">Please click Download PDF below to view your official document.</p> : null}
           </div>
         ) : null}
 
@@ -134,27 +136,29 @@ export function TutorCvPreviewModal({ isOpen, onClose, tutorName, tutorNumber, t
         >
           Close
         </button>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handlePrint}
-            disabled={!ready}
-            className="inline-flex h-control items-center gap-1.5 rounded-xl border-j-border text-sm font-bold text-j-ink transition hover:bg-j-surface-muted disabled:opacity-50"
-          >
-            <Printer className="size-4" aria-hidden="true" /> Print
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              if (ready) saveFile(ready.bytes, ready.fileName);
-            }}
-            disabled={!ready}
-            className="inline-flex h-control items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="size-4" aria-hidden="true" /> Download PDF
-          </Button>
-        </div>
+        {canSave ? (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrint}
+              disabled={!ready}
+              className="inline-flex h-control items-center gap-1.5 rounded-xl border-j-border text-sm font-bold text-j-ink transition hover:bg-j-surface-muted disabled:opacity-50"
+            >
+              <Printer className="size-4" aria-hidden="true" /> Print
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (ready) saveFile(ready.bytes, ready.fileName);
+              }}
+              disabled={!ready}
+              className="inline-flex h-control items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="size-4" aria-hidden="true" /> Download PDF
+            </Button>
+          </div>
+        ) : null}
       </ModalFooter>
     </Modal>
   );
