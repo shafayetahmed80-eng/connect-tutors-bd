@@ -77,6 +77,12 @@ function open(caption?: (shown: number) => string) {
   render(<FacebookVideoModal onClose={vi.fn()} jobs={jobs} caption={caption} />);
 }
 
+/** Clicks a button once the window has turned it on: the painted reel arrives a moment after the window opens. */
+async function clickWhenReady(name: string | RegExp) {
+  await waitFor(() => expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name }));
+}
+
 describe("the Facebook video window", () => {
   it("names how many tuitions it holds and how long it runs, with the language, size, speed and colour to choose", async () => {
     open(() => "caption");
@@ -89,37 +95,43 @@ describe("the Facebook video window", () => {
     expect(screen.getByRole("button", { name: /Copy caption/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Play/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Download MP4/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Cover/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Front" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Back" })).toBeDefined();
   });
 
   it("lays the music under the downloaded video, and none when Music is off - remembering the choice", async () => {
     open();
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await clickWhenReady(/Download MP4/);
     await waitFor(() => expect(mocks.record).toHaveBeenCalledTimes(1));
     expect(mocks.music).toHaveBeenCalledTimes(1);
     expect(mocks.record.mock.calls[0]![2]).toMatchObject({ music: { numberOfChannels: 2, sampleRate: 48_000 } });
     await waitFor(() => expect(mocks.download).toHaveBeenCalledTimes(1));
 
     fireEvent.click(within(screen.getByRole("radiogroup", { name: "Music" })).getByRole("radio", { name: "Off" }));
-    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await clickWhenReady(/Download MP4/);
     await waitFor(() => expect(mocks.record).toHaveBeenCalledTimes(2));
     expect(mocks.record.mock.calls[1]![2]).toMatchObject({ music: null });
     expect(mocks.music).toHaveBeenCalledTimes(1);
     expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toMatchObject({ music: false });
   });
 
-  it("downloads the title card as the video's cover, named for what it shows", async () => {
+  it("downloads the front cover and the back cover each on its own button, named for what they show", async () => {
     open();
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Cover/ }));
+    await clickWhenReady("Front");
+    await waitFor(() => expect(mocks.download).toHaveBeenCalledTimes(1));
+    expect(mocks.cover.mock.calls[0]![1]).toBe("front");
+    expect(mocks.download.mock.calls[0]![1]).toBe("connect-tutors-3-tuitions-reels-cover-front-bn.png");
+    expect(toast.success).toHaveBeenCalledWith("সামনের কভার ডাউনলোড হয়েছে।");
 
-    await waitFor(() => expect(mocks.download).toHaveBeenCalled());
-    expect(mocks.cover).toHaveBeenCalledTimes(1);
-    expect(mocks.download.mock.calls[0]![1]).toBe("connect-tutors-3-tuitions-reels-cover-bn.png");
-    expect(toast.success).toHaveBeenCalledWith("কভার ছবি ডাউনলোড হয়েছে।");
+    await clickWhenReady("Back");
+    await waitFor(() => expect(mocks.download).toHaveBeenCalledTimes(2));
+    expect(mocks.cover.mock.calls[1]![1]).toBe("back");
+    expect(mocks.download.mock.calls[1]![1]).toBe("connect-tutors-3-tuitions-reels-cover-back-bn.png");
+    expect(toast.success).toHaveBeenCalledWith("পেছনের কভার ডাউনলোড হয়েছে।");
   });
 
   it("says so when the cover cannot be made", async () => {
@@ -127,7 +139,7 @@ describe("the Facebook video window", () => {
     open();
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Cover/ }));
+    await clickWhenReady("Back");
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("কভার ছবি তৈরি করা যায়নি।"));
     expect(mocks.download).not.toHaveBeenCalled();
@@ -224,7 +236,7 @@ describe("the Facebook video window", () => {
     expect(mocks.prepare.mock.calls.at(-1)![1]).toMatchObject({ style: "slides" });
     expect(within(screen.getByRole("radiogroup", { name: "Style" })).getByRole("radio", { name: "Slides" }).getAttribute("aria-checked")).toBe("true");
 
-    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await clickWhenReady(/Download MP4/);
     await waitFor(() => expect(mocks.download).toHaveBeenCalled());
     expect(mocks.download.mock.calls[0]![1]).toBe("connect-tutors-3-tuitions-reels-slides-bn.mp4");
   });
@@ -245,7 +257,7 @@ describe("the Facebook video window", () => {
     open();
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await clickWhenReady(/Download MP4/);
 
     await waitFor(() => expect(mocks.download).toHaveBeenCalled());
     expect(mocks.record).toHaveBeenCalledTimes(1);
@@ -258,7 +270,7 @@ describe("the Facebook video window", () => {
     open();
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Download MP4/ }));
+    await clickWhenReady(/Download MP4/);
 
     expect(toast.error).toHaveBeenCalledWith("এই ব্রাউজারে ভিডিও বানানো যায় না। কম্পিউটারের Chrome বা Edge-এ চেষ্টা করুন।");
     expect(mocks.record).not.toHaveBeenCalled();
@@ -269,7 +281,7 @@ describe("the Facebook video window", () => {
     open(caption);
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /Play/ }));
+    await clickWhenReady(/Play/);
     await waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(1));
 
     fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));

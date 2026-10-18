@@ -946,19 +946,22 @@ describe("the mark's swing", () => {
   });
 });
 
-describe("the cover image", () => {
-  it("is the title card at rest, at the video's own size, named for what it shows", async () => {
+describe("the cover images", () => {
+  it("are the title card at the front and the closing card at the back, at rest, at the video's own size, named for what they show", async () => {
     withCanvas({ texts: [], images: [] });
     const reel = prepareReel(reelInput([job(1)], "en", null), { size: "feed", speed: "slow" })!;
-    const png = new Blob(["png"], { type: "image/png" });
+    const front = new Blob(["front"], { type: "image/png" });
+    const back = new Blob(["back"], { type: "image/png" });
     const toBlob = vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (this: HTMLCanvasElement, callback: BlobCallback) {
-      callback(this === reel.pages.title ? png : null);
+      callback(this === reel.pages.title ? front : this === reel.pages.end ? back : null);
     });
 
-    expect(await reelCover(reel)).toBe(png);
+    expect(await reelCover(reel, "front")).toBe(front);
+    expect(await reelCover(reel, "back")).toBe(back);
     expect(toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
-    expect(coverFileName(12, "reels", "bn")).toBe("connect-tutors-12-tuitions-reels-cover-bn.png");
-    expect(coverFileName(1, "square", "en")).toBe("connect-tutors-1-tuition-square-cover-en.png");
+    expect(coverFileName(12, "reels", "bn", "front")).toBe("connect-tutors-12-tuitions-reels-cover-front-bn.png");
+    expect(coverFileName(12, "reels", "bn", "back")).toBe("connect-tutors-12-tuitions-reels-cover-back-bn.png");
+    expect(coverFileName(1, "square", "en", "front")).toBe("connect-tutors-1-tuition-square-cover-front-en.png");
   });
 });
 

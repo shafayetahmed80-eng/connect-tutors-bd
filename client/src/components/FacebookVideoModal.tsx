@@ -25,6 +25,7 @@ import {
   videoExtension,
   videoFileName,
   withMotion,
+  type CoverSide,
   type PreparedReel,
   type ReelSize,
   type ReelSpeed,
@@ -269,16 +270,16 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     }
   };
 
-  const handleCover = async () => {
+  const handleCover = async (side: CoverSide) => {
     const current = reelRef.current;
     if (!current) return;
-    const cover = await reelCover(current);
+    const cover = await reelCover(current, side);
     if (!cover) {
       toast.error("কভার ছবি তৈরি করা যায়নি।");
       return;
     }
-    downloadVideo(cover, coverFileName(shown.length, videoPrefs.size, locale));
-    toast.success("কভার ছবি ডাউনলোড হয়েছে।");
+    downloadVideo(cover, coverFileName(shown.length, videoPrefs.size, locale, side));
+    toast.success(side === "front" ? "সামনের কভার ডাউনলোড হয়েছে।" : "পেছনের কভার ডাউনলোড হয়েছে।");
   };
 
   const handleCopyCaption = async () => {
@@ -360,15 +361,18 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
               Copy caption
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={handleCover}
-            disabled={!reel || busy}
-            className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60 disabled:opacity-60"
-          >
-            <ImageDown className="size-3.5" strokeWidth={1.5} />
-            Cover
-          </button>
+          {(["front", "back"] as const).map(side => (
+            <button
+              key={side}
+              type="button"
+              onClick={() => void handleCover(side)}
+              disabled={!reel || busy}
+              className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60 disabled:opacity-60"
+            >
+              <ImageDown className="size-3.5" strokeWidth={1.5} />
+              {side === "front" ? "Front" : "Back"}
+            </button>
+          ))}
           <button
             type="button"
             onClick={handlePlay}
@@ -385,7 +389,8 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
             disabled={!reel || busy}
             className={cn(
               "inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-[#1877f2] bg-[#1877f2] px-4 text-xs font-bold text-white transition hover:bg-[#166fe5] disabled:opacity-60",
-              !caption && "col-span-2 sm:col-span-1",
+              // Five buttons on a phone: Copy caption and Front, Back and Play, then Download across the row.
+              caption && "col-span-2 sm:col-span-1",
             )}
           >
             <Download className="size-3.5" strokeWidth={1.5} />

@@ -721,16 +721,19 @@ export async function recordReel(canvas: HTMLCanvasElement, reel: PreparedReel, 
   return recordLive(canvas, reel, options);
 }
 
-/** `connect-tutors-12-tuitions-reels-cover-bn.png`: the title card, for the video's cover on Facebook. */
-export function coverFileName(count: number, size: ReelSize, locale: PosterLocale): string {
-  return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}-cover-${locale}.png`;
+/** The video's two covers: the front is the title card, the back the closing card with the QR code and the WhatsApp number. */
+export type CoverSide = "front" | "back";
+
+/** `connect-tutors-12-tuitions-reels-cover-front-bn.png`, or `…-cover-back-bn.png`. */
+export function coverFileName(count: number, size: ReelSize, locale: PosterLocale, side: CoverSide): string {
+  return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}-cover-${side}-${locale}.png`;
 }
 
-/** The title card at rest as a PNG, at the video's own size. */
-export function reelCover(reel: PreparedReel): Promise<Blob | null> {
+/** One of the covers at rest as a PNG, at the video's own size. */
+export function reelCover(reel: PreparedReel, side: CoverSide): Promise<Blob | null> {
   return new Promise(resolve => {
     try {
-      reel.pages.title.toBlob(blob => resolve(blob), "image/png");
+      (side === "front" ? reel.pages.title : reel.pages.end).toBlob(blob => resolve(blob), "image/png");
     } catch {
       resolve(null);
     }
