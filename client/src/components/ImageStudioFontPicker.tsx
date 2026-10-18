@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, ArchiveRestore, ChevronDown, Search, Star } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Search, Star, Trash2 } from "lucide-react";
+import { ImageStudioFontUpload } from "@/components/ImageStudioFontUpload";
 import {
   findStudioFont,
   loadStudioFont,
@@ -50,7 +51,7 @@ function FontName({ font }: { font: StudioFont }) {
   </span>;
 }
 
-export function ImageStudioFontPicker({ label, script, value, onChange, marks, canEdit, onMark, busy = false }: {
+export function ImageStudioFontPicker({ label, script, value, onChange, marks, canEdit, onMark, onUploaded, onDelete, busy = false }: {
   label: string;
   script: StudioFontScript;
   value: string;
@@ -59,8 +60,13 @@ export function ImageStudioFontPicker({ label, script, value, onChange, marks, c
   /** The Project Owner: may star and archive for every Admin. */
   canEdit: boolean;
   onMark: (id: string, change: { starred?: boolean; archived?: boolean }) => void;
+  /** After the Owner adds a font, so the list can fetch it. */
+  onUploaded?: () => void;
+  /** Deletes one of the Owner's uploaded fonts for good. */
+  onDelete?: (id: string) => void;
   busy?: boolean;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<StudioFontCategory | "all">("all");
@@ -94,6 +100,8 @@ export function ImageStudioFontPicker({ label, script, value, onChange, marks, c
         </button> : null}
       </div>
 
+      {canEdit && onUploaded ? <ImageStudioFontUpload script={script} onUploaded={onUploaded} /> : null}
+
       <ul className="max-h-80 space-y-1 overflow-y-auto" aria-label={`${label} fonts`}>
         {fonts.map(font => {
           const mark = marks.get(font.id);
@@ -110,6 +118,14 @@ export function ImageStudioFontPicker({ label, script, value, onChange, marks, c
               <button type="button" disabled={busy} onClick={() => onMark(font.id, { archived: !mark?.archived })} aria-label={`${mark?.archived ? "Restore" : "Archive"} ${font.name}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-soft hover:bg-white disabled:opacity-50">
                 {mark?.archived ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
               </button>
+              {font.uploaded && onDelete ? (confirmDelete === font.id
+                ? <span className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                  <button type="button" disabled={busy} onClick={() => { onDelete(font.id); setConfirmDelete(null); }} className="rounded-lg bg-rose-600 px-2 py-1 text-white">Delete</button>
+                  <button type="button" onClick={() => setConfirmDelete(null)} className="rounded-lg border border-j-border px-2 py-1 text-j-ink-soft">Keep</button>
+                </span>
+                : <button type="button" disabled={busy} onClick={() => setConfirmDelete(font.id)} aria-label={`Delete ${font.name}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-rose-600 hover:bg-white disabled:opacity-50">
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>) : null}
             </> : mark?.starred ? <Star size={14} aria-label="Starred" className="shrink-0 text-amber-500" fill="currentColor" /> : null}
           </li>;
         })}

@@ -28,3 +28,14 @@ describe("mayReadStorage", () => {
     expect(mayReadStorage(chat, { id: 1, role: "admin" })).toBe(true);
   });
 });
+
+describe("Image Section uploaded fonts", () => {
+  it("are private to Admins: an Admin may read one, a Tutor, a Guardian or a visitor may not", () => {
+    const access = storageAccessFor("image-studio/fonts/upload-0123456789ab.ttf");
+    expect(access).toEqual({ visibility: "private" });
+    expect(mayReadStorage(access, { id: 1, role: "admin" })).toBe(true);
+    expect(mayReadStorage(access, { id: 2, role: "tutor" }, "tutor-2")).toBe(false);
+    expect(mayReadStorage(access, { id: 3, role: "guardian" })).toBe(false);
+    expect(mayReadStorage(access, null)).toBe(false);
+  });
+});
