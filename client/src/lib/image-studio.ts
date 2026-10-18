@@ -70,6 +70,9 @@ const PLATE = { ground: "#0b4b86", accent: "#1677e8", line: "rgba(255,255,255,0.
 /** Which language the picture is in: Bangla, English, or both together. */
 export type PlateTextMode = "bn" | "en" | "mixed";
 
+/** A colour pair for the plate: the ground, the text on it, and a highlight. */
+export type PlateColours = { ground: string; text: string; accent: string };
+
 /** The text the plate shows and the faces it is set in; without it the plate uses the site's own poster face. */
 export type PlateText = {
   mode: PlateTextMode;
@@ -117,7 +120,7 @@ function fitLine(ctx: CanvasRenderingContext2D, line: PlateLine, startPx: number
  * the margin a platform may crop or cover. With `text`, the plate shows sample
  * lines in the chosen faces instead of the section name.
  */
-export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSection, size: ImageStudioSize, scale: number = 1, text?: PlateText) {
+export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSection, size: ImageStudioSize, scale: number = 1, text?: PlateText, colours?: PlateColours) {
   canvas.width = size.width * scale;
   canvas.height = size.height * scale;
   const ctx = canvas.getContext("2d");
@@ -125,21 +128,27 @@ export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSec
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
   const { width, height } = size;
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, PLATE.ground);
-  gradient.addColorStop(1, PLATE.accent);
-  ctx.fillStyle = gradient;
+  if (colours) {
+    ctx.fillStyle = colours.ground;
+  } else {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, PLATE.ground);
+    gradient.addColorStop(1, PLATE.accent);
+    ctx.fillStyle = gradient;
+  }
   ctx.fillRect(0, 0, width, height);
 
   const inset = Math.round(Math.min(width, height) * 0.05);
-  ctx.strokeStyle = PLATE.line;
+  ctx.strokeStyle = colours ? colours.text : PLATE.line;
+  ctx.globalAlpha = colours ? 0.35 : 1;
   ctx.lineWidth = Math.max(2, Math.round(Math.min(width, height) / 300));
   ctx.setLineDash([ctx.lineWidth * 6, ctx.lineWidth * 4]);
   ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
 
   const unit = Math.min(width, height);
-  ctx.fillStyle = PLATE.text;
+  ctx.fillStyle = colours ? colours.text : PLATE.text;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -162,6 +171,17 @@ export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSec
     ctx.fillText(line.text, width / 2, y + (px * 1.3) / 2);
     y += px * 1.3 + gap;
   });
+  if (colours) {
+    // The highlight: a short bar under the text, so the pair's third colour shows on the plate.
+    ctx.fillStyle = colours.accent;
+    const barWidth = unit * 0.22;
+    const barHeight = Math.max(4, unit * 0.014);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(width / 2 - barWidth / 2, y - gap * 0.2, barWidth, barHeight, barHeight / 2);
+    else ctx.rect(width / 2 - barWidth / 2, y - gap * 0.2, barWidth, barHeight);
+    ctx.fill();
+    ctx.fillStyle = colours.text;
+  }
   ctx.globalAlpha = 0.7;
   ctx.font = `500 ${Math.round(unit * 0.035)}px ${POSTER_FONT_STACK}`;
   ctx.fillText(`${size.width} × ${size.height}`, width / 2, height - inset - unit * 0.04);

@@ -3,9 +3,11 @@ import { Redirect, useParams } from "wouter";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
+import { ImageStudioColourPicker } from "@/components/ImageStudioColourPicker";
 import { ImageStudioFontPicker } from "@/components/ImageStudioFontPicker";
 import { trpc } from "@/lib/trpc";
 import { loadPosterFonts } from "@/lib/poster/canvas-kit";
+import { DEFAULT_STUDIO_COLOUR, findStudioColour, setOwnStudioColours, type StudioColourMarks } from "@/lib/image-studio-colours";
 import {
   DEFAULT_BANGLA_FONT,
   DEFAULT_ENGLISH_FONT,
@@ -38,8 +40,8 @@ const chip = (active: boolean) =>
   `h-control rounded-xl border px-3 text-sm font-semibold transition ${active ? "border-j-accent bg-j-accent text-white" : "border-j-border bg-white text-j-ink hover:bg-j-surface-sunken"} disabled:cursor-not-allowed disabled:opacity-40`;
 
 const TEXT_CHOICE_KEY = "connect-image-studio-text-v1";
-type TextChoice = { mode: PlateTextMode; bn: string; en: string };
-const DEFAULT_TEXT_CHOICE: TextChoice = { mode: "bn", bn: DEFAULT_BANGLA_FONT, en: DEFAULT_ENGLISH_FONT };
+type TextChoice = { mode: PlateTextMode; bn: string; en: string; colour: string };
+const DEFAULT_TEXT_CHOICE: TextChoice = { mode: "bn", bn: DEFAULT_BANGLA_FONT, en: DEFAULT_ENGLISH_FONT, colour: DEFAULT_STUDIO_COLOUR };
 
 /** The last language and faces this Admin used, on this device only; anything unknown falls back to the defaults. */
 function readTextChoice(): TextChoice {
@@ -50,6 +52,7 @@ function readTextChoice(): TextChoice {
       mode: saved.mode === "en" || saved.mode === "mixed" ? saved.mode : "bn",
       bn: saved.bn && findStudioFont(saved.bn)?.script === "bn" ? saved.bn : DEFAULT_BANGLA_FONT,
       en: saved.en && findStudioFont(saved.en)?.script === "en" ? saved.en : DEFAULT_ENGLISH_FONT,
+      colour: saved.colour && findStudioColour(saved.colour) ? saved.colour : DEFAULT_STUDIO_COLOUR,
     };
   } catch {
     return DEFAULT_TEXT_CHOICE;
@@ -103,6 +106,26 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
     onSuccess: () => void utils.imageStudio.marks.invalidate(),
     onError: error => toast.error(error.message),
   });
+  const ownColoursQuery = trpc.imageStudio.ownColours.useQuery();
+  const addColour = trpc.imageStudio.addColour.useMutation({
+    onSuccess: () => {
+      void utils.imageStudio.ownColours.invalidate();
+      toast.success("Colour saved.");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const deleteColour = trpc.imageStudio.deleteColour.useMutation({
+    onSuccess: () => {
+      void utils.imageStudio.ownColours.invalidate();
+      void utils.imageStudio.marks.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  setOwnStudioColours(ownColoursQuery.data ?? []);
+  const colourMarks: StudioColourMarks = useMemo(
+    () => new Map((marksQuery.data?.marks ?? []).filter(mark => mark.kind === "colour").map(mark => [mark.itemId, { starred: mark.starred, archived: mark.archived }])),
+    [marksQuery.data],
+  );
   const marks: StudioFontMarks = useMemo(
     () => new Map((marksQuery.data?.marks ?? []).filter(mark => mark.kind === "font").map(mark => [mark.itemId, { starred: mark.starred, archived: mark.archived }])),
     [marksQuery.data],
@@ -110,6 +133,12 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
   const canEdit = Boolean(marksQuery.data?.canEdit);
   const plateText = useMemo(() => plateTextFor(choice), [choice]);
   const onMark = (itemId: string, change: { starred?: boolean; archived?: boolean }) => setMark.mutate({ kind: "font", itemId, ...change });
+  const onColourMark = (itemId: string, change: { starred?: boolean; archived?: boolean }) => setMark.mutate({ kind: "colour", itemId, ...change });
+  const onDeleteColour = (id: string) => {
+    deleteColour.mutate({ id });
+    setChoice(previous => (previous.colour === id ? { ...previous, colour: DEFAULT_STUDIO_COLOUR } : previous));
+  };
+  const colours = findStudioColour(choice.colour) ?? findStudioColour(DEFAULT_STUDIO_COLOUR);
   const pairs = studioFontPairs.filter(pair => !marks.get(pair.bn)?.archived && !marks.get(pair.en)?.archived);
 
   const updateChoice = (next: Partial<TextChoice>) => setChoice(previous => {
@@ -151,15 +180,15 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
   }, []);
 
   useEffect(() => {
-    if (preview.current) drawTestPlate(preview.current, section, size, 1, plateText);
-  }, [section, size, fontsReady, plateText, textFontsReady]);
+    if (preview.current) drawTestPlate(preview.current, section, size, 1, plateText, colours);
+  }, [section, size, fontsReady, plateText, textFontsReady, colours]);
 
   const download = async () => {
     setSaving(true);
     try {
       await Promise.all([loadStudioFont(choice.bn), loadStudioFont(choice.en)]);
       const canvas = document.createElement("canvas");
-      drawTestPlate(canvas, section, size, exportScale, plateText);
+      drawTestPlate(canvas, section, size, exportScale, plateText, colours);
       saveBlob(await canvasToImageBlob(canvas, format), imageFileName(section, size, format, exportScale));
     } catch (error) {
       toast.error((error as Error).message || "The image could not be made.");
@@ -196,6 +225,17 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
           })}
         </div> : null}
       </fieldset>
+
+      <ImageStudioColourPicker
+        value={choice.colour}
+        onChange={colour => updateChoice({ colour })}
+        marks={colourMarks}
+        canEdit={canEdit}
+        onMark={onColourMark}
+        onAdd={colour => addColour.mutate(colour)}
+        onDelete={onDeleteColour}
+        busy={setMark.isPending || addColour.isPending || deleteColour.isPending}
+      />
 
       <fieldset>
         <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-j-ink-soft">Size</legend>

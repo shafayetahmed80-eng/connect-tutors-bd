@@ -1877,6 +1877,23 @@ export const imageStudioFonts = mysqlTable(
   ]
 );
 
+/** Colour pairs the Project Owner saved in the Image Section: the ground, the text on it and a highlight, as #rrggbb. */
+export const imageStudioColours = mysqlTable(
+  "image_studio_colours",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    name: varchar("name", { length: 40 }).notNull(),
+    ground: varchar("ground", { length: 7 }).notNull(),
+    text: varchar("text", { length: 7 }).notNull(),
+    accent: varchar("accent", { length: 7 }).notNull(),
+    createdByAdminId: int("createdByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.createdByAdminId], foreignColumns: [users.id], name: "isc_created_by_fk" }),
+  ]
+);
+
 export const facebookPostTemplates = mysqlTable(
   "facebook_post_templates",
   {

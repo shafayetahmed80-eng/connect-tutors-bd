@@ -67,6 +67,7 @@ import {
 import { isTelegramAdminConfigured, notifyTelegramAdmin } from "./telegram-notification";
 import { imageStudioMarkKinds, listImageStudioMarks, setImageStudioMark } from "./image-studio";
 import { deleteImageStudioFont, listImageStudioUploadedFonts } from "./image-studio-fonts";
+import { ImageStudioColourError, createImageStudioColour, deleteImageStudioColour, listImageStudioOwnColours } from "./image-studio-colours";
 import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsInputSchema, refineLearningNeeds, withLegacyLearningNeeds } from "./learning-needs-input";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -3130,6 +3131,21 @@ export const appRouter = router({
     deleteFont: ownerAdminProcedure
       .input(z.object({ id: z.string().trim().regex(/^upload-[a-f0-9]{12}$/) }))
       .mutation(({ input }) => deleteImageStudioFont(input.id)),
+    /** Colour pairs the Owner saved; every Admin can use them. */
+    ownColours: adminProcedure.query(() => listImageStudioOwnColours()),
+    addColour: ownerAdminProcedure
+      .input(z.object({ name: z.string().trim().min(1).max(40), ground: z.string().max(7), text: z.string().max(7), accent: z.string().max(7) }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await createImageStudioColour({ ...input, adminUserId: ctx.user.id });
+        } catch (error) {
+          if (error instanceof ImageStudioColourError) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          throw error;
+        }
+      }),
+    deleteColour: ownerAdminProcedure
+      .input(z.object({ id: z.string().trim().regex(/^own-[a-f0-9]{12}$/) }))
+      .mutation(({ input }) => deleteImageStudioColour(input.id)),
   }),
   pushNotifications: router({
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */

@@ -1,8 +1,8 @@
 import { imageStudioMarks } from "../drizzle/schema";
 import { getDb } from "./db";
 
-/** What an Image Section mark can be about. Colours and uploaded fonts join the fonts in later steps. */
-export const imageStudioMarkKinds = ["font"] as const;
+/** What an Image Section mark can be about: a font or a colour pair, shipped or the Owner's own. */
+export const imageStudioMarkKinds = ["font", "colour"] as const;
 export type ImageStudioMarkKind = (typeof imageStudioMarkKinds)[number];
 
 export type ImageStudioMark = { kind: ImageStudioMarkKind; itemId: string; starred: boolean; archived: boolean };

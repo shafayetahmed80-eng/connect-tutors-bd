@@ -57,7 +57,7 @@ describe("imageStudio.setMark", () => {
 
   it("refuses other Admins, an unknown kind, a malformed id, and a call that changes nothing", async () => {
     await expect(caller(staff).imageStudio.setMark({ kind: "font", itemId: "galada", starred: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(caller(owner).imageStudio.setMark({ kind: "colour" as never, itemId: "galada", starred: true })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller(owner).imageStudio.setMark({ kind: "sticker" as never, itemId: "galada", starred: true })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller(owner).imageStudio.setMark({ kind: "font", itemId: "../etc", starred: true })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller(owner).imageStudio.setMark({ kind: "font", itemId: "galada" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(studioMocks.setImageStudioMark).not.toHaveBeenCalled();
@@ -69,5 +69,14 @@ describe("uploaded fonts in the router", () => {
     await expect(caller(guardian).imageStudio.uploadedFonts()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller(staff).imageStudio.deleteFont({ id: "upload-0123456789ab" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller(owner).imageStudio.deleteFont({ id: "noto-sans-bengali" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("colour pairs in the router", () => {
+  it("lists them for every Admin and keeps adding and deleting to the Owner, with an id check on delete", async () => {
+    await expect(caller(guardian).imageStudio.ownColours()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(staff).imageStudio.addColour({ name: "X", ground: "#000000", text: "#ffffff", accent: "#ff0000" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(staff).imageStudio.deleteColour({ id: "own-0123456789ab" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(owner).imageStudio.deleteColour({ id: "site-blue" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
