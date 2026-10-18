@@ -194,4 +194,23 @@ describe("AdminTutorRows", () => {
     fireEvent.click(appointBtn);
     expect(onAction).toHaveBeenCalledWith(mockTutors[0], "appoint");
   });
+
+  it("opens the Quick Peek bottom sheet drawer on tapping the peek button", () => {
+    onAPhone();
+    render(
+      <AdminTutorRows
+        tutors={[mockTutors[0]]}
+        caption="Tutor Directory"
+        emptyLabel="None"
+      />
+    );
+
+    const peekBtn = screen.getByRole("button", { name: "Quick peek for Tanvir Rahman" });
+    fireEvent.click(peekBtn);
+
+    // Bottom sheet drawer content should be visible
+    expect(screen.getByText("Quick profile summary & direct actions")).toBeTruthy();
+    expect(screen.getByText("Academic Background")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open Full Profile" }).getAttribute("href")).toBe("/admin/tutor-profiles/tut-1");
+  });
 });

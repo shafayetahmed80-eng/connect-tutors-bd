@@ -3,10 +3,11 @@ import RecordTable, { type RecordColumn } from "@/components/RecordTable";
 import { applicantActionLabels, applicantStageLabels, type ApplicantAction, type ApplicantActionOption } from "@shared/admin-applicant-actions";
 import type { TutorApplicationRecord, TutorApplicationStage } from "@shared/tutor-application-stages";
 import type { TutorMatchNote } from "@shared/tutor-matching";
-import { BadgeCheck, ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronRight, CircleAlert, Eye, MessageCircle, Phone } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { PhoneContact } from "@/components/PhoneContact";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 
 /**
  * A Tutor as an Admin scans one: Tutor Profiles and the applied-Tutor list of
@@ -329,9 +330,11 @@ export function AdminTutorCompactCard({
   guardianTuitionRequest?: AdminGuardianTuitionRequestActions;
   applicantRowActions?: AdminApplicantRowActions;
 }) {
+  const [isPeekOpen, setIsPeekOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-2">
-      {/* Tier 1: Header (Checkbox, Serial, ID, Name, Verified, Status, Details Link) */}
+      {/* Tier 1: Header (Checkbox, Serial, ID, Name, Verified, Status, Quick Peek, Details Link) */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {selection ? (
@@ -373,6 +376,15 @@ export function AdminTutorCompactCard({
           <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-3xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>
             {tutor.profileStatus.replaceAll("_", " ")}
           </span>
+          <button
+            type="button"
+            onClick={() => setIsPeekOpen(true)}
+            aria-label={`Quick peek for ${tutor.name}`}
+            className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-ink-soft hover:bg-j-surface-sunken active:scale-95 transition-transform"
+            title="Quick peek"
+          >
+            <Eye size={15} />
+          </button>
           <Link
             href={`/admin/tutor-profiles/${tutor.id}`}
             aria-label={`Open the full profile of ${tutor.name}`}
@@ -499,6 +511,136 @@ export function AdminTutorCompactCard({
           <PhoneContact phone={tutor.phone} size="table" showCopy={true} formatDisplay={true} />
         </div>
       ) : null}
+
+      {isPeekOpen ? (
+        <AdminTutorPeekDrawer
+          tutor={tutor}
+          isOpen={isPeekOpen}
+          onClose={() => setIsPeekOpen(false)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Mobile slide-up Bottom Sheet Drawer for inspecting a Tutor's profile summary
+ * and taking quick actions (call, WhatsApp, chat, view full profile) without
+ * navigating away from the directory.
+ */
+export function AdminTutorPeekDrawer({
+  tutor,
+  isOpen,
+  onClose,
+}: {
+  tutor: AdminTutorRow;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  const waUrl = tutor.phone
+    ? `https://wa.me/88${tutor.phone.replace(/\D/g, "").replace(/^88/, "")}`
+    : null;
+
+  return (
+    <Modal size="dialog" onClose={onClose}>
+      <ModalHeader title={tutor.name} meta="Quick profile summary & direct actions" />
+      <ModalBody className="space-y-3">
+        {/* Status & ID */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-2xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>
+              {tutor.profileStatus.replaceAll("_", " ")}
+            </span>
+            {tutor.verified ? (
+              <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-700">
+                <BadgeCheck size={14} className="text-emerald-600" /> Verified
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-2xs font-bold text-amber-700">
+                <CircleAlert size={14} className="text-amber-600" /> Unverified
+              </span>
+            )}
+          </div>
+          {tutor.tutorNumber ? (
+            <span className="font-mono text-2xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+              Tutor ID #{tutor.tutorNumber}
+            </span>
+          ) : null}
+        </div>
+
+        {/* Academic Background */}
+        <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
+          <div className="text-3xs font-bold uppercase tracking-wider text-j-ink-muted mb-1">Academic Background</div>
+          <p className="text-sm font-bold text-j-ink">{tutor.instituteName || "No institution set"}</p>
+          {tutor.departmentName ? (
+            <p className="text-xs text-j-ink-soft">{tutor.departmentName}</p>
+          ) : null}
+        </div>
+
+        {/* Location & Experience */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-muted">Location</span>
+            <span className="mt-0.5 block font-semibold text-j-ink truncate">
+              {[tutor.locationLabel, tutor.cityLabel].filter(Boolean).join(", ") || "—"}
+            </span>
+          </div>
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-muted">Experience</span>
+            <span className="mt-0.5 block font-semibold text-j-ink">
+              {tutor.teachingExperienceYears != null ? `${tutor.teachingExperienceYears} years` : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* Quick Contact Actions */}
+        {tutor.phone ? (
+          <div className="rounded-xl border border-j-border bg-white p-3 space-y-2">
+            <div className="text-3xs font-bold uppercase tracking-wider text-j-ink-muted">Quick Contact</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`tel:${tutor.phone}`}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-50 px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
+              >
+                <Phone size={13} /> Call
+              </a>
+              {waUrl ? (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700 transition"
+                >
+                  <MessageCircle size={13} /> WhatsApp
+                </a>
+              ) : null}
+              <Link
+                href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutor.id)}`}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-j-border px-3 text-xs font-bold text-j-ink-soft hover:bg-j-surface-sunken transition"
+              >
+                <MessageCircle size={13} /> Chat Thread
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </ModalBody>
+      <ModalFooter>
+        <Link
+          href={`/admin/tutor-profiles/${tutor.id}`}
+          className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-xs font-bold text-white shadow-xs hover:bg-j-accent-hover transition"
+        >
+          Open Full Profile <ChevronRight size={15} />
+        </Link>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-j-border px-4 text-xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+        >
+          Close
+        </button>
+      </ModalFooter>
+    </Modal>
   );
 }
