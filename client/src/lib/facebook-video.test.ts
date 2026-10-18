@@ -267,31 +267,64 @@ describe("how the video moves", () => {
   const manyJobs = Array.from({ length: 12 }, (_, index) => job(index + 1, { tuitionLocationLabel: index % 2 ? "Dhanmondi, Dhaka" : "Mirpur 10, Dhaka" }));
   const long = layoutReel(measureCtx(), reelInput(manyJobs, "en", null), "reels");
   const short = layoutReel(measureCtx(), reelInput([job(1), job(2), job(3)], "en", null), "reels");
+  const endTop = (layout: typeof long) => layout.blocks.at(-1)!.top;
 
-  it("holds the title card, turns it away on the list's first screen, rises to the last screen, then shuts the closing card and holds it", () => {
+  it("holds the title card, then rises in one run - the title away, the list, and the closing card in until it fills the frame - and holds it", () => {
     const timeline = reelTimeline(long, "slow");
 
-    expect(timeline.distance).toBeGreaterThan(0);
+    expect([timeline.opening, timeline.closing]).toEqual(["rise", "rise"]);
     expect(timeline.speed).toBeCloseTo(REEL_SIZES.reels.height / REEL_CROSS_SECONDS.slow);
-    expect(timeline.holdStart).toBe(REEL_HOLD_START);
-    expect(timeline.opening).toBe("turn");
-    expect(timeline.closing).toBe("turn");
-    expect(timeline.openDuration).toBe(REEL_TURN_SECONDS.slow);
-    expect(timeline.closeDuration).toBe(REEL_TURN_SECONDS.slow);
-    // The list sits still on its first screen through the title and the turn, and on its last through the closing card.
-    expect(reelOffsetAt(0, timeline)).toBe(timeline.from);
-    expect(reelOffsetAt(timeline.holdStart + timeline.openDuration, timeline)).toBe(timeline.from);
-    expect(reelOffsetAt(timeline.scrollStart + timeline.move, timeline)).toBeCloseTo(timeline.from + timeline.distance);
-    expect(reelOffsetAt(timeline.total, timeline)).toBeCloseTo(timeline.from + timeline.distance);
-    expect(timeline.closeStart).toBeGreaterThan(timeline.scrollStart + timeline.move);
-    expect(timeline.total).toBeCloseTo(timeline.closeStart + timeline.closeDuration + REEL_HOLD_END);
-    // The first screen starts just under the faded band at the top; the last ends just above the one at the bottom.
-    expect(long.listTop - timeline.from).toBeGreaterThan(0);
-    expect(timeline.from + timeline.distance + long.frameHeight).toBeGreaterThan(long.listBottom);
+    // The title card fills the frame at the top of the strip, and the closing card at its foot.
+    expect(timeline.from).toBe(0);
+    expect(timeline.from + timeline.distance).toBe(endTop(long));
+    expect(endTop(long)).toBe(long.height - long.frameHeight);
+    expect(reelOffsetAt(0, timeline)).toBe(0);
+    expect(reelOffsetAt(REEL_HOLD_START, timeline)).toBe(0);
+    // It starts to move as soon as the title has been held, and nothing is laid over the strip.
+    expect(timeline.scrollStart).toBe(REEL_HOLD_START);
+    expect(timeline.openDuration).toBe(0);
+    expect(timeline.closeDuration).toBe(0);
+    expect(timeline.closeStart).toBeCloseTo(timeline.scrollStart + timeline.move);
+    expect(reelOffsetAt(timeline.total, timeline)).toBe(endTop(long));
+    expect(timeline.total).toBeCloseTo(REEL_HOLD_START + timeline.move + REEL_HOLD_END);
+    for (const t of [0, 3, timeline.total / 2, timeline.total]) expect(reelPageCovers(t, timeline)).toEqual({ title: 0, end: 0 });
   });
 
-  it("keeps a list that fits the frame still, centred, between the two cards", () => {
-    const timeline = reelTimeline(short, "slow");
+  it("fades the title card into the list's first screen when Opening is off, and fades the closing card over its last screen when Closing is off", () => {
+    const timeline = reelTimeline(long, "slow", { opening: false, closing: false });
+
+    expect([timeline.opening, timeline.closing]).toEqual(["fade", "fade"]);
+    expect(timeline.openDuration).toBe(REEL_FADE_SECONDS);
+    expect(timeline.closeDuration).toBe(REEL_FADE_SECONDS);
+    // The first screen starts just under the faded band at the top; the last ends just above the one at the bottom.
+    expect(timeline.from).toBeGreaterThan(long.frameHeight - 200);
+    expect(timeline.from).toBeLessThan(long.listTop);
+    expect(timeline.from + timeline.distance + long.frameHeight).toBeGreaterThan(long.listBottom);
+    expect(timeline.from + timeline.distance).toBeLessThan(endTop(long));
+    expect(reelOffsetAt(timeline.holdStart + timeline.openDuration, timeline)).toBe(timeline.from);
+    expect(timeline.closeStart).toBeGreaterThan(timeline.scrollStart + timeline.move);
+    expect(timeline.total).toBeCloseTo(timeline.closeStart + timeline.closeDuration + REEL_HOLD_END);
+    // The faded cards cover the frame, then let it go - and come back over it.
+    expect(reelPageCovers(0, timeline)).toEqual({ title: 1, end: 0 });
+    expect(reelPageCovers(timeline.holdStart + timeline.openDuration / 2, timeline).title).toBeCloseTo(0.5);
+    expect(reelPageCovers(timeline.holdStart + timeline.openDuration, timeline).title).toBe(0);
+    expect(reelPageCovers(timeline.closeStart + timeline.closeDuration / 2, timeline).end).toBeCloseTo(0.5);
+    expect(reelPageCovers(timeline.total, timeline)).toEqual({ title: 0, end: 1 });
+  });
+
+  it("works each end on its own switch", () => {
+    const openingOff = reelTimeline(long, "slow", { opening: false });
+    expect([openingOff.opening, openingOff.closing]).toEqual(["fade", "rise"]);
+    expect(openingOff.from + openingOff.distance).toBe(endTop(long));
+
+    const closingOff = reelTimeline(long, "slow", { closing: false });
+    expect([closingOff.opening, closingOff.closing]).toEqual(["rise", "fade"]);
+    expect(closingOff.from).toBe(0);
+    expect(reelPageCovers(closingOff.total, closingOff).end).toBe(1);
+  });
+
+  it("keeps a list that fits the frame still, centred, between two faded cards", () => {
+    const timeline = reelTimeline(short, "slow", { opening: false, closing: false });
 
     expect(timeline.distance).toBe(0);
     expect(timeline.move).toBe(0);
@@ -302,61 +335,47 @@ describe("how the video moves", () => {
     expect(reelOffsetAt(timeline.scrollStart + 1, timeline)).toBe(timeline.from);
     // Long enough on screen to be read.
     expect(timeline.closeStart - (timeline.holdStart + timeline.openDuration)).toBeGreaterThanOrEqual(3);
+    // Rising, the same short list still travels from the title to the closing card.
+    expect(reelTimeline(short, "slow").distance).toBe(endTop(short));
   });
 
   it("never jumps or goes back: each moment is a little further than the one before", () => {
-    const timeline = reelTimeline(long, "normal");
-    let previous = reelOffsetAt(0, timeline);
-    let largestStep = 0;
-    for (let t = 0; t <= timeline.total; t += 1 / 30) {
-      const offset = reelOffsetAt(t, timeline);
-      expect(offset).toBeGreaterThanOrEqual(previous - 1e-9);
-      largestStep = Math.max(largestStep, offset - previous);
-      previous = offset;
+    for (const ends of [{}, { opening: false, closing: false }]) {
+      const timeline = reelTimeline(long, "normal", ends);
+      let previous = reelOffsetAt(0, timeline);
+      let largestStep = 0;
+      for (let t = 0; t <= timeline.total; t += 1 / 30) {
+        const offset = reelOffsetAt(t, timeline);
+        expect(offset).toBeGreaterThanOrEqual(previous - 1e-9);
+        largestStep = Math.max(largestStep, offset - previous);
+        previous = offset;
+      }
+      // No frame moves further than the steady speed allows.
+      expect(largestStep).toBeLessThanOrEqual(timeline.speed / 30 + 1e-6);
     }
-    // No frame moves further than the steady speed allows.
-    expect(largestStep).toBeLessThanOrEqual(timeline.speed / 30 + 1e-6);
   });
 
-  it("turns each card slower on a slow video, and fades in the same softness whatever the speed when the turns are off", () => {
-    const totals = (["slow", "normal", "fast"] as const).map(speed => reelTimeline(long, speed).total);
-    expect(totals[0]).toBeGreaterThan(totals[1]!);
-    expect(totals[1]).toBeGreaterThan(totals[2]!);
-
-    for (const speed of ["slow", "fast"] as const) {
-      const faded = reelTimeline(long, speed, { opening: false, closing: false });
-      expect(faded.opening).toBe("fade");
-      expect(faded.closing).toBe("fade");
-      expect(faded.openDuration).toBe(REEL_FADE_SECONDS);
-      expect(faded.closeDuration).toBe(REEL_FADE_SECONDS);
+  it("is longer when slower, whichever way the ends go", () => {
+    for (const ends of [{}, { opening: false, closing: false }]) {
+      const totals = (["slow", "normal", "fast"] as const).map(speed => reelTimeline(long, speed, ends).total);
+      expect(totals[0]).toBeGreaterThan(totals[1]!);
+      expect(totals[1]).toBeGreaterThan(totals[2]!);
     }
-    // The two switches are separate.
-    const openingOnly = reelTimeline(long, "slow", { closing: false });
-    expect([openingOnly.opening, openingOnly.closing]).toEqual(["turn", "fade"]);
   });
 
-  it("says how much of the frame each card covers: the title all of it until it turns, the closing card none until it arrives", () => {
-    const timeline = reelTimeline(long, "slow");
-
-    expect(reelPageCovers(0, timeline)).toEqual({ title: 1, end: 0 });
-    expect(reelPageCovers(timeline.holdStart, timeline).title).toBe(1);
-    expect(reelPageCovers(timeline.holdStart + timeline.openDuration / 2, timeline).title).toBeCloseTo(0.5);
-    expect(reelPageCovers(timeline.holdStart + timeline.openDuration, timeline).title).toBe(0);
-    expect(reelPageCovers(timeline.closeStart, timeline).end).toBe(0);
-    expect(reelPageCovers(timeline.closeStart + timeline.closeDuration / 2, timeline).end).toBeCloseTo(0.5);
-    expect(reelPageCovers(timeline.total, timeline)).toEqual({ title: 0, end: 1 });
-  });
-
-  it("is only re-timed - not repainted - when the speed or a page turn changes", () => {
+  it("is only re-timed - not repainted - when the speed or a switch changes", () => {
     withCanvas({ texts: [], images: [] });
     const reel = prepareReel(reelInput([job(1)], "en", null), { size: "square", speed: "slow" })!;
+    if (reel.style !== "scroll") throw new Error("not a scroll");
     const faster = withMotion(reel, { speed: "fast" });
+    if (faster.style !== "scroll") throw new Error("not a scroll");
     expect(faster.strips).toBe(reel.strips);
     expect(faster.pages).toBe(reel.pages);
     expect(faster.timeline.total).toBeLessThan(reel.timeline.total);
     const faded = withMotion(reel, { speed: "slow", opening: false, closing: false });
-    expect(faded.timeline.opening).toBe("fade");
-    expect(faded.timeline.total).toBeLessThan(reel.timeline.total);
+    if (faded.style !== "scroll") throw new Error("not a scroll");
+    expect([faded.timeline.opening, faded.timeline.closing]).toEqual(["fade", "fade"]);
+    expect(faded.strips).toBe(reel.strips);
     releaseReel(reel);
     expect(reel.strips[0]!.canvas.width).toBe(0);
     expect(reel.pages.title.width).toBe(0);
@@ -413,8 +432,22 @@ describe("what a frame is made of", () => {
     return { drawn, reel, ctx };
   };
 
-  it("is only the title card while it is held, and only the closing card at the end", () => {
+  it("rises with the title card and the closing card in the strip itself, so nothing is laid over the list", () => {
     const { drawn, reel, ctx } = prepare();
+
+    // Held at the start: the backdrop, the top of the strip (the title card), the two edge fades.
+    drawReelFrame(ctx, reel, 0);
+    expect(drawn.images).toHaveLength(4);
+    expect(drawn.images[1]!.args).toEqual([0, -1 + REEL_STRIP_PAD, 1080, 1922, 0, -1, 1080, 1922]);
+    // Held at the end: the foot of the strip (the closing card) under the same fades, and no card on top.
+    drawn.images.length = 0;
+    drawReelFrame(ctx, reel, reel.timeline.total);
+    expect(drawn.images.at(-1)).toEqual({ args: [0, 1920 - 150] });
+    expect(drawn.images.filter(image => image.args.length === 2 && image.args[0] === 0 && image.args[1] === 0)).toHaveLength(2);
+  });
+
+  it("is only the faded card while it covers the frame", () => {
+    const { drawn, reel, ctx } = prepare({ opening: false, closing: false });
 
     drawReelFrame(ctx, reel, 0);
     expect(drawn.images).toEqual([{ args: [0, 0] }]);
@@ -424,7 +457,7 @@ describe("what a frame is made of", () => {
   });
 
   it("copies only the rows of the list that are in the frame, between the backdrop and the two edge fades", () => {
-    const { drawn, reel, ctx } = prepare();
+    const { drawn, reel, ctx } = prepare({ opening: false, closing: false });
     drawReelFrame(ctx, reel, reel.timeline.scrollStart + 0.1);
 
     expect(drawn.images).toHaveLength(4);
@@ -478,24 +511,21 @@ describe("what a frame is made of", () => {
     expect(strips.some(image => !Number.isInteger(image.args[5]!))).toBe(true);
   });
 
-  it("lays a turning title card over the list slice by slice, shaded as one, and only the page itself when fading", () => {
-    const turned = prepare();
-    drawReelFrame(turned.ctx, turned.reel, turned.reel.timeline.holdStart + turned.reel.timeline.openDuration / 2);
-    // The list's four draws, a slice for each stretch of the page, and the shaded page laid over them.
-    expect(turned.drawn.images.length).toBeGreaterThan(100);
-    expect(turned.drawn.images.at(-1)).toEqual({ args: [0, 0] });
+  it("fades the title card over the list's first screen when Opening is off", () => {
+    const { drawn, reel, ctx } = prepare({ opening: false });
+    drawReelFrame(ctx, reel, reel.timeline.holdStart + reel.timeline.openDuration / 2);
 
-    const faded = prepare({ opening: false });
-    drawReelFrame(faded.ctx, faded.reel, faded.reel.timeline.holdStart + faded.reel.timeline.openDuration / 2);
-    expect(faded.drawn.images).toHaveLength(5);
-    expect(faded.drawn.images.at(-1)).toEqual({ args: [0, 0] });
+    // The list's four draws, then the card itself laid over them, see-through.
+    expect(drawn.images).toHaveLength(5);
+    expect(drawn.images.at(-1)).toEqual({ args: [0, 0] });
   });
 
-  it("shuts the closing card over the list the same way", () => {
-    const { drawn, reel, ctx } = prepare();
+  it("fades the closing card over the list's last screen when Closing is off", () => {
+    const { drawn, reel, ctx } = prepare({ closing: false });
     drawReelFrame(ctx, reel, reel.timeline.closeStart + reel.timeline.closeDuration / 2);
 
-    expect(drawn.images.length).toBeGreaterThan(100);
+    expect(drawn.images.length).toBeGreaterThanOrEqual(5);
+    expect(drawn.images.length).toBeLessThan(10);
     expect(drawn.images.at(-1)).toEqual({ args: [0, 0] });
   });
 });
@@ -681,6 +711,10 @@ describe("what a slides frame is made of", () => {
     // The page beneath, a slice for each stretch of the turning page, and the shaded page laid over.
     expect(turned.drawn.images.length).toBeGreaterThan(100);
     expect(turned.drawn.images.at(-1)).toEqual({ args: [0, 0] });
+    // Hinged on the left: the slice at the spine is the page's left edge, drawn at the frame's left edge.
+    const leftSlice = turned.drawn.images.find(image => image.args.length === 8 && image.args[2] === 8)!;
+    expect(leftSlice.args[0]).toBe(0);
+    expect(leftSlice.args[4]).toBeCloseTo(0);
 
     const faded = prepare({ opening: false });
     const fade = faded.reel.timeline as ReturnType<typeof slidesTimeline>;
@@ -688,7 +722,7 @@ describe("what a slides frame is made of", () => {
     expect(faded.drawn.images).toHaveLength(2);
   });
 
-  it("shuts the closing card over the last page the same way", () => {
+  it("shuts the closing card over the last page from the right, like the back of a book", () => {
     const { drawn, reel, ctx } = prepare();
     const timeline = reel.timeline as ReturnType<typeof slidesTimeline>;
     const shut = timeline.steps.at(-2)!;
@@ -696,6 +730,10 @@ describe("what a slides frame is made of", () => {
 
     expect(drawn.images.length).toBeGreaterThan(100);
     expect(drawn.images.at(-1)).toEqual({ args: [0, 0] });
+    // Hinged on the right: the slice at the spine is the page's right edge, drawn at the frame's right edge.
+    const rightSlice = drawn.images.find(image => image.args.length === 8 && image.args[2] === 8)!;
+    expect(rightSlice.args[0]).toBe(1080 - 8);
+    expect(rightSlice.args[4]! + rightSlice.args[6]!).toBeCloseTo(1080);
   });
 
   it("is only re-timed - not repainted - when the speed or a page turn changes, and lets every page go when released", () => {

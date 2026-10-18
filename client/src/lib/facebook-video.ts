@@ -146,20 +146,19 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
   }
 
   const layout = layoutReel(measureCtx, input, options.size);
-  // The title and closing cards are pages of their own, so the strips hold only the list - and a strip with none of it is not painted.
-  const isList = (block: ReelBlock) => block.kind === "area" || block.kind === "card";
+  // The strip holds the title card at its top and the closing card at its foot, so either can rise with the list.
   const strips = reelStrips(layout)
-    .filter(strip => strip.blocks.some(isList))
+    .filter(strip => strip.blocks.length > 0)
     .map(strip => {
       const canvas = canvasOf(width, strip.height + REEL_STRIP_PAD * 2);
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.translate(0, REEL_STRIP_PAD - strip.top);
-        for (const block of strip.blocks.filter(isList)) paintReelBlock(ctx, block, look, input, width);
+        for (const block of strip.blocks) paintReelBlock(ctx, block, look, input, width);
       }
       return { top: strip.top, height: strip.height, canvas };
     });
-  // The title and closing blocks sit at the strip's two ends; a page paints each at its own top.
+  // Each card is also a page of its own, opaque on the backdrop, for when it fades instead.
   const card = (block: ReelBlock) => page([{ ...block, top: 0 }]);
   const pages = { title: card(layout.blocks[0]!), end: card(layout.blocks[layout.blocks.length - 1]!) };
 
@@ -177,7 +176,11 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
   };
 }
 
-/** Whether the title card turns away like a book's cover and the closing card shuts like its back cover; otherwise each fades. */
+/**
+ * The Opening and Closing switches: on, the title card leaves and the closing
+ * card arrives in motion - rising with the list in a scroll, turned like a
+ * book's page in slides - and off, each fades.
+ */
 export type ReelTurns = { opening?: boolean; closing?: boolean };
 
 /** The backdrop's top and bottom bands, each fading out away from its edge. */
@@ -215,12 +218,15 @@ export function releaseReel(reel: PreparedReel | null) {
   }
 }
 
+/** Which edge of the frame a turning page is hinged on: the left, like a page turned forward; the right, like a book shut from that side. */
+export type PageHinge = "left" | "right";
+
 /**
  * A page laid over the frame at `cover` (1 is the whole frame, 0 is gone):
- * swung on the frame's left edge like a book's cover, shaded as it turns and
+ * swung on one edge of the frame like a book's page, shaded as it turns and
  * casting a shadow on what it uncovers - or, in a fade, just let through.
  */
-function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLCanvasElement, cover: number, transition: "turn" | "fade") {
+function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLCanvasElement, cover: number, transition: "turn" | "fade", hinge: PageHinge = "left") {
   const { width, height } = reel;
   if (transition === "fade") {
     ctx.globalAlpha = cover;
@@ -232,19 +238,22 @@ function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLC
   const sin = Math.sin(angle);
   const slices = turnSlices(width, angle);
   const free = slices[slices.length - 1]!;
-  const freeX = free.dx + free.dw;
+  // How far the free edge is from the hinge; on a right hinge every distance is measured in from the right.
+  const reach = free.dx + free.dw;
+  const right = hinge === "right";
+  const freeX = right ? width - reach : reach;
 
   // The shadow the page casts on what it uncovers, and the one the spine leaves.
-  const cast = ctx.createLinearGradient(freeX, 0, freeX + 150, 0);
+  const cast = ctx.createLinearGradient(freeX, 0, right ? freeX - 150 : freeX + 150, 0);
   cast.addColorStop(0, `rgba(0,0,0,${0.3 * sin})`);
   cast.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = cast;
-  ctx.fillRect(freeX, 0, 150, height);
-  const spine = ctx.createLinearGradient(0, 0, 46, 0);
+  ctx.fillRect(right ? freeX - 150 : freeX, 0, 150, height);
+  const spine = ctx.createLinearGradient(right ? width : 0, 0, right ? width - 46 : 46, 0);
   spine.addColorStop(0, `rgba(0,0,0,${0.18 * sin})`);
   spine.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = spine;
-  ctx.fillRect(0, 0, 46, height);
+  ctx.fillRect(right ? width - 46 : 0, 0, 46, height);
 
   // The page itself, a slice at a time, drawn apart so it can be shaded as one.
   const scratch = reel.scratch.getContext("2d");
@@ -253,11 +262,13 @@ function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLC
   scratch.clearRect(0, 0, width, height);
   for (const slice of slices) {
     const drawn = height * slice.scale;
-    // A little wider than its place, so no seam shows between slices.
-    scratch.drawImage(page, slice.sx, 0, slice.sw, height, slice.dx, (height - drawn) / 2, Math.max(1, slice.dw) + 0.75, drawn);
+    // A little wider than its place, toward the free edge, so no seam shows between slices.
+    const across = Math.max(1, slice.dw) + 0.75;
+    if (right) scratch.drawImage(page, width - slice.sx - slice.sw, 0, slice.sw, height, width - slice.dx - across, (height - drawn) / 2, across, drawn);
+    else scratch.drawImage(page, slice.sx, 0, slice.sw, height, slice.dx, (height - drawn) / 2, across, drawn);
   }
   scratch.globalCompositeOperation = "source-atop";
-  const shade = scratch.createLinearGradient(0, 0, Math.max(freeX, 1), 0);
+  const shade = scratch.createLinearGradient(right ? width : 0, 0, right ? Math.min(freeX, width - 1) : Math.max(freeX, 1), 0);
   shade.addColorStop(0, "rgba(0,0,0,0)");
   shade.addColorStop(1, `rgba(0,0,0,${0.4 * sin})`);
   scratch.fillStyle = shade;
@@ -271,8 +282,8 @@ function drawPage(ctx: CanvasRenderingContext2D, reel: PreparedReel, page: HTMLC
 
 /**
  * A slides frame: the page held, or one page turning (or fading) into the
- * next. A page turns away to uncover the next; the closing card instead
- * arrives over the last page, like a cover shut.
+ * next. A page turns away to the left to uncover the next; the closing card
+ * instead arrives over the last page from the right, like a book shut.
  */
 function drawSlidesFrame(ctx: CanvasRenderingContext2D, reel: SlidesReel, t: number) {
   const { step, progress } = slideStepAt(t, reel.timeline);
@@ -282,7 +293,8 @@ function drawSlidesFrame(ctx: CanvasRenderingContext2D, reel: SlidesReel, t: num
   }
   if (step.shut) {
     ctx.drawImage(reel.sheets[step.page]!, 0, 0);
-    drawPage(ctx, reel, reel.sheets[step.to]!, reelEase(progress), step.transition);
+    // The closing card shuts from the right, like the back of a book.
+    drawPage(ctx, reel, reel.sheets[step.to]!, reelEase(progress), step.transition, "right");
     return;
   }
   ctx.drawImage(reel.sheets[step.to]!, 0, 0);
@@ -291,9 +303,10 @@ function drawSlidesFrame(ctx: CanvasRenderingContext2D, reel: SlidesReel, t: num
 
 /**
  * Draws the frame at `t` seconds onto `ctx` (a canvas the reel's size): for a
- * scroll, the title card whole while it is held, else the backdrop, the
- * visible part of each strip, the edge fades, and whichever page is turning
- * (or fading) over them; for slides, the page held or turning.
+ * scroll, a faded card whole while it covers the frame, else the backdrop, the
+ * visible part of each strip (which carries a rising title and closing card
+ * with the list), the edge fades, and a card fading in or out over them; for
+ * slides, the page held or turning.
  */
 export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel, t: number) {
   if (reel.style === "slides") {
@@ -330,8 +343,9 @@ export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel,
   }
   ctx.drawImage(reel.fades.top, 0, 0);
   ctx.drawImage(reel.fades.bottom, 0, height - reel.fades.bottom.height);
-  if (covers.title > 0) drawPage(ctx, reel, reel.pages.title, covers.title, timeline.opening);
-  if (covers.end > 0) drawPage(ctx, reel, reel.pages.end, covers.end, timeline.closing);
+  // Only a faded card is laid over the list; a rising one is part of the strip.
+  if (covers.title > 0) drawPage(ctx, reel, reel.pages.title, covers.title, "fade");
+  if (covers.end > 0) drawPage(ctx, reel, reel.pages.end, covers.end, "fade");
 }
 
 /** "0:43", "1:12". */
