@@ -84,6 +84,11 @@ export type RecordTableProps<Row> = {
   maxCardActions?: number;
   /** Extra classes for one row - the table's row and the phone's card alike - such as a tint for a picked one. */
   rowClassName?: (row: Row, index: number) => string | undefined;
+  /**
+   * Optional custom card renderer for mobile screens (<md).
+   * When provided, each row renders using this function instead of the generic dl grid.
+   */
+  renderCard?: (row: Row, index: number) => ReactNode;
 };
 
 /** Steps beyond this many rows would make the last ones wait too long to arrive. */
@@ -106,7 +111,8 @@ function columnLabel<Row>(column: RecordColumn<Row>, isCard: boolean = false) {
     : text;
 }
 
-function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntrance, maxCardActions, rowClassName }: RecordTableProps<Row>) {
+function RecordCards<Row>(props: RecordTableProps<Row>) {
+  const { caption, columns, rows, rowKey, empty, animateEntrance, maxCardActions, rowClassName, renderCard } = props;
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -141,6 +147,17 @@ function RecordCards<Row>({ caption, columns, rows, rowKey, empty, animateEntran
   return <ul aria-label={caption} className="space-y-2.5">
     {rows.map((row, index) => {
       const entrance = rowEntranceProps(animateEntrance, index);
+      if (renderCard) {
+        return (
+          <li
+            key={rowKey(row, index)}
+            className={cn("rounded-xl border border-j-border bg-white p-3.5 shadow-sm", entrance.className, rowClassName?.(row, index))}
+            style={entrance.style}
+          >
+            {renderCard(row, index)}
+          </li>
+        );
+      }
       return <li key={rowKey(row, index)} className={cn("rounded-xl border border-j-border bg-white p-3.5 shadow-sm", entrance.className, rowClassName?.(row, index))} style={entrance.style}>
       {head.length > 0 ? <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
         {head.map(column => <div key={column.key} className="min-w-0">{cardContent(column, row, index)}</div>)}

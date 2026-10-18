@@ -278,6 +278,30 @@ describe("RecordTable", () => {
       fireEvent.pointerDown(card.getByRole("button", { name: "More actions" }), { button: 0, ctrlKey: false, pointerType: "mouse" });
       expect(screen.getByRole("button", { name: "Btn 2 6801" })).toBeTruthy();
     });
+
+    it("renders custom mobile card when renderCard is provided on a phone", () => {
+      onAPhone();
+      render(
+        <RecordTable
+          caption="Tuitions"
+          columns={columns}
+          rows={rows}
+          rowKey={row => row.id}
+          empty="None."
+          renderCard={(row, index) => (
+            <div data-testid={`custom-card-${row.id}`}>
+              <span>Custom #{index + 1}: {row.jobId}</span>
+            </div>
+          )}
+        />
+      );
+
+      expect(screen.getByTestId("custom-card-1")).toBeTruthy();
+      expect(screen.getByText("Custom #1: 6801")).toBeTruthy();
+      expect(screen.getByTestId("custom-card-2")).toBeTruthy();
+      expect(screen.getByText("Custom #2: 6802")).toBeTruthy();
+    });
   });
 });
+
 
