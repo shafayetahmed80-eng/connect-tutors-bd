@@ -81,7 +81,7 @@ describe("AdminTutorRows", () => {
     // Card 1 assertions
     const card1 = within(cards[0]);
     expect(card1.getByText("Tanvir Rahman")).toBeTruthy();
-    expect(card1.getByText("ID 4892")).toBeTruthy();
+    expect(card1.getByText("4892")).toBeTruthy();
     expect(card1.getByText("approved")).toBeTruthy();
     expect(card1.getByLabelText("Verified")).toBeTruthy();
     expect(card1.getByText("BUET")).toBeTruthy();
@@ -97,7 +97,7 @@ describe("AdminTutorRows", () => {
     // Card 2 assertions (with application stage)
     const card2 = within(cards[1]);
     expect(card2.getByText("Nusrat Jahan")).toBeTruthy();
-    expect(card2.getByText("ID 4893")).toBeTruthy();
+    expect(card2.getByText("4893")).toBeTruthy();
     expect(card2.getByText("pending")).toBeTruthy();
     expect(card2.getByLabelText("Not verified")).toBeTruthy();
     expect(card2.getByText("Shortlisted")).toBeTruthy();

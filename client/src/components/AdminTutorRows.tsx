@@ -352,7 +352,7 @@ export function AdminTutorCompactCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               {tutor.tutorNumber ? (
                 <span className="font-mono text-3xs font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
-                  ID {tutor.tutorNumber}
+                  <span className="opacity-75 font-normal">ID </span><span>{tutor.tutorNumber}</span>
                 </span>
               ) : null}
               <Link
@@ -387,12 +387,14 @@ export function AdminTutorCompactCard({
       {(tutor.instituteName || tutor.departmentName) ? (
         <div className="flex items-center gap-1.5 text-xs text-j-ink-soft">
           <span className="shrink-0" aria-hidden="true">🎓</span>
+          <span className="text-3xs font-bold uppercase tracking-wider text-j-ink-muted">Institute</span>
+          <span className="text-j-ink-faint" aria-hidden="true">•</span>
           <span className="font-medium text-j-ink truncate">
             {tutor.instituteName || "Not set"}
           </span>
           {tutor.departmentName ? (
             <span className="text-2xs text-j-ink-muted truncate">
-              • {tutor.departmentName}
+              ({tutor.departmentName})
             </span>
           ) : null}
         </div>
