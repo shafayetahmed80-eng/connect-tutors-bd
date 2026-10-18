@@ -67,12 +67,57 @@ export function imageFileName(section: ImageStudioSection, size: ImageStudioSize
 /** The site's own blues (`index.css`), so even the test plate looks like the brand. */
 const PLATE = { ground: "#0b4b86", accent: "#1677e8", line: "rgba(255,255,255,0.35)", text: "#ffffff" };
 
+/** Which language the picture is in: Bangla, English, or both together. */
+export type PlateTextMode = "bn" | "en" | "mixed";
+
+/** The text the plate shows and the faces it is set in; without it the plate uses the site's own poster face. */
+export type PlateText = {
+  mode: PlateTextMode;
+  bnFamily: string;
+  bnWeight: number;
+  enFamily: string;
+  enWeight: number;
+};
+
+export const PLATE_SAMPLE = {
+  bn: "অভিজ্ঞ শিক্ষক প্রয়োজন",
+  en: "Find the right home tutor",
+  brand: "Connect Tutors",
+} as const;
+
+type PlateLine = { text: string; family: string; weight: number };
+
+/** The lines a mode draws, each with the face it is set in. Mixed leads with the English name, then the Bangla line. */
+export function plateLines(text: PlateText): PlateLine[] {
+  const bn = { text: PLATE_SAMPLE.bn, family: text.bnFamily, weight: text.bnWeight };
+  const en = { text: PLATE_SAMPLE.en, family: text.enFamily, weight: text.enWeight };
+  if (text.mode === "bn") return [bn];
+  if (text.mode === "en") return [en];
+  return [{ text: PLATE_SAMPLE.brand, family: text.enFamily, weight: text.enWeight }, bn];
+}
+
+function lineFont(line: PlateLine, px: number) {
+  return `${line.weight} ${px}px "${line.family}", ${POSTER_FONT_STACK}`;
+}
+
+/** Shrinks a line until it fits the width it is given, so a long headline never runs off the picture. */
+function fitLine(ctx: CanvasRenderingContext2D, line: PlateLine, startPx: number, maxWidth: number) {
+  let px = startPx;
+  ctx.font = lineFont(line, px);
+  while (px > 8 && ctx.measureText(line.text).width > maxWidth) {
+    px = Math.floor(px * 0.92);
+    ctx.font = lineFont(line, px);
+  }
+  return px;
+}
+
 /**
  * Draws the test plate in the size's own units; `scale` multiplies every pixel
  * so a 2× export is the same picture, sharper. The dashed frame sits 5% in -
- * the margin a platform may crop or cover.
+ * the margin a platform may crop or cover. With `text`, the plate shows sample
+ * lines in the chosen faces instead of the section name.
  */
-export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSection, size: ImageStudioSize, scale: number = 1) {
+export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSection, size: ImageStudioSize, scale: number = 1, text?: PlateText) {
   canvas.width = size.width * scale;
   canvas.height = size.height * scale;
   const ctx = canvas.getContext("2d");
@@ -97,10 +142,30 @@ export function drawTestPlate(canvas: HTMLCanvasElement, section: ImageStudioSec
   ctx.fillStyle = PLATE.text;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `700 ${Math.round(unit * 0.09)}px ${POSTER_FONT_STACK}`;
-  ctx.fillText(imageStudioSectionLabels[section], width / 2, height / 2 - unit * 0.06);
-  ctx.font = `500 ${Math.round(unit * 0.05)}px ${POSTER_FONT_STACK}`;
-  ctx.fillText(`${size.width} × ${size.height}`, width / 2, height / 2 + unit * 0.06);
+
+  if (!text) {
+    ctx.font = `700 ${Math.round(unit * 0.09)}px ${POSTER_FONT_STACK}`;
+    ctx.fillText(imageStudioSectionLabels[section], width / 2, height / 2 - unit * 0.06);
+    ctx.font = `500 ${Math.round(unit * 0.05)}px ${POSTER_FONT_STACK}`;
+    ctx.fillText(`${size.width} × ${size.height}`, width / 2, height / 2 + unit * 0.06);
+    return;
+  }
+
+  const lines = plateLines(text);
+  const sizes = lines.map(line => fitLine(ctx, line, Math.round(unit * 0.11), width - inset * 4));
+  const gap = unit * 0.04;
+  const total = sizes.reduce((sum, px) => sum + px * 1.3, 0) + gap * (lines.length - 1);
+  let y = height / 2 - total / 2;
+  lines.forEach((line, index) => {
+    const px = sizes[index];
+    ctx.font = lineFont(line, px);
+    ctx.fillText(line.text, width / 2, y + (px * 1.3) / 2);
+    y += px * 1.3 + gap;
+  });
+  ctx.globalAlpha = 0.7;
+  ctx.font = `500 ${Math.round(unit * 0.035)}px ${POSTER_FONT_STACK}`;
+  ctx.fillText(`${size.width} × ${size.height}`, width / 2, height - inset - unit * 0.04);
+  ctx.globalAlpha = 1;
 }
 
 /** PNG keeps transparency; JPG has none, so whatever is drawn is laid on white first. */
