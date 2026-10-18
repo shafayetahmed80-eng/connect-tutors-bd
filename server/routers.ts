@@ -66,6 +66,7 @@ import {
 } from "./site-content";
 import { isTelegramAdminConfigured, notifyTelegramAdmin } from "./telegram-notification";
 import { imageStudioMarkKinds, listImageStudioMarks, setImageStudioMark } from "./image-studio";
+import { deleteImageStudioFont, listImageStudioUploadedFonts } from "./image-studio-fonts";
 import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsInputSchema, refineLearningNeeds, withLegacyLearningNeeds } from "./learning-needs-input";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -3124,6 +3125,11 @@ export const appRouter = router({
         archived: z.boolean().optional(),
       }).refine(input => input.starred !== undefined || input.archived !== undefined, { message: "Nothing to change." }))
       .mutation(({ ctx, input }) => setImageStudioMark({ ...input, adminUserId: ctx.user.id })),
+    /** Fonts the Owner uploaded (POST /api/admin/image-studio/fonts), each with a link only Admins can open. */
+    uploadedFonts: adminProcedure.query(() => listImageStudioUploadedFonts()),
+    deleteFont: ownerAdminProcedure
+      .input(z.object({ id: z.string().trim().regex(/^upload-[a-f0-9]{12}$/) }))
+      .mutation(({ input }) => deleteImageStudioFont(input.id)),
   }),
   pushNotifications: router({
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */

@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   canvasToImageBlob: vi.fn(async () => new Blob(["x"])),
   drawTestPlate: vi.fn(),
   setMark: vi.fn(),
+  deleteFont: vi.fn(),
+  invalidateUploads: vi.fn(),
+  uploaded: [] as { id: string; name: string; script: "bn" | "en"; category: "sans"; url: string }[],
   marks: { marks: [] as { kind: "font"; itemId: string; starred: boolean; archived: boolean }[], canEdit: false },
 }));
 
@@ -18,9 +21,11 @@ vi.mock("@/lib/image-studio", async importOriginal => {
 });
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ imageStudio: { marks: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ imageStudio: { marks: { invalidate: vi.fn() }, uploadedFonts: { invalidate: mocks.invalidateUploads } } }),
     imageStudio: {
       marks: { useQuery: () => ({ data: mocks.marks }) },
+      uploadedFonts: { useQuery: () => ({ data: mocks.uploaded }) },
+      deleteFont: { useMutation: () => ({ mutate: mocks.deleteFont, isPending: false }) },
       setMark: { useMutation: () => ({ mutate: mocks.setMark, isPending: false }) },
     },
   },
@@ -33,6 +38,7 @@ import { ImageStudioContent } from "./AdminImageStudio";
 beforeEach(() => {
   window.localStorage.clear();
   mocks.marks = { marks: [], canEdit: false };
+  mocks.uploaded = [];
 });
 
 afterEach(() => {
@@ -128,5 +134,49 @@ describe("the text and its fonts", () => {
 
     expect(screen.queryByRole("button", { name: /^Star / })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Archive / })).toBeNull();
+  });
+});
+
+describe("fonts the Owner uploads", () => {
+  it("joins the list as U1, which the Owner can delete after confirming", async () => {
+    mocks.uploaded = [{ id: "upload-0123456789ab", name: "Li Ador Noirrit", script: "bn", category: "sans", url: "/api/files/image-studio/fonts/upload-0123456789ab.ttf" }];
+    mocks.marks = { marks: [], canEdit: true };
+    render(<ImageStudioContent section="poster" />);
+    fireEvent.click(screen.getByRole("button", { name: /B1 · Noto Sans Bengali/ }));
+    const list = screen.getByRole("list", { name: "বাংলা fonts" });
+
+    expect(within(list).getByRole("button", { name: /^U1.*Li Ador Noirrit$/ })).toBeTruthy();
+
+    fireEvent.click(within(list).getByRole("button", { name: "Delete Li Ador Noirrit" }));
+    expect(mocks.deleteFont).not.toHaveBeenCalled();
+    fireEvent.click(within(list).getByRole("button", { name: "Delete" }));
+    expect(mocks.deleteFont).toHaveBeenCalledWith({ id: "upload-0123456789ab" });
+  });
+
+  it("sends the file with its name, the list's language and the chosen type, then refreshes the list", async () => {
+    mocks.marks = { marks: [], canEdit: true };
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ id: "upload-0123456789ab", name: "My Font" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ImageStudioContent section="poster" />);
+    fireEvent.click(screen.getByRole("button", { name: /B1 · Noto Sans Bengali/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add font/ }));
+
+    const file = new File(["font-bytes"], "My-Font_Bold.ttf", { type: "font/ttf" });
+    fireEvent.change(screen.getByLabelText(/Font file/), { target: { files: [file] } });
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("My Font Bold");
+    fireEvent.click(within(screen.getByRole("group", { name: "Type of the new font" })).getByRole("button", { name: "Display" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(mocks.invalidateUploads).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { body: FormData }];
+    expect(url).toBe("/api/admin/image-studio/fonts");
+    expect(Object.fromEntries(["name", "script", "category"].map(key => [key, init.body.get(key)]))).toEqual({ name: "My Font Bold", script: "bn", category: "display" });
+    vi.unstubAllGlobals();
+  });
+
+  it("offers no upload to other Admins", () => {
+    render(<ImageStudioContent section="poster" />);
+    fireEvent.click(screen.getByRole("button", { name: /B1 · Noto Sans Bengali/ }));
+    expect(screen.queryByRole("button", { name: /Add font/ })).toBeNull();
   });
 });

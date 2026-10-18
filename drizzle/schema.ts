@@ -1858,6 +1858,25 @@ export const imageStudioMarks = mysqlTable(
   ]
 );
 
+/** Fonts the Project Owner uploaded to the Image Section; the file sits in private storage, readable by Admins only. */
+export const imageStudioFonts = mysqlTable(
+  "image_studio_fonts",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    name: varchar("name", { length: 80 }).notNull(),
+    script: varchar("script", { length: 2 }).notNull(),
+    category: varchar("category", { length: 16 }).notNull(),
+    fileKey: varchar("fileKey", { length: 255 }).notNull(),
+    format: varchar("format", { length: 8 }).notNull(),
+    sizeBytes: int("sizeBytes").notNull(),
+    uploadedByAdminId: int("uploadedByAdminId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ columns: [table.uploadedByAdminId], foreignColumns: [users.id], name: "isf_uploaded_by_fk" }),
+  ]
+);
+
 export const facebookPostTemplates = mysqlTable(
   "facebook_post_templates",
   {

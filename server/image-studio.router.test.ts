@@ -63,3 +63,11 @@ describe("imageStudio.setMark", () => {
     expect(studioMocks.setImageStudioMark).not.toHaveBeenCalled();
   });
 });
+
+describe("uploaded fonts in the router", () => {
+  it("lists them for every Admin and lets only the Owner delete one by its upload id", async () => {
+    await expect(caller(guardian).imageStudio.uploadedFonts()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(staff).imageStudio.deleteFont({ id: "upload-0123456789ab" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(owner).imageStudio.deleteFont({ id: "noto-sans-bengali" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});

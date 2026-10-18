@@ -18,6 +18,8 @@ export type StudioFont = {
   name: string;
   script: StudioFontScript;
   category: StudioFontCategory;
+  /** A font the Owner uploaded rather than one shipped with the site. */
+  uploaded?: boolean;
 };
 
 type FontFile = { weight: number; url: string; unicodeRange?: string };
@@ -95,8 +97,28 @@ export const studioFontCategoryLabels: Record<StudioFontCategory, string> = {
 export const DEFAULT_BANGLA_FONT = "noto-sans-bengali";
 export const DEFAULT_ENGLISH_FONT = "dm-sans";
 
+export type UploadedStudioFont = { id: string; name: string; script: StudioFontScript; category: StudioFontCategory; url: string };
+
+let uploadedFonts: StudioFont[] = [];
+const uploadedFiles = new Map<string, FontFile[]>();
+
+/** The Owner's uploaded fonts join the library as U1, U2 ... in upload order; each ships one regular face. */
+export function setUploadedStudioFonts(list: readonly UploadedStudioFont[]) {
+  uploadedFonts = list.map((font, index) => ({ id: font.id, code: `U${index + 1}`, name: font.name, script: font.script, category: font.category, uploaded: true }));
+  uploadedFiles.clear();
+  for (const font of list) uploadedFiles.set(font.id, [{ weight: 400, url: font.url }]);
+}
+
+export function allStudioFonts(): readonly StudioFont[] {
+  return uploadedFonts.length ? [...studioFonts, ...uploadedFonts] : studioFonts;
+}
+
+function filesFor(id: string) {
+  return files[id] ?? uploadedFiles.get(id);
+}
+
 export function findStudioFont(id: string) {
-  return studioFonts.find(font => font.id === id);
+  return allStudioFonts().find(font => font.id === id);
 }
 
 /** The CSS family a library font is registered under - its own name, so it never collides with the site's faces. */
@@ -106,11 +128,11 @@ export function studioFontFamily(id: string) {
 
 /** The heaviest weight the family ships, for headlines; one-weight families answer with that weight. */
 export function studioFontBoldWeight(id: string) {
-  return Math.max(...(files[id] ?? [{ weight: 400 }]).map(file => file.weight));
+  return Math.max(...(filesFor(id) ?? [{ weight: 400 }]).map(file => file.weight));
 }
 
 export function studioFontRegularWeight(id: string) {
-  return Math.min(...(files[id] ?? [{ weight: 400 }]).map(file => file.weight));
+  return Math.min(...(filesFor(id) ?? [{ weight: 400 }]).map(file => file.weight));
 }
 
 export type StudioFontMarks = Map<string, { starred: boolean; archived: boolean }>;
@@ -128,7 +150,7 @@ export function visibleStudioFonts(options: {
   showArchived?: boolean;
 }) {
   const term = options.search?.trim().toLowerCase() ?? "";
-  const fonts = studioFonts.filter(font => {
+  const fonts = allStudioFonts().filter(font => {
     if (font.script !== options.script) return false;
     if (options.category && options.category !== "all" && font.category !== options.category) return false;
     if (term && !font.name.toLowerCase().includes(term) && font.code.toLowerCase() !== term) return false;
@@ -145,7 +167,7 @@ const loading = new Map<string, Promise<void>>();
 export function loadStudioFont(id: string): Promise<void> {
   const existing = loading.get(id);
   if (existing) return existing;
-  const sources = files[id];
+  const sources = filesFor(id);
   if (!sources || typeof FontFace === "undefined" || typeof document === "undefined") return Promise.resolve();
   const promise = Promise.all(sources.map(async source => {
     const face = new FontFace(studioFontFamily(id), `url(${source.url})`, {

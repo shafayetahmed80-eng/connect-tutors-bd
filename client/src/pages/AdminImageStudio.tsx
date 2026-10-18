@@ -11,6 +11,7 @@ import {
   DEFAULT_ENGLISH_FONT,
   findStudioFont,
   loadStudioFont,
+  setUploadedStudioFonts,
   studioFontBoldWeight,
   studioFontFamily,
   studioFontPairs,
@@ -80,6 +81,24 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
   const [textFontsReady, setTextFontsReady] = useState(0);
   const utils = trpc.useUtils();
   const marksQuery = trpc.imageStudio.marks.useQuery();
+  const uploadedQuery = trpc.imageStudio.uploadedFonts.useQuery();
+  const deleteFont = trpc.imageStudio.deleteFont.useMutation({
+    onSuccess: () => {
+      void utils.imageStudio.uploadedFonts.invalidate();
+      void utils.imageStudio.marks.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  // The Owner's uploads join the library before anything below reads it (cheap, and the same list gives the same result).
+  setUploadedStudioFonts(uploadedQuery.data ?? []);
+  const onUploaded = () => {
+    void utils.imageStudio.uploadedFonts.invalidate();
+    toast.success("Font added.");
+  };
+  const onDelete = (id: string) => {
+    deleteFont.mutate({ id });
+    setChoice(previous => ({ ...previous, bn: previous.bn === id ? DEFAULT_BANGLA_FONT : previous.bn, en: previous.en === id ? DEFAULT_ENGLISH_FONT : previous.en }));
+  };
   const setMark = trpc.imageStudio.setMark.useMutation({
     onSuccess: () => void utils.imageStudio.marks.invalidate(),
     onError: error => toast.error(error.message),
@@ -165,8 +184,8 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
         <div className="flex flex-wrap gap-2">
           {(["bn", "en", "mixed"] as const).map(mode => <button key={mode} type="button" aria-pressed={mode === choice.mode} onClick={() => updateChoice({ mode })} className={chip(mode === choice.mode)}>{modeLabels[mode]}</button>)}
         </div>
-        {choice.mode !== "en" ? <ImageStudioFontPicker label="বাংলা" script="bn" value={choice.bn} onChange={bn => updateChoice({ bn })} marks={marks} canEdit={canEdit} onMark={onMark} busy={setMark.isPending} /> : null}
-        {choice.mode !== "bn" ? <ImageStudioFontPicker label="English" script="en" value={choice.en} onChange={en => updateChoice({ en })} marks={marks} canEdit={canEdit} onMark={onMark} busy={setMark.isPending} /> : null}
+        {choice.mode !== "en" ? <ImageStudioFontPicker label="বাংলা" script="bn" value={choice.bn} onChange={bn => updateChoice({ bn })} marks={marks} canEdit={canEdit} onMark={onMark} onUploaded={onUploaded} onDelete={onDelete} busy={setMark.isPending || deleteFont.isPending} /> : null}
+        {choice.mode !== "bn" ? <ImageStudioFontPicker label="English" script="en" value={choice.en} onChange={en => updateChoice({ en })} marks={marks} canEdit={canEdit} onMark={onMark} onUploaded={onUploaded} onDelete={onDelete} busy={setMark.isPending || deleteFont.isPending} /> : null}
         {choice.mode === "mixed" && pairs.length > 0 ? <div className="flex flex-wrap gap-2" role="group" aria-label="Font pairs">
           {pairs.map(pair => {
             const active = pair.bn === choice.bn && pair.en === choice.en;

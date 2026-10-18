@@ -16,6 +16,8 @@ export function storageAccessFor(key: string): StorageAccess {
   if (tutorDocument) return { visibility: "private", ownerUserId: Number(tutorDocument[1]) };
   const guardianNid = k.match(/^guardians\/(\d+)\/nid-[^/]+$/);
   if (guardianNid) return { visibility: "private", ownerUserId: Number(guardianNid[1]) };
+  // Fonts the Owner uploaded to the Image Section: Admins only, since a bought font's licence rarely allows passing the file around.
+  if (/^image-studio\/fonts\/[^/]+$/.test(k)) return { visibility: "private" };
   const chat = k.match(/^chat\/([^/]+)\/[^/]+$/);
   if (chat) return { visibility: "private", tutorId: chat[1] };
   return { visibility: "public" };
