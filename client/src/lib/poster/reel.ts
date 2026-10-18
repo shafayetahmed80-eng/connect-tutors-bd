@@ -5,6 +5,7 @@ import {
   drawGrain,
   drawIcon,
   drawQrTile,
+  drawSeal,
   drawText,
   drawWordmark,
   fillRoundedRect,
@@ -13,6 +14,7 @@ import {
   roundedRectPath,
   wrapLines,
   type CradlePose,
+  type SealColors,
 } from "./canvas-kit";
 import { derivePalette, hexToHsl, hslToHex, withAlpha } from "./palette";
 import type { PosterTuition } from "./types";
@@ -125,6 +127,8 @@ export type ReelInput = {
   boardAddress: string;
   /** "+8801516131411", or null when the site has none. */
   whatsapp: string | null;
+  /** Whether the title card carries the round BTPA member seal. */
+  badge: boolean;
 };
 
 /** The words the video adds to the poster's own. */
@@ -858,10 +862,22 @@ function paintCard(ctx: CanvasRenderingContext2D, block: CardBlock, look: ReelLo
 }
 
 /** The opening card: the mark, "Tutors needed", the count, the city and the date. */
+/** The BTPA seal's side on each frame size: a square frame has the least room. */
+const SEAL_SIDE: Record<number, number> = { 1920: 260, 1350: 230, 1080: 190 };
+/** The space between the date line and the seal. */
+const SEAL_GAP = 48;
+
+/** The seal in the posters' colours: gold on a dark ground, the ground's own ink on a light one. */
+function sealColors(look: ReelLook): SealColors {
+  return look.dark ? { ring: "#FFC24D", center: "#FFFFFF", detail: "#FFC24D" } : { ring: look.ink, center: look.ink, detail: look.detail };
+}
+
 function paintTitle(ctx: CanvasRenderingContext2D, block: TitleBlock, look: ReelLook, input: ReelInput, width: number): CradleMark {
   const center = width / 2;
   const safe = safeFor(block.height);
-  const middle = block.top + safe.top + (block.height - safe.top - safe.bottom) / 2;
+  const seal = input.badge ? (SEAL_SIDE[block.height] ?? 190) : 0;
+  // The seal adds to the stack's height, so the stack moves up by half of it and stays where the eye expects it.
+  const middle = block.top + safe.top + (block.height - safe.top - safe.bottom) / 2 - (seal ? (seal + SEAL_GAP) / 2 : 0);
   const markWidth = 104;
   const wordSize = 52;
   const wordWidth = measure(ctx, "Connect ", wordSize, 700, -0.02) + measure(ctx, "Tutors", wordSize, 500, -0.02);
@@ -891,6 +907,7 @@ function paintTitle(ctx: CanvasRenderingContext2D, block: TitleBlock, look: Reel
   drawText(ctx, reelTitle(input.tuitions.length, input.locale), center, middle + 40, { size: 92, weight: 800, color: look.ink, align: "center", maxWidth: width - SIDE * 2, minSize: 60, tracking: -0.02 });
   const sub = [input.city, input.date].filter(Boolean).join(" · ");
   drawText(ctx, sub, center, middle + 140, { size: 34, weight: 600, color: look.soft, align: "center", maxWidth: width - SIDE * 2 });
+  if (seal) drawSeal(ctx, center, middle + 140 + 17 + SEAL_GAP + seal / 2, seal, sealColors(look));
   return mark;
 }
 

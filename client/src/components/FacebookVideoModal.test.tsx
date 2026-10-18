@@ -89,7 +89,7 @@ describe("the Facebook video window", () => {
 
     expect(screen.getByRole("heading", { name: "Facebook Video" })).toBeDefined();
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:21")).toBeDefined());
-    for (const name of ["Language", "Size", "Style", "Speed", "Opening", "Closing", "Music", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
+    for (const name of ["Language", "Size", "Style", "Speed", "Opening", "Closing", "Badge", "Music", "Colour"]) expect(screen.getByRole("radiogroup", { name })).toBeDefined();
     const sizes = within(screen.getByRole("radiogroup", { name: "Size" }));
     for (const name of [/Reels 1080×1920/, /Feed 1080×1350/, /Square 1080×1080/]) expect(sizes.getByRole("radio", { name })).toBeDefined();
     expect(screen.getByRole("button", { name: /Copy caption/ })).toBeDefined();
@@ -177,7 +177,7 @@ describe("the Facebook video window", () => {
     expect(mocks.prepare).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(screen.getByText("3 tuitions · 0:12")).toBeDefined());
 
-    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", style: "scroll", speed: "fast", opening: true, closing: true, music: true });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "feed", style: "scroll", speed: "fast", opening: true, closing: true, badge: true, music: true });
     expect(JSON.parse(localStorage.getItem("connect_tutors_fb_poster_prefs_v1") ?? "null")).toBeNull();
   });
 
@@ -195,7 +195,29 @@ describe("the Facebook video window", () => {
     await waitFor(() => expect(mocks.withMotion).toHaveBeenLastCalledWith(expect.anything(), { speed: "slow", opening: false, closing: false }));
 
     expect(mocks.prepare).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "reels", style: "scroll", speed: "slow", opening: false, closing: false, music: true });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}")).toEqual({ size: "reels", style: "scroll", speed: "slow", opening: false, closing: false, badge: true, music: true });
+  });
+
+  it("puts the BTPA seal on the title card, paints again when it is switched off, and remembers the choice", async () => {
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(1));
+    expect(mocks.prepare.mock.calls[0]![0]).toMatchObject({ badge: true });
+    const badge = within(screen.getByRole("radiogroup", { name: "Badge" }));
+    expect(badge.getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(badge.getByRole("radio", { name: "Off" }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
+    expect(mocks.prepare.mock.calls[1]![0]).toMatchObject({ badge: false });
+    expect(JSON.parse(localStorage.getItem("connect_tutors_fb_video_prefs_v1") ?? "{}").badge).toBe(false);
+  });
+
+  it("starts without the badge when it was left off", async () => {
+    localStorage.setItem("connect_tutors_fb_video_prefs_v1", JSON.stringify({ size: "reels", speed: "slow", badge: false }));
+    open();
+
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+    expect(mocks.prepare.mock.calls.at(-1)![0]).toMatchObject({ badge: false });
+    expect(within(screen.getByRole("radiogroup", { name: "Badge" })).getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("starts with both page turns off when they were left off", async () => {
