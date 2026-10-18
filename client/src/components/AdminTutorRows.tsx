@@ -279,5 +279,224 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     empty={emptyLabel}
     tableClassName="min-w-[72rem]"
     animateEntrance={animateEntrance}
+    renderCard={(tutor, index) => (
+      <AdminTutorCompactCard
+        tutor={tutor}
+        index={index}
+        selection={selection}
+        numbered={numbered}
+        serialFrom={serialFrom}
+        showApplicationStage={showApplicationStage}
+        showGuardianMarks={showGuardianMarks}
+        showMatchNotes={showMatchNotes}
+        appointmentActions={appointmentActions}
+        guardianTuitionRequest={guardianTuitionRequest}
+        applicantRowActions={applicantRowActions}
+      />
+    )}
   />;
+}
+
+/**
+ * Mobile-responsive, space-efficient card view for one Tutor in Admin directories
+ * (AdminTutorProfiles, AdminAppliedTutors, AdminTutorMatching).
+ *
+ * Consolidates the previously expansive 6-row definition list into a clean,
+ * 2-tier card with quick contact actions (Call, WhatsApp, Copy) and compact chips.
+ */
+export function AdminTutorCompactCard({
+  tutor,
+  index,
+  selection,
+  numbered,
+  serialFrom = 1,
+  showApplicationStage = false,
+  showGuardianMarks = false,
+  showMatchNotes = false,
+  appointmentActions,
+  guardianTuitionRequest,
+  applicantRowActions,
+}: {
+  tutor: AdminTutorRow;
+  index: number;
+  selection?: AdminTutorRowSelection;
+  numbered?: boolean;
+  serialFrom?: number;
+  showApplicationStage?: boolean;
+  showGuardianMarks?: boolean;
+  showMatchNotes?: boolean;
+  appointmentActions?: AdminAppointmentRequestActions;
+  guardianTuitionRequest?: AdminGuardianTuitionRequestActions;
+  applicantRowActions?: AdminApplicantRowActions;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Tier 1: Header (Checkbox, Serial, ID, Name, Verified, Status, Details Link) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {selection ? (
+            <input
+              type="checkbox"
+              checked={selection.isSelected(tutor.id)}
+              onChange={() => selection.onToggle(tutor.id)}
+              aria-label={`Select ${tutor.name}`}
+              className="size-4 shrink-0 accent-j-accent cursor-pointer"
+            />
+          ) : null}
+          {numbered ? (
+            <span className="tabular-nums text-2xs font-semibold text-j-ink-muted shrink-0">
+              #{serialFrom + index}
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {tutor.tutorNumber ? (
+                <span className="font-mono text-3xs font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
+                  ID {tutor.tutorNumber}
+                </span>
+              ) : null}
+              <Link
+                href={`/admin/tutor-profiles/${tutor.id}`}
+                className="font-bold text-sm text-j-ink hover:text-j-accent transition-colors truncate max-w-[12rem] sm:max-w-[16rem]"
+              >
+                {tutor.name}
+              </Link>
+              {tutor.verified ? (
+                <BadgeCheck size={15} className="shrink-0 text-emerald-600" aria-label="Verified" />
+              ) : (
+                <CircleAlert size={15} className="shrink-0 text-amber-600" aria-label="Not verified" />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-3xs font-bold ${adminTutorStatusStyles[tutor.profileStatus]}`}>
+            {tutor.profileStatus.replaceAll("_", " ")}
+          </span>
+          <Link
+            href={`/admin/tutor-profiles/${tutor.id}`}
+            aria-label={`Open the full profile of ${tutor.name}`}
+            className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50 active:scale-95 transition-transform"
+          >
+            <ChevronRight size={16} />
+          </Link>
+        </div>
+      </div>
+
+      {/* Tier 2: Academic & Department Information */}
+      {(tutor.instituteName || tutor.departmentName) ? (
+        <div className="flex items-center gap-1.5 text-xs text-j-ink-soft">
+          <span className="shrink-0" aria-hidden="true">🎓</span>
+          <span className="font-medium text-j-ink truncate">
+            {tutor.instituteName || "Not set"}
+          </span>
+          {tutor.departmentName ? (
+            <span className="text-2xs text-j-ink-muted truncate">
+              • {tutor.departmentName}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Tier 3: Location, Experience & Application Stage Chips */}
+      <div className="flex flex-wrap items-center gap-1.5 text-2xs">
+        {(tutor.locationLabel || tutor.cityLabel) ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 text-j-ink-strong">
+            <span className="text-slate-400" aria-hidden="true">📍</span>
+            <span>{[tutor.locationLabel, tutor.cityLabel].filter(Boolean).join(", ")}</span>
+          </span>
+        ) : null}
+
+        {tutor.teachingExperienceYears != null ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 text-j-ink-strong">
+            <span className="text-slate-400" aria-hidden="true">⏱️</span>
+            <span>{tutor.teachingExperienceYears} yr exp</span>
+          </span>
+        ) : null}
+
+        {showApplicationStage && tutor.applicationStage ? (
+          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-bold ${applicationStageStyles[tutor.applicationStage]}`}>
+            <span>{applicantStageLabels[tutor.applicationStage]}</span>
+            {tutor.appliedAt ? <span className="opacity-75 font-normal">({formatRelativeTime(tutor.appliedAt)})</span> : null}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Match Notes (for Tutor Matching) */}
+      {showMatchNotes && ((tutor.matchReasons?.length ?? 0) > 0 || (tutor.matchCautions?.length ?? 0) > 0) ? (
+        <div className="pt-2 border-t border-slate-100">
+          <MatchNotesDisclosure reasons={tutor.matchReasons ?? []} cautions={tutor.matchCautions ?? []} />
+        </div>
+      ) : null}
+
+      {/* Guardian Marks & Appointment actions (for Applied Tutors) */}
+      {showGuardianMarks && (tutor.appointmentRequestedAt || tutor.guardianShortlistedAt || (guardianTuitionRequest && guardianTuitionRequest.request.type !== "cancel_tuition" && guardianTuitionRequest.request.tutorId === tutor.id)) ? (
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+          {tutor.appointmentRequestedAt ? (
+            <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-0.5 text-2xs font-bold text-amber-800">
+              Appointment requested
+            </span>
+          ) : null}
+          {tutor.guardianShortlistedAt ? (
+            <span className="whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-0.5 text-2xs font-bold text-sky-800">
+              Shortlisted
+            </span>
+          ) : null}
+          {tutor.appointmentRequestedAt && appointmentActions ? (
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                type="button"
+                disabled={appointmentActions.busy}
+                onClick={() => appointmentActions.onApprove(tutor)}
+                aria-label={`Approve the appointment of ${tutor.name}`}
+                className="inline-flex h-7 items-center rounded-lg bg-j-accent px-2.5 text-2xs font-bold text-white hover:bg-j-accent-hover disabled:opacity-40"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                disabled={appointmentActions.busy}
+                onClick={() => appointmentActions.onDecline(tutor)}
+                aria-label={`Decline the appointment request for ${tutor.name}`}
+                className="inline-flex h-7 items-center rounded-lg border border-j-border px-2.5 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40"
+              >
+                Decline
+              </button>
+            </div>
+          ) : null}
+          {guardianTuitionRequest && guardianTuitionRequest.request.type !== "cancel_tuition" && guardianTuitionRequest.request.tutorId === tutor.id ? (
+            <AdminGuardianTuitionRequestMark {...guardianTuitionRequest} />
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Applicant Row Actions (Shortlist, Appoint, Confirm) */}
+      {applicantRowActions ? (
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+          {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => (
+            <button
+              key={action}
+              type="button"
+              disabled={applicantRowActions.busy || disabled}
+              onClick={() => applicantRowActions.onAction(tutor, action)}
+              aria-label={applicantActionNames[action](tutor.name)}
+              className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
+            >
+              {applicantActionLabels[action]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Tier 4: Quick Contact Actions Footer */}
+      {tutor.phone ? (
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+          <span className="text-3xs font-bold uppercase tracking-wider text-j-ink-muted">
+            Contact
+          </span>
+          <PhoneContact phone={tutor.phone} size="table" showCopy={true} formatDisplay={true} />
+        </div>
+      ) : null}
+    </div>
+  );
 }
