@@ -3,12 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FacebookPosterJob } from "./facebook-poster";
 import {
   canRecordVideo,
+  coverFileName,
   drawReelFrame,
   formatReelDuration,
   MAX_VIDEO_TUITIONS,
   pickVideoMimeType,
   prepareReel,
   recordReel,
+  reelCover,
+  reelSwingAt,
   reelFrameIsStill,
   reelInput,
   releaseReel,
@@ -33,6 +36,9 @@ import {
   REEL_HOLD_END,
   REEL_HOLD_START,
   REEL_LIGHT_NEUTRAL_GLOW,
+  CRADLE_SWING_SECONDS,
+  cradleSwing,
+  REEL_SAFE,
   REEL_SIZES,
   REEL_STRIP_HEIGHT,
   REEL_STRIP_PAD,
@@ -559,7 +565,8 @@ describe("how the slides are laid out", () => {
   it("holds as many tuitions to a page as the frame takes: more on a tall frame, fewer on a square one", () => {
     const perPage = (size: "reels" | "feed" | "square") => slidesFor(inOnePlace, size).pages.map(page => page.cards);
 
-    expect(perPage("reels")).toEqual([4, 4, 4, 2]);
+    // A Reel keeps its pages clear of what Facebook lays over the top and the foot, so it holds a card fewer.
+    expect(perPage("reels")).toEqual([3, 3, 3, 3, 2]);
     expect(perPage("feed")).toEqual([2, 2, 2, 2, 2, 2, 2]);
     expect(perPage("square")).toEqual([2, 2, 2, 2, 2, 2, 2]);
   });
@@ -570,9 +577,12 @@ describe("how the slides are laid out", () => {
       for (const page of layout.pages) {
         const top = Math.min(...page.blocks.map(block => block.top));
         const bottom = Math.max(...page.blocks.map(block => block.top + block.height));
-        expect(top).toBeGreaterThanOrEqual(99);
-        expect(bottom).toBeLessThanOrEqual(layout.frameHeight - 99);
-        expect(Math.abs(top - (layout.frameHeight - bottom))).toBeLessThanOrEqual(1);
+        const clearTop = Math.max(100, REEL_SAFE[size].top);
+        const clearBottom = Math.max(100, REEL_SAFE[size].bottom);
+        expect(top).toBeGreaterThanOrEqual(clearTop - 1);
+        expect(bottom).toBeLessThanOrEqual(layout.frameHeight - clearBottom + 1);
+        // In the middle of the rows left clear.
+        expect(Math.abs(top - clearTop - (layout.frameHeight - clearBottom - bottom))).toBeLessThanOrEqual(1);
       }
     }
   });
@@ -593,7 +603,7 @@ describe("how the slides are laid out", () => {
 });
 
 describe("when each slide is shown", () => {
-  const input = reelInput(Array.from({ length: 9 }, (_, index) => job(index + 1)), "en", null);
+  const input = reelInput(Array.from({ length: 10 }, (_, index) => job(index + 1)), "en", null);
   const layout = layoutSlides(measureCtx(), input, "reels");
   const pageCount = layout.pages.length;
 
@@ -627,8 +637,8 @@ describe("when each slide is shown", () => {
       return step.end - step.start;
     };
 
-    expect(layout.pages[0]!.cards).toBe(4);
-    expect(hold(1)).toBeCloseTo(4 * SLIDE_SECONDS_PER_CARD.slow);
+    expect(layout.pages[0]!.cards).toBe(3);
+    expect(hold(1)).toBeCloseTo(3 * SLIDE_SECONDS_PER_CARD.slow);
     expect(layout.pages.at(-1)!.cards).toBe(1);
     expect(hold(pageCount)).toBeCloseTo(SLIDE_MIN_HOLD);
   });
@@ -762,6 +772,113 @@ describe("what a slides frame is made of", () => {
     expect(videoFileName(12, "reels", "bn", "mp4")).toBe("connect-tutors-12-tuitions-reels-bn.mp4");
     expect(videoFileName(12, "reels", "bn", "mp4", "slides")).toBe("connect-tutors-12-tuitions-reels-slides-bn.mp4");
     expect(videoFileName(1, "square", "en", "webm", "slides")).toBe("connect-tutors-1-tuition-square-slides-en.webm");
+  });
+});
+
+describe("the cards Facebook would cover", () => {
+  const prepareFor = (size: "reels" | "feed" | "square", style: "scroll" | "slides" = "scroll") => {
+    withCanvas({ texts: [], images: [] });
+    return prepareReel(reelInput([job(1), job(2), job(3)], "en", "+8801516131411"), { size, speed: "slow", style })!;
+  };
+
+  it("keeps a Reel's title and closing card clear of Facebook's top bar and its caption and buttons", () => {
+    const reel = prepareFor("reels");
+    const { top, bottom } = REEL_SAFE.reels;
+    for (const mark of [reel.marks.title!, reel.marks.end!]) {
+      expect(mark.y).toBeGreaterThan(top);
+      expect(mark.y + mark.width).toBeLessThan(1920 - bottom);
+    }
+    // The title sits higher than the middle of the frame, in the middle of the rows left clear.
+    expect(reel.marks.title!.y).toBeLessThan(prepareFor("square").marks.title!.y + (1920 - 1080) / 2);
+  });
+
+  it("leaves a feed post and a square post as they were", () => {
+    expect(REEL_SAFE.feed).toEqual({ top: 0, bottom: 0 });
+    expect(REEL_SAFE.square).toEqual({ top: 0, bottom: 0 });
+  });
+
+  it("puts the marks in the same place in slides as in a scroll", () => {
+    expect(prepareFor("reels", "slides").marks).toEqual(prepareFor("reels").marks);
+  });
+});
+
+describe("the mark's swing", () => {
+  it("rests as the logo does before and after, and swings the lifted ball down, the first out and back, and the lifted ball up again", () => {
+    expect(cradleSwing(0)).toEqual({ left: 0, right: -22 });
+    expect(cradleSwing(CRADLE_SWING_SECONDS)).toEqual({ left: 0, right: -22 });
+    expect(cradleSwing(5)).toEqual({ left: 0, right: -22 });
+    // The lifted ball strikes...
+    expect(cradleSwing(0.32).right).toBeCloseTo(0);
+    // ...the first flies out to the left at the top of its swing...
+    expect(cradleSwing(0.62).left).toBeCloseTo(22);
+    expect(cradleSwing(0.62).right).toBe(0);
+    // ...falls back and strikes, and the lifted ball rises.
+    expect(cradleSwing(0.92).left).toBeCloseTo(0);
+    expect(cradleSwing(1.1).right).toBeLessThan(0);
+  });
+
+  it("moves smoothly: no frame jumps more than a few degrees", () => {
+    let previous = cradleSwing(0);
+    for (let t = 1 / 30; t <= CRADLE_SWING_SECONDS + 0.1; t += 1 / 30) {
+      const pose = cradleSwing(t);
+      expect(Math.abs(pose.left - previous.left)).toBeLessThan(6);
+      expect(Math.abs(pose.right - previous.right)).toBeLessThan(6);
+      previous = pose;
+    }
+  });
+
+  it("swings once on the held title card and once on the settled closing card, in a scroll and in slides", () => {
+    for (const style of ["scroll", "slides"] as const) {
+      withCanvas({ texts: [], images: [] });
+      const reel = prepareReel(reelInput([job(1), job(2)], "en", null), { size: "reels", speed: "slow", style })!;
+
+      expect(reelSwingAt(reel, 0.1)).toBeNull();
+      expect(reelSwingAt(reel, 0.9)?.mark).toBe(reel.marks.title);
+      expect(reelSwingAt(reel, 1.9)).toBeNull();
+      expect(reelSwingAt(reel, reel.timeline.total - 1.6)?.mark).toBe(reel.marks.end);
+      expect(reelSwingAt(reel, reel.timeline.total)).toBeNull();
+      // A swinging mark is never a still frame.
+      expect(reelFrameIsStill(reel, 0.9)).toBe(false);
+      expect(reelFrameIsStill(reel, 1.9)).toBe(true);
+    }
+  });
+
+  it("draws the swinging mark over the backdrop where the mark at rest was", () => {
+    const drawn: Drawn = { texts: [], images: [] };
+    withCanvas(drawn);
+    const reel = prepareReel(reelInput([job(1), job(2)], "en", null), { size: "reels", speed: "slow" })!;
+    const ctx = mockContext(drawn) as unknown as CanvasRenderingContext2D;
+
+    drawn.images.length = 0;
+    drawReelFrame(ctx, reel, 0.1);
+    const atRest = drawn.images.length;
+    drawn.images.length = 0;
+    drawReelFrame(ctx, reel, 0.9);
+
+    // One more draw: the patch of backdrop under the mark, at its own place.
+    expect(drawn.images).toHaveLength(atRest + 1);
+    const patch = drawn.images.at(-1)!.args;
+    const mark = reel.marks.title!;
+    expect(patch[0]).toBe(patch[4]);
+    expect(patch[1]).toBe(patch[5]);
+    expect(patch[0]).toBeLessThan(mark.x);
+    expect(patch[1]).toBeLessThanOrEqual(mark.y);
+  });
+});
+
+describe("the cover image", () => {
+  it("is the title card at rest, at the video's own size, named for what it shows", async () => {
+    withCanvas({ texts: [], images: [] });
+    const reel = prepareReel(reelInput([job(1)], "en", null), { size: "feed", speed: "slow" })!;
+    const png = new Blob(["png"], { type: "image/png" });
+    const toBlob = vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (this: HTMLCanvasElement, callback: BlobCallback) {
+      callback(this === reel.pages.title ? png : null);
+    });
+
+    expect(await reelCover(reel)).toBe(png);
+    expect(toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
+    expect(coverFileName(12, "reels", "bn")).toBe("connect-tutors-12-tuitions-reels-cover-bn.png");
+    expect(coverFileName(1, "square", "en")).toBe("connect-tutors-1-tuition-square-cover-en.png");
   });
 });
 

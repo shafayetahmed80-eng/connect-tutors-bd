@@ -1,4 +1,4 @@
-import { Download, FileText, Play, Square } from "lucide-react";
+import { Download, FileText, ImageDown, Play, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChoiceRow, PosterColourRow, AUTO, readPrefs, readStoredPrefs, savePrefs, type PosterPrefs } from "@/components/FacebookPosterModal";
@@ -7,6 +7,7 @@ import { copyToClipboard } from "@/lib/copyToClipboard";
 import { autoPosterGround, loadPosterFonts, type FacebookPosterJob, type PosterLocale } from "@/lib/facebook-poster";
 import {
   canRecordVideo,
+  coverFileName,
   downloadVideo,
   drawReelFrame,
   formatReelDuration,
@@ -14,6 +15,7 @@ import {
   pickVideoMimeType,
   prepareReel,
   recordReel,
+  reelCover,
   reelInput,
   releaseReel,
   REEL_DEFAULT_GROUND,
@@ -219,6 +221,18 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     }
   };
 
+  const handleCover = async () => {
+    const current = reelRef.current;
+    if (!current) return;
+    const cover = await reelCover(current);
+    if (!cover) {
+      toast.error("কভার ছবি তৈরি করা যায়নি।");
+      return;
+    }
+    downloadVideo(cover, coverFileName(shown.length, videoPrefs.size, locale));
+    toast.success("কভার ছবি ডাউনলোড হয়েছে।");
+  };
+
   const handleCopyCaption = async () => {
     if (!caption) return;
     const copied = await copyToClipboard(caption(shown.length));
@@ -264,7 +278,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
                 height={height}
                 role="img"
                 aria-label="Facebook video preview"
-                className={cn("h-auto w-auto max-w-full rounded-lg shadow-sm max-sm:max-h-[46dvh]", videoPrefs.size === "reels" ? "sm:max-h-[60vh]" : "sm:max-h-[52vh]")}
+                className={cn("h-auto w-auto max-w-full rounded-lg shadow-sm max-sm:max-h-[36dvh]", videoPrefs.size === "reels" ? "sm:max-h-[60vh]" : "sm:max-h-[52vh]")}
                 style={{ aspectRatio: `${width} / ${height}` }}
               />
             </div>
@@ -274,7 +288,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
               </div>
             ) : null}
           </div>
-          <fieldset disabled={busy} className="order-3 mt-3 space-y-3 disabled:opacity-60 sm:order-1 sm:mt-0 sm:space-y-2.5">
+          <fieldset disabled={busy} className="order-3 mt-3 min-w-0 space-y-3 disabled:opacity-60 sm:order-1 sm:mt-0 sm:space-y-2.5">
             <ChoiceRow label="Language" value={locale} options={[{ value: "bn" as PosterLocale, label: "বাংলা" }, { value: "en" as PosterLocale, label: "English" }]} onChange={next => updatePoster({ locale: next })} />
             <ChoiceRow label="Size" value={videoPrefs.size} options={sizeOptions} onChange={size => updateVideo({ size })} />
             <ChoiceRow label="Style" value={videoPrefs.style} options={styleOptions} onChange={style => updateVideo({ style })} />
@@ -299,6 +313,15 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
           ) : null}
           <button
             type="button"
+            onClick={handleCover}
+            disabled={!reel || busy}
+            className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60 disabled:opacity-60"
+          >
+            <ImageDown className="size-3.5" strokeWidth={1.5} />
+            Cover
+          </button>
+          <button
+            type="button"
             onClick={handlePlay}
             disabled={!reel}
             aria-pressed={mode === "playing"}
@@ -313,7 +336,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
             disabled={!reel || busy}
             className={cn(
               "inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-[#1877f2] bg-[#1877f2] px-4 text-xs font-bold text-white transition hover:bg-[#166fe5] disabled:opacity-60",
-              caption && "col-span-2 sm:col-span-1",
+              !caption && "col-span-2 sm:col-span-1",
             )}
           >
             <Download className="size-3.5" strokeWidth={1.5} />

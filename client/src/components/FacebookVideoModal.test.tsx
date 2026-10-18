@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   record: vi.fn(),
   run: vi.fn(),
   download: vi.fn(),
+  cover: vi.fn(),
   canRecord: vi.fn(() => true),
   copy: vi.fn(async () => true),
 }));
@@ -23,6 +24,7 @@ vi.mock("@/lib/facebook-video", async importOriginal => {
     recordReel: mocks.record,
     runReel: mocks.run,
     downloadVideo: mocks.download,
+    reelCover: mocks.cover,
     canRecordVideo: mocks.canRecord,
     drawReelFrame: vi.fn(),
     releaseReel: vi.fn(),
@@ -62,6 +64,7 @@ beforeEach(() => {
   mocks.prepare.mockImplementation(() => reel(21.1));
   mocks.withMotion.mockImplementation((current: { timeline: { total: number } }, motion: { speed: string; opening?: boolean }) => ({ ...current, timeline: { total: (motion.speed === "fast" ? 12 : 21.1) - (motion.opening === false ? 0.5 : 0) } }));
   mocks.run.mockResolvedValue(true);
+  mocks.cover.mockResolvedValue(new Blob(["png"], { type: "image/png" }));
   mocks.record.mockResolvedValue({ blob: new Blob(["video"], { type: "video/mp4" }), mimeType: "video/mp4;codecs=avc1.640028" });
 });
 
@@ -83,6 +86,36 @@ describe("the Facebook video window", () => {
     expect(screen.getByRole("button", { name: /Copy caption/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Play/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Download MP4/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Cover/ })).toBeDefined();
+  });
+
+  it("downloads the title card as the video's cover, named for what it shows", async () => {
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: /Cover/ }));
+
+    await waitFor(() => expect(mocks.download).toHaveBeenCalled());
+    expect(mocks.cover).toHaveBeenCalledTimes(1);
+    expect(mocks.download.mock.calls[0]![1]).toBe("connect-tutors-3-tuitions-reels-cover-bn.png");
+    expect(toast.success).toHaveBeenCalledWith("কভার ছবি ডাউনলোড হয়েছে।");
+  });
+
+  it("says so when the cover cannot be made", async () => {
+    mocks.cover.mockResolvedValueOnce(null);
+    open();
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: /Cover/ }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("কভার ছবি তৈরি করা যায়নি।"));
+    expect(mocks.download).not.toHaveBeenCalled();
+  });
+
+  it("keeps the settings within a phone's width: a fieldset otherwise grows to its widest row, the colour strip", () => {
+    open();
+    const settings = screen.getByRole("radiogroup", { name: "Language" }).closest("fieldset")!;
+    expect(settings.className.split(" ")).toContain("min-w-0");
   });
 
   it("starts as a slow Reels video on the poster's language and colour", async () => {

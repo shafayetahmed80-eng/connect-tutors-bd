@@ -11,6 +11,8 @@ import {
   REEL_SIZES,
   REEL_STRIP_PAD,
   REEL_TURN_ANGLE,
+  CRADLE_SWING_SECONDS,
+  cradleSwing,
   reelEase,
   reelLook,
   reelOffsetAt,
@@ -20,6 +22,7 @@ import {
   slidesTimeline,
   slideStepAt,
   turnSlices,
+  type CradleMark,
   type ReelBlock,
   type ReelInput,
   type ReelLayout,
@@ -30,6 +33,7 @@ import {
   type SlidesLayout,
   type SlidesTimeline,
 } from "./poster/reel";
+import { drawCradle, type CradlePose } from "./poster/canvas-kit";
 
 export { REEL_DEFAULT_GROUND, REEL_SIZES, type ReelSize, type ReelSpeed, type ReelStyle } from "./poster/reel";
 
@@ -65,6 +69,8 @@ type ReelBase = {
   background: HTMLCanvasElement;
   /** The title card and the closing card, each a whole frame on the backdrop: what turns away and what shuts. */
   pages: { title: HTMLCanvasElement; end: HTMLCanvasElement };
+  /** Where each card's mark is, to swing it once the card is held (null if a card was not painted). */
+  marks: { title: CradleMark | null; end: CradleMark | null };
   /** A frame-sized canvas a page is turned on before it is laid over what it uncovers, so it can be shaded as a whole. */
   scratch: HTMLCanvasElement;
 };
@@ -118,20 +124,23 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
   if (!backgroundCtx) return null;
   paintReelBackground(backgroundCtx, width, height, look);
 
-  // A page is the backdrop with its blocks on it, opaque, so it can swing over what it uncovers.
+  // A page is the backdrop with its blocks on it, opaque, so it can swing over what it uncovers; a card's page also says where its mark is.
   const page = (blocks: ReelBlock[]) => {
     const canvas = canvasOf(width, height);
     const ctx = canvas.getContext("2d");
+    let mark: CradleMark | null = null;
     if (ctx) {
       ctx.drawImage(background, 0, 0);
-      for (const block of blocks) paintReelBlock(ctx, block, look, input, width);
+      for (const block of blocks) mark = paintReelBlock(ctx, block, look, input, width) ?? mark;
     }
-    return canvas;
+    return { canvas, mark };
   };
 
   if (options.style === "slides") {
     const layout = layoutSlides(measureCtx, input, options.size);
-    const sheets = [page([layout.title]), ...layout.pages.map(slide => page(slide.blocks)), page([layout.end])];
+    const title = page([layout.title]);
+    const end = page([layout.end]);
+    const sheets = [title.canvas, ...layout.pages.map(slide => page(slide.blocks).canvas), end.canvas];
     return {
       style: "slides",
       width,
@@ -139,7 +148,8 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
       layout,
       timeline: slidesTimeline(layout, options.speed, options),
       background,
-      pages: { title: sheets[0]!, end: sheets[sheets.length - 1]! },
+      pages: { title: title.canvas, end: end.canvas },
+      marks: { title: title.mark, end: end.mark },
       scratch: canvasOf(width, height),
       sheets,
     };
@@ -160,7 +170,10 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
     });
   // Each card is also a page of its own, opaque on the backdrop, for when it fades instead.
   const card = (block: ReelBlock) => page([{ ...block, top: 0 }]);
-  const pages = { title: card(layout.blocks[0]!), end: card(layout.blocks[layout.blocks.length - 1]!) };
+  const title = card(layout.blocks[0]!);
+  const end = card(layout.blocks[layout.blocks.length - 1]!);
+  const pages = { title: title.canvas, end: end.canvas };
+  const marks = { title: title.mark, end: end.mark };
 
   return {
     style: "scroll",
@@ -171,6 +184,7 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
     background,
     strips,
     pages,
+    marks,
     scratch: canvasOf(width, height),
     fades: edgeFades(background),
   };
@@ -309,10 +323,49 @@ function drawSlidesFrame(ctx: CanvasRenderingContext2D, reel: SlidesReel, t: num
  * slides, the page held or turning.
  */
 export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel, t: number) {
-  if (reel.style === "slides") {
-    drawSlidesFrame(ctx, reel, t);
-    return;
-  }
+  if (reel.style === "slides") drawSlidesFrame(ctx, reel, t);
+  else drawScrollFrame(ctx, reel, t);
+  const swing = reelSwingAt(reel, t);
+  if (swing) drawSwing(ctx, reel, swing.mark, swing.pose);
+}
+
+/** The seconds after the title card is first shown, and after the closing card settles, that its mark starts to swing. */
+const TITLE_SWING_AT = 0.3;
+const END_SWING_AFTER = 0.25;
+
+/** When the closing card has come to rest, filling the frame. */
+function endSettlesAt(reel: PreparedReel): number {
+  if (reel.style === "slides") return reel.timeline.steps[reel.timeline.steps.length - 1]!.start;
+  const { closing, closeStart, closeDuration, scrollStart, move } = reel.timeline;
+  return closing === "fade" ? closeStart + closeDuration : scrollStart + move;
+}
+
+/**
+ * The mark swinging at `t` seconds, if one is: once on the title card while it
+ * is held at the start, and once on the closing card after it settles.
+ */
+export function reelSwingAt(reel: PreparedReel, t: number): { mark: CradleMark; pose: CradlePose } | null {
+  const intoTitle = t - TITLE_SWING_AT;
+  if (reel.marks.title && intoTitle > 0 && intoTitle < CRADLE_SWING_SECONDS) return { mark: reel.marks.title, pose: cradleSwing(intoTitle) };
+  const intoEnd = t - endSettlesAt(reel) - END_SWING_AFTER;
+  if (reel.marks.end && intoEnd > 0 && intoEnd < CRADLE_SWING_SECONDS) return { mark: reel.marks.end, pose: cradleSwing(intoEnd) };
+  return null;
+}
+
+/** Draws the mark in `pose` over the held card: the backdrop first, where the mark at rest was, then the mark. */
+function drawSwing(ctx: CanvasRenderingContext2D, reel: PreparedReel, mark: CradleMark, pose: CradlePose) {
+  // In the mark's own 48-wide units, a swinging ball reaches 8 to the left and the bar sits 1 to 31 down.
+  const unit = mark.width / 48;
+  const x = Math.floor(mark.x - 9 * unit);
+  const y = Math.floor(mark.y);
+  const w = Math.ceil(57 * unit) + 2;
+  const h = Math.ceil(32 * unit) + 2;
+  ctx.drawImage(reel.background, x, y, w, h, x, y, w, h);
+  drawCradle(ctx, mark.x, mark.y, mark.width, mark.ink, mark.lifted, 1.3, 1, pose);
+}
+
+/** A scroll's frame: see `drawReelFrame`. */
+function drawScrollFrame(ctx: CanvasRenderingContext2D, reel: ScrollReel, t: number) {
   const { width, height, timeline } = reel;
   const covers = reelPageCovers(t, timeline);
   if (covers.title >= 1) {
@@ -480,6 +533,7 @@ export function videoFrameCount(seconds: number): number {
  */
 export function reelFrameIsStill(reel: PreparedReel, t: number): boolean {
   const next = Math.min(t + 1 / VIDEO_FRAME_RATE, reel.timeline.total);
+  if (reelSwingAt(reel, t) || reelSwingAt(reel, next)) return false;
   if (reel.style === "slides") {
     const now = slideStepAt(t, reel.timeline).step;
     return now.transition === null && slideStepAt(next, reel.timeline).step === now;
@@ -632,7 +686,23 @@ export async function recordReel(canvas: HTMLCanvasElement, reel: PreparedReel, 
   return recordLive(canvas, reel, options);
 }
 
-/** Saves a video through a temporary link. */
+/** `connect-tutors-12-tuitions-reels-cover-bn.png`: the title card, for the video's cover on Facebook. */
+export function coverFileName(count: number, size: ReelSize, locale: PosterLocale): string {
+  return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}-cover-${locale}.png`;
+}
+
+/** The title card at rest as a PNG, at the video's own size. */
+export function reelCover(reel: PreparedReel): Promise<Blob | null> {
+  return new Promise(resolve => {
+    try {
+      reel.pages.title.toBlob(blob => resolve(blob), "image/png");
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** Saves a video, or any file, through a temporary link. */
 export function downloadVideo(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
