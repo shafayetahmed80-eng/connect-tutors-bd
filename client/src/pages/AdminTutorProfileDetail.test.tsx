@@ -275,4 +275,78 @@ describe("Admin Tutor profile detail", () => {
     expect(screen.getByText(/Mathematics/)).toBeTruthy();
     expect(screen.getByText(/Sylhet Agricultural University/)).toBeTruthy();
   });
+
+  it("renders the glanceable hero metrics HUD with ID, completion, uppercase status, and verification", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    expect(screen.getByText("#175")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.getByText("APPROVED")).toBeTruthy();
+    expect(screen.getByText("VERIFIED")).toBeTruthy();
+  });
+
+  it("provides 1-tap contact buttons for call, WhatsApp, clipboard copy, and chat thread", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const callLink = screen.getByRole("link", { name: /Call/i });
+    expect(callLink.getAttribute("href")).toBe("tel:+8801711111111");
+
+    const whatsappLink = screen.getByRole("link", { name: /WhatsApp/i });
+    expect(whatsappLink.getAttribute("href")).toBe("https://wa.me/8801711111111");
+
+    const copyBtn = screen.getByRole("button", { name: /Copy Phone/i });
+    fireEvent.click(copyBtn);
+    expect(writeText).toHaveBeenCalledWith("+8801711111111");
+
+    const chatLink = screen.getByRole("link", { name: /Chat Thread/i });
+    expect(chatLink.getAttribute("href")).toBe("/admin/tutor-chats?tutorId=tutor-175");
+  });
+
+  it("renders the sticky segmented navigation bar and switches tabs to filter views", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const nav = screen.getByRole("navigation", { name: "Profile sections" });
+    expect(within(nav).getByRole("button", { name: "All Sections" })).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Overview" })).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Applications" })).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Documents & CV" })).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Profile Data" })).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Moderation & Logs" })).toBeTruthy();
+
+    // Switch to Documents & CV
+    fireEvent.click(within(nav).getByRole("button", { name: "Documents & CV" }));
+    expect(screen.getByRole("button", { name: "Documents & CV" }).className).toContain("bg-j-accent");
+
+    // Switch back to All Sections
+    fireEvent.click(within(nav).getByRole("button", { name: "All Sections" }));
+    expect(screen.getByRole("button", { name: "All Sections" }).className).toContain("bg-j-accent");
+  });
+
+  it("supports collapsing and expanding the Documents and Moderation History sections", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const collapseDocsBtn = screen.getByRole("button", { name: "Collapse documents" });
+    fireEvent.click(collapseDocsBtn);
+    // After collapse, alt text for university id should not be in the document
+    expect(screen.queryByAltText("University ID")).toBeNull();
+
+    // Expand again
+    const expandDocsBtn = screen.getByRole("button", { name: "Expand documents" });
+    fireEvent.click(expandDocsBtn);
+    expect(screen.getByAltText("University ID")).toBeTruthy();
+
+    // Test moderation history collapse
+    const collapseHistoryBtn = screen.getByRole("button", { name: "Collapse moderation history" });
+    fireEvent.click(collapseHistoryBtn);
+    expect(screen.queryByText("No moderation decisions yet.")).toBeNull();
+
+    const expandHistoryBtn = screen.getByRole("button", { name: "Expand moderation history" });
+    fireEvent.click(expandHistoryBtn);
+    expect(screen.getByText("No moderation decisions yet.")).toBeTruthy();
+  });
 });
