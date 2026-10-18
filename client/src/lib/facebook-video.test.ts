@@ -1,17 +1,21 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FacebookPosterJob } from "./facebook-poster";
 import {
+  canRecordVideo,
   drawReelFrame,
   formatReelDuration,
   MAX_VIDEO_TUITIONS,
   pickVideoMimeType,
   prepareReel,
+  recordReel,
   reelInput,
   releaseReel,
+  VIDEO_FRAME_RATE,
   VIDEO_MIME_CANDIDATES,
   videoExtension,
   videoFileName,
+  videoFrameCount,
   withMotion,
 } from "./facebook-video";
 import { luminance } from "./poster/palette";
@@ -43,6 +47,63 @@ import {
   slideStepAt,
   turnSlices,
 } from "./poster/reel";
+
+/** What the video encoder and file writer were asked to do: stood in for here, since a test has no encoder. */
+const saved = vi.hoisted(() => ({
+  adds: [] as Array<{ timestamp: number; duration: number }>,
+  started: 0,
+  finalized: 0,
+  cancelled: 0,
+  closed: 0,
+  config: null as unknown,
+  format: null as unknown,
+  failAt: null as number | null,
+  canEncode: vi.fn(),
+}));
+
+vi.mock("mediabunny", () => ({
+  canEncodeVideo: saved.canEncode,
+  Mp4OutputFormat: class {
+    constructor(options: unknown) {
+      saved.format = options;
+    }
+  },
+  BufferTarget: class {
+    buffer: ArrayBuffer | null = null;
+  },
+  CanvasSource: class {
+    constructor(_canvas: unknown, config: unknown) {
+      saved.config = config;
+    }
+    async add(timestamp: number, duration: number) {
+      if (saved.failAt !== null && saved.adds.length >= saved.failAt) throw new Error("encoder failed");
+      saved.adds.push({ timestamp, duration });
+    }
+    close() {
+      saved.closed += 1;
+    }
+  },
+  Output: class {
+    target: { buffer: ArrayBuffer | null };
+    constructor(options: { target: { buffer: ArrayBuffer | null } }) {
+      this.target = options.target;
+    }
+    addVideoTrack() {}
+    async start() {
+      saved.started += 1;
+    }
+    async finalize() {
+      saved.finalized += 1;
+      this.target.buffer = new ArrayBuffer(16);
+    }
+    async cancel() {
+      saved.cancelled += 1;
+    }
+    async getMimeType() {
+      return 'video/mp4; codecs="avc1.640028"';
+    }
+  },
+}));
 
 /** A real-shaped Admin row, private fields included, to prove they never reach the video. */
 const job = (id: number, overrides: Partial<FacebookPosterJob> = {}): FacebookPosterJob & { addressDetails: string; instituteName: string } => ({
@@ -669,5 +730,115 @@ describe("the file", () => {
     expect(formatReelDuration(43.4)).toBe("0:43");
     expect(formatReelDuration(72)).toBe("1:12");
     expect(formatReelDuration(-1)).toBe("0:00");
+  });
+});
+
+describe("saving the video", () => {
+  const prepare = () => {
+    const drawn: Drawn = { texts: [], images: [] };
+    withCanvas(drawn);
+    const reel = prepareReel(reelInput([job(1), job(2)], "en", null), { size: "square", speed: "fast" })!;
+    const canvas = document.createElement("canvas");
+    canvas.width = reel.width;
+    canvas.height = reel.height;
+    return { reel, canvas, drawn };
+  };
+
+  beforeEach(() => {
+    saved.adds.length = 0;
+    saved.started = 0;
+    saved.finalized = 0;
+    saved.cancelled = 0;
+    saved.closed = 0;
+    saved.canEncode.mockResolvedValue(true);
+    vi.stubGlobal("VideoEncoder", class {});
+    vi.stubGlobal("VideoFrame", class {});
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("makes a plain MP4 with a frame every thirtieth of a second, each drawn for its own moment and held for that long", async () => {
+    const { reel, canvas } = prepare();
+    const moments: number[] = [];
+
+    const video = await recordReel(canvas, reel, { onFrame: seconds => moments.push(seconds) });
+
+    expect(video).not.toBeNull();
+    expect(video!.blob.type).toBe("video/mp4");
+    expect(video!.mimeType).toContain("avc1");
+    expect(videoExtension(video!.mimeType)).toBe("mp4");
+    expect(saved.adds).toHaveLength(videoFrameCount(reel.timeline.total));
+    expect(saved.adds[0]).toEqual({ timestamp: 0, duration: 1 / VIDEO_FRAME_RATE });
+    saved.adds.forEach((add, index) => {
+      expect(add.timestamp).toBeCloseTo(index / VIDEO_FRAME_RATE, 9);
+      expect(add.duration).toBeCloseTo(1 / VIDEO_FRAME_RATE, 9);
+    });
+    // The last frame is held a little past the end, so a player does not cut the closing card short.
+    expect(saved.adds.at(-1)!.timestamp + saved.adds.at(-1)!.duration).toBeGreaterThanOrEqual(reel.timeline.total + 0.25);
+    // Each frame shows its own moment, never past the end of the video.
+    moments.forEach((seconds, index) => expect(seconds).toBeCloseTo(Math.min(index / VIDEO_FRAME_RATE, reel.timeline.total), 9));
+    expect(saved.started).toBe(1);
+    expect(saved.finalized).toBe(1);
+    expect(saved.closed).toBe(1);
+    expect(saved.config).toMatchObject({ codec: "avc", bitrate: 8_000_000 });
+    expect(saved.format).toEqual({ fastStart: "in-memory" });
+  });
+
+  it("asks the encoder about the frame size and rate it will be given, and goes no further where it cannot", async () => {
+    const { reel, canvas } = prepare();
+    saved.canEncode.mockResolvedValueOnce(false);
+
+    // No live recorder either in this browser, so there is nothing to save - but the encoder was never used.
+    expect(await recordReel(canvas, reel)).toBeNull();
+    expect(saved.canEncode).toHaveBeenCalledWith("avc", { width: reel.width, height: reel.height, bitrate: 8_000_000, frameRate: VIDEO_FRAME_RATE });
+    expect(saved.adds).toHaveLength(0);
+    expect(saved.started).toBe(0);
+  });
+
+  it("stops where it is and writes no file when cancelled", async () => {
+    const { reel, canvas } = prepare();
+    const controller = new AbortController();
+
+    const video = await recordReel(canvas, reel, { signal: controller.signal, onFrame: seconds => { if (seconds > 1) controller.abort(); } });
+
+    expect(video).toBeNull();
+    expect(saved.cancelled).toBe(1);
+    expect(saved.finalized).toBe(0);
+    expect(saved.adds.length).toBeLessThan(videoFrameCount(reel.timeline.total));
+  });
+
+  it("does not wait for the window to be in view: a hidden tab makes the same file", async () => {
+    const { reel, canvas } = prepare();
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+
+    const video = await recordReel(canvas, reel);
+
+    expect(video).not.toBeNull();
+    expect(saved.adds).toHaveLength(videoFrameCount(reel.timeline.total));
+  });
+
+  it("leaves the encoder alone in a browser that has none", async () => {
+    const { reel, canvas } = prepare();
+    vi.unstubAllGlobals();
+
+    expect(canRecordVideo()).toBe(false);
+    expect(await recordReel(canvas, reel)).toBeNull();
+    expect(saved.canEncode).not.toHaveBeenCalled();
+  });
+
+  it("can make a video wherever the encoder is, even with no live recorder", () => {
+    expect(canRecordVideo()).toBe(true);
+  });
+
+  it("falls back to recording the playing preview when the encoder fails part way", async () => {
+    const { reel, canvas } = prepare();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    saved.failAt = 3;
+
+    // No live recorder in this browser either, so the fallback has nothing to save - the point is that it was reached.
+    expect(await recordReel(canvas, reel)).toBeNull();
+    expect(warn).toHaveBeenCalled();
+    expect(saved.cancelled).toBe(1);
+    saved.failAt = null;
   });
 });
