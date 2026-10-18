@@ -349,4 +349,18 @@ describe("Admin Tutor profile detail", () => {
     fireEvent.click(expandHistoryBtn);
     expect(screen.getByText("No moderation decisions yet.")).toBeTruthy();
   });
+
+  it("renders the mobile floating action bar with Moderate and CV buttons", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const bar = screen.getByRole("complementary", { name: "Mobile actions bar" });
+    expect(within(bar).getByText("Tania Sultana")).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: /Moderate/i })).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: /CV/i })).toBeTruthy();
+
+    // Clicking Moderate from the mobile bar opens the moderation modal
+    fireEvent.click(within(bar).getByRole("button", { name: /Moderate/i }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Moderate Tania Sultana" })).toBeTruthy();
+  });
 });

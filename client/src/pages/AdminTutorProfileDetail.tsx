@@ -209,7 +209,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
   const decisions = moderationOptions[profile.profileStatus] ?? [];
 
-  return <div className="mx-auto w-full max-w-5xl space-y-4 pb-10">
+  return <div className="mx-auto w-full max-w-5xl space-y-4 pb-20 sm:pb-10">
     {/* Applications is first in DOM order for document position compatibility */}
     <div className={activeTab === "all" || activeTab === "applications" ? "block" : "hidden"}>
       <AdminTutorApplications tutorId={tutorId} />
@@ -462,6 +462,46 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       tutorName={profile.name}
       tutorNumber={profile.tutorNumber}
     />
+
+    {/* Mobile Floating Moderation Action Bar */}
+    <aside aria-label="Mobile actions bar" className="fixed inset-x-0 bottom-0 z-30 border-t border-j-border bg-white/95 p-3 shadow-lg backdrop-blur sm:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-[#f4f9fd] text-j-ink-faint">
+            {profile.profilePhotoUrl
+              ? <img src={profile.profilePhotoUrl} alt="" className="size-full object-cover" />
+              : <UserRound size={16} aria-hidden={true} />}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold text-j-ink">{profile.name}</p>
+            <p className="flex items-center gap-1 text-3xs text-j-ink-soft">
+              <span>Tutor #{profile.tutorNumber || "—"}</span>
+              <span>•</span>
+              <span className="font-medium">Status: {profile.profileStatus.replace("_", " ")}</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {decisions.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => { setNextStatus(decisions[0]); setReason(""); setModerating(true); }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-j-accent px-3 text-xs font-bold text-white shadow-xs hover:bg-j-accent-hover"
+            >
+              <UserRoundCog size={14} /> Moderate
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setCvOpen(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-j-border px-2.5 text-xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+            title="View Official CV"
+          >
+            <FileText size={14} /> CV
+          </button>
+        </div>
+      </div>
+    </aside>
   </div>;
 }
 
