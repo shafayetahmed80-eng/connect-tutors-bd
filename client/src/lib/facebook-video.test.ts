@@ -38,6 +38,8 @@ import {
   REEL_LIGHT_NEUTRAL_GLOW,
   CRADLE_SWING_SECONDS,
   cradleSwing,
+  REEL_RAMP,
+  REEL_READ_SLOWDOWN,
   REEL_SAFE,
   REEL_SIZES,
   REEL_STRIP_HEIGHT,
@@ -394,6 +396,66 @@ describe("how the video moves", () => {
     expect(reel.strips[0]!.canvas.width).toBe(0);
     expect(reel.pages.title.width).toBe(0);
     expect(reel.scratch.width).toBe(0);
+  });
+});
+
+describe("the reading pace", () => {
+  const layout = layoutReel(measureCtx(), reelInput(Array.from({ length: 6 }, (_, index) => job(index + 1)), "en", null), "reels");
+  const timeline = reelTimeline(layout, "slow");
+  const cards = layout.blocks.filter(block => block.kind === "card");
+  // The middle of the rows Facebook leaves clear on a Reel.
+  const line = REEL_SAFE.reels.top + (1920 - REEL_SAFE.reels.top - REEL_SAFE.reels.bottom) / 2;
+  /** The moment the strip has risen to `row`. */
+  const when = (row: number) => {
+    let low = timeline.scrollStart;
+    let high = timeline.scrollStart + timeline.move;
+    for (let step = 0; step < 60; step += 1) {
+      const middle = (low + high) / 2;
+      if (reelOffsetAt(middle, timeline) < row) low = middle;
+      else high = middle;
+    }
+    return high;
+  };
+  /** Rows a second at `t`. */
+  const speedAt = (t: number) => (reelOffsetAt(t + 1 / 120, timeline) - reelOffsetAt(t - 1 / 120, timeline)) * 60;
+
+  it("slows to about a third of full speed as each card's middle crosses the reading line", () => {
+    for (const card of cards) {
+      const t = when(card.top + card.height / 2 - line - timeline.from);
+      expect(speedAt(t) / timeline.speed, `card ${card.top}`).toBeCloseTo(REEL_READ_SLOWDOWN, 1);
+    }
+  });
+
+  it("is at full speed again well away from the cards, and never stops while it moves", () => {
+    // Between the title leaving and the first card arriving.
+    const first = cards[0]!;
+    const before = when(first.top + first.height / 2 - line - 400);
+    expect(speedAt(before) / timeline.speed).toBeGreaterThan(0.97);
+    let slowest = Infinity;
+    for (let t = timeline.scrollStart + REEL_RAMP; t < timeline.scrollStart + timeline.move - REEL_RAMP; t += 1 / 30) slowest = Math.min(slowest, speedAt(t));
+    expect(slowest / timeline.speed).toBeGreaterThan(REEL_READ_SLOWDOWN - 0.05);
+  });
+
+  it("takes a little longer than an even run - under a second a card - and never jumps", () => {
+    const even = timeline.distance / timeline.speed + REEL_RAMP;
+    const extra = timeline.move - even;
+    expect(extra).toBeGreaterThan(0);
+    expect(extra / cards.length).toBeGreaterThan(0.2);
+    expect(extra / cards.length).toBeLessThan(1);
+    let previous = reelOffsetAt(0, timeline);
+    for (let t = 0; t <= timeline.total; t += 1 / 30) {
+      const offset = reelOffsetAt(t, timeline);
+      expect(offset - previous).toBeGreaterThanOrEqual(-1e-9);
+      expect(offset - previous).toBeLessThanOrEqual(timeline.speed / 30 + 1e-6);
+      previous = offset;
+    }
+  });
+
+  it("lingers less long at a faster speed", () => {
+    const fast = reelTimeline(layout, "fast");
+    const extraSlow = timeline.move - (timeline.distance / timeline.speed + REEL_RAMP);
+    const extraFast = fast.move - (fast.distance / fast.speed + REEL_RAMP);
+    expect(extraFast).toBeLessThan(extraSlow);
   });
 });
 
