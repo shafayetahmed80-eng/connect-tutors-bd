@@ -285,11 +285,27 @@ export function getDashboardNavigationItemClassName(isActive: boolean) {
     : `${shared} font-medium`;
 }
 
+export function triggerMobileHapticFeedback() {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    try {
+      navigator.vibrate(8);
+    } catch {
+      // Ignore vibration errors if restricted by device environment
+    }
+  }
+}
+
 export function closeMobileSidebarAfterNavigation(
   isMobile: boolean,
   setOpenMobile: (open: boolean) => void,
+  delayMs = 0,
 ) {
-  if (isMobile) setOpenMobile(false);
+  if (!isMobile) return;
+  if (delayMs > 0) {
+    setTimeout(() => setOpenMobile(false), delayMs);
+  } else {
+    setOpenMobile(false);
+  }
 }
 
 /**
@@ -571,14 +587,15 @@ function DashboardLayoutContent({
   }, [isResizing, setSidebarWidth]);
 
   const handleNavigation = (item: DashboardNavigationItem) => {
+    if (isMobile) triggerMobileHapticFeedback();
     // Installing leaves the page where it is, so it is not a move the panel's own guards need to approve.
     if (item.action === "install") {
-      closeMobileSidebarAfterNavigation(isMobile, setOpenMobile);
+      closeMobileSidebarAfterNavigation(isMobile, setOpenMobile, 90);
       void promptToInstallApp();
       return;
     }
     if (onBeforeNavigation && !onBeforeNavigation(item)) return;
-    closeMobileSidebarAfterNavigation(isMobile, setOpenMobile);
+    closeMobileSidebarAfterNavigation(isMobile, setOpenMobile, 90);
     if (item.action === "signout") {
       handleSignOut();
       return;
@@ -663,7 +680,10 @@ function DashboardLayoutContent({
                         href={communityHref}
                         target="_blank"
                         rel="noreferrer noopener"
-                        onClick={() => closeMobileSidebarAfterNavigation(isMobile, setOpenMobile)}
+                        onClick={() => {
+                          if (isMobile) triggerMobileHapticFeedback();
+                          closeMobileSidebarAfterNavigation(isMobile, setOpenMobile, 90);
+                        }}
                       >
                         <item.icon className="h-4 w-4 shrink-0 sb-icon" />
                         <span>{label}</span>
@@ -711,6 +731,7 @@ function DashboardLayoutContent({
                     tooltip={groupLabel}
                     // A collapsed sidebar has no room for the list, so the row goes to its first page instead.
                     onClick={() => {
+                      if (isMobile) triggerMobileHapticFeedback();
                       if (isCollapsed) handleNavigation(row.members[0].item);
                       else setExpandedGroups(current => ({ ...current, [groupKey]: !open }));
                     }}
@@ -720,7 +741,7 @@ function DashboardLayoutContent({
                     <row.subgroup.icon className={`h-4 w-4 shrink-0 ${containsActive ? "sb-icon-active" : "sb-icon"}`} />
                     <span>{groupLabel}</span>
                     {!open && waiting ? <CountBadge count={waiting} className="ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-2xs font-bold tabular-nums group-data-[collapsible=icon]:hidden" /> : null}
-                    <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 sb-icon transition-transform duration-200 motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
+                    <ChevronDown aria-hidden="true" className={`${!open && waiting ? "" : "ml-auto"} h-4 w-4 shrink-0 sb-icon transition-transform duration-250 cubic-bezier(0.34, 1.56, 0.64, 1) motion-reduce:transition-none group-data-[collapsible=icon]:hidden ${open ? "rotate-180" : ""}`} />
                   </SidebarMenuButton>
                   {/* Always drawn, so it can open and close smoothly; a shut list is out of reach of the keyboard and of a screen reader. */}
                   <div className="sb-sub" data-open={open} aria-hidden={!open} inert={!open}>
