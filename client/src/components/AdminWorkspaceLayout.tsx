@@ -3,7 +3,7 @@ import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationIt
 import { trpc } from "@/lib/trpc";
 import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { Image as ImageIcon, Images, PenTool, CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { AdminPushBellDot } from "@/components/AdminPushBellDot";
 import { AdminPushHeaderPopover } from "@/components/AdminPushHeaderPopover";
@@ -80,6 +80,10 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.appoint },
     { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.confirm },
     { icon: CircleX, label: "Cancel Requests", path: "/admin/guardian-requests/cancel", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.cancel },
+    // Every Admin makes social-media pictures, so this section is not the Owner's alone; it sits just above the Dynamic Section.
+    { icon: Images, label: "Poster", path: "/admin/images/poster", sectionLabel: "Image Section" },
+    { icon: ImageIcon, label: "Banner", path: "/admin/images/banner", sectionLabel: "Image Section" },
+    { icon: PenTool, label: "Logo", path: "/admin/images/logo", sectionLabel: "Image Section" },
     ...(isOwner ? dynamicSectionItems : []),
     ...(isOwner
       ? [
