@@ -1,5 +1,6 @@
 import { POSTER_WORDS, tuitionCount, type PosterLocale } from "@shared/poster-copy";
 import {
+  CRADLE_REST,
   drawCradle,
   drawGrain,
   drawIcon,
@@ -11,6 +12,7 @@ import {
   radialGlow,
   roundedRectPath,
   wrapLines,
+  type CradlePose,
 } from "./canvas-kit";
 import { derivePalette, hexToHsl, hslToHex, withAlpha } from "./palette";
 import type { PosterTuition } from "./types";
@@ -36,6 +38,53 @@ export const REEL_SIZES: Record<ReelSize, { width: number; height: number }> = {
   feed: { width: REEL_WIDTH, height: 1350 },
   square: { width: REEL_WIDTH, height: 1080 },
 };
+
+/**
+ * The rows Facebook lays its own things over, on each frame size: on a Reel the
+ * top bar, and at the foot the caption, the name and the buttons. The title
+ * card, the closing card and every page of slides keep their writing clear of
+ * them; the scroll's list only passes through. Feed and square posts are not
+ * covered.
+ */
+export const REEL_SAFE: Record<ReelSize, { top: number; bottom: number }> = {
+  reels: { top: 200, bottom: 480 },
+  feed: { top: 0, bottom: 0 },
+  square: { top: 0, bottom: 0 },
+};
+
+/** The safe rows for a frame of this height. */
+function safeFor(frameHeight: number): { top: number; bottom: number } {
+  const size = (Object.keys(REEL_SIZES) as ReelSize[]).find(key => REEL_SIZES[key].height === frameHeight);
+  return size ? REEL_SAFE[size] : { top: 0, bottom: 0 };
+}
+
+/** How long the mark's balls swing, once, on the title card and on the closing card. */
+export const CRADLE_SWING_SECONDS = 1.22;
+
+/**
+ * The mark's balls `seconds` into their swing: the lifted fifth falls and
+ * strikes, the first flies out and falls back, and the fifth rises to rest
+ * again - each leg eased like a pendulum. At rest before and after.
+ */
+export function cradleSwing(seconds: number): CradlePose {
+  const legs = [0.32, 0.3, 0.3, 0.3];
+  let s = seconds;
+  if (s <= 0 || s >= CRADLE_SWING_SECONDS) return CRADLE_REST;
+  const lift = CRADLE_REST.right;
+  // Falling speeds up; rising slows down.
+  const fall = (p: number) => p * p;
+  const rise = (p: number) => 1 - (1 - p) * (1 - p);
+  if (s < legs[0]!) return { left: 0, right: lift * (1 - fall(s / legs[0]!)) };
+  s -= legs[0]!;
+  if (s < legs[1]!) return { left: -lift * rise(s / legs[1]!), right: 0 };
+  s -= legs[1]!;
+  if (s < legs[2]!) return { left: -lift * (1 - fall(s / legs[2]!)), right: 0 };
+  s -= legs[2]!;
+  return { left: 0, right: lift * rise(Math.min(1, s / legs[3]!)) };
+}
+
+/** Where a card's mark is drawn, and in what colours, so it can be drawn again in motion. */
+export type CradleMark = { x: number; y: number; width: number; ink: string; lifted: string };
 
 /** How many seconds a line takes to rise the frame's full height. */
 export const REEL_CROSS_SECONDS: Record<ReelSpeed, number> = { slow: 6, normal: 4.5, fast: 3 };
@@ -333,16 +382,20 @@ export type SlidesLayout = {
  * The list in pages, as many tuitions to a page as the frame holds. A place
  * stays with its tuitions: its heading is never left alone at the foot of a
  * page, and where its tuitions run on to the next page the heading comes
- * again. The content of each page sits in the middle of the frame.
+ * again. The content of each page sits in the middle of the rows Facebook
+ * leaves clear (see `REEL_SAFE`).
  */
 export function layoutSlides(ctx: CanvasRenderingContext2D, input: ReelInput, size: ReelSize): SlidesLayout {
   const { width, height: frameHeight } = REEL_SIZES[size];
-  const capacity = frameHeight - SLIDE_PAD * 2;
+  const safe = safeFor(frameHeight);
+  const padTop = Math.max(SLIDE_PAD, safe.top);
+  const padBottom = Math.max(SLIDE_PAD, safe.bottom);
+  const capacity = frameHeight - padTop - padBottom;
   const pages: SlidePage[] = [];
   let current: { blocks: ReelBlock[]; height: number; cards: number } = { blocks: [], height: 0, cards: 0 };
   const close = () => {
     if (current.blocks.length === 0) return;
-    const shift = Math.round((frameHeight - current.height) / 2);
+    const shift = Math.round(padTop + (capacity - current.height) / 2);
     pages.push({ blocks: current.blocks.map(block => ({ ...block, top: block.top + shift })), cards: current.cards });
     current = { blocks: [], height: 0, cards: 0 };
   };
@@ -760,16 +813,18 @@ function paintCard(ctx: CanvasRenderingContext2D, block: CardBlock, look: ReelLo
 }
 
 /** The opening card: the mark, "Tutors needed", the count, the city and the date. */
-function paintTitle(ctx: CanvasRenderingContext2D, block: TitleBlock, look: ReelLook, input: ReelInput, width: number) {
+function paintTitle(ctx: CanvasRenderingContext2D, block: TitleBlock, look: ReelLook, input: ReelInput, width: number): CradleMark {
   const center = width / 2;
-  const middle = block.top + block.height / 2;
+  const safe = safeFor(block.height);
+  const middle = block.top + safe.top + (block.height - safe.top - safe.bottom) / 2;
   const markWidth = 104;
   const wordSize = 52;
   const wordWidth = measure(ctx, "Connect ", wordSize, 700, -0.02) + measure(ctx, "Tutors", wordSize, 500, -0.02);
   const brandWidth = markWidth + 20 + wordWidth;
   const brandLeft = center - brandWidth / 2;
   const brandY = middle - 230;
-  drawCradle(ctx, brandLeft, brandY - (markWidth * 32) / 48 / 2, markWidth, look.cradle, look.lifted);
+  const mark = { x: brandLeft, y: brandY - (markWidth * 32) / 48 / 2, width: markWidth, ink: look.cradle, lifted: look.lifted };
+  drawCradle(ctx, mark.x, mark.y, mark.width, mark.ink, mark.lifted);
   drawWordmark(ctx, brandLeft + markWidth + 20, brandY, wordSize, look.ink, look.soft);
 
   const words = POSTER_WORDS[input.locale];
@@ -791,13 +846,14 @@ function paintTitle(ctx: CanvasRenderingContext2D, block: TitleBlock, look: Reel
   drawText(ctx, reelTitle(input.tuitions.length, input.locale), center, middle + 40, { size: 92, weight: 800, color: look.ink, align: "center", maxWidth: width - SIDE * 2, minSize: 60, tracking: -0.02 });
   const sub = [input.city, input.date].filter(Boolean).join(" · ");
   drawText(ctx, sub, center, middle + 140, { size: 34, weight: 600, color: look.soft, align: "center", maxWidth: width - SIDE * 2 });
+  return mark;
 }
 
 /** The QR tile's side on each frame size: the closing card has to fit a square frame too. */
 const QR_SIDE: Record<number, number> = { 1920: 360, 1350: 320, 1080: 250 };
 
 /** The closing card: "Apply now", the Job Board's QR code and address, the WhatsApp number and the mark. */
-function paintEnd(ctx: CanvasRenderingContext2D, block: EndBlock, look: ReelLook, input: ReelInput, width: number) {
+function paintEnd(ctx: CanvasRenderingContext2D, block: EndBlock, look: ReelLook, input: ReelInput, width: number): CradleMark {
   const center = width / 2;
   const words = POSTER_WORDS[input.locale];
   const qr = QR_SIDE[block.height] ?? 300;
@@ -811,7 +867,8 @@ function paintEnd(ctx: CanvasRenderingContext2D, block: EndBlock, look: ReelLook
     brand: short ? 70 : 96,
   };
   const total = rows.title + rows.qr + rows.scan + rows.address + rows.whatsapp + rows.brand;
-  let y = block.top + (block.height - total) / 2;
+  const safe = safeFor(block.height);
+  let y = block.top + safe.top + (block.height - safe.top - safe.bottom - total) / 2;
 
   drawText(ctx, words.applyNow, center, y + rows.title / 2, { size: short ? 58 : 66, weight: 800, color: look.ink, align: "center", maxWidth: width - SIDE * 2, tracking: -0.01 });
   y += rows.title + (short ? 18 : 28);
@@ -843,16 +900,22 @@ function paintEnd(ctx: CanvasRenderingContext2D, block: EndBlock, look: ReelLook
   const wordWidth = measure(ctx, "Connect ", wordSize, 700, -0.02) + measure(ctx, "Tutors", wordSize, 500, -0.02);
   const brandLeft = center - (markWidth + 14 + wordWidth) / 2;
   const brandY = y + rows.brand / 2 + 6;
-  drawCradle(ctx, brandLeft, brandY - (markWidth * 32) / 48 / 2, markWidth, look.cradle, look.lifted);
+  const mark = { x: brandLeft, y: brandY - (markWidth * 32) / 48 / 2, width: markWidth, ink: look.cradle, lifted: look.lifted };
+  drawCradle(ctx, mark.x, mark.y, mark.width, mark.ink, mark.lifted);
   drawWordmark(ctx, brandLeft + markWidth + 14, brandY, wordSize, look.ink, look.soft);
+  return mark;
 }
 
-/** Paints one block where the layout put it. The context may be shifted, to paint into a strip. */
-export function paintReelBlock(ctx: CanvasRenderingContext2D, block: ReelBlock, look: ReelLook, input: ReelInput, width: number) {
-  if (block.kind === "title") paintTitle(ctx, block, look, input, width);
-  else if (block.kind === "area") paintArea(ctx, block, look, width);
+/**
+ * Paints one block where the layout put it. The context may be shifted, to
+ * paint into a strip. A title or closing card says where its mark went.
+ */
+export function paintReelBlock(ctx: CanvasRenderingContext2D, block: ReelBlock, look: ReelLook, input: ReelInput, width: number): CradleMark | undefined {
+  if (block.kind === "title") return paintTitle(ctx, block, look, input, width);
+  if (block.kind === "area") paintArea(ctx, block, look, width);
   else if (block.kind === "card") paintCard(ctx, block, look, input, width);
-  else paintEnd(ctx, block, look, input, width);
+  else return paintEnd(ctx, block, look, input, width);
+  return undefined;
 }
 
 /** The tallest strip a reel is painted in: well inside every browser's canvas limit, Safari's included. */

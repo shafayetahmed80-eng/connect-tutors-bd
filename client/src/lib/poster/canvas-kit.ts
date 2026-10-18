@@ -210,11 +210,16 @@ export function withShadow(ctx: CanvasRenderingContext2D, color: string, blur: n
   ctx.restore();
 }
 
+/** How the mark's two outer balls hang, in degrees from straight down: the fifth lifted to the right at rest, the first hanging. */
+export type CradlePose = { left: number; right: number };
+export const CRADLE_REST: CradlePose = { left: 0, right: -22 };
+
 /**
  * The Connect Tutors mark (BrandMark.tsx): four balls at rest, the fifth lifted.
- * `x, y` is the top-left of its 48×32 box, scaled to `width`.
+ * `x, y` is the top-left of its 48×32 box, scaled to `width`. `pose` swings the
+ * two outer balls, for the mark in motion; it rests as the logo does.
  */
-export function drawCradle(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, ink: string, lifted: string, stringWidth = 1.3, alpha = 1) {
+export function drawCradle(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, ink: string, lifted: string, stringWidth = 1.3, alpha = 1, pose: CradlePose = CRADLE_REST) {
   const s = width / 48;
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -225,6 +230,12 @@ export function drawCradle(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.fillStyle = ink;
   ctx.lineWidth = stringWidth;
   for (const cx of [5.6, 12.8, 20, 27.2]) {
+    ctx.save();
+    if (cx === 5.6 && pose.left !== 0) {
+      ctx.translate(cx, 11);
+      ctx.rotate((pose.left * Math.PI) / 180);
+      ctx.translate(-cx, -11);
+    }
     ctx.beginPath();
     ctx.moveTo(cx, 11);
     ctx.lineTo(cx, 35);
@@ -232,10 +243,11 @@ export function drawCradle(ctx: CanvasRenderingContext2D, x: number, y: number, 
     ctx.beginPath();
     ctx.arc(cx, 35, 3.6, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
   ctx.save();
   ctx.translate(34.4, 11);
-  ctx.rotate((-22 * Math.PI) / 180);
+  ctx.rotate((pose.right * Math.PI) / 180);
   ctx.translate(-34.4, -11);
   ctx.strokeStyle = lifted;
   ctx.fillStyle = lifted;
