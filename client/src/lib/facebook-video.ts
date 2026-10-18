@@ -9,6 +9,7 @@ import {
   REEL_EDGE_FADE,
   REEL_FPS,
   REEL_SIZES,
+  REEL_STRIP_PAD,
   REEL_TURN_ANGLE,
   reelEase,
   reelLook,
@@ -73,7 +74,8 @@ export type ScrollReel = ReelBase & {
   style: "scroll";
   layout: ReelLayout;
   timeline: ReelTimeline;
-  strips: Array<{ top: number; canvas: HTMLCanvasElement }>;
+  /** Each strip holds the rows `top` to `top + height` of the list, with a few more painted above and below (`REEL_STRIP_PAD`). */
+  strips: Array<{ top: number; height: number; canvas: HTMLCanvasElement }>;
   /**
    * The backdrop's own top and bottom bands, fading from solid at the frame's
    * edge to clear: laid over the list, they melt it into the ground as it
@@ -149,13 +151,13 @@ export function prepareReel(input: ReelInput, options: { size: ReelSize; speed: 
   const strips = reelStrips(layout)
     .filter(strip => strip.blocks.some(isList))
     .map(strip => {
-      const canvas = canvasOf(width, strip.height);
+      const canvas = canvasOf(width, strip.height + REEL_STRIP_PAD * 2);
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.translate(0, -strip.top);
+        ctx.translate(0, REEL_STRIP_PAD - strip.top);
         for (const block of strip.blocks.filter(isList)) paintReelBlock(ctx, block, look, input, width);
       }
-      return { top: strip.top, canvas };
+      return { top: strip.top, height: strip.height, canvas };
     });
   // The title and closing blocks sit at the strip's two ends; a page paints each at its own top.
   const card = (block: ReelBlock) => page([{ ...block, top: 0 }]);
@@ -308,14 +310,23 @@ export function drawReelFrame(ctx: CanvasRenderingContext2D, reel: PreparedReel,
     ctx.drawImage(reel.pages.end, 0, 0);
     return;
   }
-  const offset = Math.round(reelOffsetAt(t, timeline));
+  // The list moves in fractions of a row, so it glides instead of stepping from row to row - most of all as it starts and stops.
+  const offset = reelOffsetAt(t, timeline);
   ctx.drawImage(reel.background, 0, 0);
   for (const strip of reel.strips) {
-    // Only the rows of the strip that fall inside the frame are copied.
-    const from = Math.max(0, offset - strip.top);
-    const to = Math.min(strip.canvas.height, offset + height - strip.top);
+    // A strip owns whole rows of the screen, so no row is drawn by two strips; it reads a row more on each side to blend with, from its padding.
+    const ownTop = Math.round(strip.top - offset);
+    const ownBottom = Math.round(strip.top + strip.height - offset);
+    if (ownBottom <= 0 || ownTop >= height) continue;
+    const from = Math.max(Math.floor(offset) - 1, strip.top - REEL_STRIP_PAD);
+    const to = Math.min(Math.ceil(offset) + height + 1, strip.top + strip.height + REEL_STRIP_PAD);
     if (to <= from) continue;
-    ctx.drawImage(strip.canvas, 0, from, width, to - from, 0, strip.top + from - offset, width, to - from);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, ownTop, width, ownBottom - ownTop);
+    ctx.clip();
+    ctx.drawImage(strip.canvas, 0, from - strip.top + REEL_STRIP_PAD, width, to - from, 0, from - offset, width, to - from);
+    ctx.restore();
   }
   ctx.drawImage(reel.fades.top, 0, 0);
   ctx.drawImage(reel.fades.bottom, 0, height - reel.fades.bottom.height);

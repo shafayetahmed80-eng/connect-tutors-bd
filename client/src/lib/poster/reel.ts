@@ -426,6 +426,9 @@ export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, turns: { open
     from = layout.listTop - margin;
     to = layout.listBottom + margin - frameHeight;
   }
+  // Whole rows where the list is still, so it is crisp; it moves in fractions of a row between.
+  from = Math.round(from);
+  to = Math.round(to);
   const distance = Math.max(0, to - from);
   const pxPerSecond = frameHeight / REEL_CROSS_SECONDS[speed];
   // A steady run, plus the ramps: each ramp covers half the ground a steady run would in that time.
@@ -847,6 +850,8 @@ export function paintReelBlock(ctx: CanvasRenderingContext2D, block: ReelBlock, 
 
 /** The tallest strip a reel is painted in: well inside every browser's canvas limit, Safari's included. */
 export const REEL_STRIP_HEIGHT = 4096;
+/** Rows each strip is painted beyond its own, top and bottom, so a strip drawn at a fraction of a pixel has its neighbour's rows to blend with at the seam. */
+export const REEL_STRIP_PAD = 4;
 
 /**
  * Where the strips go: one run of `REEL_STRIP_HEIGHT` after another down the

@@ -32,6 +32,7 @@ import {
   REEL_LIGHT_NEUTRAL_GLOW,
   REEL_SIZES,
   REEL_STRIP_HEIGHT,
+  REEL_STRIP_PAD,
   REEL_TURN_ANGLE,
   REEL_TURN_SECONDS,
   SLIDE_MIN_HOLD,
@@ -121,7 +122,7 @@ const job = (id: number, overrides: Partial<FacebookPosterJob> = {}): FacebookPo
   ...overrides,
 });
 
-type Drawn = { texts: string[]; images: Array<{ args: number[] }> };
+type Drawn = { texts: string[]; images: Array<{ args: number[] }>; rects?: number[][] };
 
 /** A 2D context that records what is written and what is copied, enough for every drawing the reel does. */
 function mockContext(drawn: Drawn) {
@@ -156,6 +157,7 @@ function mockContext(drawn: Drawn) {
     fillRect: noop,
     clearRect: noop,
     clip: noop,
+    rect: (...args: number[]) => drawn.rects?.push(args),
     setLineDash: noop,
     createLinearGradient: () => ({ addColorStop: noop }),
     createRadialGradient: () => ({ addColorStop: noop }),
@@ -294,7 +296,9 @@ describe("how the video moves", () => {
     expect(timeline.distance).toBe(0);
     expect(timeline.move).toBe(0);
     const listHeight = short.listBottom - short.listTop;
-    expect(short.listTop - timeline.from + listHeight / 2).toBeCloseTo(short.frameHeight / 2);
+    // Centred to within the whole row it rests on.
+    expect(Math.abs(short.listTop - timeline.from + listHeight / 2 - short.frameHeight / 2)).toBeLessThanOrEqual(0.5);
+    expect(Number.isInteger(timeline.from)).toBe(true);
     expect(reelOffsetAt(timeline.scrollStart + 1, timeline)).toBe(timeline.from);
     // Long enough on screen to be read.
     expect(timeline.closeStart - (timeline.holdStart + timeline.openDuration)).toBeGreaterThanOrEqual(3);
@@ -424,7 +428,54 @@ describe("what a frame is made of", () => {
     drawReelFrame(ctx, reel, reel.timeline.scrollStart + 0.1);
 
     expect(drawn.images).toHaveLength(4);
-    expect(drawn.images[1]!.args).toEqual([0, Math.round(reel.timeline.from), 1080, 1920, 0, 0, 1080, 1920]);
+    // The frame's rows and one more each side to blend with, from the strip's padding; on a whole row they land on whole rows.
+    const from = reel.timeline.from;
+    expect(drawn.images[1]!.args).toEqual([0, from - 1 + REEL_STRIP_PAD, 1080, 1922, 0, -1, 1080, 1922]);
+  });
+
+  it("moves the list in fractions of a row, so it glides instead of stepping - most of all as it starts and stops", () => {
+    const { reel } = prepare();
+    if (reel.style !== "scroll") throw new Error("not a scroll");
+    const timeline = reelTimeline(layoutReel(measureCtx(), reelInput(Array.from({ length: 12 }, (_, index) => job(index + 1)), "en", null), "reels"), "slow");
+    const rows = [];
+    for (let t = timeline.scrollStart; t <= timeline.scrollStart + 0.6; t += 1 / 30) rows.push(reelOffsetAt(t, timeline));
+
+    // While it picks up speed each frame is further than the last, by less than a row at first - not 0, 1, 1, 2 rows in whole steps.
+    const steps = rows.slice(1).map((row, index) => row - rows[index]!);
+    expect(steps.some(step => !Number.isInteger(step))).toBe(true);
+    expect(steps.every(step => step >= 0)).toBe(true);
+    expect(steps[0]!).toBeLessThan(1);
+    for (let index = 1; index < steps.length; index += 1) expect(steps[index]!).toBeGreaterThan(steps[index - 1]! - 1e-9);
+  });
+
+  it("draws the list at a fraction of a row, and gives each row of the screen to one strip so a seam between two shows no line", () => {
+    const drawn: Drawn = { texts: [], images: [], rects: [] };
+    withCanvas(drawn);
+    const many = Array.from({ length: 30 }, (_, index) => job(index + 1, { tuitionLocationLabel: `Area ${index % 6}, Dhaka` }));
+    const reel = prepareReel(reelInput(many, "en", null), { size: "reels", speed: "slow" })!;
+    if (reel.style !== "scroll") throw new Error("not a scroll");
+    expect(reel.strips.length).toBeGreaterThan(1);
+    const seam = reel.strips[1]!.top;
+    // Find the moment the seam is half way up the screen, a little over a whole row in.
+    let t = reel.timeline.scrollStart;
+    while (reelOffsetAt(t, reel.timeline) < seam - 960 + 0.37 && t < reel.timeline.total) t += 1 / 300;
+    expect(reelOffsetAt(t, reel.timeline) % 1).not.toBe(0);
+    drawn.images.length = 0;
+    drawn.rects!.length = 0;
+
+    drawReelFrame(mockContext(drawn) as unknown as CanvasRenderingContext2D, reel, t);
+
+    const rects = drawn.rects!;
+    expect(rects.length).toBeGreaterThanOrEqual(2);
+    // Each strip's share of the screen starts on a whole row, exactly where the one before ends.
+    for (const [, y, , h] of rects) {
+      expect(Number.isInteger(y)).toBe(true);
+      expect(Number.isInteger(h)).toBe(true);
+    }
+    for (let index = 1; index < rects.length; index += 1) expect(rects[index]![1]).toBe(rects[index - 1]![1]! + rects[index - 1]![3]!);
+    // ...while the picture itself is drawn at a fraction of a row.
+    const strips = drawn.images.filter(image => image.args.length === 8 && image.args[3] !== 1080);
+    expect(strips.some(image => !Number.isInteger(image.args[5]!))).toBe(true);
   });
 
   it("lays a turning title card over the list slice by slice, shaded as one, and only the page itself when fading", () => {
