@@ -396,12 +396,22 @@ export function pickVideoMimeType(isSupported: (type: string) => boolean = type 
   }) ?? null;
 }
 
-/** Whether this browser can record a canvas at all. */
-export function canRecordVideo(): boolean {
+/** Whether this browser has the video encoder the file is made with (Chrome and Edge, Safari 16.4 and newer, Firefox 130 and newer). */
+function hasVideoEncoder(): boolean {
+  return typeof VideoEncoder !== "undefined" && typeof VideoFrame !== "undefined";
+}
+
+/** Whether this browser can record the playing canvas live instead: the way older browsers save the video. */
+function canRecordLive(): boolean {
   return typeof MediaRecorder !== "undefined"
     && typeof HTMLCanvasElement !== "undefined"
     && typeof HTMLCanvasElement.prototype.captureStream === "function"
     && pickVideoMimeType() !== null;
+}
+
+/** Whether this browser can make the video file at all. */
+export function canRecordVideo(): boolean {
+  return hasVideoEncoder() || canRecordLive();
 }
 
 export function videoExtension(mimeType: string): "mp4" | "webm" {
@@ -413,20 +423,95 @@ export function videoFileName(count: number, size: ReelSize, locale: PosterLocal
   return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}${style === "slides" ? "-slides" : ""}-${locale}.${extension}`;
 }
 
+/** What the saved video is: its steady frame rate, its bitrate, and how long the last frame is held so a player does not cut the closing card short. */
+export const VIDEO_FRAME_RATE = REEL_FPS;
+const VIDEO_BITRATE = 8_000_000;
+const VIDEO_TAIL = 0.25;
+
+/** How many frames the saved file has for a reel that runs `seconds`. */
+export function videoFrameCount(seconds: number): number {
+  return Math.ceil((seconds + VIDEO_TAIL) * VIDEO_FRAME_RATE);
+}
+
+export type RecordedVideo = { blob: Blob; mimeType: string };
+type RecordOptions = { signal?: AbortSignal; onFrame?: (seconds: number) => void; schedule?: FrameScheduler };
+
+/** Lets the window paint and hear a click before the next frames are made. */
+const yieldToWindow = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+
 /**
- * Records the reel as it plays on `canvas` and returns the video. The
- * recording pauses whenever the frames stop coming - a hidden tab, a window
- * minimised or covered - so those seconds are left out rather than recorded as
- * a frozen frame, and it picks up where it stopped.
+ * Makes the video file frame by frame. Every frame is drawn for its own exact
+ * moment, a thirtieth of a second after the one before, and handed to the
+ * browser's video encoder with that moment as its time - so the file runs at a
+ * steady 30 frames a second however fast or slow this computer draws, and it
+ * does not matter whether the window is in view. The result is a plain MP4,
+ * with its length and its seek table at the start, which is what Facebook and
+ * every player expect.
+ *
+ * Resolves null if cancelled, and undefined where this browser cannot encode
+ * the video (the caller then records the playing preview instead).
  */
-export async function recordReel(canvas: HTMLCanvasElement, reel: PreparedReel, options: { signal?: AbortSignal; onFrame?: (seconds: number) => void; schedule?: FrameScheduler } = {}): Promise<{ blob: Blob; mimeType: string } | null> {
+async function encodeReel(canvas: HTMLCanvasElement, reel: PreparedReel, options: RecordOptions): Promise<RecordedVideo | null | undefined> {
+  if (!hasVideoEncoder()) return undefined;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return undefined;
+  // The encoder and the file writer are fetched only now, so a visitor's pages and the window itself never carry them.
+  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, canEncodeVideo } = await import("mediabunny");
+  if (!(await canEncodeVideo("avc", { width: canvas.width, height: canvas.height, bitrate: VIDEO_BITRATE, frameRate: VIDEO_FRAME_RATE }))) return undefined;
+
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
+  const source = new CanvasSource(canvas, { codec: "avc", bitrate: VIDEO_BITRATE, keyFrameInterval: 2 });
+  output.addVideoTrack(source, { frameRate: VIDEO_FRAME_RATE });
+  await output.start();
+
+  const step = 1 / VIDEO_FRAME_RATE;
+  const frames = videoFrameCount(reel.timeline.total);
+  try {
+    for (let frame = 0; frame < frames; frame += 1) {
+      if (options.signal?.aborted) {
+        await output.cancel();
+        return null;
+      }
+      const seconds = Math.min(frame * step, reel.timeline.total);
+      drawReelFrame(ctx, reel, seconds);
+      await source.add(frame * step, step);
+      options.onFrame?.(seconds);
+      // The window gets a turn now and then, to show the progress and hear Cancel; a hidden one has no screen to paint, so it carries on.
+      if (frame % 6 === 5 && !document.hidden) await yieldToWindow();
+    }
+    if (options.signal?.aborted) {
+      await output.cancel();
+      return null;
+    }
+    source.close();
+    await output.finalize();
+  } catch (error) {
+    await output.cancel().catch(() => undefined);
+    if (options.signal?.aborted) return null;
+    throw error;
+  }
+  const buffer = output.target.buffer;
+  if (!buffer) throw new Error("The video file was not written.");
+  return { blob: new Blob([buffer], { type: "video/mp4" }), mimeType: await output.getMimeType() };
+}
+
+/**
+ * The older way, for a browser with no video encoder: records the preview as it
+ * plays. A frame goes to the recording each time one is drawn - not on the
+ * recorder's own clock, which would sample the picture between draws and make
+ * it shake - and the recording pauses whenever the frames stop coming (a hidden
+ * tab, a window minimised or covered), so those seconds are left out rather
+ * than recorded as a frozen frame.
+ */
+async function recordLive(canvas: HTMLCanvasElement, reel: PreparedReel, options: RecordOptions): Promise<RecordedVideo | null> {
   const mimeType = pickVideoMimeType();
   if (!mimeType || typeof canvas.captureStream !== "function") return null;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   drawReelFrame(ctx, reel, 0);
-  const stream = canvas.captureStream(REEL_FPS);
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+  const stream = canvas.captureStream(0);
+  const track = stream.getVideoTracks()[0] as (MediaStreamTrack & { requestFrame?: () => void }) | undefined;
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: VIDEO_BITRATE });
   const parts: Blob[] = [];
   recorder.ondataavailable = event => {
     if (event.data.size > 0) parts.push(event.data);
@@ -440,24 +525,49 @@ export async function recordReel(canvas: HTMLCanvasElement, reel: PreparedReel, 
   document.addEventListener("visibilitychange", onVisibility);
   // No frame for a quarter of a second means the page stopped painting: hold the recording until it paints again.
   let lastFrame = performance.now();
+  let lastSent = 0;
   const watchdog = setInterval(() => {
     if (recorder.state === "recording" && performance.now() - lastFrame > 250) recorder.pause();
   }, 100);
   const onFrame = (seconds: number) => {
-    lastFrame = performance.now();
+    const now = performance.now();
+    lastFrame = now;
     if (recorder.state === "paused" && !document.hidden) recorder.resume();
+    // At most about sixty a second, however fast the screen refreshes.
+    if (now - lastSent >= 15) {
+      track?.requestFrame?.();
+      lastSent = now;
+    }
     options.onFrame?.(seconds);
   };
   recorder.start(1000);
-  // A quarter of a second on the last frame, so a player does not cut the closing card short.
-  const finished = await runReel(canvas, reel, { signal: options.signal, onFrame, tail: 0.25, schedule: options.schedule });
+  track?.requestFrame?.();
+  const finished = await runReel(canvas, reel, { signal: options.signal, onFrame, tail: VIDEO_TAIL, schedule: options.schedule });
   clearInterval(watchdog);
   document.removeEventListener("visibilitychange", onVisibility);
   if (recorder.state !== "inactive") recorder.stop();
   await stopped;
-  for (const track of stream.getTracks()) track.stop();
+  for (const each of stream.getTracks()) each.stop();
   if (!finished) return null;
   return { blob: new Blob(parts, { type: mimeType.split(";")[0] }), mimeType };
+}
+
+/**
+ * Makes the video file for the reel on `canvas`: encoded frame by frame where the
+ * browser can (see `encodeReel`), recorded live from the preview where it cannot.
+ * Null if it was cancelled or this browser cannot make a video.
+ */
+export async function recordReel(canvas: HTMLCanvasElement, reel: PreparedReel, options: RecordOptions = {}): Promise<RecordedVideo | null> {
+  if (hasVideoEncoder()) {
+    try {
+      const encoded = await encodeReel(canvas, reel, options);
+      if (encoded !== undefined) return encoded;
+    } catch (error) {
+      console.warn("Encoding the video failed; recording the preview instead.", error);
+    }
+  }
+  if (options.signal?.aborted) return null;
+  return recordLive(canvas, reel, options);
 }
 
 /** Saves a video through a temporary link. */
@@ -469,5 +579,6 @@ export function downloadVideo(blob: Blob, filename: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  // The browser reads the file as it saves it; a long video needs more than a few seconds before the link can go.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
