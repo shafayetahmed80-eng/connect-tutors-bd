@@ -9,9 +9,12 @@ import {
   pickVideoMimeType,
   prepareReel,
   recordReel,
+  reelFrameIsStill,
   reelInput,
   releaseReel,
   VIDEO_FRAME_RATE,
+  VIDEO_MOVING_QUANTIZER,
+  VIDEO_STILL_QUANTIZER,
   VIDEO_MIME_CANDIDATES,
   videoExtension,
   videoFileName,
@@ -52,6 +55,7 @@ import {
 /** What the video encoder and file writer were asked to do: stood in for here, since a test has no encoder. */
 const saved = vi.hoisted(() => ({
   adds: [] as Array<{ timestamp: number; duration: number }>,
+  quantizers: [] as number[],
   started: 0,
   finalized: 0,
   cancelled: 0,
@@ -64,6 +68,9 @@ const saved = vi.hoisted(() => ({
 
 vi.mock("mediabunny", () => ({
   canEncodeVideo: saved.canEncode,
+  Quality: class {
+    constructor(public options: unknown) {}
+  },
   Mp4OutputFormat: class {
     constructor(options: unknown) {
       saved.format = options;
@@ -76,9 +83,10 @@ vi.mock("mediabunny", () => ({
     constructor(_canvas: unknown, config: unknown) {
       saved.config = config;
     }
-    async add(timestamp: number, duration: number) {
+    async add(timestamp: number, duration: number, options?: { avc?: { quantizer?: number } }) {
       if (saved.failAt !== null && saved.adds.length >= saved.failAt) throw new Error("encoder failed");
       saved.adds.push({ timestamp, duration });
+      if (options?.avc?.quantizer !== undefined) saved.quantizers.push(options.avc.quantizer);
     }
     close() {
       saved.closed += 1;
@@ -822,6 +830,51 @@ describe("the file", () => {
   });
 });
 
+describe("which frames hold still", () => {
+  const scroll = (ends: { opening?: boolean; closing?: boolean } = {}) => {
+    withCanvas({ texts: [], images: [] });
+    return prepareReel(reelInput(Array.from({ length: 8 }, (_, index) => job(index + 1)), "en", null), { size: "reels", speed: "slow", ...ends })!;
+  };
+  const frame = 1 / VIDEO_FRAME_RATE;
+
+  it("in a scroll: the held title and closing card, not the run between", () => {
+    const reel = scroll();
+    if (reel.style !== "scroll") throw new Error("not a scroll");
+    const { scrollStart, move, total } = reel.timeline;
+
+    expect(reelFrameIsStill(reel, 0)).toBe(true);
+    expect(reelFrameIsStill(reel, scrollStart - 2 * frame)).toBe(true);
+    // The last held frame comes before one that has moved.
+    expect(reelFrameIsStill(reel, scrollStart)).toBe(false);
+    expect(reelFrameIsStill(reel, scrollStart + move / 2)).toBe(false);
+    expect(reelFrameIsStill(reel, scrollStart + move + frame)).toBe(true);
+    expect(reelFrameIsStill(reel, total)).toBe(true);
+  });
+
+  it("in a scroll with faded ends: never while a card fades", () => {
+    const reel = scroll({ opening: false, closing: false });
+    const timeline = reel.timeline as { holdStart: number; openDuration: number; closeStart: number; closeDuration: number; total: number };
+
+    expect(reelFrameIsStill(reel, timeline.holdStart + timeline.openDuration / 2)).toBe(false);
+    expect(reelFrameIsStill(reel, timeline.closeStart + timeline.closeDuration / 2)).toBe(false);
+    expect(reelFrameIsStill(reel, timeline.total)).toBe(true);
+  });
+
+  it("in slides: a page being read, from its first frame, but not a page turning or the frame before it turns", () => {
+    withCanvas({ texts: [], images: [] });
+    const reel = prepareReel(reelInput([job(1), job(2), job(3), job(4), job(5)], "en", null), { size: "reels", speed: "slow", style: "slides" })!;
+    if (reel.style !== "slides") throw new Error("not slides");
+    const page = reel.timeline.steps.find(step => step.transition === null && step.page === 1)!;
+    const turn = reel.timeline.steps.find(step => step.transition !== null && step.page >= 1)!;
+
+    expect(reelFrameIsStill(reel, page.start)).toBe(true);
+    expect(reelFrameIsStill(reel, (page.start + page.end) / 2)).toBe(true);
+    expect(reelFrameIsStill(reel, page.end - frame / 2)).toBe(false);
+    expect(reelFrameIsStill(reel, (turn.start + turn.end) / 2)).toBe(false);
+    expect(reelFrameIsStill(reel, reel.timeline.total)).toBe(true);
+  });
+});
+
 describe("saving the video", () => {
   const prepare = () => {
     const drawn: Drawn = { texts: [], images: [] };
@@ -835,6 +888,7 @@ describe("saving the video", () => {
 
   beforeEach(() => {
     saved.adds.length = 0;
+    saved.quantizers.length = 0;
     saved.started = 0;
     saved.finalized = 0;
     saved.cancelled = 0;
@@ -869,7 +923,8 @@ describe("saving the video", () => {
     expect(saved.started).toBe(1);
     expect(saved.finalized).toBe(1);
     expect(saved.closed).toBe(1);
-    expect(saved.config).toMatchObject({ codec: "avc", bitrate: 8_000_000 });
+    // Encoded to a quality, with the old steady bitrate only where a browser cannot.
+    expect(saved.config).toMatchObject({ codec: "avc", quality: { options: { quantizer: VIDEO_MOVING_QUANTIZER, bitrate: 8_000_000 } } });
     expect(saved.format).toEqual({ fastStart: "in-memory" });
   });
 
@@ -879,7 +934,7 @@ describe("saving the video", () => {
 
     // No live recorder either in this browser, so there is nothing to save - but the encoder was never used.
     expect(await recordReel(canvas, reel)).toBeNull();
-    expect(saved.canEncode).toHaveBeenCalledWith("avc", { width: reel.width, height: reel.height, bitrate: 8_000_000, frameRate: VIDEO_FRAME_RATE });
+    expect(saved.canEncode).toHaveBeenCalledWith("avc", { width: reel.width, height: reel.height, quality: expect.anything(), frameRate: VIDEO_FRAME_RATE });
     expect(saved.adds).toHaveLength(0);
     expect(saved.started).toBe(0);
   });
@@ -917,6 +972,24 @@ describe("saving the video", () => {
 
   it("can make a video wherever the encoder is, even with no live recorder", () => {
     expect(canRecordVideo()).toBe(true);
+  });
+
+  it("draws still frames finest and moving frames a little coarser", async () => {
+    const { reel, canvas } = prepare();
+
+    await recordReel(canvas, reel);
+
+    expect(saved.quantizers).toHaveLength(saved.adds.length);
+    expect(new Set(saved.quantizers)).toEqual(new Set([VIDEO_STILL_QUANTIZER, VIDEO_MOVING_QUANTIZER]));
+    expect(VIDEO_STILL_QUANTIZER).toBeLessThan(VIDEO_MOVING_QUANTIZER);
+    saved.adds.forEach((add, index) => {
+      const seconds = Math.min(add.timestamp, reel.timeline.total);
+      expect(saved.quantizers[index], `frame at ${seconds}`).toBe(reelFrameIsStill(reel, seconds) ? VIDEO_STILL_QUANTIZER : VIDEO_MOVING_QUANTIZER);
+    });
+    // The held title opens the file finest, the list rising is coarser, and the held closing card ends it finest.
+    expect(saved.quantizers[0]).toBe(VIDEO_STILL_QUANTIZER);
+    expect(saved.quantizers[Math.round((reel.timeline.total / 2) * VIDEO_FRAME_RATE)]).toBe(VIDEO_MOVING_QUANTIZER);
+    expect(saved.quantizers.at(-1)).toBe(VIDEO_STILL_QUANTIZER);
   });
 
   it("falls back to recording the playing preview when the encoder fails part way", async () => {
