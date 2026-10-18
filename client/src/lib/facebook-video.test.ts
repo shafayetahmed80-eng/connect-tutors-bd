@@ -10,6 +10,7 @@ import {
   pickVideoMimeType,
   prepareReel,
   recordReel,
+  reelMusicPlan,
   reelCover,
   reelSwingAt,
   reelFrameIsStill,
@@ -72,10 +73,24 @@ const saved = vi.hoisted(() => ({
   format: null as unknown,
   failAt: null as number | null,
   canEncode: vi.fn(),
+  canEncodeAudio: vi.fn(),
+  audioTracks: 0,
+  audioAdded: [] as unknown[],
+  audioClosed: 0,
 }));
 
 vi.mock("mediabunny", () => ({
   canEncodeVideo: saved.canEncode,
+  canEncodeAudio: saved.canEncodeAudio,
+  AudioBufferSource: class {
+    constructor(public config: unknown) {}
+    async add(buffer: unknown) {
+      saved.audioAdded.push(buffer);
+    }
+    close() {
+      saved.audioClosed += 1;
+    }
+  },
   Quality: class {
     constructor(public options: unknown) {}
   },
@@ -106,6 +121,9 @@ vi.mock("mediabunny", () => ({
       this.target = options.target;
     }
     addVideoTrack() {}
+    addAudioTrack() {
+      saved.audioTracks += 1;
+    }
     async start() {
       saved.started += 1;
     }
@@ -1073,6 +1091,10 @@ describe("saving the video", () => {
     saved.cancelled = 0;
     saved.closed = 0;
     saved.canEncode.mockResolvedValue(true);
+    saved.canEncodeAudio.mockResolvedValue(true);
+    saved.audioTracks = 0;
+    saved.audioAdded.length = 0;
+    saved.audioClosed = 0;
     vi.stubGlobal("VideoEncoder", class {});
     vi.stubGlobal("VideoFrame", class {});
   });
@@ -1169,6 +1191,47 @@ describe("saving the video", () => {
     expect(saved.quantizers[0]).toBe(VIDEO_STILL_QUANTIZER);
     expect(saved.quantizers[Math.round((reel.timeline.total / 2) * VIDEO_FRAME_RATE)]).toBe(VIDEO_MOVING_QUANTIZER);
     expect(saved.quantizers.at(-1)).toBe(VIDEO_STILL_QUANTIZER);
+  });
+
+  it("lays the music under the video as an AAC track where the browser can encode it", async () => {
+    const { reel, canvas } = prepare();
+    const music = { numberOfChannels: 2, sampleRate: 48_000 } as AudioBuffer;
+
+    const video = await recordReel(canvas, reel, { music });
+
+    expect(video).not.toBeNull();
+    expect(saved.canEncodeAudio).toHaveBeenCalledWith("aac", { numberOfChannels: 2, sampleRate: 48_000, quality: expect.anything() });
+    expect(saved.audioTracks).toBe(1);
+    expect(saved.audioAdded).toEqual([music]);
+    expect(saved.audioClosed).toBe(1);
+  });
+
+  it("makes the video without music where the browser cannot encode it, or when there is none", async () => {
+    const { reel, canvas } = prepare();
+    saved.canEncodeAudio.mockResolvedValueOnce(false);
+
+    expect(await recordReel(canvas, reel, { music: { numberOfChannels: 2, sampleRate: 48_000 } as AudioBuffer })).not.toBeNull();
+    expect(saved.audioTracks).toBe(0);
+
+    expect(await recordReel(canvas, reel, { music: null })).not.toBeNull();
+    expect(saved.audioTracks).toBe(0);
+    expect(saved.adds.length).toBeGreaterThan(0);
+  });
+
+  it("plays music as long as the video and its held last frame, with a page sound at every page turn in slides", () => {
+    const { reel } = prepare();
+    expect(reelMusicPlan(reel).length).toBeCloseTo(reel.timeline.total + 0.25);
+    expect(reelMusicPlan(reel).turns).toEqual([]);
+
+    withCanvas({ texts: [], images: [] });
+    const slides = prepareReel(reelInput([job(1), job(2), job(3), job(4), job(5)], "en", null), { size: "reels", speed: "slow", style: "slides" })!;
+    if (slides.style !== "slides") throw new Error("not slides");
+    const turns = slides.timeline.steps.filter(step => step.transition === "turn").map(step => step.start);
+    expect(turns.length).toBeGreaterThan(1);
+    expect(reelMusicPlan(slides).turns).toEqual(turns);
+    // A faded opening or closing makes no page sound.
+    const faded = prepareReel(reelInput([job(1), job(2), job(3), job(4), job(5)], "en", null), { size: "reels", speed: "slow", style: "slides", opening: false, closing: false })!;
+    expect(reelMusicPlan(faded).turns).toHaveLength(turns.length - 2);
   });
 
   it("falls back to recording the playing preview when the encoder fails part way", async () => {

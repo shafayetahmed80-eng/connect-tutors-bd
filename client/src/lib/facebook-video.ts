@@ -34,6 +34,7 @@ import {
   type SlidesTimeline,
 } from "./poster/reel";
 import { drawCradle, type CradlePose } from "./poster/canvas-kit";
+import { musicPlan, renderMusic, type MusicPlan } from "./poster/reel-music";
 
 export { REEL_DEFAULT_GROUND, REEL_SIZES, type ReelSize, type ReelSpeed, type ReelStyle } from "./poster/reel";
 
@@ -544,7 +545,30 @@ export function reelFrameIsStill(reel: PreparedReel, t: number): boolean {
 }
 
 export type RecordedVideo = { blob: Blob; mimeType: string };
-type RecordOptions = { signal?: AbortSignal; onFrame?: (seconds: number) => void; schedule?: FrameScheduler };
+type RecordOptions = {
+  signal?: AbortSignal;
+  onFrame?: (seconds: number) => void;
+  schedule?: FrameScheduler;
+  /** The music to lay under the video (see `renderReelMusic`); none if null. */
+  music?: AudioBuffer | null;
+};
+
+/** The music's bitrate in the file: plenty for a soft loop. */
+const MUSIC_BITRATE = 128_000;
+
+/**
+ * What the music plays for this reel: as long as the video and its held last
+ * frame, with a page sound at the start of every page turn in slides.
+ */
+export function reelMusicPlan(reel: PreparedReel): MusicPlan {
+  const turns = reel.style === "slides" ? reel.timeline.steps.filter(step => step.transition === "turn").map(step => step.start) : [];
+  return musicPlan(reel.timeline.total + VIDEO_TAIL, turns);
+}
+
+/** The reel's music as audio, or null where the browser cannot make it. */
+export function renderReelMusic(reel: PreparedReel): Promise<AudioBuffer | null> {
+  return renderMusic(reelMusicPlan(reel)).catch(() => null);
+}
 
 /** Lets the window paint and hear a click before the next frames are made. */
 const yieldToWindow = () => new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -566,7 +590,7 @@ async function encodeReel(canvas: HTMLCanvasElement, reel: PreparedReel, options
   const ctx = canvas.getContext("2d");
   if (!ctx) return undefined;
   // The encoder and the file writer are fetched only now, so a visitor's pages and the window itself never carry them.
-  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, Quality, canEncodeVideo } = await import("mediabunny");
+  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, AudioBufferSource, Quality, canEncodeVideo, canEncodeAudio } = await import("mediabunny");
   // A browser that cannot encode to a quality uses the steady bitrate instead, and ignores the per-frame quality below.
   const quality = new Quality({ quantizer: VIDEO_MOVING_QUANTIZER, bitrate: VIDEO_BITRATE });
   if (!(await canEncodeVideo("avc", { width: canvas.width, height: canvas.height, quality, frameRate: VIDEO_FRAME_RATE }))) return undefined;
@@ -574,7 +598,18 @@ async function encodeReel(canvas: HTMLCanvasElement, reel: PreparedReel, options
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
   const source = new CanvasSource(canvas, { codec: "avc", quality, keyFrameInterval: 2 });
   output.addVideoTrack(source, { frameRate: VIDEO_FRAME_RATE });
+  // The music goes in as AAC, which Facebook and every player take; a browser that cannot encode it makes the video without.
+  const music = options.music ?? null;
+  const musicQuality = new Quality({ bitrate: MUSIC_BITRATE });
+  const audio = music && (await canEncodeAudio("aac", { numberOfChannels: music.numberOfChannels, sampleRate: music.sampleRate, quality: musicQuality }))
+    ? new AudioBufferSource({ codec: "aac", quality: musicQuality })
+    : null;
+  if (audio) output.addAudioTrack(audio);
   await output.start();
+  if (audio && music) {
+    await audio.add(music);
+    audio.close();
+  }
 
   const step = 1 / VIDEO_FRAME_RATE;
   const frames = videoFrameCount(reel.timeline.total);
