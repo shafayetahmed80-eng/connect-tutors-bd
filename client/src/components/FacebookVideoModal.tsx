@@ -17,6 +17,7 @@ import {
   recordReel,
   reelCover,
   reelInput,
+  renderReelMusic,
   releaseReel,
   REEL_DEFAULT_GROUND,
   REEL_SIZES,
@@ -34,8 +35,8 @@ import { cn } from "@/lib/utils";
 
 const VIDEO_PREFS_KEY = "connect_tutors_fb_video_prefs_v1";
 
-type VideoPrefs = { size: ReelSize; style: ReelStyle; speed: ReelSpeed; opening: boolean; closing: boolean };
-const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", style: "scroll", speed: "slow", opening: true, closing: true };
+type VideoPrefs = { size: ReelSize; style: ReelStyle; speed: ReelSpeed; opening: boolean; closing: boolean; music: boolean };
+const DEFAULT_VIDEO_PREFS: VideoPrefs = { size: "reels", style: "scroll", speed: "slow", opening: true, closing: true, music: true };
 
 function readVideoPrefs(): VideoPrefs {
   try {
@@ -46,6 +47,7 @@ function readVideoPrefs(): VideoPrefs {
       speed: saved?.speed === "normal" || saved?.speed === "fast" ? saved.speed : "slow",
       opening: saved?.opening !== false,
       closing: saved?.closing !== false,
+      music: saved?.music !== false,
     };
   } catch {
     return DEFAULT_VIDEO_PREFS;
@@ -107,8 +109,41 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     });
   };
 
+  /** The reel's music, made once for each reel and timing (switching speed makes a new reel), and whatever is playing it. */
+  const musicRef = useRef<{ reel: PreparedReel; music: Promise<AudioBuffer | null> } | null>(null);
+  const soundRef = useRef<{ context: AudioContext; source: AudioBufferSourceNode } | null>(null);
+  const musicFor = (current: PreparedReel) => {
+    if (musicRef.current?.reel !== current) musicRef.current = { reel: current, music: renderReelMusic(current) };
+    return musicRef.current.music;
+  };
+  const stopSound = () => {
+    const sound = soundRef.current;
+    soundRef.current = null;
+    if (!sound) return;
+    try {
+      sound.source.stop();
+    } catch {
+      // Already stopped.
+    }
+    void sound.context.close().catch(() => undefined);
+  };
+  const startSound = (music: AudioBuffer | null) => {
+    if (!music || typeof AudioContext === "undefined") return;
+    try {
+      const context = new AudioContext();
+      const source = context.createBufferSource();
+      source.buffer = music;
+      source.connect(context.destination);
+      source.start();
+      soundRef.current = { context, source };
+    } catch {
+      // No sound in this browser; the picture still plays.
+    }
+  };
+
   /** Stops whatever is playing or recording, and puts the opening frame back. */
   const stop = () => {
+    stopSound();
     runRef.current?.abort();
     runRef.current = null;
     setMode("idle");
@@ -164,8 +199,15 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     setReel(timed);
   }, [videoPrefs.speed, videoPrefs.opening, videoPrefs.closing]);
 
+  // The music is made in the background as soon as the reel is ready (it takes about a second), so Play and Download need not wait.
+  useEffect(() => {
+    if (reel && videoPrefs.music) void musicFor(reel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `musicFor` keeps its own cache
+  }, [reel, videoPrefs.music]);
+
   // Closing the window stops a recording and lets the painted strips go.
   useEffect(() => () => {
+    stopSound();
     runRef.current?.abort();
     releaseReel(reelRef.current);
     reelRef.current = null;
@@ -185,7 +227,12 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     const controller = new AbortController();
     runRef.current = controller;
     setMode("playing");
-    await runReel(canvas, reelRef.current, { signal: controller.signal, onFrame: progress });
+    const current = reelRef.current;
+    const music = videoPrefs.music ? await musicFor(current) : null;
+    if (controller.signal.aborted) return;
+    startSound(music);
+    await runReel(canvas, current, { signal: controller.signal, onFrame: progress });
+    if (runRef.current === controller) stopSound();
     if (runRef.current === controller) {
       runRef.current = null;
       setMode("idle");
@@ -206,7 +253,8 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
     setMode("recording");
     setSeconds(0);
     try {
-      const result = await recordReel(canvas, current, { signal: controller.signal, onFrame: progress });
+      const music = videoPrefs.music ? await musicFor(current) : null;
+      const result = await recordReel(canvas, current, { signal: controller.signal, onFrame: progress, music });
       if (result) {
         downloadVideo(result.blob, videoFileName(shown.length, videoPrefs.size, locale, videoExtension(result.mimeType), videoPrefs.style));
         toast.success("ভিডিও ডাউনলোড হয়েছে।");
@@ -295,6 +343,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
             <ChoiceRow label="Speed" value={videoPrefs.speed} options={speedOptions} onChange={speed => updateVideo({ speed })} />
             <ChoiceRow label="Opening" value={videoPrefs.opening ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ opening: next === "on" })} />
             <ChoiceRow label="Closing" value={videoPrefs.closing ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ closing: next === "on" })} />
+            <ChoiceRow label="Music" value={videoPrefs.music ? "on" : "off"} options={onOffOptions} onChange={next => updateVideo({ music: next === "on" })} />
             <PosterColourRow ground={posterPrefs.ground} defaultGround={REEL_DEFAULT_GROUND} resolvedAuto={resolvedAuto} onChange={next => updatePoster({ ground: next })} />
           </fieldset>
         </div>
