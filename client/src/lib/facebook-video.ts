@@ -448,14 +448,45 @@ export function videoFileName(count: number, size: ReelSize, locale: PosterLocal
   return `connect-tutors-${count}-${count === 1 ? "tuition" : "tuitions"}-${size}${style === "slides" ? "-slides" : ""}-${locale}.${extension}`;
 }
 
-/** What the saved video is: its steady frame rate, its bitrate, and how long the last frame is held so a player does not cut the closing card short. */
+/** What the saved video is: its steady frame rate, and how long the last frame is held so a player does not cut the closing card short. */
 export const VIDEO_FRAME_RATE = REEL_FPS;
-const VIDEO_BITRATE = 8_000_000;
 const VIDEO_TAIL = 0.25;
+/** The bitrate of the live recording, and of the encoder where it cannot work to a quality (see below). */
+const VIDEO_BITRATE = 8_000_000;
+
+/**
+ * The encoder works to a quality, not a bitrate (the H.264 quantizer: lower is
+ * finer). A frame that holds still - the title, the closing card, a page of
+ * slides being read - is drawn finest, and costs almost nothing after its
+ * first frame; a frame in motion, which the eye cannot study, a little
+ * coarser. Measured on a 20 s scroll against the old steady 8 Mbit/s: still
+ * frames came out the same, moving frames about 1 dB lower (41-42 dB, out of
+ * sight), and the file under half the size (20.9 MB to 11.3 MB; slides 16.1 MB
+ * to 7.2 MB). The background's fine grain is kept: without it the dark
+ * gradients band.
+ */
+export const VIDEO_STILL_QUANTIZER = 16;
+export const VIDEO_MOVING_QUANTIZER = 23;
 
 /** How many frames the saved file has for a reel that runs `seconds`. */
 export function videoFrameCount(seconds: number): number {
   return Math.ceil((seconds + VIDEO_TAIL) * VIDEO_FRAME_RATE);
+}
+
+/**
+ * Whether the frame at `t` is held still: the same picture as the frame after
+ * it. The first frame of a hold counts, so the picture the hold repeats is the
+ * finest one.
+ */
+export function reelFrameIsStill(reel: PreparedReel, t: number): boolean {
+  const next = Math.min(t + 1 / VIDEO_FRAME_RATE, reel.timeline.total);
+  if (reel.style === "slides") {
+    const now = slideStepAt(t, reel.timeline).step;
+    return now.transition === null && slideStepAt(next, reel.timeline).step === now;
+  }
+  const covers = reelPageCovers(t, reel.timeline);
+  const later = reelPageCovers(next, reel.timeline);
+  return Math.abs(reelOffsetAt(next, reel.timeline) - reelOffsetAt(t, reel.timeline)) < 1e-6 && covers.title === later.title && covers.end === later.end;
 }
 
 export type RecordedVideo = { blob: Blob; mimeType: string };
@@ -481,11 +512,13 @@ async function encodeReel(canvas: HTMLCanvasElement, reel: PreparedReel, options
   const ctx = canvas.getContext("2d");
   if (!ctx) return undefined;
   // The encoder and the file writer are fetched only now, so a visitor's pages and the window itself never carry them.
-  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, canEncodeVideo } = await import("mediabunny");
-  if (!(await canEncodeVideo("avc", { width: canvas.width, height: canvas.height, bitrate: VIDEO_BITRATE, frameRate: VIDEO_FRAME_RATE }))) return undefined;
+  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, Quality, canEncodeVideo } = await import("mediabunny");
+  // A browser that cannot encode to a quality uses the steady bitrate instead, and ignores the per-frame quality below.
+  const quality = new Quality({ quantizer: VIDEO_MOVING_QUANTIZER, bitrate: VIDEO_BITRATE });
+  if (!(await canEncodeVideo("avc", { width: canvas.width, height: canvas.height, quality, frameRate: VIDEO_FRAME_RATE }))) return undefined;
 
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
-  const source = new CanvasSource(canvas, { codec: "avc", bitrate: VIDEO_BITRATE, keyFrameInterval: 2 });
+  const source = new CanvasSource(canvas, { codec: "avc", quality, keyFrameInterval: 2 });
   output.addVideoTrack(source, { frameRate: VIDEO_FRAME_RATE });
   await output.start();
 
@@ -499,7 +532,11 @@ async function encodeReel(canvas: HTMLCanvasElement, reel: PreparedReel, options
       }
       const seconds = Math.min(frame * step, reel.timeline.total);
       drawReelFrame(ctx, reel, seconds);
-      await source.add(frame * step, step);
+      // The per-frame H.264 quantizer (WebCodecs `avc.quantizer`; the DOM typings do not list it yet).
+      const encodeOptions: VideoEncoderEncodeOptions & { avc: { quantizer: number } } = {
+        avc: { quantizer: reelFrameIsStill(reel, seconds) ? VIDEO_STILL_QUANTIZER : VIDEO_MOVING_QUANTIZER },
+      };
+      await source.add(frame * step, step, encodeOptions);
       options.onFrame?.(seconds);
       // The window gets a turn now and then, to show the progress and hear Cancel; a hidden one has no screen to paint, so it carries on.
       if (frame % 6 === 5 && !document.hidden) await yieldToWindow();
