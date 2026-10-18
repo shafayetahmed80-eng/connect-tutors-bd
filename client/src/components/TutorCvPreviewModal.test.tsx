@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import React from "react";
 import { render, screen, cleanup } from "@testing-library/react";
+import { trpc } from "@/lib/trpc";
 import { TutorCvPreviewModal } from "./TutorCvPreviewModal";
 
 afterEach(() => cleanup());
@@ -86,5 +87,43 @@ describe("TutorCvPreviewModal", () => {
       />
     );
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("TutorCvPreviewModal for a draft profile", () => {
+  const draftData = { fileName: "Connect-Tutors-CV-792-Draft.pdf", pdfBase64: "JVBERi0xLjQK", downloadable: false };
+  const query = (data: unknown) => ({ data, isLoading: false, error: null, refetch: vi.fn() }) as never;
+
+  afterEach(() => {
+    vi.mocked(trpc.tutor.getMyCvPdf.useQuery).mockReset();
+    vi.mocked(trpc.admin.getTutorCvPdf.useQuery).mockReset();
+  });
+
+  it("shows the CV to the Tutor but offers neither Download nor Print", () => {
+    vi.mocked(trpc.tutor.getMyCvPdf.useQuery).mockReturnValue(query(draftData));
+    render(<TutorCvPreviewModal isOpen={true} onClose={vi.fn()} tutorName="Md. Samiul Haque Ratul" tutorNumber={792} />);
+
+    expect(screen.getByText("Official Tutor CV & Biodata")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Official Tutor CV & Biodata for Md. Samiul Haque Ratul/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Download PDF/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Print/i })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /Close/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows the CV to an Admin the same way", () => {
+    vi.mocked(trpc.admin.getTutorCvPdf.useQuery).mockReturnValue(query(draftData));
+    render(<TutorCvPreviewModal isOpen={true} onClose={vi.fn()} tutorId="tutor-792" tutorName="Md. Samiul Haque Ratul" tutorNumber={792} />);
+
+    expect(screen.getByRole("img", { name: /Official Tutor CV & Biodata/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Download PDF/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Print/i })).toBeNull();
+  });
+
+  it("keeps Download and Print for a CV the server marks downloadable", () => {
+    vi.mocked(trpc.tutor.getMyCvPdf.useQuery).mockReturnValue(query({ ...draftData, downloadable: true }));
+    render(<TutorCvPreviewModal isOpen={true} onClose={vi.fn()} tutorName="Md. Samiul Haque Ratul" tutorNumber={792} />);
+
+    expect(screen.getByRole("button", { name: /Download PDF/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Print/i })).toBeTruthy();
   });
 });

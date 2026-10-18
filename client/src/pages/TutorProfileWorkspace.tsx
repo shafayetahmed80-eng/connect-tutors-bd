@@ -1,6 +1,7 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
+import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -1437,6 +1438,7 @@ function TutorProfileWorkspaceBody({
         previewMode={previewMode}
         onTogglePreview={() => setPreviewMode(current => !current)}
         onOpenCvModal={() => setIsCvModalOpen(true)}
+        cvViewOnly={isTutorCvDraft(profile?.profileStatus, Boolean(profile?.verified))}
       />
 
       <div className={`min-w-0 ${tp.stack}`}>

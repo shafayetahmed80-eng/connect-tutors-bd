@@ -177,6 +177,7 @@ import { GuardianRegistrationError } from "./guardian-registration.validation";
 import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
+import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument, type TutorCvEducationRecord } from "./tutor-cv-pdf";
 import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
@@ -1850,7 +1851,8 @@ export async function getTutorProfileByUserId(userId: number) {
   return toTutorProfileOwnerDto(await loadTutorProfileOwner(db, userId));
 }
 
-export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName: string; pdfBase64: string }> {
+/** `downloadable` is false for a draft profile: its CV is shown, never saved or printed. */
+export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName: string; pdfBase64: string; downloadable: boolean }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await loadTutorProfileOwner(db, userId);
@@ -1984,6 +1986,7 @@ export async function getTutorCvPdfByUserId(userId: number): Promise<{ fileName:
   return {
     fileName,
     pdfBase64: pdfBuffer.toString("base64"),
+    downloadable: !isTutorCvDraft(profile.profileStatus, profile.verified),
   };
 }
 
@@ -2119,7 +2122,7 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
 /**
  * Generates the official 1-page Tutor CV & Biodata PDF for Admin inspection.
  */
-export async function getTutorCvPdfForAdmin(input: { tutorId: string }): Promise<{ fileName: string; pdfBase64: string }> {
+export async function getTutorCvPdfForAdmin(input: { tutorId: string }): Promise<{ fileName: string; pdfBase64: string; downloadable: boolean }> {
   const database = await getDb();
   if (!database) throw new Error("Database unavailable");
   const [owner] = await database
