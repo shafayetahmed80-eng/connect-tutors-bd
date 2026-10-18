@@ -101,6 +101,8 @@ export type TutorCvStatusInfo = {
   statSubtitle: string;
   sealStatus: string;
   statColor: string;
+  /** At least one of the Tutor's tuitions is Confirmed (the platform's Verified rule). */
+  isVerified: boolean;
 };
 
 export function resolveTutorCvStatus(profileStatus?: string | null, verified?: boolean): TutorCvStatusInfo {
@@ -114,6 +116,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Credentials & Identity Checked",
       sealStatus: "OFFICIALLY VERIFIED PROFILE",
       statColor: "#15803d",
+      isVerified: true,
     };
   }
   // 2. Approved profile
@@ -125,6 +128,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Admin Reviewed & Approved",
       sealStatus: "OFFICIALLY APPROVED PROFILE",
       statColor: "#0284c7",
+      isVerified: false,
     };
   }
   // 3. Pending review
@@ -136,6 +140,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
       statSubtitle: "Profile Submitted for Review",
       sealStatus: "PROFILE UNDER REVIEW",
       statColor: "#b45309",
+      isVerified: false,
     };
   }
   // 4. Draft profile
@@ -146,6 +151,7 @@ export function resolveTutorCvStatus(profileStatus?: string | null, verified?: b
     statSubtitle: "Profile Details In Progress",
     sealStatus: "OFFICIAL TUTOR BIODATA",
     statColor: "#475569",
+    isVerified: false,
   };
 }
 
@@ -972,15 +978,10 @@ function drawCvRightColumn(
   if (approachNote) notes.push({ label: "Teaching Methodology & Approach:", text: approachNote });
   if (expertiseNote && expertiseNote !== experienceNote) notes.push({ label: "Special Expertise:", text: expertiseNote });
 
-  if (years !== null || notes.length > 0) {
-    section("TEACHING EXPERIENCE & METHODOLOGY", drawBriefcaseIcon);
-
-    const statBoxHeight = 31;
+  const statBoxHeight = 31;
+  const drawStatBoxes = (boxes: Array<{ title: string; subtitle: string; color: string; size: number }>) => {
+    if (boxes.length === 0) return;
     room(statBoxHeight + 7);
-    const boxes = [
-      ...(years !== null ? [{ title: `${years}+ Years`, subtitle: "Tutoring Experience", color: "#0d5fae", size: 11 }] : []),
-      { title: statusInfo.statTitle, subtitle: statusInfo.statSubtitle, color: statusInfo.statColor, size: 10.5 },
-    ];
     const statBoxWidth = (width - 10 * (boxes.length - 1)) / boxes.length;
     boxes.forEach((box, index) => {
       const boxX = left + index * (statBoxWidth + 10);
@@ -989,6 +990,17 @@ function drawCvRightColumn(
       document.font("Medium").fontSize(7.2).fillColor("#475569").text(box.subtitle, boxX + 8, y + 17, { width: statBoxWidth - 16 });
     });
     y += statBoxHeight + 7;
+  };
+  // "100% Verified" is said only of a verified Tutor - one with at least one Confirmed tuition; no other status gets a box.
+  const verifiedBoxes = statusInfo.isVerified ? [{ title: statusInfo.statTitle, subtitle: statusInfo.statSubtitle, color: statusInfo.statColor, size: 10.5 }] : [];
+
+  if (years !== null || notes.length > 0) {
+    section("TEACHING EXPERIENCE & METHODOLOGY", drawBriefcaseIcon);
+
+    drawStatBoxes([
+      ...(years !== null ? [{ title: `${years}+ Years`, subtitle: "Tutoring Experience", color: "#0d5fae", size: 11 }] : []),
+      ...verifiedBoxes,
+    ]);
 
     for (const note of notes) {
       // The label stays with the first lines of its text.
@@ -999,6 +1011,9 @@ function drawCvRightColumn(
       y += 5;
     }
     y += 4;
+  } else if (statusInfo.isVerified) {
+    // Nothing to say about experience, but a verified Tutor is still shown to be verified.
+    drawStatBoxes(verifiedBoxes);
   }
 
   // WHY CHOOSE ME - only if the Tutor wrote it

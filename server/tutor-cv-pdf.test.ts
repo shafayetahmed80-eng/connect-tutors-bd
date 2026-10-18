@@ -375,12 +375,38 @@ describe("the CV layout", () => {
     expect(text).toContain("DRAFT PROFILE");
   });
 
-  it("keeps only the status box, full width, where there are no years to show", async () => {
-    const [page] = await readCvPages(await renderTutorCvPdf({ ...ownerCv, profileStatus: "approved", teachingExperienceYears: null }));
-    const status = page.find(box => box.str.includes("Approved Profile") && box.x > 215 && box.height > 9);
-    expect(status).toBeDefined();
-    // Where there are years the status box starts halfway across; alone, it starts at the left edge.
-    expect(status!.x).toBeLessThan(235);
+  it("says 100% Verified - in its box and on the badge - only of a Tutor with a Confirmed tuition", async () => {
+    const verified = textOf((await readCvPages(await renderTutorCvPdf({ ...ownerCv, profileStatus: "approved", verified: true })))[0]);
+    expect(verified).toContain("100% Verified");
+    expect(verified).toContain("VERIFIED TUTOR");
+
+    for (const status of ["approved", "pending", "draft"]) {
+      const text = textOf((await readCvPages(await renderTutorCvPdf({ ...ownerCv, profileStatus: status, verified: false })))[0]);
+      expect(text, status).not.toContain("100% Verified");
+      expect(text, status).not.toContain("VERIFIED TUTOR");
+      // No other status takes the verified box's place.
+      for (const box of ["Approved Profile", "Under Review", "Draft Profile", "Profile Details In Progress"]) {
+        expect(text, `${status}: ${box}`).not.toContain(box);
+      }
+    }
+  });
+
+  it("still shows 100% Verified, on its own and full width, for a verified Tutor who gave no years and wrote no notes", async () => {
+    const [page] = await readCvPages(await renderTutorCvPdf({ ...ownerCv, profileStatus: "approved", verified: true, teachingExperienceYears: null, priorTeachingExperience: null, specialExpertise: null }));
+    const box = page.find(item => item.str.includes("100% Verified"));
+    expect(box).toBeDefined();
+    // Beside the years it would start halfway across; alone, it starts at the left edge.
+    expect(box!.x).toBeLessThan(235);
+    expect(textOf(page)).not.toContain("TEACHING EXPERIENCE");
+    expect(overlappingText(page)).toEqual([]);
+  });
+
+  it("lets the years fill the row for a Tutor who is not verified", async () => {
+    const [page] = await readCvPages(await renderTutorCvPdf(ownerCv));
+    const years = page.find(item => item.str.includes("9+ Years"));
+    expect(years).toBeDefined();
+    expect(years!.x).toBeLessThan(235);
+    expect(overlappingText(page)).toEqual([]);
   });
 });
 
