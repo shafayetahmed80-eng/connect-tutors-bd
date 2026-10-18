@@ -1836,6 +1836,28 @@ export type AdminMessageTemplate = typeof adminMessageTemplates.$inferSelect;
 export type InsertAdminMessageTemplate = typeof adminMessageTemplates.$inferInsert;
 
 /** Reusable Facebook post templates (Owner-configurable) for bulk and single tuition posts. */
+/**
+ * The Image Section's shared choices: which fonts (and, later, colour pairs and
+ * uploaded fonts) the Project Owner starred to the top of every Admin's list, or
+ * archived out of it. One row per item that has ever been marked; no row means
+ * neither starred nor archived.
+ */
+export const imageStudioMarks = mysqlTable(
+  "image_studio_marks",
+  {
+    kind: varchar("kind", { length: 16 }).notNull(),
+    itemId: varchar("itemId", { length: 64 }).notNull(),
+    starred: boolean("starred").default(false).notNull(),
+    archived: boolean("archived").default(false).notNull(),
+    updatedByAdminId: int("updatedByAdminId"),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    primaryKey({ columns: [table.kind, table.itemId], name: "image_studio_marks_pk" }),
+    foreignKey({ columns: [table.updatedByAdminId], foreignColumns: [users.id], name: "ism_updated_by_fk" }),
+  ]
+);
+
 export const facebookPostTemplates = mysqlTable(
   "facebook_post_templates",
   {

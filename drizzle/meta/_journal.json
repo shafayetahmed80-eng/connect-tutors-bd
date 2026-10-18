@@ -876,6 +876,13 @@
       "when": 1795400000000,
       "tag": "0124_admin_push_more_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "5",
+      "when": 1795500000000,
+      "tag": "0125_image_studio_marks",
+      "breakpoints": true
     }
   ]
 }

@@ -65,6 +65,7 @@ import {
   policyPageKeySchema,
 } from "./site-content";
 import { isTelegramAdminConfigured, notifyTelegramAdmin } from "./telegram-notification";
+import { imageStudioMarkKinds, listImageStudioMarks, setImageStudioMark } from "./image-studio";
 import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsInputSchema, refineLearningNeeds, withLegacyLearningNeeds } from "./learning-needs-input";
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
@@ -3109,6 +3110,21 @@ export const appRouter = router({
     }),
   }),
   /** A Tutor or Guardian's own push subscriptions - the Admin chat-push alert has its own, separate flow under `admin`. */
+  /** The Admin Image Section: every Admin reads the shared star/archive marks; only the Project Owner sets them. */
+  imageStudio: router({
+    marks: adminProcedure.query(async ({ ctx }) => ({
+      marks: await listImageStudioMarks(),
+      canEdit: ctx.user.openId === ENV.ownerOpenId,
+    })),
+    setMark: ownerAdminProcedure
+      .input(z.object({
+        kind: z.enum(imageStudioMarkKinds),
+        itemId: z.string().trim().min(1).max(64).regex(/^[a-z0-9-]+$/),
+        starred: z.boolean().optional(),
+        archived: z.boolean().optional(),
+      }).refine(input => input.starred !== undefined || input.archived !== undefined, { message: "Nothing to change." }))
+      .mutation(({ ctx, input }) => setImageStudioMark({ ...input, adminUserId: ctx.user.id })),
+  }),
   pushNotifications: router({
     /** The public half of the server's VAPID keypair, so the browser can create a push subscription against it. `null` means push is not configured on this deployment. */
     getPublicKey: protectedProcedure.query(() => db.getPushNotificationPublicKey()),

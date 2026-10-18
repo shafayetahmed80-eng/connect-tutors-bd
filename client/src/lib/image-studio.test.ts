@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageFileName, imageStudioSections, imageStudioSizes, isImageStudioSection, maxScaleFor } from "./image-studio";
+import { PLATE_SAMPLE, imageFileName, imageStudioSections, imageStudioSizes, isImageStudioSection, maxScaleFor, plateLines } from "./image-studio";
 
 describe("the Image Section sizes", () => {
   it("offers each section its own sizes, every one a whole, distinct size", () => {
@@ -36,5 +36,15 @@ describe("export", () => {
   it("names the file after the section, the size and the pixels it really has", () => {
     const size = imageStudioSizes.banner[0];
     expect(imageFileName("banner", size, "jpg", 2)).toBe("connect-tutors-banner-facebook-cover-3280x1248.jpg");
+  });
+});
+
+describe("the sample text on the plate", () => {
+  const text = { bnFamily: "studio-mina", bnWeight: 700, enFamily: "studio-syne", enWeight: 800 };
+
+  it("draws Bangla alone, English alone, or the English name over the Bangla line", () => {
+    expect(plateLines({ ...text, mode: "bn" })).toEqual([{ text: PLATE_SAMPLE.bn, family: "studio-mina", weight: 700 }]);
+    expect(plateLines({ ...text, mode: "en" })).toEqual([{ text: PLATE_SAMPLE.en, family: "studio-syne", weight: 800 }]);
+    expect(plateLines({ ...text, mode: "mixed" }).map(line => line.family)).toEqual(["studio-syne", "studio-mina"]);
   });
 });

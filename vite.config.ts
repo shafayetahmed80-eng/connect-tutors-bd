@@ -241,8 +241,9 @@ const plugins = [
     workbox: {
       globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       // pdf.js is fetched only when someone opens a Confirmation Letter; it
-      // should not ride along in every visitor's install.
-      globIgnores: ["**/assets/pdf-*.js", "**/assets/pdf.worker*"],
+      // should not ride along in every visitor's install. Neither should the Image
+      // Section's font library (several MB), which only an Admin ever opens.
+      globIgnores: ["**/assets/pdf-*.js", "**/assets/pdf.worker*", "**/image-fonts/**"],
       // /manus-storage serves the images and documents the server holds; opening
       // one (an Admin viewing a credential) must reach the server, not be answered
       // with the app shell, which shows the 404 page.
